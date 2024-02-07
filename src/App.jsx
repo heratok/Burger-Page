@@ -1,11 +1,13 @@
-import Home from "./Pages/Home"
+//import Home from "./Pages/Home" 
+import ShoppingCart from "./Pages/ShoppingCart"
+
 
 function App() {
 
   return (
     <>
-    <Home></Home>
-
+    <ShoppingCart/>
+    {/*<Home/>*/}
     </>
   )
 }
