@@ -1,4 +1,6 @@
 import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
+import ReplyIcon from '@mui/icons-material/Reply';
+
 function ShoppingCart() {
   return (
     <div className="h-screen p-4 ">
@@ -27,6 +29,19 @@ function ShoppingCart() {
           <button className="w-8 h-8 rounded-full bg-[#FFBF19]">+</button>
         </div>
       </div>
+      <button
+        type="submit"
+        className="text-white mt-5 flex justify-center items-center gap-1 bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-full px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+      > 
+        Confirmar Orden
+      </button>
+      <button
+        type="submit"
+        className="text-white mt-5 flex justify-center items-center gap-1 bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-full px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+      >
+        <ReplyIcon/>
+        Volver a la Tienda
+      </button>
 
     </div>
   );
