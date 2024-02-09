@@ -8,7 +8,7 @@ export const hamburguesas = [
   },
   {
     name: "cangreburger",
-    src: "https://assets.stickpng.com/thumbs/588248e0e81acb96424ffab1.png",
+    src: "https://png.pngtree.com/png-clipart/20230502/original/pngtree-hot-cheesy-burger-isolated-on-transparent-background-png-image_9133351.png",
     price: 15000,
     description: "buena pa engordar y morirse de la obesidad comprala y te vas a morir pero lleno"
   },
@@ -16,6 +16,12 @@ export const hamburguesas = [
     name: "la chichona",
     src: "  https://static.vecteezy.com/system/resources/previews/021/952/463/original/tasty-hamburger-on-transparent-background-png.png",
     price: 25000,
+    description: "buena pa engordar y morirse de la obesidad comprala y te vas a morir pero lleno"
+  },
+  {
+    name: "megaburger",
+    src: "https://static.vecteezy.com/system/resources/previews/021/952/575/non_2x/free-tasty-hamburger-on-transparent-background-free-png.png",
+    price: 27000,
     description: "buena pa engordar y morirse de la obesidad comprala y te vas a morir pero lleno"
   },
   {

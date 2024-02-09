@@ -8,7 +8,7 @@ function ShoppingCart() {
         <div className="text-xl font-bold">My Cart</div>
         <div className="text-xl font-bold">$0</div>
       </div>
-      <div className="p-4 mt-4 bg-white rounded-lg bg-opacity-15">
+      <div className="p-4 mt-4 bg-white rounded-lg bg-opacity-15 lg:w-96">
         <div className="flex items-center">
           <div className="w-1/4">
             <img
@@ -31,13 +31,13 @@ function ShoppingCart() {
       </div>
       <button
         type="submit"
-        className="text-white mt-5 flex justify-center items-center gap-1 bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-full px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+        className="text-white mt-5 flex justify-center items-center gap-1 bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-full px-5 py-2.5  lg:w-96 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
       > 
         Confirmar Orden
       </button>
       <button
         type="submit"
-        className="text-white mt-5 flex justify-center items-center gap-1 bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-full px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+        className="text-white mt-5 flex justify-center items-center gap-1 bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full  lg:w-96 sm:w-full px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
       >
         <ReplyIcon/>
         Volver a la Tienda

@@ -12,10 +12,10 @@ export default function Additions({ cerrar }) {
     }
   };
   return (
-    <div className=" h-screen w-screen">
+    <div className=" h-screen w-screen ">
       <div className="w-full flex justify-end">
         <div
-          className="rounded-full p-2 h-10 w-10 hover:bg-opacity-10 bg-blue-50 bg-opacity-20"
+          className="rounded-full flex justify-center items-center p-2 h-10 w-10 hover:bg-opacity-10 bg-blue-50 bg-opacity-20"
           onClick={cerrar}
         >
           <CloseIcon></CloseIcon>
@@ -24,25 +24,22 @@ export default function Additions({ cerrar }) {
 
       <div className="flex justify-center">
         <img
-          className="w-44"
+          className="lg:w-44 w-32 lg:h-auto h-32"
           src="https://static.vecteezy.com/system/resources/previews/021/952/463/original/tasty-hamburger-on-transparent-background-png.png"
           alt=""
         />
         <div className="">
           <span className="font-bold">la pipona</span>
-          <p className="w-96 text-white text-opacity-50">
-            Lorem ipsum dolor sit amet consectetur, adipisicing elit. Maiores
-            sint excepturi et exercitationem ex molestiae fugit, aut consequatur
-            incidunt, voluptatum labore voluptas perspiciatis! Rerum omnis
-            facilis voluptates a, repellendus ex.
+          <p className="lg:w-96  text-white text-opacity-50">
+            Lorem ipsum dolor sit amet consectetur adipisicing elit. 
           </p>
         </div>
       </div>
-      <div className="flex flex-col justify-center items-center">
+      <div className="flex flex-col justify-center items-center ">
         <div className="flex justify-center">
-          <div className="flex w-96 justify-between">
+          <div className="flex w-96 justify-between lg:p-0 p-2">
             <span>Adiciones</span>
-            <span className="bg-[#FFBF19] rounded-lg p-1">Opcional</span>
+            <span className="bg-[#FF7A21] rounded-lg p-1">Opcional</span>
           </div>
         </div>
         <div className="mt-2 bg-white bg-opacity-10 p-2  gap-2 w-96 rounded-lg flex ">
@@ -63,14 +60,14 @@ export default function Additions({ cerrar }) {
           </div>
           <div className="flex gap-2 justify-center items-center">
             <div
-              className="p-2 h-7 w-7 flex justify-center items-center rounded-full cursor-pointer bg-[#FFBF19] "
+              className="p-2 h-7 w-7 flex justify-center items-center rounded-full cursor-pointer bg-[#FF7A21] "
               onClick={disminuir}
             >
               -
             </div>
             <div className="">{cantidad}</div>
             <div
-              className="p-2 h-7 w-7 cursor-pointer flex justify-center items-center  rounded-full bg-[#FFBF19] "
+              className="p-2 h-7 w-7 cursor-pointer flex justify-center items-center  rounded-full bg-[#FF7A21] "
               onClick={aumentar}
             >
               +
@@ -95,14 +92,14 @@ export default function Additions({ cerrar }) {
           </div>
           <div className="flex gap-2 justify-center items-center">
             <div
-              className="p-2 h-7 w-7 flex justify-center items-center rounded-full cursor-pointer bg-[#FFBF19] "
+              className="p-2 h-7 w-7 flex justify-center items-center rounded-full cursor-pointer bg-[#FF7A21] "
               onClick={disminuir}
             >
               -
             </div>
             <div className="">{cantidad}</div>
             <div
-              className="p-2 h-7 w-7 cursor-pointer flex justify-center items-center  rounded-full bg-[#FFBF19] "
+              className="p-2 h-7 w-7 cursor-pointer flex justify-center items-center  rounded-full bg-[#FF7A21] "
               onClick={aumentar}
             >
               +
@@ -113,7 +110,7 @@ export default function Additions({ cerrar }) {
         <div className="flex justify-center mt-4">
           <div className="flex w-96 justify-between">
             <span>Observaciones</span>
-            <span className="bg-[#FFBF19] rounded-lg p-1">Opcional</span>
+            <span className="bg-[#FF7A21] rounded-lg p-1">Opcional</span>
           </div>
         </div>
       </div>
