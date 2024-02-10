@@ -1,5 +1,12 @@
 
-export default function Buscar() {
+// eslint-disable-next-line react/prop-types
+export default function Buscar({onChangeText}) {
+  const handleInputChange = (e) => {
+    // Obtén el valor actual del input
+    const textoBusqueda = e.target.value;
+    // Llama a la función onChangeText y pasa el valor del input
+    onChangeText(textoBusqueda);
+  };
   return (
     <div className="relative h-10 w-full ml-2 mr-2 lg:w-[800px] mt-2">
     <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
@@ -18,6 +25,7 @@ export default function Buscar() {
     </div>
     <input
       type="search"
+      onChange={handleInputChange}
       className="block w-full border h-10   border-[#4E4F50] rounded-full bg-transparent outline-0 p-4 pl-10 text-sm"
       placeholder="Buscar..."
       autoComplete="off"

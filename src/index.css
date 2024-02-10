@@ -6,7 +6,10 @@
   margin: 0;
 }
 
-
+.scroll-add::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  width: 7px;
+}
 body {
   background-color: #181a1b;
   color: white;

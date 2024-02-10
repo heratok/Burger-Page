@@ -8,12 +8,27 @@ import Buscar from "../Components/Buscar";
 import Nav from "../Components/Nav";
 export default function Home() {
   const [click, SetClick] = useState(false);
-  const onCliked = () => {
+  const [selectedBurger, setSelectedBurger] = useState({});
+  const onCliked = (hamburguesa) => {
+    setSelectedBurger(hamburguesa)
+
     SetClick(true);
+    
   };
   const cerrar = () => {
     SetClick(false);
   };
+  // const agregar=(nombre)=>{
+  //   setName(nombre)
+  //   console.log(nombre);
+  // }
+  const [texto, setTexto] = useState("");
+  const onChangeText = (text) => {
+    setTexto(text);
+  };
+  const filterBurger = hamburguesas.filter((objeto) => {
+    return objeto.name.toLowerCase().includes(texto.toLowerCase());
+  });
   return (
     <div className="relative  md:flex flex justify-center items-center ">
       <div className="  w-[1000px] text-[20px]">
@@ -21,7 +36,7 @@ export default function Home() {
           <div>
             <Navbar></Navbar>
             <div className="flex justify-center">
-              <Buscar></Buscar>
+              <Buscar onChangeText={onChangeText}></Buscar>
             </div>
             <h1 className="font-bold text-[#FF7A21] text-2xl mt-5 text-center">
               Burger Menu
@@ -33,10 +48,10 @@ export default function Home() {
         )}
         <div className=" lg:flex  md:flex   flex-wrap justify-center ">
           {click === true ? (
-            <Additions cerrar={cerrar}></Additions>
+            <Additions cerrar={cerrar} hamburger={selectedBurger}  ></Additions>
           ) : (
-            hamburguesas.map((hamburger, i) => (
-              <Card key={i} hamburger={hamburger} onCliked={onCliked}>
+            filterBurger.map((hamburger, i) => (
+              <Card key={i} hamburger={hamburger} onCliked={()=> onCliked(hamburger)}>
                 {" "}
               </Card>
             ))
