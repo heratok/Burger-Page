@@ -78,10 +78,10 @@ export default function Additions({ cerrar, hamburger }) {
   console.log("list", adiciones);
 
   return (
-    <div className=" h-screen w-screen ">
-      <div className="w-full flex justify-end">
+    <div className="w-screen h-screen ">
+      <div className="flex justify-end w-full">
         <div
-          className="rounded-full flex justify-center items-center p-2 h-10 w-10 hover:bg-opacity-10 bg-blue-50 bg-opacity-20"
+          className="flex items-center justify-center w-10 h-10 p-2 rounded-full hover:bg-opacity-10 bg-blue-50 bg-opacity-20"
           onClick={cerrar}
         >
           <CloseIcon></CloseIcon>
@@ -90,13 +90,13 @@ export default function Additions({ cerrar, hamburger }) {
 
       <div className="flex justify-center">
         <img
-          className="lg:w-42 w-32 lg:h-auto h-32"
+          className="w-32 h-32 lg:w-42 lg:h-auto"
           src={hamburger.src}
           alt=""
         />
         <div className="">
           <span className="font-bold">{hamburger.name}</span>
-          <p className="lg:w-96  text-white text-opacity-50">
+          <p className="text-white text-opacity-50 lg:w-96">
             {hamburger.description}
           </p>
           <span className="text-[#FF7A21]">
@@ -104,26 +104,26 @@ export default function Additions({ cerrar, hamburger }) {
           </span>
         </div>
       </div>
-      <div className="flex flex-col justify-center items-center ">
+      <div className="flex flex-col items-center justify-center ">
         <div className="flex justify-center">
-          <div className="flex w-96 justify-between lg:p-0 p-2">
+          <div className="flex justify-between p-2 w-96 lg:p-0">
             <span>Adiciones</span>
             <span className="bg-[#FF7A21] rounded-lg text-[12px] p-2 flex items-center justify-center">
               Opcional
             </span>
           </div>
         </div>
-        <div className="scroll-add overflow-y-auto mt-2 h-44">
+        <div className="mt-2 overflow-y-auto scroll-add h-44">
           {adiitions.map((adicion, i) => (
             <div
               key={i}
-              className="mt-2 bg-white bg-opacity-10 p-2  gap-2 w-96 rounded-lg flex "
+              className="flex gap-2 p-2 mt-2 bg-white rounded-lg bg-opacity-10 w-96 "
             >
-              <div className="w-full flex gap-2">
+              <div className="flex w-full gap-2">
                 {" "}
-                <div className="bg-white bg-opacity-15 p-1 w-14 h-14 flex justify-center items-center rounded-full">
+                <div className="flex items-center justify-center p-1 bg-white rounded-full bg-opacity-15 w-14 h-14">
                   <img
-                    className=" rounded-full"
+                    className="rounded-full "
                     src="https://img.freepik.com/fotos-premium/contenedor-amarillo-papas-fritas-cara-cara-sonriente_913665-3058.jpg"
                     alt=""
                   />
@@ -133,16 +133,16 @@ export default function Additions({ cerrar, hamburger }) {
                   <br />${adicion.pirce.toLocaleString()}
                 </span>
               </div>
-              <div className="flex gap-2 justify-center items-center">
+              <div className="flex items-center justify-center gap-2">
                 <div
-                  className="p-2  h-6 w-6 flex justify-center items-center rounded-full cursor-pointer bg-[#FF7A21] "
+                  className="p-2  h-6 w-6 flex justify-center items-center rounded-full cursor-pointer bg-[#FF7A21] hover:bg-yellow-600 transition duration-300 shadow-md active:bg-yellow-700 "
                   onClick={() => disminuir(i)}
                 >
                   -
                 </div>
                 <div className="">{adiciones[i].cantidad}</div>
                 <div
-                  className="p-2 h-6 w-6 cursor-pointer flex justify-center items-center  rounded-full bg-[#FF7A21] "
+                  className="p-2 h-6 w-6 cursor-pointer flex justify-center items-center  rounded-full bg-[#FF7A21] hover:bg-yellow-600 transition duration-300 shadow-md active:bg-yellow-700"
                   onClick={() => aumentar(adicion, i)}
                 >
                   +
@@ -153,7 +153,7 @@ export default function Additions({ cerrar, hamburger }) {
         </div>
 
         <div className="flex justify-center mt-4">
-          <div className="flex w-96 justify-between">
+          <div className="flex justify-between w-96">
             <span>Observaciones</span>
             <span className="bg-[#FF7A21] rounded-lg text-[12px] p-2 flex items-center justify-center">
               Opcional
@@ -171,23 +171,23 @@ export default function Additions({ cerrar, hamburger }) {
         ></textarea>
       </form>
       <div className="flex justify-center">
-        <div className="flex justify-between w-96 mt-4">
-          <div className="flex  justify-center items-center bg-white bg-opacity-5 rounded-full p-2 gap-7">
+        <div className="flex justify-between mt-4 w-96">
+          <div className="flex items-center justify-center p-2 bg-white rounded-full bg-opacity-5 gap-7">
             <div
-              className="p-2 h-7 w-7 flex justify-center items-center rounded-full cursor-pointer bg-[#FF7A21] "
+              className="p-2 h-7 w-7 flex justify-center items-center rounded-full cursor-pointer bg-[#FF7A21] hover:bg-yellow-600 transition duration-300 shadow-md active:bg-yellow-700"
               onClick={disminuirBurger}
             >
               -
             </div>
             <div className="">{cantidad}</div>
             <div
-              className="p-2 h-7 w-7 cursor-pointer flex justify-center items-center  rounded-full bg-[#FF7A21] "
+              className="p-2 h-7 w-7 cursor-pointer flex justify-center items-center  rounded-full bg-[#FF7A21] hover:bg-yellow-600 transition duration-300 shadow-md active:bg-yellow-700"
               onClick={aumentarBurger}
             >
               +
             </div>
           </div>
-          <button className="p-2 bg-[#FF7A21] rounded-full">
+          <button className="p-2 bg-[#FF7A21] rounded-full hover:bg-yellow-600 transition duration-300 shadow-md active:bg-yellow-700">
             Agregar ${(total + hamburger.price).toLocaleString()}{" "}
           </button>
         </div>

@@ -10,10 +10,9 @@ export default function Home() {
   const [click, SetClick] = useState(false);
   const [selectedBurger, setSelectedBurger] = useState({});
   const onCliked = (hamburguesa) => {
-    setSelectedBurger(hamburguesa)
+    setSelectedBurger(hamburguesa);
 
     SetClick(true);
-    
   };
   const cerrar = () => {
     SetClick(false);
@@ -30,15 +29,15 @@ export default function Home() {
     return objeto.name.toLowerCase().includes(texto.toLowerCase());
   });
   return (
-    <div className="relative  md:flex flex justify-center items-center ">
-      <div className="  w-[1000px] text-[20px]">
+    <div className="relative flex items-center justify-center md:flex ">
+      <div className="w-[1000px] text-[20px] ">
         {click === false ? (
           <div>
             <Navbar></Navbar>
             <div className="flex justify-center">
               <Buscar onChangeText={onChangeText}></Buscar>
             </div>
-            <h1 className="font-bold text-[#FF7A21] text-2xl mt-5 text-center">
+            <h1 className="font-bold text-[#FF7A21] text-2xl mt-5 text-center ">
               Burger Menu
             </h1>
             <Nav></Nav>
@@ -46,14 +45,22 @@ export default function Home() {
         ) : (
           ""
         )}
-        <div className=" lg:flex  md:flex   flex-wrap justify-center ">
+        <div className="flex-wrap justify-center lg:flex md:flex ">
           {click === true ? (
-            <Additions cerrar={cerrar} hamburger={selectedBurger}  ></Additions>
+            <Additions cerrar={cerrar} hamburger={selectedBurger}></Additions>
           ) : (
             filterBurger.map((hamburger, i) => (
-              <Card key={i} hamburger={hamburger} onCliked={()=> onCliked(hamburger)}>
-                {" "}
-              </Card>
+              <div
+                key={i}
+                className="transition duration-200 transform hover:scale-105 active:translate-y-1"
+              >
+                <Card
+                  hamburger={hamburger}
+                  onCliked={() => onCliked(hamburger)}
+                >
+                  {" "}
+                </Card>
+              </div>
             ))
           )}
         </div>
