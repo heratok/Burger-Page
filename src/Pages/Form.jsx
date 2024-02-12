@@ -2,10 +2,16 @@ import PhoneAndroidIcon from "@mui/icons-material/PhoneAndroid";
 import PersonIcon from "@mui/icons-material/Person";
 import HomeIcon from "@mui/icons-material/Home";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
-import WhatsAppIcon from '@mui/icons-material/WhatsApp';
-import ReplyIcon from '@mui/icons-material/Reply';
+import WhatsAppIcon from "@mui/icons-material/WhatsApp";
+import ReplyIcon from "@mui/icons-material/Reply";
 
-function Form() {
+// eslint-disable-next-line react/prop-types
+function Form({ cerrar, cerrarForm }) {
+  const ocultar = () => {
+    cerrar();
+    cerrarForm();
+  };
+
   return (
     <form className="max-w-sm mx-auto ">
       <label className="block mt-2 mb-2 text-sm font-medium text-gray-900 dark:text-white">
@@ -90,18 +96,15 @@ function Form() {
         ></textarea>
       </form>
 
-      <button
-        type="submit"
-        className="text-white mt-5 flex justify-center items-center gap-1 bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-full px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
-      >
-        <WhatsAppIcon/>
+      <button className="text-white mt-5 flex justify-center items-center gap-1 bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-full px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
+        <WhatsAppIcon />
         Enviar Orden a WhatsApp
       </button>
       <button
-        type="submit"
         className="text-white mt-5 flex justify-center items-center gap-1 bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-full px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+        onClick={ocultar}
       >
-        <ReplyIcon/>
+        <ReplyIcon />
         Volver a la Orden
       </button>
     </form>

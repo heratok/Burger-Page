@@ -187,7 +187,7 @@ export default function Additions({ cerrar, hamburger }) {
               +
             </div>
           </div>
-          <button className="p-2 bg-[#FF7A21] rounded-full hover:bg-yellow-600 transition duration-300 shadow-md active:bg-yellow-700">
+          <button className="p-2 bg-[#FF7A21] rounded-full hover:bg-yellow-600 transition duration-300 shadow-md active:bg-yellow-700" onClick={cerrar}>
             Agregar ${(total + hamburger.price).toLocaleString()}{" "}
           </button>
         </div>
