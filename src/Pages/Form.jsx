@@ -96,12 +96,12 @@ function Form({ cerrar, cerrarForm }) {
         ></textarea>
       </form>
 
-      <button className="text-white mt-5 flex justify-center items-center gap-1 bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-full px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
+      <button className="text-white mt-5 flex justify-center items-center gap-1 bg-[#FF7A21] hover:bg-orange-400   font-medium rounded-lg text-sm w-full sm:w-full px-5 py-2.5  lg:w-96 text-center">
         <WhatsAppIcon />
         Enviar Orden a WhatsApp
       </button>
       <button
-        className="text-white mt-5 flex justify-center items-center gap-1 bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-full px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+        className="text-white mt-5 flex justify-center items-center gap-1 bg-[#FF7A21] hover:bg-orange-400   font-medium rounded-lg text-sm w-full sm:w-full px-5 py-2.5  lg:w-96 text-center"
         onClick={ocultar}
       >
         <ReplyIcon />
