@@ -1,10 +1,10 @@
 /* eslint-disable react/prop-types */
 import CloseIcon from "@mui/icons-material/Close";
-import {  useState } from "react";
+import { useState } from "react";
 // eslint-disable-next-line react/prop-types
 export default function Additions({ cerrar, hamburger }) {
   const [cantidad, setCantidad] = useState(1);
-  // const [totalBurger, setTotalBurger] = useState(0);
+
   const adiitions = [
     {
       name: "papas fritas",
@@ -22,61 +22,53 @@ export default function Additions({ cerrar, hamburger }) {
       cantidad: 0,
     },
   ];
-  const aumentarBurger = () => {
-    setCantidad(cantidad + 1);
-
-    // setTotalBurger(total + hamburger.price);
-    calcular();
-  };
-  const disminuirBurger = () => {
-    if (cantidad > 1) {
-      setCantidad(cantidad - 1);
-      // setTotalBurger(total - hamburger.price);
-    }
-    calcular();
-  };
-
   const [adiciones, setAdiciones] = useState(adiitions);
-  const [total, setTotal] = useState(0);
-
+  const [total, setTotal] = useState(hamburger.price);
   const calcular = () => {
-    // Calculate the total price of all additions
-    const totalOrden = adiciones.reduce((acc, adi) => {
-      const subtotal = adi.cantidad * adi.pirce; // typo: should be 'price', not 'pirce'
-      console.log("sub", subtotal);
-      return acc + subtotal;
-    }, 0);
-    console.log("Total:", totalOrden);
-    setTotal(totalOrden );
+    let totales = 0;
+    adiciones.forEach((ad) => {
+      const suma = ad.cantidad * ad.pirce;
+      console.log("suma", suma);
+      console.log(ad.cantidad);
+      totales += suma;
+    });
+    setTotal(hamburger.price + totales);
   };
-
   const aumentar = (adi, pos) => {
-    console.log("POS", pos);
     const existingAdiIndex = adiciones.findIndex(
       (item) => item.name === adi.name
     );
     if (existingAdiIndex !== -1) {
       adiciones[existingAdiIndex].cantidad += 1;
       setAdiciones([...adiciones]);
-      console.log(
-        `Quantity increased for ${adi.name}: ${adiciones[existingAdiIndex].cantidad}`
-      );
     } else {
       adiciones[pos].cantidad += 1;
       setAdiciones([...adiciones, adiciones[pos]]);
     }
     calcular();
   };
-
-  const disminuir = (pos) => {
-    if (adiciones[pos].cantidad > 0) {
-      adiciones[pos].cantidad -= 1;
-      setAdiciones([...adiciones, adiciones[pos]]);
+  const aumentarBurger = () => {
+    setTotal(total + hamburger.price);
+    setCantidad(cantidad + 1);
+  };
+  const disminuirBurger = () => {
+    if (cantidad > 1) {
+      setTotal(total - hamburger.price);
+      setCantidad(cantidad - 1);
+    }
+  };
+  const disminuir = (adi, pos) => {
+    const existingAdiIndex = adiciones.findIndex(
+      (item) => item.name === adi.name
+    );
+    if (existingAdiIndex !== -1) {
+      if (adiciones[pos].cantidad > 0) {
+        adiciones[existingAdiIndex].cantidad -= 1;
+        setAdiciones([...adiciones]);
+      }
     }
     calcular();
   };
-  console.log("list", adiciones);
-
   return (
     <div className="w-screen h-screen ">
       <div className="flex justify-end w-full">
@@ -136,7 +128,7 @@ export default function Additions({ cerrar, hamburger }) {
               <div className="flex items-center justify-center gap-2">
                 <div
                   className="p-2  h-6 w-6 flex justify-center items-center rounded-full cursor-pointer bg-[#FF7A21] hover:bg-yellow-600 transition duration-300 shadow-md active:bg-yellow-700 "
-                  onClick={() => disminuir(i)}
+                  onClick={() => disminuir(adicion, i)}
                 >
                   -
                 </div>
@@ -179,7 +171,7 @@ export default function Additions({ cerrar, hamburger }) {
             >
               -
             </div>
-            <div className="">{cantidad}</div>
+            <div className=""> {cantidad}</div>
             <div
               className="p-2 h-7 w-7 cursor-pointer flex justify-center items-center  rounded-full bg-[#FF7A21] hover:bg-yellow-600 transition duration-300 shadow-md active:bg-yellow-700"
               onClick={aumentarBurger}
@@ -187,8 +179,11 @@ export default function Additions({ cerrar, hamburger }) {
               +
             </div>
           </div>
-          <button className="p-2 bg-[#FF7A21] rounded-full hover:bg-yellow-600 transition duration-300 shadow-md active:bg-yellow-700" onClick={cerrar}>
-            Agregar ${(total + hamburger.price).toLocaleString()}{" "}
+          <button
+            className="p-2 bg-[#FF7A21] rounded-full hover:bg-yellow-600 transition duration-300 shadow-md active:bg-yellow-700"
+            onClick={cerrar}
+          >
+            Agregar ${total.toLocaleString()}{" "}
           </button>
         </div>
       </div>

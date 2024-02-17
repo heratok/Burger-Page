@@ -52,7 +52,7 @@ export default function Home() {
     // Simular carga de datos (aquí podrías hacer una solicitud a una API, por ejemplo)
     setTimeout(() => {
       setLoading(false); // Cambia el estado de carga a falso después de un tiempo simulado
-    }, 2000); // Simular una carga de 2 segundos
+    }, 500); // Simular una carga de 2 segundos
   }, []); // Se ejecuta solo una vez al montar el componente
 
   return (
