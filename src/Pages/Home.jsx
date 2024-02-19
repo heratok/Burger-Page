@@ -14,6 +14,14 @@ export default function Home() {
   const [ver, setVer] = useState(false);
   const [openForm, setOpenForm] = useState(false);
   const [selectedBurger, setSelectedBurger] = useState({});
+  const [lisBuy, setListBuy] = useState([]);
+
+  const agregarList = (burgerCompra) => {
+    setListBuy([...lisBuy, burgerCompra]);
+  };
+  const deleteCart=(listActual)=>{
+    setListBuy(listActual)
+  }
   const onCliked = (hamburguesa) => {
     setSelectedBurger(hamburguesa);
     SetClick(true);
@@ -75,12 +83,14 @@ export default function Home() {
                     <h1 className="font-bold text-[#FF7A21] text-2xl mt-5 text-center ">
                       Burger Menu
                     </h1>
-                    <Nav mostrar={mostrar}></Nav>
+                    <Nav mostrar={mostrar} cantidad={lisBuy.length}></Nav>
                   </>
                 )}
 
                 {ver === true ? (
                   <ShoppingCart
+                    list={lisBuy}
+                    deleteCart={deleteCart}
                     cerrar={cerrar}
                     abrirForm={abrirForm}
                     cerrarCarrito={cerrarCarrito}
@@ -95,6 +105,7 @@ export default function Home() {
             <div className="flex-wrap justify-center lg:flex md:flex ">
               {click === true ? (
                 <Additions
+                  agregarList={agregarList}
                   cerrar={cerrar}
                   hamburger={selectedBurger}
                 ></Additions>

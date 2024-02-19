@@ -24,7 +24,7 @@ function Form({ cerrar, cerrarForm }) {
         <input
           type="text"
           id="email-address-icon"
-          className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full ps-10 p-2.5  dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+          className=" border border-white border-opacity-15 bg-[#181A1B] text-sm rounded-lg focus:ring-blue-500 block w-full ps-10 p-2.5   dark:text-white "
           placeholder="Nombres"
         ></input>
       </div>
@@ -38,7 +38,7 @@ function Form({ cerrar, cerrarForm }) {
         <input
           type="text"
           id="email-address-icon"
-          className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full ps-10 p-2.5  dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+          className=" border border-white border-opacity-15 bg-[#181A1B] text-sm rounded-lg focus:ring-blue-500 block w-full ps-10 p-2.5   dark:text-white "
           placeholder="Telefono"
         ></input>
       </div>
@@ -52,8 +52,7 @@ function Form({ cerrar, cerrarForm }) {
         <input
           type="text"
           id="email-address-icon"
-          className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full ps-10 p-2.5  dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-          placeholder="Direccion"
+          className=" border border-white border-opacity-15 bg-[#181A1B] text-sm rounded-lg focus:ring-blue-500 block w-full ps-10 p-2.5   dark:text-white "
         ></input>
       </div>
 
@@ -67,7 +66,7 @@ function Form({ cerrar, cerrarForm }) {
         <input
           type="text"
           id="email-address-icon"
-          className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full ps-10 p-2.5  dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+          className=" border border-white border-opacity-15 bg-[#181A1B] text-sm rounded-lg focus:ring-blue-500 block w-full ps-10 p-2.5   dark:text-white "
           placeholder="Barrio"
         ></input>
       </div>
@@ -77,7 +76,7 @@ function Form({ cerrar, cerrarForm }) {
           Seleccionar metodo de pago
         </label>
         <select
-          className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+          className="bg-[#181A1B] border border-white border-opacity-15 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5   dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
           placeholder="Seleccione un metodo de pago"
         >
           <option>Efectivo</option>
@@ -91,7 +90,7 @@ function Form({ cerrar, cerrarForm }) {
         <textarea
           id="message"
           rows="4"
-          className="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+          className="block p-2.5 w-full text-sm  border border-white border-opacity-15 bg-[#181A1B] rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
           placeholder="Ingrese un mensaje opcional"
         ></textarea>
       </form>
