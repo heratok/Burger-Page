@@ -16,8 +16,8 @@ function ShoppingCart({ cerrar, cerrarCarrito, abrirForm, list, deleteCart }) {
     0
   );
 
-  const deleteCar = (name) => {
-    const filter = list.filter((burger) => burger.name !== name);
+  const deleteCar = (i) => {
+    const filter = list.filter((burger,indice) => indice !== i);
     deleteCart(filter);
   };
 
@@ -59,7 +59,7 @@ function ShoppingCart({ cerrar, cerrarCarrito, abrirForm, list, deleteCart }) {
                       </div>
                       <div
                         className="cursor-pointer hover:scale-105 duration-75"
-                        onClick={() => deleteCar(burgerCompra.name)}
+                        onClick={() => deleteCar(i)}
                       >
                         <DeleteForeverIcon style={{ color: "FF7A21" }} />
                       </div>{" "}

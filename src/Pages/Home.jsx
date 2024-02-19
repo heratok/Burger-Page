@@ -132,7 +132,7 @@ export default function Home() {
               )}
             </div>
             {openForm === true ? (
-              <Form cerrar={cerrar} cerrarForm={cerrarForm}></Form>
+              <Form cerrar={cerrar} hamburguesas={lisBuy} mostrar={mostrar} cerrarForm={cerrarForm}></Form>
             ) : (
               ""
             )}
