@@ -8,17 +8,22 @@ export default function Additions({ cerrar, hamburger, agregarList }) {
   const adiitions = [
     {
       name: "papas fritas",
-      pirce: 10000,
-      cantidad: 0,
-    },
-    {
-      name: "Extra queso",
       pirce: 5000,
       cantidad: 0,
     },
     {
-      name: "Carne de gato",
-      pirce: 50000,
+      name: "Cebolla Caramelizada",
+      pirce: 1500,
+      cantidad: 0,
+    },
+    {
+      name: "Extra queso",
+      pirce: 2700,
+      cantidad: 0,
+    },
+    {
+      name: "Tocineta",
+      pirce: 2500,
       cantidad: 0,
     },
   ];
@@ -81,12 +86,14 @@ export default function Additions({ cerrar, hamburger, agregarList }) {
         </div>
       </div>
 
-      <div className="flex  justify-center">
-        <img
-          className="w-32 h-32 lg:w-42 lg:h-auto"
-          src={hamburger.src}
-          alt=""
-        />
+      <div className="flex  justify-center   gap-5">
+        <div className="p-2 bg-black bg-opacity-20 flex justify-normal items-center rounded-full">
+          <img
+            className="w-32 h-32 lg:w-32 lg:h-32 rounded-full  "
+            src={hamburger.src}
+            alt=""
+          />
+        </div>
         <div className="">
           <span className="font-bold">{hamburger.name}</span>
           <p className="text-white text-opacity-50 lg:w-96">
@@ -101,7 +108,7 @@ export default function Additions({ cerrar, hamburger, agregarList }) {
         <div className="flex justify-center">
           <div className="flex justify-between p-2 w-96 lg:p-0">
             <span className=" lg:ml-2">Adiciones</span>
-            <span className="bg-[#FF7A21] lg:mr-2 mr-0 rounded-lg text-[12px] p-2 flex items-center  justify-center">
+            <span className="bg-[#FF7A21] lg:mr-2 mr-0 rounded-full text-[12px] p-2 flex items-center  justify-center">
               Opcional
             </span>
           </div>
@@ -148,7 +155,7 @@ export default function Additions({ cerrar, hamburger, agregarList }) {
         <div className="flex justify-center  mt-4">
           <div className="flex justify-between w-96">
             <span className="ml-2">Observaciones</span>
-            <span className="bg-[#FF7A21] rounded-lg text-[12px] p-2 flex items-center justify-center mr-2">
+            <span className="bg-[#FF7A21] rounded-full text-[12px] p-2 flex items-center justify-center mr-2">
               Opcional
             </span>
           </div>

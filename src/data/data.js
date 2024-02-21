@@ -1,33 +1,37 @@
-
 export const hamburguesas = [
   {
+    name: "Misisipi",
+    src: "https://content-cocina.lecturas.com/medio/2021/12/17/recetas-de-hamburguesas-cocineros_9cfe156f_1200x1200.jpg",
+    price: 27000,
+    description:
+      "La Misisipi Burger es una oda a los sabores robustos y la rica herencia culinaria del sur de Estados Unidos.",
+  },
+  {
     name: "la pollo",
-    src: "https://static.vecteezy.com/system/resources/previews/026/791/864/non_2x/burger-generative-ai-free-png.png",
+    src: "https://siuka.co/wp-content/uploads/2023/08/hambueguesa-de-pollo.png",
     price: 30000,
-    description: "buena pa engordar y morirse de la obesidad comprala y te vas a morir pero lleno"
+    description:
+      "La deliciosa hamburguesa 'La Pollo' es una creación única de nuestra casa,te hará regresar por más.",
   },
   {
     name: "cangreburger",
-    src: "https://png.pngtree.com/png-clipart/20230502/original/pngtree-hot-cheesy-burger-isolated-on-transparent-background-png-image_9133351.png",
+    src: "https://d1ralsognjng37.cloudfront.net/b219efa7-5c20-4eab-9426-2cda449a4b6b.jpeg",
     price: 15000,
-    description: "buena pa engordar y morirse de la obesidad comprala y te vas a morir pero lleno"
+    description:
+      "La exquisita Cangreburger es la joya de nuestra carta, una creación marina que despierta tus sentidos con cada bocado.",
   },
   {
     name: "la chichona",
-    src: "  https://static.vecteezy.com/system/resources/previews/021/952/463/original/tasty-hamburger-on-transparent-background-png.png",
+    src: "  https://tb-static.uber.com/prod/image-proc/processed_images/32fdcd0acffcd1d410575aa21e29c7cb/719c6bd2757b08684c0faae44d43159d.jpeg",
     price: 25000,
-    description: "buena pa engordar y morirse de la obesidad comprala y te vas a morir pero lleno"
+    description:
+      "La Chichona es una hamburguesa que se ha ganado su lugar en el corazón de nuestros comensales.",
   },
   {
     name: "megaburger",
-    src: "https://static.vecteezy.com/system/resources/previews/021/952/575/non_2x/free-tasty-hamburger-on-transparent-background-free-png.png",
+    src: "https://img.restaurantguru.com/rb45-Shark-Burgers-Playa-del-Carmen-Av-115-burger-2022-09-11.jpg",
     price: 27000,
-    description: "buena pa engordar y morirse de la obesidad comprala y te vas a morir pero lleno"
-  },
-  {
-    name: "megaburger",
-    src: "https://static.vecteezy.com/system/resources/previews/021/952/575/non_2x/free-tasty-hamburger-on-transparent-background-free-png.png",
-    price: 27000,
-    description: "buena pa engordar y morirse de la obesidad comprala y te vas a morir pero lleno"
+    description:
+      "La MegaBurger es un coloso culinario, una auténtica maravilla para los amantes de las hamburguesas.",
   },
 ];
