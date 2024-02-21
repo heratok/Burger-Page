@@ -115,7 +115,7 @@ export default function Additions({ cerrar, hamburger, agregarList }) {
             </span>
           </div>
         </div>
-        <div className="mt-2 lg:w-96 mg:w-96  w-full overflow-y-auto scroll-add h-44">
+        <div className="mt-2 lg:w-96 mg:w-96  w-full overflow-y-auto scroll-add h-48">
           {adiitions.map((adicion, i) => (
             <div
               key={i}
