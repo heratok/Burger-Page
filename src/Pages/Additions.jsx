@@ -86,14 +86,12 @@ export default function Additions({ cerrar, hamburger, agregarList }) {
         </div>
       </div>
 
-      <div className="flex  justify-center   gap-5">
-        <div className="p-2 bg-black bg-opacity-20 flex justify-normal items-center rounded-full">
-          <img
-            className="w-32 h-32 lg:w-32 lg:h-32 rounded-full  "
-            src={hamburger.src}
-            alt=""
-          />
-        </div>
+      <div className="flex  justify-center  items-center  gap-5">
+        <img
+          className="ml-2 w-32 h-32 lg:w-32 lg:h-32 rounded-full  "
+          src={hamburger.src}
+          alt=""
+        />
         <div className="">
           <span className="font-bold">{hamburger.name}</span>
           <p className="text-white text-opacity-50 lg:w-96">
