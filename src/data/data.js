@@ -9,14 +9,14 @@ export const hamburguesas = [
   {
     name: "la pollo",
     src: "https://siuka.co/wp-content/uploads/2023/08/hambueguesa-de-pollo.png",
-    price: 30000,
+    price: 22900,
     description:
       "La deliciosa hamburguesa 'La Pollo' es una creación única de nuestra casa,te hará regresar por más.",
   },
   {
     name: "cangreburger",
     src: "https://d1ralsognjng37.cloudfront.net/b219efa7-5c20-4eab-9426-2cda449a4b6b.jpeg",
-    price: 15000,
+    price: 27900,
     description:
       "La exquisita Cangreburger es la joya de nuestra carta, una creación marina que despierta tus sentidos con cada bocado.",
   },

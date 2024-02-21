@@ -10,21 +10,25 @@ export default function Additions({ cerrar, hamburger, agregarList }) {
       name: "papas fritas",
       pirce: 5000,
       cantidad: 0,
+      src: "https://express.donangelo.pe/wp-content/uploads/2022/05/WhatsApp-Image-2022-05-28-at-10.47.42-AM-10.jpeg",
     },
     {
       name: "Cebolla Caramelizada",
       pirce: 1500,
+      src: "https://www.divinacocina.es/wp-content/uploads/cebolla-caramelizada7.jpg",
       cantidad: 0,
     },
     {
       name: "Extra queso",
       pirce: 2700,
+      src: "https://www.los-almendros.com.ar/shop/wp-content/uploads/ofertaa-queso-raclette-fermier-env-sin-cargo-cap-fed-D_NQ_NP_963843-MLA27191786169_042018-F.jpg",
       cantidad: 0,
     },
     {
       name: "Tocineta",
       pirce: 2500,
       cantidad: 0,
+      src: "https://tienda.atlantic.la/cdn/shop/files/TOCINETAPREMIUM_1024x.jpg?v=1684335896",
     },
   ];
   const [adiciones, setAdiciones] = useState(adiitions);
@@ -121,8 +125,8 @@ export default function Additions({ cerrar, hamburger, agregarList }) {
                 {" "}
                 <div className="flex items-center justify-center p-1 bg-white rounded-full bg-opacity-15 w-14 h-14">
                   <img
-                    className="rounded-full "
-                    src="https://img.freepik.com/fotos-premium/contenedor-amarillo-papas-fritas-cara-cara-sonriente_913665-3058.jpg"
+                    className="rounded-full h-12 w-12 "
+                    src={adicion.src}
                     alt=""
                   />
                 </div>
