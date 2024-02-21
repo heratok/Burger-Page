@@ -50,7 +50,7 @@ function Form({ cerrar, cerrarForm, mostrar, hamburguesas }) {
   };
   console.log(nombre);
   return (
-    <form className="max-w-sm mx-auto ">
+    <form className="max-w-sm mx-auto p-2">
       <label className="block mt-2 mb-2 text-sm font-medium text-gray-900 dark:text-white">
         Nombres
       </label>

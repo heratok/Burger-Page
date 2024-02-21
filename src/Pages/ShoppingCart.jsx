@@ -49,7 +49,7 @@ function ShoppingCart({ cerrar, cerrarCarrito, abrirForm, list, deleteCart }) {
                     <img
                       src={burgerCompra.src}
                       alt="Instant Camera WHITE"
-                      className=" lg:w-28 lg:h-28  w-36"
+                      className=" lg:w-28 lg:h-28  w-36 rounded-full"
                     ></img>
                   </div>
                   <div className="w-full ml-2">
