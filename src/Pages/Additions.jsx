@@ -86,7 +86,7 @@ export default function Additions({ cerrar, hamburger, agregarList }) {
         </div>
       </div>
 
-      <div className="flex  justify-center  items-center  gap-5">
+      <div className="flex  justify-center  items-center  gap-2 ">
         <img
           className="ml-2 w-32 h-32 lg:w-32 lg:h-32 rounded-full  "
           src={hamburger.src}
@@ -94,7 +94,7 @@ export default function Additions({ cerrar, hamburger, agregarList }) {
         />
         <div className="">
           <span className="font-bold">{hamburger.name}</span>
-          <p className="text-white text-opacity-50 lg:w-96">
+          <p className="text-white text-opacity-50 lg:w-96  mr-2">
             {hamburger.description}
           </p>
           <span className="text-[#FF7A21]">
