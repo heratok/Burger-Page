@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge"
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
 import { Textarea } from "@/components/ui/textarea"
 import type { Adicion, Burger, BurgerCompra } from "@/data/data"
+import CharacterCounter from "../components/CharacterCounter"
+import { LIMITS } from "@/lib/validation"
 
 const ADICIONES_INICIALES: Adicion[] = [
   {
@@ -226,7 +228,9 @@ export default function Additions({ cerrar, hamburger, agregarList, editing = fa
               value={observaciones}
               onChange={(e) => setObservaciones(e.target.value)}
               placeholder="Ej. sin cebolla, término medio, sin picante..."
+              maxLength={LIMITS.observaciones.max}
             />
+            <CharacterCounter value={observaciones} max={LIMITS.observaciones.max} />
             <FieldDescription className="text-xs text-text-muted">
               Cuéntanos cualquier detalle para preparar tu pedido.
             </FieldDescription>

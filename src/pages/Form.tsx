@@ -1,7 +1,6 @@
 import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { z } from "zod"
 import {
   ArrowLeft,
   Banknote,
@@ -29,6 +28,8 @@ import {
 } from "@/components/ui/field"
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
 import { Textarea } from "@/components/ui/textarea"
+import CharacterCounter from "../components/CharacterCounter"
+import { formSchema, LIMITS, type FormValues } from "@/lib/validation"
 import {
   buildOrderMessage,
   buildWhatsAppUrl,
@@ -42,33 +43,6 @@ const METODOS = [
   { value: "Efectivo", Icon: Banknote },
   { value: "Transferencia", Icon: CreditCard },
 ] as const
-
-const formSchema = z.object({
-  nombre: z
-    .string()
-    .trim()
-    .min(2, { message: "Ingresa tu nombre (mín. 2 caracteres)." }),
-  telefono: z
-    .string()
-    .trim()
-    .transform((v) => v.replace(/\D/g, ""))
-    .refine((v) => v.length >= 7, {
-      message: "Ingresa un celular válido (mín. 7 dígitos).",
-    }),
-  dir: z
-    .string()
-    .trim()
-    .min(1, { message: "La dirección es obligatoria." }),
-  barrio: z
-    .string()
-    .trim()
-    .min(1, { message: "Indícanos tu barrio." }),
-  metodo: z.enum(["Efectivo", "Transferencia"]),
-  pagoCon: z.string().optional(),
-  mensaje: z.string().optional(),
-})
-
-type FormValues = z.infer<typeof formSchema>
 
 interface FormProps {
   cerrar: () => void
@@ -161,6 +135,7 @@ export default function Form({ cerrar, cerrarForm, mostrar, hamburguesas }: Form
                 type="text"
                 placeholder="Tu nombre"
                 autoComplete="name"
+                maxLength={LIMITS.nombre.max}
                 aria-invalid={!!errors.nombre}
                 {...register("nombre")}
               />
@@ -185,6 +160,7 @@ export default function Form({ cerrar, cerrarForm, mostrar, hamburguesas }: Form
                 inputMode="numeric"
                 placeholder="3001234567"
                 autoComplete="tel"
+                maxLength={LIMITS.telefono.max}
                 aria-invalid={!!errors.telefono}
                 {...register("telefono")}
               />
@@ -209,6 +185,7 @@ export default function Form({ cerrar, cerrarForm, mostrar, hamburguesas }: Form
                   type="text"
                   placeholder="Calle 123 #45-67"
                   autoComplete="street-address"
+                  maxLength={LIMITS.dir.max}
                   aria-invalid={!!errors.dir}
                   {...register("dir")}
                 />
@@ -232,6 +209,7 @@ export default function Form({ cerrar, cerrarForm, mostrar, hamburguesas }: Form
                 type="text"
                 placeholder="Tu barrio"
                 autoComplete="address-level3"
+                maxLength={LIMITS.barrio.max}
                 aria-invalid={!!errors.barrio}
                 {...register("barrio")}
               />
@@ -297,6 +275,7 @@ export default function Form({ cerrar, cerrarForm, mostrar, hamburguesas }: Form
                   type="text"
                   inputMode="numeric"
                   placeholder="50000"
+                  maxLength={LIMITS.pagoCon.max}
                   {...register("pagoCon")}
                 />
               </InputGroup>
@@ -317,8 +296,10 @@ export default function Form({ cerrar, cerrarForm, mostrar, hamburguesas }: Form
               id="mensaje"
               rows={3}
               placeholder="Algo que debamos saber sobre tu pedido"
+              maxLength={LIMITS.mensaje.max}
               {...register("mensaje")}
             />
+            <CharacterCounter value={watch("mensaje") ?? ""} max={LIMITS.mensaje.max} />
           </Field>
         </FieldGroup>
 

@@ -2,6 +2,7 @@ import { useState } from "react"
 import { Search, X } from "lucide-react"
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
 import { Button } from "@/components/ui/button"
+import { LIMITS } from "@/lib/validation"
 
 interface BuscarProps {
   onChangeText: (text: string) => void
@@ -45,6 +46,7 @@ export default function Buscar({ onChangeText, total = 0 }: BuscarProps) {
           onChange={handleInputChange}
           placeholder="Buscar hamburguesa..."
           autoComplete="off"
+          maxLength={LIMITS.busqueda.max}
           className="h-11 bg-transparent text-sm placeholder:text-text-muted"
         />
         {value && (
