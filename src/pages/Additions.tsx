@@ -113,7 +113,7 @@ export default function Additions({ cerrar, hamburger, agregarList, editing = fa
     >
       <DialogContent
         showCloseButton={false}
-        className="top-auto bottom-0 left-0 max-h-[92dvh] w-full max-w-none translate-x-0 translate-y-0 gap-0 rounded-t-lg rounded-b-none border-border-subtle bg-bg-surface p-0 sm:top-1/2 sm:bottom-auto sm:left-1/2 sm:w-[calc(100%-2rem)] sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-lg data-[side=bottom]:data-ending-style:translate-y-0 data-[side=bottom]:data-starting-style:translate-y-0"
+        className="top-auto bottom-0 left-0 flex max-h-[92dvh] w-full max-w-none flex-col overflow-hidden translate-x-0 translate-y-0 gap-0 rounded-t-lg rounded-b-none border-border-subtle bg-bg-surface p-0 sm:top-1/2 sm:bottom-auto sm:left-1/2 sm:max-h-[90dvh] sm:w-[calc(100%-2rem)] sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-lg data-[side=bottom]:data-ending-style:translate-y-0 data-[side=bottom]:data-starting-style:translate-y-0"
       >
         <header className="flex items-center gap-3 border-b border-border-subtle p-5 pb-4">
           <img
@@ -144,7 +144,7 @@ export default function Additions({ cerrar, hamburger, agregarList, editing = fa
           </Button>
         </header>
 
-        <div className="scroll-add flex-1 space-y-6 overflow-y-auto px-5 py-4">
+        <div className="scroll-add min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain px-5 py-4">
           <section>
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-sm font-semibold tracking-wide text-text-primary uppercase">
@@ -238,7 +238,7 @@ export default function Additions({ cerrar, hamburger, agregarList, editing = fa
         </div>
 
         <footer className="border-t border-border-subtle bg-bg-surface p-4 sm:p-5">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-col gap-3 min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between">
             <div>
               <p className="text-xs text-text-muted">Cantidad</p>
               <div className="mt-1 inline-flex items-center gap-2 rounded-full bg-bg-elevated px-2 py-1">
@@ -276,7 +276,7 @@ export default function Additions({ cerrar, hamburger, agregarList, editing = fa
               size="lg"
               onClick={agregar}
               disabled={!hamburger}
-              className="h-12 flex-1 rounded text-base sm:min-w-[200px] sm:flex-none"
+              className="h-12 w-full rounded text-base min-[420px]:w-auto min-[420px]:flex-1 sm:min-w-[200px] sm:flex-none"
             >
               <Plus data-icon="inline-start" strokeWidth={2.5} />
               {editing ? "Guardar cambios" : "Agregar"} · ${calcularTotal().toLocaleString()}
