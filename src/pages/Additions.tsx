@@ -39,16 +39,29 @@ const ADICIONES_INICIALES: Adicion[] = [
   },
 ]
 
+interface AdditionsInitial {
+  cantidad: number
+  adicion: Adicion[]
+  observacion: string
+}
+
 interface AdditionsProps {
   cerrar: () => void
   hamburger: Burger
   agregarList: (burgerCompra: BurgerCompra) => void
+  editing?: boolean
+  initial?: AdditionsInitial
 }
 
-export default function Additions({ cerrar, hamburger, agregarList }: AdditionsProps) {
-  const [cantidad, setCantidad] = useState(1)
-  const [observaciones, setObservaciones] = useState("")
-  const [adiciones, setAdiciones] = useState<Adicion[]>(ADICIONES_INICIALES)
+export default function Additions({ cerrar, hamburger, agregarList, editing = false, initial }: AdditionsProps) {
+  const [cantidad, setCantidad] = useState(initial?.cantidad ?? 1)
+  const [observaciones, setObservaciones] = useState(initial?.observacion ?? "")
+  const [adiciones, setAdiciones] = useState<Adicion[]>(() =>
+    ADICIONES_INICIALES.map((ad) => {
+      const prev = initial?.adicion.find((a) => a.name === ad.name)
+      return prev ? { ...ad, cantidad: prev.cantidad } : ad
+    })
+  )
 
   if (!hamburger?.name) return null
 
@@ -108,7 +121,7 @@ export default function Additions({ cerrar, hamburger, agregarList }: AdditionsP
           />
           <div className="min-w-0 flex-1 pr-2">
             <DialogTitle className="text-lg font-semibold tracking-tight text-text-primary">
-              {hamburger.name}
+              {editing ? `Editar ${hamburger.name}` : hamburger.name}
             </DialogTitle>
             <DialogDescription className="mt-1 line-clamp-2 text-sm text-text-secondary">
               {hamburger.description}
@@ -262,7 +275,7 @@ export default function Additions({ cerrar, hamburger, agregarList }: AdditionsP
               className="h-12 flex-1 rounded text-base sm:min-w-[200px] sm:flex-none"
             >
               <Plus data-icon="inline-start" strokeWidth={2.5} />
-              Agregar · ${calcularTotal().toLocaleString()}
+              {editing ? "Guardar cambios" : "Agregar"} · ${calcularTotal().toLocaleString()}
             </Button>
           </div>
         </footer>

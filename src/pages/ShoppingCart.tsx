@@ -1,4 +1,4 @@
-import { Trash2, ArrowLeft } from "lucide-react"
+import { Pencil, Trash2, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import NoBuy from "../components/NoBuy"
 import type { BurgerCompra } from "@/data/data"
@@ -9,9 +9,10 @@ interface ShoppingCartProps {
   abrirForm: () => void
   list: BurgerCompra[]
   deleteCart: (list: BurgerCompra[]) => void
+  editarItem: (index: number) => void
 }
 
-function ShoppingCart({ cerrar, cerrarCarrito, abrirForm, list, deleteCart }: ShoppingCartProps) {
+function ShoppingCart({ cerrar, cerrarCarrito, abrirForm, list, deleteCart, editarItem }: ShoppingCartProps) {
   const volver = () => {
     cerrar()
     cerrarCarrito()
@@ -65,16 +66,28 @@ function ShoppingCart({ cerrar, cerrarCarrito, abrirForm, list, deleteCart }: Sh
                     {burgerCompra.cantidad}× {burgerCompra.name}
                   </p>
                 </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => deleteCar(i)}
-                  aria-label={`Eliminar ${burgerCompra.name}`}
-                  className="size-11 shrink-0 rounded-full text-text-muted hover:bg-bg-elevated-2 hover:text-destructive"
-                >
-                  <Trash2 />
-                </Button>
+                <div className="flex shrink-0 items-center">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => editarItem(i)}
+                    aria-label={`Editar ${burgerCompra.name}`}
+                    className="size-11 rounded-full text-text-muted hover:bg-bg-elevated-2 hover:text-text-primary"
+                  >
+                    <Pencil />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => deleteCar(i)}
+                    aria-label={`Eliminar ${burgerCompra.name}`}
+                    className="size-11 shrink-0 rounded-full text-text-muted hover:bg-bg-elevated-2 hover:text-destructive"
+                  >
+                    <Trash2 />
+                  </Button>
+                </div>
               </div>
 
               {burgerCompra.adicion && burgerCompra.adicion.length > 0 && (

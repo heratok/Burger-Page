@@ -19,8 +19,17 @@ export default function Home() {
   const [lisBuy, setListBuy] = useState<BurgerCompra[]>([])
   const [texto, setTexto] = useState("")
   const [loading, setLoading] = useState(true)
+  const [editingIndex, setEditingIndex] = useState<number | null>(null)
 
   const agregarList = (burgerCompra: BurgerCompra) => {
+    if (editingIndex !== null) {
+      setListBuy((prev) =>
+        prev.map((item, i) => (i === editingIndex ? burgerCompra : item))
+      )
+      setEditingIndex(null)
+      toast.success("Cambios guardados")
+      return
+    }
     setListBuy((prev) => [...prev, burgerCompra])
     toast.success(`${burgerCompra.name} agregada al carrito`)
   }
@@ -31,6 +40,17 @@ export default function Home() {
 
   const onCliked = (hamburguesa: typeof hamburguesas[number]) => {
     setSelectedBurger(hamburguesa)
+    setEditingIndex(null)
+    setClick(true)
+  }
+
+  const editarItem = (index: number) => {
+    const item = lisBuy[index]
+    if (!item) return
+    const burger = hamburguesas.find((b) => b.name === item.name)
+    if (!burger) return
+    setSelectedBurger(burger)
+    setEditingIndex(index)
     setClick(true)
   }
 
@@ -38,7 +58,10 @@ export default function Home() {
   const mostrar = () => setVer(true)
   const cerrarCarrito = () => setVer(false)
   const cerrarForm = () => setOpenForm(false)
-  const cerrar = () => setClick(false)
+  const cerrar = () => {
+    setClick(false)
+    setEditingIndex(null)
+  }
 
   const onChangeText = (text: string) => setTexto(text)
 
@@ -83,6 +106,7 @@ export default function Home() {
             <ShoppingCart
               list={lisBuy}
               deleteCart={deleteCart}
+              editarItem={editarItem}
               cerrar={cerrar}
               abrirForm={abrirForm}
               cerrarCarrito={cerrarCarrito}
@@ -141,6 +165,8 @@ export default function Home() {
           agregarList={agregarList}
           cerrar={cerrar}
           hamburger={selectedBurger}
+          editing={editingIndex !== null}
+          initial={editingIndex !== null ? lisBuy[editingIndex] : undefined}
         />
       )}
     </div>
