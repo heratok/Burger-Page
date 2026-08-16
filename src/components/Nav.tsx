@@ -11,30 +11,29 @@ export default function Nav({ mostrar, cantidad, total = 0 }: NavProps) {
   const label = `Ver orden, ${cantidad} ${cantidad === 1 ? "producto" : "productos"}, total $${total.toLocaleString()}`
 
   return (
-    <Button
-      type="button"
-      onClick={mostrar}
-      aria-label={label}
-      variant="secondary"
-      className="fixed bottom-4 left-1/2 z-40 h-12 -translate-x-1/2 rounded-full border border-border-strong bg-bg-elevated px-3 text-text-primary shadow-lg transition duration-150 ease-out hover:border-accent hover:bg-bg-elevated-2 focus:outline-none focus-visible:focus-ring sm:right-6 sm:left-auto sm:translate-x-0 sm:px-5 [&_svg:not([class*='size-'])]:size-5"
-    >
-      <span className="relative inline-flex items-center justify-center">
-        <ShoppingCart className="text-accent" data-icon="inline-start" />
-        {cantidad > 0 && (
-          <span
-            aria-hidden="true"
-            className="absolute -top-1.5 -right-1.5 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-accent px-1 text-xs leading-none font-bold text-text-primary"
-          >
-            {cantidad}
-          </span>
-        )}
-      </span>
-      <span className="hidden flex-col items-start leading-tight sm:inline-flex">
-        <span className="text-sm font-medium">Ver orden</span>
-        <span className="text-xs text-text-muted">
-          ${total.toLocaleString()}
+    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border-subtle bg-bg-elevated px-4 pt-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] shadow-[0_-4px_16px_rgba(0,0,0,0.35)] sm:hidden">
+      <Button
+        type="button"
+        onClick={mostrar}
+        aria-label={label}
+        variant="default"
+        size="lg"
+        className="h-12 w-full justify-between rounded-full text-base shadow-md"
+      >
+        <span className="inline-flex items-center gap-2">
+          <ShoppingCart className="size-5" data-icon="inline-start" />
+          <span className="font-medium">Ver orden</span>
+          {cantidad > 0 && (
+            <span
+              aria-hidden="true"
+              className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-white/25 px-1.5 text-xs leading-none font-bold"
+            >
+              {cantidad}
+            </span>
+          )}
         </span>
-      </span>
-    </Button>
+        <span className="font-bold">${total.toLocaleString()}</span>
+      </Button>
+    </div>
   )
 }

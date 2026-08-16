@@ -61,17 +61,21 @@ export default function Home() {
   }, [])
 
   const showFullScreen = ver || openForm
-  const showFloatingCart = lisBuy.length > 0 && !showFullScreen
+  const showMobileBar = lisBuy.length > 0 && !showFullScreen
 
   return (
     <div className="min-h-screen bg-bg-base text-text-primary">
-      <Navbar />
+      <Navbar cantidad={lisBuy.length} total={totalCarrito} onOpenCart={mostrar} />
 
       <a id="main" className="sr-only" tabIndex={-1}>
         Inicio del contenido principal
       </a>
 
-      <main className="mx-auto max-w-(--container) px-4 py-6 md:px-6 lg:px-8">
+      <main
+        className={`mx-auto max-w-(--container) px-4 pt-6 md:px-6 lg:px-8 ${
+          showMobileBar ? "pb-44 sm:pb-6" : "pb-6"
+        }`}
+      >
         {loading ? (
           <LoadingPage />
         ) : showFullScreen ? (
@@ -128,7 +132,7 @@ export default function Home() {
         )}
       </main>
 
-      {showFloatingCart && (
+      {showMobileBar && (
         <Nav mostrar={mostrar} cantidad={lisBuy.length} total={totalCarrito} />
       )}
 
