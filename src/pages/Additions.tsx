@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Plus, Minus, X, ShoppingCart } from "lucide-react"
+import { Plus, Minus, X } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -261,12 +261,7 @@ export default function Additions({ cerrar, hamburger, agregarList }: AdditionsP
               disabled={!hamburger}
               className="h-12 flex-1 rounded text-base sm:min-w-[200px] sm:flex-none"
             >
-              <span className="relative inline-flex" data-icon="inline-start" aria-hidden="true">
-                <ShoppingCart className="size-4" />
-                <span className="absolute -right-1 -bottom-1 inline-flex size-3.5 items-center justify-center rounded-full bg-bg-elevated">
-                  <Plus className="size-2.5 text-accent" strokeWidth={3.5} />
-                </span>
-              </span>
+              <Plus data-icon="inline-start" strokeWidth={2.5} />
               Agregar · ${calcularTotal().toLocaleString()}
             </Button>
           </div>
