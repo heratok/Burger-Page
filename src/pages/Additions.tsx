@@ -261,7 +261,12 @@ export default function Additions({ cerrar, hamburger, agregarList }: AdditionsP
               disabled={!hamburger}
               className="h-12 flex-1 rounded text-base sm:min-w-[200px] sm:flex-none"
             >
-              <ShoppingCart data-icon="inline-start" />
+              <span className="relative inline-flex" data-icon="inline-start" aria-hidden="true">
+                <ShoppingCart className="size-4" />
+                <span className="absolute -right-1 -bottom-1 inline-flex size-3.5 items-center justify-center rounded-full bg-bg-elevated">
+                  <Plus className="size-2.5 text-accent" strokeWidth={3.5} />
+                </span>
+              </span>
               Agregar · ${calcularTotal().toLocaleString()}
             </Button>
           </div>

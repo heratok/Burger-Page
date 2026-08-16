@@ -1,4 +1,4 @@
-import { ShoppingCart } from "lucide-react"
+import { Plus, ShoppingCart } from "lucide-react"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import type { Burger } from "@/data/data"
 
@@ -49,9 +49,12 @@ export default function CardBurger({ hamburger, onCliked }: CardBurgerProps) {
         <span
           aria-hidden="true"
           data-icon="inline-end"
-          className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-accent text-text-primary shadow-sm transition duration-150 ease-out group-hover:bg-accent-hover group-active:scale-95"
+          className="relative inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-accent text-text-primary shadow-sm transition duration-150 ease-out group-hover:bg-accent-hover group-active:scale-95"
         >
-          <ShoppingCart />
+          <ShoppingCart className="size-5" />
+          <span className="absolute right-0.5 bottom-0.5 inline-flex size-4.5 items-center justify-center rounded-full bg-bg-elevated">
+            <Plus className="size-3 text-accent" strokeWidth={3.5} />
+          </span>
         </span>
       </CardFooter>
     </Card>
