@@ -647,10 +647,10 @@
   --color-text-secondary: #C5C8CC;
   --color-text-muted: #8B8F95;
 
-  --color-accent: #FF7A21;
-  --color-accent-hover: #FF8F3F;
-  --color-accent-pressed: #E5651A;
-  --color-accent-soft: rgba(255, 122, 33, 0.12);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-pressed: var(--accent-pressed);
+  --color-accent-soft: var(--accent-soft);
   --color-accent-foreground: #FFFFFF;
 
   --color-destructive: #FF453A;
@@ -686,6 +686,14 @@
   --animate-slide-up: slide-up 250ms ease-out;
   --animate-fade-in: fade-in 200ms ease-out;
   --animate-fade-out: fade-out 200ms ease-out;
+}
+
+/* Runtime accent variables — overridden by applyAccent() from the config. */
+:root {
+  --accent: #FF7A21;
+  --accent-hover: #FF8F3F;
+  --accent-pressed: #E5651A;
+  --accent-soft: rgba(255, 122, 33, 0.12);
 }
 
 @keyframes slide-in-right {
