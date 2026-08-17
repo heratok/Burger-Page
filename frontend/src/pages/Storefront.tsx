@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
+import { useParams } from "react-router"
 import { toast } from "sonner"
 import { Utensils } from "lucide-react"
 import CardBurger from "../components/Card"
@@ -6,6 +7,9 @@ import { initialProducts } from "../data/data"
 import { storage } from "../lib/storage"
 import { useCart } from "../store/cart-context"
 import type { CartItem, Product } from "../lib/domain"
+import type { RestaurantRepository } from "../lib/repository"
+import { ThemeScope } from "../components/ThemeScope"
+import NotFoundState from "../components/NotFoundState"
 import Additions from "./Additions"
 import Navbar from "../components/Navbar"
 import Buscar from "../components/Buscar"
@@ -14,12 +18,37 @@ import ShoppingCart from "./ShoppingCart"
 import Form from "./Form"
 import LoadingPage from "../components/LoadingPage"
 
-export default function Home() {
+/**
+ * Scoped storefront (design D4, spec ST-1/ST-2, RD-2): resolves the active
+ * restaurant by slug, applies its palette and serves every data read through
+ * the scoped repository. Unknown slugs render a not-found state linking back
+ * to the directory.
+ */
+export default function Storefront() {
+  const { slug } = useParams()
+  const restaurant = storage.getBySlug(slug ?? "")
+
+  if (!restaurant) {
+    return <NotFoundState />
+  }
+
+  return (
+    <ThemeScope palette={restaurant.palette}>
+      <StorefrontContent repo={storage.getRepositoryFor(restaurant.id)} />
+    </ThemeScope>
+  )
+}
+
+interface StorefrontContentProps {
+  repo: RestaurantRepository
+}
+
+function StorefrontContent({ repo }: StorefrontContentProps) {
   const [click, setClick] = useState(false)
   const [ver, setVer] = useState(false)
   const [openForm, setOpenForm] = useState(false)
   const [selectedBurger, setSelectedBurger] = useState<Product>(() => {
-    const first = storage.listProducts().find((p) => p.available)
+    const first = repo.listProducts().find((p) => p.available)
     return first ?? initialProducts[0]
   })
   const [texto, setTexto] = useState("")
@@ -27,7 +56,7 @@ export default function Home() {
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const { items: lisBuy, addItem, updateItem, total: totalCarrito } = useCart()
 
-  const products = storage.listProducts().filter((p) => p.available)
+  const products = repo.listProducts().filter((p) => p.available)
 
   const agregarList = (item: CartItem) => {
     if (editingIndex !== null) {
@@ -49,7 +78,7 @@ export default function Home() {
   const editarItem = (index: number) => {
     const item = lisBuy[index]
     if (!item) return
-    const product = storage.listProducts().find((p) => p.id === item.productId)
+    const product = repo.listProducts().find((p) => p.id === item.productId)
     if (!product) return
     setSelectedBurger(product)
     setEditingIndex(index)
@@ -85,7 +114,12 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-bg-base text-text-primary">
-      <Navbar cantidad={lisBuy.length} total={totalCarrito} onOpenCart={mostrar} />
+      <Navbar
+        cantidad={lisBuy.length}
+        total={totalCarrito}
+        onOpenCart={mostrar}
+        repo={repo}
+      />
 
       <a id="main" className="sr-only" tabIndex={-1}>
         Inicio del contenido principal
@@ -112,6 +146,7 @@ export default function Home() {
               items={lisBuy}
               mostrar={mostrar}
               cerrarForm={cerrarForm}
+              repo={repo}
             />
           )
         ) : (
@@ -162,6 +197,7 @@ export default function Home() {
           hamburger={selectedBurger}
           editing={editingIndex !== null}
           initial={editingIndex !== null ? lisBuy[editingIndex] : undefined}
+          repo={repo}
         />
       )}
     </div>

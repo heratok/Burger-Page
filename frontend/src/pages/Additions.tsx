@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
 import { Textarea } from "@/components/ui/textarea"
 import { storage } from "../lib/storage"
+import type { RestaurantRepository } from "../lib/repository"
 import type { CartItem, ModifierChoice, Product } from "../lib/domain"
 import CharacterCounter from "../components/CharacterCounter"
 import { LIMITS } from "@/lib/validation"
@@ -21,13 +22,14 @@ interface AdditionsProps {
   agregarList: (item: CartItem) => void
   editing?: boolean
   initial?: CartItem
+  repo?: RestaurantRepository
 }
 
-export default function Additions({ cerrar, hamburger, agregarList, editing = false, initial }: AdditionsProps) {
+export default function Additions({ cerrar, hamburger, agregarList, editing = false, initial, repo = storage }: AdditionsProps) {
   const [cantidad, setCantidad] = useState(initial?.cantidad ?? 1)
   const [observaciones, setObservaciones] = useState(initial?.observacion ?? "")
   const [modifiers, setModifiers] = useState<ModifierChoice[]>(() => {
-    const catalog = storage.listModifiers()
+    const catalog = repo.listModifiers()
     return catalog
       .filter(
         (m) =>
@@ -43,7 +45,7 @@ export default function Additions({ cerrar, hamburger, agregarList, editing = fa
   if (!hamburger?.name) return null
 
   const modifierSrc = new Map(
-    storage.listModifiers().map((m) => [m.id, m.src])
+    repo.listModifiers().map((m) => [m.id, m.src])
   )
 
   const calcularTotal = () => {
