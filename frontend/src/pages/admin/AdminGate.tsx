@@ -7,32 +7,37 @@ import { Input } from "@/components/ui/input"
 import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field"
 import { storage } from "@/lib/storage"
 import type { RestaurantRepository } from "@/lib/repository"
-import { useAdmin } from "@/store/admin-context"
+import { sessionMatches, useAdmin } from "@/store/admin-context"
 
 interface AdminGateProps {
+  /** Target restaurant; defaults to the first restaurant (legacy /admin route). */
+  restaurantId?: string
   repo?: RestaurantRepository
   children?: ReactNode
 }
 
 /**
- * RequireAdmin guard (design): reads config.adminPassword and compares the
- * prompt input. Wrong → error, no grant; correct → session-scoped grant via
- * AdminContext (sessionStorage). Plain-text password is a documented MVP
- * deferral of real auth (spec admin-shell).
+ * Mode-aware restaurant gate (design D4, spec AD-1): prompts for the TARGET
+ * restaurant's adminPassword and, on success, opens a restaurant-mode session
+ * scoped to that restaurant. Wrong passwords produce an error and no grant; a
+ * session for any other restaurant (or super mode) never grants this gate.
+ * Plain-text password is a documented MVP deferral of real auth.
  */
-export default function AdminGate({ repo = storage, children }: AdminGateProps) {
-  const { granted, login } = useAdmin()
+export default function AdminGate({ restaurantId, repo = storage, children }: AdminGateProps) {
+  const { session, login } = useAdmin()
   const [password, setPassword] = useState("")
   const [error, setError] = useState(false)
 
-  if (granted) {
+  const targetId = restaurantId ?? storage.listRestaurants()[0]?.id
+
+  if (targetId !== undefined && sessionMatches(session, "restaurant", targetId)) {
     return children ?? <Outlet />
   }
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
-    if (password === repo.getConfig().adminPassword) {
-      login()
+    if (targetId !== undefined && password === repo.getConfig().adminPassword) {
+      login("restaurant", targetId)
     } else {
       setError(true)
     }
