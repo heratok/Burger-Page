@@ -73,7 +73,7 @@ describe("useCart", () => {
 
 describe("useCart scope isolation (RD-2)", () => {
   it("keeps items when the scope does not change", () => {
-    let scope = "pizza-roma"
+    const scope = "pizza-roma"
     const { result, rerender } = renderHook(() => useCart(), {
       wrapper: ({ children }: { children: ReactNode }) => (
         <CartProvider scope={scope}>{children}</CartProvider>
@@ -86,7 +86,7 @@ describe("useCart scope isolation (RD-2)", () => {
   })
 
   it("clears items when the scope changes to another restaurant", () => {
-    let scope = "pizza-roma"
+    let scope: string | undefined = "pizza-roma"
     const { result, rerender } = renderHook(() => useCart(), {
       wrapper: ({ children }: { children: ReactNode }) => (
         <CartProvider scope={scope}>{children}</CartProvider>
@@ -101,7 +101,7 @@ describe("useCart scope isolation (RD-2)", () => {
   })
 
   it("clears items when leaving the restaurant scope", () => {
-    let scope = "pizza-roma"
+    let scope: string | undefined = "pizza-roma"
     const { result, rerender } = renderHook(() => useCart(), {
       wrapper: ({ children }: { children: ReactNode }) => (
         <CartProvider scope={scope}>{children}</CartProvider>
