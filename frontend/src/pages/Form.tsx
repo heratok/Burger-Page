@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
+import { toast } from "sonner"
 import {
   ArrowLeft,
   Banknote,
@@ -30,14 +31,10 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/in
 import { Textarea } from "@/components/ui/textarea"
 import CharacterCounter from "../components/CharacterCounter"
 import { formSchema, LIMITS, type FormValues } from "@/lib/validation"
-import { createUniqueOrderId } from "@/lib/orders"
-import {
-  buildOrderMessage,
-  buildWhatsAppUrl,
-  calculateChange,
-  WHATSAPP_NUMBER,
-} from "@/lib/whatsapp"
-import type { CartItem } from "@/lib/domain"
+import { buildOrderMessage, buildWhatsAppUrl, calculateChange } from "@/lib/whatsapp"
+import { storage } from "@/lib/storage"
+import type { CartItem, Order } from "@/lib/domain"
+import type { RestaurantRepository } from "@/lib/repository"
 
 const METODOS = [
   { value: "Efectivo", Icon: Banknote },
@@ -49,9 +46,16 @@ interface FormProps {
   cerrarForm: () => void
   mostrar: () => void
   items: CartItem[]
+  repo?: RestaurantRepository
 }
 
-export default function Form({ cerrar, cerrarForm, mostrar, items }: FormProps) {
+export default function Form({
+  cerrar,
+  cerrarForm,
+  mostrar,
+  items,
+  repo = storage,
+}: FormProps) {
   const {
     register,
     handleSubmit,
@@ -74,9 +78,6 @@ export default function Form({ cerrar, cerrarForm, mostrar, items }: FormProps) 
   const metodo = watch("metodo")
   const pagoCon = watch("pagoCon")
 
-  // Número de orden estable por visita (no cambia con cada render).
-  const [orderId] = useState(() => createUniqueOrderId(new Set()))
-
   const total = items.reduce((acc, item) => acc + item.total, 0)
 
   const cambio = calculateChange(total, pagoCon)
@@ -88,20 +89,43 @@ export default function Form({ cerrar, cerrarForm, mostrar, items }: FormProps) 
   }
 
   const onSubmit = (values: FormValues) => {
-    const message = buildOrderMessage({
-      orderId,
+    const order: Omit<Order, "id" | "status" | "createdAt"> = {
+      items,
       customer: {
         nombre: values.nombre,
         telefono: values.telefono,
         direccion: values.dir,
         barrio: values.barrio,
       },
-      items: items,
       metodo: values.metodo,
-      pagoCon: values.pagoCon,
-      comentario: values.mensaje,
+      pagoCon: values.pagoCon || undefined,
+      comentario: values.mensaje || undefined,
+      total,
+    }
+
+    // Persist the order BEFORE the WhatsApp handoff (spec order-lifecycle).
+    // Fail-closed: if the order cannot be stored, do not open WhatsApp.
+    let saved: Order
+    try {
+      saved = repo.saveOrder(order)
+    } catch {
+      toast.error("No se pudo guardar el pedido. Intenta de nuevo.")
+      return
+    }
+
+    const message = buildOrderMessage({
+      orderId: saved.id,
+      customer: saved.customer,
+      items: saved.items,
+      metodo: saved.metodo,
+      pagoCon: saved.pagoCon,
+      comentario: saved.comentario,
     })
-    window.open(buildWhatsAppUrl(WHATSAPP_NUMBER, message), "_blank", "noreferrer")
+    window.open(
+      buildWhatsAppUrl(repo.getConfig().whatsapp, message),
+      "_blank",
+      "noreferrer"
+    )
   }
 
   return (
