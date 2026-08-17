@@ -1,4 +1,5 @@
 import { ShoppingCart } from "lucide-react"
+import { storage } from "../lib/storage"
 
 interface NavbarProps {
   cantidad: number
@@ -7,6 +8,7 @@ interface NavbarProps {
 }
 
 export default function Navbar({ cantidad, total, onOpenCart }: NavbarProps) {
+  const config = storage.getConfig()
   const cartLabel = `Ver orden, ${cantidad} ${cantidad === 1 ? "producto" : "productos"}, total $${total.toLocaleString()}`
 
   return (
@@ -21,14 +23,14 @@ export default function Navbar({ cantidad, total, onOpenCart }: NavbarProps) {
 
         <div className="flex items-center gap-3">
           <img
-            src="/logo.jpg"
+            src={config.logo}
             alt=""
             aria-hidden="true"
             className="size-10 rounded-full bg-bg-elevated object-cover"
           />
           <div className="flex flex-col leading-tight">
             <span className="text-base font-semibold tracking-tight text-text-primary">
-              Burger Page
+              {config.name}
             </span>
             <span className="text-xs text-text-muted">
               Las mejores burgers a domicilio
@@ -55,7 +57,7 @@ export default function Navbar({ cantidad, total, onOpenCart }: NavbarProps) {
           </button>
 
           <a
-            href="https://wa.me/573022575805"
+            href={`https://wa.me/${config.whatsapp}`}
             target="_blank"
             rel="noreferrer"
             aria-label="Contactar por WhatsApp"

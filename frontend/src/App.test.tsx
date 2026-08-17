@@ -9,10 +9,10 @@ afterEach(() => {
 })
 
 describe("App routing", () => {
-  it("renders the storefront at the root route", () => {
+  it("renders the storefront with config-driven branding at the root route", () => {
     window.location.hash = "#/"
     render(<App />)
-    expect(screen.getByText("Burger Page")).toBeTruthy()
+    expect(screen.getByText("BURGER PAGE")).toBeTruthy()
   })
 
   it("renders the admin placeholder at /admin", () => {
@@ -26,6 +26,6 @@ describe("App routing", () => {
   it("falls back to the storefront for unknown routes", () => {
     window.location.hash = "#/nope"
     render(<App />)
-    expect(screen.getByText("Burger Page")).toBeTruthy()
+    expect(screen.getByText("BURGER PAGE")).toBeTruthy()
   })
 })

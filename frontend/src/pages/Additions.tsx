@@ -10,12 +10,10 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
 import { Textarea } from "@/components/ui/textarea"
-import { initialModifiers } from "../data/data"
+import { storage } from "../lib/storage"
 import type { CartItem, ModifierChoice, Product } from "../lib/domain"
 import CharacterCounter from "../components/CharacterCounter"
 import { LIMITS } from "@/lib/validation"
-
-const modifierSrc = new Map(initialModifiers.map((m) => [m.id, m.src]))
 
 interface AdditionsProps {
   cerrar: () => void
@@ -28,14 +26,25 @@ interface AdditionsProps {
 export default function Additions({ cerrar, hamburger, agregarList, editing = false, initial }: AdditionsProps) {
   const [cantidad, setCantidad] = useState(initial?.cantidad ?? 1)
   const [observaciones, setObservaciones] = useState(initial?.observacion ?? "")
-  const [modifiers, setModifiers] = useState<ModifierChoice[]>(() =>
-    initialModifiers.map((m) => {
-      const prev = initial?.modifiers.find((choice) => choice.id === m.id)
-      return prev ?? { id: m.id, name: m.name, price: m.price, cantidad: 0 }
-    })
-  )
+  const [modifiers, setModifiers] = useState<ModifierChoice[]>(() => {
+    const catalog = storage.listModifiers()
+    return catalog
+      .filter(
+        (m) =>
+          m.available ||
+          initial?.modifiers.some((choice) => choice.id === m.id)
+      )
+      .map((m) => {
+        const prev = initial?.modifiers.find((choice) => choice.id === m.id)
+        return prev ?? { id: m.id, name: m.name, price: m.price, cantidad: 0 }
+      })
+  })
 
   if (!hamburger?.name) return null
+
+  const modifierSrc = new Map(
+    storage.listModifiers().map((m) => [m.id, m.src])
+  )
 
   const calcularTotal = () => {
     const totalModifiers = modifiers.reduce(

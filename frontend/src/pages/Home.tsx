@@ -3,6 +3,8 @@ import { toast } from "sonner"
 import { Utensils } from "lucide-react"
 import CardBurger from "../components/Card"
 import { initialProducts } from "../data/data"
+import { storage } from "../lib/storage"
+import { useCart } from "../store/cart-context"
 import type { CartItem, Product } from "../lib/domain"
 import Additions from "./Additions"
 import Navbar from "../components/Navbar"
@@ -16,27 +18,26 @@ export default function Home() {
   const [click, setClick] = useState(false)
   const [ver, setVer] = useState(false)
   const [openForm, setOpenForm] = useState(false)
-  const [selectedBurger, setSelectedBurger] = useState(initialProducts[0])
-  const [lisBuy, setListBuy] = useState<CartItem[]>([])
+  const [selectedBurger, setSelectedBurger] = useState<Product>(() => {
+    const first = storage.listProducts().find((p) => p.available)
+    return first ?? initialProducts[0]
+  })
   const [texto, setTexto] = useState("")
   const [loading, setLoading] = useState(true)
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
+  const { items: lisBuy, addItem, updateItem, total: totalCarrito } = useCart()
+
+  const products = storage.listProducts().filter((p) => p.available)
 
   const agregarList = (item: CartItem) => {
     if (editingIndex !== null) {
-      setListBuy((prev) =>
-        prev.map((prevItem, i) => (i === editingIndex ? item : prevItem))
-      )
+      updateItem(editingIndex, item)
       setEditingIndex(null)
       toast.success("Cambios guardados")
       return
     }
-    setListBuy((prev) => [...prev, item])
+    addItem(item)
     toast.success(`${item.name} agregada al carrito`)
-  }
-
-  const deleteCart = (listActual: CartItem[]) => {
-    setListBuy(listActual)
   }
 
   const onCliked = (product: Product) => {
@@ -48,7 +49,7 @@ export default function Home() {
   const editarItem = (index: number) => {
     const item = lisBuy[index]
     if (!item) return
-    const product = initialProducts.find((p) => p.id === item.productId)
+    const product = storage.listProducts().find((p) => p.id === item.productId)
     if (!product) return
     setSelectedBurger(product)
     setEditingIndex(index)
@@ -66,18 +67,13 @@ export default function Home() {
 
   const onChangeText = (text: string) => setTexto(text)
 
-  const totalCarrito = useMemo(
-    () => lisBuy.reduce((acc, item) => acc + item.total, 0),
-    [lisBuy]
-  )
-
   const filterBurger = useMemo(() => {
     const query = texto.toLowerCase().trim()
-    if (!query) return initialProducts
-    return initialProducts.filter((objeto) =>
+    if (!query) return products
+    return products.filter((objeto) =>
       objeto.name.toLowerCase().includes(query)
     )
-  }, [texto])
+  }, [texto, products])
 
   useEffect(() => {
     const t = window.setTimeout(() => setLoading(false), 300)
@@ -105,10 +101,8 @@ export default function Home() {
         ) : showFullScreen ? (
           ver ? (
             <ShoppingCart
-              list={lisBuy}
-              deleteCart={deleteCart}
-              editarItem={editarItem}
               cerrar={cerrar}
+              editarItem={editarItem}
               abrirForm={abrirForm}
               cerrarCarrito={cerrarCarrito}
             />

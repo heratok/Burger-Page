@@ -1,27 +1,25 @@
 import { Pencil, Trash2, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import NoBuy from "../components/NoBuy"
-import type { CartItem } from "@/lib/domain"
+import { useCart } from "../store/cart-context"
 
 interface ShoppingCartProps {
   cerrar: () => void
   cerrarCarrito: () => void
   abrirForm: () => void
-  list: CartItem[]
-  deleteCart: (list: CartItem[]) => void
   editarItem: (index: number) => void
 }
 
-function ShoppingCart({ cerrar, cerrarCarrito, abrirForm, list, deleteCart, editarItem }: ShoppingCartProps) {
+function ShoppingCart({ cerrar, cerrarCarrito, abrirForm, editarItem }: ShoppingCartProps) {
+  const { items: list, removeItem, total } = useCart()
+
   const volver = () => {
     cerrar()
     cerrarCarrito()
   }
 
-  const total = list.reduce((acc, item) => acc + item.total, 0)
-
   const deleteCar = (i: number) => {
-    deleteCart(list.filter((_, indice) => indice !== i))
+    removeItem(i)
   }
 
   const open = () => {
