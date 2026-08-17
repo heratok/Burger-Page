@@ -8,7 +8,7 @@ import type {
   RestaurantPalette,
   StorageEnvelopeV2,
 } from "./domain"
-import type { RestaurantRepository } from "./repository"
+import type { DirectoryRepository, RestaurantInput, RestaurantPatch, RestaurantRepository } from "./repository"
 import {
   DEFAULT_CONFIG,
   DEFAULT_PALETTE,
@@ -18,6 +18,7 @@ import {
   initialProducts,
 } from "../data/data"
 import { canTransition, createUniqueOrderId } from "./orders"
+import { ensureUniqueSlug, isSlugTaken, slugify } from "./slug"
 
 export const STORAGE_KEY = "burger-page:crm"
 export const STORAGE_VERSION = 2
@@ -52,11 +53,104 @@ function isV2Envelope(value: unknown): value is StorageEnvelopeV2 {
   )
 }
 
-export class LocalStorageRepository implements RestaurantRepository {
+export class LocalStorageRepository implements RestaurantRepository, DirectoryRepository {
   constructor(
     private readonly store: Storage,
     private readonly restaurantId?: string
   ) {}
+
+  // ---------------------------------------------------------------------------
+  // Directory API (design D2; spec MT-2, SA-2, SA-3, SA-4)
+  // ---------------------------------------------------------------------------
+
+  listRestaurants(): Restaurant[] {
+    return this.read().restaurants
+  }
+
+  getBySlug(slug: string): Restaurant | undefined {
+    return this.read().restaurants.find((r) => r.slug === slug)
+  }
+
+  /** Scoped view factory: one repository per restaurant (design D2). */
+  getRepositoryFor(id: string): LocalStorageRepository {
+    return new LocalStorageRepository(this.store, id)
+  }
+
+  createRestaurant(input: RestaurantInput): Restaurant {
+    const envelope = this.read()
+    const existingSlugs = envelope.restaurants.map((r) => r.slug)
+    const slug =
+      input.slug !== undefined && input.slug !== ""
+        ? this.requireFreeSlug(input.slug, existingSlugs)
+        : ensureUniqueSlug(slugify(input.name), existingSlugs)
+    const restaurant: Restaurant = {
+      id: `rest-${slug}`,
+      slug,
+      config: {
+        name: input.name,
+        whatsapp: input.whatsapp,
+        logo: input.logo,
+        accent: input.palette.accent,
+        adminPassword: input.adminPassword,
+      },
+      palette: { ...input.palette },
+      products: [],
+      modifiers: [],
+      orders: [],
+    }
+    envelope.restaurants.push(restaurant)
+    this.persist(envelope)
+    return restaurant
+  }
+
+  /** Manual slug overrides must be unique; auto-generated slugs get a suffix instead (SA-2). */
+  private requireFreeSlug(slug: string, existing: string[]): string {
+    if (isSlugTaken(slug, existing)) {
+      throw new Error(`Slug "${slug}" is already taken`)
+    }
+    return slug
+  }
+
+  /** Removes a restaurant and all its data; refuses when it is the last one (SA-3). */
+  deleteRestaurant(id: string): boolean {
+    const envelope = this.read()
+    if (envelope.restaurants.length === 1) return false
+    const index = envelope.restaurants.findIndex((r) => r.id === id)
+    if (index === -1) return false
+    envelope.restaurants.splice(index, 1)
+    this.persist(envelope)
+    return true
+  }
+
+  /** Renames keep the slug; palette patches keep config.accent in sync (D1, SA-2 Rename). */
+  updateRestaurant(id: string, patch: RestaurantPatch): void {
+    const envelope = this.read()
+    const restaurant = envelope.restaurants.find((r) => r.id === id)
+    if (!restaurant) return
+    if (patch.name !== undefined) restaurant.config.name = patch.name
+    if (patch.whatsapp !== undefined) restaurant.config.whatsapp = patch.whatsapp
+    if (patch.logo !== undefined) restaurant.config.logo = patch.logo
+    if (patch.adminPassword !== undefined) restaurant.config.adminPassword = patch.adminPassword
+    if (patch.palette !== undefined) {
+      restaurant.palette = { ...restaurant.palette, ...patch.palette }
+      restaurant.config.accent = restaurant.palette.accent
+    }
+    this.persist(envelope)
+  }
+
+  getSuperAdminPassword(): string {
+    return this.read().superAdminPassword
+  }
+
+  setSuperAdminPassword(next: string): void {
+    const envelope = this.read()
+    envelope.superAdminPassword = next
+    this.persist(envelope)
+  }
+
+  // ---------------------------------------------------------------------------
+  // Scoped restaurant API (RestaurantRepository)
+  // ---------------------------------------------------------------------------
 
   getConfig(): RestaurantConfig {
     const restaurant = this.restaurant(this.read())
@@ -182,9 +276,12 @@ export class LocalStorageRepository implements RestaurantRepository {
     const envelope: StorageEnvelopeV2 = {
       version: STORAGE_VERSION,
       superAdminPassword: DEFAULT_SUPER_ADMIN_PASSWORD,
-      // Copy collections so runtime writes never mutate the seed module data.
+      // Copy collections AND config/palette so runtime writes never mutate
+      // the seed module data (updateRestaurant mutates config in place).
       restaurants: SEED_RESTAURANTS.map((r) => ({
         ...r,
+        config: { ...r.config },
+        palette: { ...r.palette },
         products: r.products.map((p) => ({ ...p })),
         modifiers: r.modifiers.map((m) => ({ ...m })),
         orders: [],

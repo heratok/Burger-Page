@@ -3,7 +3,9 @@ import type {
   Order,
   OrderStatus,
   Product,
+  Restaurant,
   RestaurantConfig,
+  RestaurantPalette,
 } from "./domain"
 
 /**
@@ -26,4 +28,37 @@ export interface RestaurantRepository {
   listOrders(): Order[]
   saveOrder(order: Omit<Order, "id" | "status" | "createdAt">): Order
   updateOrderStatus(id: number, next: OrderStatus): boolean
+}
+
+/** Input for creating a restaurant (flattened; stored nested under `config`). */
+export interface RestaurantInput {
+  name: string
+  whatsapp: string
+  logo: string
+  adminPassword: string
+  palette: RestaurantPalette
+  slug?: string
+}
+
+/** Partial update for an existing restaurant; slug and collections never change here. */
+export interface RestaurantPatch {
+  name?: string
+  whatsapp?: string
+  logo?: string
+  adminPassword?: string
+  palette?: RestaurantPalette
+}
+
+/**
+ * Directory-level contract across all restaurants (design D2, spec MT-2/SA-2/SA-3).
+ * getBySlug never throws for unknown slugs; deleteRestaurant refuses the last one.
+ */
+export interface DirectoryRepository {
+  listRestaurants(): Restaurant[]
+  getBySlug(slug: string): Restaurant | undefined
+  createRestaurant(input: RestaurantInput): Restaurant
+  deleteRestaurant(id: string): boolean
+  updateRestaurant(id: string, patch: RestaurantPatch): void
+  getSuperAdminPassword(): string
+  setSuperAdminPassword(next: string): void
 }

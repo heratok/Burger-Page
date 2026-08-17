@@ -270,3 +270,189 @@ describe("LocalStorageRepository updateOrderStatus", () => {
     expect(other.listOrders()[0].status).toBe("delivered")
   })
 })
+
+describe("LocalStorageRepository directory API", () => {
+  function createInput(
+    overrides: Partial<{ name: string; whatsapp: string; logo: string; adminPassword: string; slug: string }> = {}
+  ): Parameters<LocalStorageRepository["createRestaurant"]>[0] {
+    return {
+      name: "Burger Page",
+      whatsapp: "573022575805",
+      logo: "/logo.jpg",
+      adminPassword: "admin",
+      palette: { ...DEFAULT_PALETTE },
+      ...overrides,
+    }
+  }
+
+  function singleRestaurantEnvelope(slug = "only-one", name = "Solo"): void {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        version: STORAGE_VERSION,
+        superAdminPassword: DEFAULT_SUPER_ADMIN_PASSWORD,
+        restaurants: [
+          {
+            id: "rest-only-one",
+            slug,
+            config: { ...DEFAULT_CONFIG, name },
+            palette: { ...DEFAULT_PALETTE },
+            products: [],
+            modifiers: [],
+            orders: [],
+          },
+        ],
+      })
+    )
+  }
+
+  it("lists every restaurant in the envelope", () => {
+    const repo = new LocalStorageRepository(localStorage)
+
+    expect(repo.listRestaurants().map((r) => r.slug)).toEqual([
+      "burger-page",
+      "pizza-roma",
+      "sushi-tokio",
+    ])
+  })
+
+  it("gets a restaurant by slug", () => {
+    const repo = new LocalStorageRepository(localStorage)
+
+    expect(repo.getBySlug("pizza-roma")?.config.name).toBe("PIZZA ROMA")
+    expect(repo.getBySlug("pizza-roma")?.palette.accent).toBe("#E63946")
+  })
+
+  it("returns undefined for an unknown slug without throwing (MT-2)", () => {
+    const repo = new LocalStorageRepository(localStorage)
+
+    expect(repo.getBySlug("unknown-restaurant")).toBeUndefined()
+  })
+
+  it("creates a restaurant with an auto-generated slug and persists it", () => {
+    const repo = new LocalStorageRepository(localStorage)
+
+    const created = repo.createRestaurant(createInput({ name: "Ñoquis Bar", adminPassword: "noquis" }))
+
+    expect(created.id).toBe("rest-noquis-bar")
+    expect(created.slug).toBe("noquis-bar")
+    expect(created.config).toEqual({
+      name: "Ñoquis Bar",
+      whatsapp: "573022575805",
+      logo: "/logo.jpg",
+      accent: DEFAULT_PALETTE.accent,
+      adminPassword: "noquis",
+    })
+    expect(created.products).toEqual([])
+    expect(created.orders).toEqual([])
+
+    const other = new LocalStorageRepository(localStorage)
+    expect(other.getBySlug("noquis-bar")?.config.name).toBe("Ñoquis Bar")
+  })
+
+  it("assigns the lowest free -2/-3 suffix when the auto-slug collides (SA-2 Slug auto)", () => {
+    const repo = new LocalStorageRepository(localStorage)
+
+    const created = repo.createRestaurant(createInput({ name: "Pizza Roma" }))
+
+    expect(created.slug).toBe("pizza-roma-2")
+
+    const second = repo.createRestaurant(createInput({ name: "Pizza Roma" }))
+    expect(second.slug).toBe("pizza-roma-3")
+  })
+
+  it("rejects a manual slug that is already taken and writes nothing (SA-2 Slug manual)", () => {
+    const repo = new LocalStorageRepository(localStorage)
+
+    expect(() => repo.createRestaurant(createInput({ name: "Roma Clon", slug: "pizza-roma" }))).toThrow()
+
+    const other = new LocalStorageRepository(localStorage)
+    expect(other.listRestaurants()).toHaveLength(SEED_RESTAURANTS.length)
+  })
+
+  it("deletes a restaurant with all its data and frees the slug (SA-3)", () => {
+    const repo = new LocalStorageRepository(localStorage)
+
+    expect(repo.deleteRestaurant("rest-pizza-roma")).toBe(true)
+
+    const other = new LocalStorageRepository(localStorage)
+    expect(other.getBySlug("pizza-roma")).toBeUndefined()
+    expect(other.listRestaurants().map((r) => r.slug)).toEqual(["burger-page", "sushi-tokio"])
+
+    const recreated = other.createRestaurant(createInput({ name: "Pizza Roma" }))
+    expect(recreated.slug).toBe("pizza-roma")
+  })
+
+  it("refuses to delete the last restaurant and returns false (SA-3 Last)", () => {
+    singleRestaurantEnvelope()
+    const repo = new LocalStorageRepository(localStorage)
+
+    expect(repo.deleteRestaurant("rest-only-one")).toBe(false)
+
+    const other = new LocalStorageRepository(localStorage)
+    expect(other.listRestaurants()).toHaveLength(1)
+    expect(other.getBySlug("only-one")).toBeDefined()
+  })
+
+  it("returns false for an unknown restaurant id on delete", () => {
+    const repo = new LocalStorageRepository(localStorage)
+
+    expect(repo.deleteRestaurant("rest-ghost")).toBe(false)
+    expect(repo.listRestaurants()).toHaveLength(SEED_RESTAURANTS.length)
+  })
+
+  it("updates config fields and palette but keeps the slug on rename (SA-2 Rename)", () => {
+    const repo = new LocalStorageRepository(localStorage)
+
+    repo.updateRestaurant("rest-pizza-roma", {
+      name: "Pizza Roma Centro",
+      palette: { accent: "#C1121F", primary: "#C1121F", background: "#0F1112", surface: "#181A1B" },
+    })
+
+    const updated = repo.getBySlug("pizza-roma")
+    expect(updated?.config.name).toBe("Pizza Roma Centro")
+    expect(updated?.slug).toBe("pizza-roma")
+    expect(updated?.palette.accent).toBe("#C1121F")
+    // D1 invariant: config.accent follows palette.accent.
+    expect(updated?.config.accent).toBe("#C1121F")
+    expect(updated?.config.whatsapp).toBe("573001234567")
+  })
+
+  it("isolates scoped views per restaurant (MT-2 Isolation)", () => {
+    const pizza = new LocalStorageRepository(localStorage, "rest-pizza-roma")
+    const burger = new LocalStorageRepository(localStorage, "rest-burger-page")
+
+    pizza.saveOrder(makePayload({ total: 45000 }))
+
+    expect(pizza.listOrders()).toHaveLength(1)
+    expect(burger.listOrders()).toEqual([])
+
+    const scopedPizza = new LocalStorageRepository(localStorage).getRepositoryFor("rest-pizza-roma")
+    expect(scopedPizza.listOrders()).toHaveLength(1)
+    expect(scopedPizza.getConfig().name).toBe("PIZZA ROMA")
+  })
+
+  it("keeps scoped data intact after the envelope reloads (MT-2 Reload)", () => {
+    const scoped = new LocalStorageRepository(localStorage, "rest-sushi-tokio")
+    scoped.saveProduct({ ...initialProducts[0], id: "sushi-own", name: "Roll de la casa", price: 30000 })
+    scoped.saveConfig({ ...scoped.getConfig(), whatsapp: "573119999999" })
+
+    const reloaded = new LocalStorageRepository(localStorage, "rest-sushi-tokio")
+    expect(reloaded.listProducts().map((p) => p.id)).toContain("sushi-own")
+    expect(reloaded.getConfig().whatsapp).toBe("573119999999")
+
+    const burger = new LocalStorageRepository(localStorage, "rest-burger-page")
+    expect(burger.listProducts().map((p) => p.id)).not.toContain("sushi-own")
+  })
+
+  it("reads and updates the super admin password (SA-4)", () => {
+    const repo = new LocalStorageRepository(localStorage)
+
+    expect(repo.getSuperAdminPassword()).toBe(DEFAULT_SUPER_ADMIN_PASSWORD)
+
+    repo.setSuperAdminPassword("nueva-clave")
+
+    const other = new LocalStorageRepository(localStorage)
+    expect(other.getSuperAdminPassword()).toBe("nueva-clave")
+  })
+})
