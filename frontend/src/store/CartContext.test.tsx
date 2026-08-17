@@ -1,9 +1,13 @@
-import { describe, expect, it } from "vitest"
-import { act, renderHook } from "@testing-library/react"
+import { afterEach, describe, expect, it } from "vitest"
+import { act, cleanup, renderHook } from "@testing-library/react"
 import type { ReactNode } from "react"
 import { CartProvider } from "./CartContext"
 import { useCart } from "./cart-context"
 import type { CartItem } from "@/lib/domain"
+
+afterEach(() => {
+  cleanup()
+})
 
 function makeItem(id: string, total: number): CartItem {
   return {
