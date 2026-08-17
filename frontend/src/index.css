@@ -634,45 +634,46 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --color-bg-base: #0F1112;
-  --color-bg-surface: #181A1B;
-  --color-bg-elevated: #212529;
-  --color-bg-elevated-2: #2A2F35;
-  --color-bg-input: #1A1D20;
+  --color-bg-base: var(--bg-base);
+  --color-bg-surface: var(--bg-surface);
+  --color-bg-elevated: var(--bg-elevated);
+  --color-bg-elevated-2: var(--bg-elevated-2);
+  --color-bg-input: var(--bg-input);
 
-  --color-border-subtle: #2D3138;
-  --color-border-strong: #3A4048;
+  --color-border-subtle: var(--border-subtle);
+  --color-border-strong: var(--border-strong);
 
-  --color-text-primary: #F5F5F7;
-  --color-text-secondary: #C5C8CC;
-  --color-text-muted: #8B8F95;
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
 
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
   --color-accent-pressed: var(--accent-pressed);
   --color-accent-soft: var(--accent-soft);
-  --color-accent-foreground: #FFFFFF;
+  --color-accent-foreground: var(--accent-foreground);
 
   --color-destructive: #FF453A;
   --color-success: #30D158;
   --color-warning: #FFD60A;
 
-  --color-background: #0F1112;
-  --color-foreground: #F5F5F7;
-  --color-card: #212529;
-  --color-card-foreground: #F5F5F7;
-  --color-popover: #212529;
-  --color-popover-foreground: #F5F5F7;
-  --color-primary: #FF7A21;
-  --color-primary-foreground: #FFFFFF;
-  --color-secondary: #2A2F35;
-  --color-secondary-foreground: #F5F5F7;
-  --color-muted: #1A1D20;
-  --color-muted-foreground: #8B8F95;
-  --color-input: #1A1D20;
-  --color-ring: #FF7A21;
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
 
-  --color-border: var(--color-border-subtle);
+  /* shadcn aliases (design D3): mapped onto the derived runtime vars. */
+  --color-background: var(--bg-base);
+  --color-foreground: var(--text-primary);
+  --color-card: var(--bg-elevated);
+  --color-card-foreground: var(--text-primary);
+  --color-popover: var(--bg-elevated);
+  --color-popover-foreground: var(--text-primary);
+  --color-secondary: var(--bg-elevated-2);
+  --color-secondary-foreground: var(--text-primary);
+  --color-muted: var(--bg-input);
+  --color-muted-foreground: var(--text-muted);
+  --color-input: var(--bg-input);
+  --color-ring: var(--primary);
+  --color-border: var(--border-subtle);
 
   --radius-sm: 8px;
   --radius-md: 12px;
@@ -688,12 +689,26 @@
   --animate-fade-out: fade-out 200ms ease-out;
 }
 
-/* Runtime accent variables — overridden by applyAccent() from the config. */
+/* Runtime theme variables — default palette, overridden by applyTheme() at runtime.
+   Values mirror applyTheme(DEFAULT_PALETTE) so pre-JS rendering matches. */
 :root {
-  --accent: #FF7A21;
-  --accent-hover: #FF8F3F;
-  --accent-pressed: #E5651A;
+  --accent: rgb(255, 122, 33);
+  --accent-hover: rgb(255, 142, 66);
+  --accent-pressed: rgb(224, 107, 29);
   --accent-soft: rgba(255, 122, 33, 0.12);
+  --accent-foreground: rgb(245, 245, 247);
+  --primary-foreground: rgb(245, 245, 247);
+  --primary: rgb(255, 122, 33);
+  --bg-base: rgb(15, 17, 18);
+  --bg-surface: rgb(24, 26, 27);
+  --bg-elevated: rgb(34, 36, 37);
+  --bg-elevated-2: rgb(46, 48, 49);
+  --bg-input: rgb(27, 29, 30);
+  --border-subtle: rgb(49, 50, 51);
+  --border-strong: rgb(63, 65, 65);
+  --text-primary: rgb(245, 245, 247);
+  --text-secondary: rgb(199, 199, 201);
+  --text-muted: rgb(142, 142, 144);
 }
 
 @keyframes slide-in-right {
