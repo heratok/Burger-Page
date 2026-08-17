@@ -9,8 +9,6 @@ export interface OrderPayload {
   comentario?: string
 }
 
-export const WHATSAPP_NUMBER = "573022575805"
-
 /** Formato de moneda colombiano determinista ($27.000). */
 export function formatCOP(value: number): string {
   return `$${value.toLocaleString("es-CO")}`
@@ -49,13 +47,17 @@ function formatItem(item: CartItem, index: number): string {
  * Construye el mensaje de pedido para WhatsApp.
  * Renderiza correctamente cualquier combinación: pedidos sin adiciones,
  * sin notas, pago por transferencia, efectivo sin monto, sin comentario, etc.
+ * La cabecera usa el nombre del restaurante activo (ST-1), nunca un valor fijo.
  */
-export function buildOrderMessage(payload: OrderPayload): string {
+export function buildOrderMessage(
+  payload: OrderPayload,
+  restaurantName: string
+): string {
   const { orderId, customer, items, metodo, pagoCon, comentario } = payload
   const total = items.reduce((acc, item) => acc + item.total, 0)
   const sections: string[] = []
 
-  sections.push("*NUEVO PEDIDO — BURGER PAGE*")
+  sections.push(`*NUEVO PEDIDO — ${restaurantName}*`)
   sections.push(`Orden: #${orderId}`)
 
   sections.push("*CLIENTE*")

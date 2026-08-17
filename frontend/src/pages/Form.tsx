@@ -113,14 +113,17 @@ export default function Form({
       return
     }
 
-    const message = buildOrderMessage({
-      orderId: saved.id,
-      customer: saved.customer,
-      items: saved.items,
-      metodo: saved.metodo,
-      pagoCon: saved.pagoCon,
-      comentario: saved.comentario,
-    })
+    const message = buildOrderMessage(
+      {
+        orderId: saved.id,
+        customer: saved.customer,
+        items: saved.items,
+        metodo: saved.metodo,
+        pagoCon: saved.pagoCon,
+        comentario: saved.comentario,
+      },
+      repo.getConfig().name
+    )
     window.open(
       buildWhatsAppUrl(repo.getConfig().whatsapp, message),
       "_blank",
