@@ -1,0 +1,15 @@
+# Local AI tooling state
+.atl/
+
+# Playwright (CLI sessions, generated tests, traces, videos, screenshots)
+.playwright-cli/
+.playwright/
+.playwright-mcp/
+playwright-report/
+test-results/
+tests-examples/
+pw-output/
+.tracing/
+*.pw.png
+*.pw.webm
+*.pw.zip

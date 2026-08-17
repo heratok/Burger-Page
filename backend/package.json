@@ -1,0 +1,6 @@
+{
+  "name": "burger-backend",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Backend for the Restaurant CRM change (burger-page). Placeholder — implementation pending a future SDD change."
+}
