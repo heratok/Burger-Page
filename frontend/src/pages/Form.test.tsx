@@ -41,6 +41,8 @@ function createFormRepo(options: { failSave?: boolean } = {}) {
     getConfig: () =>
       ({ name: "BURGER PAGE", whatsapp: "573022575805" }) as RestaurantConfig,
     saveConfig: vi.fn(),
+    getPalette: () => ({ accent: "#FF7A21", primary: "#FF7A21", background: "#0F1112", surface: "#181A1B" }),
+    savePalette: vi.fn(),
     listProducts: () => [] as Product[],
     saveProduct: vi.fn(),
     deleteProduct: vi.fn(),

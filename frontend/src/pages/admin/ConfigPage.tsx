@@ -7,9 +7,15 @@ import { Button } from "@/components/ui/button"
 import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { storage } from "@/lib/storage"
-import { applyAccent } from "@/lib/theme"
+import { applyTheme } from "@/lib/theme"
 import type { RestaurantConfig } from "@/lib/domain"
 import type { RestaurantRepository } from "@/lib/repository"
+
+/** Color tokens use the #RRGGBB contract enforced across the app. */
+const colorSchema = z
+  .string()
+  .trim()
+  .regex(/^#[0-9a-fA-F]{6}$/, "Color inválido (usa formato #RRGGBB)")
 
 /** Config form schema. Currency is intentionally absent (fixed COP, spec). */
 const configSchema = z.object({
@@ -19,10 +25,10 @@ const configSchema = z.object({
     .trim()
     .regex(/^\d{9,15}$/, "Número de WhatsApp inválido (solo dígitos)"),
   logo: z.string().trim().min(2, "Indica la URL del logo"),
-  accent: z
-    .string()
-    .trim()
-    .regex(/^#[0-9a-fA-F]{6}$/, "Color inválido (usa formato #RRGGBB)"),
+  accent: colorSchema,
+  primary: colorSchema,
+  background: colorSchema,
+  surface: colorSchema,
   adminPassword: z.string().min(1, "La contraseña no puede estar vacía"),
 })
 
@@ -34,6 +40,7 @@ interface ConfigPageProps {
 
 export default function ConfigPage({ repo = storage }: ConfigPageProps) {
   const config = repo.getConfig()
+  const palette = repo.getPalette()
 
   const {
     register,
@@ -45,7 +52,10 @@ export default function ConfigPage({ repo = storage }: ConfigPageProps) {
       name: config.name,
       whatsapp: config.whatsapp,
       logo: config.logo,
-      accent: config.accent,
+      accent: palette.accent,
+      primary: palette.primary,
+      background: palette.background,
+      surface: palette.surface,
       adminPassword: config.adminPassword,
     },
   })
@@ -59,7 +69,19 @@ export default function ConfigPage({ repo = storage }: ConfigPageProps) {
       adminPassword: values.adminPassword,
     }
     repo.saveConfig(next)
-    applyAccent(next.accent)
+    // Palette tokens persist scoped to this restaurant (design D1, SA-4 Scoped).
+    repo.savePalette({
+      accent: values.accent,
+      primary: values.primary,
+      background: values.background,
+      surface: values.surface,
+    })
+    applyTheme({
+      accent: values.accent,
+      primary: values.primary,
+      background: values.background,
+      surface: values.surface,
+    })
     toast.success("Configuración guardada")
   }
 
@@ -139,6 +161,51 @@ export default function ConfigPage({ repo = storage }: ConfigPageProps) {
             <FieldError>{errors.accent?.message}</FieldError>
           </FieldContent>
         </Field>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <Field>
+            <FieldLabel htmlFor="config-primary">Color primario</FieldLabel>
+            <FieldContent>
+              <Input
+                id="config-primary"
+                type="text"
+                placeholder="#FF7A21"
+                maxLength={7}
+                aria-invalid={!!errors.primary}
+                {...register("primary")}
+              />
+              <FieldError>{errors.primary?.message}</FieldError>
+            </FieldContent>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="config-background">Color de fondo</FieldLabel>
+            <FieldContent>
+              <Input
+                id="config-background"
+                type="text"
+                placeholder="#0F1112"
+                maxLength={7}
+                aria-invalid={!!errors.background}
+                {...register("background")}
+              />
+              <FieldError>{errors.background?.message}</FieldError>
+            </FieldContent>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="config-surface">Color de superficie</FieldLabel>
+            <FieldContent>
+              <Input
+                id="config-surface"
+                type="text"
+                placeholder="#181A1B"
+                maxLength={7}
+                aria-invalid={!!errors.surface}
+                {...register("surface")}
+              />
+              <FieldError>{errors.surface?.message}</FieldError>
+            </FieldContent>
+          </Field>
+        </div>
 
         <Field>
           <FieldLabel htmlFor="config-password">Contraseña de administrador</FieldLabel>

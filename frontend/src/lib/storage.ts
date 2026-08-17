@@ -166,6 +166,19 @@ export class LocalStorageRepository implements RestaurantRepository, DirectoryRe
     this.persist(envelope)
   }
 
+  getPalette(): RestaurantPalette {
+    return this.restaurant(this.read()).palette
+  }
+
+  /** Merges palette tokens and keeps config.accent as the single source of truth (D1). */
+  savePalette(patch: Partial<RestaurantPalette>): void {
+    const envelope = this.read()
+    const restaurant = this.restaurant(envelope)
+    restaurant.palette = { ...restaurant.palette, ...patch }
+    restaurant.config.accent = restaurant.palette.accent
+    this.persist(envelope)
+  }
+
   listProducts(): Product[] {
     return this.restaurant(this.read()).products
   }

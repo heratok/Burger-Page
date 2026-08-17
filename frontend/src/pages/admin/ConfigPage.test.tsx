@@ -11,20 +11,34 @@ import type {
   Order,
   Product,
   RestaurantConfig,
+  RestaurantPalette,
 } from "@/lib/domain"
 import type { RestaurantRepository } from "@/lib/repository"
 import ConfigPage from "./ConfigPage"
 
 afterEach(() => {
   cleanup()
+  document.documentElement.removeAttribute("style")
 })
 
-function createConfigRepo(config: RestaurantConfig) {
-  const state = { config: { ...config } }
+function createConfigRepo(
+  config: RestaurantConfig,
+  palette: RestaurantPalette = {
+    accent: config.accent,
+    primary: config.accent,
+    background: "#0F1112",
+    surface: "#181A1B",
+  }
+) {
+  const state = { config: { ...config }, palette: { ...palette } }
   const repo: RestaurantRepository = {
     getConfig: () => state.config,
     saveConfig: vi.fn((next: RestaurantConfig) => {
       state.config = { ...next }
+    }),
+    getPalette: () => ({ ...state.palette }),
+    savePalette: vi.fn((next: Partial<RestaurantPalette>) => {
+      state.palette = { ...state.palette, ...next }
     }),
     listProducts: () => [] as Product[],
     saveProduct: vi.fn(),
@@ -59,7 +73,7 @@ describe("ConfigPage", () => {
     const name = screen.getByLabelText(/nombre/i) as HTMLInputElement
     const whatsapp = screen.getByLabelText(/whatsapp/i) as HTMLInputElement
     const logo = screen.getByLabelText(/logo/i) as HTMLInputElement
-    const accent = screen.getByLabelText(/color/i) as HTMLInputElement
+    const accent = screen.getByLabelText("Color de acento") as HTMLInputElement
     const password = screen.getByLabelText(/contraseña/i) as HTMLInputElement
 
     expect(name.value).toBe("BURGER PAGE")
@@ -84,7 +98,7 @@ describe("ConfigPage", () => {
     fireEvent.change(screen.getByLabelText(/nombre/i), {
       target: { value: "MI BURGER" },
     })
-    fireEvent.change(screen.getByLabelText(/color/i), {
+    fireEvent.change(screen.getByLabelText("Color de acento"), {
       target: { value: "#123456" },
     })
     fireEvent.click(screen.getByRole("button", { name: /guardar/i }))
@@ -103,12 +117,57 @@ describe("ConfigPage", () => {
     const { repo } = createConfigRepo(BASE_CONFIG)
     renderPage(repo)
 
-    fireEvent.change(screen.getByLabelText(/color/i), {
+    fireEvent.change(screen.getByLabelText("Color de acento"), {
       target: { value: "naranja" },
     })
     fireEvent.click(screen.getByRole("button", { name: /guardar/i }))
 
     await waitFor(() => expect(screen.getByText(/color inválido/i)).toBeTruthy())
     expect(repo.saveConfig).not.toHaveBeenCalled()
+  })
+
+  it("pre-fills every palette color field from the repository", () => {
+    const { repo } = createConfigRepo(BASE_CONFIG, {
+      accent: "#FF7A21",
+      primary: "#123456",
+      background: "#0F1112",
+      surface: "#181A1B",
+    })
+    renderPage(repo)
+
+    expect(
+      (screen.getByLabelText("Color de acento") as HTMLInputElement).value
+    ).toBe("#FF7A21")
+    expect(
+      (screen.getByLabelText("Color primario") as HTMLInputElement).value
+    ).toBe("#123456")
+    expect(
+      (screen.getByLabelText("Color de fondo") as HTMLInputElement).value
+    ).toBe("#0F1112")
+    expect(
+      (screen.getByLabelText("Color de superficie") as HTMLInputElement).value
+    ).toBe("#181A1B")
+  })
+
+  it("persists the palette and applies the full theme on save", async () => {
+    const { repo } = createConfigRepo(BASE_CONFIG)
+    renderPage(repo)
+
+    fireEvent.change(screen.getByLabelText("Color primario"), {
+      target: { value: "#123456" },
+    })
+    fireEvent.change(screen.getByLabelText("Color de fondo"), {
+      target: { value: "#FFFFFF" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: /guardar/i }))
+
+    await waitFor(() =>
+      expect(repo.savePalette).toHaveBeenCalledWith(
+        expect.objectContaining({ primary: "#123456", background: "#FFFFFF" })
+      )
+    )
+    expect(
+      document.documentElement.style.getPropertyValue("--color-primary")
+    ).toBe("rgb(18, 52, 86)")
   })
 })

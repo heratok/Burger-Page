@@ -22,6 +22,8 @@ function createGateRepo(password = "admin"): RestaurantRepository {
   return {
     getConfig: () => ({ adminPassword: password }) as RestaurantConfig,
     saveConfig: vi.fn(),
+    getPalette: () => ({ accent: "#FF7A21", primary: "#FF7A21", background: "#0F1112", surface: "#181A1B" }),
+    savePalette: vi.fn(),
     listProducts: () => [] as Product[],
     saveProduct: vi.fn(),
     deleteProduct: vi.fn(),

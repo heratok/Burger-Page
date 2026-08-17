@@ -17,6 +17,9 @@ export interface RestaurantRepository {
   getConfig(): RestaurantConfig
   saveConfig(config: RestaurantConfig): void
 
+  getPalette(): RestaurantPalette
+  savePalette(patch: Partial<RestaurantPalette>): void
+
   listProducts(): Product[]
   saveProduct(product: Product): void
   deleteProduct(id: string): void

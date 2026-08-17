@@ -27,6 +27,8 @@ function createMockRepo(products: Product[] = [...initialProducts]) {
   const repo: RestaurantRepository = {
     getConfig: () => ({}) as RestaurantConfig,
     saveConfig: vi.fn(),
+    getPalette: () => ({ accent: "#FF7A21", primary: "#FF7A21", background: "#0F1112", surface: "#181A1B" }),
+    savePalette: vi.fn(),
     listProducts: () => state.products,
     saveProduct: vi.fn((product: Product) => {
       const index = state.products.findIndex((p) => p.id === product.id)
