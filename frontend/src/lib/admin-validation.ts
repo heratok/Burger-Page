@@ -66,6 +66,9 @@ export const productSchema = z.object({
 
 export type ProductFormValues = z.infer<typeof productSchema>
 
+/** Tipo de entrada del formulario (precio como texto) antes de las transformaciones del schema. */
+export type ProductFormInput = z.input<typeof productSchema>
+
 export const modifierSchema = z.object({
   name: nameField(ADMIN_LIMITS.modifierName),
   price: priceField,

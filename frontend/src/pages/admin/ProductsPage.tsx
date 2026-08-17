@@ -19,7 +19,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import {
   Empty,
-  EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
@@ -32,6 +31,7 @@ import { formatCOP } from "@/lib/whatsapp"
 import {
   ADMIN_LIMITS,
   productSchema,
+  type ProductFormInput,
   type ProductFormValues,
 } from "@/lib/admin-validation"
 
@@ -215,7 +215,7 @@ function ProductDialog({
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<ProductFormValues>({
+  } = useForm<ProductFormInput, unknown, ProductFormValues>({
     resolver: zodResolver(productSchema),
     defaultValues: {
       name: product?.name ?? "",

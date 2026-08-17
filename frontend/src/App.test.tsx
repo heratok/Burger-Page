@@ -15,12 +15,17 @@ describe("App routing", () => {
     expect(screen.getByText("BURGER PAGE")).toBeTruthy()
   })
 
-  it("renders the admin placeholder at /admin", () => {
+  it("renders the admin product management at /admin/products", () => {
+    window.location.hash = "#/admin/products"
+    render(<App />)
+    expect(screen.getByText("Panel de administración")).toBeTruthy()
+    expect(screen.getByRole("heading", { name: "Productos" })).toBeTruthy()
+  })
+
+  it("redirects /admin to the product management section", () => {
     window.location.hash = "#/admin"
     render(<App />)
-    expect(
-      screen.getByRole("heading", { name: /panel de administración/i })
-    ).toBeTruthy()
+    expect(screen.getByRole("heading", { name: "Productos" })).toBeTruthy()
   })
 
   it("falls back to the storefront for unknown routes", () => {
