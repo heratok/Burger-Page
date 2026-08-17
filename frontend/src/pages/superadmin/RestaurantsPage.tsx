@@ -1,8 +1,8 @@
 import { useState } from "react"
 import { Link } from "react-router"
 import { toast } from "sonner"
-import { CircleAlert, ExternalLink, Pencil, Plus, Store, Trash2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { CircleAlert, ExternalLink, Pencil, Plus, Trash2 } from "lucide-react"
+import { Button, buttonVariants } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
@@ -64,12 +64,10 @@ export default function RestaurantsPage({
             Gestiona los restaurantes de la plataforma y su acceso administrativo.
           </p>
         </div>
-        <Button asChild>
-          <Link to="/admin/restaurants/new">
-            <Plus data-icon="inline-start" />
-            Nuevo restaurante
-          </Link>
-        </Button>
+        <Link to="/admin/restaurants/new" className={buttonVariants()}>
+          <Plus data-icon="inline-start" />
+          Nuevo restaurante
+        </Link>
       </header>
 
       {blocked && (
@@ -113,24 +111,22 @@ export default function RestaurantsPage({
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
-              <Button asChild variant="outline" size="sm">
-                <Link
-                  to={`/r/${restaurant.slug}/admin`}
-                  aria-label={`Administrar ${restaurant.config.name}`}
-                >
-                  <ExternalLink />
-                  Administrar
-                </Link>
-              </Button>
-              <Button asChild variant="outline" size="sm">
-                <Link
-                  to={`/admin/restaurants/${restaurant.id}/edit`}
-                  aria-label={`Editar ${restaurant.config.name}`}
-                >
-                  <Pencil />
-                  Editar
-                </Link>
-              </Button>
+              <Link
+                to={`/r/${restaurant.slug}/admin`}
+                aria-label={`Administrar ${restaurant.config.name}`}
+                className={buttonVariants({ variant: "outline", size: "sm" })}
+              >
+                <ExternalLink />
+                Administrar
+              </Link>
+              <Link
+                to={`/admin/restaurants/${restaurant.id}/edit`}
+                aria-label={`Editar ${restaurant.config.name}`}
+                className={buttonVariants({ variant: "outline", size: "sm" })}
+              >
+                <Pencil />
+                Editar
+              </Link>
               <Button
                 variant="destructive"
                 size="sm"
