@@ -1,4 +1,10 @@
-import type { Modifier, Product, RestaurantConfig } from "@/lib/domain"
+import type {
+  Modifier,
+  Product,
+  Restaurant,
+  RestaurantConfig,
+  RestaurantPalette,
+} from "@/lib/domain"
 
 /** Default restaurant config seeded on first load (matches current hardcoded values). */
 export const DEFAULT_CONFIG: RestaurantConfig = {
@@ -8,6 +14,17 @@ export const DEFAULT_CONFIG: RestaurantConfig = {
   accent: "#FF7A21",
   adminPassword: "admin",
 }
+
+/** Default palette matching the current `:root` CSS defaults (TH-1 tokens). */
+export const DEFAULT_PALETTE: RestaurantPalette = {
+  accent: DEFAULT_CONFIG.accent,
+  primary: DEFAULT_CONFIG.accent,
+  background: "#0F1112",
+  surface: "#181A1B",
+}
+
+/** Super-admin password seeded into the v2 envelope (SA-1). */
+export const DEFAULT_SUPER_ADMIN_PASSWORD = "superadmin"
 
 /** Seed menu (previously `hamburguesas`). Menu content unchanged. */
 export const initialProducts: Product[] = [
@@ -87,5 +104,118 @@ export const initialModifiers: Modifier[] = [
     price: 2500,
     src: "https://tienda.atlantic.la/cdn/shop/files/TOCINETAPREMIUM_1024x.jpg?v=1684335896",
     available: true,
+  },
+]
+
+/**
+ * Seed restaurants for the v2 envelope (RD-1: the directory lists them).
+ * The first restaurant carries the current single-tenant data; the others
+ * are minimal but valid tenants with their own palette and menu.
+ */
+export const SEED_RESTAURANTS: Restaurant[] = [
+  {
+    id: "rest-burger-page",
+    slug: "burger-page",
+    config: DEFAULT_CONFIG,
+    palette: DEFAULT_PALETTE,
+    products: initialProducts,
+    modifiers: initialModifiers,
+    orders: [],
+  },
+  {
+    id: "rest-pizza-roma",
+    slug: "pizza-roma",
+    config: {
+      name: "PIZZA ROMA",
+      whatsapp: "573001234567",
+      logo: "/logo-roma.png",
+      accent: "#E63946",
+      adminPassword: "roma",
+    },
+    palette: {
+      accent: "#E63946",
+      primary: "#E63946",
+      background: "#0F1112",
+      surface: "#181A1B",
+    },
+    products: [
+      {
+        id: "r1",
+        name: "Pizza Margherita",
+        src: "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=800&q=80",
+        price: 32000,
+        description:
+          "Salsa de tomate, mozzarella fresca y albahaca sobre masa artesanal.",
+        available: true,
+      },
+      {
+        id: "r2",
+        name: "Pizza Pepperoni",
+        src: "https://images.unsplash.com/photo-1628840042765-356cda07504e?w=800&q=80",
+        price: 36000,
+        description:
+          "Doble capa de pepperoni y queso fundido con borde dorado.",
+        available: true,
+      },
+      {
+        id: "r3",
+        name: "Pizza Vegetariana",
+        src: "https://images.unsplash.com/photo-1593560708920-61dd98c46a4e?w=800&q=80",
+        price: 34000,
+        description:
+          "Pimientos, champiñones, cebolla morada y aceitunas negras.",
+        available: true,
+      },
+    ],
+    modifiers: [],
+    orders: [],
+  },
+  {
+    id: "rest-sushi-tokio",
+    slug: "sushi-tokio",
+    config: {
+      name: "SUSHI TOKIO",
+      whatsapp: "573009876543",
+      logo: "/logo-tokio.png",
+      accent: "#2A9D8F",
+      adminPassword: "tokio",
+    },
+    palette: {
+      accent: "#2A9D8F",
+      primary: "#2A9D8F",
+      background: "#0F1112",
+      surface: "#181A1B",
+    },
+    products: [
+      {
+        id: "s1",
+        name: "California Roll",
+        src: "https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?w=800&q=80",
+        price: 28000,
+        description:
+          "Cangrejo, aguacate y pepino envueltos en arroz y alga nori.",
+        available: true,
+      },
+      {
+        id: "s2",
+        name: "Salmón Nigiri",
+        src: "https://images.unsplash.com/photo-1563612116625-3012372fccce?w=800&q=80",
+        price: 24000,
+        description:
+          "Lámina de salmón fresco sobre bocado de arroz con wasabi.",
+        available: true,
+      },
+      {
+        id: "s3",
+        name: "Combo Tokio",
+        src: "https://images.unsplash.com/photo-1553621042-f6e147245754?w=800&q=80",
+        price: 52000,
+        description:
+          "Diez piezas variadas: rolls, nigiris y maki de la casa.",
+        available: true,
+      },
+    ],
+    modifiers: [],
+    orders: [],
   },
 ]

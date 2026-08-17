@@ -72,3 +72,29 @@ export interface RestaurantConfig {
   accent: string
   adminPassword: string
 }
+
+/** Explicit theme tokens carried by each restaurant; the rest are derived at runtime. */
+export interface RestaurantPalette {
+  accent: string
+  primary: string
+  background: string
+  surface: string
+}
+
+/** A tenant: its own config, palette and full scoped data collections. */
+export interface Restaurant {
+  id: string
+  slug: string
+  config: RestaurantConfig
+  palette: RestaurantPalette
+  products: Product[]
+  modifiers: Modifier[]
+  orders: Order[]
+}
+
+/** Multi-tenant storage envelope: one super-admin password plus every restaurant. */
+export interface StorageEnvelopeV2 {
+  version: 2
+  superAdminPassword: string
+  restaurants: Restaurant[]
+}
