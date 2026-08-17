@@ -10,8 +10,6 @@ import {
 import RestaurantDirectory from "./pages/RestaurantDirectory"
 import Storefront from "./pages/Storefront"
 import RestaurantAdminRoute from "./pages/RestaurantAdminRoute"
-import AdminLayout from "./pages/admin/AdminLayout"
-import AdminGate from "./pages/admin/AdminGate"
 import ProductsPage from "./pages/admin/ProductsPage"
 import OrdersPage from "./pages/admin/OrdersPage"
 import SalesPage from "./pages/admin/SalesPage"
@@ -21,12 +19,18 @@ import { DefaultThemeScope } from "./components/ThemeScope"
 import { Toaster } from "@/components/ui/sonner"
 import { CartProvider } from "./store/CartContext"
 import { AdminProvider } from "./store/AdminContext"
+import SuperAdminGate from "./pages/superadmin/SuperAdminGate"
+import SuperAdminLayout from "./pages/superadmin/SuperAdminLayout"
+import RestaurantsPage from "./pages/superadmin/RestaurantsPage"
+import CreateRestaurantPage from "./pages/superadmin/CreateRestaurantPage"
+import EditRestaurantPage from "./pages/superadmin/EditRestaurantPage"
+import SuperPasswordPage from "./pages/superadmin/SuperPasswordPage"
 import type { RestaurantRepository } from "@/lib/repository"
 
 /**
  * Route tree (design D4, spec ST-2): `/` directory, `/r/:slug` scoped
  * storefront (unknown slug → not-found), `/r/:slug/admin` scoped restaurant
- * admin (mode-aware gate), `/admin` legacy layout (super portal in P6),
+ * admin (mode-aware gate), `/admin` super-admin portal (SA-1..4),
  * `*` not-found fallback.
  */
 function AppShell() {
@@ -66,17 +70,17 @@ function AppShell() {
             path="/admin"
             element={
               <DefaultThemeScope>
-                <AdminGate>
-                  <AdminLayout />
-                </AdminGate>
+                <SuperAdminGate>
+                  <SuperAdminLayout />
+                </SuperAdminGate>
               </DefaultThemeScope>
             }
           >
-            <Route index element={<Navigate to="/admin/products" replace />} />
-            <Route path="products" element={<ProductsPage />} />
-            <Route path="orders" element={<OrdersPage />} />
-            <Route path="sales" element={<SalesPage />} />
-            <Route path="config" element={<ConfigPage />} />
+            <Route index element={<Navigate to="/admin/restaurants" replace />} />
+            <Route path="restaurants" element={<RestaurantsPage />} />
+            <Route path="restaurants/new" element={<CreateRestaurantPage />} />
+            <Route path="restaurants/:id/edit" element={<EditRestaurantPage />} />
+            <Route path="password" element={<SuperPasswordPage />} />
           </Route>
           <Route
             path="*"

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest"
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import App from "./App"
-import { adminGrantKey } from "@/store/admin-context"
+import { SUPER_ADMIN_GRANT_KEY, adminGrantKey } from "@/store/admin-context"
 import { STORAGE_KEY, storage } from "@/lib/storage"
 import { SEED_RESTAURANTS } from "@/data/data"
 import type { Restaurant } from "@/lib/domain"
@@ -113,39 +113,101 @@ describe("App routing (RD-1, RD-2, ST-2)", () => {
   })
 })
 
-describe("App admin routes (AD-1, session readiness for the super portal)", () => {
-  it("shows the password gate at /admin/products without a session grant", () => {
-    renderAt("#/admin/products")
+describe("App admin routes (AD-1, SA-1 super portal at /admin)", () => {
+  it("shows the super gate at /admin/restaurants without a session grant", () => {
+    renderAt("#/admin/restaurants")
 
     expect(
-      screen.getByRole("heading", { name: "Panel de administración" })
+      screen.getByRole("heading", { name: "Portal de administración" })
     ).toBeTruthy()
     expect(screen.getByRole("button", { name: "Ingresar" })).toBeTruthy()
   })
 
-  it("renders the first-restaurant admin at /admin/products with a scoped grant", () => {
-    sessionStorage.setItem(adminGrantKey("rest-burger-page"), "1")
-    renderAt("#/admin/products")
-
-    expect(screen.getByRole("heading", { name: "Productos" })).toBeTruthy()
-    expect(screen.getByText("Misisipi")).toBeTruthy()
-  })
-
-  it("redirects /admin to the product management section with a grant", () => {
-    sessionStorage.setItem(adminGrantKey("rest-burger-page"), "1")
-    renderAt("#/admin")
-
-    expect(screen.getByRole("heading", { name: "Productos" })).toBeTruthy()
-  })
-
   it("does not open /admin with a restaurant-mode session for another restaurant", () => {
     sessionStorage.setItem(adminGrantKey("rest-pizza-roma"), "1")
-    renderAt("#/admin/products")
+    renderAt("#/admin/restaurants")
 
     expect(
-      screen.getByRole("heading", { name: "Panel de administración" })
+      screen.getByRole("heading", { name: "Portal de administración" })
     ).toBeTruthy()
-    expect(screen.queryByRole("heading", { name: "Productos" })).toBeNull()
+    expect(screen.queryByRole("heading", { name: "Restaurantes" })).toBeNull()
+  })
+
+  it("does not open /admin with a restaurant-mode session for the first restaurant", () => {
+    sessionStorage.setItem(adminGrantKey("rest-burger-page"), "1")
+    renderAt("#/admin/restaurants")
+
+    expect(
+      screen.getByRole("heading", { name: "Portal de administración" })
+    ).toBeTruthy()
+    expect(screen.queryByRole("heading", { name: "Restaurantes" })).toBeNull()
+  })
+
+  it("redirects /admin to the restaurant list with a super session", () => {
+    sessionStorage.setItem(SUPER_ADMIN_GRANT_KEY, "1")
+    renderAt("#/admin")
+
+    expect(screen.getByRole("heading", { name: "Restaurantes" })).toBeTruthy()
+  })
+
+  it("rejects a wrong super password at the super gate and grants nothing", () => {
+    renderAt("#/admin/restaurants")
+
+    fireEvent.change(screen.getByLabelText(/contraseña/i), {
+      target: { value: "nope" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: "Ingresar" }))
+
+    expect(screen.getByRole("alert")).toBeTruthy()
+    expect(screen.getByText(/contraseña incorrecta/i)).toBeTruthy()
+    expect(screen.queryByRole("heading", { name: "Restaurantes" })).toBeNull()
+  })
+
+  it("grants the super portal after the correct super password (SA-1 Granted)", async () => {
+    renderAt("#/admin/restaurants")
+
+    fireEvent.change(screen.getByLabelText(/contraseña/i), {
+      target: { value: "superadmin" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: "Ingresar" }))
+
+    expect(await screen.findByRole("heading", { name: "Restaurantes" })).toBeTruthy()
+  })
+
+  it("creates a restaurant through the portal and shows it in the directory (SA-2 Create)", async () => {
+    sessionStorage.setItem(SUPER_ADMIN_GRANT_KEY, "1")
+    renderAt("#/admin/restaurants")
+
+    fireEvent.click(screen.getByRole("link", { name: /nuevo restaurante/i }))
+    expect(
+      await screen.findByRole("heading", { name: "Nuevo restaurante" })
+    ).toBeTruthy()
+
+    fireEvent.change(screen.getByLabelText(/nombre/i), {
+      target: { value: "Café Central" },
+    })
+    fireEvent.change(screen.getByLabelText(/whatsapp/i), {
+      target: { value: "573009998877" },
+    })
+    fireEvent.change(screen.getByLabelText(/logo/i), {
+      target: { value: "/logo-cafe.png" },
+    })
+    fireEvent.change(screen.getByLabelText(/contraseña/i), {
+      target: { value: "cafe123" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: /crear restaurante/i }))
+
+    expect(
+      await screen.findByRole("heading", { name: "Restaurantes" })
+    ).toBeTruthy()
+    expect(screen.getByText(/cafe-central/)).toBeTruthy()
+
+    navigateTo("#/")
+    await waitFor(() =>
+      expect(
+        screen.getByRole("link", { name: /café central/i }).getAttribute("href")
+      ).toBe("#/r/cafe-central")
+    )
   })
 
   it("grants the scoped admin after the correct restaurant password", async () => {
