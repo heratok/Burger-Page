@@ -70,3 +70,47 @@ describe("useCart", () => {
     expect(result.current.total).toBe(0)
   })
 })
+
+describe("useCart scope isolation (RD-2)", () => {
+  it("keeps items when the scope does not change", () => {
+    let scope = "pizza-roma"
+    const { result, rerender } = renderHook(() => useCart(), {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <CartProvider scope={scope}>{children}</CartProvider>
+      ),
+    })
+    act(() => result.current.addItem(makeItem("a", 27000)))
+    rerender()
+    expect(result.current.items).toHaveLength(1)
+    expect(result.current.total).toBe(27000)
+  })
+
+  it("clears items when the scope changes to another restaurant", () => {
+    let scope = "pizza-roma"
+    const { result, rerender } = renderHook(() => useCart(), {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <CartProvider scope={scope}>{children}</CartProvider>
+      ),
+    })
+    act(() => result.current.addItem(makeItem("a", 27000)))
+    act(() => result.current.addItem(makeItem("b", 5000)))
+    scope = "sushi-tokio"
+    rerender()
+    expect(result.current.items).toEqual([])
+    expect(result.current.total).toBe(0)
+  })
+
+  it("clears items when leaving the restaurant scope", () => {
+    let scope = "pizza-roma"
+    const { result, rerender } = renderHook(() => useCart(), {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <CartProvider scope={scope}>{children}</CartProvider>
+      ),
+    })
+    act(() => result.current.addItem(makeItem("a", 27000)))
+    scope = undefined
+    rerender()
+    expect(result.current.items).toEqual([])
+    expect(result.current.total).toBe(0)
+  })
+})
