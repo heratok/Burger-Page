@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import { Utensils } from "lucide-react"
 import CardBurger from "../components/Card"
-import { hamburguesas, type BurgerCompra } from "../data/data"
+import { initialProducts } from "../data/data"
+import type { CartItem, Product } from "../lib/domain"
 import Additions from "./Additions"
 import Navbar from "../components/Navbar"
 import Buscar from "../components/Buscar"
@@ -15,31 +16,31 @@ export default function Home() {
   const [click, setClick] = useState(false)
   const [ver, setVer] = useState(false)
   const [openForm, setOpenForm] = useState(false)
-  const [selectedBurger, setSelectedBurger] = useState(hamburguesas[0])
-  const [lisBuy, setListBuy] = useState<BurgerCompra[]>([])
+  const [selectedBurger, setSelectedBurger] = useState(initialProducts[0])
+  const [lisBuy, setListBuy] = useState<CartItem[]>([])
   const [texto, setTexto] = useState("")
   const [loading, setLoading] = useState(true)
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
 
-  const agregarList = (burgerCompra: BurgerCompra) => {
+  const agregarList = (item: CartItem) => {
     if (editingIndex !== null) {
       setListBuy((prev) =>
-        prev.map((item, i) => (i === editingIndex ? burgerCompra : item))
+        prev.map((prevItem, i) => (i === editingIndex ? item : prevItem))
       )
       setEditingIndex(null)
       toast.success("Cambios guardados")
       return
     }
-    setListBuy((prev) => [...prev, burgerCompra])
-    toast.success(`${burgerCompra.name} agregada al carrito`)
+    setListBuy((prev) => [...prev, item])
+    toast.success(`${item.name} agregada al carrito`)
   }
 
-  const deleteCart = (listActual: BurgerCompra[]) => {
+  const deleteCart = (listActual: CartItem[]) => {
     setListBuy(listActual)
   }
 
-  const onCliked = (hamburguesa: typeof hamburguesas[number]) => {
-    setSelectedBurger(hamburguesa)
+  const onCliked = (product: Product) => {
+    setSelectedBurger(product)
     setEditingIndex(null)
     setClick(true)
   }
@@ -47,9 +48,9 @@ export default function Home() {
   const editarItem = (index: number) => {
     const item = lisBuy[index]
     if (!item) return
-    const burger = hamburguesas.find((b) => b.name === item.name)
-    if (!burger) return
-    setSelectedBurger(burger)
+    const product = initialProducts.find((p) => p.id === item.productId)
+    if (!product) return
+    setSelectedBurger(product)
     setEditingIndex(index)
     setClick(true)
   }
@@ -66,14 +67,14 @@ export default function Home() {
   const onChangeText = (text: string) => setTexto(text)
 
   const totalCarrito = useMemo(
-    () => lisBuy.reduce((acc, item) => acc + item.totalapagar, 0),
+    () => lisBuy.reduce((acc, item) => acc + item.total, 0),
     [lisBuy]
   )
 
   const filterBurger = useMemo(() => {
     const query = texto.toLowerCase().trim()
-    if (!query) return hamburguesas
-    return hamburguesas.filter((objeto) =>
+    if (!query) return initialProducts
+    return initialProducts.filter((objeto) =>
       objeto.name.toLowerCase().includes(query)
     )
   }, [texto])
@@ -114,7 +115,7 @@ export default function Home() {
           ) : (
             <Form
               cerrar={cerrar}
-              hamburguesas={lisBuy}
+              items={lisBuy}
               mostrar={mostrar}
               cerrarForm={cerrarForm}
             />

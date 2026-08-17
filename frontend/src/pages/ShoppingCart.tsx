@@ -1,14 +1,14 @@
 import { Pencil, Trash2, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import NoBuy from "../components/NoBuy"
-import type { BurgerCompra } from "@/data/data"
+import type { CartItem } from "@/lib/domain"
 
 interface ShoppingCartProps {
   cerrar: () => void
   cerrarCarrito: () => void
   abrirForm: () => void
-  list: BurgerCompra[]
-  deleteCart: (list: BurgerCompra[]) => void
+  list: CartItem[]
+  deleteCart: (list: CartItem[]) => void
   editarItem: (index: number) => void
 }
 
@@ -18,7 +18,7 @@ function ShoppingCart({ cerrar, cerrarCarrito, abrirForm, list, deleteCart, edit
     cerrarCarrito()
   }
 
-  const total = list.reduce((acc, burger) => acc + burger.totalapagar, 0)
+  const total = list.reduce((acc, item) => acc + item.total, 0)
 
   const deleteCar = (i: number) => {
     deleteCart(list.filter((_, indice) => indice !== i))
@@ -45,14 +45,14 @@ function ShoppingCart({ cerrar, cerrarCarrito, abrirForm, list, deleteCart, edit
       </header>
 
       <ul className="flex flex-col gap-3">
-        {list.map((burgerCompra, i) => (
+        {list.map((item) => (
           <li
-            key={i}
+            key={item.id}
             className="relative flex gap-3 rounded-lg border border-border-subtle bg-bg-elevated p-3 sm:gap-4 sm:p-4"
           >
             <img
-              src={burgerCompra.src}
-              alt={burgerCompra.name}
+              src={item.src}
+              alt={item.name}
               loading="lazy"
               className="size-16 shrink-0 rounded-md bg-bg-elevated-2 object-cover sm:size-20"
             />
@@ -60,10 +60,10 @@ function ShoppingCart({ cerrar, cerrarCarrito, abrirForm, list, deleteCart, edit
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <h2 className="truncate text-base font-semibold text-text-primary">
-                    {burgerCompra.name}
+                    {item.name}
                   </h2>
                   <p className="mt-0.5 text-xs text-text-muted">
-                    {burgerCompra.cantidad}× {burgerCompra.name}
+                    {item.cantidad}× {item.name}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center">
@@ -71,8 +71,8 @@ function ShoppingCart({ cerrar, cerrarCarrito, abrirForm, list, deleteCart, edit
                     type="button"
                     variant="ghost"
                     size="icon-sm"
-                    onClick={() => editarItem(i)}
-                    aria-label={`Editar ${burgerCompra.name}`}
+                    onClick={() => editarItem(list.indexOf(item))}
+                    aria-label={`Editar ${item.name}`}
                     className="size-11 rounded-full text-text-muted hover:bg-bg-elevated-2 hover:text-text-primary"
                   >
                     <Pencil />
@@ -81,8 +81,8 @@ function ShoppingCart({ cerrar, cerrarCarrito, abrirForm, list, deleteCart, edit
                     type="button"
                     variant="ghost"
                     size="icon-sm"
-                    onClick={() => deleteCar(i)}
-                    aria-label={`Eliminar ${burgerCompra.name}`}
+                    onClick={() => deleteCar(list.indexOf(item))}
+                    aria-label={`Eliminar ${item.name}`}
                     className="size-11 shrink-0 rounded-full text-text-muted hover:bg-bg-elevated-2 hover:text-destructive"
                   >
                     <Trash2 />
@@ -90,22 +90,22 @@ function ShoppingCart({ cerrar, cerrarCarrito, abrirForm, list, deleteCart, edit
                 </div>
               </div>
 
-              {burgerCompra.adicion && burgerCompra.adicion.length > 0 && (
+              {item.modifiers && item.modifiers.length > 0 && (
                 <p className="mt-2 text-xs leading-relaxed text-text-secondary">
                   <span className="text-text-muted">Adiciones: </span>
-                  {burgerCompra.adicion
-                    .map((ad) => `${ad.cantidad}× ${ad.name}`)
+                  {item.modifiers
+                    .map((m) => `${m.cantidad}× ${m.name}`)
                     .join(", ")}
                 </p>
               )}
-              {burgerCompra.observacion && (
+              {item.observacion && (
                 <p className="mt-1 text-xs leading-relaxed text-text-secondary">
                   <span className="text-text-muted">Nota: </span>
-                  {burgerCompra.observacion}
+                  {item.observacion}
                 </p>
               )}
               <p className="mt-2 text-base font-bold text-accent">
-                ${burgerCompra.totalapagar.toLocaleString()}
+                ${item.total.toLocaleString()}
               </p>
             </div>
           </li>

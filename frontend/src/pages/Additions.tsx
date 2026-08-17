@@ -10,90 +10,63 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
 import { Textarea } from "@/components/ui/textarea"
-import type { Adicion, Burger, BurgerCompra } from "@/data/data"
+import { initialModifiers } from "../data/data"
+import type { CartItem, ModifierChoice, Product } from "../lib/domain"
 import CharacterCounter from "../components/CharacterCounter"
 import { LIMITS } from "@/lib/validation"
 
-const ADICIONES_INICIALES: Adicion[] = [
-  {
-    name: "papas fritas",
-    price: 5000,
-    cantidad: 0,
-    src: "https://express.donangelo.pe/wp-content/uploads/2022/05/WhatsApp-Image-2022-05-28-at-10.47.42-AM-10.jpeg",
-  },
-  {
-    name: "Cebolla Caramelizada",
-    price: 1500,
-    cantidad: 0,
-    src: "https://www.divinacocina.es/wp-content/uploads/cebolla-caramelizada7.jpg",
-  },
-  {
-    name: "Extra queso",
-    price: 2700,
-    cantidad: 0,
-    src: "https://www.los-almendros.com.ar/shop/wp-content/uploads/ofertaa-queso-raclette-fermier-env-sin-cargo-cap-fed-D_NQ_NP_963843-MLA27191786169_042018-F.jpg",
-  },
-  {
-    name: "Tocineta",
-    price: 2500,
-    cantidad: 0,
-    src: "https://tienda.atlantic.la/cdn/shop/files/TOCINETAPREMIUM_1024x.jpg?v=1684335896",
-  },
-]
-
-interface AdditionsInitial {
-  cantidad: number
-  adicion: Adicion[]
-  observacion: string
-}
+const modifierSrc = new Map(initialModifiers.map((m) => [m.id, m.src]))
 
 interface AdditionsProps {
   cerrar: () => void
-  hamburger: Burger
-  agregarList: (burgerCompra: BurgerCompra) => void
+  hamburger: Product
+  agregarList: (item: CartItem) => void
   editing?: boolean
-  initial?: AdditionsInitial
+  initial?: CartItem
 }
 
 export default function Additions({ cerrar, hamburger, agregarList, editing = false, initial }: AdditionsProps) {
   const [cantidad, setCantidad] = useState(initial?.cantidad ?? 1)
   const [observaciones, setObservaciones] = useState(initial?.observacion ?? "")
-  const [adiciones, setAdiciones] = useState<Adicion[]>(() =>
-    ADICIONES_INICIALES.map((ad) => {
-      const prev = initial?.adicion.find((a) => a.name === ad.name)
-      return prev ? { ...ad, cantidad: prev.cantidad } : ad
+  const [modifiers, setModifiers] = useState<ModifierChoice[]>(() =>
+    initialModifiers.map((m) => {
+      const prev = initial?.modifiers.find((choice) => choice.id === m.id)
+      return prev ?? { id: m.id, name: m.name, price: m.price, cantidad: 0 }
     })
   )
 
   if (!hamburger?.name) return null
 
   const calcularTotal = () => {
-    const totalAdiciones = adiciones.reduce(
-      (total, ad) => total + ad.cantidad * ad.price,
+    const totalModifiers = modifiers.reduce(
+      (total, m) => total + m.cantidad * m.price,
       0
     )
-    return hamburger.price * cantidad + totalAdiciones
+    return hamburger.price * cantidad + totalModifiers
   }
 
   const agregar = () => {
     agregarList({
-      adicion: adiciones.filter((adi) => adi.cantidad > 0),
+      id: initial?.id ?? crypto.randomUUID(),
+      productId: hamburger.id,
       name: hamburger.name,
       src: hamburger.src,
-      totalapagar: calcularTotal(),
+      unitPrice: hamburger.price,
       cantidad: cantidad,
+      modifiers: modifiers.filter((m) => m.cantidad > 0),
       observacion: observaciones,
+      total: calcularTotal(),
     })
     cerrar()
   }
 
-  const aumentarBurger = () => setCantidad((c) => c + 1)
-  const disminuirBurger = () => {
+  const aumentarCantidad = () => setCantidad((c) => c + 1)
+  const disminuirCantidad = () => {
     if (cantidad > 1) setCantidad((c) => c - 1)
   }
 
-  const modificarCantidadAdicion = (index: number, operacion: "incrementar" | "decrementar") => {
-    setAdiciones((prev) => {
+  const modificarCantidadModifier = (index: number, operacion: "incrementar" | "decrementar") => {
+    setModifiers((prev) => {
       const next = [...prev]
       if (operacion === "incrementar") {
         next[index] = { ...next[index], cantidad: next[index].cantidad + 1 }
@@ -155,14 +128,14 @@ export default function Additions({ cerrar, hamburger, agregarList, editing = fa
               </Badge>
             </div>
             <ul className="flex flex-col gap-2">
-              {adiciones.map((adicion, i) => (
+              {modifiers.map((modifier, i) => (
                 <li
-                  key={adicion.name}
+                  key={modifier.id}
                   className="flex items-center gap-3 rounded-lg border border-border-subtle bg-bg-elevated p-3"
                 >
                   <span className="inline-flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-bg-elevated-2">
                     <img
-                      src={adicion.src}
+                      src={modifierSrc.get(modifier.id)}
                       alt=""
                       loading="lazy"
                       className="size-full object-cover"
@@ -170,10 +143,10 @@ export default function Additions({ cerrar, hamburger, agregarList, editing = fa
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-text-primary">
-                      {adicion.name}
+                      {modifier.name}
                     </p>
                     <p className="text-xs text-text-muted">
-                      +${adicion.price.toLocaleString()}
+                      +${modifier.price.toLocaleString()}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -181,9 +154,9 @@ export default function Additions({ cerrar, hamburger, agregarList, editing = fa
                       type="button"
                       variant="secondary"
                       size="icon-sm"
-                      onClick={() => modificarCantidadAdicion(i, "decrementar")}
-                      aria-label={`Quitar ${adicion.name}`}
-                      disabled={adicion.cantidad === 0}
+                      onClick={() => modificarCantidadModifier(i, "decrementar")}
+                      aria-label={`Quitar ${modifier.name}`}
+                      disabled={modifier.cantidad === 0}
                       className="size-11 rounded-full bg-bg-elevated-2 hover:bg-accent disabled:opacity-40"
                     >
                       <Minus />
@@ -192,14 +165,14 @@ export default function Additions({ cerrar, hamburger, agregarList, editing = fa
                       aria-live="polite"
                       className="w-6 text-center text-sm font-semibold text-text-primary"
                     >
-                      {adicion.cantidad}
+                      {modifier.cantidad}
                     </span>
                     <Button
                       type="button"
                       variant="default"
                       size="icon-sm"
-                      onClick={() => modificarCantidadAdicion(i, "incrementar")}
-                      aria-label={`Agregar ${adicion.name}`}
+                      onClick={() => modificarCantidadModifier(i, "incrementar")}
+                      aria-label={`Agregar ${modifier.name}`}
                       className="size-11 rounded-full bg-accent hover:bg-accent-hover"
                     >
                       <Plus />
@@ -246,7 +219,7 @@ export default function Additions({ cerrar, hamburger, agregarList, editing = fa
                   type="button"
                   variant="secondary"
                   size="icon-sm"
-                  onClick={disminuirBurger}
+                  onClick={disminuirCantidad}
                   aria-label="Disminuir cantidad"
                   disabled={cantidad === 1}
                   className="size-11 rounded-full bg-bg-elevated-2 hover:bg-accent disabled:opacity-40"
@@ -263,7 +236,7 @@ export default function Additions({ cerrar, hamburger, agregarList, editing = fa
                   type="button"
                   variant="default"
                   size="icon-sm"
-                  onClick={aumentarBurger}
+                  onClick={aumentarCantidad}
                   aria-label="Aumentar cantidad"
                   className="size-11 rounded-full bg-accent hover:bg-accent-hover"
                 >

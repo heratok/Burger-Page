@@ -1,9 +1,9 @@
 import { Plus } from "lucide-react"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
-import type { Burger } from "@/data/data"
+import type { Product } from "@/lib/domain"
 
 interface CardBurgerProps {
-  hamburger: Burger
+  hamburger: Product
   onCliked: () => void
 }
 

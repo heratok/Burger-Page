@@ -30,14 +30,14 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/in
 import { Textarea } from "@/components/ui/textarea"
 import CharacterCounter from "../components/CharacterCounter"
 import { formSchema, LIMITS, type FormValues } from "@/lib/validation"
+import { createUniqueOrderId } from "@/lib/orders"
 import {
   buildOrderMessage,
   buildWhatsAppUrl,
   calculateChange,
-  generateOrderId,
   WHATSAPP_NUMBER,
 } from "@/lib/whatsapp"
-import type { BurgerCompra } from "@/data/data"
+import type { CartItem } from "@/lib/domain"
 
 const METODOS = [
   { value: "Efectivo", Icon: Banknote },
@@ -48,10 +48,10 @@ interface FormProps {
   cerrar: () => void
   cerrarForm: () => void
   mostrar: () => void
-  hamburguesas: BurgerCompra[]
+  items: CartItem[]
 }
 
-export default function Form({ cerrar, cerrarForm, mostrar, hamburguesas }: FormProps) {
+export default function Form({ cerrar, cerrarForm, mostrar, items }: FormProps) {
   const {
     register,
     handleSubmit,
@@ -75,12 +75,9 @@ export default function Form({ cerrar, cerrarForm, mostrar, hamburguesas }: Form
   const pagoCon = watch("pagoCon")
 
   // Número de orden estable por visita (no cambia con cada render).
-  const [orderId] = useState(generateOrderId)
+  const [orderId] = useState(() => createUniqueOrderId(new Set()))
 
-  const total = hamburguesas.reduce(
-    (acc, burger) => acc + burger.totalapagar,
-    0
-  )
+  const total = items.reduce((acc, item) => acc + item.total, 0)
 
   const cambio = calculateChange(total, pagoCon)
 
@@ -99,7 +96,7 @@ export default function Form({ cerrar, cerrarForm, mostrar, hamburguesas }: Form
         direccion: values.dir,
         barrio: values.barrio,
       },
-      items: hamburguesas,
+      items: items,
       metodo: values.metodo,
       pagoCon: values.pagoCon,
       comentario: values.mensaje,
@@ -118,7 +115,7 @@ export default function Form({ cerrar, cerrarForm, mostrar, hamburguesas }: Form
         </p>
       </header>
 
-      <FormSummary hamburgesas={hamburguesas} total={total} />
+      <FormSummary items={items} total={total} />
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
         <FieldGroup>
@@ -325,11 +322,11 @@ export default function Form({ cerrar, cerrarForm, mostrar, hamburguesas }: Form
 }
 
 interface FormSummaryProps {
-  hamburgesas: BurgerCompra[]
+  items: CartItem[]
   total: number
 }
 
-function FormSummary({ hamburgesas, total }: FormSummaryProps) {
+function FormSummary({ items, total }: FormSummaryProps) {
   const [open, setOpen] = useState(true)
 
   return (
@@ -342,8 +339,8 @@ function FormSummary({ hamburgesas, total }: FormSummaryProps) {
         className="flex w-full items-center justify-between px-4 py-3 text-left transition duration-150 ease-out hover:bg-muted/50 focus:outline-none focus-visible:focus-ring"
       >
         <span className="text-sm font-semibold text-foreground">
-            Resumen ({hamburgesas.length}{" "}
-            {hamburgesas.length === 1 ? "producto" : "productos"})
+            Resumen ({items.length}{" "}
+            {items.length === 1 ? "producto" : "productos"})
         </span>
         <span className="flex items-center gap-3">
           <span className="text-base font-bold text-primary">
@@ -357,16 +354,16 @@ function FormSummary({ hamburgesas, total }: FormSummaryProps) {
       </button>
       {open && (
         <ul id="order-summary" className="space-y-2 px-4 pt-1 pb-4">
-          {hamburgesas.map((burger, i) => (
+          {items.map((item, i) => (
             <li
               key={i}
               className="flex items-center justify-between text-sm text-muted-foreground"
             >
               <span className="truncate">
-                {burger.cantidad}× {burger.name}
+                {item.cantidad}× {item.name}
               </span>
               <span className="ml-3 shrink-0 font-semibold text-foreground">
-                ${burger.totalapagar.toLocaleString()}
+                ${item.total.toLocaleString()}
               </span>
             </li>
           ))}

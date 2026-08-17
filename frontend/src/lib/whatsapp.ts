@@ -1,29 +1,15 @@
-import type { BurgerCompra } from "@/data/data"
-
-export type MetodoPago = "Efectivo" | "Transferencia"
-
-export interface OrderCustomer {
-  nombre: string
-  telefono: string
-  direccion: string
-  barrio: string
-}
+import type { CartItem, MetodoPago, OrderCustomer } from "./domain"
 
 export interface OrderPayload {
   orderId: number
   customer: OrderCustomer
-  items: BurgerCompra[]
+  items: CartItem[]
   metodo: MetodoPago
   pagoCon?: string
   comentario?: string
 }
 
 export const WHATSAPP_NUMBER = "573022575805"
-
-/** Genera un número de orden de 6 dígitos (100000–999999). */
-export function generateOrderId(): number {
-  return Math.floor(100000 + Math.random() * 900000)
-}
 
 /** Formato de moneda colombiano determinista ($27.000). */
 export function formatCOP(value: number): string {
@@ -42,14 +28,14 @@ export function calculateChange(total: number, pagoCon?: string): number | null 
   return change > 0 ? change : null
 }
 
-function formatItem(item: BurgerCompra, index: number): string {
+function formatItem(item: CartItem, index: number): string {
   const lines = [
-    `${index + 1}. ${item.cantidad}× ${item.name.toUpperCase().trim()} — ${formatCOP(item.totalapagar)}`,
+    `${index + 1}. ${item.cantidad}× ${item.name.toUpperCase().trim()} — ${formatCOP(item.total)}`,
   ]
 
-  const additions = (item.adicion ?? []).filter((a) => a.cantidad > 0)
+  const additions = (item.modifiers ?? []).filter((m) => m.cantidad > 0)
   if (additions.length > 0) {
-    lines.push(`   + ${additions.map((a) => `${a.cantidad}× ${a.name}`).join(", ")}`)
+    lines.push(`   + ${additions.map((m) => `${m.cantidad}× ${m.name}`).join(", ")}`)
   }
 
   if (item.observacion?.trim()) {
@@ -66,7 +52,7 @@ function formatItem(item: BurgerCompra, index: number): string {
  */
 export function buildOrderMessage(payload: OrderPayload): string {
   const { orderId, customer, items, metodo, pagoCon, comentario } = payload
-  const total = items.reduce((acc, item) => acc + item.totalapagar, 0)
+  const total = items.reduce((acc, item) => acc + item.total, 0)
   const sections: string[] = []
 
   sections.push("*NUEVO PEDIDO — BURGER PAGE*")
