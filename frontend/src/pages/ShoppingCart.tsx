@@ -91,15 +91,17 @@ function ShoppingCart({ cerrar, cerrarCarrito, abrirForm, editarItem }: Shopping
               {item.modifiers && item.modifiers.length > 0 && (
                 <p className="mt-2 text-xs leading-relaxed text-text-secondary">
                   <span className="text-text-muted">Adiciones: </span>
-                  {item.modifiers
-                    .map((m) => `${m.cantidad}× ${m.name}`)
-                    .join(", ")}
+                  <span className="break-words">
+                    {item.modifiers
+                      .map((m) => `${m.cantidad}× ${m.name}`)
+                      .join(", ")}
+                  </span>
                 </p>
               )}
               {item.observacion && (
                 <p className="mt-1 text-xs leading-relaxed text-text-secondary">
                   <span className="text-text-muted">Nota: </span>
-                  {item.observacion}
+                  <span className="break-words">{item.observacion}</span>
                 </p>
               )}
               <p className="mt-2 text-base font-bold text-accent">
