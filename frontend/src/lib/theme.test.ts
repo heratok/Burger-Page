@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it } from "vitest"
-import { applyAccent, applyTheme, contrastRatio, relativeLuminance } from "./theme"
+import {
+  applyAccent,
+  applyTheme,
+  chartPalette,
+  contrastRatio,
+  relativeLuminance,
+} from "./theme"
 import { DEFAULT_PALETTE } from "../data/data"
 import type { RestaurantPalette } from "./domain"
 
@@ -199,5 +205,68 @@ describe("applyTheme", () => {
     expect(style.getPropertyValue("--color-destructive")).toBe("")
     expect(style.getPropertyValue("--color-success")).toBe("")
     expect(style.getPropertyValue("--color-warning")).toBe("")
+  })
+})
+
+describe("chartPalette (AS-4)", () => {
+  const HEX = /^#[0-9a-f]{6}$/i
+
+  it("derives 5 contrast-distinct colors even when accent equals primary", () => {
+    const colors = chartPalette("#FF7A21", "#FF7A21")
+
+    expect(colors).toHaveLength(5)
+    for (const color of colors) {
+      expect(color).toMatch(HEX)
+    }
+    expect(new Set(colors).size).toBe(5)
+  })
+
+  it("anchors the ramp on the accent and keeps the colors distinct", () => {
+    const colors = chartPalette("#E63946", "#2A9D8F")
+
+    expect(colors[0]).toBe("#e63946")
+    expect(new Set(colors).size).toBe(5)
+  })
+
+  it("is deterministic for the same inputs", () => {
+    const first = chartPalette("#FF7A21", "#2A9D8F")
+    const second = chartPalette("#FF7A21", "#2A9D8F")
+    expect(first).toEqual(second)
+  })
+})
+
+describe("applyTheme sidebar/chart tokens (AS-4)", () => {
+  it("writes every --sidebar-* token derived from the palette, never hardcoded hex", () => {
+    applyTheme(DEFAULT_PALETTE)
+    const style = document.documentElement.style
+
+    expect(style.getPropertyValue("--sidebar")).toBe("rgb(24, 26, 27)")
+    expect(style.getPropertyValue("--sidebar-foreground")).toBe("rgb(245, 245, 247)")
+    expect(style.getPropertyValue("--sidebar-primary")).toBe("rgb(255, 122, 33)")
+    expect(style.getPropertyValue("--sidebar-primary-foreground")).toBe("rgb(245, 245, 247)")
+    expect(style.getPropertyValue("--sidebar-accent")).toBe("rgb(255, 122, 33)")
+    expect(style.getPropertyValue("--sidebar-accent-foreground")).toBe("rgb(245, 245, 247)")
+    expect(style.getPropertyValue("--sidebar-border")).toBe("rgb(49, 50, 51)")
+    expect(style.getPropertyValue("--sidebar-ring")).toBe("rgb(255, 122, 33)")
+  })
+
+  it("writes five --chart-N tokens that derive from the accent palette", () => {
+    applyTheme({ ...DEFAULT_PALETTE, accent: "#E63946", primary: "#E63946" })
+    const style = document.documentElement.style
+
+    expect(style.getPropertyValue("--chart-1")).toBe("rgb(230, 57, 70)")
+    const chartTokens = ["--chart-1", "--chart-2", "--chart-3", "--chart-4", "--chart-5"]
+      .map((name) => style.getPropertyValue(name))
+    // All resolved, no empty values.
+    for (const value of chartTokens) {
+      expect(value).not.toBe("")
+    }
+  })
+
+  it("re-derives the chart tokens from a switched palette (AS-3 theme switch)", () => {
+    applyTheme({ ...DEFAULT_PALETTE, accent: "#2A9D8F", primary: "#2A9D8F" })
+    expect(
+      document.documentElement.style.getPropertyValue("--chart-1")
+    ).toBe("rgb(42, 157, 143)")
   })
 })

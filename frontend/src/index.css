@@ -675,6 +675,23 @@
   --color-ring: var(--primary);
   --color-border: var(--border-subtle);
 
+  /* Sidebar tokens (design D4, AS-4): derived from the runtime palette. */
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Chart tokens (design D4, AS-4): luminance ramp of the accent/primary. */
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
@@ -709,6 +726,22 @@
   --text-primary: rgb(245, 245, 247);
   --text-secondary: rgb(199, 199, 201);
   --text-muted: rgb(142, 142, 144);
+
+  /* Sidebar/chart fallbacks (AS-4): mirror applyTheme(DEFAULT_PALETTE) so the
+     tokens resolve before the first runtime application. Never hardcoded hex. */
+  --sidebar: rgb(24, 26, 27);
+  --sidebar-foreground: rgb(245, 245, 247);
+  --sidebar-primary: rgb(255, 122, 33);
+  --sidebar-primary-foreground: rgb(245, 245, 247);
+  --sidebar-accent: rgb(255, 122, 33);
+  --sidebar-accent-foreground: rgb(245, 245, 247);
+  --sidebar-border: rgb(49, 50, 51);
+  --sidebar-ring: rgb(255, 122, 33);
+  --chart-1: rgb(255, 122, 33);
+  --chart-2: rgb(255, 142, 66);
+  --chart-3: rgb(255, 175, 122);
+  --chart-4: rgb(166, 79, 21);
+  --chart-5: rgb(204, 98, 26);
 }
 
 @keyframes slide-in-right {

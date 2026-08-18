@@ -40,6 +40,34 @@ function mixRgb(from: RgbColor, to: RgbColor, amount: number): RgbColor {
   }
 }
 
+// Chart ramp steps (design D4): each of the five colors uses a distinct blend
+// toward white/black so the ramp stays contrast-distinct even when the accent
+// and primary anchors are identical.
+const CHART_PRIMARY_LIGHT = 0.15
+const CHART_ACCENT_LIGHT = 0.4
+const CHART_PRIMARY_DARK = 0.35
+const CHART_ACCENT_DARK = 0.2
+
+/**
+ * Derives the five `--chart-1..5` colors from the accent/primary palette as a
+ * luminance ramp (design D4, spec AS-4). Deterministic and always
+ * contrast-distinct: the accent anchor plus four distinct lighten/darken steps,
+ * so two identical anchors still produce five different colors. Returns hex.
+ */
+export function chartPalette(accent: string, primary: string): string[] {
+  const a = hexToRgb(accent)
+  const p = hexToRgb(primary)
+  const white: RgbColor = { r: 255, g: 255, b: 255 }
+  const black: RgbColor = { r: 0, g: 0, b: 0 }
+  return [
+    rgbToHex(a),
+    rgbToHex(mixRgb(p, white, CHART_PRIMARY_LIGHT)),
+    rgbToHex(mixRgb(a, white, CHART_ACCENT_LIGHT)),
+    rgbToHex(mixRgb(p, black, CHART_PRIMARY_DARK)),
+    rgbToHex(mixRgb(a, black, CHART_ACCENT_DARK)),
+  ]
+}
+
 /** WCAG 2.x relative luminance of a hex color (0 = black, 1 = white). */
 export function relativeLuminance(hex: string): number {
   const { r, g, b } = hexToRgb(hex)
@@ -146,6 +174,18 @@ export function applyTheme(palette: RestaurantPalette): void {
   const accentForeground = foregroundFor(palette.accent)
   const primaryForeground = foregroundFor(palette.primary)
 
+  // Sidebar tokens (design D4, AS-4): derived from the runtime palette, never
+  // hardcoded hex. Mapped via @theme inline (--color-sidebar*) so the shadcn
+  // Sidebar's bg-sidebar / text-sidebar-* utilities resolve at runtime.
+  const sidebarAccent = accent
+  const sidebarAccentForeground = accentForeground
+
+  // Chart tokens (design D4, AS-4): a luminance ramp of the accent/primary
+  // palette, emitted as rgb strings to match the rest of applyTheme.
+  const charts = chartPalette(palette.accent, palette.primary).map((hex) =>
+    rgbString(hexToRgb(hex))
+  )
+
   const values: Record<string, string> = {
     "--accent": rgbString(accent),
     "--accent-hover": rgbString(accentHover),
@@ -164,6 +204,19 @@ export function applyTheme(palette: RestaurantPalette): void {
     "--text-secondary": rgbString(textSecondary),
     "--text-muted": rgbString(textMuted),
     "--primary": rgbString(primary),
+    "--sidebar": rgbString(bgSurface),
+    "--sidebar-foreground": rgbString(textPrimary),
+    "--sidebar-primary": rgbString(primary),
+    "--sidebar-primary-foreground": rgbString(primaryForeground),
+    "--sidebar-accent": rgbString(sidebarAccent),
+    "--sidebar-accent-foreground": rgbString(sidebarAccentForeground),
+    "--sidebar-border": rgbString(borderSubtle),
+    "--sidebar-ring": rgbString(primary),
+    "--chart-1": charts[0],
+    "--chart-2": charts[1],
+    "--chart-3": charts[2],
+    "--chart-4": charts[3],
+    "--chart-5": charts[4],
   }
   for (const [name, value] of Object.entries(values)) {
     root.style.setProperty(name, value)
