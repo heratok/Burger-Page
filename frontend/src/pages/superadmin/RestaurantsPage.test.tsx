@@ -42,11 +42,11 @@ describe("RestaurantsPage (SA-2 list, SA-3 delete)", () => {
     expect(screen.getAllByText(/3 productos/)).toHaveLength(2)
   })
 
-  it("links to the restaurant admin for quick access and to the edit form", () => {
+  it("links to the unified admin for quick access and to the edit form", () => {
     renderPage(seededDirectory())
 
     const adminLink = screen.getByRole("link", { name: /administrar pizza roma/i })
-    expect(adminLink.getAttribute("href")).toBe("/r/pizza-roma/admin")
+    expect(adminLink.getAttribute("href")).toBe("/admin")
 
     const editLink = screen.getByRole("link", { name: /editar pizza roma/i })
     expect(editLink.getAttribute("href")).toBe("/admin/restaurants/rest-pizza-roma/edit")

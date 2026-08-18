@@ -112,7 +112,7 @@ export default function RestaurantsPage({
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
               <Link
-                to={`/r/${restaurant.slug}/admin`}
+                to="/admin"
                 aria-label={`Administrar ${restaurant.config.name}`}
                 className={buttonVariants({ variant: "outline", size: "sm" })}
               >

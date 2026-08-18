@@ -6,41 +6,51 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field"
 import { storage } from "@/lib/storage"
-import type { RestaurantRepository } from "@/lib/repository"
-import { sessionMatches, useAdmin } from "@/store/admin-context"
+import type { DirectoryRepository } from "@/lib/repository"
+import { useAdmin } from "@/store/admin-context"
 
 interface AdminGateProps {
-  /** Target restaurant; defaults to the first restaurant (legacy /admin route). */
-  restaurantId?: string
-  repo?: RestaurantRepository
+  directory?: DirectoryRepository
   children?: ReactNode
 }
 
 /**
- * Mode-aware restaurant gate (design D4, spec AD-1): prompts for the TARGET
- * restaurant's adminPassword and, on success, opens a restaurant-mode session
- * scoped to that restaurant. Wrong passwords produce an error and no grant; a
- * session for any other restaurant (or super mode) never grants this gate.
- * Plain-text password is a documented MVP deferral of real auth.
+ * Unified role-driven gate (design D4, spec AD-1/SA-1): /admin accepts BOTH
+ * passwords. A match against the envelope's superAdminPassword opens a super
+ * session; a match against any restaurant's adminPassword opens a
+ * restaurant-mode session scoped to THAT restaurant. Wrong passwords produce
+ * an error and no grant. An existing session opens the panel directly, except
+ * a stale restaurant session whose restaurant was deleted (re-prompt instead
+ * of leaking the legacy first-restaurant fallback). Plain-text passwords are
+ * a documented MVP deferral of real auth.
  */
-export default function AdminGate({ restaurantId, repo = storage, children }: AdminGateProps) {
+export default function AdminGate({ directory = storage, children }: AdminGateProps) {
   const { session, login } = useAdmin()
   const [password, setPassword] = useState("")
   const [error, setError] = useState(false)
 
-  const targetId = restaurantId ?? storage.listRestaurants()[0]?.id
+  const sessionRestaurantExists =
+    session?.mode === "restaurant" &&
+    directory.listRestaurants().some((r) => r.id === session.restaurantId)
 
-  if (targetId !== undefined && sessionMatches(session, "restaurant", targetId)) {
+  if (session?.mode === "super" || sessionRestaurantExists) {
     return children ?? <Outlet />
   }
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
-    if (targetId !== undefined && password === repo.getConfig().adminPassword) {
-      login("restaurant", targetId)
-    } else {
-      setError(true)
+    if (password === directory.getSuperAdminPassword()) {
+      login("super")
+      return
     }
+    const match = directory
+      .listRestaurants()
+      .find((r) => r.config.adminPassword === password)
+    if (match) {
+      login("restaurant", match.id)
+      return
+    }
+    setError(true)
   }
 
   return (
@@ -54,7 +64,8 @@ export default function AdminGate({ restaurantId, repo = storage, children }: Ad
             Panel de administración
           </h1>
           <p className="mt-1 text-sm text-text-secondary">
-            Ingresa la contraseña de administrador para continuar.
+            Ingresa la contraseña de administrador o de super administrador
+            para continuar.
           </p>
         </div>
       </div>

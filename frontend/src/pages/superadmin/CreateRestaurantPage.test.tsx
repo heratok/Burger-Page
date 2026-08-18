@@ -101,6 +101,31 @@ describe("CreateRestaurantPage (SA-2)", () => {
     expect(readEnvelope().restaurants).toHaveLength(before)
   })
 
+  it("rejects a manual slug reserved for system routes and writes nothing", async () => {
+    const directory = seededDirectory()
+    const before = directory.listRestaurants().length
+    renderPage(directory)
+
+    fillCreateForm({ name: "Nuevo Lugar", slug: "admin" })
+    fireEvent.click(screen.getByRole("button", { name: /crear restaurante/i }))
+
+    expect(await screen.findByText(/ya está en uso/i)).toBeTruthy()
+    expect(directory.listRestaurants().length).toBe(before)
+    expect(readEnvelope().restaurants).toHaveLength(before)
+  })
+
+  it("suffixes an auto slug that would collide with a reserved route", async () => {
+    const directory = seededDirectory()
+    renderPage(directory)
+
+    fillCreateForm({ name: "Admin" })
+    fireEvent.click(screen.getByRole("button", { name: /crear restaurante/i }))
+
+    await waitFor(() =>
+      expect(directory.listRestaurants().some((r) => r.slug === "admin-2")).toBe(true)
+    )
+  })
+
   it("transliterates non-ASCII names into the slug (SA-2 Non-ASCII)", async () => {
     const directory = seededDirectory()
     renderPage(directory)
