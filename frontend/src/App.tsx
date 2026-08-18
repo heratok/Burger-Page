@@ -6,10 +6,11 @@ import {
   Routes,
   useLocation,
   useOutletContext,
+  useParams,
 } from "react-router"
-import RestaurantDirectory from "./pages/RestaurantDirectory"
 import Storefront from "./pages/Storefront"
-import RestaurantAdminRoute from "./pages/RestaurantAdminRoute"
+import AdminGate from "./pages/admin/AdminGate"
+import AdminLayout from "./pages/admin/AdminLayout"
 import ProductsPage from "./pages/admin/ProductsPage"
 import OrdersPage from "./pages/admin/OrdersPage"
 import SalesPage from "./pages/admin/SalesPage"
@@ -19,18 +20,22 @@ import { DefaultThemeScope } from "./components/ThemeScope"
 import { Toaster } from "@/components/ui/sonner"
 import { CartProvider } from "./store/CartContext"
 import { AdminProvider } from "./store/AdminContext"
-import SuperAdminGate from "./pages/superadmin/SuperAdminGate"
-import SuperAdminLayout from "./pages/superadmin/SuperAdminLayout"
+import { useAdmin } from "./store/admin-context"
 import RestaurantsPage from "./pages/superadmin/RestaurantsPage"
 import CreateRestaurantPage from "./pages/superadmin/CreateRestaurantPage"
 import EditRestaurantPage from "./pages/superadmin/EditRestaurantPage"
 import SuperPasswordPage from "./pages/superadmin/SuperPasswordPage"
+import { RESERVED_SLUGS } from "@/lib/slug"
 import type { RestaurantRepository } from "@/lib/repository"
 
 /**
- * Route tree (design D4, spec ST-2): `/` directory, `/r/:slug` scoped
- * storefront (unknown slug → not-found), `/r/:slug/admin` scoped restaurant
- * admin (mode-aware gate), `/admin` super-admin portal (SA-1..4),
+ * Route tree (design D4, spec ST-2/AD-1/SA-1): B2B-first. `/` redirects to
+ * the admin panel (no public directory; clients reach a restaurant only
+ * through the shared direct `/:slug` link), `/:slug` scoped storefront
+ * (unknown slug → not-found; reserved system slugs never reach a storefront),
+ * `/r/:slug` legacy redirect, `/r/:slug/admin` legacy redirect, `/admin`
+ * unified role-driven admin (gate accepts both the super password and any
+ * restaurant's admin password; the layout shows sections by session mode),
  * `*` not-found fallback.
  */
 function AppShell() {
@@ -38,9 +43,12 @@ function AppShell() {
 
   // Cart scope = active restaurant slug (RD-2): switching slugs clears the
   // cart through CartProvider; leaving to any non-storefront route resets it.
+  // With the direct /:slug storefront the scope is the first path segment,
+  // except on reserved system routes.
   const cartScope = useMemo(() => {
-    const match = /^\/r\/([^/]+)/.exec(location.pathname)
-    return match ? match[1] : undefined
+    const segment = location.pathname.split("/")[1] ?? ""
+    if (segment === "" || RESERVED_SLUGS.includes(segment)) return undefined
+    return segment
   }, [location.pathname])
 
   return (
@@ -51,32 +59,31 @@ function AppShell() {
             path="/"
             element={
               <DefaultThemeScope>
-                <RestaurantDirectory />
+                <Navigate to="/admin" replace />
               </DefaultThemeScope>
             }
           />
-          <Route path="/r/:slug" element={<Storefront />} />
+          <Route path="/:slug" element={<Storefront />} />
+          <Route path="/r/:slug" element={<LegacyStorefrontRedirect />} />
           <Route
             path="/r/:slug/admin"
-            element={<RestaurantAdminRoute />}
-          >
-            <Route index element={<Navigate to="products" replace />} />
-            <Route path="products" element={<ScopedProducts />} />
-            <Route path="orders" element={<ScopedOrders />} />
-            <Route path="sales" element={<ScopedSales />} />
-            <Route path="config" element={<ScopedConfig />} />
-          </Route>
+            element={<Navigate to="/admin" replace />}
+          />
           <Route
             path="/admin"
             element={
               <DefaultThemeScope>
-                <SuperAdminGate>
-                  <SuperAdminLayout />
-                </SuperAdminGate>
+                <AdminGate>
+                  <AdminLayout />
+                </AdminGate>
               </DefaultThemeScope>
             }
           >
-            <Route index element={<Navigate to="/admin/restaurants" replace />} />
+            <Route index element={<AdminHomeRedirect />} />
+            <Route path="products" element={<ScopedProducts />} />
+            <Route path="orders" element={<ScopedOrders />} />
+            <Route path="sales" element={<ScopedSales />} />
+            <Route path="config" element={<ScopedConfig />} />
             <Route path="restaurants" element={<RestaurantsPage />} />
             <Route path="restaurants/new" element={<CreateRestaurantPage />} />
             <Route path="restaurants/:id/edit" element={<EditRestaurantPage />} />
@@ -98,28 +105,59 @@ function AppShell() {
 }
 
 /**
- * Scoped repository handed to section pages via AdminLayout's Outlet context
- * (design D4): every /r/:slug/admin section reads the active restaurant's
- * data through these wrappers, so each admin only sees its own tenant.
+ * Legacy storefront redirect: keeps already-shared `/r/:slug` links working
+ * by forwarding to the direct `/:slug` storefront route.
  */
-function useScopedRepo(): RestaurantRepository {
-  return useOutletContext<RestaurantRepository>()
+function LegacyStorefrontRedirect() {
+  const { slug } = useParams()
+  return <Navigate to={`/${slug}`} replace />
+}
+
+/**
+ * Home redirect inside the unified admin: the default section depends on the
+ * session role (super → restaurant management, restaurant → its products).
+ * Without a session the gate shows the login prompt and this never renders.
+ */
+function AdminHomeRedirect() {
+  const { session } = useAdmin()
+  if (session?.mode === "super") return <Navigate to="/admin/restaurants" replace />
+  if (session?.mode === "restaurant") return <Navigate to="/admin/products" replace />
+  return null
+}
+
+/**
+ * Scoped repository handed to section pages via AdminLayout's Outlet context
+ * (design D4): every /admin section reads the active restaurant's data through
+ * these wrappers, so a restaurant admin only sees its own tenant. Undefined
+ * means the section has no scoped restaurant (e.g. zero restaurants) and
+ * renders the not-found state instead of crashing.
+ */
+function useScopedRepo(): RestaurantRepository | undefined {
+  return useOutletContext<RestaurantRepository | undefined>()
 }
 
 function ScopedProducts() {
-  return <ProductsPage repo={useScopedRepo()} />
+  const repo = useScopedRepo()
+  if (!repo) return <NotFoundState />
+  return <ProductsPage repo={repo} />
 }
 
 function ScopedOrders() {
-  return <OrdersPage repo={useScopedRepo()} />
+  const repo = useScopedRepo()
+  if (!repo) return <NotFoundState />
+  return <OrdersPage repo={repo} />
 }
 
 function ScopedSales() {
-  return <SalesPage repo={useScopedRepo()} />
+  const repo = useScopedRepo()
+  if (!repo) return <NotFoundState />
+  return <SalesPage repo={repo} />
 }
 
 function ScopedConfig() {
-  return <ConfigPage repo={useScopedRepo()} />
+  const repo = useScopedRepo()
+  if (!repo) return <NotFoundState />
+  return <ConfigPage repo={repo} />
 }
 
 function App() {

@@ -15,7 +15,7 @@ function renderStorefront(path: string) {
     <CartProvider>
       <MemoryRouter initialEntries={[path]}>
         <Routes>
-          <Route path="/r/:slug" element={<Storefront />} />
+          <Route path="/:slug" element={<Storefront />} />
         </Routes>
       </MemoryRouter>
     </CartProvider>
@@ -24,7 +24,7 @@ function renderStorefront(path: string) {
 
 describe("Storefront (ST-1, RD-2)", () => {
   it("renders branding and WhatsApp from the active restaurant config", async () => {
-    renderStorefront("/r/pizza-roma")
+    renderStorefront("/pizza-roma")
 
     // Header branding comes from Pizza Roma, not the legacy default.
     expect(screen.getByText("PIZZA ROMA")).toBeTruthy()
@@ -38,7 +38,7 @@ describe("Storefront (ST-1, RD-2)", () => {
   })
 
   it("applies the restaurant palette on mount", async () => {
-    renderStorefront("/r/pizza-roma")
+    renderStorefront("/pizza-roma")
 
     await waitFor(() =>
       expect(
@@ -48,13 +48,22 @@ describe("Storefront (ST-1, RD-2)", () => {
   })
 
   it("shows prices in COP", async () => {
-    renderStorefront("/r/sushi-tokio")
+    renderStorefront("/sushi-tokio")
 
     expect(await screen.findByText("$28.000")).toBeTruthy()
   })
 
-  it("shows a not-found state linking back to the directory for an unknown slug", () => {
-    renderStorefront("/r/unknown")
+  it("does not link the brand out of the storefront to / or /admin", async () => {
+    renderStorefront("/pizza-roma")
+
+    // The customer stays on their restaurant: the brand is not an anchor.
+    expect(screen.getByText("PIZZA ROMA")).toBeTruthy()
+    expect(screen.queryByRole("link", { name: /pizza roma/i })).toBeNull()
+    expect(screen.queryByRole("link", { name: /admin/i })).toBeNull()
+  })
+
+  it("shows a not-found state for an unknown slug", () => {
+    renderStorefront("/unknown")
 
     expect(screen.getByText(/no encontrada/i)).toBeTruthy()
     expect(screen.getByRole("link", { name: /volver al directorio/i })).toBeTruthy()

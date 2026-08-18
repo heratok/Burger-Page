@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest"
-import { ensureUniqueSlug, isSlugTaken, slugify } from "./slug"
+import {
+  RESERVED_SLUGS,
+  ensureUniqueSlug,
+  isSlugTaken,
+  slugify,
+} from "./slug"
 
 describe("slugify", () => {
   it("transliterates non-ASCII Spanish characters (SA-2 Non-ASCII)", () => {
@@ -66,5 +71,55 @@ describe("isSlugTaken", () => {
 
   it("accepts a manual slug that is free", () => {
     expect(isSlugTaken("pizza-roma", ["burger-page"])).toBe(false)
+  })
+})
+
+describe("RESERVED_SLUGS (direct /:slug routes must never collide)", () => {
+  it("reserves every current app route segment and legacy prefix", () => {
+    expect(RESERVED_SLUGS).toEqual(
+      expect.arrayContaining([
+        "r",
+        "admin",
+        "restaurants",
+        "products",
+        "orders",
+        "sales",
+        "config",
+        "password",
+        "new",
+        "edit",
+        "login",
+        "contacto",
+        "cart",
+        "form",
+        "settings",
+        "pedido",
+        "perfil",
+        "api",
+        "assets",
+      ])
+    )
+  })
+
+  it("treats a reserved slug as taken even when no restaurant uses it", () => {
+    expect(isSlugTaken("admin", [])).toBe(true)
+    expect(isSlugTaken("config", [])).toBe(true)
+    expect(isSlugTaken("pizza-roma", [])).toBe(false)
+  })
+
+  it("suffixes an auto slug that collides with a reserved slug", () => {
+    expect(ensureUniqueSlug("admin", [])).toBe("admin-2")
+    expect(ensureUniqueSlug("r", [])).toBe("r-2")
+  })
+
+  it("increments past both reserved and existing collisions", () => {
+    expect(ensureUniqueSlug("config", ["config-2"])).toBe("config-3")
+    expect(ensureUniqueSlug("admin", ["admin", "admin-2"])).toBe("admin-3")
+  })
+
+  it("never returns a reserved slug from ensureUniqueSlug", () => {
+    for (const reserved of RESERVED_SLUGS) {
+      expect(RESERVED_SLUGS).not.toContain(ensureUniqueSlug(reserved, []))
+    }
   })
 })
