@@ -456,3 +456,66 @@ describe("LocalStorageRepository directory API", () => {
     expect(other.getSuperAdminPassword()).toBe("nueva-clave")
   })
 })
+
+describe("LocalStorageRepository scoped miss (MT-3)", () => {
+  it("returns undefined from scoped reads on an unknown restaurant id, never restaurants[0] (MT-3 Read)", () => {
+    // Give the first tenant real data: a silent fallback would leak it.
+    const burger = new LocalStorageRepository(localStorage, "rest-burger-page")
+    burger.saveOrder(makePayload({ total: 99999 }))
+
+    const ghost = new LocalStorageRepository(localStorage).getRepositoryFor("rest-ghost")
+    expect(ghost.listOrders()).toBeUndefined()
+    expect(ghost.listProducts()).toBeUndefined()
+    expect(ghost.listModifiers()).toBeUndefined()
+    expect(ghost.getConfig()).toBeUndefined()
+    expect(ghost.getPalette()).toBeUndefined()
+
+    // The real tenant still owns its data; nothing leaked to the ghost scope.
+    expect(burger.listOrders()).toHaveLength(1)
+  })
+
+  it("writes nothing to any tenant on a scoped miss (MT-3 Write)", () => {
+    const burger = new LocalStorageRepository(localStorage, "rest-burger-page")
+    const owned = burger.saveOrder(makePayload({ total: 45000 }))
+    const ghost = new LocalStorageRepository(localStorage).getRepositoryFor("rest-ghost")
+
+    // saveOrder on a miss: no order is created anywhere.
+    expect(ghost.saveOrder(makePayload({ total: 1 }))).toBeUndefined()
+    // updateOrderStatus on a miss: the other tenant's order is untouched.
+    expect(ghost.updateOrderStatus(owned!.id, "confirmed")).toBe(false)
+    // Writes are no-ops for every other tenant.
+    ghost.saveProduct({ ...initialProducts[0], id: "ghost-own", name: "Fantasma" })
+    ghost.saveModifier({ ...initialModifiers[0], id: "ghost-mod", name: "Extra", price: 0 })
+
+    const stored = readStored()
+    const all = stored.restaurants as Array<{
+      orders: unknown[]
+      products: unknown[]
+      modifiers: unknown[]
+    }>
+    // The burger tenant keeps exactly its own order (a fallback would add the ghost order too).
+    expect(all[0].orders).toHaveLength(1)
+    for (const restaurant of all.slice(1)) {
+      expect(restaurant.orders).toEqual([])
+    }
+    for (const restaurant of all) {
+      const hasGhostProduct = restaurant.products.some((p) => (p as { id?: string }).id === "ghost-own")
+      const hasGhostModifier = restaurant.modifiers.some((m) => (m as { id?: string }).id === "ghost-mod")
+      expect(hasGhostProduct).toBe(false)
+      expect(hasGhostModifier).toBe(false)
+    }
+  })
+
+  it("keeps valid scopes working (MT-3 Valid)", () => {
+    const pizza = new LocalStorageRepository(localStorage).getRepositoryFor("rest-pizza-roma")
+
+    expect(pizza.listOrders()).toEqual([])
+    const saved = pizza.saveOrder(makePayload({ total: 27000 }))
+    expect(saved?.total).toBe(27000)
+    expect(pizza.listOrders()).toHaveLength(1)
+    expect(pizza.listOrders()![0].total).toBe(27000)
+
+    const burger = new LocalStorageRepository(localStorage).getRepositoryFor("rest-burger-page")
+    expect(burger.listOrders()).toEqual([])
+  })
+})
