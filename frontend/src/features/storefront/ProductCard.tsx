@@ -2,12 +2,12 @@ import { Plus } from "lucide-react"
 import { Card, CardContent, CardFooter } from "@/shared/ui/ui/card"
 import type { Product } from "@/shared/domain/domain"
 
-interface CardBurgerProps {
+interface ProductCardProps {
   hamburger: Product
   onCliked: () => void
 }
 
-export default function CardBurger({ hamburger, onCliked }: CardBurgerProps) {
+export default function ProductCard({ hamburger, onCliked }: ProductCardProps) {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault()

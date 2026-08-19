@@ -4,12 +4,12 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@/shared/ui/ui/inp
 import { Button } from "@/shared/ui/ui/button"
 import { LIMITS } from "@/shared/validation/validation"
 
-interface BuscarProps {
+interface SearchMenuProps {
   onChangeText: (text: string) => void
   total?: number
 }
 
-export default function Buscar({ onChangeText, total = 0 }: BuscarProps) {
+export default function SearchMenu({ onChangeText, total = 0 }: SearchMenuProps) {
   const [value, setValue] = useState("")
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {

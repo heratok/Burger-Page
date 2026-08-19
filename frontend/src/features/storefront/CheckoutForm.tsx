@@ -41,7 +41,7 @@ const METODOS = [
   { value: "Transferencia", Icon: CreditCard },
 ] as const
 
-interface FormProps {
+interface CheckoutFormProps {
   cerrar: () => void
   cerrarForm: () => void
   mostrar: () => void
@@ -49,13 +49,13 @@ interface FormProps {
   repo?: RestaurantRepository
 }
 
-export default function Form({
+export default function CheckoutForm({
   cerrar,
   cerrarForm,
   mostrar,
   items,
   repo = storage,
-}: FormProps) {
+}: CheckoutFormProps) {
   const {
     register,
     handleSubmit,

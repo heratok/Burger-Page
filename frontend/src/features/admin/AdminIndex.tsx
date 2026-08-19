@@ -1,7 +1,7 @@
 import { useOutletContext } from "react-router"
 import { useAdmin } from "@/store/admin-context"
 import type { RestaurantRepository } from "@/shared/storage/repository"
-import DashboardResumen from "./DashboardResumen"
+import ResumenDashboard from "./ResumenDashboard"
 import GlobalSummary from "../superadmin/GlobalSummary"
 import NotFoundState from "@/shared/ui/NotFoundState"
 
@@ -20,7 +20,7 @@ export default function AdminIndex() {
   const isSuper = session?.mode === "super"
 
   if (repo !== undefined) {
-    return <DashboardResumen repo={repo} />
+    return <ResumenDashboard repo={repo} />
   }
 
   if (isSuper) {

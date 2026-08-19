@@ -35,7 +35,7 @@ import type { ResumenRange } from "@/shared/domain/analytics"
 import type { OrderStatus, MetodoPago } from "@/shared/domain/domain"
 import type { RestaurantRepository } from "@/shared/storage/repository"
 
-interface DashboardResumenProps {
+interface ResumenDashboardProps {
   repo: RestaurantRepository
   /** Test seam: default is the real current time. */
   now?: Date
@@ -90,7 +90,7 @@ function readStoredRange(): ResumenRange {
  * referencing the runtime chart tokens, and teaching empty states for fresh or
  * empty ranges. Replaces the retired SalesPage (DR-1).
  */
-export default function DashboardResumen({ repo, now = new Date() }: DashboardResumenProps) {
+export default function ResumenDashboard({ repo, now = new Date() }: ResumenDashboardProps) {
   const [range, setRange] = useState<ResumenRange>(readStoredRange)
 
   const orders = repo.listOrders()

@@ -1,13 +1,13 @@
 import { ShoppingCart } from "lucide-react"
 import { Button } from "@/shared/ui/ui/button"
 
-interface NavProps {
+interface MobileCartBarProps {
   mostrar: () => void
   cantidad: number
   total?: number
 }
 
-export default function Nav({ mostrar, cantidad, total = 0 }: NavProps) {
+export default function MobileCartBar({ mostrar, cantidad, total = 0 }: MobileCartBarProps) {
   const label = `Ver orden, ${cantidad} ${cantidad === 1 ? "producto" : "productos"}, total $${total.toLocaleString()}`
 
   return (

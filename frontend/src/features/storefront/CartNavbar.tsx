@@ -2,19 +2,19 @@ import { ShoppingCart } from "lucide-react"
 import { storage } from "@/shared/storage/storage"
 import type { RestaurantRepository } from "@/shared/storage/repository"
 
-interface NavbarProps {
+interface CartNavbarProps {
   cantidad: number
   total: number
   onOpenCart: () => void
   repo?: RestaurantRepository
 }
 
-export default function Navbar({
+export default function CartNavbar({
   cantidad,
   total,
   onOpenCart,
   repo = storage,
-}: NavbarProps) {
+}: CartNavbarProps) {
   const config = repo.getConfig()
   const cartLabel = `Ver orden, ${cantidad} ${cantidad === 1 ? "producto" : "productos"}, total $${total.toLocaleString()}`
 

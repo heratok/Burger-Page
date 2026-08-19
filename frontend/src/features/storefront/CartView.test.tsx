@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest"
 import { cleanup, render, screen } from "@testing-library/react"
 import { CartContext, type CartContextValue } from "@/store/cart-context"
-import ShoppingCart from "./ShoppingCart"
+import CartView from "./CartView"
 import type { CartItem } from "@/shared/domain/domain"
 
 afterEach(() => {
@@ -37,7 +37,7 @@ function makeCartValue(items: CartItem[]): CartContextValue {
 function renderCart(items: CartItem[]) {
   return render(
     <CartContext.Provider value={makeCartValue(items)}>
-      <ShoppingCart
+      <CartView
         cerrar={() => {}}
         cerrarCarrito={() => {}}
         abrirForm={() => {}}
@@ -47,7 +47,7 @@ function renderCart(items: CartItem[]) {
   )
 }
 
-describe("ShoppingCart long free-text wrapping", () => {
+describe("CartView long free-text wrapping", () => {
   it("wraps a long observation in a word-break span", () => {
     const longWord = "a".repeat(200)
     renderCart([

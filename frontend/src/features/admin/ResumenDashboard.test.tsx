@@ -7,7 +7,7 @@ import type {
   RestaurantConfig,
 } from "@/shared/domain/domain"
 import type { RestaurantRepository } from "@/shared/storage/repository"
-import DashboardResumen from "./DashboardResumen"
+import ResumenDashboard from "./ResumenDashboard"
 
 const NOW = new Date("2026-08-16T12:00:00")
 
@@ -62,14 +62,14 @@ afterEach(() => {
   sessionStorage.clear()
 })
 
-describe("DashboardResumen (DR-2 range selector filters KPI)", () => {
+describe("ResumenDashboard (DR-2 range selector filters KPI)", () => {
   it("filters revenue by the selected range", () => {
     // Today (Aug 16): 30000 confirmed; Aug 14 (day -2): 20000 confirmed.
     const repo = createRepo([
       makeOrder({ id: 1, createdAt: "2026-08-16T09:00:00", status: "confirmed", total: 30000 }),
       makeOrder({ id: 2, createdAt: "2026-08-14T09:00:00", status: "confirmed", total: 20000 }),
     ])
-    render(<DashboardResumen repo={repo} now={NOW} />)
+    render(<ResumenDashboard repo={repo} now={NOW} />)
 
     // Default 7d includes both.
     expect(kpiCard("Ingresos").getByText("$50.000")).toBeTruthy()
@@ -85,23 +85,23 @@ describe("DashboardResumen (DR-2 range selector filters KPI)", () => {
       makeOrder({ id: 1, createdAt: "2026-08-16T09:00:00", status: "confirmed", total: 30000 }),
       makeOrder({ id: 2, createdAt: "2026-08-14T09:00:00", status: "confirmed", total: 20000 }),
     ])
-    const { unmount } = render(<DashboardResumen repo={repo} now={NOW} />)
+    const { unmount } = render(<ResumenDashboard repo={repo} now={NOW} />)
     selectRange("Todo")
     unmount()
 
-    render(<DashboardResumen repo={repo} now={NOW} />)
+    render(<ResumenDashboard repo={repo} now={NOW} />)
     // "Todo" range → both orders in scope → $50.000 and the "Todo" button active.
     expect(kpiCard("Ingresos").getByText("$50.000")).toBeTruthy()
     expect(screen.getByRole("button", { name: "Todo" }).getAttribute("aria-pressed")).toBe("true")
   })
 })
 
-describe("DashboardResumen empty states (DR-2 Today, DR-3 fresh tenant)", () => {
+describe("ResumenDashboard empty states (DR-2 Today, DR-3 fresh tenant)", () => {
   it("renders a teaching empty state (not a broken chart) when today has no orders", () => {
     const repo = createRepo([
       makeOrder({ id: 1, createdAt: "2026-08-14T09:00:00", status: "confirmed", total: 20000 }),
     ])
-    render(<DashboardResumen repo={repo} now={NOW} />)
+    render(<ResumenDashboard repo={repo} now={NOW} />)
 
     selectRange("Hoy")
     // Teaching guidance text, no crash.
@@ -111,7 +111,7 @@ describe("DashboardResumen empty states (DR-2 Today, DR-3 fresh tenant)", () => 
 
   it("shows zero-labeled KPIs plus a teaching empty state for a fresh tenant (no orders at all)", () => {
     const repo = createRepo([])
-    render(<DashboardResumen repo={repo} now={NOW} />)
+    render(<ResumenDashboard repo={repo} now={NOW} />)
 
     expect(screen.getByText("Ingresos")).toBeTruthy()
     expect(kpiCard("Ingresos").getByText("$0")).toBeTruthy()
@@ -119,13 +119,13 @@ describe("DashboardResumen empty states (DR-2 Today, DR-3 fresh tenant)", () => 
   })
 })
 
-describe("DashboardResumen status breakdown (AC-3, DR-3)", () => {
+describe("ResumenDashboard status breakdown (AC-3, DR-3)", () => {
   it("shows cancelled as a visible category in the status breakdown", () => {
     const repo = createRepo([
       makeOrder({ id: 1, createdAt: "2026-08-16T09:00:00", status: "confirmed", total: 30000 }),
       makeOrder({ id: 2, createdAt: "2026-08-16T10:00:00", status: "cancelled", total: 50000 }),
     ])
-    render(<DashboardResumen repo={repo} now={NOW} />)
+    render(<ResumenDashboard repo={repo} now={NOW} />)
 
     // Revenue excludes cancelled (AC-1).
     expect(kpiCard("Ingresos").getByText("$30.000")).toBeTruthy()
@@ -142,7 +142,7 @@ describe("DashboardResumen status breakdown (AC-3, DR-3)", () => {
       makeOrder({ id: 2, createdAt: "2026-08-16T10:00:00", status: "delivered", total: 10000, customer: { nombre: "B", telefono: "3002222222", direccion: "x", barrio: "y" } }),
       makeOrder({ id: 3, createdAt: "2026-08-16T11:00:00", status: "cancelled", total: 99999, customer: { nombre: "C", telefono: "3003333333", direccion: "x", barrio: "y" } }),
     ])
-    render(<DashboardResumen repo={repo} now={NOW} />)
+    render(<ResumenDashboard repo={repo} now={NOW} />)
 
     // average ticket = (30000+10000)/2 = 20000; unique customers = 2.
     expect(screen.getByText("Ticket promedio")).toBeTruthy()

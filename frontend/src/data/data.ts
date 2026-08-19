@@ -75,7 +75,7 @@ export const initialProducts: Product[] = [
   },
 ]
 
-/** Seed modifiers (previously ADICIONES_INICIALES in Additions.tsx). Content unchanged. */
+/** Seed modifiers (previously ADICIONES_INICIALES in ProductCustomize.tsx). Content unchanged. */
 export const initialModifiers: Modifier[] = [
   {
     id: "m1",

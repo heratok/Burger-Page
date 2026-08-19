@@ -2,19 +2,19 @@ import { useEffect, useMemo, useState } from "react"
 import { useParams } from "react-router"
 import { toast } from "sonner"
 import { Utensils } from "lucide-react"
-import CardBurger from "./Card"
+import ProductCard from "./ProductCard"
 import { storage } from "@/shared/storage/storage"
 import { useCart } from "@/store/cart-context"
 import type { CartItem, Product } from "@/shared/domain/domain"
 import type { DirectoryRepository, RestaurantRepository } from "@/shared/storage/repository"
 import { ThemeScope } from "@/shared/ui/ThemeScope"
 import NotFoundState from "@/shared/ui/NotFoundState"
-import Additions from "./Additions"
-import Navbar from "./Navbar"
-import Buscar from "./Buscar"
-import Nav from "./Nav"
-import ShoppingCart from "./ShoppingCart"
-import Form from "./Form"
+import ProductCustomize from "./ProductCustomize"
+import CartNavbar from "./CartNavbar"
+import SearchMenu from "./SearchMenu"
+import MobileCartBar from "./MobileCartBar"
+import CartView from "./CartView"
+import CheckoutForm from "./CheckoutForm"
 import LoadingPage from "@/shared/ui/LoadingPage"
 
 /**
@@ -121,7 +121,7 @@ function StorefrontContent({ repo }: StorefrontContentProps) {
 
   return (
     <div className="min-h-screen bg-bg-base text-text-primary">
-      <Navbar
+      <CartNavbar
         cantidad={lisBuy.length}
         total={totalCarrito}
         onOpenCart={mostrar}
@@ -141,14 +141,14 @@ function StorefrontContent({ repo }: StorefrontContentProps) {
           <LoadingPage />
         ) : showFullScreen ? (
           ver ? (
-            <ShoppingCart
+            <CartView
               cerrar={cerrar}
               editarItem={editarItem}
               abrirForm={abrirForm}
               cerrarCarrito={cerrarCarrito}
             />
           ) : (
-            <Form
+            <CheckoutForm
               cerrar={cerrar}
               items={lisBuy}
               mostrar={mostrar}
@@ -168,7 +168,7 @@ function StorefrontContent({ repo }: StorefrontContentProps) {
             </div>
 
             <div className="mb-6 flex justify-center">
-              <Buscar onChangeText={onChangeText} total={filterBurger.length} />
+              <SearchMenu onChangeText={onChangeText} total={filterBurger.length} />
             </div>
 
             {filterBurger.length === 0 ? (
@@ -181,7 +181,7 @@ function StorefrontContent({ repo }: StorefrontContentProps) {
               >
                 {filterBurger.map((hamburger) => (
                   <div role="listitem" key={hamburger.name}>
-                    <CardBurger
+                    <ProductCard
                       hamburger={hamburger}
                       onCliked={() => onCliked(hamburger)}
                     />
@@ -194,11 +194,11 @@ function StorefrontContent({ repo }: StorefrontContentProps) {
       </main>
 
       {showMobileBar && (
-        <Nav mostrar={mostrar} cantidad={lisBuy.length} total={totalCarrito} />
+        <MobileCartBar mostrar={mostrar} cantidad={lisBuy.length} total={totalCarrito} />
       )}
 
       {click && selectedBurger && (
-        <Additions
+        <ProductCustomize
           agregarList={agregarList}
           cerrar={cerrar}
           hamburger={selectedBurger}

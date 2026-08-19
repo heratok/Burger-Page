@@ -15,7 +15,7 @@ import type {
 } from "@/shared/domain/domain"
 import type { RestaurantRepository } from "@/shared/storage/repository"
 import { Toaster } from "@/shared/ui/ui/sonner"
-import Form from "./Form"
+import CheckoutForm from "./CheckoutForm"
 
 afterEach(() => {
   cleanup()
@@ -76,7 +76,7 @@ function renderForm(repo: RestaurantRepository, items: CartItem[] = [makeItem("a
   const openSpy = vi.spyOn(window, "open").mockImplementation(() => null)
   render(
     <>
-      <Form
+      <CheckoutForm
         cerrar={vi.fn()}
         cerrarForm={vi.fn()}
         mostrar={vi.fn()}
@@ -105,7 +105,7 @@ async function submitValidForm() {
   fireEvent.click(screen.getByRole("button", { name: /enviar pedido por whatsapp/i }))
 }
 
-describe("Form checkout persistence", () => {
+describe("CheckoutForm checkout persistence", () => {
   it("persists the order as new before opening WhatsApp", async () => {
     const { repo } = createFormRepo()
     const { openSpy } = renderForm(repo)

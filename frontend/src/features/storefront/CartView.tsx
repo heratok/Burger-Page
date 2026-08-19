@@ -3,14 +3,14 @@ import { Button } from "@/shared/ui/ui/button"
 import NoBuy from "@/shared/ui/NoBuy"
 import { useCart } from "@/store/cart-context"
 
-interface ShoppingCartProps {
+interface CartViewProps {
   cerrar: () => void
   cerrarCarrito: () => void
   abrirForm: () => void
   editarItem: (index: number) => void
 }
 
-function ShoppingCart({ cerrar, cerrarCarrito, abrirForm, editarItem }: ShoppingCartProps) {
+function CartView({ cerrar, cerrarCarrito, abrirForm, editarItem }: CartViewProps) {
   const { items: list, removeItem, total } = useCart()
 
   const volver = () => {
@@ -147,4 +147,4 @@ function ShoppingCart({ cerrar, cerrarCarrito, abrirForm, editarItem }: Shopping
   )
 }
 
-export default ShoppingCart
+export default CartView

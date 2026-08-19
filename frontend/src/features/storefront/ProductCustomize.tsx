@@ -16,7 +16,7 @@ import type { CartItem, ModifierChoice, Product } from "@/shared/domain/domain"
 import CharacterCounter from "@/shared/ui/CharacterCounter"
 import { LIMITS } from "@/shared/validation/validation"
 
-interface AdditionsProps {
+interface ProductCustomizeProps {
   cerrar: () => void
   hamburger: Product
   agregarList: (item: CartItem) => void
@@ -25,7 +25,7 @@ interface AdditionsProps {
   repo?: RestaurantRepository
 }
 
-export default function Additions({ cerrar, hamburger, agregarList, editing = false, initial, repo = storage }: AdditionsProps) {
+export default function ProductCustomize({ cerrar, hamburger, agregarList, editing = false, initial, repo = storage }: ProductCustomizeProps) {
   const [cantidad, setCantidad] = useState(initial?.cantidad ?? 1)
   const [observaciones, setObservaciones] = useState(initial?.observacion ?? "")
   const [modifiers, setModifiers] = useState<ModifierChoice[]>(() => {
