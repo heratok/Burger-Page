@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest"
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import App from "./App"
 import { SUPER_ADMIN_GRANT_KEY, adminGrantKey } from "@/store/admin-context"
 import { STORAGE_KEY, storage } from "@/lib/storage"
@@ -203,6 +203,61 @@ describe("App unified admin at /admin (AD-1, SA-1)", () => {
     // Restaurant-scoped sections are only in scope after the switcher selects one.
     expect(screen.queryByRole("link", { name: "Productos" })).toBeNull()
     expect(screen.queryByRole("link", { name: "Configuración" })).toBeNull()
+  })
+
+  it("round-trips a super session global → restaurant → global with no grants (SG-3)", async () => {
+    // Pizza Roma has 1 confirmed ($32.000) + 1 cancelled ($50.000).
+    const roma = storage.getRepositoryFor("rest-pizza-roma")
+    const confirmed = roma.saveOrder({
+      items: [],
+      customer: {
+        nombre: "Cliente Roma",
+        telefono: "3001112222",
+        direccion: "Calle 1 #2-3",
+        barrio: "Centro",
+      },
+      metodo: "Efectivo",
+      total: 32000,
+    })
+    roma.updateOrderStatus(confirmed.id, "confirmed")
+    const cancelled = roma.saveOrder({
+      items: [],
+      customer: {
+        nombre: "Cliente Cancelado",
+        telefono: "3001113333",
+        direccion: "Calle 1 #2-3",
+        barrio: "Centro",
+      },
+      metodo: "Efectivo",
+      total: 50000,
+    })
+    roma.updateOrderStatus(cancelled.id, "cancelled")
+    sessionStorage.setItem(SUPER_ADMIN_GRANT_KEY, "1")
+    renderAt("#/admin")
+
+    // Super lands on the global summary; cancelled revenue excluded (AC-1).
+    expect(await screen.findByRole("heading", { name: "Resumen global" })).toBeTruthy()
+    const globalIngresos = screen.getByText("Ingresos").closest('[data-slot="card"]')
+    expect(within(globalIngresos as HTMLElement).getByText("$32.000")).toBeTruthy()
+
+    // Select PIZZA ROMA: the index re-scopes to its Resumen dashboard (AS-3).
+    fireEvent.click(screen.getByRole("button", { name: /cambiar restaurante/i }))
+    fireEvent.click(screen.getByRole("menuitem", { name: "PIZZA ROMA" }))
+    expect(await screen.findByRole("heading", { name: "Resumen" })).toBeTruthy()
+    const romaIngresos = screen.getByText("Ingresos").closest('[data-slot="card"]')
+    expect(within(romaIngresos as HTMLElement).getByText("$32.000")).toBeTruthy()
+    // In-panel selection never created a restaurant grant (AD-1).
+    expect(sessionStorage.getItem(adminGrantKey("rest-pizza-roma"))).toBeNull()
+
+    // Back to the global summary; the scoped dashboard is gone.
+    fireEvent.click(screen.getByRole("button", { name: /cambiar restaurante/i }))
+    fireEvent.click(screen.getByRole("menuitem", { name: "Resumen global" }))
+    expect(await screen.findByRole("heading", { name: "Resumen global" })).toBeTruthy()
+    expect(screen.queryByRole("heading", { name: "Resumen" })).toBeNull()
+
+    // The full round trip left only the super session (AD-1/AS-3 isolation).
+    expect(sessionStorage.getItem(adminGrantKey("rest-pizza-roma"))).toBeNull()
+    expect(sessionStorage.getItem(adminGrantKey("rest-sushi-tokio"))).toBeNull()
   })
 
   it("keeps a granted restaurant session across reloads (AD-1 Reload)", () => {

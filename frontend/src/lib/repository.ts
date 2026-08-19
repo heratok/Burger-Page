@@ -59,6 +59,8 @@ export interface RestaurantPatch {
 export interface DirectoryRepository {
   listRestaurants(): Restaurant[]
   getBySlug(slug: string): Restaurant | undefined
+  /** Scoped view factory (design D2): one repository per restaurant. */
+  getRepositoryFor(id: string): RestaurantRepository
   createRestaurant(input: RestaurantInput): Restaurant
   deleteRestaurant(id: string): boolean
   updateRestaurant(id: string, patch: RestaurantPatch): void

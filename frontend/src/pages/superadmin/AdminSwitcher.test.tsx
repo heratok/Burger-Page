@@ -143,4 +143,48 @@ describe("AdminShell + AdminSwitcher integration (AD-1, AS-3)", () => {
 
     expect(await screen.findByText("Página no encontrada")).toBeTruthy()
   })
+
+  it("round-trips global → restaurant → global without creating grants (SG-3)", async () => {
+    sessionStorage.setItem(SUPER_ADMIN_GRANT_KEY, "1")
+    renderSuperShell()
+
+    // Global: super sections visible, no scoped repo in the index slot.
+    expect(screen.getByText("INDEX-SLOT")).toBeTruthy()
+    expect(screen.getByRole("link", { name: "Restaurantes" })).toBeTruthy()
+
+    // Select PIZZA ROMA: the restaurant sections replace the super sections.
+    openSwitcher()
+    await act(async () => {
+      fireEvent.click(screen.getByRole("menuitem", { name: "PIZZA ROMA" }))
+    })
+    await waitFor(() =>
+      expect(screen.getByRole("link", { name: "Productos" })).toBeTruthy()
+    )
+    expect(screen.queryByRole("link", { name: "Restaurantes" })).toBeNull()
+    // The selection is VIEW state only: no restaurant grant appears (AD-1).
+    expect(sessionStorage.getItem(adminGrantKey("rest-pizza-roma"))).toBeNull()
+
+    // Enter a scoped section: the Outlet repository is now Roma's.
+    await act(async () => {
+      fireEvent.click(screen.getByRole("link", { name: "Productos" }))
+    })
+    await waitFor(() =>
+      expect(screen.getByText("SCOPED-REPO-PRESENT")).toBeTruthy()
+    )
+
+    // Back to global: the scoped repository disappears and super sections return.
+    openSwitcher()
+    await act(async () => {
+      fireEvent.click(screen.getByRole("menuitem", { name: "Resumen global" }))
+    })
+    await waitFor(() =>
+      expect(screen.getByText("Página no encontrada")).toBeTruthy()
+    )
+    expect(screen.getByRole("link", { name: "Restaurantes" })).toBeTruthy()
+    expect(screen.queryByRole("link", { name: "Productos" })).toBeNull()
+
+    // The full round trip never created or reused a restaurant grant (AD-1/AS-3).
+    expect(sessionStorage.getItem(adminGrantKey("rest-pizza-roma"))).toBeNull()
+    expect(sessionStorage.getItem(adminGrantKey("rest-sushi-tokio"))).toBeNull()
+  })
 })
