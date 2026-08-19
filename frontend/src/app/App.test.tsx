@@ -218,7 +218,7 @@ describe("App unified admin at /admin (AD-1, SA-1)", () => {
       },
       metodo: "Efectivo",
       total: 32000,
-    })
+    })!
     roma.updateOrderStatus(confirmed.id, "confirmed")
     const cancelled = roma.saveOrder({
       items: [],
@@ -230,7 +230,7 @@ describe("App unified admin at /admin (AD-1, SA-1)", () => {
       },
       metodo: "Efectivo",
       total: 50000,
-    })
+    })!
     roma.updateOrderStatus(cancelled.id, "cancelled")
     sessionStorage.setItem(SUPER_ADMIN_GRANT_KEY, "1")
     renderAt("#/admin")

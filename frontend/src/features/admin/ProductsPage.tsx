@@ -30,14 +30,12 @@ import {
 import { Field, FieldContent, FieldError, FieldLabel } from "@/shared/ui/ui/field"
 import { Textarea } from "@/shared/ui/ui/textarea"
 import { Label } from "@/shared/ui/ui/label"
-import {
-  Empty,
+import { Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
 } from "@/shared/ui/ui/empty"
-import { storage } from "@/shared/storage/storage"
 import type { RestaurantRepository } from "@/shared/storage/repository"
 import type { Product } from "@/shared/domain/domain"
 import { formatCOP } from "@/shared/domain/whatsapp"
@@ -76,11 +74,11 @@ export function filterProducts(
 }
 
 interface ProductsPageProps {
-  repo?: RestaurantRepository
+  repo: RestaurantRepository
 }
 
-export default function ProductsPage({ repo = storage }: ProductsPageProps) {
-  const [products, setProducts] = useState<Product[]>(() => repo.listProducts())
+export default function ProductsPage({ repo }: ProductsPageProps) {
+  const [products, setProducts] = useState<Product[]>(() => repo.listProducts() ?? [])
   const [availabilityFilter, setAvailabilityFilter] =
     useState<AvailabilityFilter>("all")
   const [query, setQuery] = useState("")

@@ -31,7 +31,6 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/shared/ui/ui/empty"
-import { storage } from "@/shared/storage/storage"
 import { formatCOP } from "@/shared/domain/whatsapp"
 import type { Order, OrderStatus } from "@/shared/domain/domain"
 import type { RestaurantRepository } from "@/shared/storage/repository"
@@ -91,11 +90,11 @@ export function filterOrders(
 }
 
 interface OrdersPageProps {
-  repo?: RestaurantRepository
+  repo: RestaurantRepository
 }
 
-export default function OrdersPage({ repo = storage }: OrdersPageProps) {
-  const [orders, setOrders] = useState<Order[]>(() => repo.listOrders())
+export default function OrdersPage({ repo }: OrdersPageProps) {
+  const [orders, setOrders] = useState<Order[]>(() => repo.listOrders() ?? [])
   const [statusFilter, setStatusFilter] = useState<OrderFilter>("all")
   const [query, setQuery] = useState("")
   const [detail, setDetail] = useState<Order | null>(null)

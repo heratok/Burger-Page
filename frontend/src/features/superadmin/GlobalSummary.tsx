@@ -39,7 +39,7 @@ export default function GlobalSummary({
   const restaurants = directory.listRestaurants()
 
   const perRestaurant = restaurants.map((restaurant) => {
-    const orders = directory.getRepositoryFor(restaurant.id).listOrders()
+    const orders = directory.getRepositoryFor(restaurant.id).listOrders() ?? []
     const metrics = computeResumen(orders, "all", now)
     return {
       restaurant,

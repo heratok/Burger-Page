@@ -6,7 +6,7 @@ import { Settings } from "lucide-react"
 import { Button } from "@/shared/ui/ui/button"
 import { Field, FieldContent, FieldError, FieldLabel } from "@/shared/ui/ui/field"
 import { Input } from "@/shared/ui/ui/input"
-import { storage } from "@/shared/storage/storage"
+import { DEFAULT_CONFIG, DEFAULT_PALETTE } from "@/data/data"
 import { applyTheme } from "@/shared/domain/theme"
 import type { RestaurantConfig } from "@/shared/domain/domain"
 import type { RestaurantRepository } from "@/shared/storage/repository"
@@ -35,12 +35,15 @@ const configSchema = z.object({
 type ConfigFormValues = z.infer<typeof configSchema>
 
 interface ConfigPageProps {
-  repo?: RestaurantRepository
+  repo: RestaurantRepository
 }
 
-export default function ConfigPage({ repo = storage }: ConfigPageProps) {
-  const config = repo.getConfig()
-  const palette = repo.getPalette()
+export default function ConfigPage({ repo }: ConfigPageProps) {
+  // Scoped reads are `| undefined` on a scoped miss (spec MT-3); the admin
+  // guards already render NotFoundState before this page mounts, so the
+  // defaults here only keep the types total for a valid scope.
+  const config = repo.getConfig() ?? DEFAULT_CONFIG
+  const palette = repo.getPalette() ?? DEFAULT_PALETTE
 
   const {
     register,

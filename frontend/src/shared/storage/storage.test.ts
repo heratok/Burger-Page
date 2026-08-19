@@ -68,8 +68,8 @@ describe("LocalStorageRepository migration", () => {
 
     const repo = new LocalStorageRepository(localStorage)
 
-    expect(repo.getConfig().name).toBe("Nuevo Nombre")
-    expect(repo.getConfig().whatsapp).toBe(DEFAULT_CONFIG.whatsapp)
+    expect(repo.getConfig()!.name).toBe("Nuevo Nombre")
+    expect(repo.getConfig()!.whatsapp).toBe(DEFAULT_CONFIG.whatsapp)
     expect(repo.listProducts()).toEqual([customProduct])
     expect(repo.listModifiers()).toEqual(initialModifiers)
     expect(repo.listOrders()).toEqual([])
@@ -212,9 +212,9 @@ describe("LocalStorageRepository persistence", () => {
     repo.deleteProduct("p2")
 
     const other = new LocalStorageRepository(localStorage)
-    expect(other.listProducts().find((p) => p.id === "p1")?.price).toBe(31000)
-    expect(other.listProducts().find((p) => p.id === "p2")).toBeUndefined()
-    expect(other.getConfig().name).toBe("Otro Nombre")
+    expect(other.listProducts()!.find((p) => p.id === "p1")?.price).toBe(31000)
+    expect(other.listProducts()!.find((p) => p.id === "p2")).toBeUndefined()
+    expect(other.getConfig()!.name).toBe("Otro Nombre")
   })
 
   it("persists modifier changes across instances", () => {
@@ -223,15 +223,15 @@ describe("LocalStorageRepository persistence", () => {
     repo.deleteModifier("m2")
 
     const other = new LocalStorageRepository(localStorage)
-    expect(other.listModifiers().find((m) => m.id === "m1")?.price).toBe(6000)
-    expect(other.listModifiers().find((m) => m.id === "m2")).toBeUndefined()
+    expect(other.listModifiers()!.find((m) => m.id === "m1")?.price).toBe(6000)
+    expect(other.listModifiers()!.find((m) => m.id === "m2")).toBeUndefined()
   })
 })
 
 describe("LocalStorageRepository saveOrder", () => {
   it("assigns a unique 6-digit id, status new, ISO createdAt and persists", () => {
     const repo = new LocalStorageRepository(localStorage)
-    const saved = repo.saveOrder(makePayload({ total: 27000 }))
+    const saved = repo.saveOrder(makePayload({ total: 27000 }))!
 
     expect(saved.id).toBeGreaterThanOrEqual(100000)
     expect(saved.id).toBeLessThanOrEqual(999999)
@@ -247,8 +247,8 @@ describe("LocalStorageRepository saveOrder", () => {
     vi.spyOn(Math, "random").mockReturnValue(0.5)
     const repo = new LocalStorageRepository(localStorage)
 
-    const first = repo.saveOrder(makePayload())
-    const second = repo.saveOrder(makePayload())
+    const first = repo.saveOrder(makePayload())!
+    const second = repo.saveOrder(makePayload())!
 
     expect(first.id).toBe(550000)
     expect(second.id).not.toBe(550000)
@@ -259,7 +259,7 @@ describe("LocalStorageRepository saveOrder", () => {
 describe("LocalStorageRepository updateOrderStatus", () => {
   it("transitions status and persists; rejects invalid transitions and unknown ids", () => {
     const repo = new LocalStorageRepository(localStorage)
-    const saved = repo.saveOrder(makePayload())
+    const saved = repo.saveOrder(makePayload())!
 
     expect(repo.updateOrderStatus(saved.id, "confirmed")).toBe(true)
     expect(repo.updateOrderStatus(saved.id, "delivered")).toBe(true)
@@ -267,7 +267,7 @@ describe("LocalStorageRepository updateOrderStatus", () => {
     expect(repo.updateOrderStatus(999999, "confirmed")).toBe(false)
 
     const other = new LocalStorageRepository(localStorage)
-    expect(other.listOrders()[0].status).toBe("delivered")
+    expect(other.listOrders()![0].status).toBe("delivered")
   })
 })
 
@@ -429,20 +429,20 @@ describe("LocalStorageRepository directory API", () => {
 
     const scopedPizza = new LocalStorageRepository(localStorage).getRepositoryFor("rest-pizza-roma")
     expect(scopedPizza.listOrders()).toHaveLength(1)
-    expect(scopedPizza.getConfig().name).toBe("PIZZA ROMA")
+    expect(scopedPizza.getConfig()!.name).toBe("PIZZA ROMA")
   })
 
   it("keeps scoped data intact after the envelope reloads (MT-2 Reload)", () => {
     const scoped = new LocalStorageRepository(localStorage, "rest-sushi-tokio")
     scoped.saveProduct({ ...initialProducts[0], id: "sushi-own", name: "Roll de la casa", price: 30000 })
-    scoped.saveConfig({ ...scoped.getConfig(), whatsapp: "573119999999" })
+    scoped.saveConfig({ ...scoped.getConfig()!, whatsapp: "573119999999" })
 
     const reloaded = new LocalStorageRepository(localStorage, "rest-sushi-tokio")
-    expect(reloaded.listProducts().map((p) => p.id)).toContain("sushi-own")
-    expect(reloaded.getConfig().whatsapp).toBe("573119999999")
+    expect(reloaded.listProducts()!.map((p) => p.id)).toContain("sushi-own")
+    expect(reloaded.getConfig()!.whatsapp).toBe("573119999999")
 
     const burger = new LocalStorageRepository(localStorage, "rest-burger-page")
-    expect(burger.listProducts().map((p) => p.id)).not.toContain("sushi-own")
+    expect(burger.listProducts()!.map((p) => p.id)).not.toContain("sushi-own")
   })
 
   it("reads and updates the super admin password (SA-4)", () => {

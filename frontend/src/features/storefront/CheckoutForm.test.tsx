@@ -51,7 +51,7 @@ function createFormRepo(options: { failSave?: boolean } = {}) {
     deleteModifier: vi.fn(),
     listOrders: () => [] as Order[],
     saveOrder: vi.fn(() => {
-      if (options.failSave) throw new Error("storage full")
+      if (options.failSave) return undefined
       return {
         id: 123456,
         items: [],

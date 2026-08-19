@@ -32,7 +32,7 @@ import { Textarea } from "@/shared/ui/ui/textarea"
 import CharacterCounter from "@/shared/ui/CharacterCounter"
 import { formSchema, LIMITS, type FormValues } from "@/shared/validation/validation"
 import { buildOrderMessage, buildWhatsAppUrl, calculateChange } from "@/shared/domain/whatsapp"
-import { storage } from "@/shared/storage/storage"
+import { DEFAULT_CONFIG } from "@/data/data"
 import type { CartItem, Order } from "@/shared/domain/domain"
 import type { RestaurantRepository } from "@/shared/storage/repository"
 
@@ -46,7 +46,7 @@ interface CheckoutFormProps {
   cerrarForm: () => void
   mostrar: () => void
   items: CartItem[]
-  repo?: RestaurantRepository
+  repo: RestaurantRepository
 }
 
 export default function CheckoutForm({
@@ -54,7 +54,7 @@ export default function CheckoutForm({
   cerrarForm,
   mostrar,
   items,
-  repo = storage,
+  repo,
 }: CheckoutFormProps) {
   const {
     register,
@@ -104,15 +104,15 @@ export default function CheckoutForm({
     }
 
     // Persist the order BEFORE the WhatsApp handoff (spec order-lifecycle).
-    // Fail-closed: if the order cannot be stored, do not open WhatsApp.
-    let saved: Order
-    try {
-      saved = repo.saveOrder(order)
-    } catch {
+    // Fail-closed (spec MT-3): a scoped miss returns undefined, so the order
+    // must never be forwarded without a stored record.
+    const saved = repo.saveOrder(order)
+    if (!saved) {
       toast.error("No se pudo guardar el pedido. Intenta de nuevo.")
       return
     }
 
+    const config = repo.getConfig() ?? DEFAULT_CONFIG
     const message = buildOrderMessage(
       {
         orderId: saved.id,
@@ -122,10 +122,10 @@ export default function CheckoutForm({
         pagoCon: saved.pagoCon,
         comentario: saved.comentario,
       },
-      repo.getConfig().name
+      config.name
     )
     window.open(
-      buildWhatsAppUrl(repo.getConfig().whatsapp, message),
+      buildWhatsAppUrl(config.whatsapp, message),
       "_blank",
       "noreferrer"
     )

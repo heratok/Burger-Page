@@ -59,7 +59,8 @@ function seedOrders(restaurantId: string, statuses: string[]) {
       metodo: "Efectivo",
       total: 10000,
     })
-    const last = repo.listOrders()[repo.listOrders().length - 1]
+    const orders = repo.listOrders() ?? []
+    const last = orders[orders.length - 1]
     repo.updateOrderStatus(last.id, status as never)
   }
 }

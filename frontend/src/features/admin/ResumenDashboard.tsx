@@ -45,7 +45,7 @@ function readStoredRange(): ResumenRange {
 export default function ResumenDashboard({ repo, now = new Date() }: ResumenDashboardProps) {
   const [range, setRange] = useState<ResumenRange>(readStoredRange)
 
-  const metrics = computeResumen(repo.listOrders(), range, now)
+  const metrics = computeResumen(repo.listOrders() ?? [], range, now)
 
   const handleRange = (next: ResumenRange) => {
     setRange(next)

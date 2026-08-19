@@ -56,6 +56,14 @@ through `localStorage` directly.** This is the backend-swap seam.
   singleton** (`new LocalStorageRepository(window.localStorage)`).
 - **Scoped factory:** `directory.getRepositoryFor(id)` returns a repository
   bound to one `restaurantId` — the primitive behind all tenant isolation.
+- **Scoped miss (MT-3):** a scoped repository built for an unknown
+  `restaurantId` never falls back to another tenant. Scoped reads
+  (`getConfig`, `getPalette`, `listProducts`, `listModifiers`, `listOrders`)
+  return `undefined`, `saveOrder` returns `undefined`, `updateOrderStatus`
+  returns `false`, and the other writes are no-ops. Consumers coalesce reads
+  (`?? []`, `?? DEFAULT_CONFIG`) and CheckoutForm fails closed when `saveOrder`
+  yields no record. The un-scoped `storage` singleton keeps the legacy
+  first-restaurant view.
 - **Persistence envelope:** one key `burger-page:crm` holding a single
   `StorageEnvelopeV2` (`{ version, superAdminPassword, restaurants[] }`). See
   [ADR-0001](docs/adr/ADR-0001-localstorage-seam-and-envelope.md).

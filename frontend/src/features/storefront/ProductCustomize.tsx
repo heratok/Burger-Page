@@ -10,7 +10,6 @@ import { Button } from "@/shared/ui/ui/button"
 import { Badge } from "@/shared/ui/ui/badge"
 import { Field, FieldDescription, FieldLabel } from "@/shared/ui/ui/field"
 import { Textarea } from "@/shared/ui/ui/textarea"
-import { storage } from "@/shared/storage/storage"
 import type { RestaurantRepository } from "@/shared/storage/repository"
 import type { CartItem, ModifierChoice, Product } from "@/shared/domain/domain"
 import CharacterCounter from "@/shared/ui/CharacterCounter"
@@ -22,14 +21,14 @@ interface ProductCustomizeProps {
   agregarList: (item: CartItem) => void
   editing?: boolean
   initial?: CartItem
-  repo?: RestaurantRepository
+  repo: RestaurantRepository
 }
 
-export default function ProductCustomize({ cerrar, hamburger, agregarList, editing = false, initial, repo = storage }: ProductCustomizeProps) {
+export default function ProductCustomize({ cerrar, hamburger, agregarList, editing = false, initial, repo }: ProductCustomizeProps) {
   const [cantidad, setCantidad] = useState(initial?.cantidad ?? 1)
   const [observaciones, setObservaciones] = useState(initial?.observacion ?? "")
   const [modifiers, setModifiers] = useState<ModifierChoice[]>(() => {
-    const catalog = repo.listModifiers()
+    const catalog = repo.listModifiers() ?? []
     return catalog
       .filter(
         (m) =>
@@ -45,7 +44,7 @@ export default function ProductCustomize({ cerrar, hamburger, agregarList, editi
   if (!hamburger?.name) return null
 
   const modifierSrc = new Map(
-    repo.listModifiers().map((m) => [m.id, m.src])
+    (repo.listModifiers() ?? []).map((m) => [m.id, m.src])
   )
 
   const calcularTotal = () => {

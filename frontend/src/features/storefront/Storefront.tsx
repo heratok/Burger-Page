@@ -54,7 +54,7 @@ function StorefrontContent({ repo }: StorefrontContentProps) {
   const [openForm, setOpenForm] = useState(false)
   const [selectedBurger, setSelectedBurger] = useState<Product | undefined>(
     () => {
-      const first = repo.listProducts().find((p) => p.available)
+      const first = (repo.listProducts() ?? []).find((p) => p.available)
       return first
     }
   )
@@ -63,7 +63,7 @@ function StorefrontContent({ repo }: StorefrontContentProps) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const { items: lisBuy, addItem, updateItem, total: totalCarrito } = useCart()
 
-  const products = repo.listProducts().filter((p) => p.available)
+  const products = (repo.listProducts() ?? []).filter((p) => p.available)
 
   const agregarList = (item: CartItem) => {
     if (editingIndex !== null) {
@@ -85,7 +85,7 @@ function StorefrontContent({ repo }: StorefrontContentProps) {
   const editarItem = (index: number) => {
     const item = lisBuy[index]
     if (!item) return
-    const product = repo.listProducts().find((p) => p.id === item.productId)
+    const product = (repo.listProducts() ?? []).find((p) => p.id === item.productId)
     if (!product) return
     setSelectedBurger(product)
     setEditingIndex(index)

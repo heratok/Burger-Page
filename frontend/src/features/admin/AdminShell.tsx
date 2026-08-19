@@ -91,9 +91,7 @@ export default function AdminShell({ directory = storage }: AdminShellProps) {
     : undefined
 
   const pendingCount = scoped
-    ? scoped
-        .listOrders()
-        .filter((o) => o.status === "new" || o.status === "confirmed").length
+    ? (scoped.listOrders() ?? []).filter((o) => o.status === "new" || o.status === "confirmed").length
     : 0
 
   // In-panel theme (design D1, AD-1): the active restaurant's palette, or the

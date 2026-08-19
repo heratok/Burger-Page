@@ -58,6 +58,10 @@ Two structural needs drove the decision:
   inject fakes without touching `window.localStorage`.
 - **Positive:** the version field makes forward-compatible (future-version)
   reads explicit and safe.
+- **Positive (MT-3):** a scoped repository built for an unknown `restaurantId`
+  returns `undefined` from its reads and no-ops its writes — it never falls
+  back to another tenant's data. Only the un-scoped `storage` singleton keeps
+  the legacy first-restaurant view (`restaurantId === undefined`).
 - **Negative:** all data lives under one key, so a very large dataset
   re-serializes the whole envelope on every write (acceptable for a local-first
   CRM at this scale).
