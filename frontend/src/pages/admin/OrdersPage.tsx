@@ -1,8 +1,29 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { toast } from "sonner"
-import { PackageOpen } from "lucide-react"
+import { Eye, PackageOpen, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   Empty,
   EmptyDescription,
@@ -22,6 +43,17 @@ const STATUS_LABELS: Record<OrderStatus, string> = {
   cancelled: "Cancelado",
 }
 
+/** Status filter tabs: "all" shows every order (AS-1 pending badge unaffected). */
+type OrderFilter = "all" | OrderStatus
+
+const FILTER_TABS: { value: OrderFilter; label: string }[] = [
+  { value: "all", label: "Todos" },
+  { value: "new", label: "Nuevo" },
+  { value: "confirmed", label: "Confirmado" },
+  { value: "delivered", label: "Entregado" },
+  { value: "cancelled", label: "Cancelado" },
+]
+
 /** Transition buttons per status, mirroring ALLOWED_TRANSITIONS (orders.ts). */
 const TRANSITION_ACTIONS: Record<
   OrderStatus,
@@ -39,12 +71,39 @@ const TRANSITION_ACTIONS: Record<
   cancelled: [],
 }
 
+/**
+ * Pure filter used by the inbox: narrows orders by status tab and by a query
+ * that matches the customer name or any item name. Kept pure so the search and
+ * tab behaviour stay deterministic and unit-testable.
+ */
+export function filterOrders(
+  orders: Order[],
+  status: OrderFilter,
+  query: string
+): Order[] {
+  const q = query.trim().toLowerCase()
+  return orders.filter((order) => {
+    if (status !== "all" && order.status !== status) return false
+    if (q === "") return true
+    if (order.customer.nombre.toLowerCase().includes(q)) return true
+    return order.items.some((item) => item.name.toLowerCase().includes(q))
+  })
+}
+
 interface OrdersPageProps {
   repo?: RestaurantRepository
 }
 
 export default function OrdersPage({ repo = storage }: OrdersPageProps) {
   const [orders, setOrders] = useState<Order[]>(() => repo.listOrders())
+  const [statusFilter, setStatusFilter] = useState<OrderFilter>("all")
+  const [query, setQuery] = useState("")
+  const [detail, setDetail] = useState<Order | null>(null)
+
+  const visibleOrders = useMemo(
+    () => filterOrders(orders, statusFilter, query),
+    [orders, statusFilter, query]
+  )
 
   const transition = (order: Order, next: OrderStatus) => {
     if (!repo.updateOrderStatus(order.id, next)) {
@@ -85,54 +144,187 @@ export default function OrdersPage({ repo = storage }: OrdersPageProps) {
           </EmptyHeader>
         </Empty>
       ) : (
-        <ul
-          role="list"
-          aria-label="Lista de pedidos"
-          className="flex flex-col gap-2"
-        >
-          {orders.map((order) => {
-            const actions = TRANSITION_ACTIONS[order.status]
-            return (
-              <li
-                key={order.id}
-                className="flex flex-wrap items-center gap-3 rounded-lg border border-border-subtle bg-card p-3"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-text-primary">
-                    <span className="font-bold">#{order.id}</span>
-                    <span className="text-text-secondary">
-                      {order.customer.nombre} · {order.items.length}{" "}
-                      {order.items.length === 1 ? "producto" : "productos"}
-                    </span>
-                  </p>
-                  <p className="mt-0.5 text-sm text-text-secondary">
-                    {new Date(order.createdAt).toLocaleString("es-CO", {
-                      dateStyle: "short",
-                      timeStyle: "short",
-                    })}
-                  </p>
-                </div>
-                <span className="text-base font-bold text-primary">
-                  {formatCOP(order.total)}
-                </span>
-                <Badge variant={order.status === "cancelled" ? "secondary" : "default"}>
-                  {STATUS_LABELS[order.status]}
-                </Badge>
-                {actions.map(({ to, label, variant }) => (
-                  <Button
-                    key={to}
-                    variant={variant}
-                    size="sm"
-                    onClick={() => transition(order, to)}
-                  >
-                    {label}
-                  </Button>
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Tabs
+              value={statusFilter}
+              onValueChange={(value) => setStatusFilter(value as OrderFilter)}
+            >
+              <TabsList>
+                {FILTER_TABS.map((tab) => (
+                  <TabsTrigger key={tab.value} value={tab.value}>
+                    {tab.label}
+                  </TabsTrigger>
                 ))}
-              </li>
-            )
-          })}
-        </ul>
+              </TabsList>
+            </Tabs>
+            <div className="relative w-full sm:w-64">
+              <Search
+                aria-hidden="true"
+                className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
+              />
+              <Input
+                aria-label="Buscar pedidos"
+                placeholder="Buscar por cliente o producto…"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                className="pl-8"
+              />
+            </div>
+          </div>
+
+          {visibleOrders.length === 0 ? (
+            <p className="py-10 text-center text-sm text-text-secondary">
+              No hay pedidos que coincidan con el filtro.
+            </p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Pedido</TableHead>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Fecha</TableHead>
+                  <TableHead>Total</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {visibleOrders.map((order) => {
+                  const actions = TRANSITION_ACTIONS[order.status]
+                  return (
+                    <TableRow key={order.id}>
+                      <TableCell className="font-medium">#{order.id}</TableCell>
+                      <TableCell>{order.customer.nombre}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {new Date(order.createdAt).toLocaleString("es-CO", {
+                          dateStyle: "short",
+                          timeStyle: "short",
+                        })}
+                      </TableCell>
+                      <TableCell className="font-semibold text-primary">
+                        {formatCOP(order.total)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={order.status === "cancelled" ? "secondary" : "default"}
+                        >
+                          {STATUS_LABELS[order.status]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            aria-label={`Ver detalle del pedido #${order.id}`}
+                            onClick={() => setDetail(order)}
+                          >
+                            <Eye aria-hidden="true" />
+                            Ver detalle
+                          </Button>
+                          {actions.map(({ to, label, variant }) => (
+                            <Button
+                              key={to}
+                              variant={variant}
+                              size="sm"
+                              onClick={() => transition(order, to)}
+                            >
+                              {label}
+                            </Button>
+                          ))}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </div>
       )}
+
+      <OrderDetailDialog order={detail} onClose={() => setDetail(null)} />
     </section>
+  )
+}
+
+/** Order detail dialog: items, customer, payment and notes (design Slice 3). */
+function OrderDetailDialog({
+  order,
+  onClose,
+}: {
+  order: Order | null
+  onClose: () => void
+}) {
+  return (
+    <Dialog open={order !== null} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>
+            Pedido #{order?.id ?? ""}
+          </DialogTitle>
+          <DialogDescription>
+            Detalle del pedido recibido en la tienda.
+          </DialogDescription>
+        </DialogHeader>
+
+        {order && (
+          <div className="flex flex-col gap-4 text-sm">
+            <div>
+              <h3 className="mb-1 font-medium text-text-primary">Productos</h3>
+              <ul className="flex flex-col gap-1">
+                {order.items.map((item) => (
+                  <li
+                    key={item.id}
+                    className="flex items-baseline justify-between gap-2"
+                  >
+                    <span className="text-text-primary">
+                      {item.cantidad} × {item.name}
+                      {item.observacion ? ` (${item.observacion})` : ""}
+                    </span>
+                    <span className="font-medium">{formatCOP(item.total)}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 border-t pt-2 text-right font-semibold text-text-primary">
+                Total: {formatCOP(order.total)}
+              </p>
+            </div>
+
+            <div>
+              <h3 className="mb-1 font-medium text-text-primary">Cliente</h3>
+              <p>{order.customer.nombre}</p>
+              <p className="text-text-secondary">
+                {order.customer.telefono} · {order.customer.direccion},{" "}
+                {order.customer.barrio}
+              </p>
+            </div>
+
+            <div>
+              <h3 className="mb-1 font-medium text-text-primary">Pago</h3>
+              <p>
+                {order.metodo}
+                {order.pagoCon ? ` · ${order.pagoCon}` : ""}
+              </p>
+            </div>
+
+            {(order.comentario || order.items.some((i) => i.observacion)) && (
+              <div>
+                <h3 className="mb-1 font-medium text-text-primary">Notas</h3>
+                {order.comentario && <p>{order.comentario}</p>}
+                {order.items
+                  .filter((i) => i.observacion)
+                  .map((i) => (
+                    <p key={i.id}>
+                      {i.name}: {i.observacion}
+                    </p>
+                  ))}
+              </div>
+            )}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   )
 }

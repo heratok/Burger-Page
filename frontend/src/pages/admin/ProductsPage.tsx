@@ -1,10 +1,24 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { toast } from "sonner"
-import { PackageOpen, Pencil, Plus, Trash2 } from "lucide-react"
+import { PackageOpen, Pencil, Plus, Search, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import {
   Dialog,
   DialogContent,
@@ -14,7 +28,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import {
@@ -35,17 +48,52 @@ import {
   type ProductFormValues,
 } from "@/lib/admin-validation"
 
+/** Availability filter tabs: "all" shows every product. */
+type AvailabilityFilter = "all" | "available" | "hidden"
+
+const FILTER_TABS: { value: AvailabilityFilter; label: string }[] = [
+  { value: "all", label: "Todos" },
+  { value: "available", label: "Disponible" },
+  { value: "hidden", label: "Oculto" },
+]
+
+/**
+ * Pure filter: narrows products by availability tab and by a name query.
+ * Kept pure so the search/filter behaviour stays deterministic and testable.
+ */
+export function filterProducts(
+  products: Product[],
+  availability: AvailabilityFilter,
+  query: string
+): Product[] {
+  const q = query.trim().toLowerCase()
+  return products.filter((product) => {
+    if (availability === "available" && !product.available) return false
+    if (availability === "hidden" && product.available) return false
+    if (q === "") return true
+    return product.name.toLowerCase().includes(q)
+  })
+}
+
 interface ProductsPageProps {
   repo?: RestaurantRepository
 }
 
 export default function ProductsPage({ repo = storage }: ProductsPageProps) {
   const [products, setProducts] = useState<Product[]>(() => repo.listProducts())
+  const [availabilityFilter, setAvailabilityFilter] =
+    useState<AvailabilityFilter>("all")
+  const [query, setQuery] = useState("")
   const [creating, setCreating] = useState(false)
   const [editing, setEditing] = useState<Product | null>(null)
   const [deleting, setDeleting] = useState<Product | null>(null)
 
   const dialogOpen = creating || editing !== null
+
+  const visibleProducts = useMemo(
+    () => filterProducts(products, availabilityFilter, query),
+    [products, availabilityFilter, query]
+  )
 
   const closeDialog = () => {
     setCreating(false)
@@ -120,62 +168,109 @@ export default function ProductsPage({ repo = storage }: ProductsPageProps) {
           </EmptyHeader>
         </Empty>
       ) : (
-        <ul
-          role="list"
-          aria-label="Lista de productos"
-          className="flex flex-col gap-2"
-        >
-          {products.map((product) => (
-            <li
-              key={product.id}
-              className="flex flex-wrap items-center gap-3 rounded-lg border border-border-subtle bg-card p-3"
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Tabs
+              value={availabilityFilter}
+              onValueChange={(value) =>
+                setAvailabilityFilter(value as AvailabilityFilter)
+              }
             >
-              <img
-                src={product.src}
-                alt=""
-                className="size-10 shrink-0 rounded-md object-cover"
+              <TabsList>
+                {FILTER_TABS.map((tab) => (
+                  <TabsTrigger key={tab.value} value={tab.value}>
+                    {tab.label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+            <div className="relative w-full sm:w-64">
+              <Search
+                aria-hidden="true"
+                className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
               />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-text-primary">
-                  {product.name}
-                </p>
-                <p className="text-sm text-text-secondary">
-                  {formatCOP(product.price)}
-                </p>
-              </div>
-              <Badge variant={product.available ? "default" : "secondary"}>
-                {product.available ? "Disponible" : "Oculto"}
-              </Badge>
-              <Button
-                variant="outline"
-                size="sm"
-                aria-pressed={product.available}
-                aria-label={`Alternar disponibilidad de ${product.name}`}
-                onClick={() => toggleAvailability(product)}
-              >
-                {product.available ? "Ocultar" : "Mostrar"}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                aria-label={`Editar ${product.name}`}
-                onClick={() => setEditing(product)}
-              >
-                <Pencil />
-                Editar
-              </Button>
-              <Button
-                variant="destructive"
-                size="sm"
-                aria-label={`Eliminar ${product.name}`}
-                onClick={() => setDeleting(product)}
-              >
-                <Trash2 />
-                Eliminar
-              </Button>
-            </li>
-          ))}
-        </ul>
+              <Input
+                aria-label="Buscar productos"
+                placeholder="Buscar por nombre…"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                className="pl-8"
+              />
+            </div>
+          </div>
+
+          {visibleProducts.length === 0 ? (
+            <p className="py-10 text-center text-sm text-text-secondary">
+              No hay productos que coincidan con el filtro.
+            </p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Producto</TableHead>
+                  <TableHead>Precio</TableHead>
+                  <TableHead>Disponibilidad</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {visibleProducts.map((product) => (
+                  <TableRow key={product.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <img
+                          src={product.src}
+                          alt=""
+                          className="size-10 shrink-0 rounded-md object-cover"
+                        />
+                        <span className="font-medium">{product.name}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>{formatCOP(product.price)}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={product.available ? "default" : "secondary"}
+                      >
+                        {product.available ? "Disponible" : "Oculto"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          aria-pressed={product.available}
+                          aria-label={`Alternar disponibilidad de ${product.name}`}
+                          onClick={() => toggleAvailability(product)}
+                        >
+                          {product.available ? "Ocultar" : "Mostrar"}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          aria-label={`Editar ${product.name}`}
+                          onClick={() => setEditing(product)}
+                        >
+                          <Pencil />
+                          Editar
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          aria-label={`Eliminar ${product.name}`}
+                          onClick={() => setDeleting(product)}
+                        >
+                          <Trash2 />
+                          Eliminar
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </div>
       )}
 
       {dialogOpen && (

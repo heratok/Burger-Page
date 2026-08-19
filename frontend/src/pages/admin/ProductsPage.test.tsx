@@ -51,21 +51,91 @@ function createMockRepo(products: Product[] = [...initialProducts]) {
   return { repo, state }
 }
 
+/** A product row exposes the product name as part of its accessible name. */
+function productRow(name: string): HTMLElement {
+  return screen.getByRole("row", { name: new RegExp(name) })
+}
+
 describe("ProductsPage", () => {
-  it("lista todos los productos sembrados con su precio en COP", () => {
+  it("lista todos los productos en una tabla con su precio en COP", () => {
     const { repo } = createMockRepo()
     render(<ProductsPage repo={repo} />)
 
     expect(screen.getByRole("heading", { name: "Productos" })).toBeTruthy()
     for (const product of initialProducts) {
-      expect(screen.getByText(product.name)).toBeTruthy()
+      expect(productRow(product.name)).toBeTruthy()
     }
     // Misisipi y MegaBurger comparten precio ($27.000) → contar coincidencias.
     expect(screen.getAllByText("$27.000")).toHaveLength(2)
     expect(screen.getByText("$22.900")).toBeTruthy()
     expect(screen.getByText("$27.900")).toBeTruthy()
     expect(screen.getByText("$25.000")).toBeTruthy()
-    expect(screen.getAllByRole("listitem")).toHaveLength(initialProducts.length)
+    // One header row + one row per product.
+    expect(screen.getAllByRole("row")).toHaveLength(initialProducts.length + 1)
+  })
+
+  describe("search", () => {
+    it("filtra los productos por nombre", () => {
+      const { repo } = createMockRepo()
+      render(<ProductsPage repo={repo} />)
+
+      fireEvent.change(screen.getByPlaceholderText(/buscar/i), {
+        target: { value: "Misisipi" },
+      })
+
+      expect(productRow("Misisipi")).toBeTruthy()
+      expect(screen.queryByRole("row", { name: /La Pollo/ })).toBeNull()
+    })
+
+    it("muestra la tabla vacía cuando la búsqueda no coincide", () => {
+      const { repo } = createMockRepo()
+      render(<ProductsPage repo={repo} />)
+
+      fireEvent.change(screen.getByPlaceholderText(/buscar/i), {
+        target: { value: "Zzz" },
+      })
+
+      expect(screen.queryByRole("row", { name: /Misisipi/ })).toBeNull()
+      expect(screen.queryByRole("row", { name: /La Pollo/ })).toBeNull()
+    })
+  })
+
+  describe("availability filter", () => {
+    const mixed: Product[] = [
+      { ...initialProducts[0], id: "p1", name: "Misisipi", available: true },
+      { ...initialProducts[1], id: "p2", name: "La Pollo", available: false },
+    ]
+
+    it("muestra solo productos ocultos con el filtro Oculto", () => {
+      const { repo } = createMockRepo(mixed)
+      render(<ProductsPage repo={repo} />)
+
+      fireEvent.click(screen.getByRole("tab", { name: /oculto/i }))
+
+      expect(productRow("La Pollo")).toBeTruthy()
+      expect(screen.queryByRole("row", { name: /Misisipi/ })).toBeNull()
+    })
+
+    it("muestra solo productos disponibles con el filtro Disponible", () => {
+      const { repo } = createMockRepo(mixed)
+      render(<ProductsPage repo={repo} />)
+
+      fireEvent.click(screen.getByRole("tab", { name: /disponible/i }))
+
+      expect(productRow("Misisipi")).toBeTruthy()
+      expect(screen.queryByRole("row", { name: /La Pollo/ })).toBeNull()
+    })
+
+    it("vuelve a mostrar todos con el filtro Todos", () => {
+      const { repo } = createMockRepo(mixed)
+      render(<ProductsPage repo={repo} />)
+
+      fireEvent.click(screen.getByRole("tab", { name: /oculto/i }))
+      fireEvent.click(screen.getByRole("tab", { name: /todos/i }))
+
+      expect(productRow("Misisipi")).toBeTruthy()
+      expect(productRow("La Pollo")).toBeTruthy()
+    })
   })
 
   it("oculta un producto al alternar su disponibilidad y persiste el cambio", () => {
@@ -79,7 +149,7 @@ describe("ProductsPage", () => {
     expect(repo.saveProduct).toHaveBeenCalledWith(
       expect.objectContaining({ id: "p1", name: "Misisipi", available: false })
     )
-    expect(screen.getByText("Oculto")).toBeTruthy()
+    expect(within(productRow("Misisipi")).getByText("Oculto")).toBeTruthy()
   })
 
   it("vuelve a mostrar un producto oculto al alternar de nuevo", () => {
@@ -96,7 +166,7 @@ describe("ProductsPage", () => {
     expect(repo.saveProduct).toHaveBeenCalledWith(
       expect.objectContaining({ id: "p1", available: true })
     )
-    const row = screen.getByText("Misisipi").closest("li") as HTMLElement
+    const row = productRow("Misisipi")
     expect(within(row).getByText("Disponible")).toBeTruthy()
   })
 
@@ -131,8 +201,8 @@ describe("ProductsPage", () => {
 
     expect(repo.deleteProduct).toHaveBeenCalledWith("p1")
     expect(state.products.some((p) => p.id === "p1")).toBe(false)
-    expect(screen.queryByText("Misisipi")).toBeNull()
-    expect(screen.getAllByRole("listitem")).toHaveLength(initialProducts.length - 1)
+    expect(screen.queryByRole("row", { name: /Misisipi/ })).toBeNull()
+    expect(screen.getAllByRole("row")).toHaveLength(initialProducts.length)
   })
 
   it("cancela la eliminación y conserva el producto", () => {
@@ -144,7 +214,7 @@ describe("ProductsPage", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: "Cancelar" }))
 
     expect(repo.deleteProduct).not.toHaveBeenCalled()
-    expect(screen.getByText("Misisipi")).toBeTruthy()
+    expect(productRow("Misisipi")).toBeTruthy()
   })
 
   it("crea un producto nuevo y lo agrega a la lista", async () => {
@@ -172,7 +242,7 @@ describe("ProductsPage", () => {
       )
     )
     expect(state.products.some((p) => p.name === "Test Burger")).toBe(true)
-    expect(screen.getByText("Test Burger")).toBeTruthy()
+    expect(productRow("Test Burger")).toBeTruthy()
     expect(screen.getByText("$12.345")).toBeTruthy()
   })
 
