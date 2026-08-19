@@ -1,5 +1,4 @@
 import type { RestaurantPalette } from "./domain"
-import { DEFAULT_PALETTE } from "../data/data"
 
 export interface RgbColor {
   r: number
@@ -143,7 +142,7 @@ function steppedBlend(base: string, from: string, to: string, startRatio: number
  * as CSS variables on `:root` (TH-1). Each var is written under its raw name
  * (`--accent`, `--bg-base`, ...) consumed by the Tailwind utilities through the
  * `@theme inline` indirection, plus its `--color-*` twin consumed directly by
- * custom CSS and the legacy applyAccent contract.
+ * custom CSS.
  *
  * destructive/success/warning are NOT written here — they stay fixed in CSS.
  */
@@ -222,13 +221,4 @@ export function applyTheme(palette: RestaurantPalette): void {
     root.style.setProperty(name, value)
     root.style.setProperty(`--color-${name.slice(2)}`, value)
   }
-}
-
-/**
- * Legacy single-accent entry point: applies the full default palette with the
- * given accent (and primary following it). Kept so existing consumers and
- * tests keep working while the app migrates to per-restaurant palettes.
- */
-export function applyAccent(hex: string): void {
-  applyTheme({ ...DEFAULT_PALETTE, accent: hex, primary: hex })
 }
