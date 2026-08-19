@@ -3,11 +3,10 @@ import { useParams } from "react-router"
 import { toast } from "sonner"
 import { Utensils } from "lucide-react"
 import CardBurger from "../components/Card"
-import { initialProducts } from "../data/data"
 import { storage } from "../lib/storage"
 import { useCart } from "../store/cart-context"
 import type { CartItem, Product } from "../lib/domain"
-import type { RestaurantRepository } from "../lib/repository"
+import type { DirectoryRepository, RestaurantRepository } from "../lib/repository"
 import { ThemeScope } from "../components/ThemeScope"
 import NotFoundState from "../components/NotFoundState"
 import Additions from "./Additions"
@@ -19,14 +18,20 @@ import Form from "./Form"
 import LoadingPage from "../components/LoadingPage"
 
 /**
- * Scoped storefront (design D4, spec ST-1/ST-2, RD-2): resolves the active
- * restaurant by slug, applies its palette and serves every data read through
- * the scoped repository. Unknown slugs render a not-found state linking back
- * to the directory.
+ * Scoped storefront (design D4, spec ST-1/ST-2/ST-3, RD-2): resolves the
+ * active restaurant by slug through an injectable directory seam (defaulting
+ * to the `storage` singleton), applies its palette and serves every data read
+ * through the scoped repository. Unknown slugs render a not-found state
+ * linking back to the directory.
  */
-export default function Storefront() {
+interface StorefrontProps {
+  /** Directory seam (spec ST-3); tests inject a fake, production uses the singleton. */
+  directory?: DirectoryRepository
+}
+
+export default function Storefront({ directory = storage }: StorefrontProps) {
   const { slug } = useParams()
-  const restaurant = storage.getBySlug(slug ?? "")
+  const restaurant = directory.getBySlug(slug ?? "")
 
   if (!restaurant) {
     return <NotFoundState />
@@ -34,7 +39,7 @@ export default function Storefront() {
 
   return (
     <ThemeScope palette={restaurant.palette}>
-      <StorefrontContent repo={storage.getRepositoryFor(restaurant.id)} />
+      <StorefrontContent repo={directory.getRepositoryFor(restaurant.id)} />
     </ThemeScope>
   )
 }
@@ -47,10 +52,12 @@ function StorefrontContent({ repo }: StorefrontContentProps) {
   const [click, setClick] = useState(false)
   const [ver, setVer] = useState(false)
   const [openForm, setOpenForm] = useState(false)
-  const [selectedBurger, setSelectedBurger] = useState<Product>(() => {
-    const first = repo.listProducts().find((p) => p.available)
-    return first ?? initialProducts[0]
-  })
+  const [selectedBurger, setSelectedBurger] = useState<Product | undefined>(
+    () => {
+      const first = repo.listProducts().find((p) => p.available)
+      return first
+    }
+  )
   const [texto, setTexto] = useState("")
   const [loading, setLoading] = useState(true)
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
@@ -190,7 +197,7 @@ function StorefrontContent({ repo }: StorefrontContentProps) {
         <Nav mostrar={mostrar} cantidad={lisBuy.length} total={totalCarrito} />
       )}
 
-      {click && (
+      {click && selectedBurger && (
         <Additions
           agregarList={agregarList}
           cerrar={cerrar}
