@@ -1,4 +1,4 @@
-import type { Order, OrderStatus } from "./domain"
+import type { OrderStatus } from "./domain"
 
 /**
  * Allowed order status transitions (design contract):
@@ -38,40 +38,4 @@ export function createUniqueOrderId(existing: Set<number>): number {
     if (!existing.has(id)) return id
   }
   throw new Error("No free order ids available")
-}
-
-export interface SalesTotals {
-  count: number
-  revenue: number
-}
-
-export interface SalesMetrics {
-  today: SalesTotals
-  allTime: SalesTotals
-}
-
-/**
- * Sales metrics for the current calendar day and all time.
- * Counts confirmed|delivered orders; cancelled orders are always excluded.
- */
-export function computeSalesMetrics(orders: Order[], now: Date): SalesMetrics {
-  const counted = orders.filter(
-    (o) => o.status === "confirmed" || o.status === "delivered"
-  )
-  const isSameDay = (iso: string) => {
-    const date = new Date(iso)
-    return (
-      date.getFullYear() === now.getFullYear() &&
-      date.getMonth() === now.getMonth() &&
-      date.getDate() === now.getDate()
-    )
-  }
-  const totals = (list: Order[]): SalesTotals => ({
-    count: list.length,
-    revenue: list.reduce((sum, o) => sum + o.total, 0),
-  })
-  return {
-    today: totals(counted.filter((o) => isSameDay(o.createdAt))),
-    allTime: totals(counted),
-  }
 }

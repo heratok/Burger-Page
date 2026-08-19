@@ -2,10 +2,9 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import {
   ALLOWED_TRANSITIONS,
   canTransition,
-  computeSalesMetrics,
   createUniqueOrderId,
 } from "./orders"
-import type { Order, OrderStatus } from "./domain"
+import type { OrderStatus } from "./domain"
 
 const STATUSES: OrderStatus[] = ["new", "confirmed", "delivered", "cancelled"]
 
@@ -69,49 +68,5 @@ describe("createUniqueOrderId", () => {
       if (id !== 123456) used.add(id)
     }
     expect(createUniqueOrderId(used)).toBe(123456)
-  })
-})
-
-function makeOrder(partial: Partial<Order> & Pick<Order, "id" | "createdAt">): Order {
-  return {
-    items: [],
-    customer: { nombre: "Ana", telefono: "3001234567", direccion: "Calle 1", barrio: "Centro" },
-    metodo: "Efectivo",
-    total: 0,
-    status: "new",
-    ...partial,
-  }
-}
-
-describe("computeSalesMetrics", () => {
-  const now = new Date("2026-08-16T12:00:00")
-
-  it("counts only confirmed|delivered and excludes cancelled", () => {
-    const orders = [
-      makeOrder({ id: 1, createdAt: "2026-08-16T09:00:00", status: "confirmed", total: 30000 }),
-      makeOrder({ id: 2, createdAt: "2026-08-16T10:00:00", status: "delivered", total: 25000 }),
-      makeOrder({ id: 3, createdAt: "2026-08-16T11:00:00", status: "cancelled", total: 99999 }),
-      makeOrder({ id: 4, createdAt: "2026-08-15T23:00:00", status: "confirmed", total: 10000 }),
-    ]
-    const metrics = computeSalesMetrics(orders, now)
-    expect(metrics.today).toEqual({ count: 2, revenue: 55000 })
-    expect(metrics.allTime).toEqual({ count: 3, revenue: 65000 })
-  })
-
-  it("returns zeros for an empty order list", () => {
-    const metrics = computeSalesMetrics([], now)
-    expect(metrics.today).toEqual({ count: 0, revenue: 0 })
-    expect(metrics.allTime).toEqual({ count: 0, revenue: 0 })
-  })
-
-  it("respects the calendar-day boundary (00:00 today counts, 23:59 yesterday does not)", () => {
-    const orders = [
-      makeOrder({ id: 1, createdAt: "2026-08-16T00:00:00", status: "confirmed", total: 1000 }),
-      makeOrder({ id: 2, createdAt: "2026-08-15T23:59:59", status: "confirmed", total: 2000 }),
-      makeOrder({ id: 3, createdAt: "2026-08-16T08:00:00", status: "cancelled", total: 3000 }),
-    ]
-    const metrics = computeSalesMetrics(orders, now)
-    expect(metrics.today).toEqual({ count: 1, revenue: 1000 })
-    expect(metrics.allTime).toEqual({ count: 2, revenue: 3000 })
   })
 })
