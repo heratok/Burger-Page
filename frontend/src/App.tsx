@@ -14,7 +14,6 @@ import AdminShell from "./pages/admin/AdminShell"
 import AdminIndex from "./pages/admin/AdminIndex"
 import ProductsPage from "./pages/admin/ProductsPage"
 import OrdersPage from "./pages/admin/OrdersPage"
-import SalesPage from "./pages/admin/SalesPage"
 import ConfigPage from "./pages/admin/ConfigPage"
 import NotFoundState from "./components/NotFoundState"
 import { DefaultThemeScope } from "./components/ThemeScope"
@@ -80,7 +79,6 @@ function AppShell() {
             <Route index element={<AdminIndex />} />
             <Route path="products" element={<ScopedProducts />} />
             <Route path="orders" element={<ScopedOrders />} />
-            <Route path="sales" element={<ScopedSales />} />
             <Route path="config" element={<ScopedConfig />} />
             <Route path="restaurants" element={<RestaurantsPage />} />
             <Route path="restaurants/new" element={<CreateRestaurantPage />} />
@@ -133,12 +131,6 @@ function ScopedOrders() {
   const repo = useScopedRepo()
   if (!repo) return <NotFoundState />
   return <OrdersPage repo={repo} />
-}
-
-function ScopedSales() {
-  const repo = useScopedRepo()
-  if (!repo) return <NotFoundState />
-  return <SalesPage repo={repo} />
 }
 
 function ScopedConfig() {

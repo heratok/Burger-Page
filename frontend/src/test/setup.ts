@@ -14,3 +14,15 @@ Object.defineProperty(window, "matchMedia", {
     dispatchEvent: () => false,
   }),
 })
+
+// jsdom does not implement ResizeObserver, which Recharts v3's
+// ResponsiveContainer uses to measure its parent. A no-op keeps the chart
+// components (ChartContainer) from throwing when the dashboard mounts in tests.
+class ResizeObserverMock {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+if (typeof globalThis.ResizeObserver === "undefined") {
+  globalThis.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver
+}
