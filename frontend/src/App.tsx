@@ -10,7 +10,8 @@ import {
 } from "react-router"
 import Storefront from "./pages/Storefront"
 import AdminGate from "./pages/admin/AdminGate"
-import AdminLayout from "./pages/admin/AdminLayout"
+import AdminShell from "./pages/admin/AdminShell"
+import AdminIndex from "./pages/admin/AdminIndex"
 import ProductsPage from "./pages/admin/ProductsPage"
 import OrdersPage from "./pages/admin/OrdersPage"
 import SalesPage from "./pages/admin/SalesPage"
@@ -20,7 +21,6 @@ import { DefaultThemeScope } from "./components/ThemeScope"
 import { Toaster } from "@/components/ui/sonner"
 import { CartProvider } from "./store/CartContext"
 import { AdminProvider } from "./store/AdminContext"
-import { useAdmin } from "./store/admin-context"
 import RestaurantsPage from "./pages/superadmin/RestaurantsPage"
 import CreateRestaurantPage from "./pages/superadmin/CreateRestaurantPage"
 import EditRestaurantPage from "./pages/superadmin/EditRestaurantPage"
@@ -72,14 +72,12 @@ function AppShell() {
           <Route
             path="/admin"
             element={
-              <DefaultThemeScope>
-                <AdminGate>
-                  <AdminLayout />
-                </AdminGate>
-              </DefaultThemeScope>
+              <AdminGate>
+                <AdminShell />
+              </AdminGate>
             }
           >
-            <Route index element={<AdminHomeRedirect />} />
+            <Route index element={<AdminIndex />} />
             <Route path="products" element={<ScopedProducts />} />
             <Route path="orders" element={<ScopedOrders />} />
             <Route path="sales" element={<ScopedSales />} />
@@ -114,23 +112,12 @@ function LegacyStorefrontRedirect() {
 }
 
 /**
- * Home redirect inside the unified admin: the default section depends on the
- * session role (super → restaurant management, restaurant → its products).
- * Without a session the gate shows the login prompt and this never renders.
- */
-function AdminHomeRedirect() {
-  const { session } = useAdmin()
-  if (session?.mode === "super") return <Navigate to="/admin/restaurants" replace />
-  if (session?.mode === "restaurant") return <Navigate to="/admin/products" replace />
-  return null
-}
-
-/**
- * Scoped repository handed to section pages via AdminLayout's Outlet context
+ * Scoped repository handed to section pages via AdminShell's Outlet context
  * (design D4): every /admin section reads the active restaurant's data through
  * these wrappers, so a restaurant admin only sees its own tenant. Undefined
- * means the section has no scoped restaurant (e.g. zero restaurants) and
- * renders the not-found state instead of crashing.
+ * means the section has no scoped restaurant (e.g. super at the global
+ * summary, or a deleted selection) and renders the not-found state instead of
+ * crashing.
  */
 function useScopedRepo(): RestaurantRepository | undefined {
   return useOutletContext<RestaurantRepository | undefined>()

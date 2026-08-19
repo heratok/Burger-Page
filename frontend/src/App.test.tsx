@@ -151,11 +151,12 @@ describe("App unified admin at /admin (AD-1, SA-1)", () => {
     })
     fireEvent.click(screen.getByRole("button", { name: "Ingresar" }))
 
-    expect(await screen.findByRole("heading", { name: "Productos" })).toBeTruthy()
+    expect(await screen.findByRole("heading", { name: "Resumen" })).toBeTruthy()
     expect(screen.getByText("PIZZA ROMA")).toBeTruthy()
-    expect(screen.getByText("Pizza Margherita")).toBeTruthy()
-    expect(screen.queryByText("Misisipi")).toBeNull()
+    expect(screen.queryByRole("heading", { name: "Restaurantes" })).toBeNull()
     expect(screen.queryByRole("link", { name: "Restaurantes" })).toBeNull()
+    // Restaurant nav has no Ventas entry (AS-1).
+    expect(screen.queryByRole("link", { name: /ventas/i })).toBeNull()
     // The admin brand is not a link out of the panel (no escape to / or /admin).
     expect(screen.queryByRole("link", { name: /pizza roma/i })).toBeNull()
   })
@@ -168,14 +169,18 @@ describe("App unified admin at /admin (AD-1, SA-1)", () => {
     })
     fireEvent.click(screen.getByRole("button", { name: "Ingresar" }))
 
-    expect(await screen.findByRole("heading", { name: "Restaurantes" })).toBeTruthy()
+    // Super lands on the global summary (SG-1 / D2), not the restaurants list.
+    expect(
+      await screen.findByRole("heading", { name: "Resumen global" })
+    ).toBeTruthy()
   })
 
-  it("redirects /admin to the restaurant list with a super session", () => {
+  it("a super session at /admin lands on the global summary (SG-1)", () => {
     sessionStorage.setItem(SUPER_ADMIN_GRANT_KEY, "1")
     renderAt("#/admin")
 
-    expect(screen.getByRole("heading", { name: "Restaurantes" })).toBeTruthy()
+    expect(screen.getByRole("heading", { name: "Resumen global" })).toBeTruthy()
+    expect(screen.queryByRole("heading", { name: "Restaurantes" })).toBeNull()
   })
 
   it("a restaurant session opens only its own sections at /admin (AD-1 Scoped)", () => {
@@ -187,14 +192,17 @@ describe("App unified admin at /admin (AD-1, SA-1)", () => {
     expect(screen.queryByRole("link", { name: "Restaurantes" })).toBeNull()
   })
 
-  it("a super session sees every section including the restaurant admin sections", () => {
+  it("a super session sees the super sections (Resumen global/Restaurantes/Contraseña) (AS-1)", () => {
     sessionStorage.setItem(SUPER_ADMIN_GRANT_KEY, "1")
     renderAt("#/admin/restaurants")
 
     expect(screen.getByRole("heading", { name: "Restaurantes" })).toBeTruthy()
-    expect(screen.getByRole("link", { name: "Productos" })).toBeTruthy()
-    expect(screen.getByRole("link", { name: "Configuración" })).toBeTruthy()
+    expect(screen.getByRole("link", { name: "Resumen global" })).toBeTruthy()
+    expect(screen.getByRole("link", { name: "Restaurantes" })).toBeTruthy()
     expect(screen.getByRole("link", { name: "Contraseña" })).toBeTruthy()
+    // Restaurant-scoped sections are only in scope after the switcher selects one.
+    expect(screen.queryByRole("link", { name: "Productos" })).toBeNull()
+    expect(screen.queryByRole("link", { name: "Configuración" })).toBeNull()
   })
 
   it("keeps a granted restaurant session across reloads (AD-1 Reload)", () => {
@@ -252,7 +260,7 @@ describe("App unified admin at /admin (AD-1, SA-1)", () => {
       target: { value: "roma" },
     })
     fireEvent.click(screen.getByRole("button", { name: "Ingresar" }))
-    await screen.findByRole("heading", { name: "Productos" })
+    await screen.findByRole("heading", { name: "Resumen" })
 
     navigateTo("#/admin/config")
     const accent = await screen.findByLabelText(/color de acento/i)

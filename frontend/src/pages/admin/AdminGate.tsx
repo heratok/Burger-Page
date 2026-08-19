@@ -5,6 +5,7 @@ import { CircleAlert, LockKeyhole } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field"
+import { DefaultThemeScope } from "@/components/ThemeScope"
 import { storage } from "@/lib/storage"
 import type { DirectoryRepository } from "@/lib/repository"
 import { useAdmin } from "@/store/admin-context"
@@ -54,7 +55,8 @@ export default function AdminGate({ directory = storage, children }: AdminGatePr
   }
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-sm flex-col items-center justify-center gap-6 px-4">
+    <DefaultThemeScope>
+      <div className="mx-auto flex min-h-screen max-w-sm flex-col items-center justify-center gap-6 px-4">
       <div className="flex flex-col items-center gap-3 text-center">
         <span className="inline-flex size-12 items-center justify-center rounded-full bg-accent-soft text-accent">
           <LockKeyhole className="size-6" aria-hidden="true" />
@@ -106,6 +108,7 @@ export default function AdminGate({ directory = storage, children }: AdminGatePr
           Ingresar
         </Button>
       </form>
-    </div>
+      </div>
+    </DefaultThemeScope>
   )
 }
