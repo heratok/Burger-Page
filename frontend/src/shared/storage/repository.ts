@@ -12,24 +12,29 @@ import type {
  * Repository contract for the restaurant CRM (design contract, exact).
  * One local-first implementation (LocalStorageRepository) today; the
  * interface is the backend-swap seam.
+ *
+ * Scoped reads return `undefined` on a scoped miss (spec MT-3) — a repository
+ * built for an unknown `restaurantId` never falls back to another tenant's
+ * data; writes become no-ops (`saveOrder` → `undefined`, `updateOrderStatus`
+ * → `false`).
  */
 export interface RestaurantRepository {
-  getConfig(): RestaurantConfig
+  getConfig(): RestaurantConfig | undefined
   saveConfig(config: RestaurantConfig): void
 
-  getPalette(): RestaurantPalette
+  getPalette(): RestaurantPalette | undefined
   savePalette(patch: Partial<RestaurantPalette>): void
 
-  listProducts(): Product[]
+  listProducts(): Product[] | undefined
   saveProduct(product: Product): void
   deleteProduct(id: string): void
 
-  listModifiers(): Modifier[]
+  listModifiers(): Modifier[] | undefined
   saveModifier(modifier: Modifier): void
   deleteModifier(id: string): void
 
-  listOrders(): Order[]
-  saveOrder(order: Omit<Order, "id" | "status" | "createdAt">): Order
+  listOrders(): Order[] | undefined
+  saveOrder(order: Omit<Order, "id" | "status" | "createdAt">): Order | undefined
   updateOrderStatus(id: number, next: OrderStatus): boolean
 }
 

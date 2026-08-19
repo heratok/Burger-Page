@@ -152,8 +152,9 @@ export class LocalStorageRepository implements RestaurantRepository, DirectoryRe
   // Scoped restaurant API (RestaurantRepository)
   // ---------------------------------------------------------------------------
 
-  getConfig(): RestaurantConfig {
+  getConfig(): RestaurantConfig | undefined {
     const restaurant = this.restaurant(this.read())
+    if (!restaurant) return undefined
     // Accent's single source of truth is palette.accent (design D1).
     return { ...restaurant.config, accent: restaurant.palette.accent }
   }
@@ -161,31 +162,34 @@ export class LocalStorageRepository implements RestaurantRepository, DirectoryRe
   saveConfig(config: RestaurantConfig): void {
     const envelope = this.read()
     const restaurant = this.restaurant(envelope)
+    if (!restaurant) return
     restaurant.config = config
     restaurant.palette.accent = config.accent
     this.persist(envelope)
   }
 
-  getPalette(): RestaurantPalette {
-    return this.restaurant(this.read()).palette
+  getPalette(): RestaurantPalette | undefined {
+    return this.restaurant(this.read())?.palette
   }
 
   /** Merges palette tokens and keeps config.accent as the single source of truth (D1). */
   savePalette(patch: Partial<RestaurantPalette>): void {
     const envelope = this.read()
     const restaurant = this.restaurant(envelope)
+    if (!restaurant) return
     restaurant.palette = { ...restaurant.palette, ...patch }
     restaurant.config.accent = restaurant.palette.accent
     this.persist(envelope)
   }
 
-  listProducts(): Product[] {
-    return this.restaurant(this.read()).products
+  listProducts(): Product[] | undefined {
+    return this.restaurant(this.read())?.products
   }
 
   saveProduct(product: Product): void {
     const envelope = this.read()
     const restaurant = this.restaurant(envelope)
+    if (!restaurant) return
     const index = restaurant.products.findIndex((p) => p.id === product.id)
     if (index === -1) {
       restaurant.products.push(product)
@@ -198,17 +202,19 @@ export class LocalStorageRepository implements RestaurantRepository, DirectoryRe
   deleteProduct(id: string): void {
     const envelope = this.read()
     const restaurant = this.restaurant(envelope)
+    if (!restaurant) return
     restaurant.products = restaurant.products.filter((p) => p.id !== id)
     this.persist(envelope)
   }
 
-  listModifiers(): Modifier[] {
-    return this.restaurant(this.read()).modifiers
+  listModifiers(): Modifier[] | undefined {
+    return this.restaurant(this.read())?.modifiers
   }
 
   saveModifier(modifier: Modifier): void {
     const envelope = this.read()
     const restaurant = this.restaurant(envelope)
+    if (!restaurant) return
     const index = restaurant.modifiers.findIndex((m) => m.id === modifier.id)
     if (index === -1) {
       restaurant.modifiers.push(modifier)
@@ -221,17 +227,19 @@ export class LocalStorageRepository implements RestaurantRepository, DirectoryRe
   deleteModifier(id: string): void {
     const envelope = this.read()
     const restaurant = this.restaurant(envelope)
+    if (!restaurant) return
     restaurant.modifiers = restaurant.modifiers.filter((m) => m.id !== id)
     this.persist(envelope)
   }
 
-  listOrders(): Order[] {
-    return this.restaurant(this.read()).orders
+  listOrders(): Order[] | undefined {
+    return this.restaurant(this.read())?.orders
   }
 
-  saveOrder(order: Omit<Order, "id" | "status" | "createdAt">): Order {
+  saveOrder(order: Omit<Order, "id" | "status" | "createdAt">): Order | undefined {
     const envelope = this.read()
     const restaurant = this.restaurant(envelope)
+    if (!restaurant) return undefined
     const used = new Set(restaurant.orders.map((o) => o.id))
     const saved: Order = {
       ...order,
@@ -247,6 +255,7 @@ export class LocalStorageRepository implements RestaurantRepository, DirectoryRe
   updateOrderStatus(id: number, next: OrderStatus): boolean {
     const envelope = this.read()
     const restaurant = this.restaurant(envelope)
+    if (!restaurant) return false
     const order = restaurant.orders.find((o) => o.id === id)
     if (!order || !canTransition(order.status, next)) return false
     order.status = next
@@ -254,12 +263,16 @@ export class LocalStorageRepository implements RestaurantRepository, DirectoryRe
     return true
   }
 
-  /** Scoped view: the configured restaurant, or the first one (legacy default). */
-  private restaurant(envelope: StorageEnvelopeV2): Restaurant {
-    const match = this.restaurantId
-      ? envelope.restaurants.find((r) => r.id === this.restaurantId)
-      : undefined
-    return match ?? envelope.restaurants[0]
+  /**
+   * Scoped view (spec MT-3): the configured restaurant, or `undefined` on a
+   * scoped miss. The first-restaurant fallback is reserved for the un-scoped
+   * directory instance (`restaurantId === undefined`), which keeps the legacy
+   * single-tenant semantics; `getRepositoryFor` always sets `restaurantId`, so
+   * scoped paths never cross into another tenant.
+   */
+  private restaurant(envelope: StorageEnvelopeV2): Restaurant | undefined {
+    if (this.restaurantId === undefined) return envelope.restaurants[0]
+    return envelope.restaurants.find((r) => r.id === this.restaurantId)
   }
 
   private read(): StorageEnvelopeV2 {
