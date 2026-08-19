@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useReducer, useRef } from "react"
 import type { ReactNode } from "react"
-import type { CartItem } from "@/lib/domain"
+import type { CartItem } from "@/shared/domain/domain"
 import { CartContext } from "./cart-context"
 
 type CartAction =

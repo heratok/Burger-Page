@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react"
-import type { CartItem } from "@/lib/domain"
+import type { CartItem } from "@/shared/domain/domain"
 
 export interface CartContextValue {
   items: CartItem[]

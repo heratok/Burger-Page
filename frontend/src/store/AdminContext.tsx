@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react"
 import type { ReactNode } from "react"
-import { storage } from "@/lib/storage"
+import { storage } from "@/shared/storage/storage"
 import {
   SUPER_ADMIN_GRANT_KEY,
   AdminContext,

@@ -4,7 +4,7 @@ import type {
   Restaurant,
   RestaurantConfig,
   RestaurantPalette,
-} from "@/lib/domain"
+} from "@/shared/domain/domain"
 
 /** Default restaurant config seeded on first load (matches current hardcoded values). */
 export const DEFAULT_CONFIG: RestaurantConfig = {
