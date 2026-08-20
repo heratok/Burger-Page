@@ -154,7 +154,7 @@ export default function Home() {
           <div>
             <div className="mb-6 text-center">
               <h1 className="text-2xl font-bold tracking-tight text-text-primary sm:text-3xl">
-                Burger Menu
+                Rosto
               </h1>
               <p className="mt-1 text-sm text-text-secondary">
                 Elige tu favorita y personalízala a tu gusto.
@@ -171,7 +171,7 @@ export default function Home() {
               <div
                 className="grid grid-cols-1 gap-4 min-[430px]:grid-cols-2 md:gap-6 lg:grid-cols-3 xl:grid-cols-4"
                 role="list"
-                aria-label="Lista de hamburguesas"
+                aria-label="Lista de productos"
               >
                 {filterBurger.map((hamburger) => (
                   <div role="listitem" key={hamburger.name}>
@@ -240,11 +240,11 @@ function EmptyResults() {
         <Utensils className="size-10" aria-hidden="true" />
       </span>
       <h2 className="text-lg font-semibold text-text-primary">
-        No encontramos hamburguesas
+        No encontramos productos
       </h2>
       <p className="mt-2 max-w-sm text-sm text-text-secondary">
         No hay coincidencias con ese nombre. Prueba buscando otra cosa o revisa
-        nuestro menú completo.
+        nuestro catálogo completo.
       </p>
     </div>
   )

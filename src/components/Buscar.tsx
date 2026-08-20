@@ -32,19 +32,19 @@ export default function Buscar({ onChangeText, total = 0 }: BuscarProps) {
 
   return (
     <div className="w-full max-w-2xl">
-      <label htmlFor="burger-search" className="sr-only">
-        Buscar hamburguesas
+      <label htmlFor="product-search" className="sr-only">
+        Buscar productos
       </label>
       <InputGroup className="h-11 rounded-full border-border-subtle bg-bg-input px-1 focus-within:border-accent focus-within:ring-2 focus-within:ring-accent">
         <InputGroupAddon align="inline-start" className="pl-3 [&>svg]:size-5">
           <Search className="text-text-muted" />
         </InputGroupAddon>
         <InputGroupInput
-          id="burger-search"
+          id="product-search"
           type="search"
           value={value}
           onChange={handleInputChange}
-          placeholder="Buscar hamburguesa..."
+          placeholder="Buscar producto..."
           autoComplete="off"
           maxLength={LIMITS.busqueda.max}
           className="h-11 bg-transparent text-sm placeholder:text-text-muted"

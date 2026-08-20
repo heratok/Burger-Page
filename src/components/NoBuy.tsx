@@ -28,7 +28,7 @@ export default function NoBuy({ volver }: NoBuyProps) {
         Tu carrito está vacío
       </EmptyTitle>
       <EmptyDescription className="text-sm leading-relaxed">
-        Agrega hamburguesas desde el menú para empezar tu pedido.
+        Agrega productos desde el catálogo para empezar tu pedido.
       </EmptyDescription>
       <Button
         variant="default"
@@ -36,7 +36,7 @@ export default function NoBuy({ volver }: NoBuyProps) {
         onClick={volver}
         className="mt-6 h-12"
       >
-        Explorar menú
+        Explorar catálogo
       </Button>
     </Empty>
   )

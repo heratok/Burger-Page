@@ -125,7 +125,7 @@ export default function Additions({ cerrar, hamburger, agregarList, editing = fa
             <DialogTitle className="text-lg font-semibold tracking-tight text-text-primary">
               {editing ? `Editar ${hamburger.name}` : hamburger.name}
             </DialogTitle>
-            <DialogDescription className="mt-1 line-clamp-2 text-sm text-text-secondary">
+            <DialogDescription className="mt-1 text-sm text-text-secondary">
               {hamburger.description}
             </DialogDescription>
             <p className="mt-1.5 text-sm font-bold text-accent">

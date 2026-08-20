@@ -28,10 +28,10 @@ export default function Navbar({ cantidad, total, onOpenCart }: NavbarProps) {
           />
           <div className="flex flex-col leading-tight">
             <span className="text-base font-semibold tracking-tight text-text-primary">
-              Burger Page
+              Rosto
             </span>
             <span className="text-xs text-text-muted">
-              Las mejores burgers a domicilio
+              Tus productos favoritos a domicilio
             </span>
           </div>
         </div>

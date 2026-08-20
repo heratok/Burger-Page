@@ -37,7 +37,7 @@ export default function CardBurger({ hamburger, onCliked }: CardBurgerProps) {
         <h2 className="text-lg leading-tight font-semibold tracking-tight text-text-primary">
           {hamburger.name}
         </h2>
-        <p className="line-clamp-2 text-sm leading-snug text-text-secondary">
+        <p className="text-sm leading-snug text-text-secondary">
           {hamburger.description}
         </p>
       </CardContent>
