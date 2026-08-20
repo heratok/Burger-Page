@@ -144,6 +144,10 @@ export default function Home() {
               hamburguesas={lisBuy}
               mostrar={mostrar}
               cerrarForm={cerrarForm}
+              onOrderSent={() => {
+                clearDraft()
+                setListBuy([])
+              }}
             />
           )
         ) : (

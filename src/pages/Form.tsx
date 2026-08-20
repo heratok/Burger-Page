@@ -49,9 +49,11 @@ interface FormProps {
   cerrarForm: () => void
   mostrar: () => void
   hamburguesas: BurgerCompra[]
+  /** Se invoca exactamente una vez al enviar el pedido por WhatsApp (CART-4/CART-5). */
+  onOrderSent?: () => void
 }
 
-export default function Form({ cerrar, cerrarForm, mostrar, hamburguesas }: FormProps) {
+export default function Form({ cerrar, cerrarForm, mostrar, hamburguesas, onOrderSent }: FormProps) {
   const {
     register,
     handleSubmit,
@@ -105,6 +107,7 @@ export default function Form({ cerrar, cerrarForm, mostrar, hamburguesas }: Form
       comentario: values.mensaje,
     })
     window.open(buildWhatsAppUrl(WHATSAPP_NUMBER, message), "_blank", "noreferrer")
+    onOrderSent?.()
   }
 
   return (
