@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# Environment files (no secrets to GitHub)
+.env
+.env.*
+!.env.example
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -22,3 +27,22 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+Thumbs.db
+
+# Local AI tooling state
+.atl/
+
+# Playwright (CLI sessions, generated tests, traces, videos, screenshots)
+.playwright-cli/
+.playwright/
+.playwright-mcp/
+playwright-report/
+test-results/
+tests-examples/
+playwright/.cache/
+playwright/.last-run.json
+pw-output/
+.tracing/
+*.pw.png
+*.pw.webm
+*.pw.zip
