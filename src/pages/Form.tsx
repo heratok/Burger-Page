@@ -228,7 +228,7 @@ export default function Form({ cerrar, cerrarForm, mostrar, hamburguesas }: Form
             <RadioGroup
               value={metodo}
               onValueChange={(value) => setValue("metodo", value as FormValues["metodo"])}
-              className="grid grid-cols-2 gap-3"
+              className="grid grid-cols-1 gap-3 sm:grid-cols-2"
             >
               {METODOS.map(({ value, Icon }) => {
                 const active = metodo === value
