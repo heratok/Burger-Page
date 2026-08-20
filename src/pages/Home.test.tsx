@@ -102,3 +102,38 @@ describe("Home — acciones del diálogo", () => {
     ).toBeNull()
   })
 })
+
+describe("Home — sin envío explícito (CART-5)", () => {
+  beforeEach(() => {
+    window.localStorage.clear()
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    cleanup()
+    vi.useRealTimers()
+  })
+
+  it("recargar sin enviar conserva el borrador y muestra la recuperación (CART-5)", () => {
+    seedDraft()
+    render(<Home />)
+    act(() => {
+      vi.advanceTimersByTime(300)
+    })
+    // No se hizo ningún envío: el borrador sigue intacto y se ofrece continuar.
+    expect(window.localStorage.getItem(CART_DRAFT_KEY)).not.toBeNull()
+    expect(recoveryTitle()).toBeTruthy()
+  })
+
+  it("un borrador ya limpiado evita el doble envío: sin diálogo ni carrito (CART-5)", () => {
+    // El envío explícito ya limpió el borrador → al recargar no se restaura nada.
+    render(<Home />)
+    act(() => {
+      vi.advanceTimersByTime(300)
+    })
+    expect(recoveryTitle()).toBeNull()
+    expect(
+      screen.queryByRole("button", { name: /Ver orden, 1 producto/ })
+    ).toBeNull()
+  })
+})
