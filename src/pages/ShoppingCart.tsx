@@ -91,7 +91,7 @@ function ShoppingCart({ cerrar, cerrarCarrito, abrirForm, list, deleteCart, edit
               </div>
 
               {burgerCompra.adicion && burgerCompra.adicion.length > 0 && (
-                <p className="mt-2 text-xs leading-relaxed text-text-secondary">
+                <p className="mt-2 text-xs leading-relaxed break-words text-text-secondary">
                   <span className="text-text-muted">Adiciones: </span>
                   {burgerCompra.adicion
                     .map((ad) => `${ad.cantidad}× ${ad.name}`)
@@ -99,7 +99,7 @@ function ShoppingCart({ cerrar, cerrarCarrito, abrirForm, list, deleteCart, edit
                 </p>
               )}
               {burgerCompra.observacion && (
-                <p className="mt-1 text-xs leading-relaxed text-text-secondary">
+                <p className="mt-1 text-xs leading-relaxed break-words text-text-secondary">
                   <span className="text-text-muted">Nota: </span>
                   {burgerCompra.observacion}
                 </p>
