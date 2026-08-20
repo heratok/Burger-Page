@@ -10,13 +10,29 @@ import Nav from "../components/Nav"
 import ShoppingCart from "./ShoppingCart"
 import Form from "./Form"
 import LoadingPage from "../components/LoadingPage"
+import { readDraft, writeDraft, clearDraft } from "../lib/draft"
+import { Button } from "../components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../components/ui/dialog"
 
 export default function Home() {
   const [click, setClick] = useState(false)
   const [ver, setVer] = useState(false)
   const [openForm, setOpenForm] = useState(false)
   const [selectedBurger, setSelectedBurger] = useState(hamburguesas[0])
-  const [lisBuy, setListBuy] = useState<BurgerCompra[]>([])
+  // Rehidrata el carrito desde el borrador persistido (CART-1).
+  const [lisBuy, setListBuy] = useState<BurgerCompra[]>(() => readDraft() ?? [])
+  // Solo muestra la recuperación si existía un borrador válido al cargar (CART-3).
+  const [showRecovery, setShowRecovery] = useState<boolean>(() => {
+    const draft = readDraft()
+    return draft !== null && draft.length > 0
+  })
   const [texto, setTexto] = useState("")
   const [loading, setLoading] = useState(true)
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
@@ -36,6 +52,17 @@ export default function Home() {
 
   const deleteCart = (listActual: BurgerCompra[]) => {
     setListBuy(listActual)
+  }
+
+  // Persiste el carrito en cada mutación; una lista vacía limpia el borrador (CART-1).
+  useEffect(() => {
+    writeDraft(lisBuy)
+  }, [lisBuy])
+
+  const descartarDraft = () => {
+    clearDraft()
+    setListBuy([])
+    setShowRecovery(false)
   }
 
   const onCliked = (hamburguesa: typeof hamburguesas[number]) => {
@@ -169,6 +196,31 @@ export default function Home() {
           initial={editingIndex !== null ? lisBuy[editingIndex] : undefined}
         />
       )}
+
+      <Dialog
+        open={showRecovery}
+        onOpenChange={(open) => {
+          if (!open) setShowRecovery(false)
+        }}
+      >
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>Recuperar tu carrito</DialogTitle>
+            <DialogDescription>
+              Encontramos un pedido anterior que no llegaste a enviar. ¿Quieres
+              continuar con él?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={descartarDraft}>
+              Descartar
+            </Button>
+            <Button type="button" onClick={() => setShowRecovery(false)}>
+              Continuar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
