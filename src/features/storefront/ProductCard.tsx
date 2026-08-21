@@ -4,18 +4,18 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import type { MenuItem } from "@/types/restaurant"
 import { useRestaurant } from "@/context/RestaurantContext"
 
-interface CardBurgerProps {
-  hamburger: MenuItem
-  onCliked: () => void
+export interface ProductCardProps {
+  product: MenuItem
+  onSelectProduct: () => void
 }
 
-export default function CardBurger({ hamburger, onCliked }: CardBurgerProps) {
+export default function ProductCard({ product, onSelectProduct }: ProductCardProps) {
   const { storeConfig } = useRestaurant()
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault()
-      onCliked()
+      onSelectProduct()
     }
   }
 
@@ -56,15 +56,15 @@ export default function CardBurger({ hamburger, onCliked }: CardBurgerProps) {
     <Card
       role="button"
       tabIndex={0}
-      onClick={onCliked}
+      onClick={onSelectProduct}
       onKeyDown={handleKeyDown}
-      aria-label={`Agregar ${hamburger.name} al carrito, $${hamburger.price.toLocaleString()}`}
+      aria-label={`Agregar ${product.name} al carrito, $${product.price.toLocaleString()}`}
       className={`group relative cursor-pointer gap-0 overflow-hidden bg-bg-elevated py-0 transition duration-200 ease-out hover:-translate-y-1 focus:outline-none focus-visible:focus-ring active:translate-y-0 ${radiusClass} ${styleClass}`}
     >
       <div className="relative aspect-video overflow-hidden bg-bg-elevated-2">
         <img
-          src={hamburger.src}
-          alt={hamburger.name}
+          src={product.src}
+          alt={product.name}
           loading="lazy"
           className="size-full object-cover transition duration-300 ease-out group-hover:scale-105"
         />
@@ -72,7 +72,7 @@ export default function CardBurger({ hamburger, onCliked }: CardBurgerProps) {
         {/* Badges */}
         {storeConfig.showBadges && (
           <div className="absolute top-2.5 left-2.5 flex flex-wrap gap-1.5 z-10">
-            {hamburger.isPopular && (
+            {product.isPopular && (
               <span
                 style={{ backgroundColor: storeConfig.primaryColor }}
                 className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold text-white shadow-xs"
@@ -81,7 +81,7 @@ export default function CardBurger({ hamburger, onCliked }: CardBurgerProps) {
                 Popular
               </span>
             )}
-            {hamburger.isNew && (
+            {product.isNew && (
               <span className="flex items-center gap-1 rounded-md bg-emerald-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-xs">
                 <Sparkles className="size-3" />
                 Nuevo
@@ -90,7 +90,7 @@ export default function CardBurger({ hamburger, onCliked }: CardBurgerProps) {
           </div>
         )}
 
-        {!hamburger.inStock && (
+        {!product.inStock && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/65 backdrop-blur-2xs">
             <span className="rounded-lg bg-rose-600 px-3 py-1 text-xs font-bold text-white uppercase tracking-wider">
               Agotado
@@ -102,11 +102,11 @@ export default function CardBurger({ hamburger, onCliked }: CardBurgerProps) {
       <CardContent className="flex flex-1 flex-col gap-1.5 px-4 pt-4">
         <div className="flex items-start justify-between gap-2">
           <h2 className="text-base font-bold leading-tight tracking-tight text-text-primary group-hover:text-accent">
-            {hamburger.name}
+            {product.name}
           </h2>
         </div>
         <p className="line-clamp-2 text-xs leading-relaxed text-text-secondary">
-          {hamburger.description}
+          {product.description}
         </p>
       </CardContent>
 
@@ -115,7 +115,7 @@ export default function CardBurger({ hamburger, onCliked }: CardBurgerProps) {
           style={{ color: storeConfig.primaryColor }}
           className="text-lg font-black tracking-tight"
         >
-          ${hamburger.price.toLocaleString()}
+          ${product.price.toLocaleString()}
         </span>
         <span
           aria-hidden="true"

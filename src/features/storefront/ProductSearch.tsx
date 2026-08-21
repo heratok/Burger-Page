@@ -4,12 +4,12 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/in
 import { Button } from "@/components/ui/button"
 import { LIMITS } from "@/lib/validation"
 
-interface BuscarProps {
+export interface ProductSearchProps {
   onChangeText: (text: string) => void
   total?: number
 }
 
-export default function Buscar({ onChangeText, total = 0 }: BuscarProps) {
+export default function ProductSearch({ onChangeText, total = 0 }: ProductSearchProps) {
   const [value, setValue] = useState("")
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -33,7 +33,7 @@ export default function Buscar({ onChangeText, total = 0 }: BuscarProps) {
   return (
     <div className="w-full max-w-2xl">
       <label htmlFor="burger-search" className="sr-only">
-        Buscar hamburguesas
+        Buscar platos en la carta
       </label>
       <InputGroup className="h-11 rounded-full border-border-subtle bg-bg-input px-1 focus-within:border-accent focus-within:ring-2 focus-within:ring-accent">
         <InputGroupAddon align="inline-start" className="pl-3 [&>svg]:size-5">
@@ -44,7 +44,7 @@ export default function Buscar({ onChangeText, total = 0 }: BuscarProps) {
           type="search"
           value={value}
           onChange={handleInputChange}
-          placeholder="Buscar hamburguesa..."
+          placeholder="Buscar en el menú..."
           autoComplete="off"
           maxLength={LIMITS.busqueda.max}
           className="h-11 bg-transparent text-sm placeholder:text-text-muted"

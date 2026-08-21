@@ -1,36 +1,43 @@
 import { Pencil, Trash2, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import NoBuy from "../components/NoBuy"
-import type { BurgerCompra } from "@/data/data"
+import EmptyCart from "./EmptyCart"
+import type { CartItem } from "./cartEngine"
 
-interface ShoppingCartProps {
-  cerrar: () => void
-  cerrarCarrito: () => void
-  abrirForm: () => void
-  list: BurgerCompra[]
-  deleteCart: (list: BurgerCompra[]) => void
-  editarItem: (index: number) => void
+export interface ShoppingCartProps {
+  onClose: () => void
+  onCloseCart: () => void
+  onOpenCheckout: () => void
+  items: CartItem[]
+  onDeleteCart: (items: CartItem[]) => void
+  onEditItem: (index: number) => void
 }
 
-function ShoppingCart({ cerrar, cerrarCarrito, abrirForm, list, deleteCart, editarItem }: ShoppingCartProps) {
-  const volver = () => {
-    cerrar()
-    cerrarCarrito()
+function ShoppingCart({
+  onClose,
+  onCloseCart,
+  onOpenCheckout,
+  items,
+  onDeleteCart,
+  onEditItem,
+}: ShoppingCartProps) {
+  const handleBackToMenu = () => {
+    onClose()
+    onCloseCart()
   }
 
-  const total = list.reduce((acc, burger) => acc + burger.totalapagar, 0)
+  const total = items.reduce((acc, burger) => acc + burger.total, 0)
 
-  const deleteCar = (i: number) => {
-    deleteCart(list.filter((_, indice) => indice !== i))
+  const deleteItem = (i: number) => {
+    onDeleteCart(items.filter((_, index) => index !== i))
   }
 
-  const open = () => {
-    cerrarCarrito()
-    abrirForm()
+  const handleCheckout = () => {
+    onCloseCart()
+    onOpenCheckout()
   }
 
-  if (list.length === 0) {
-    return <NoBuy volver={volver} />
+  if (items.length === 0) {
+    return <EmptyCart onBackToMenu={handleBackToMenu} />
   }
 
   return (
@@ -45,14 +52,14 @@ function ShoppingCart({ cerrar, cerrarCarrito, abrirForm, list, deleteCart, edit
       </header>
 
       <ul className="flex flex-col gap-3">
-        {list.map((burgerCompra, i) => (
+        {items.map((cartItem, i) => (
           <li
-            key={i}
+            key={cartItem.id || i}
             className="relative flex gap-3 rounded-lg border border-border-subtle bg-bg-elevated p-3 sm:gap-4 sm:p-4"
           >
             <img
-              src={burgerCompra.src}
-              alt={burgerCompra.name}
+              src={cartItem.src}
+              alt={cartItem.name}
               loading="lazy"
               className="size-16 shrink-0 rounded-md bg-bg-elevated-2 object-cover sm:size-20"
             />
@@ -60,10 +67,10 @@ function ShoppingCart({ cerrar, cerrarCarrito, abrirForm, list, deleteCart, edit
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <h2 className="truncate text-base font-semibold text-text-primary">
-                    {burgerCompra.name}
+                    {cartItem.name}
                   </h2>
                   <p className="mt-0.5 text-xs text-text-muted">
-                    {burgerCompra.cantidad}× {burgerCompra.name}
+                    {cartItem.cantidad}× {cartItem.name}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center">
@@ -71,8 +78,8 @@ function ShoppingCart({ cerrar, cerrarCarrito, abrirForm, list, deleteCart, edit
                     type="button"
                     variant="ghost"
                     size="icon-sm"
-                    onClick={() => editarItem(i)}
-                    aria-label={`Editar ${burgerCompra.name}`}
+                    onClick={() => onEditItem(i)}
+                    aria-label={`Editar ${cartItem.name}`}
                     className="size-11 rounded-full text-text-muted hover:bg-bg-elevated-2 hover:text-text-primary"
                   >
                     <Pencil />
@@ -81,8 +88,8 @@ function ShoppingCart({ cerrar, cerrarCarrito, abrirForm, list, deleteCart, edit
                     type="button"
                     variant="ghost"
                     size="icon-sm"
-                    onClick={() => deleteCar(i)}
-                    aria-label={`Eliminar ${burgerCompra.name}`}
+                    onClick={() => deleteItem(i)}
+                    aria-label={`Eliminar ${cartItem.name}`}
                     className="size-11 shrink-0 rounded-full text-text-muted hover:bg-bg-elevated-2 hover:text-destructive"
                   >
                     <Trash2 />
@@ -90,22 +97,22 @@ function ShoppingCart({ cerrar, cerrarCarrito, abrirForm, list, deleteCart, edit
                 </div>
               </div>
 
-              {burgerCompra.adicion && burgerCompra.adicion.length > 0 && (
+              {cartItem.adiciones && cartItem.adiciones.length > 0 && (
                 <p className="mt-2 text-xs leading-relaxed text-text-secondary">
                   <span className="text-text-muted">Adiciones: </span>
-                  {burgerCompra.adicion
+                  {cartItem.adiciones
                     .map((ad) => `${ad.cantidad}× ${ad.name}`)
                     .join(", ")}
                 </p>
               )}
-              {burgerCompra.observacion && (
+              {cartItem.observacion && (
                 <p className="mt-1 text-xs leading-relaxed text-text-secondary">
                   <span className="text-text-muted">Nota: </span>
-                  {burgerCompra.observacion}
+                  {cartItem.observacion}
                 </p>
               )}
               <p className="mt-2 text-base font-bold text-accent">
-                ${burgerCompra.totalapagar.toLocaleString()}
+                ${cartItem.total.toLocaleString()}
               </p>
             </div>
           </li>
@@ -126,7 +133,7 @@ function ShoppingCart({ cerrar, cerrarCarrito, abrirForm, list, deleteCart, edit
             <Button
               variant="default"
               size="lg"
-              onClick={open}
+              onClick={handleCheckout}
               className="h-12 flex-1 sm:flex-none"
             >
               Confirmar orden
@@ -134,7 +141,7 @@ function ShoppingCart({ cerrar, cerrarCarrito, abrirForm, list, deleteCart, edit
             <Button
               variant="outline"
               size="lg"
-              onClick={volver}
+              onClick={handleBackToMenu}
               className="h-12 flex-1 sm:flex-none"
             >
               <ArrowLeft data-icon="inline-start" />

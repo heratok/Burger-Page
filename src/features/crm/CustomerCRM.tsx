@@ -9,7 +9,7 @@ import {
 } from "lucide-react"
 import { LoyaltyBadge } from "@/components/ui/status-badge"
 import { Button } from "@/components/ui/button"
-import { buildWhatsAppUrl } from "@/lib/whatsapp"
+import { buildWhatsAppUrl } from "@/features/cart"
 
 export const CustomerCRM: React.FC = () => {
   const { customers, orders, updateCustomer, storeConfig, adminTheme } = useRestaurant()

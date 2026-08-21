@@ -10,81 +10,72 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
 import { Textarea } from "@/components/ui/textarea"
-import type { Adicion, Burger, BurgerCompra } from "@/data/data"
-import CharacterCounter from "../components/CharacterCounter"
+import type { MenuItem } from "@/types/restaurant"
+import { createCartItem, type CartAddition, type CartItem } from "./cartEngine"
+import CharacterCounter from "@/components/CharacterCounter"
 import { LIMITS } from "@/lib/validation"
+import { useRestaurant } from "@/context/RestaurantContext"
 
-const ADICIONES_INICIALES: Adicion[] = [
-  {
-    name: "papas fritas",
-    price: 5000,
-    cantidad: 0,
-    src: "https://express.donangelo.pe/wp-content/uploads/2022/05/WhatsApp-Image-2022-05-28-at-10.47.42-AM-10.jpeg",
-  },
-  {
-    name: "Cebolla Caramelizada",
-    price: 1500,
-    cantidad: 0,
-    src: "https://www.divinacocina.es/wp-content/uploads/cebolla-caramelizada7.jpg",
-  },
-  {
-    name: "Extra queso",
-    price: 2700,
-    cantidad: 0,
-    src: "https://www.los-almendros.com.ar/shop/wp-content/uploads/ofertaa-queso-raclette-fermier-env-sin-cargo-cap-fed-D_NQ_NP_963843-MLA27191786169_042018-F.jpg",
-  },
-  {
-    name: "Tocineta",
-    price: 2500,
-    cantidad: 0,
-    src: "https://tienda.atlantic.la/cdn/shop/files/TOCINETAPREMIUM_1024x.jpg?v=1684335896",
-  },
-]
-
-interface AdditionsInitial {
-  cantidad: number
-  adicion: Adicion[]
-  observacion: string
-}
-
-interface AdditionsProps {
-  cerrar: () => void
-  hamburger: Burger
-  agregarList: (burgerCompra: BurgerCompra) => void
+export interface AdditionsModalProps {
+  onClose: () => void
+  product: MenuItem
+  onAddToCart: (cartItem: CartItem) => void
   editing?: boolean
-  initial?: AdditionsInitial
+  initial?: CartItem
 }
 
-export default function Additions({ cerrar, hamburger, agregarList, editing = false, initial }: AdditionsProps) {
+export default function AdditionsModal({
+  onClose,
+  product,
+  onAddToCart,
+  editing = false,
+  initial,
+}: AdditionsModalProps) {
+  const { additions: storeAdditions } = useRestaurant()
   const [cantidad, setCantidad] = useState(initial?.cantidad ?? 1)
   const [observaciones, setObservaciones] = useState(initial?.observacion ?? "")
-  const [adiciones, setAdiciones] = useState<Adicion[]>(() =>
-    ADICIONES_INICIALES.map((ad) => {
-      const prev = initial?.adicion.find((a) => a.name === ad.name)
-      return prev ? { ...ad, cantidad: prev.cantidad } : ad
+
+  const availableAdditions = storeAdditions && storeAdditions.length > 0
+    ? storeAdditions.filter((a) => a.available)
+    : [
+        { id: "add-1", name: "Papas Fritas", price: 5000, available: true },
+        { id: "add-2", name: "Cebolla Caramelizada", price: 1500, available: true },
+        { id: "add-3", name: "Extra Queso", price: 2700, available: true },
+        { id: "add-4", name: "Tocineta", price: 2500, available: true },
+      ]
+
+  const [adiciones, setAdiciones] = useState<CartAddition[]>(() =>
+    availableAdditions.map((ad) => {
+      const prev = initial?.adiciones.find((a) => a.name === ad.name)
+      return {
+        id: ad.id,
+        name: ad.name,
+        price: ad.price,
+        cantidad: prev ? prev.cantidad : 0,
+      }
     })
   )
 
-  if (!hamburger?.name) return null
+  if (!product?.name) return null
 
   const calcularTotal = () => {
     const totalAdiciones = adiciones.reduce(
       (total, ad) => total + ad.cantidad * ad.price,
       0
     )
-    return hamburger.price * cantidad + totalAdiciones
+    return product.price * cantidad + totalAdiciones
   }
 
-  const agregar = () => {
-    agregarList({
-      adicion: adiciones.filter((adi) => adi.cantidad > 0),
-      name: hamburger.name,
-      src: hamburger.src,
-      totalapagar: calcularTotal(),
-      cantidad: cantidad,
+  const handleAdd = () => {
+    const cartItem = createCartItem({
+      product,
+      cantidad,
+      adiciones: adiciones.filter((adi) => adi.cantidad > 0),
       observacion: observaciones,
+      customId: initial?.id,
     })
-    cerrar()
+    onAddToCart(cartItem)
+    onClose()
   }
 
   const aumentarBurger = () => setCantidad((c) => c + 1)
@@ -108,7 +99,7 @@ export default function Additions({ cerrar, hamburger, agregarList, editing = fa
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open) cerrar()
+        if (!open) onClose()
       }}
     >
       <DialogContent
@@ -117,26 +108,26 @@ export default function Additions({ cerrar, hamburger, agregarList, editing = fa
       >
         <header className="flex items-center gap-3 border-b border-border-subtle p-5 pb-4">
           <img
-            src={hamburger.src}
-            alt={hamburger.name}
+            src={product.src}
+            alt={product.name}
             className="size-16 shrink-0 rounded-full bg-bg-elevated-2 object-cover"
           />
           <div className="min-w-0 flex-1 pr-2">
             <DialogTitle className="text-lg font-semibold tracking-tight text-text-primary">
-              {editing ? `Editar ${hamburger.name}` : hamburger.name}
+              {editing ? `Editar ${product.name}` : product.name}
             </DialogTitle>
             <DialogDescription className="mt-1 line-clamp-2 text-sm text-text-secondary">
-              {hamburger.description}
+              {product.description}
             </DialogDescription>
             <p className="mt-1.5 text-sm font-bold text-accent">
-              ${hamburger.price.toLocaleString()}
+              ${product.price.toLocaleString()}
             </p>
           </div>
           <Button
             type="button"
             variant="ghost"
             size="icon-sm"
-            onClick={cerrar}
+            onClick={onClose}
             aria-label="Cerrar"
             className="size-11 shrink-0 rounded-full text-text-muted hover:bg-bg-elevated-2 hover:text-text-primary"
           >
@@ -160,14 +151,6 @@ export default function Additions({ cerrar, hamburger, agregarList, editing = fa
                   key={adicion.name}
                   className="flex items-center gap-3 rounded-lg border border-border-subtle bg-bg-elevated p-3"
                 >
-                  <span className="inline-flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-bg-elevated-2">
-                    <img
-                      src={adicion.src}
-                      alt=""
-                      loading="lazy"
-                      className="size-full object-cover"
-                    />
-                  </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-text-primary">
                       {adicion.name}
@@ -274,8 +257,8 @@ export default function Additions({ cerrar, hamburger, agregarList, editing = fa
             <Button
               variant="default"
               size="lg"
-              onClick={agregar}
-              disabled={!hamburger}
+              onClick={handleAdd}
+              disabled={!product}
               className="h-12 w-full rounded text-base min-[420px]:w-auto min-[420px]:flex-1 sm:min-w-[200px] sm:flex-none"
             >
               <Plus data-icon="inline-start" strokeWidth={2.5} />

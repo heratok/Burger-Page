@@ -7,11 +7,11 @@ import {
 } from "@/components/ui/empty"
 import { Button } from "@/components/ui/button"
 
-interface NoBuyProps {
-  volver: () => void
+interface EmptyCartProps {
+  onBackToMenu: () => void
 }
 
-export default function NoBuy({ volver }: NoBuyProps) {
+export default function EmptyCart({ onBackToMenu }: EmptyCartProps) {
   return (
     <Empty
       role="status"
@@ -33,7 +33,7 @@ export default function NoBuy({ volver }: NoBuyProps) {
       <Button
         variant="default"
         size="lg"
-        onClick={volver}
+        onClick={onBackToMenu}
         className="mt-6 h-12"
       >
         Explorar menú

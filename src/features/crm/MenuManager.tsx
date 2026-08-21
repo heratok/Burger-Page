@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from "react"
+import React, { useState } from "react"
 import { useRestaurant } from "@/context/RestaurantContext"
+import { useMenuFilter } from "./hooks/useMenuFilter"
 import type { MenuItem, AdditionItem } from "@/types/restaurant"
 import {
   Plus,
@@ -30,9 +31,16 @@ export const MenuManager: React.FC = () => {
   } = useRestaurant()
 
   const [activeSubTab, setActiveSubTab] = useState<"dishes" | "additions">("dishes")
-  const [searchTerm, setSearchTerm] = useState("")
-  const [selectedCategory, setSelectedCategory] = useState<string>("ALL")
-  const [viewMode, setViewMode] = useState<"grid" | "table">("grid")
+  const {
+    searchTerm,
+    setSearchTerm,
+    selectedCategory,
+    setSelectedCategory,
+    viewMode,
+    setViewMode,
+    categories,
+    filteredProducts,
+  } = useMenuFilter(products)
 
   // Modal State for Products
   const [isProductModalOpen, setIsProductModalOpen] = useState(false)
@@ -59,24 +67,6 @@ export const MenuManager: React.FC = () => {
   })
 
   const isDark = adminTheme === "dark"
-
-  const categories = useMemo(() => {
-    const set = new Set<string>()
-    products.forEach((p) => {
-      if (p.category) set.add(p.category)
-    })
-    return Array.from(set)
-  }, [products])
-
-  const filteredProducts = useMemo(() => {
-    return products.filter((p) => {
-      const matchSearch =
-        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.description.toLowerCase().includes(searchTerm.toLowerCase())
-      const matchCat = selectedCategory === "ALL" || p.category === selectedCategory
-      return matchSearch && matchCat
-    })
-  }, [products, searchTerm, selectedCategory])
 
   const openNewProductModal = () => {
     setEditingProduct(null)

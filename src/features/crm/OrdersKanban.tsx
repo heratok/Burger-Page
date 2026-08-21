@@ -17,7 +17,7 @@ import {
 } from "lucide-react"
 import { OrderStatusBadge } from "@/components/ui/status-badge"
 import { Button } from "@/components/ui/button"
-import { buildWhatsAppUrl } from "@/lib/whatsapp"
+import { buildWhatsAppUrl } from "@/features/cart"
 
 export const OrdersKanban: React.FC = () => {
   const { orders, updateOrderStatus, simulateIncomingOrder, adminTheme, storeConfig } =

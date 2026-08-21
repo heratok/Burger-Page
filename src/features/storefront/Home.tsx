@@ -1,36 +1,38 @@
 import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import { Utensils, ShieldCheck, Flame } from "lucide-react"
-import CardBurger from "../components/Card"
-import type { BurgerCompra, Burger } from "../data/data"
+import ProductCard from "./ProductCard"
 import type { MenuItem } from "@/types/restaurant"
-import Additions from "./Additions"
-import Navbar from "../components/Navbar"
-import Buscar from "../components/Buscar"
-import Nav from "../components/Nav"
-import ShoppingCart from "./ShoppingCart"
-import Form from "./Form"
-import LoadingPage from "../components/LoadingPage"
+import Navbar from "./Navbar"
+import ProductSearch from "./ProductSearch"
+import MobileOrderBar from "./MobileOrderBar"
+import LoadingPage from "./LoadingPage"
+import {
+  ShoppingCart,
+  AdditionsModal,
+  CheckoutForm,
+  type CartItem,
+} from "@/features/cart"
 import { useRestaurant } from "@/context/RestaurantContext"
 
 export default function Home() {
   const { products, storeConfig, setActiveView } = useRestaurant()
-  const [click, setClick] = useState(false)
-  const [ver, setVer] = useState(false)
-  const [openForm, setOpenForm] = useState(false)
-  const [selectedBurger, setSelectedBurger] = useState<MenuItem | Burger>(products[0])
-  const [lisBuy, setListBuy] = useState<BurgerCompra[]>([])
-  const [texto, setTexto] = useState("")
+  const [isAdditionsModalOpen, setIsAdditionsModalOpen] = useState(false)
+  const [isCartOpen, setIsCartOpen] = useState(false)
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false)
+  const [selectedProduct, setSelectedProduct] = useState<MenuItem>(products[0])
+  const [cartItems, setCartItems] = useState<CartItem[]>([])
+  const [searchText, setSearchText] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL")
   const [loading, setLoading] = useState(true)
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
 
-  // Keep selectedBurger in sync if products load
+  // Keep selectedProduct in sync if products load
   useEffect(() => {
-    if (products.length > 0 && !selectedBurger) {
-      setSelectedBurger(products[0])
+    if (products.length > 0 && !selectedProduct) {
+      setSelectedProduct(products[0])
     }
-  }, [products, selectedBurger])
+  }, [products, selectedProduct])
 
   const categories = useMemo(() => {
     const set = new Set<string>()
@@ -40,57 +42,55 @@ export default function Home() {
     return Array.from(set)
   }, [products])
 
-  const agregarList = (burgerCompra: BurgerCompra) => {
+  const handleAddToCart = (cartItem: CartItem) => {
     if (editingIndex !== null) {
-      setListBuy((prev) =>
-        prev.map((item, i) => (i === editingIndex ? burgerCompra : item))
+      setCartItems((prev) =>
+        prev.map((item, i) => (i === editingIndex ? cartItem : item))
       )
       setEditingIndex(null)
       toast.success("Cambios guardados")
       return
     }
-    setListBuy((prev) => [...prev, burgerCompra])
-    toast.success(`${burgerCompra.name} agregada al carrito`)
+    setCartItems((prev) => [...prev, cartItem])
+    toast.success(`${cartItem.name} agregada al carrito`)
   }
 
-  const deleteCart = (listActual: BurgerCompra[]) => {
-    setListBuy(listActual)
+  const handleDeleteCart = (updatedItems: CartItem[]) => {
+    setCartItems(updatedItems)
   }
 
-  const onCliked = (hamburguesa: MenuItem | Burger) => {
-    setSelectedBurger(hamburguesa)
+  const handleProductClick = (product: MenuItem) => {
+    setSelectedProduct(product)
     setEditingIndex(null)
-    setClick(true)
+    setIsAdditionsModalOpen(true)
   }
 
-  const editarItem = (index: number) => {
-    const item = lisBuy[index]
+  const handleEditCartItem = (index: number) => {
+    const item = cartItems[index]
     if (!item) return
-    const burger = products.find((b) => b.name === item.name)
-    if (!burger) return
-    setSelectedBurger(burger)
+    const product = products.find((b) => b.id === item.menuItemId || b.name === item.name)
+    if (!product) return
+    setSelectedProduct(product)
     setEditingIndex(index)
-    setClick(true)
+    setIsAdditionsModalOpen(true)
   }
 
-  const abrirForm = () => setOpenForm(true)
-  const mostrar = () => setVer(true)
-  const cerrarCarrito = () => setVer(false)
-  const cerrarForm = () => setOpenForm(false)
-  const cerrar = () => {
-    setClick(false)
+  const handleOpenCheckout = () => setIsCheckoutOpen(true)
+  const handleOpenCart = () => setIsCartOpen(true)
+  const handleCloseCart = () => setIsCartOpen(false)
+  const handleCloseCheckout = () => setIsCheckoutOpen(false)
+  const handleCloseModal = () => {
+    setIsAdditionsModalOpen(false)
     setEditingIndex(null)
   }
 
-  const onChangeText = (text: string) => setTexto(text)
-
-  const totalCarrito = useMemo(
-    () => lisBuy.reduce((acc, item) => acc + item.totalapagar, 0),
-    [lisBuy]
+  const totalCart = useMemo(
+    () => cartItems.reduce((acc, item) => acc + item.total, 0),
+    [cartItems]
   )
 
-  const filterBurger = useMemo(() => {
-    const query = texto.toLowerCase().trim()
+  const filteredProducts = useMemo(() => {
+    const query = searchText.toLowerCase().trim()
     return products.filter((objeto) => {
       const matchQuery =
         !query ||
@@ -100,17 +100,16 @@ export default function Home() {
         selectedCategory === "ALL" || objeto.category === selectedCategory
       return matchQuery && matchCategory
     })
-  }, [products, texto, selectedCategory])
+  }, [products, searchText, selectedCategory])
 
   useEffect(() => {
     const t = window.setTimeout(() => setLoading(false), 300)
     return () => window.clearTimeout(t)
   }, [])
 
-  const showFullScreen = ver || openForm
-  const showMobileBar = lisBuy.length > 0 && !showFullScreen
+  const showFullScreen = isCartOpen || isCheckoutOpen
+  const showMobileBar = cartItems.length > 0 && !showFullScreen
 
-  // Determine dynamic background class based on storeConfig
   const getThemeClass = (theme: typeof storeConfig.bgTheme) => {
     switch (theme) {
       case "dark-charcoal":
@@ -139,7 +138,7 @@ export default function Home() {
       }
       className={`min-h-screen transition-colors duration-200 ${themeClass}`}
     >
-      <Navbar cantidad={lisBuy.length} total={totalCarrito} onOpenCart={mostrar} />
+      <Navbar cantidad={cartItems.length} total={totalCart} onOpenCart={handleOpenCart} />
 
       <a id="main" className="sr-only" tabIndex={-1}>
         Inicio del contenido principal
@@ -181,21 +180,20 @@ export default function Home() {
         {loading ? (
           <LoadingPage />
         ) : showFullScreen ? (
-          ver ? (
+          isCartOpen ? (
             <ShoppingCart
-              list={lisBuy}
-              deleteCart={deleteCart}
-              editarItem={editarItem}
-              cerrar={cerrar}
-              abrirForm={abrirForm}
-              cerrarCarrito={cerrarCarrito}
+              items={cartItems}
+              onDeleteCart={handleDeleteCart}
+              onEditItem={handleEditCartItem}
+              onClose={handleCloseModal}
+              onOpenCheckout={handleOpenCheckout}
+              onCloseCart={handleCloseCart}
             />
           ) : (
-            <Form
-              cerrar={cerrar}
-              hamburguesas={lisBuy}
-              mostrar={mostrar}
-              cerrarForm={cerrarForm}
+            <CheckoutForm
+              onClose={handleCloseCheckout}
+              cartItems={cartItems}
+              onBackToCart={handleOpenCart}
             />
           )
         ) : (
@@ -214,7 +212,7 @@ export default function Home() {
             {/* Category Pills & Search */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex flex-1 justify-center sm:justify-start">
-                <Buscar onChangeText={onChangeText} total={filterBurger.length} />
+                <ProductSearch onChangeText={(text) => setSearchText(text)} total={filteredProducts.length} />
               </div>
 
               {/* Category Pills */}
@@ -259,7 +257,7 @@ export default function Home() {
               )}
             </div>
 
-            {filterBurger.length === 0 ? (
+            {filteredProducts.length === 0 ? (
               <EmptyResults />
             ) : (
               <div
@@ -269,13 +267,13 @@ export default function Home() {
                     : "grid-cols-1 min-[430px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
                 }`}
                 role="list"
-                aria-label="Lista de hamburguesas"
+                aria-label="Lista de productos"
               >
-                {filterBurger.map((hamburger) => (
-                  <div role="listitem" key={hamburger.id || hamburger.name}>
-                    <CardBurger
-                      hamburger={hamburger}
-                      onCliked={() => onCliked(hamburger)}
+                {filteredProducts.map((product) => (
+                  <div role="listitem" key={product.id || product.name}>
+                    <ProductCard
+                      product={product}
+                      onSelectProduct={() => handleProductClick(product)}
                     />
                   </div>
                 ))}
@@ -300,16 +298,20 @@ export default function Home() {
       </div>
 
       {showMobileBar && (
-        <Nav mostrar={mostrar} cantidad={lisBuy.length} total={totalCarrito} />
+        <MobileOrderBar
+          onOpenCart={handleOpenCart}
+          itemCount={cartItems.length}
+          total={totalCart}
+        />
       )}
 
-      {click && (
-        <Additions
-          agregarList={agregarList}
-          cerrar={cerrar}
-          hamburger={selectedBurger as Burger}
+      {isAdditionsModalOpen && (
+        <AdditionsModal
+          onAddToCart={handleAddToCart}
+          onClose={handleCloseModal}
+          product={selectedProduct}
           editing={editingIndex !== null}
-          initial={editingIndex !== null ? lisBuy[editingIndex] : undefined}
+          initial={editingIndex !== null ? cartItems[editingIndex] : undefined}
         />
       )}
     </div>
@@ -327,7 +329,7 @@ function EmptyResults() {
         <Utensils className="size-10" aria-hidden="true" />
       </span>
       <h2 className="text-lg font-semibold text-text-primary">
-        No encontramos hamburguesas
+        No encontramos resultados
       </h2>
       <p className="mt-2 max-w-sm text-sm text-text-secondary">
         No hay coincidencias con ese nombre o categoría. Prueba buscando otra cosa o revisa

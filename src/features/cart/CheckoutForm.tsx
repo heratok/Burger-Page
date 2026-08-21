@@ -29,15 +29,15 @@ import {
 } from "@/components/ui/field"
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
 import { Textarea } from "@/components/ui/textarea"
-import CharacterCounter from "../components/CharacterCounter"
+import CharacterCounter from "@/components/CharacterCounter"
 import { formSchema, LIMITS, type FormValues } from "@/lib/validation"
 import {
   buildOrderMessage,
   buildWhatsAppUrl,
   calculateChange,
   generateOrderId,
-} from "@/lib/whatsapp"
-import type { BurgerCompra } from "@/data/data"
+} from "./whatsapp"
+import { cartItemToOrderItem, type CartItem } from "./cartEngine"
 import { useRestaurant } from "@/context/RestaurantContext"
 
 const METODOS = [
@@ -45,14 +45,13 @@ const METODOS = [
   { value: "Transferencia", Icon: CreditCard },
 ] as const
 
-interface FormProps {
-  cerrar: () => void
-  cerrarForm: () => void
-  mostrar: () => void
-  hamburguesas: BurgerCompra[]
+export interface CheckoutFormProps {
+  onClose: () => void
+  onBackToCart: () => void
+  cartItems: CartItem[]
 }
 
-export default function Form({ cerrar, cerrarForm, mostrar, hamburguesas }: FormProps) {
+export default function CheckoutForm({ onClose, onBackToCart, cartItems }: CheckoutFormProps) {
   const { storeConfig, addOrder } = useRestaurant()
   const {
     register,
@@ -76,21 +75,14 @@ export default function Form({ cerrar, cerrarForm, mostrar, hamburguesas }: Form
   const metodo = watch("metodo")
   const pagoCon = watch("pagoCon")
 
-  // Número de orden estable por visita (no cambia con cada render).
   const [orderId] = useState(generateOrderId)
 
-  const total = hamburguesas.reduce(
-    (acc, burger) => acc + burger.totalapagar,
+  const total = cartItems.reduce(
+    (acc, item) => acc + item.total,
     0
   )
 
   const cambio = calculateChange(total, pagoCon)
-
-  const ocultar = () => {
-    cerrar()
-    cerrarForm()
-    mostrar()
-  }
 
   const onSubmit = (values: FormValues) => {
     // 1. Register order in CRM context
@@ -101,15 +93,7 @@ export default function Form({ cerrar, cerrarForm, mostrar, hamburguesas }: Form
         direccion: values.dir,
         barrio: values.barrio,
       },
-      items: hamburguesas.map((b) => ({
-        name: b.name,
-        price: b.totalapagar / (b.cantidad || 1),
-        cantidad: b.cantidad,
-        total: b.totalapagar,
-        src: b.src,
-        adiciones: b.adicion,
-        observacion: b.observacion,
-      })),
+      items: cartItems.map(cartItemToOrderItem),
       total,
       deliveryFee: storeConfig.deliveryFee,
       finalTotal: total + storeConfig.deliveryFee,
@@ -129,16 +113,18 @@ export default function Form({ cerrar, cerrarForm, mostrar, hamburguesas }: Form
         direccion: values.dir,
         barrio: values.barrio,
       },
-      items: hamburguesas,
+      items: cartItems,
       metodo: values.metodo,
       pagoCon: values.pagoCon,
       comentario: values.mensaje,
+      restaurantName: storeConfig.name,
+      deliveryFee: storeConfig.deliveryFee,
     })
 
     const targetPhone = storeConfig.whatsappNumber.replace(/\D/g, "")
     window.open(buildWhatsAppUrl(targetPhone, message), "_blank", "noreferrer")
     toast.success("¡Pedido enviado con éxito a la cocina!")
-    cerrarForm()
+    onClose()
   }
 
   return (
@@ -152,7 +138,7 @@ export default function Form({ cerrar, cerrarForm, mostrar, hamburguesas }: Form
         </p>
       </header>
 
-      <FormSummary hamburgesas={hamburguesas} total={total} />
+      <FormSummary cartItems={cartItems} total={total} />
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
         <FieldGroup>
@@ -346,7 +332,7 @@ export default function Form({ cerrar, cerrarForm, mostrar, hamburguesas }: Form
             type="button"
             variant="outline"
             size="lg"
-            onClick={ocultar}
+            onClick={onBackToCart}
             className="h-12 flex-1 text-base"
           >
             <ArrowLeft data-icon="inline-start" />
@@ -359,11 +345,11 @@ export default function Form({ cerrar, cerrarForm, mostrar, hamburguesas }: Form
 }
 
 interface FormSummaryProps {
-  hamburgesas: BurgerCompra[]
+  cartItems: CartItem[]
   total: number
 }
 
-function FormSummary({ hamburgesas, total }: FormSummaryProps) {
+function FormSummary({ cartItems, total }: FormSummaryProps) {
   const [open, setOpen] = useState(true)
 
   return (
@@ -376,8 +362,8 @@ function FormSummary({ hamburgesas, total }: FormSummaryProps) {
         className="flex w-full items-center justify-between px-4 py-3 text-left transition duration-150 ease-out hover:bg-muted/50 focus:outline-none focus-visible:focus-ring"
       >
         <span className="text-sm font-semibold text-foreground">
-            Resumen ({hamburgesas.length}{" "}
-            {hamburgesas.length === 1 ? "producto" : "productos"})
+            Resumen ({cartItems.length}{" "}
+            {cartItems.length === 1 ? "producto" : "productos"})
         </span>
         <span className="flex items-center gap-3">
           <span className="text-base font-bold text-primary">
@@ -391,16 +377,16 @@ function FormSummary({ hamburgesas, total }: FormSummaryProps) {
       </button>
       {open && (
         <ul id="order-summary" className="space-y-2 px-4 pt-1 pb-4">
-          {hamburgesas.map((burger, i) => (
+          {cartItems.map((burger, i) => (
             <li
-              key={i}
+              key={burger.id || i}
               className="flex items-center justify-between text-sm text-muted-foreground"
             >
               <span className="truncate">
                 {burger.cantidad}× {burger.name}
               </span>
               <span className="ml-3 shrink-0 font-semibold text-foreground">
-                ${burger.totalapagar.toLocaleString()}
+                ${burger.total.toLocaleString()}
               </span>
             </li>
           ))}

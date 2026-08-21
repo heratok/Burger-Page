@@ -1,4 +1,4 @@
-import type { BurgerCompra } from "@/data/data"
+import type { CartItem } from "./cartEngine"
 
 export type MetodoPago = "Efectivo" | "Transferencia"
 
@@ -12,10 +12,12 @@ export interface OrderCustomer {
 export interface OrderPayload {
   orderId: number
   customer: OrderCustomer
-  items: BurgerCompra[]
+  items: CartItem[]
   metodo: MetodoPago
   pagoCon?: string
   comentario?: string
+  restaurantName?: string
+  deliveryFee?: number
 }
 
 export const WHATSAPP_NUMBER = "573022575805"
@@ -42,12 +44,12 @@ export function calculateChange(total: number, pagoCon?: string): number | null 
   return change > 0 ? change : null
 }
 
-function formatItem(item: BurgerCompra, index: number): string {
+function formatItem(item: CartItem, index: number): string {
   const lines = [
-    `${index + 1}. ${item.cantidad}× ${item.name.toUpperCase().trim()} — ${formatCOP(item.totalapagar)}`,
+    `${index + 1}. ${item.cantidad}× ${item.name.toUpperCase().trim()} — ${formatCOP(item.total)}`,
   ]
 
-  const additions = (item.adicion ?? []).filter((a) => a.cantidad > 0)
+  const additions = (item.adiciones ?? []).filter((a) => a.cantidad > 0)
   if (additions.length > 0) {
     lines.push(`   + ${additions.map((a) => `${a.cantidad}× ${a.name}`).join(", ")}`)
   }
@@ -61,15 +63,24 @@ function formatItem(item: BurgerCompra, index: number): string {
 
 /**
  * Construye el mensaje de pedido para WhatsApp.
- * Renderiza correctamente cualquier combinación: pedidos sin adiciones,
- * sin notas, pago por transferencia, efectivo sin monto, sin comentario, etc.
  */
 export function buildOrderMessage(payload: OrderPayload): string {
-  const { orderId, customer, items, metodo, pagoCon, comentario } = payload
-  const total = items.reduce((acc, item) => acc + item.totalapagar, 0)
+  const {
+    orderId,
+    customer,
+    items,
+    metodo,
+    pagoCon,
+    comentario,
+    restaurantName = "BURGER PAGE",
+    deliveryFee = 0,
+  } = payload
+
+  const subtotal = items.reduce((acc, item) => acc + item.total, 0)
+  const total = subtotal + (items.length > 0 ? deliveryFee : 0)
   const sections: string[] = []
 
-  sections.push("*NUEVO PEDIDO — BURGER PAGE*")
+  sections.push(`*NUEVO PEDIDO — ${restaurantName.toUpperCase()}*`)
   sections.push(`Orden: #${orderId}`)
 
   sections.push("*CLIENTE*")
@@ -102,7 +113,13 @@ export function buildOrderMessage(payload: OrderPayload): string {
   sections.push("*PAGO*")
   sections.push(pagoLines.join("\n"))
 
-  sections.push(`*TOTAL: ${formatCOP(total)}*`)
+  if (deliveryFee > 0) {
+    sections.push(
+      `Subtotal: ${formatCOP(subtotal)}\nDomicilio: ${formatCOP(deliveryFee)}\n*TOTAL: ${formatCOP(total)}*`
+    )
+  } else {
+    sections.push(`*TOTAL: ${formatCOP(total)}*`)
+  }
 
   if (comentario?.trim()) {
     sections.push("*COMENTARIO*")

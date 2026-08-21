@@ -21,7 +21,7 @@ import {
   Crown,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { AdminSwitcher } from "./superadmin/AdminSwitcher"
+import { AdminSwitcher } from "@/features/superadmin"
 
 interface AdminLayoutProps {
   children: React.ReactNode
