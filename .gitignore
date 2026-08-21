@@ -46,3 +46,11 @@ pw-output/
 *.pw.png
 *.pw.webm
 *.pw.zip
+
+# Temporary test scripts and local screenshots
+*.mjs
+capture*.js
+capture*.mjs
+*.png
+*.jpg
+*.jpeg

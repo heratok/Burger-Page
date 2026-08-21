@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
+import { toast } from "sonner"
 import {
   ArrowLeft,
   Banknote,
@@ -35,9 +36,9 @@ import {
   buildWhatsAppUrl,
   calculateChange,
   generateOrderId,
-  WHATSAPP_NUMBER,
 } from "@/lib/whatsapp"
 import type { BurgerCompra } from "@/data/data"
+import { useRestaurant } from "@/context/RestaurantContext"
 
 const METODOS = [
   { value: "Efectivo", Icon: Banknote },
@@ -52,6 +53,7 @@ interface FormProps {
 }
 
 export default function Form({ cerrar, cerrarForm, mostrar, hamburguesas }: FormProps) {
+  const { storeConfig, addOrder } = useRestaurant()
   const {
     register,
     handleSubmit,
@@ -91,6 +93,34 @@ export default function Form({ cerrar, cerrarForm, mostrar, hamburguesas }: Form
   }
 
   const onSubmit = (values: FormValues) => {
+    // 1. Register order in CRM context
+    addOrder({
+      customer: {
+        nombre: values.nombre,
+        telefono: values.telefono,
+        direccion: values.dir,
+        barrio: values.barrio,
+      },
+      items: hamburguesas.map((b) => ({
+        name: b.name,
+        price: b.totalapagar / (b.cantidad || 1),
+        cantidad: b.cantidad,
+        total: b.totalapagar,
+        src: b.src,
+        adiciones: b.adicion,
+        observacion: b.observacion,
+      })),
+      total,
+      deliveryFee: storeConfig.deliveryFee,
+      finalTotal: total + storeConfig.deliveryFee,
+      metodo: values.metodo,
+      pagoCon: values.pagoCon,
+      cambio: cambio || undefined,
+      comentario: values.mensaje,
+      status: "pending",
+    })
+
+    // 2. Build WhatsApp message
     const message = buildOrderMessage({
       orderId,
       customer: {
@@ -104,7 +134,11 @@ export default function Form({ cerrar, cerrarForm, mostrar, hamburguesas }: Form
       pagoCon: values.pagoCon,
       comentario: values.mensaje,
     })
-    window.open(buildWhatsAppUrl(WHATSAPP_NUMBER, message), "_blank", "noreferrer")
+
+    const targetPhone = storeConfig.whatsappNumber.replace(/\D/g, "")
+    window.open(buildWhatsAppUrl(targetPhone, message), "_blank", "noreferrer")
+    toast.success("¡Pedido enviado con éxito a la cocina!")
+    cerrarForm()
   }
 
   return (
