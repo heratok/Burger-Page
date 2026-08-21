@@ -1,12 +1,9 @@
-export type CurrencyCode = "COP" | "USD" | "EUR" | "MXN"
-
-export type StoreBgTheme = "dark-charcoal" | "warm-cream" | "clean-white" | "deep-midnight"
+// Restaurant & CRM Domain Types
 
 export type CardStyle = "elevated" | "bordered" | "glass" | "minimal"
-
 export type CardRadius = "sm" | "md" | "lg" | "full"
-
-export type FontFamily = "sans" | "serif" | "rounded" | "mono"
+export type StoreBgTheme = "dark-charcoal" | "deep-midnight" | "warm-cream" | "clean-white"
+export type FontFamily = "sans" | "serif" | "mono" | "display"
 
 export interface StorefrontConfig {
   name: string
@@ -17,17 +14,17 @@ export interface StorefrontConfig {
   announcementText: string
   showAnnouncement: boolean
   whatsappNumber: string
-  currency: CurrencyCode
+  currency: string
   currencySymbol: string
   deliveryFee: number
   minOrderAmount: number
   estimatedDeliveryTime: string
   openingHours: string
   address: string
-  
+
   // Theme & UI/UX Customization
   primaryColor: string
-  primaryHoverColor?: string
+  primaryHoverColor: string
   bgTheme: StoreBgTheme
   fontFamily: FontFamily
   cardRadius: CardRadius
@@ -39,10 +36,10 @@ export interface StorefrontConfig {
 export interface MenuItem {
   id: string
   name: string
-  description: string
   price: number
-  src: string
   category: string
+  src: string
+  description: string
   inStock: boolean
   isPopular?: boolean
   isNew?: boolean
@@ -53,44 +50,40 @@ export interface AdditionItem {
   id: string
   name: string
   price: number
-  src?: string
   available: boolean
 }
 
 export type OrderStatus = "pending" | "cooking" | "delivering" | "delivered" | "cancelled"
 
-export type PaymentMethod = "Efectivo" | "Transferencia" | "Tarjeta"
-
 export interface OrderItem {
+  id?: string
   name: string
   price: number
   cantidad: number
   total: number
+  observacion?: string
   src?: string
   adiciones?: Array<{
     name: string
     price: number
     cantidad: number
   }>
-  observacion?: string
-}
-
-export interface OrderCustomer {
-  nombre: string
-  telefono: string
-  direccion: string
-  barrio: string
 }
 
 export interface Order {
   id: string
   orderNumber: number
-  customer: OrderCustomer
+  customer: {
+    nombre: string
+    telefono: string
+    direccion: string
+    barrio: string
+  }
   items: OrderItem[]
   total: number
   deliveryFee: number
   finalTotal: number
-  metodo: PaymentMethod
+  metodo: "Efectivo" | "Transferencia"
   pagoCon?: string
   cambio?: number
   comentario?: string
@@ -109,13 +102,42 @@ export interface Customer {
   barrio: string
   totalOrders: number
   totalSpent: number
-  loyaltyTier: LoyaltyTier
   lastOrderDate: string
+  loyaltyTier: LoyaltyTier
   notes?: string
 }
 
-export type AdminTab = "dashboard" | "orders" | "menu" | "customers" | "customizer"
+// ==========================================
+// MULTI-TENANT & SUPER ADMIN DOMAIN ENTITIES
+// ==========================================
 
+export interface RestaurantRecord {
+  id: string
+  slug: string
+  adminPassword?: string
+  config: StorefrontConfig
+  products: MenuItem[]
+  additions: AdditionItem[]
+  orders: Order[]
+  customers: Customer[]
+  isActive: boolean
+  createdAt: string
+}
+
+export type UserRole = "super" | "restaurant" | "guest"
+
+export interface AdminSession {
+  role: UserRole
+  restaurantId?: string
+  authenticatedAt?: string
+}
+
+export interface StorageEnvelopeV2 {
+  version: 2
+  superAdminPassword: string
+  restaurants: RestaurantRecord[]
+}
+
+export type AdminTab = "dashboard" | "orders" | "menu" | "customers" | "customizer" | "restaurants"
 export type AdminTheme = "light" | "dark"
-
-export type AppView = "store" | "admin"
+export type AppView = "store" | "admin" | "not-found"

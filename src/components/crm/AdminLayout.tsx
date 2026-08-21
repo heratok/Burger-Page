@@ -16,8 +16,12 @@ import {
   Menu as MenuIcon,
   X,
   ChevronRight,
+  Building2,
+  LogOut,
+  Crown,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { AdminSwitcher } from "./superadmin/AdminSwitcher"
 
 interface AdminLayoutProps {
   children: React.ReactNode
@@ -35,12 +39,26 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     setSoundEnabled,
     simulateIncomingOrder,
     pendingOrdersCount,
+    session,
+    logout,
   } = useRestaurant()
 
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
   const isDark = adminTheme === "dark"
+  const isSuper = session.role === "super"
 
   const navItems = [
+    ...(isSuper
+      ? [
+          {
+            id: "restaurants" as const,
+            label: "Directorio Global",
+            icon: Building2,
+            description: "Gestión SaaS de locales",
+            badge: "Super Admin",
+          },
+        ]
+      : []),
     {
       id: "dashboard" as const,
       label: "Dashboard",
@@ -125,8 +143,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 <span className="font-bold tracking-tight text-sm truncate text-slate-900 dark:text-white">
                   {storeConfig.name}
                 </span>
-                <span className="text-[10px] font-semibold tracking-wider uppercase text-indigo-600 dark:text-indigo-400">
-                  Panel Administrativo
+                <span className="text-[10px] font-semibold tracking-wider uppercase text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
+                  {isSuper && <Crown className="size-2.5" />}
+                  <span>{isSuper ? "Super Admin" : "Panel Local"}</span>
                 </span>
               </div>
             </div>
@@ -141,8 +160,13 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
             </button>
           </div>
 
+          {/* Restaurant Switcher Widget (Multi-Tenant) */}
+          <div className="p-3 pb-1 border-b border-slate-100 dark:border-slate-800/60">
+            <AdminSwitcher />
+          </div>
+
           {/* Restaurant Status Widget */}
-          <div className="p-4 pb-2">
+          <div className="p-3 pb-1">
             <div
               className={`flex items-center justify-between rounded-xl p-2.5 text-xs ${
                 isDark ? "bg-slate-900 border border-slate-800" : "bg-slate-50 border border-slate-200/60"
@@ -164,7 +188,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           </div>
 
           {/* Navigation Links */}
-          <nav className="flex-1 space-y-1.5 px-3 py-3 overflow-y-auto" aria-label="Menú Lateral">
+          <nav className="flex-1 space-y-1.5 px-3 py-2 overflow-y-auto" aria-label="Menú Lateral">
             <div className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400">
               Módulos del Sistema
             </div>
@@ -281,6 +305,18 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 )}
               </button>
             </div>
+
+            {/* Logout button */}
+            {session.role !== "guest" && (
+              <button
+                type="button"
+                onClick={logout}
+                className="flex w-full items-center justify-center gap-1.5 rounded-lg py-1 text-xs font-semibold text-slate-400 hover:bg-rose-500/10 hover:text-rose-500 transition-colors"
+              >
+                <LogOut className="size-3.5" />
+                <span>Cerrar Sesión</span>
+              </button>
+            )}
           </div>
         </aside>
 
@@ -310,7 +346,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
               {/* Breadcrumb Navigation */}
               <div className="flex items-center gap-2 text-xs sm:text-sm">
                 <span className="font-semibold text-slate-500 dark:text-slate-400 hidden sm:inline">
-                  Admin CRM
+                  {storeConfig.name}
                 </span>
                 <ChevronRight className="size-3.5 text-slate-400 hidden sm:inline" />
                 <span className="font-bold text-slate-900 dark:text-white">
