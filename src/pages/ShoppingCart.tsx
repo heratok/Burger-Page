@@ -1,5 +1,6 @@
 import { Pencil, Trash2, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import ImageWithFallback from "@/components/ImageWithFallback"
 import NoBuy from "../components/NoBuy"
 import type { BurgerCompra } from "@/data/data"
 
@@ -50,7 +51,7 @@ function ShoppingCart({ cerrar, cerrarCarrito, abrirForm, list, deleteCart, edit
             key={i}
             className="relative flex gap-3 rounded-lg border border-border-subtle bg-bg-elevated p-3 sm:gap-4 sm:p-4"
           >
-            <img
+            <ImageWithFallback
               src={burgerCompra.src}
               alt={burgerCompra.name}
               loading="lazy"

@@ -85,6 +85,16 @@ export default function Form({ cerrar, cerrarForm, mostrar, hamburguesas, onOrde
   )
 
   const cambio = calculateChange(total, pagoCon)
+  const pagoConNumber = pagoCon && pagoCon.trim() !== "" ? Number(pagoCon.replace(/\D/g, "")) : null
+  const isPagoInsuficiente =
+    metodo === "Efectivo" &&
+    pagoConNumber !== null &&
+    pagoConNumber > 0 &&
+    pagoConNumber < total
+  const isPagoExacto =
+    metodo === "Efectivo" &&
+    pagoConNumber !== null &&
+    pagoConNumber === total
 
   const ocultar = () => {
     cerrar()
@@ -93,6 +103,9 @@ export default function Form({ cerrar, cerrarForm, mostrar, hamburguesas, onOrde
   }
 
   const onSubmit = (values: FormValues) => {
+    if (isPagoInsuficiente) {
+      return
+    }
     const message = buildOrderMessage({
       orderId,
       customer: {
@@ -282,6 +295,17 @@ export default function Form({ cerrar, cerrarForm, mostrar, hamburguesas, onOrde
                   {...register("pagoCon")}
                 />
               </InputGroup>
+              {isPagoInsuficiente && (
+                <FieldError className="flex items-start gap-1.5 text-destructive">
+                  <CircleAlert className="mt-0.5 size-3.5 shrink-0" data-icon="inline-start" aria-hidden="true" />
+                  El monto ingresado (${pagoConNumber?.toLocaleString()}) debe cubrir el total de la orden (${total.toLocaleString()}).
+                </FieldError>
+              )}
+              {isPagoExacto && (
+                <FieldDescription className="font-medium text-success">
+                  Pago exacto (no requieres cambio).
+                </FieldDescription>
+              )}
               {cambio !== null && (
                 <FieldDescription>
                   Tu cambio:{" "}
@@ -307,7 +331,13 @@ export default function Form({ cerrar, cerrarForm, mostrar, hamburguesas, onOrde
         </FieldGroup>
 
         <div className="flex flex-col gap-2 pt-2 sm:flex-row">
-          <Button type="submit" variant="default" size="lg" className="h-12 flex-1 text-base">
+          <Button
+            type="submit"
+            variant="default"
+            size="lg"
+            disabled={isPagoInsuficiente}
+            className="h-12 flex-1 text-base"
+          >
             <Send data-icon="inline-start" />
             Enviar pedido por WhatsApp
           </Button>

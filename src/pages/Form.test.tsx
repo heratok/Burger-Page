@@ -78,3 +78,77 @@ describe("Form — onOrderSent (CART-4/CART-5)", () => {
     expect(window.open).not.toHaveBeenCalled()
   })
 })
+
+describe("Form — validación de pago en efectivo", () => {
+  beforeEach(() => {
+    vi.spyOn(window, "open").mockImplementation(() => null)
+  })
+
+  afterEach(() => {
+    cleanup()
+    vi.restoreAllMocks()
+  })
+
+  it("muestra error y deshabilita envío si el monto ingresado es menor al total", async () => {
+    render(
+      <Form
+        cerrar={noop}
+        cerrarForm={noop}
+        mostrar={noop}
+        hamburguesas={[burger]} // total: 29000
+      />
+    )
+
+    const pagoInput = screen.getByPlaceholderText("50000")
+    fireEvent.change(pagoInput, { target: { value: "15000" } })
+
+    expect(
+      screen.getByText(/debe cubrir el total de la orden/)
+    ).toBeTruthy()
+
+    const submitBtn = screen.getByRole("button", { name: /Enviar pedido por WhatsApp/ }) as HTMLButtonElement
+    expect(submitBtn.disabled).toBe(true)
+  })
+
+  it("muestra mensaje de pago exacto cuando el monto es igual al total", async () => {
+    render(
+      <Form
+        cerrar={noop}
+        cerrarForm={noop}
+        mostrar={noop}
+        hamburguesas={[burger]} // total: 29000
+      />
+    )
+
+    const pagoInput = screen.getByPlaceholderText("50000")
+    fireEvent.change(pagoInput, { target: { value: "29000" } })
+
+    expect(
+      screen.getByText(/Pago exacto \(no requieres cambio\)/)
+    ).toBeTruthy()
+
+    const submitBtn = screen.getByRole("button", { name: /Enviar pedido por WhatsApp/ }) as HTMLButtonElement
+    expect(submitBtn.disabled).toBe(false)
+  })
+
+  it("calcula y muestra el cambio cuando el monto supera el total", async () => {
+    render(
+      <Form
+        cerrar={noop}
+        cerrarForm={noop}
+        mostrar={noop}
+        hamburguesas={[burger]} // total: 29000
+      />
+    )
+
+    const pagoInput = screen.getByPlaceholderText("50000")
+    fireEvent.change(pagoInput, { target: { value: "50000" } })
+
+    expect(screen.getByText(/Tu cambio:/)).toBeTruthy()
+    expect(screen.getByText(/\$21.000/)).toBeTruthy()
+
+    const submitBtn = screen.getByRole("button", { name: /Enviar pedido por WhatsApp/ }) as HTMLButtonElement
+    expect(submitBtn.disabled).toBe(false)
+  })
+})
+

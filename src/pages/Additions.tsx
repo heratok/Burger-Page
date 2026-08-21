@@ -10,36 +10,10 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
 import { Textarea } from "@/components/ui/textarea"
-import type { Adicion, Burger, BurgerCompra } from "@/data/data"
+import ImageWithFallback from "@/components/ImageWithFallback"
+import { ADICIONES_INICIALES, type Adicion, type Burger, type BurgerCompra } from "@/data/data"
 import CharacterCounter from "../components/CharacterCounter"
 import { LIMITS } from "@/lib/validation"
-
-const ADICIONES_INICIALES: Adicion[] = [
-  {
-    name: "papas fritas",
-    price: 5000,
-    cantidad: 0,
-    src: "https://express.donangelo.pe/wp-content/uploads/2022/05/WhatsApp-Image-2022-05-28-at-10.47.42-AM-10.jpeg",
-  },
-  {
-    name: "Cebolla Caramelizada",
-    price: 1500,
-    cantidad: 0,
-    src: "https://www.divinacocina.es/wp-content/uploads/cebolla-caramelizada7.jpg",
-  },
-  {
-    name: "Extra queso",
-    price: 2700,
-    cantidad: 0,
-    src: "https://www.los-almendros.com.ar/shop/wp-content/uploads/ofertaa-queso-raclette-fermier-env-sin-cargo-cap-fed-D_NQ_NP_963843-MLA27191786169_042018-F.jpg",
-  },
-  {
-    name: "Tocineta",
-    price: 2500,
-    cantidad: 0,
-    src: "https://tienda.atlantic.la/cdn/shop/files/TOCINETAPREMIUM_1024x.jpg?v=1684335896",
-  },
-]
 
 interface AdditionsInitial {
   cantidad: number
@@ -116,7 +90,7 @@ export default function Additions({ cerrar, hamburger, agregarList, editing = fa
         className="top-auto bottom-0 left-0 flex max-h-[92dvh] w-full max-w-none flex-col overflow-hidden translate-x-0 translate-y-0 gap-0 rounded-t-lg rounded-b-none border-border-subtle bg-bg-surface p-0 sm:top-1/2 sm:bottom-auto sm:left-1/2 sm:max-h-[90dvh] sm:w-[calc(100%-2rem)] sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-lg data-[side=bottom]:data-ending-style:translate-y-0 data-[side=bottom]:data-starting-style:translate-y-0"
       >
         <header className="flex items-center gap-3 border-b border-border-subtle p-5 pb-4">
-          <img
+          <ImageWithFallback
             src={hamburger.src}
             alt={hamburger.name}
             className="size-16 shrink-0 rounded-full bg-bg-elevated-2 object-cover"
@@ -161,9 +135,9 @@ export default function Additions({ cerrar, hamburger, agregarList, editing = fa
                   className="flex items-center gap-3 rounded-lg border border-border-subtle bg-bg-elevated p-3"
                 >
                   <span className="inline-flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-bg-elevated-2">
-                    <img
+                    <ImageWithFallback
                       src={adicion.src}
-                      alt=""
+                      alt={adicion.name}
                       loading="lazy"
                       className="size-full object-cover"
                     />

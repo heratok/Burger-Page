@@ -1,0 +1,17 @@
+{
+  "name": "Rosto — Burger Page",
+  "short_name": "Rosto",
+  "description": "Pide tus productos favoritos a domicilio. Personaliza tu orden y recibe en tu puerta.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0F1112",
+  "theme_color": "#FF7A21",
+  "icons": [
+    {
+      "src": "/logo.jpg",
+      "sizes": "192x192 512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}

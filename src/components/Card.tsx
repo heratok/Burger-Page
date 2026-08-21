@@ -1,5 +1,6 @@
 import { Plus } from "lucide-react"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
+import ImageWithFallback from "@/components/ImageWithFallback"
 import type { Burger } from "@/data/data"
 
 interface CardBurgerProps {
@@ -25,7 +26,7 @@ export default function CardBurger({ hamburger, onCliked }: CardBurgerProps) {
       className="group cursor-pointer gap-0 rounded-lg border-border-subtle bg-bg-elevated py-0 transition duration-200 ease-out hover:-translate-y-0.5 hover:border-border-strong hover:shadow-md focus:outline-none focus-visible:focus-ring active:translate-y-0 active:shadow-sm"
     >
       <div className="aspect-video overflow-hidden bg-bg-elevated-2">
-        <img
+        <ImageWithFallback
           src={hamburger.src}
           alt={hamburger.name}
           loading="lazy"

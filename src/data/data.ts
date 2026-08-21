@@ -58,3 +58,30 @@ export const hamburguesas: Burger[] = [
       "La MegaBurger es un coloso culinario, una auténtica maravilla para los amantes de las hamburguesas.",
   },
 ];
+
+export const ADICIONES_INICIALES: Adicion[] = [
+  {
+    name: "papas fritas",
+    price: 5000,
+    cantidad: 0,
+    src: "https://express.donangelo.pe/wp-content/uploads/2022/05/WhatsApp-Image-2022-05-28-at-10.47.42-AM-10.jpeg",
+  },
+  {
+    name: "Cebolla Caramelizada",
+    price: 1500,
+    cantidad: 0,
+    src: "https://www.divinacocina.es/wp-content/uploads/cebolla-caramelizada7.jpg",
+  },
+  {
+    name: "Extra queso",
+    price: 2700,
+    cantidad: 0,
+    src: "https://www.los-almendros.com.ar/shop/wp-content/uploads/ofertaa-queso-raclette-fermier-env-sin-cargo-cap-fed-D_NQ_NP_963843-MLA27191786169_042018-F.jpg",
+  },
+  {
+    name: "Tocineta",
+    price: 2500,
+    cantidad: 0,
+    src: "https://tienda.atlantic.la/cdn/shop/files/TOCINETAPREMIUM_1024x.jpg?v=1684335896",
+  },
+];

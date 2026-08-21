@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
-import { toast } from "sonner"
 import { Utensils } from "lucide-react"
 import CardBurger from "../components/Card"
-import { hamburguesas, type BurgerCompra } from "../data/data"
+import { hamburguesas, type Burger } from "../data/data"
 import Additions from "./Additions"
 import Navbar from "../components/Navbar"
 import Buscar from "../components/Buscar"
@@ -10,7 +9,7 @@ import Nav from "../components/Nav"
 import ShoppingCart from "./ShoppingCart"
 import Form from "./Form"
 import LoadingPage from "../components/LoadingPage"
-import { readDraft, writeDraft, clearDraft } from "../lib/draft"
+import { useCart } from "../hooks/useCart"
 import { Button } from "../components/ui/button"
 import {
   Dialog,
@@ -25,49 +24,30 @@ export default function Home() {
   const [click, setClick] = useState(false)
   const [ver, setVer] = useState(false)
   const [openForm, setOpenForm] = useState(false)
-  const [selectedBurger, setSelectedBurger] = useState(hamburguesas[0])
-  // Rehidrata el carrito desde el borrador persistido (CART-1).
-  const [lisBuy, setListBuy] = useState<BurgerCompra[]>(() => readDraft() ?? [])
-  // Solo muestra la recuperación si existía un borrador válido al cargar (CART-3).
-  const [showRecovery, setShowRecovery] = useState<boolean>(() => {
-    const draft = readDraft()
-    return draft !== null && draft.length > 0
-  })
+  const [selectedBurger, setSelectedBurger] = useState<Burger>(hamburguesas[0])
   const [texto, setTexto] = useState("")
   const [loading, setLoading] = useState(true)
-  const [editingIndex, setEditingIndex] = useState<number | null>(null)
 
-  const agregarList = (burgerCompra: BurgerCompra) => {
-    if (editingIndex !== null) {
-      setListBuy((prev) =>
-        prev.map((item, i) => (i === editingIndex ? burgerCompra : item))
-      )
-      setEditingIndex(null)
-      toast.success("Cambios guardados")
-      return
-    }
-    setListBuy((prev) => [...prev, burgerCompra])
-    toast.success(`${burgerCompra.name} agregada al carrito`)
-  }
+  const {
+    items: lisBuy,
+    total: totalCarrito,
+    itemCount,
+    showRecovery,
+    setShowRecovery,
+    editingIndex,
+    editingItem,
+    addItem,
+    replaceCart,
+    clearAll,
+    discardDraft,
+    dismissRecovery,
+    startEditing,
+    cancelEditing,
+  } = useCart()
 
-  const deleteCart = (listActual: BurgerCompra[]) => {
-    setListBuy(listActual)
-  }
-
-  // Persiste el carrito en cada mutación; una lista vacía limpia el borrador (CART-1).
-  useEffect(() => {
-    writeDraft(lisBuy)
-  }, [lisBuy])
-
-  const descartarDraft = () => {
-    clearDraft()
-    setListBuy([])
-    setShowRecovery(false)
-  }
-
-  const onCliked = (hamburguesa: typeof hamburguesas[number]) => {
+  const onCliked = (hamburguesa: Burger) => {
     setSelectedBurger(hamburguesa)
-    setEditingIndex(null)
+    cancelEditing()
     setClick(true)
   }
 
@@ -77,7 +57,7 @@ export default function Home() {
     const burger = hamburguesas.find((b) => b.name === item.name)
     if (!burger) return
     setSelectedBurger(burger)
-    setEditingIndex(index)
+    startEditing(index)
     setClick(true)
   }
 
@@ -87,15 +67,10 @@ export default function Home() {
   const cerrarForm = () => setOpenForm(false)
   const cerrar = () => {
     setClick(false)
-    setEditingIndex(null)
+    cancelEditing()
   }
 
   const onChangeText = (text: string) => setTexto(text)
-
-  const totalCarrito = useMemo(
-    () => lisBuy.reduce((acc, item) => acc + item.totalapagar, 0),
-    [lisBuy]
-  )
 
   const filterBurger = useMemo(() => {
     const query = texto.toLowerCase().trim()
@@ -111,11 +86,11 @@ export default function Home() {
   }, [])
 
   const showFullScreen = ver || openForm
-  const showMobileBar = lisBuy.length > 0 && !showFullScreen
+  const showMobileBar = itemCount > 0 && !showFullScreen
 
   return (
     <div className="min-h-screen bg-bg-base text-text-primary">
-      <Navbar cantidad={lisBuy.length} total={totalCarrito} onOpenCart={mostrar} />
+      <Navbar cantidad={itemCount} total={totalCarrito} onOpenCart={mostrar} />
 
       <a id="main" className="sr-only" tabIndex={-1}>
         Inicio del contenido principal
@@ -132,7 +107,7 @@ export default function Home() {
           ver ? (
             <ShoppingCart
               list={lisBuy}
-              deleteCart={deleteCart}
+              deleteCart={replaceCart}
               editarItem={editarItem}
               cerrar={cerrar}
               abrirForm={abrirForm}
@@ -144,10 +119,7 @@ export default function Home() {
               hamburguesas={lisBuy}
               mostrar={mostrar}
               cerrarForm={cerrarForm}
-              onOrderSent={() => {
-                clearDraft()
-                setListBuy([])
-              }}
+              onOrderSent={clearAll}
             />
           )
         ) : (
@@ -188,16 +160,16 @@ export default function Home() {
       </main>
 
       {showMobileBar && (
-        <Nav mostrar={mostrar} cantidad={lisBuy.length} total={totalCarrito} />
+        <Nav mostrar={mostrar} cantidad={itemCount} total={totalCarrito} />
       )}
 
       {click && (
         <Additions
-          agregarList={agregarList}
+          agregarList={addItem}
           cerrar={cerrar}
           hamburger={selectedBurger}
           editing={editingIndex !== null}
-          initial={editingIndex !== null ? lisBuy[editingIndex] : undefined}
+          initial={editingItem ?? undefined}
         />
       )}
 
@@ -216,10 +188,10 @@ export default function Home() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={descartarDraft}>
+            <Button type="button" variant="outline" onClick={discardDraft}>
               Descartar
             </Button>
-            <Button type="button" onClick={() => setShowRecovery(false)}>
+            <Button type="button" onClick={dismissRecovery}>
               Continuar
             </Button>
           </DialogFooter>
