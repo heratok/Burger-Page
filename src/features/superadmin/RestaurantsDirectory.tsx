@@ -9,6 +9,7 @@ import {
 } from "lucide-react"
 import { GlobalPlatformSummary } from "./GlobalPlatformSummary"
 import { CreateRestaurantModal } from "./CreateRestaurantModal"
+import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
 
 export const RestaurantsDirectory: React.FC = () => {
   const {
@@ -24,6 +25,7 @@ export const RestaurantsDirectory: React.FC = () => {
 
   const [searchTerm, setSearchTerm] = useState("")
   const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [restaurantToDelete, setRestaurantToDelete] = useState<RestaurantRecord | null>(null)
 
   const isDark = adminTheme === "dark"
 
@@ -196,8 +198,8 @@ export const RestaurantsDirectory: React.FC = () => {
 
                         <button
                           type="button"
-                          onClick={() => deleteRestaurant(r.id)}
-                          className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/20 dark:hover:text-rose-400 transition-colors"
+                          onClick={() => setRestaurantToDelete(r)}
+                          className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/20 dark:hover:text-rose-400 transition-colors cursor-pointer"
                           title="Eliminar restaurante"
                         >
                           <Trash2 className="size-3.5" />
@@ -215,6 +217,25 @@ export const RestaurantsDirectory: React.FC = () => {
       <CreateRestaurantModal
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
+      />
+
+      <ConfirmDeleteModal
+        isOpen={!!restaurantToDelete}
+        onClose={() => setRestaurantToDelete(null)}
+        onConfirm={() => {
+          if (restaurantToDelete) {
+            deleteRestaurant(restaurantToDelete.id)
+            setRestaurantToDelete(null)
+          }
+        }}
+        title="¿Eliminar restaurante?"
+        targetName={restaurantToDelete?.config.name}
+        description={
+          restaurantToDelete
+            ? `¿Estás seguro de que deseas eliminar permanentemente a "${restaurantToDelete.config.name}" (/${restaurantToDelete.slug})? Se borrarán sus productos, adiciones, inventario y pedidos acumulados.`
+            : undefined
+        }
+        confirmText="Eliminar restaurante"
       />
     </div>
   )

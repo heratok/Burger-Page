@@ -20,6 +20,7 @@ import {
   X,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
 
 const CATEGORY_LABELS: Record<InventoryCategory, string> = {
   ingredients: "Ingredientes & Alimentos",
@@ -61,6 +62,9 @@ export const InventoryManager: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
   const [onlyLowStock, setOnlyLowStock] = useState(false)
+
+  const [itemToDelete, setItemToDelete] = useState<InventoryItem | null>(null)
+  const [supplierToDelete, setSupplierToDelete] = useState<Supplier | null>(null)
 
   // Item Modal State
   const [isItemModalOpen, setIsItemModalOpen] = useState(false)
@@ -647,8 +651,8 @@ export const InventoryManager: React.FC = () => {
                               </button>
                               <button
                                 type="button"
-                                onClick={() => deleteInventoryItem(item.id)}
-                                className="rounded-lg p-1 text-slate-400 hover:bg-rose-500/10 hover:text-rose-500"
+                                onClick={() => setItemToDelete(item)}
+                                className="rounded-lg p-1 text-slate-400 hover:bg-rose-500/10 hover:text-rose-500 cursor-pointer"
                                 title="Eliminar insumo"
                               >
                                 <Trash2 className="size-3.5" />
@@ -737,8 +741,9 @@ export const InventoryManager: React.FC = () => {
                           </button>
                           <button
                             type="button"
-                            onClick={() => deleteSupplier(sup.id)}
-                            className="rounded-lg p-1 text-slate-400 hover:bg-rose-500/10 hover:text-rose-500"
+                            onClick={() => setSupplierToDelete(sup)}
+                            className="rounded-lg p-1 text-slate-400 hover:bg-rose-500/10 hover:text-rose-500 cursor-pointer"
+                            title="Eliminar proveedor"
                           >
                             <Trash2 className="size-3.5" />
                           </button>
@@ -1149,6 +1154,46 @@ export const InventoryManager: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Delete Item Confirmation Modal */}
+      <ConfirmDeleteModal
+        isOpen={!!itemToDelete}
+        onClose={() => setItemToDelete(null)}
+        onConfirm={() => {
+          if (itemToDelete) {
+            deleteInventoryItem(itemToDelete.id)
+            setItemToDelete(null)
+          }
+        }}
+        title="¿Eliminar insumo del inventario?"
+        targetName={itemToDelete?.name}
+        description={
+          itemToDelete
+            ? `¿Estás seguro de que deseas eliminar permanentemente el insumo "${itemToDelete.name}" (${itemToDelete.currentStock} ${itemToDelete.unit} en stock)?`
+            : undefined
+        }
+        confirmText="Eliminar insumo"
+      />
+
+      {/* Delete Supplier Confirmation Modal */}
+      <ConfirmDeleteModal
+        isOpen={!!supplierToDelete}
+        onClose={() => setSupplierToDelete(null)}
+        onConfirm={() => {
+          if (supplierToDelete) {
+            deleteSupplier(supplierToDelete.id)
+            setSupplierToDelete(null)
+          }
+        }}
+        title="¿Eliminar proveedor?"
+        targetName={supplierToDelete?.name}
+        description={
+          supplierToDelete
+            ? `¿Estás seguro de que deseas eliminar permanentemente al proveedor "${supplierToDelete.name}"? Los insumos asociados seguirán en el inventario pero sin proveedor vinculado.`
+            : undefined
+        }
+        confirmText="Eliminar proveedor"
+      />
     </div>
   )
 }

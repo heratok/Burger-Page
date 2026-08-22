@@ -15,6 +15,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
+import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
 
 export const MenuManager: React.FC = () => {
   const {
@@ -31,6 +32,8 @@ export const MenuManager: React.FC = () => {
   } = useRestaurant()
 
   const [activeSubTab, setActiveSubTab] = useState<"dishes" | "additions">("dishes")
+  const [productToDelete, setProductToDelete] = useState<MenuItem | null>(null)
+  const [additionToDelete, setAdditionToDelete] = useState<AdditionItem | null>(null)
   const {
     searchTerm,
     setSearchTerm,
@@ -356,12 +359,8 @@ export const MenuManager: React.FC = () => {
                         </button>
                         <button
                           type="button"
-                          onClick={() => {
-                            if (window.confirm(`¿Eliminar "${product.name}" de la carta?`)) {
-                              deleteProduct(product.id)
-                            }
-                          }}
-                          className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40"
+                          onClick={() => setProductToDelete(product)}
+                          className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 cursor-pointer"
                           title="Eliminar plato"
                         >
                           <Trash2 className="size-4" />
@@ -452,8 +451,8 @@ export const MenuManager: React.FC = () => {
                         </button>
                         <button
                           type="button"
-                          onClick={() => deleteProduct(prod.id)}
-                          className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40"
+                          onClick={() => setProductToDelete(prod)}
+                          className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 cursor-pointer"
                         >
                           <Trash2 className="size-4" />
                         </button>
@@ -510,8 +509,8 @@ export const MenuManager: React.FC = () => {
                   </button>
                   <button
                     type="button"
-                    onClick={() => deleteAddition(add.id)}
-                    className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-100 hover:text-rose-600 dark:hover:bg-rose-950/40"
+                    onClick={() => setAdditionToDelete(add)}
+                    className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-100 hover:text-rose-600 dark:hover:bg-rose-950/40 cursor-pointer"
                   >
                     <Trash2 className="size-3.5" />
                   </button>
@@ -732,6 +731,46 @@ export const MenuManager: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Delete Product Confirmation Modal */}
+      <ConfirmDeleteModal
+        isOpen={!!productToDelete}
+        onClose={() => setProductToDelete(null)}
+        onConfirm={() => {
+          if (productToDelete) {
+            deleteProduct(productToDelete.id)
+            setProductToDelete(null)
+          }
+        }}
+        title="¿Eliminar plato de la carta?"
+        targetName={productToDelete?.name}
+        description={
+          productToDelete
+            ? `¿Estás seguro de que deseas eliminar "${productToDelete.name}" ($${productToDelete.price.toLocaleString()}) del menú? Ya no estará disponible para los clientes.`
+            : undefined
+        }
+        confirmText="Eliminar plato"
+      />
+
+      {/* Delete Addition Confirmation Modal */}
+      <ConfirmDeleteModal
+        isOpen={!!additionToDelete}
+        onClose={() => setAdditionToDelete(null)}
+        onConfirm={() => {
+          if (additionToDelete) {
+            deleteAddition(additionToDelete.id)
+            setAdditionToDelete(null)
+          }
+        }}
+        title="¿Eliminar adición / extra?"
+        targetName={additionToDelete?.name}
+        description={
+          additionToDelete
+            ? `¿Estás seguro de que deseas eliminar la adición "${additionToDelete.name}" (+${additionToDelete.price.toLocaleString()})?`
+            : undefined
+        }
+        confirmText="Eliminar adición"
+      />
     </div>
   )
 }
