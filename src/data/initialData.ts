@@ -5,6 +5,8 @@ import type {
   Order,
   Customer,
   RestaurantRecord,
+  InventoryItem,
+  Supplier,
 } from "@/types/restaurant"
 
 export const DEFAULT_STORE_CONFIG: StorefrontConfig = {
@@ -395,6 +397,151 @@ export const INITIAL_ORDERS: Order[] = [
 ]
 
 // =========================================================================
+// DEFAULT INVENTORY ITEMS & SUPPLIERS
+// =========================================================================
+
+export const INITIAL_SUPPLIERS: Supplier[] = [
+  {
+    id: "sup-1",
+    name: "Distribuidora Cárnicos San José",
+    category: "Carnes & Proteínas",
+    contactName: "Carlos Gómez",
+    phone: "573105551234",
+    email: "carlos@carnicossanjose.com",
+    notes: "Entregan martes y viernes antes de las 10 AM. Pedido mínimo $200.000.",
+  },
+  {
+    id: "sup-2",
+    name: "Panadería Artesanal La Espiga",
+    category: "Panadería",
+    contactName: "Lucía Méndez",
+    phone: "573159988776",
+    email: "lucia@laespiga.com",
+    notes: "Despachos diarios a las 8:00 AM. Pedidos con 24h de anticipación.",
+  },
+  {
+    id: "sup-3",
+    name: "Bebidas & Refrescos Express",
+    category: "Bebidas",
+    contactName: "Andrés Parra",
+    phone: "573201122334",
+    email: "ventas@refrescosexpress.com",
+    notes: "Preventa los lunes. Pago a 15 días.",
+  },
+  {
+    id: "sup-4",
+    name: "Empaques EcoPack Colombia",
+    category: "Empaques & Descartables",
+    contactName: "Paola Restrepo",
+    phone: "573004455667",
+    email: "contacto@ecopack.co",
+    notes: "Cajas térmicas biodegradables y papel parafinado.",
+  },
+]
+
+export const INITIAL_INVENTORY: InventoryItem[] = [
+  {
+    id: "inv-1",
+    name: "Carne Molida Angus 150g (Patties)",
+    category: "ingredients",
+    currentStock: 48,
+    minStockAlert: 15,
+    unit: "unidades",
+    costPerUnit: 5200,
+    supplierId: "sup-1",
+    lastRestockedAt: "2026-08-20T08:00:00.000Z",
+  },
+  {
+    id: "inv-2",
+    name: "Pan Brioche de Papa Sellado",
+    category: "ingredients",
+    currentStock: 6,
+    minStockAlert: 12,
+    unit: "unidades",
+    costPerUnit: 1800,
+    supplierId: "sup-2",
+    lastRestockedAt: "2026-08-19T07:30:00.000Z",
+  },
+  {
+    id: "inv-3",
+    name: "Queso Cheddar Americano en Fetas",
+    category: "ingredients",
+    currentStock: 65,
+    minStockAlert: 20,
+    unit: "unidades",
+    costPerUnit: 900,
+    supplierId: "sup-1",
+    lastRestockedAt: "2026-08-21T09:00:00.000Z",
+  },
+  {
+    id: "inv-4",
+    name: "Tocineta Ahumada Premium",
+    category: "ingredients",
+    currentStock: 3.5,
+    minStockAlert: 5,
+    unit: "kg",
+    costPerUnit: 24000,
+    supplierId: "sup-1",
+    lastRestockedAt: "2026-08-18T10:00:00.000Z",
+  },
+  {
+    id: "inv-5",
+    name: "Papas Francesas Corte Grueso 2.5kg",
+    category: "ingredients",
+    currentStock: 14,
+    minStockAlert: 5,
+    unit: "paquetes",
+    costPerUnit: 14000,
+    supplierId: "sup-1",
+    lastRestockedAt: "2026-08-20T11:00:00.000Z",
+  },
+  {
+    id: "inv-6",
+    name: "Coca-Cola Original 330ml Lata",
+    category: "beverages",
+    currentStock: 4,
+    minStockAlert: 12,
+    unit: "unidades",
+    costPerUnit: 2200,
+    supplierId: "sup-3",
+    lastRestockedAt: "2026-08-15T14:00:00.000Z",
+  },
+  {
+    id: "inv-7",
+    name: "Cerveza Corona Extra 355ml",
+    category: "beverages",
+    currentStock: 22,
+    minStockAlert: 10,
+    unit: "unidades",
+    costPerUnit: 4800,
+    supplierId: "sup-3",
+    lastRestockedAt: "2026-08-21T16:00:00.000Z",
+  },
+  {
+    id: "inv-8",
+    name: "Cajas Térmicas Hamburguesa Kraft",
+    category: "packaging",
+    currentStock: 150,
+    minStockAlert: 40,
+    unit: "unidades",
+    costPerUnit: 450,
+    supplierId: "sup-4",
+    lastRestockedAt: "2026-08-10T12:00:00.000Z",
+  },
+  {
+    id: "inv-9",
+    name: "Bolsas Domicilio Kraft con Asa",
+    category: "packaging",
+    currentStock: 18,
+    minStockAlert: 30,
+    unit: "unidades",
+    costPerUnit: 600,
+    supplierId: "sup-4",
+    lastRestockedAt: "2026-08-10T12:00:00.000Z",
+  },
+]
+
+// =========================================================================
 // 3 PRECONFIGURED DEMO RESTAURANTS FOR MULTI-TENANT PLATFORM
 // =========================================================================
 
@@ -408,6 +555,8 @@ export const SEED_RESTAURANTS: RestaurantRecord[] = [
     config: DEFAULT_STORE_CONFIG,
     products: INITIAL_PRODUCTS,
     additions: INITIAL_ADDITIONS,
+    inventory: INITIAL_INVENTORY,
+    suppliers: INITIAL_SUPPLIERS,
     orders: INITIAL_ORDERS,
     customers: INITIAL_CUSTOMERS,
   },

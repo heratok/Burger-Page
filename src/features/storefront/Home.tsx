@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
-import { Utensils, ShieldCheck, Flame } from "lucide-react"
+import { Utensils, Flame } from "lucide-react"
 import ProductCard from "./ProductCard"
 import type { MenuItem } from "@/types/restaurant"
 import Navbar from "./Navbar"
@@ -16,7 +16,7 @@ import {
 import { useRestaurant } from "@/context/RestaurantContext"
 
 export default function Home() {
-  const { products, storeConfig, setActiveView } = useRestaurant()
+  const { products, storeConfig } = useRestaurant()
   const [isAdditionsModalOpen, setIsAdditionsModalOpen] = useState(false)
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false)
@@ -282,20 +282,6 @@ export default function Home() {
           </div>
         )}
       </main>
-
-      {/* Floating Manager CRM Shortcut (Bottom Left) */}
-      <div className="fixed bottom-4 left-4 z-40">
-        <button
-          type="button"
-          onClick={() => setActiveView("admin")}
-          className="flex items-center gap-2 rounded-full border border-indigo-500/30 bg-slate-900/90 px-3.5 py-2 text-xs font-bold text-white shadow-xl backdrop-blur-md transition-all duration-150 hover:scale-105 hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-400"
-          title="Ir al Dashboard de Administración CRM"
-        >
-          <ShieldCheck className="size-4 text-indigo-400" />
-          <span className="hidden min-[380px]:inline">Panel de Administración</span>
-          <span className="min-[380px]:hidden">CRM</span>
-        </button>
-      </div>
 
       {showMobileBar && (
         <MobileOrderBar

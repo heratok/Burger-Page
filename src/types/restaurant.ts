@@ -108,6 +108,35 @@ export interface Customer {
 }
 
 // ==========================================
+// INVENTORY & SUPPLIERS DOMAIN ENTITIES
+// ==========================================
+
+export type InventoryCategory = "ingredients" | "beverages" | "packaging" | "cleaning" | "other"
+export type InventoryUnit = "unidades" | "kg" | "g" | "litros" | "paquetes" | "cajas"
+
+export interface InventoryItem {
+  id: string
+  name: string
+  category: InventoryCategory
+  currentStock: number
+  minStockAlert: number
+  unit: InventoryUnit
+  costPerUnit: number
+  supplierId?: string
+  lastRestockedAt?: string
+}
+
+export interface Supplier {
+  id: string
+  name: string
+  category: string
+  contactName: string
+  phone: string
+  email?: string
+  notes?: string
+}
+
+// ==========================================
 // MULTI-TENANT & SUPER ADMIN DOMAIN ENTITIES
 // ==========================================
 
@@ -118,6 +147,8 @@ export interface RestaurantRecord {
   config: StorefrontConfig
   products: MenuItem[]
   additions: AdditionItem[]
+  inventory?: InventoryItem[]
+  suppliers?: Supplier[]
   orders: Order[]
   customers: Customer[]
   isActive: boolean
@@ -138,6 +169,6 @@ export interface StorageEnvelopeV2 {
   restaurants: RestaurantRecord[]
 }
 
-export type AdminTab = "dashboard" | "orders" | "menu" | "customers" | "customizer" | "restaurants"
+export type AdminTab = "dashboard" | "orders" | "menu" | "inventory" | "customers" | "customizer" | "restaurants"
 export type AdminTheme = "light" | "dark"
-export type AppView = "store" | "admin" | "not-found"
+export type AppView = "landing" | "store" | "admin" | "not-found"

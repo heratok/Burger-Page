@@ -1,5 +1,4 @@
-import { useState, useRef, useEffect } from "react"
-import { ShoppingCart, ShieldCheck, ChevronDown, Check } from "lucide-react"
+import { ShoppingCart } from "lucide-react"
 import { useRestaurant } from "@/context/RestaurantContext"
 
 interface NavbarProps {
@@ -9,35 +8,9 @@ interface NavbarProps {
 }
 
 export default function Navbar({ cantidad, total, onOpenCart }: NavbarProps) {
-  const {
-    storeConfig,
-    setActiveView,
-    restaurants,
-    activeRestaurant,
-    switchRestaurant,
-  } = useRestaurant()
-
-  const [isRestMenuOpen, setIsRestMenuOpen] = useState(false)
-  const menuRef = useRef<HTMLDivElement>(null)
+  const { storeConfig } = useRestaurant()
 
   const cartLabel = `Ver orden, ${cantidad} ${cantidad === 1 ? "producto" : "productos"}, total $${total.toLocaleString()}`
-
-  // Close dropdown on outside click
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setIsRestMenuOpen(false)
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside)
-    return () => document.removeEventListener("mousedown", handleClickOutside)
-  }, [])
-
-  const handleSelectRestaurant = (slug: string) => {
-    switchRestaurant(slug)
-    window.history.pushState({}, "", `/${slug}`)
-    setIsRestMenuOpen(false)
-  }
 
   return (
     <header className="sticky top-0 z-30 border-b border-border-subtle bg-bg-base/85 backdrop-blur-md transition-colors">
@@ -60,7 +33,7 @@ export default function Navbar({ cantidad, total, onOpenCart }: NavbarProps) {
           Saltar al contenido
         </a>
 
-        {/* Logo, Brand Name & Restaurant Switcher */}
+        {/* Logo & Brand Name */}
         <div className="flex items-center gap-3">
           {storeConfig.logoUrl ? (
             <img
@@ -79,79 +52,18 @@ export default function Navbar({ cantidad, total, onOpenCart }: NavbarProps) {
             </div>
           )}
 
-          {/* Brand with Dropdown Switcher */}
-          <div className="relative" ref={menuRef}>
-            <button
-              type="button"
-              onClick={() => setIsRestMenuOpen(!isRestMenuOpen)}
-              className="group flex items-center gap-1.5 text-left focus:outline-none"
-              title="Cambiar de restaurante"
-            >
-              <div className="flex flex-col leading-tight">
-                <span className="text-base font-bold tracking-tight text-text-primary group-hover:text-accent transition-colors">
-                  {storeConfig.name}
-                </span>
-                <span className="text-xs text-text-muted line-clamp-1">
-                  {storeConfig.tagline}
-                </span>
-              </div>
-              <ChevronDown className="size-3.5 text-text-muted transition-transform group-hover:text-text-primary" />
-            </button>
-
-            {/* Dropdown Menu */}
-            {isRestMenuOpen && (
-              <div className="absolute left-0 top-full mt-2 w-64 rounded-2xl border border-border-strong bg-bg-surface p-2 shadow-2xl z-50 animate-fade-in">
-                <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-text-muted">
-                  Restaurantes en la Red
-                </div>
-                <div className="mt-1 space-y-1">
-                  {restaurants.map((r) => {
-                    const isSelected = r.id === activeRestaurant.id
-                    return (
-                      <button
-                        key={r.id}
-                        type="button"
-                        onClick={() => handleSelectRestaurant(r.slug)}
-                        className={`flex w-full items-center justify-between rounded-xl px-2.5 py-2 text-left text-xs transition-colors ${
-                          isSelected
-                            ? "bg-accent-soft font-bold text-accent"
-                            : "text-text-secondary hover:bg-bg-elevated hover:text-text-primary"
-                        }`}
-                      >
-                        <div className="flex items-center gap-2 truncate">
-                          <img
-                            src={r.config.logoUrl}
-                            alt=""
-                            className="size-6 rounded-md object-cover"
-                          />
-                          <div className="truncate">
-                            <div className="truncate font-semibold">{r.config.name}</div>
-                            <div className="text-[10px] text-text-muted font-mono">/{r.slug}</div>
-                          </div>
-                        </div>
-                        {isSelected && <Check className="size-3.5 shrink-0 text-accent" />}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
+          <div className="flex flex-col leading-tight">
+            <span className="text-base font-bold tracking-tight text-text-primary">
+              {storeConfig.name}
+            </span>
+            <span className="text-xs text-text-muted line-clamp-1">
+              {storeConfig.tagline}
+            </span>
           </div>
         </div>
 
         {/* Action icons */}
         <div className="flex items-center gap-2">
-          {/* Direct link to Admin CRM */}
-          <button
-            type="button"
-            onClick={() => setActiveView("admin")}
-            className="inline-flex items-center gap-1.5 rounded-full border border-border-strong px-3 py-1.5 text-xs font-semibold text-text-secondary transition duration-150 ease-out hover:border-indigo-500 hover:text-indigo-400 focus:outline-none focus-visible:focus-ring"
-            title="Abrir panel de administración CRM"
-          >
-            <ShieldCheck className="size-4 text-indigo-500" />
-            <span className="hidden sm:inline">Admin CRM</span>
-          </button>
-
           {/* Cart Icon */}
           <button
             type="button"

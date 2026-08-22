@@ -21,7 +21,19 @@ const STORAGE_KEYS = {
 const UiContext = createContext<UiContextType | undefined>(undefined)
 
 export const UiProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [activeView, setActiveView] = useState<AppView>("store")
+  const [activeView, setActiveView] = useState<AppView>(() => {
+    try {
+      if (typeof window !== "undefined") {
+        const clean = window.location.pathname.replace(/^\/+|\/+$/g, "").toLowerCase()
+        if (!clean) return "landing"
+        if (clean === "admin") return "admin"
+        return "store"
+      }
+    } catch {
+      // Fallback for SSR/tests
+    }
+    return "landing"
+  })
   const [adminTab, setAdminTab] = useState<AdminTab>("dashboard")
   const [adminTheme, setAdminTheme] = useState<AdminTheme>(() => {
     try {

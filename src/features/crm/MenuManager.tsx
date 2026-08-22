@@ -555,7 +555,7 @@ export const MenuManager: React.FC = () => {
                     value={productForm.name}
                     onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
                     placeholder="Ej. Bacon King Deluxe"
-                    className="w-full rounded-xl border p-2.5 focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white font-medium"
+                    className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500 font-medium"
                   />
                 </div>
                 <div>
@@ -569,7 +569,7 @@ export const MenuManager: React.FC = () => {
                     step={500}
                     value={productForm.price}
                     onChange={(e) => setProductForm({ ...productForm, price: Number(e.target.value) })}
-                    className="w-full rounded-xl border p-2.5 focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white"
+                    className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                   />
                 </div>
               </div>
@@ -584,7 +584,7 @@ export const MenuManager: React.FC = () => {
                     value={productForm.category}
                     onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}
                     placeholder="Ej. Clásicas, Gourmet, Pollo"
-                    className="w-full rounded-xl border p-2.5 focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white"
+                    className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                   />
                 </div>
                 <div>
@@ -597,7 +597,7 @@ export const MenuManager: React.FC = () => {
                     onChange={(e) =>
                       setProductForm({ ...productForm, preparationTimeMinutes: Number(e.target.value) })
                     }
-                    className="w-full rounded-xl border p-2.5 focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white"
+                    className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                   />
                 </div>
               </div>
@@ -611,10 +611,10 @@ export const MenuManager: React.FC = () => {
                   value={productForm.src}
                   onChange={(e) => setProductForm({ ...productForm, src: e.target.value })}
                   placeholder="https://..."
-                  className="w-full rounded-xl border p-2.5 focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white"
+                  className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                 />
                 {productForm.src && (
-                  <div className="mt-2 h-24 w-full overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-800 border dark:border-slate-700">
+                  <div className="mt-2 h-24 w-full overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
                     <img src={productForm.src} alt="Preview" className="size-full object-cover" />
                   </div>
                 )}
@@ -629,7 +629,7 @@ export const MenuManager: React.FC = () => {
                   value={productForm.description}
                   onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
                   placeholder="Describe la carne, salsas, panes y acompañamientos..."
-                  className="w-full rounded-xl border p-2.5 focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white"
+                  className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                 />
               </div>
 
@@ -673,10 +673,10 @@ export const MenuManager: React.FC = () => {
 
       {/* Addition Modal */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 backdrop-blur-xs">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
           <div
-            className={`w-full max-w-sm rounded-2xl border p-6 shadow-2xl transition-all ${
-              isDark ? "border-slate-800 bg-slate-900 text-slate-100" : "border-slate-200 bg-white text-slate-900"
+            className={`w-full max-w-sm rounded-2xl border p-5 shadow-2xl transition-all ${
+              isDark ? "border-slate-800 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-900"
             }`}
           >
             <div className="flex items-center justify-between border-b pb-3 border-slate-100 dark:border-slate-800">
@@ -703,7 +703,7 @@ export const MenuManager: React.FC = () => {
                   value={additionForm.name}
                   onChange={(e) => setAdditionForm({ ...additionForm, name: e.target.value })}
                   placeholder="Ej. Tocineta ahumada extra"
-                  className="w-full rounded-xl border p-2.5 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white"
+                  className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                 />
               </div>
               <div>
@@ -717,7 +717,7 @@ export const MenuManager: React.FC = () => {
                   step={500}
                   value={additionForm.price}
                   onChange={(e) => setAdditionForm({ ...additionForm, price: Number(e.target.value) })}
-                  className="w-full rounded-xl border p-2.5 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white"
+                  className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                 />
               </div>
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">

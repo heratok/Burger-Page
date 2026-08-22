@@ -20,7 +20,7 @@ export function resolveRoute(
 
   if (!cleanPath) {
     return {
-      view: "store",
+      view: "landing",
       isNotFound: false,
     }
   }

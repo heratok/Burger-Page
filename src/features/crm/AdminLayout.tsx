@@ -17,6 +17,7 @@ import {
   X,
   ChevronRight,
   Building2,
+  Boxes,
   LogOut,
   Crown,
 } from "lucide-react"
@@ -39,62 +40,71 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     setSoundEnabled,
     simulateIncomingOrder,
     pendingOrdersCount,
+    lowStockCount,
     session,
     logout,
   } = useRestaurant()
 
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
+  const isMobileSidebarOpenState = useState(false)
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = isMobileSidebarOpenState
   const isDark = adminTheme === "dark"
   const isSuper = session.role === "super"
 
-  const navItems = [
-    ...(isSuper
-      ? [
-          {
-            id: "restaurants" as const,
-            label: "Directorio Global",
-            icon: Building2,
-            description: "Gestión SaaS de locales",
-            badge: "Super Admin",
-          },
-        ]
-      : []),
-    {
-      id: "dashboard" as const,
-      label: "Dashboard",
-      icon: LayoutDashboard,
-      description: "Métricas y rendimiento",
-      badge: undefined,
-    },
-    {
-      id: "orders" as const,
-      label: "Pedidos en Vivo",
-      icon: ShoppingBag,
-      description: "Flujo Kanban de cocina",
-      badge: pendingOrdersCount > 0 ? pendingOrdersCount : undefined,
-    },
-    {
-      id: "menu" as const,
-      label: "Menú & Carta",
-      icon: UtensilsCrossed,
-      description: "Platos, stock y adiciones",
-      badge: undefined,
-    },
-    {
-      id: "customers" as const,
-      label: "Clientes CRM",
-      icon: Users,
-      description: "Base de datos y fidelización",
-      badge: undefined,
-    },
-    {
-      id: "customizer" as const,
-      label: "Personalizador UI/UX",
-      icon: Palette,
-      description: "Diseño no-code de tienda",
-      badge: "No-Code",
-    },
-  ]
+  // Strict role navigation: Super Admin only sees SaaS Directory; Restaurant Admin sees store operations
+  const navItems = isSuper
+    ? [
+        {
+          id: "restaurants" as const,
+          label: "Directorio Global SaaS",
+          icon: Building2,
+          description: "Gestión de inquilinos y métricas globales",
+          badge: "SaaS",
+        },
+      ]
+    : [
+        {
+          id: "dashboard" as const,
+          label: "Dashboard",
+          icon: LayoutDashboard,
+          description: "Métricas y rendimiento",
+          badge: undefined,
+        },
+        {
+          id: "orders" as const,
+          label: "Pedidos en Vivo",
+          icon: ShoppingBag,
+          description: "Flujo Kanban de cocina",
+          badge: pendingOrdersCount > 0 ? pendingOrdersCount : undefined,
+        },
+        {
+          id: "menu" as const,
+          label: "Menú & Carta",
+          icon: UtensilsCrossed,
+          description: "Platos, stock y adiciones",
+          badge: undefined,
+        },
+        {
+          id: "inventory" as const,
+          label: "Stock & Insumos",
+          icon: Boxes,
+          description: "Control de inventario y proveedores",
+          badge: lowStockCount > 0 ? lowStockCount : undefined,
+        },
+        {
+          id: "customers" as const,
+          label: "Clientes CRM",
+          icon: Users,
+          description: "Base de datos y fidelización",
+          badge: undefined,
+        },
+        {
+          id: "customizer" as const,
+          label: "Personalizador UI/UX",
+          icon: Palette,
+          description: "Diseño no-code de tienda",
+          badge: "No-Code",
+        },
+      ]
 
   const activeItem = navItems.find((item) => item.id === adminTab) || navItems[0]
 
@@ -117,7 +127,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         {/* DESKTOP & MOBILE SIDEBAR                                  */}
         {/* ======================================================== */}
         <aside
-          className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${
+          className={`fixed inset-y-0 left-0 z-50 flex h-screen w-64 flex-col border-r transition-transform duration-300 ease-in-out lg:sticky lg:top-0 lg:translate-x-0 ${
             isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
           } ${
             isDark
@@ -126,71 +136,66 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           }`}
         >
           {/* Sidebar Top: Logo & Branding */}
-          <div className="flex h-16 items-center justify-between border-b px-5 border-slate-200/60 dark:border-slate-800">
-            <div className="flex items-center gap-3">
-              {storeConfig.logoUrl ? (
-                <img
-                  src={storeConfig.logoUrl}
-                  alt=""
-                  className="size-9 rounded-xl object-cover border border-indigo-500/30 shadow-xs"
-                />
-              ) : (
-                <div className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 text-white shadow-md shadow-indigo-500/20">
-                  <Store className="size-4" />
+          <div className="flex h-14 shrink-0 items-center justify-between border-b px-4 border-slate-200/60 dark:border-slate-800">
+            {isSuper ? (
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-tr from-amber-500 to-indigo-600 text-white font-bold text-xs shrink-0 shadow-md">
+                  <Crown className="size-4" />
                 </div>
-              )}
-              <div className="flex flex-col leading-tight truncate">
-                <span className="font-bold tracking-tight text-sm truncate text-slate-900 dark:text-white">
-                  {storeConfig.name}
-                </span>
-                <span className="text-[10px] font-semibold tracking-wider uppercase text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
-                  {isSuper && <Crown className="size-2.5" />}
-                  <span>{isSuper ? "Super Admin" : "Panel Local"}</span>
-                </span>
+                <div className="flex flex-col min-w-0 leading-tight">
+                  <span className="font-bold tracking-tight text-xs truncate text-slate-900 dark:text-white">
+                    SaaS Platform
+                  </span>
+                  <span className="text-[9px] font-bold tracking-wider uppercase text-amber-500">
+                    Super Admin
+                  </span>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="flex items-center gap-2.5 min-w-0">
+                {storeConfig.logoUrl ? (
+                  <img
+                    src={storeConfig.logoUrl}
+                    alt=""
+                    className="size-8 rounded-lg object-cover border border-indigo-500/30 shrink-0"
+                  />
+                ) : (
+                  <div className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-tr from-indigo-600 to-violet-500 text-white font-bold text-xs shrink-0">
+                    <Store className="size-4" />
+                  </div>
+                )}
+                <div className="flex flex-col min-w-0 leading-tight">
+                  <span className="font-bold tracking-tight text-xs truncate text-slate-900 dark:text-white">
+                    {storeConfig.name}
+                  </span>
+                  <span className="text-[9px] font-semibold tracking-wider uppercase text-indigo-600 dark:text-indigo-400">
+                    Panel Local
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* Mobile Close Button */}
             <button
               type="button"
               onClick={() => setIsMobileSidebarOpen(false)}
-              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 lg:hidden"
+              className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 lg:hidden"
             >
-              <X className="size-5" />
+              <X className="size-4" />
             </button>
           </div>
 
-          {/* Restaurant Switcher Widget (Multi-Tenant) */}
-          <div className="p-3 pb-1 border-b border-slate-100 dark:border-slate-800/60">
-            <AdminSwitcher />
-          </div>
-
-          {/* Restaurant Status Widget */}
-          <div className="p-3 pb-1">
-            <div
-              className={`flex items-center justify-between rounded-xl p-2.5 text-xs ${
-                isDark ? "bg-slate-900 border border-slate-800" : "bg-slate-50 border border-slate-200/60"
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <span className="relative flex size-2">
-                  <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
-                </span>
-                <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                  Tienda Abierta
-                </span>
-              </div>
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
-                {storeConfig.estimatedDeliveryTime}
-              </span>
+          {/* Restaurant Switcher Widget (Only for local multi-tenant testing or when not in superadmin) */}
+          {!isSuper && (
+            <div className="p-2.5 border-b border-slate-100 dark:border-slate-800/60 shrink-0">
+              <AdminSwitcher />
             </div>
-          </div>
+          )}
 
           {/* Navigation Links */}
-          <nav className="flex-1 space-y-1.5 px-3 py-2 overflow-y-auto" aria-label="Menú Lateral">
-            <div className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400">
-              Módulos del Sistema
+          <nav className="flex-1 space-y-1 p-2.5 overflow-y-auto" aria-label="Menú Lateral">
+            <div className="px-2 pb-1 text-[9px] font-bold uppercase tracking-wider text-slate-400">
+              {isSuper ? "Administración SaaS" : "Módulos del Restaurante"}
             </div>
 
             {navItems.map((item) => {
@@ -205,44 +210,33 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                     setAdminTab(item.id)
                     setIsMobileSidebarOpen(false)
                   }}
-                  className={`group relative flex w-full items-center justify-between rounded-xl px-3.5 py-2.5 text-xs font-semibold transition-all duration-150 ${
+                  className={`group flex w-full items-center justify-between rounded-xl px-2.5 py-2 text-xs font-semibold transition-all ${
                     isActive
-                      ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/25 font-bold"
+                      ? "bg-indigo-600 text-white shadow-xs"
                       : isDark
-                      ? "text-slate-200 hover:bg-slate-800 hover:text-white"
+                      ? "text-slate-300 hover:bg-slate-800/60 hover:text-white"
                       : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                   }`}
                 >
-                  <div className="flex items-center gap-3 truncate">
+                  <div className="flex items-center gap-2.5 truncate">
                     <Icon
-                      className={`size-4.5 shrink-0 transition-transform group-hover:scale-110 ${
-                        isActive ? "text-white" : isDark ? "text-slate-300" : "text-slate-500"
+                      className={`size-4 shrink-0 transition-colors ${
+                        isActive
+                          ? "text-white"
+                          : isDark
+                          ? "text-slate-400 group-hover:text-white"
+                          : "text-slate-500 group-hover:text-slate-900"
                       }`}
                     />
-                    <div className="flex flex-col text-left truncate leading-tight">
-                      <span className="truncate">{item.label}</span>
-                      <span
-                        className={`text-[10px] font-normal truncate ${
-                          isActive
-                            ? "text-indigo-100"
-                            : isDark
-                            ? "text-slate-400"
-                            : "text-slate-500"
-                        }`}
-                      >
-                        {item.description}
-                      </span>
-                    </div>
+                    <span className="truncate">{item.label}</span>
                   </div>
 
-                  {item.badge && (
+                  {item.badge !== undefined && (
                     <span
-                      className={`ml-2 rounded-full px-2 py-0.5 text-[10px] font-extrabold shrink-0 ${
+                      className={`ml-1.5 shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
                         isActive
                           ? "bg-white/20 text-white"
-                          : typeof item.badge === "number"
-                          ? "bg-amber-500 text-white animate-pulse"
-                          : "bg-indigo-500/20 text-indigo-600 dark:text-indigo-300"
+                          : "bg-indigo-500/15 text-indigo-500 dark:bg-indigo-500/20 dark:text-indigo-300"
                       }`}
                     >
                       {item.badge}
@@ -254,66 +248,27 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           </nav>
 
           {/* Sidebar Footer Controls */}
-          <div className="border-t p-3.5 space-y-2.5 border-slate-200/60 dark:border-slate-800">
-            {/* Quick Switch to Public Storefront */}
-            <Button
-              type="button"
-              onClick={() => setActiveView("store")}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 py-2.5 text-xs font-bold text-white shadow-md shadow-orange-500/20 hover:from-orange-600 hover:to-amber-600"
-            >
-              <Eye className="size-4" />
-              <span>Ver Tienda de Ventas</span>
-            </Button>
-
-            {/* Dark Mode & Sound Toggles in Footer */}
-            <div className="flex items-center justify-between rounded-xl border p-1.5 border-slate-200/60 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900">
-              <button
+          <div className="border-t p-2.5 space-y-2 border-slate-200/60 dark:border-slate-800 shrink-0">
+            {/* Quick Switch to Public Storefront (Only for restaurant admins) */}
+            {!isSuper && (
+              <Button
                 type="button"
-                onClick={toggleAdminTheme}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-semibold transition-all hover:bg-white hover:shadow-xs dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
-                title={`Cambiar a modo ${isDark ? "claro" : "oscuro"}`}
+                onClick={() => setActiveView("store")}
+                className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 py-2 text-xs font-bold text-white shadow-sm shadow-orange-500/20 hover:from-orange-600 hover:to-amber-600"
               >
-                {isDark ? (
-                  <>
-                    <Sun className="size-3.5 text-amber-400" />
-                    <span>Claro</span>
-                  </>
-                ) : (
-                  <>
-                    <Moon className="size-3.5 text-indigo-600" />
-                    <span>Oscuro</span>
-                  </>
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setSoundEnabled(!soundEnabled)}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-semibold transition-all hover:bg-white hover:shadow-xs dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
-                title={soundEnabled ? "Silenciar alertas" : "Activar sonido"}
-              >
-                {soundEnabled ? (
-                  <>
-                    <Volume2 className="size-3.5 text-emerald-500" />
-                    <span>Sonido</span>
-                  </>
-                ) : (
-                  <>
-                    <VolumeX className="size-3.5 text-slate-400" />
-                    <span>Mudo</span>
-                  </>
-                )}
-              </button>
-            </div>
+                <Eye className="size-3.5" />
+                <span>Ver Tienda</span>
+              </Button>
+            )}
 
             {/* Logout button */}
             {session.role !== "guest" && (
               <button
                 type="button"
                 onClick={logout}
-                className="flex w-full items-center justify-center gap-1.5 rounded-lg py-1 text-xs font-semibold text-slate-400 hover:bg-rose-500/10 hover:text-rose-500 transition-colors"
+                className="flex w-full items-center justify-center gap-1 rounded-lg py-1.5 text-[11px] font-semibold text-slate-400 hover:bg-rose-500/10 hover:text-rose-500 transition-colors"
               >
-                <LogOut className="size-3.5" />
+                <LogOut className="size-3" />
                 <span>Cerrar Sesión</span>
               </button>
             )}
@@ -346,7 +301,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
               {/* Breadcrumb Navigation */}
               <div className="flex items-center gap-2 text-xs sm:text-sm">
                 <span className="font-semibold text-slate-500 dark:text-slate-400 hidden sm:inline">
-                  {storeConfig.name}
+                  {isSuper ? "SaaS Platform" : storeConfig.name}
                 </span>
                 <ChevronRight className="size-3.5 text-slate-400 hidden sm:inline" />
                 <span className="font-bold text-slate-900 dark:text-white">
@@ -357,40 +312,44 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
             {/* Right: Quick Action Controls */}
             <div className="flex items-center gap-2 sm:gap-3">
-              {/* Simulate order quick button */}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={simulateIncomingOrder}
-                className={`items-center gap-1.5 border-dashed font-medium text-xs rounded-xl transition-all ${
-                  isDark
-                    ? "border-amber-500/40 text-amber-300 hover:bg-amber-500/10 hover:border-amber-400"
-                    : "border-amber-400 text-amber-800 hover:bg-amber-50 hover:border-amber-500"
-                }`}
-              >
-                <Sparkles className="size-3.5 text-amber-500 animate-pulse" />
-                <span className="hidden sm:inline">Simular Pedido</span>
-                <span className="sm:hidden">Simular</span>
-              </Button>
+              {/* Simulate order quick button (Only for restaurant kitchen testing) */}
+              {!isSuper && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={simulateIncomingOrder}
+                  className={`items-center gap-1.5 border-dashed font-medium text-xs rounded-xl transition-all ${
+                    isDark
+                      ? "border-amber-500/40 text-amber-300 hover:bg-amber-500/10 hover:border-amber-400"
+                      : "border-amber-400 text-amber-800 hover:bg-amber-50 hover:border-amber-500"
+                  }`}
+                >
+                  <Sparkles className="size-3.5 text-amber-500 animate-pulse" />
+                  <span className="hidden sm:inline">Simular Pedido</span>
+                  <span className="sm:hidden">Simular</span>
+                </Button>
+              )}
 
-              {/* Sound notification toggle icon */}
-              <button
-                type="button"
-                onClick={() => setSoundEnabled(!soundEnabled)}
-                title={soundEnabled ? "Silenciar alertas" : "Activar sonido"}
-                className={`hidden sm:inline-flex size-9 items-center justify-center rounded-xl border transition-all ${
-                  isDark
-                    ? "border-slate-800 bg-slate-900 text-slate-300 hover:bg-slate-800"
-                    : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"
-                }`}
-              >
-                {soundEnabled ? (
-                  <Volume2 className="size-4 text-emerald-500" />
-                ) : (
-                  <VolumeX className="size-4 text-slate-400" />
-                )}
-              </button>
+              {/* Sound notification toggle icon (Only for restaurant kitchens) */}
+              {!isSuper && (
+                <button
+                  type="button"
+                  onClick={() => setSoundEnabled(!soundEnabled)}
+                  title={soundEnabled ? "Silenciar alertas" : "Activar sonido"}
+                  className={`hidden sm:inline-flex size-9 items-center justify-center rounded-xl border transition-all ${
+                    isDark
+                      ? "border-slate-800 bg-slate-900 text-slate-300 hover:bg-slate-800"
+                      : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"
+                  }`}
+                >
+                  {soundEnabled ? (
+                    <Volume2 className="size-4 text-emerald-500" />
+                  ) : (
+                    <VolumeX className="size-4 text-slate-400" />
+                  )}
+                </button>
+              )}
 
               {/* Light / Dark Mode Toggle Button */}
               <button
@@ -406,15 +365,17 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 {isDark ? <Sun className="size-4" /> : <Moon className="size-4" />}
               </button>
 
-              {/* View Storefront button on top bar */}
-              <Button
-                type="button"
-                onClick={() => setActiveView("store")}
-                className="hidden md:flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-xs font-semibold text-white shadow-xs hover:from-orange-600 hover:to-amber-600"
-              >
-                <Eye className="size-3.5" />
-                <span>Tienda Pública</span>
-              </Button>
+              {/* View Storefront button on top bar (Only for restaurant admin) */}
+              {!isSuper && (
+                <Button
+                  type="button"
+                  onClick={() => setActiveView("store")}
+                  className="hidden md:flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-xs font-semibold text-white shadow-xs hover:from-orange-600 hover:to-amber-600"
+                >
+                  <Eye className="size-3.5" />
+                  <span>Tienda Pública</span>
+                </Button>
+              )}
             </div>
           </header>
 

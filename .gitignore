@@ -31,6 +31,7 @@ Thumbs.db
 
 # Local AI tooling state
 .atl/
+.codegraph/
 
 # Playwright (CLI sessions, generated tests, traces, videos, screenshots)
 .playwright-cli/

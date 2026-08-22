@@ -3,9 +3,9 @@ import { resolveRoute } from "./useAppRouter"
 import { SEED_RESTAURANTS } from "@/data/initialData"
 
 describe("Router Engine - resolveRoute", () => {
-  it("resolves root path '/' as public storefront", () => {
+  it("resolves root path '/' as platform landing page", () => {
     const res = resolveRoute("/", SEED_RESTAURANTS)
-    expect(res.view).toBe("store")
+    expect(res.view).toBe("landing")
     expect(res.isNotFound).toBe(false)
   })
 

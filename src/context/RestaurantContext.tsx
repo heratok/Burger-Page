@@ -17,6 +17,8 @@ import { TenantProvider, useTenant, type GlobalPlatformStats } from "./slices/Te
 import { AuthProvider, useAuth } from "./slices/AuthContext"
 import { CatalogProvider, useCatalog } from "./slices/CatalogContext"
 import { OrderProvider, useOrders } from "./slices/OrderContext"
+import { InventoryProvider, useInventory } from "./slices/InventoryContext"
+import type { InventoryItem, Supplier } from "@/types/restaurant"
 
 // Export individual slice hooks for fine-grained subscriptions
 export { useUi } from "./slices/UiContext"
@@ -24,6 +26,7 @@ export { useTenant } from "./slices/TenantContext"
 export { useAuth } from "./slices/AuthContext"
 export { useCatalog } from "./slices/CatalogContext"
 export { useOrders } from "./slices/OrderContext"
+export { useInventory } from "./slices/InventoryContext"
 
 export interface RestaurantContextType {
   // Global Multi-Tenant State
@@ -82,6 +85,19 @@ export interface RestaurantContextType {
   customers: Customer[]
   updateCustomer: (id: string, updates: Partial<Customer>) => void
 
+  // Inventory & Suppliers
+  inventory: InventoryItem[]
+  suppliers: Supplier[]
+  addInventoryItem: (item: Omit<InventoryItem, "id">) => void
+  updateInventoryItem: (id: string, updates: Partial<InventoryItem>) => void
+  deleteInventoryItem: (id: string) => void
+  adjustStock: (id: string, deltaQuantity: number) => void
+  addSupplier: (supplier: Omit<Supplier, "id">) => void
+  updateSupplier: (id: string, updates: Partial<Supplier>) => void
+  deleteSupplier: (id: string) => void
+  lowStockCount: number
+  totalInventoryValue: number
+
   // App Navigation & Admin Theme
   activeView: AppView
   setActiveView: (view: AppView) => void
@@ -110,7 +126,9 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({
       <TenantProvider>
         <AuthProvider>
           <CatalogProvider>
-            <OrderProvider>{children}</OrderProvider>
+            <InventoryProvider>
+              <OrderProvider>{children}</OrderProvider>
+            </InventoryProvider>
           </CatalogProvider>
         </AuthProvider>
       </TenantProvider>
@@ -127,6 +145,7 @@ export const useRestaurant = (): RestaurantContextType => {
   const tenant = useTenant()
   const auth = useAuth()
   const catalog = useCatalog()
+  const inventorySlice = useInventory()
   const orders = useOrders()
 
   return {
@@ -171,6 +190,18 @@ export const useRestaurant = (): RestaurantContextType => {
     addAddition: catalog.addAddition,
     updateAddition: catalog.updateAddition,
     deleteAddition: catalog.deleteAddition,
+
+    inventory: inventorySlice.inventory,
+    suppliers: inventorySlice.suppliers,
+    addInventoryItem: inventorySlice.addInventoryItem,
+    updateInventoryItem: inventorySlice.updateInventoryItem,
+    deleteInventoryItem: inventorySlice.deleteInventoryItem,
+    adjustStock: inventorySlice.adjustStock,
+    addSupplier: inventorySlice.addSupplier,
+    updateSupplier: inventorySlice.updateSupplier,
+    deleteSupplier: inventorySlice.deleteSupplier,
+    lowStockCount: inventorySlice.lowStockCount,
+    totalInventoryValue: inventorySlice.totalInventoryValue,
 
     orders: orders.orders,
     addOrder: orders.addOrder,

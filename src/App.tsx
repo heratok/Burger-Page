@@ -1,11 +1,16 @@
 import { lazy, Suspense } from "react"
 import { RestaurantProvider, useRestaurant } from "@/context/RestaurantContext"
 import { useAppRouter } from "@/core/router/useAppRouter"
-import LoadingPage from "@/features/storefront/LoadingPage"
+import {
+  AdminLoadingFallback,
+  LandingLoadingFallback,
+  StorefrontLoadingFallback,
+} from "@/components/ui/LoadingFallbacks"
 import { Toaster } from "@/components/ui/sonner"
 
 // Code-split backoffice features from public storefront for minimal initial bundle size
 const Home = lazy(() => import("@/features/storefront/Home"))
+const LandingPage = lazy(() => import("@/features/landing/LandingPage"))
 const AdminLayout = lazy(() =>
   import("@/features/crm/AdminLayout").then((m) => ({ default: m.AdminLayout }))
 )
@@ -22,6 +27,11 @@ const OrdersKanban = lazy(() =>
 const MenuManager = lazy(() =>
   import("@/features/crm/MenuManager").then((m) => ({
     default: m.MenuManager,
+  }))
+)
+const InventoryManager = lazy(() =>
+  import("@/features/crm/InventoryManager").then((m) => ({
+    default: m.InventoryManager,
   }))
 )
 const CustomerCRM = lazy(() =>
@@ -51,13 +61,13 @@ const AdminAuthModal = lazy(() =>
 )
 
 function MainRouter() {
-  const { adminTab, session, setActiveView } = useRestaurant()
-  const { activeView, isNotFound, attemptedSlug } = useAppRouter()
+  const { adminTab, session } = useRestaurant()
+  const { activeView, isNotFound, attemptedSlug, navigateTo } = useAppRouter()
 
   // 1. Not Found Route
   if (isNotFound && attemptedSlug) {
     return (
-      <Suspense fallback={<LoadingPage />}>
+      <Suspense fallback={<AdminLoadingFallback />}>
         <RestaurantNotFound attemptedSlug={attemptedSlug} />
       </Suspense>
     )
@@ -67,24 +77,23 @@ function MainRouter() {
   if (activeView === "admin") {
     if (session.role === "guest") {
       return (
-        <Suspense fallback={<LoadingPage />}>
-          <div className="min-h-screen bg-[#0B0F19]">
-            <AdminAuthModal
-              isOpen={true}
-              onClose={() => setActiveView("store")}
-            />
-          </div>
+        <Suspense fallback={<AdminLoadingFallback />}>
+          <AdminAuthModal
+            isOpen={true}
+            onClose={() => navigateTo("/")}
+          />
         </Suspense>
       )
     }
 
     return (
-      <Suspense fallback={<LoadingPage />}>
+      <Suspense fallback={<AdminLoadingFallback />}>
         <AdminLayout>
           {adminTab === "restaurants" && <RestaurantsDirectory />}
           {adminTab === "dashboard" && <DashboardOverview />}
           {adminTab === "orders" && <OrdersKanban />}
           {adminTab === "menu" && <MenuManager />}
+          {adminTab === "inventory" && <InventoryManager />}
           {adminTab === "customers" && <CustomerCRM />}
           {adminTab === "customizer" && <StorefrontCustomizer />}
         </AdminLayout>
@@ -92,9 +101,18 @@ function MainRouter() {
     )
   }
 
-  // 3. Public Storefront Route
+  // 3. Platform Landing Page
+  if (activeView === "landing") {
+    return (
+      <Suspense fallback={<LandingLoadingFallback />}>
+        <LandingPage />
+      </Suspense>
+    )
+  }
+
+  // 4. Public Tenant Storefront Route
   return (
-    <Suspense fallback={<LoadingPage />}>
+    <Suspense fallback={<StorefrontLoadingFallback />}>
       <Home />
     </Suspense>
   )
