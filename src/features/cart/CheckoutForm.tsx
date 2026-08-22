@@ -130,10 +130,16 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
   return (
     <div className="mx-auto max-w-(--container) px-4 pb-12 md:px-6 lg:px-8">
       <header className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight text-text-primary">
+        <h1
+          style={{ color: "var(--color-text-primary)" }}
+          className="text-2xl font-bold tracking-tight"
+        >
           Finalizar pedido
         </h1>
-        <p className="mt-1 text-sm text-text-secondary">
+        <p
+          style={{ color: "var(--color-text-secondary)" }}
+          className="mt-1 text-sm"
+        >
           Revisa el resumen y déjanos tus datos de contacto.
         </p>
       </header>
@@ -359,42 +365,60 @@ interface FormSummaryProps {
 }
 
 function FormSummary({ cartItems, total }: FormSummaryProps) {
+  const { storeConfig } = useRestaurant()
   const [open, setOpen] = useState(true)
 
   return (
-    <section className="mb-6 overflow-hidden rounded-xl border border-border-subtle bg-bg-elevated shadow-xs">
+    <section
+      style={{
+        backgroundColor: "var(--color-bg-elevated)",
+        borderColor: "var(--color-border-subtle)",
+      }}
+      className="mb-6 overflow-hidden rounded-2xl border shadow-xs"
+    >
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-controls="order-summary"
-        className="flex w-full items-center justify-between px-4 py-3 text-left transition duration-150 ease-out hover:bg-bg-elevated-2 focus:outline-none focus-visible:focus-ring cursor-pointer"
+        className="flex w-full items-center justify-between px-4 py-3 text-left transition duration-150 ease-out focus:outline-none focus-visible:focus-ring cursor-pointer"
       >
-        <span className="text-sm font-semibold text-text-primary">
-            Resumen ({cartItems.length}{" "}
-            {cartItems.length === 1 ? "producto" : "productos"})
+        <span
+          style={{ color: "var(--color-text-primary)" }}
+          className="text-sm font-bold"
+        >
+          Resumen ({cartItems.length}{" "}
+          {cartItems.length === 1 ? "producto" : "productos"})
         </span>
         <span className="flex items-center gap-3">
-          <span className="text-base font-bold text-accent">
+          <span
+            style={{ color: storeConfig.primaryColor }}
+            className="text-base font-black"
+          >
             ${total.toLocaleString()}
           </span>
           <ChevronDown
-            className={`size-4 text-text-muted transition duration-150 ${open ? "rotate-180" : ""}`}
+            style={{ color: "var(--color-text-muted)" }}
+            className={`size-4 transition duration-150 ${open ? "rotate-180" : ""}`}
             aria-hidden="true"
           />
         </span>
       </button>
       {open && (
-        <ul id="order-summary" className="space-y-2 px-4 pt-1 pb-4">
+        <ul id="order-summary" className="space-y-2 px-4 pt-1 pb-4 border-t border-slate-100 dark:border-slate-800/40">
           {cartItems.map((burger, i) => (
             <li
               key={burger.id || i}
-              className="flex items-center justify-between text-sm text-text-muted"
+              style={{ color: "var(--color-text-secondary)" }}
+              className="flex items-center justify-between text-sm"
             >
               <span className="truncate">
                 {burger.cantidad}× {burger.name}
               </span>
-              <span className="ml-3 shrink-0 font-semibold text-text-primary">
+              <span
+                style={{ color: "var(--color-text-primary)" }}
+                className="ml-3 shrink-0 font-bold"
+              >
                 ${burger.total.toLocaleString()}
               </span>
             </li>

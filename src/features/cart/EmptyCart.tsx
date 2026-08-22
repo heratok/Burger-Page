@@ -23,14 +23,25 @@ export default function EmptyCart({ onBackToMenu }: EmptyCartProps) {
     >
       <EmptyMedia
         variant="icon"
-        className="mb-6 size-20 rounded-full border border-border-subtle bg-bg-elevated text-text-muted [&_svg:not([class*='size-'])]:size-8"
+        style={{
+          backgroundColor: "var(--color-bg-elevated)",
+          borderColor: "var(--color-border-subtle)",
+          color: "var(--color-text-muted)",
+        }}
+        className="mb-6 size-20 rounded-full border [&_svg:not([class*='size-'])]:size-8 shadow-xs"
       >
-        <ShoppingBasket className="size-8 text-text-muted" />
+        <ShoppingBasket className="size-8" style={{ color: "var(--color-text-muted)" }} />
       </EmptyMedia>
-      <EmptyTitle className="text-xl font-bold tracking-tight text-text-primary">
+      <EmptyTitle
+        style={{ color: "var(--color-text-primary)" }}
+        className="text-xl font-black tracking-tight"
+      >
         Tu carrito está vacío
       </EmptyTitle>
-      <EmptyDescription className="text-sm leading-relaxed text-text-secondary mt-1 max-w-xs">
+      <EmptyDescription
+        style={{ color: "var(--color-text-secondary)" }}
+        className="text-sm leading-relaxed mt-1 max-w-xs font-normal"
+      >
         Agregá productos desde el menú para empezar tu pedido.
       </EmptyDescription>
       <Button

@@ -46,10 +46,16 @@ function ShoppingCart({
   return (
     <div className="mx-auto max-w-(--container) px-4 pb-32 md:px-6 lg:px-8">
       <header className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight text-text-primary">
+        <h1
+          style={{ color: "var(--color-text-primary)" }}
+          className="text-2xl font-bold tracking-tight"
+        >
           Tu pedido
         </h1>
-        <p className="mt-1 text-sm text-text-secondary">
+        <p
+          style={{ color: "var(--color-text-secondary)" }}
+          className="mt-1 text-sm"
+        >
           Revisa los productos antes de enviar tu orden.
         </p>
       </header>
@@ -58,21 +64,32 @@ function ShoppingCart({
         {items.map((cartItem, i) => (
           <li
             key={cartItem.id || i}
-            className="relative flex gap-3 rounded-lg border border-border-subtle bg-bg-elevated p-3 sm:gap-4 sm:p-4"
+            style={{
+              backgroundColor: "var(--color-bg-elevated)",
+              borderColor: "var(--color-border-subtle)",
+            }}
+            className="relative flex gap-3 rounded-2xl border p-3 sm:gap-4 sm:p-4 shadow-xs"
           >
             <img
               src={cartItem.src}
               alt={cartItem.name}
               loading="lazy"
-              className="size-16 shrink-0 rounded-md bg-bg-elevated-2 object-cover sm:size-20"
+              style={{ backgroundColor: "var(--color-bg-elevated-2)" }}
+              className="size-16 shrink-0 rounded-xl object-cover sm:size-20"
             />
             <div className="min-w-0 flex-1">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <h2 className="truncate text-base font-semibold text-text-primary">
+                  <h2
+                    style={{ color: "var(--color-text-primary)" }}
+                    className="truncate text-base font-bold"
+                  >
                     {cartItem.name}
                   </h2>
-                  <p className="mt-0.5 text-xs text-text-muted">
+                  <p
+                    style={{ color: "var(--color-text-muted)" }}
+                    className="mt-0.5 text-xs"
+                  >
                     {cartItem.cantidad}× {cartItem.name}
                   </p>
                 </div>
@@ -83,7 +100,8 @@ function ShoppingCart({
                     size="icon-sm"
                     onClick={() => onEditItem(i)}
                     aria-label={`Editar ${cartItem.name}`}
-                    className="size-11 rounded-full text-text-muted hover:bg-bg-elevated-2 hover:text-text-primary"
+                    style={{ color: "var(--color-text-muted)" }}
+                    className="size-11 rounded-full hover:opacity-80"
                   >
                     <Pencil />
                   </Button>
@@ -93,7 +111,8 @@ function ShoppingCart({
                     size="icon-sm"
                     onClick={() => deleteItem(i)}
                     aria-label={`Eliminar ${cartItem.name}`}
-                    className="size-11 shrink-0 rounded-full text-text-muted hover:bg-bg-elevated-2 hover:text-destructive"
+                    style={{ color: "var(--color-text-muted)" }}
+                    className="size-11 rounded-full hover:text-rose-500"
                   >
                     <Trash2 />
                   </Button>
@@ -101,20 +120,29 @@ function ShoppingCart({
               </div>
 
               {cartItem.adiciones && cartItem.adiciones.length > 0 && (
-                <p className="mt-2 text-xs leading-relaxed text-text-secondary">
-                  <span className="text-text-muted">Adiciones: </span>
+                <p
+                  style={{ color: "var(--color-text-secondary)" }}
+                  className="mt-2 text-xs leading-relaxed"
+                >
+                  <span style={{ color: "var(--color-text-muted)" }}>Adiciones: </span>
                   {cartItem.adiciones
                     .map((ad) => `${ad.cantidad}× ${ad.name}`)
                     .join(", ")}
                 </p>
               )}
               {cartItem.observacion && (
-                <p className="mt-1 text-xs leading-relaxed text-text-secondary">
-                  <span className="text-text-muted">Nota: </span>
+                <p
+                  style={{ color: "var(--color-text-secondary)" }}
+                  className="mt-1 text-xs leading-relaxed"
+                >
+                  <span style={{ color: "var(--color-text-muted)" }}>Nota: </span>
                   {cartItem.observacion}
                 </p>
               )}
-              <p className="mt-2 text-base font-bold text-accent">
+              <p
+                style={{ color: storeConfig.primaryColor }}
+                className="mt-2 text-base font-black tracking-tight"
+              >
                 ${cartItem.total.toLocaleString()}
               </p>
             </div>
@@ -122,13 +150,25 @@ function ShoppingCart({
         ))}
       </ul>
 
-      <div className="fixed right-0 bottom-0 left-0 z-30 border-t border-border-subtle bg-bg-surface/95 backdrop-blur-md">
+      <div
+        style={{
+          backgroundColor: "var(--color-bg-surface)",
+          borderColor: "var(--color-border-subtle)",
+        }}
+        className="fixed right-0 bottom-0 left-0 z-30 border-t backdrop-blur-md"
+      >
         <div className="mx-auto flex max-w-(--container) flex-col items-stretch gap-3 px-4 py-3 sm:flex-row sm:items-center md:px-6 lg:px-8">
           <div className="flex flex-1 items-center justify-between sm:flex-col sm:items-start sm:justify-center">
-            <span className="text-xs tracking-wide text-text-muted uppercase">
+            <span
+              style={{ color: "var(--color-text-muted)" }}
+              className="text-xs tracking-wide uppercase font-semibold"
+            >
               Total
             </span>
-            <span className="text-xl font-bold text-accent">
+            <span
+              style={{ color: storeConfig.primaryColor }}
+              className="text-xl font-black"
+            >
               ${total.toLocaleString()}
             </span>
           </div>
