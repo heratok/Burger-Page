@@ -47,7 +47,7 @@ export default function ProductSearch({ onChangeText, total = 0 }: ProductSearch
           placeholder="Buscar en el menú..."
           autoComplete="off"
           maxLength={LIMITS.busqueda.max}
-          className="h-11 bg-transparent text-sm placeholder:text-text-muted"
+          className="h-11 bg-transparent text-sm placeholder:text-text-muted text-text-primary focus:outline-none"
         />
         {value && (
           <InputGroupAddon align="inline-end" className="pr-1">

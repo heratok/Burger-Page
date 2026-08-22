@@ -110,33 +110,98 @@ export default function Home() {
   const showFullScreen = isCartOpen || isCheckoutOpen
   const showMobileBar = cartItems.length > 0 && !showFullScreen
 
-  const getThemeClass = (theme: typeof storeConfig.bgTheme) => {
+  const getThemeStyle = (theme: typeof storeConfig.bgTheme): React.CSSProperties => {
     switch (theme) {
-      case "dark-charcoal":
-        return "bg-[#0F1112] text-[#F5F5F7]"
-      case "deep-midnight":
-        return "bg-[#050607] text-[#FFFFFF]"
-      case "warm-cream":
-        return "bg-[#FAF6EF] text-[#2A231C]"
       case "clean-white":
-        return "bg-[#FFFFFF] text-[#0F172A]"
-      default:
-        return "bg-bg-base text-text-primary"
-    }
-  }
-
-  const themeClass = getThemeClass(storeConfig.bgTheme)
-
-  return (
-    <div
-      style={
-        {
+        return {
+          "--color-bg-base": "#FFFFFF",
+          "--color-bg-surface": "#F8FAFC",
+          "--color-bg-elevated": "#FFFFFF",
+          "--color-bg-elevated-2": "#F1F5F9",
+          "--color-bg-input": "#F8FAFC",
+          "--color-border-subtle": "#E2E8F0",
+          "--color-border-strong": "#CBD5E1",
+          "--color-text-primary": "#0F172A",
+          "--color-text-secondary": "#475569",
+          "--color-text-muted": "#64748B",
+          "--color-card": "#FFFFFF",
+          "--color-card-foreground": "#0F172A",
           "--color-accent": storeConfig.primaryColor,
           "--color-primary": storeConfig.primaryColor,
           "--color-ring": storeConfig.primaryColor,
+          backgroundColor: "#FFFFFF",
+          color: "#0F172A",
         } as React.CSSProperties
-      }
-      className={`min-h-screen transition-colors duration-200 ${themeClass}`}
+      case "warm-cream":
+        return {
+          "--color-bg-base": "#FAF6EF",
+          "--color-bg-surface": "#F4ECE1",
+          "--color-bg-elevated": "#FFFFFF",
+          "--color-bg-elevated-2": "#ECE2D0",
+          "--color-bg-input": "#F7F0E6",
+          "--color-border-subtle": "#E4DAC8",
+          "--color-border-strong": "#D0C3AE",
+          "--color-text-primary": "#2A231C",
+          "--color-text-secondary": "#5C4F43",
+          "--color-text-muted": "#8C7E72",
+          "--color-card": "#FFFFFF",
+          "--color-card-foreground": "#2A231C",
+          "--color-accent": storeConfig.primaryColor,
+          "--color-primary": storeConfig.primaryColor,
+          "--color-ring": storeConfig.primaryColor,
+          backgroundColor: "#FAF6EF",
+          color: "#2A231C",
+        } as React.CSSProperties
+      case "deep-midnight":
+        return {
+          "--color-bg-base": "#050607",
+          "--color-bg-surface": "#101216",
+          "--color-bg-elevated": "#181B22",
+          "--color-bg-elevated-2": "#222630",
+          "--color-bg-input": "#13161C",
+          "--color-border-subtle": "#252B38",
+          "--color-border-strong": "#374151",
+          "--color-text-primary": "#FFFFFF",
+          "--color-text-secondary": "#CBD5E1",
+          "--color-text-muted": "#94A3B8",
+          "--color-card": "#181B22",
+          "--color-card-foreground": "#FFFFFF",
+          "--color-accent": storeConfig.primaryColor,
+          "--color-primary": storeConfig.primaryColor,
+          "--color-ring": storeConfig.primaryColor,
+          backgroundColor: "#050607",
+          color: "#FFFFFF",
+        } as React.CSSProperties
+      case "dark-charcoal":
+      default:
+        return {
+          "--color-bg-base": "#0F1112",
+          "--color-bg-surface": "#181A1B",
+          "--color-bg-elevated": "#212529",
+          "--color-bg-elevated-2": "#2A2F35",
+          "--color-bg-input": "#1A1D20",
+          "--color-border-subtle": "#2D3138",
+          "--color-border-strong": "#3A4048",
+          "--color-text-primary": "#F5F5F7",
+          "--color-text-secondary": "#C5C8CC",
+          "--color-text-muted": "#8B8F95",
+          "--color-card": "#212529",
+          "--color-card-foreground": "#F5F5F7",
+          "--color-accent": storeConfig.primaryColor,
+          "--color-primary": storeConfig.primaryColor,
+          "--color-ring": storeConfig.primaryColor,
+          backgroundColor: "#0F1112",
+          color: "#F5F5F7",
+        } as React.CSSProperties
+    }
+  }
+
+  const themeStyles = getThemeStyle(storeConfig.bgTheme)
+
+  return (
+    <div
+      style={themeStyles}
+      className="min-h-screen transition-colors duration-200"
     >
       <Navbar cantidad={cartItems.length} total={totalCart} onOpenCart={handleOpenCart} />
 
@@ -200,10 +265,10 @@ export default function Home() {
           <div className="space-y-6">
             {!storeConfig.showBanner && (
               <div className="mb-6 text-center">
-                <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+                <h1 className="text-2xl font-bold tracking-tight sm:text-3xl text-text-primary">
                   {storeConfig.name}
                 </h1>
-                <p className="mt-1 text-sm opacity-80 max-w-md mx-auto">
+                <p className="mt-1 text-sm text-text-secondary max-w-md mx-auto">
                   {storeConfig.tagline}
                 </p>
               </div>
@@ -223,13 +288,13 @@ export default function Home() {
                     onClick={() => setSelectedCategory("ALL")}
                     style={
                       selectedCategory === "ALL"
-                        ? { backgroundColor: storeConfig.primaryColor, color: "#FFFFFF" }
+                        ? { backgroundColor: storeConfig.primaryColor, color: "#FFFFFF", borderColor: storeConfig.primaryColor }
                         : undefined
                     }
                     className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-all ${
                       selectedCategory === "ALL"
-                        ? "shadow-sm"
-                        : "border border-border-subtle bg-bg-elevated hover:bg-bg-elevated-2"
+                        ? "shadow-sm text-white"
+                        : "border border-border-subtle bg-bg-elevated text-text-primary hover:bg-bg-elevated-2 hover:border-border-strong"
                     }`}
                   >
                     Todos ({products.length})
@@ -241,13 +306,13 @@ export default function Home() {
                       onClick={() => setSelectedCategory(cat)}
                       style={
                         selectedCategory === cat
-                          ? { backgroundColor: storeConfig.primaryColor, color: "#FFFFFF" }
+                          ? { backgroundColor: storeConfig.primaryColor, color: "#FFFFFF", borderColor: storeConfig.primaryColor }
                           : undefined
                       }
                       className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-all ${
                         selectedCategory === cat
-                          ? "shadow-sm"
-                          : "border border-border-subtle bg-bg-elevated hover:bg-bg-elevated-2"
+                          ? "shadow-sm text-white"
+                          : "border border-border-subtle bg-bg-elevated text-text-primary hover:bg-bg-elevated-2 hover:border-border-strong"
                       }`}
                     >
                       {cat}
