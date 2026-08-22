@@ -59,9 +59,16 @@ export default function ProductCard({ product, onSelectProduct }: ProductCardPro
       onClick={onSelectProduct}
       onKeyDown={handleKeyDown}
       aria-label={`Agregar ${product.name} al carrito, $${product.price.toLocaleString()}`}
-      className={`group relative cursor-pointer gap-0 overflow-hidden bg-bg-elevated py-0 transition duration-200 ease-out hover:-translate-y-1 focus:outline-none focus-visible:focus-ring active:translate-y-0 ${radiusClass} ${styleClass}`}
+      style={{
+        backgroundColor: "var(--color-bg-elevated)",
+        borderColor: "var(--color-border-subtle)",
+      }}
+      className={`group relative cursor-pointer gap-0 overflow-hidden py-0 transition duration-200 ease-out hover:-translate-y-1 focus:outline-none focus-visible:focus-ring active:translate-y-0 ${radiusClass} ${styleClass}`}
     >
-      <div className="relative aspect-video overflow-hidden bg-bg-elevated-2">
+      <div
+        style={{ backgroundColor: "var(--color-bg-elevated-2)" }}
+        className="relative aspect-video overflow-hidden"
+      >
         <img
           src={product.src}
           alt={product.name}
@@ -101,11 +108,17 @@ export default function ProductCard({ product, onSelectProduct }: ProductCardPro
 
       <CardContent className="flex flex-1 flex-col gap-1.5 px-4 pt-4">
         <div className="flex items-start justify-between gap-2">
-          <h2 className="text-base font-bold leading-tight tracking-tight text-text-primary group-hover:text-accent">
+          <h2
+            style={{ color: "var(--color-text-primary)" }}
+            className="text-base font-bold leading-tight tracking-tight group-hover:opacity-85"
+          >
             {product.name}
           </h2>
         </div>
-        <p className="line-clamp-2 text-xs leading-relaxed text-text-secondary">
+        <p
+          style={{ color: "var(--color-text-secondary)" }}
+          className="line-clamp-2 text-xs leading-relaxed font-normal"
+        >
           {product.description}
         </p>
       </CardContent>

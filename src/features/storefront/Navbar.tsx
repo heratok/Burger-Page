@@ -40,23 +40,32 @@ export default function Navbar({ cantidad, total, onOpenCart }: NavbarProps) {
               src={storeConfig.logoUrl}
               alt=""
               aria-hidden="true"
-              className="size-10 rounded-full bg-bg-elevated object-cover border"
-              style={{ borderColor: storeConfig.primaryColor }}
+              style={{
+                backgroundColor: "var(--color-bg-elevated)",
+                borderColor: storeConfig.primaryColor,
+              }}
+              className="size-10 rounded-full object-cover border"
             />
           ) : (
             <div
               style={{ backgroundColor: storeConfig.primaryColor }}
-              className="flex size-10 items-center justify-center rounded-full text-white font-bold text-base"
+              className="flex size-10 items-center justify-center rounded-full text-white font-bold text-base shadow-xs"
             >
               {storeConfig.name.charAt(0)}
             </div>
           )}
 
           <div className="flex flex-col leading-tight">
-            <span className="text-base font-bold tracking-tight text-text-primary">
+            <span
+              style={{ color: "var(--color-text-primary)" }}
+              className="text-base font-black tracking-tight"
+            >
               {storeConfig.name}
             </span>
-            <span className="text-xs text-text-muted line-clamp-1">
+            <span
+              style={{ color: "var(--color-text-muted)" }}
+              className="text-xs line-clamp-1 font-medium"
+            >
               {storeConfig.tagline}
             </span>
           </div>
@@ -69,7 +78,11 @@ export default function Navbar({ cantidad, total, onOpenCart }: NavbarProps) {
             type="button"
             onClick={onOpenCart}
             aria-label={cartLabel}
-            className="relative inline-flex size-10 items-center justify-center rounded-full border border-border-strong text-text-secondary transition duration-150 ease-out hover:border-accent hover:text-text-primary focus:outline-none focus-visible:focus-ring"
+            style={{
+              borderColor: "var(--color-border-strong)",
+              color: "var(--color-text-secondary)",
+            }}
+            className="relative inline-flex size-10 items-center justify-center rounded-full border transition duration-150 ease-out focus:outline-none focus-visible:focus-ring cursor-pointer hover:opacity-80"
           >
             <ShoppingCart className="size-5" aria-hidden="true" />
             {cantidad > 0 && (
@@ -90,7 +103,11 @@ export default function Navbar({ cantidad, total, onOpenCart }: NavbarProps) {
               target="_blank"
               rel="noreferrer"
               aria-label="Contactar por WhatsApp"
-              className="inline-flex size-10 items-center justify-center rounded-full border border-border-strong text-text-secondary transition duration-150 ease-out hover:border-accent hover:text-emerald-400 focus:outline-none focus-visible:focus-ring"
+              style={{
+                borderColor: "var(--color-border-strong)",
+                color: "var(--color-text-secondary)",
+              }}
+              className="inline-flex size-10 items-center justify-center rounded-full border transition duration-150 ease-out hover:text-emerald-500 focus:outline-none focus-visible:focus-ring"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"

@@ -305,10 +305,16 @@ export default function Home() {
           <div className="space-y-6">
             {!storeConfig.showBanner && (
               <div className="mb-6 text-center">
-                <h1 className="text-2xl font-bold tracking-tight sm:text-3xl text-text-primary">
+                <h1
+                  style={{ color: "var(--color-text-primary)" }}
+                  className="text-2xl font-black tracking-tight sm:text-3xl"
+                >
                   {storeConfig.name}
                 </h1>
-                <p className="mt-1 text-sm text-text-secondary max-w-md mx-auto">
+                <p
+                  style={{ color: "var(--color-text-secondary)" }}
+                  className="mt-1 text-sm max-w-md mx-auto font-normal"
+                >
                   {storeConfig.tagline}
                 </p>
               </div>
@@ -416,13 +422,26 @@ function EmptyResults() {
       aria-live="polite"
       className="flex flex-col items-center justify-center px-4 py-16 text-center"
     >
-      <span className="mb-4 inline-flex size-20 items-center justify-center rounded-full border border-border-subtle bg-bg-elevated text-text-muted">
+      <span
+        style={{
+          backgroundColor: "var(--color-bg-elevated)",
+          borderColor: "var(--color-border-subtle)",
+          color: "var(--color-text-muted)",
+        }}
+        className="mb-4 inline-flex size-20 items-center justify-center rounded-full border shadow-xs"
+      >
         <Utensils className="size-10" aria-hidden="true" />
       </span>
-      <h2 className="text-lg font-semibold text-text-primary">
+      <h2
+        style={{ color: "var(--color-text-primary)" }}
+        className="text-lg font-bold"
+      >
         No encontramos resultados
       </h2>
-      <p className="mt-2 max-w-sm text-sm text-text-secondary">
+      <p
+        style={{ color: "var(--color-text-secondary)" }}
+        className="mt-2 max-w-sm text-sm font-normal"
+      >
         No hay coincidencias con ese nombre o categoría. Prueba buscando otra cosa o revisa
         nuestro menú completo.
       </p>
