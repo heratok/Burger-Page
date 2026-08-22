@@ -169,8 +169,14 @@ export const useRestaurant = (): RestaurantContextType => {
         tenant.activeRestaurant,
         targetRestaurantIdOrSlug
       )
-      if (res.success && res.role === "restaurant" && res.restaurantId) {
-        tenant.switchRestaurant(res.restaurantId)
+      if (res.success) {
+        if (res.role === "super") {
+          ui.setAdminTab("restaurants")
+        } else if (res.role === "restaurant" && res.restaurantId) {
+          tenant.switchRestaurant(res.restaurantId)
+          ui.setAdminTab("dashboard")
+        }
+        ui.setActiveView("admin")
       }
       return res
     },

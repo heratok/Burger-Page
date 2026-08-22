@@ -50,7 +50,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
     } else {
       setPassword("")
       setIsLoading(false)
-      if (onClose) onClose()
+      navigateTo("/admin")
     }
   }
 
