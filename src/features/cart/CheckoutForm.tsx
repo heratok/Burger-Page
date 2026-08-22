@@ -242,7 +242,7 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
           </div>
 
           <FieldSet>
-            <FieldLegend>
+            <FieldLegend className="text-text-primary font-semibold">
               Método de pago <span className="text-destructive" aria-hidden="true">*</span>
             </FieldLegend>
             <RadioGroup
@@ -256,22 +256,23 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
                   <Label
                     key={value}
                     data-slot="field-label"
-                    className={`flex cursor-pointer items-center gap-3 rounded-md border p-3 transition duration-150 ease-out focus-within:ring-2 focus-within:ring-ring ${
+                    className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3.5 transition duration-150 ease-out focus-within:ring-2 focus-within:ring-accent ${
                       active
-                        ? "border-primary bg-primary/10 text-foreground"
-                        : "border-border bg-card text-foreground hover:border-border-strong"
+                        ? "border-accent bg-accent-soft text-text-primary font-bold"
+                        : "border-border-subtle bg-bg-elevated text-text-primary hover:border-border-strong"
                     }`}
                   >
                     <RadioGroupItem value={value} id={`metodo-${value}`} className="sr-only" />
                     <span
                       aria-hidden="true"
+                      style={active ? { backgroundColor: storeConfig.primaryColor, color: "#FFFFFF" } : undefined}
                       className={`inline-flex size-9 items-center justify-center rounded-full ${
-                        active ? "bg-primary text-primary-foreground" : "bg-muted text-primary"
+                        active ? "text-white shadow-xs" : "bg-bg-elevated-2 text-text-muted"
                       }`}
                     >
-                      <Icon />
+                      <Icon className="size-4" />
                     </span>
-                    <span className="text-sm font-medium">{value}</span>
+                    <span className="text-sm font-semibold text-text-primary">{value}</span>
                   </Label>
                 )
               })}
@@ -281,12 +282,12 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
           {metodo === "Efectivo" && (
             <Field>
               <div className="mb-1.5 flex flex-col gap-0.5">
-                <FieldLabel htmlFor="pagoCon">¿Con cuánto pagas?</FieldLabel>
-                <FieldDescription>
+                <FieldLabel htmlFor="pagoCon" className="text-text-primary font-semibold">¿Con cuánto pagas?</FieldLabel>
+                <FieldDescription className="text-text-muted">
                   Opcional. Si nos indicas el valor, calculamos tu cambio.
                 </FieldDescription>
               </div>
-              <InputGroup>
+              <InputGroup className="bg-bg-input border-border-subtle">
                 <InputGroupAddon align="inline-start" className="pl-3 [&>svg]:size-4">
                   <Wallet className="text-text-muted" />
                 </InputGroupAddon>
@@ -296,13 +297,14 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
                   inputMode="numeric"
                   placeholder="50000"
                   maxLength={LIMITS.pagoCon.max}
+                  className="text-text-primary"
                   {...register("pagoCon")}
                 />
               </InputGroup>
               {cambio !== null && (
-                <FieldDescription>
+                <FieldDescription className="text-text-secondary">
                   Tu cambio:{" "}
-                  <span className="font-semibold text-primary">
+                  <span className="font-bold text-accent">
                     ${cambio.toLocaleString()}
                   </span>
                 </FieldDescription>
@@ -311,12 +313,13 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
           )}
 
           <Field>
-            <FieldLabel htmlFor="mensaje">Comentario</FieldLabel>
+            <FieldLabel htmlFor="mensaje" className="text-text-primary font-semibold">Comentario</FieldLabel>
             <Textarea
               id="mensaje"
               rows={3}
               placeholder="Algo que debamos saber sobre tu pedido"
               maxLength={LIMITS.mensaje.max}
+              className="bg-bg-input border-border-subtle text-text-primary"
               {...register("mensaje")}
             />
             <CharacterCounter value={watch("mensaje") ?? ""} max={LIMITS.mensaje.max} />
@@ -324,7 +327,13 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
         </FieldGroup>
 
         <div className="flex flex-col gap-2 pt-2 sm:flex-row">
-          <Button type="submit" variant="default" size="lg" className="h-12 flex-1 text-base">
+          <Button
+            type="submit"
+            variant="default"
+            size="lg"
+            style={{ backgroundColor: storeConfig.primaryColor, color: "#FFFFFF" }}
+            className="h-12 flex-1 text-base text-white font-bold shadow-md cursor-pointer hover:opacity-90"
+          >
             <Send data-icon="inline-start" />
             Enviar pedido por WhatsApp
           </Button>
@@ -333,7 +342,7 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
             variant="outline"
             size="lg"
             onClick={onBackToCart}
-            className="h-12 flex-1 text-base"
+            className="h-12 flex-1 text-base font-bold cursor-pointer"
           >
             <ArrowLeft data-icon="inline-start" />
             Volver
@@ -353,24 +362,24 @@ function FormSummary({ cartItems, total }: FormSummaryProps) {
   const [open, setOpen] = useState(true)
 
   return (
-    <section className="mb-6 overflow-hidden rounded-lg border border-border-subtle bg-card">
+    <section className="mb-6 overflow-hidden rounded-xl border border-border-subtle bg-bg-elevated shadow-xs">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-controls="order-summary"
-        className="flex w-full items-center justify-between px-4 py-3 text-left transition duration-150 ease-out hover:bg-muted/50 focus:outline-none focus-visible:focus-ring"
+        className="flex w-full items-center justify-between px-4 py-3 text-left transition duration-150 ease-out hover:bg-bg-elevated-2 focus:outline-none focus-visible:focus-ring cursor-pointer"
       >
-        <span className="text-sm font-semibold text-foreground">
+        <span className="text-sm font-semibold text-text-primary">
             Resumen ({cartItems.length}{" "}
             {cartItems.length === 1 ? "producto" : "productos"})
         </span>
         <span className="flex items-center gap-3">
-          <span className="text-base font-bold text-primary">
+          <span className="text-base font-bold text-accent">
             ${total.toLocaleString()}
           </span>
           <ChevronDown
-            className={`size-4 text-muted-foreground transition duration-150 ${open ? "rotate-180" : ""}`}
+            className={`size-4 text-text-muted transition duration-150 ${open ? "rotate-180" : ""}`}
             aria-hidden="true"
           />
         </span>
@@ -380,12 +389,12 @@ function FormSummary({ cartItems, total }: FormSummaryProps) {
           {cartItems.map((burger, i) => (
             <li
               key={burger.id || i}
-              className="flex items-center justify-between text-sm text-muted-foreground"
+              className="flex items-center justify-between text-sm text-text-muted"
             >
               <span className="truncate">
                 {burger.cantidad}× {burger.name}
               </span>
-              <span className="ml-3 shrink-0 font-semibold text-foreground">
+              <span className="ml-3 shrink-0 font-semibold text-text-primary">
                 ${burger.total.toLocaleString()}
               </span>
             </li>

@@ -31,7 +31,7 @@ export default function AdditionsModal({
   editing = false,
   initial,
 }: AdditionsModalProps) {
-  const { additions: storeAdditions } = useRestaurant()
+  const { additions: storeAdditions, storeConfig } = useRestaurant()
   const [cantidad, setCantidad] = useState(initial?.cantidad ?? 1)
   const [observaciones, setObservaciones] = useState(initial?.observacion ?? "")
 
@@ -255,11 +255,13 @@ export default function AdditionsModal({
               </div>
             </div>
             <Button
+              type="button"
               variant="default"
               size="lg"
               onClick={handleAdd}
               disabled={!product}
-              className="h-12 w-full rounded text-base min-[420px]:w-auto min-[420px]:flex-1 sm:min-w-[200px] sm:flex-none"
+              style={{ backgroundColor: storeConfig.primaryColor, color: "#FFFFFF" }}
+              className="h-12 w-full rounded-xl text-base text-white font-bold shadow-md cursor-pointer hover:opacity-90 min-[420px]:w-auto min-[420px]:flex-1 sm:min-w-[200px] sm:flex-none"
             >
               <Plus data-icon="inline-start" strokeWidth={2.5} />
               {editing ? "Guardar cambios" : "Agregar"} · ${calcularTotal().toLocaleString()}

@@ -2,6 +2,7 @@ import { Pencil, Trash2, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import EmptyCart from "./EmptyCart"
 import type { CartItem } from "./cartEngine"
+import { useRestaurant } from "@/context/RestaurantContext"
 
 export interface ShoppingCartProps {
   onClose: () => void
@@ -20,6 +21,8 @@ function ShoppingCart({
   onDeleteCart,
   onEditItem,
 }: ShoppingCartProps) {
+  const { storeConfig } = useRestaurant()
+
   const handleBackToMenu = () => {
     onClose()
     onCloseCart()
@@ -131,18 +134,21 @@ function ShoppingCart({
           </div>
           <div className="flex gap-2 sm:flex-row-reverse">
             <Button
+              type="button"
               variant="default"
               size="lg"
               onClick={handleCheckout}
-              className="h-12 flex-1 sm:flex-none"
+              style={{ backgroundColor: storeConfig.primaryColor, color: "#FFFFFF" }}
+              className="h-12 flex-1 sm:flex-none text-white font-bold shadow-md cursor-pointer hover:opacity-90"
             >
               Confirmar orden
             </Button>
             <Button
+              type="button"
               variant="outline"
               size="lg"
               onClick={handleBackToMenu}
-              className="h-12 flex-1 sm:flex-none"
+              className="h-12 flex-1 sm:flex-none font-bold cursor-pointer"
             >
               <ArrowLeft data-icon="inline-start" />
               Seguir comprando
