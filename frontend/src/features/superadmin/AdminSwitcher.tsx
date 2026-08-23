@@ -1,6 +1,7 @@
 import React from "react"
 import { useRestaurant } from "@/context/RestaurantContext"
 import { Store, ChevronDown, Crown, Shield } from "lucide-react"
+import { useAppRouter } from "@/core/router/useAppRouter"
 
 export const AdminSwitcher: React.FC = () => {
   const {
@@ -9,9 +10,10 @@ export const AdminSwitcher: React.FC = () => {
     switchRestaurant,
     session,
     adminTab,
-    setAdminTab,
     adminTheme,
   } = useRestaurant()
+
+  const { navigateTo } = useAppRouter()
 
   const isDark = adminTheme === "dark"
   const isSuper = session.role === "super"
@@ -57,12 +59,10 @@ export const AdminSwitcher: React.FC = () => {
           onChange={(e) => {
             const val = e.target.value
             if (val === "DIRECTORY") {
-              setAdminTab("restaurants")
+              navigateTo("/admin/restaurants")
             } else {
               switchRestaurant(val)
-              if (adminTab === "restaurants") {
-                setAdminTab("dashboard")
-              }
+              navigateTo("/admin/dashboard")
             }
           }}
           className={`w-full appearance-none rounded-xl border py-2 pl-8 pr-7 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer ${

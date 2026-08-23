@@ -23,6 +23,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { AdminSwitcher } from "@/features/superadmin"
+import { useAppRouter } from "@/core/router/useAppRouter"
 
 interface AdminLayoutProps {
   children: React.ReactNode
@@ -31,9 +32,8 @@ interface AdminLayoutProps {
 export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const {
     storeConfig,
-    setActiveView,
+    activeRestaurant,
     adminTab,
-    setAdminTab,
     adminTheme,
     toggleAdminTheme,
     soundEnabled,
@@ -44,6 +44,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     session,
     logout,
   } = useRestaurant()
+
+  const { navigateTo } = useAppRouter()
 
   const isMobileSidebarOpenState = useState(false)
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = isMobileSidebarOpenState
@@ -207,7 +209,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                   key={item.id}
                   type="button"
                   onClick={() => {
-                    setAdminTab(item.id)
+                    navigateTo(`/admin/${item.id}`)
                     setIsMobileSidebarOpen(false)
                   }}
                   className={`group flex w-full items-center justify-between rounded-xl px-2.5 py-2 text-xs font-semibold transition-all ${
@@ -253,8 +255,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
             {!isSuper && (
               <Button
                 type="button"
-                onClick={() => setActiveView("store")}
-                className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 py-2 text-xs font-bold text-white shadow-sm shadow-orange-500/20 hover:from-orange-600 hover:to-amber-600"
+                onClick={() => navigateTo(`/${activeRestaurant.slug}`)}
+                className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 py-2 text-xs font-bold text-white shadow-sm shadow-orange-500/20 hover:from-orange-600 hover:to-amber-600 cursor-pointer"
               >
                 <Eye className="size-3.5" />
                 <span>Ver Tienda</span>
@@ -265,8 +267,11 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
             {session.role !== "guest" && (
               <button
                 type="button"
-                onClick={logout}
-                className="flex w-full items-center justify-center gap-1 rounded-lg py-1.5 text-[11px] font-semibold text-slate-400 hover:bg-rose-500/10 hover:text-rose-500 transition-colors"
+                onClick={() => {
+                  logout()
+                  navigateTo("/")
+                }}
+                className="flex w-full items-center justify-center gap-1 rounded-lg py-1.5 text-[11px] font-semibold text-slate-400 hover:bg-rose-500/10 hover:text-rose-500 transition-colors cursor-pointer"
               >
                 <LogOut className="size-3" />
                 <span>Cerrar Sesión</span>
@@ -369,8 +374,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
               {!isSuper && (
                 <Button
                   type="button"
-                  onClick={() => setActiveView("store")}
-                  className="hidden md:flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-xs font-semibold text-white shadow-xs hover:from-orange-600 hover:to-amber-600"
+                  onClick={() => navigateTo(`/${activeRestaurant.slug}`)}
+                  className="hidden md:flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-xs font-semibold text-white shadow-xs hover:from-orange-600 hover:to-amber-600 cursor-pointer"
                 >
                   <Eye className="size-3.5" />
                   <span>Tienda Pública</span>

@@ -1,4 +1,94 @@
-import type { StoreBgTheme, CardStyle, CardRadius } from "@/types/restaurant"
+import type { StoreBgTheme, CardStyle, CardRadius, FontFamily } from "@/types/restaurant"
+
+export interface FullThemeTemplate {
+  id: string
+  name: string
+  tagline: string
+  primaryColor: string
+  primaryHoverColor: string
+  bgTheme: StoreBgTheme
+  cardStyle: CardStyle
+  cardRadius: CardRadius
+  fontFamily: FontFamily
+  previewBg: string
+}
+
+export const FULL_THEME_TEMPLATES: FullThemeTemplate[] = [
+  {
+    id: "artisan-burger",
+    name: "🍔 Hamburguesería Urbana",
+    tagline: "Moderno, cálido y enfocado en apetito",
+    primaryColor: "#FF7A21",
+    primaryHoverColor: "#FF8F3F",
+    bgTheme: "dark-charcoal",
+    cardStyle: "elevated",
+    cardRadius: "md",
+    fontFamily: "sans",
+    previewBg: "#0F1112",
+  },
+  {
+    id: "gourmet-grill",
+    name: "🥩 Parrilla & Bar Dark",
+    tagline: "Elegante, contrastado y nocturno",
+    primaryColor: "#F59E0B",
+    primaryHoverColor: "#FBBF24",
+    bgTheme: "deep-midnight",
+    cardStyle: "glass",
+    cardRadius: "lg",
+    fontFamily: "display",
+    previewBg: "#050607",
+  },
+  {
+    id: "rustic-pizza",
+    name: "🍕 Pizzería Tradicional",
+    tagline: "Cálido estilo horno de leña y trattoria",
+    primaryColor: "#E63946",
+    primaryHoverColor: "#F25C69",
+    bgTheme: "warm-cream",
+    cardStyle: "elevated",
+    cardRadius: "lg",
+    fontFamily: "serif",
+    previewBg: "#FAF6EF",
+  },
+  {
+    id: "fresh-bistro",
+    name: "🌮 Taquería & Bistro Fresh",
+    tagline: "Limpio, luminoso y contemporáneo",
+    primaryColor: "#10B981",
+    primaryHoverColor: "#34D399",
+    bgTheme: "clean-white",
+    cardStyle: "bordered",
+    cardRadius: "md",
+    fontFamily: "sans",
+    previewBg: "#FFFFFF",
+  },
+  {
+    id: "premium-lounge",
+    name: "🍸 Lounge de Autor",
+    tagline: "Vanguardista con bordes redondeados",
+    primaryColor: "#8B5CF6",
+    primaryHoverColor: "#A78BFA",
+    bgTheme: "dark-charcoal",
+    cardStyle: "glass",
+    cardRadius: "full",
+    fontFamily: "sans",
+    previewBg: "#0F1112",
+  },
+]
+
+export function getFontFamilyClass(font?: FontFamily): string {
+  switch (font) {
+    case "serif":
+      return "font-serif"
+    case "mono":
+      return "font-mono"
+    case "display":
+      return "font-sans tracking-tight font-extrabold"
+    case "sans":
+    default:
+      return "font-sans"
+  }
+}
 
 export function getRadiusClass(r: CardRadius): string {
   switch (r) {

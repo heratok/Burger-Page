@@ -8,7 +8,7 @@ export function useCustomizerDraft(
 ) {
   const [draft, setDraft] = useState<StorefrontConfig>(initialConfig)
   const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("desktop")
-  const [activeSection, setActiveSection] = useState<"branding" | "colors" | "uiux" | "business">("branding")
+  const [activeSection, setActiveSection] = useState<"templates" | "branding" | "colors" | "uiux" | "business">("templates")
 
   const handleSave = useCallback(() => {
     onSaveConfig(draft)

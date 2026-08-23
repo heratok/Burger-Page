@@ -12,6 +12,7 @@ import {
 } from "lucide-react"
 import { OrderStatusBadge } from "@/components/ui/status-badge"
 import { Button } from "@/components/ui/button"
+import { useAppRouter } from "@/core/router/useAppRouter"
 
 export const DashboardOverview: React.FC = () => {
   const {
@@ -20,10 +21,11 @@ export const DashboardOverview: React.FC = () => {
     customers,
     storeConfig,
     adminTheme,
-    setAdminTab,
     simulateIncomingOrder,
     updateOrderStatus,
   } = useRestaurant()
+
+  const { navigateTo } = useAppRouter()
 
   // Calculate Metrics
   const metrics = useMemo(() => {
@@ -125,8 +127,8 @@ export const DashboardOverview: React.FC = () => {
             <Button
               type="button"
               variant="outline"
-              onClick={() => setAdminTab("orders")}
-              className={`rounded-xl ${
+              onClick={() => navigateTo("/admin/orders")}
+              className={`rounded-xl cursor-pointer ${
                 isDark
                   ? "border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700"
                   : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
@@ -359,8 +361,8 @@ export const DashboardOverview: React.FC = () => {
           <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
             <button
               type="button"
-              onClick={() => setAdminTab("menu")}
-              className="flex w-full items-center justify-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
+              onClick={() => navigateTo("/admin/menu")}
+              className="flex w-full items-center justify-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 cursor-pointer"
             >
               <span>Gestionar Carta Completa ({products.length} platos)</span>
               <ChevronRight className="size-3.5" />
@@ -388,8 +390,8 @@ export const DashboardOverview: React.FC = () => {
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => setAdminTab("orders")}
-            className="text-xs font-semibold"
+            onClick={() => navigateTo("/admin/orders")}
+            className="text-xs font-semibold cursor-pointer"
           >
             Ver todos los pedidos en Kanban
           </Button>

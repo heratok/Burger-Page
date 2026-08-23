@@ -13,7 +13,7 @@ describe("useCustomizerDraft", () => {
 
     expect(result.current.draft.name).toBe(DEFAULT_STORE_CONFIG.name)
     expect(result.current.previewDevice).toBe("desktop")
-    expect(result.current.activeSection).toBe("branding")
+    expect(result.current.activeSection).toBe("templates")
   })
 
   it("updates draft properties and triggers onSave", () => {

@@ -9,9 +9,32 @@ describe("Router Engine - resolveRoute", () => {
     expect(res.isNotFound).toBe(false)
   })
 
-  it("resolves '/admin' path as admin backoffice", () => {
+  it("resolves '/admin' path as admin backoffice without specific tab", () => {
     const res = resolveRoute("/admin", SEED_RESTAURANTS)
     expect(res.view).toBe("admin")
+    expect(res.adminTab).toBeUndefined()
+    expect(res.isNotFound).toBe(false)
+  })
+
+  it("resolves '/admin/orders' path with adminTab 'orders'", () => {
+    const res = resolveRoute("/admin/orders", SEED_RESTAURANTS)
+    expect(res.view).toBe("admin")
+    expect(res.adminTab).toBe("orders")
+    expect(res.isNotFound).toBe(false)
+  })
+
+  it("resolves '/admin/menu', '/admin/inventory', '/admin/customizer' paths correctly", () => {
+    expect(resolveRoute("/admin/menu", SEED_RESTAURANTS).adminTab).toBe("menu")
+    expect(resolveRoute("/admin/inventory", SEED_RESTAURANTS).adminTab).toBe("inventory")
+    expect(resolveRoute("/admin/customizer", SEED_RESTAURANTS).adminTab).toBe("customizer")
+    expect(resolveRoute("/admin/customers", SEED_RESTAURANTS).adminTab).toBe("customers")
+    expect(resolveRoute("/admin/restaurants", SEED_RESTAURANTS).adminTab).toBe("restaurants")
+  })
+
+  it("resolves admin subroutes case-insensitively with slashes", () => {
+    const res = resolveRoute("///ADMIN/ORDERS///", SEED_RESTAURANTS)
+    expect(res.view).toBe("admin")
+    expect(res.adminTab).toBe("orders")
     expect(res.isNotFound).toBe(false)
   })
 
@@ -34,5 +57,12 @@ describe("Router Engine - resolveRoute", () => {
     expect(res.view).toBe("not-found")
     expect(res.isNotFound).toBe(true)
     expect(res.attemptedSlug).toBe("unknown-restaurant-123")
+  })
+
+  it("marks invalid admin subroute as not found", () => {
+    const res = resolveRoute("/admin/invalid-tab", SEED_RESTAURANTS)
+    expect(res.view).toBe("not-found")
+    expect(res.isNotFound).toBe(true)
+    expect(res.attemptedSlug).toBe("admin/invalid-tab")
   })
 })

@@ -10,6 +10,7 @@ import {
 import { GlobalPlatformSummary } from "./GlobalPlatformSummary"
 import { CreateRestaurantModal } from "./CreateRestaurantModal"
 import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
+import { useAppRouter } from "@/core/router/useAppRouter"
 
 export const RestaurantsDirectory: React.FC = () => {
   const {
@@ -18,10 +19,10 @@ export const RestaurantsDirectory: React.FC = () => {
     switchRestaurant,
     updateRestaurant,
     deleteRestaurant,
-    setAdminTab,
-    setActiveView,
     adminTheme,
   } = useRestaurant()
+
+  const { navigateTo } = useAppRouter()
 
   const [searchTerm, setSearchTerm] = useState("")
   const [isCreateOpen, setIsCreateOpen] = useState(false)
@@ -40,13 +41,12 @@ export const RestaurantsDirectory: React.FC = () => {
 
   const handleManage = (r: RestaurantRecord) => {
     switchRestaurant(r.id)
-    setAdminTab("dashboard")
+    navigateTo("/admin/dashboard")
   }
 
   const handleViewStore = (r: RestaurantRecord) => {
     switchRestaurant(r.id)
-    window.history.pushState({}, "", `/${r.slug}`)
-    setActiveView("store")
+    navigateTo(`/${r.slug}`)
   }
 
   return (

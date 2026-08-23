@@ -14,6 +14,7 @@ import {
   type CartItem,
 } from "@/features/cart"
 import { useRestaurant } from "@/context/RestaurantContext"
+import { getFontFamilyClass } from "@/features/crm/utils/customizerStyles"
 
 export default function Home() {
   const { products, storeConfig } = useRestaurant()
@@ -237,11 +238,12 @@ export default function Home() {
   }
 
   const themeStyles = getThemeStyle(storeConfig.bgTheme)
+  const fontClass = getFontFamilyClass(storeConfig.fontFamily)
 
   return (
     <div
       style={themeStyles}
-      className="min-h-screen transition-colors duration-200"
+      className={`min-h-screen transition-colors duration-200 ${fontClass}`}
     >
       <Navbar cantidad={cartItems.length} total={totalCart} onOpenCart={handleOpenCart} />
 

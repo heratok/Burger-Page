@@ -156,21 +156,21 @@ export const OrdersKanban: React.FC = () => {
       </div>
 
       {/* Kanban Board Columns Container */}
-      <div className="grid grid-cols-1 gap-4 overflow-x-auto pb-4 md:grid-cols-2 lg:grid-cols-5 min-w-[320px]">
+      <div className="flex gap-4 overflow-x-auto pb-4 items-start xl:grid xl:grid-cols-5 min-w-full">
         {columns.map((col) => {
           const colOrders = filteredOrders.filter((o) => o.status === col.id)
 
           return (
             <div
               key={col.id}
-              className={`flex flex-col rounded-2xl border p-3.5 shadow-xs transition-colors ${
+              className={`flex flex-col rounded-2xl border p-3.5 shadow-xs transition-colors min-w-[280px] sm:min-w-[300px] xl:min-w-0 flex-1 shrink-0 ${
                 isDark
                   ? "border-slate-800 bg-[#0E1322]"
                   : "border-slate-200/80 bg-slate-100/60"
               }`}
             >
               {/* Column Header */}
-              <div className="flex items-center justify-between pb-3 border-b border-slate-200/60 dark:border-slate-800">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-200/60 dark:border-slate-800 shrink-0">
                 <div className="flex items-center gap-2">
                   <span className="flex size-7 items-center justify-center rounded-lg bg-white shadow-xs dark:bg-slate-800">
                     {col.icon}
@@ -192,8 +192,8 @@ export const OrdersKanban: React.FC = () => {
                 </span>
               </div>
 
-              {/* Order Cards List */}
-              <div className="mt-3 flex-1 space-y-3 min-h-[300px]">
+              {/* Order Cards List (Internal smooth scroll for heavy load) */}
+              <div className="mt-3 flex-1 space-y-3 min-h-[300px] max-h-[calc(100vh-270px)] overflow-y-auto pr-1">
                 {colOrders.length === 0 ? (
                   <div
                     className={`flex h-40 flex-col items-center justify-center rounded-xl border border-dashed text-center text-xs ${
@@ -401,10 +401,10 @@ export const OrdersKanban: React.FC = () => {
                 >
                   <div className="flex justify-between font-bold text-slate-900 dark:text-white">
                     <span>
-                      {item.cantidad}× {item.name}
+                      {item.cantidad || (item as any).quantity || 1}× {item.name}
                     </span>
                     <span className="text-indigo-600 dark:text-indigo-400 font-extrabold">
-                      ${item.total.toLocaleString()}
+                      ${(item.total ?? item.price * (item.cantidad || (item as any).quantity || 1)).toLocaleString()}
                     </span>
                   </div>
                   {item.adiciones && item.adiciones.length > 0 && (
@@ -430,19 +430,19 @@ export const OrdersKanban: React.FC = () => {
               <div className="flex justify-between text-slate-500 dark:text-slate-400">
                 <span>Subtotal productos</span>
                 <span className="font-semibold text-slate-800 dark:text-slate-200">
-                  ${selectedOrder.total.toLocaleString()}
+                  ${(selectedOrder.total ?? (selectedOrder as any).subtotal ?? 0).toLocaleString()}
                 </span>
               </div>
               <div className="flex justify-between text-slate-500 dark:text-slate-400">
                 <span>Costo de domicilio</span>
                 <span className="font-semibold text-slate-800 dark:text-slate-200">
-                  ${selectedOrder.deliveryFee.toLocaleString()}
+                  ${(selectedOrder.deliveryFee ?? (selectedOrder as any).costoEnvio ?? 0).toLocaleString()}
                 </span>
               </div>
               <div className="flex justify-between text-sm font-bold pt-1.5 border-t border-slate-100 dark:border-slate-800 text-slate-900 dark:text-white">
                 <span>Total a Pagar</span>
                 <span className="text-indigo-600 dark:text-indigo-400 text-base font-black">
-                  ${selectedOrder.finalTotal.toLocaleString()}
+                  ${(selectedOrder.finalTotal || 0).toLocaleString()}
                 </span>
               </div>
               <div className="mt-2 rounded-lg bg-slate-100 dark:bg-slate-800 p-2.5 text-[11px] flex justify-between border dark:border-slate-700 text-slate-800 dark:text-slate-200">
