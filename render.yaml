@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: burger-page-backend
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm --prefix packages/contracts run build && npm --prefix backend run build
+    startCommand: node backend/dist/index.js
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: HOST
+        value: 0.0.0.0
