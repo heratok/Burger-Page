@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
+import { Pagination } from "@/components/ui/pagination"
 
 export const MenuManager: React.FC = () => {
   const {
@@ -34,6 +35,9 @@ export const MenuManager: React.FC = () => {
   const [activeSubTab, setActiveSubTab] = useState<"dishes" | "additions">("dishes")
   const [productToDelete, setProductToDelete] = useState<MenuItem | null>(null)
   const [additionToDelete, setAdditionToDelete] = useState<AdditionItem | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(12)
+
   const {
     searchTerm,
     setSearchTerm,
@@ -44,6 +48,11 @@ export const MenuManager: React.FC = () => {
     categories,
     filteredProducts,
   } = useMenuFilter(products)
+
+  const paginatedProducts = React.useMemo(() => {
+    const start = (currentPage - 1) * pageSize
+    return filteredProducts.slice(start, start + pageSize)
+  }, [filteredProducts, currentPage, pageSize])
 
   // Modal State for Products
   const [isProductModalOpen, setIsProductModalOpen] = useState(false)
@@ -203,7 +212,10 @@ export const MenuManager: React.FC = () => {
               {/* Category Pills */}
               <button
                 type="button"
-                onClick={() => setSelectedCategory("ALL")}
+                onClick={() => {
+                  setSelectedCategory("ALL")
+                  setCurrentPage(1)
+                }}
                 className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
                   selectedCategory === "ALL"
                     ? "bg-indigo-600 text-white"
@@ -218,7 +230,10 @@ export const MenuManager: React.FC = () => {
                 <button
                   key={cat}
                   type="button"
-                  onClick={() => setSelectedCategory(cat)}
+                  onClick={() => {
+                    setSelectedCategory(cat)
+                    setCurrentPage(1)
+                  }}
                   className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
                     selectedCategory === cat
                       ? "bg-indigo-600 text-white"
@@ -239,7 +254,10 @@ export const MenuManager: React.FC = () => {
                 <input
                   type="text"
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value)
+                    setCurrentPage(1)
+                  }}
                   placeholder="Buscar plato..."
                   className={`w-full rounded-xl border pl-8 pr-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                     isDark
@@ -282,7 +300,7 @@ export const MenuManager: React.FC = () => {
           {/* Dishes Grid Mode */}
           {viewMode === "grid" ? (
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {filteredProducts.map((product) => (
+              {paginatedProducts.map((product) => (
                 <div
                   key={product.id}
                   className={`group relative overflow-hidden rounded-2xl border transition-all duration-200 hover:shadow-md ${
@@ -390,7 +408,7 @@ export const MenuManager: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {filteredProducts.map((prod) => (
+                  {paginatedProducts.map((prod) => (
                     <tr
                       key={prod.id}
                       className={`transition-colors ${
@@ -461,6 +479,23 @@ export const MenuManager: React.FC = () => {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* Dishes Pagination */}
+          {filteredProducts.length > 0 && (
+            <div className="rounded-2xl border p-2 bg-slate-50/50 dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+              <Pagination
+                currentPage={currentPage}
+                totalItems={filteredProducts.length}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={(size) => {
+                  setPageSize(size)
+                  setCurrentPage(1)
+                }}
+                pageSizeOptions={[6, 12, 24, 48]}
+              />
             </div>
           )}
         </>

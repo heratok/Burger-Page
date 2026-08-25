@@ -44,6 +44,11 @@ const StorefrontCustomizer = lazy(() =>
     default: m.StorefrontCustomizer,
   }))
 )
+const ReportsManager = lazy(() =>
+  import("@/features/crm/ReportsManager").then((m) => ({
+    default: m.ReportsManager,
+  }))
+)
 const RestaurantNotFound = lazy(() =>
   import("@/features/crm/RestaurantNotFound").then((m) => ({
     default: m.RestaurantNotFound,
@@ -95,6 +100,7 @@ function MainRouter() {
           {adminTab === "menu" && <MenuManager />}
           {adminTab === "inventory" && <InventoryManager />}
           {adminTab === "customers" && <CustomerCRM />}
+          {adminTab === "reports" && <ReportsManager />}
           {adminTab === "customizer" && <StorefrontCustomizer />}
         </AdminLayout>
       </Suspense>

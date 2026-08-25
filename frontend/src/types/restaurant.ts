@@ -169,6 +169,6 @@ export interface StorageEnvelopeV2 {
   restaurants: RestaurantRecord[]
 }
 
-export type AdminTab = "dashboard" | "orders" | "menu" | "inventory" | "customers" | "customizer" | "restaurants"
+export type AdminTab = "dashboard" | "orders" | "menu" | "inventory" | "customers" | "reports" | "customizer" | "restaurants"
 export type AdminTheme = "light" | "dark"
 export type AppView = "landing" | "store" | "admin" | "not-found"

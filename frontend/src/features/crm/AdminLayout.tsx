@@ -20,6 +20,7 @@ import {
   Boxes,
   LogOut,
   Crown,
+  BarChart3,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { AdminSwitcher } from "@/features/superadmin"
@@ -97,6 +98,13 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           label: "Clientes CRM",
           icon: Users,
           description: "Base de datos y fidelización",
+          badge: undefined,
+        },
+        {
+          id: "reports" as const,
+          label: "Reportes & Cierre",
+          icon: BarChart3,
+          description: "Cierre de caja y exportación de datos",
           badge: undefined,
         },
         {

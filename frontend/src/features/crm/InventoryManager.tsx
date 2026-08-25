@@ -21,6 +21,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
+import { Pagination } from "@/components/ui/pagination"
 
 const CATEGORY_LABELS: Record<InventoryCategory, string> = {
   ingredients: "Ingredientes & Alimentos",
@@ -62,6 +63,8 @@ export const InventoryManager: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
   const [onlyLowStock, setOnlyLowStock] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
 
   const [itemToDelete, setItemToDelete] = useState<InventoryItem | null>(null)
   const [supplierToDelete, setSupplierToDelete] = useState<Supplier | null>(null)
@@ -109,11 +112,18 @@ export const InventoryManager: React.FC = () => {
       const matchesCategory =
         selectedCategory === "all" || item.category === selectedCategory
 
-      const matchesLowStock = !onlyLowStock || item.currentStock <= item.minStockAlert
+      const matchesLowStock = onlyLowStock
+        ? item.currentStock <= item.minStockAlert
+        : true
 
       return matchesSearch && matchesCategory && matchesLowStock
     })
   }, [inventory, searchTerm, selectedCategory, onlyLowStock])
+
+  const paginatedInventory = useMemo(() => {
+    const start = (currentPage - 1) * pageSize
+    return filteredInventory.slice(start, start + pageSize)
+  }, [filteredInventory, currentPage, pageSize])
 
   // Filtered suppliers
   const filteredSuppliers = useMemo(() => {
@@ -433,7 +443,10 @@ export const InventoryManager: React.FC = () => {
                 type="text"
                 placeholder="Buscar insumo por nombre o categoría..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value)
+                  setCurrentPage(1)
+                }}
                 className={`w-full rounded-xl border pl-8.5 pr-4 py-2 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                   isDark
                     ? "border-slate-800 bg-[#0E1322] text-white placeholder-slate-500"
@@ -445,7 +458,10 @@ export const InventoryManager: React.FC = () => {
             {/* Category Filter */}
             <select
               value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
+              onChange={(e) => {
+                setSelectedCategory(e.target.value)
+                setCurrentPage(1)
+              }}
               className={`rounded-xl border px-3 py-2 text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer ${
                 isDark
                   ? "border-slate-800 bg-[#0E1322] text-slate-200"
@@ -463,7 +479,10 @@ export const InventoryManager: React.FC = () => {
             {/* Low Stock Toggle */}
             <button
               type="button"
-              onClick={() => setOnlyLowStock(!onlyLowStock)}
+              onClick={() => {
+                setOnlyLowStock(!onlyLowStock)
+                setCurrentPage(1)
+              }}
               className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition-all ${
                 onlyLowStock
                   ? "border-amber-500 bg-amber-500/20 text-amber-400 font-bold"
@@ -514,7 +533,7 @@ export const InventoryManager: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                    {filteredInventory.map((item) => {
+                    {paginatedInventory.map((item) => {
                       const isLow = item.currentStock <= item.minStockAlert
                       const supplier = suppliers.find((s) => s.id === item.supplierId)
                       const itemValuation = item.currentStock * item.costPerUnit
@@ -664,6 +683,22 @@ export const InventoryManager: React.FC = () => {
                     })}
                   </tbody>
                 </table>
+              </div>
+            )}
+
+            {/* Pagination for Inventory Table */}
+            {filteredInventory.length > 0 && (
+              <div className="border-t border-slate-200/80 dark:border-slate-800 px-4 py-2">
+                <Pagination
+                  currentPage={currentPage}
+                  totalItems={filteredInventory.length}
+                  pageSize={pageSize}
+                  onPageChange={setCurrentPage}
+                  onPageSizeChange={(size) => {
+                    setPageSize(size)
+                    setCurrentPage(1)
+                  }}
+                />
               </div>
             )}
           </div>

@@ -9,6 +9,7 @@ import {
 } from "lucide-react"
 import { LoyaltyBadge } from "@/components/ui/status-badge"
 import { Button } from "@/components/ui/button"
+import { Pagination } from "@/components/ui/pagination"
 import { buildWhatsAppUrl } from "@/features/cart"
 
 export const CustomerCRM: React.FC = () => {
@@ -18,6 +19,8 @@ export const CustomerCRM: React.FC = () => {
   const [tierFilter, setTierFilter] = useState<string>("ALL")
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
   const [notesEdit, setNotesEdit] = useState("")
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
 
   const isDark = adminTheme === "dark"
 
@@ -34,6 +37,11 @@ export const CustomerCRM: React.FC = () => {
       return matchSearch && matchTier
     })
   }, [customers, searchTerm, tierFilter])
+
+  const paginatedCustomers = useMemo(() => {
+    const start = (currentPage - 1) * pageSize
+    return filteredCustomers.slice(start, start + pageSize)
+  }, [filteredCustomers, currentPage, pageSize])
 
   // Customer Metrics
   const stats = useMemo(() => {
@@ -156,7 +164,10 @@ export const CustomerCRM: React.FC = () => {
           <input
             type="text"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setSearchTerm(e.target.value)
+              setCurrentPage(1)
+            }}
             placeholder="Buscar por nombre, teléfono o barrio..."
             className={`w-full rounded-xl border pl-9 pr-4 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
               isDark
@@ -170,7 +181,10 @@ export const CustomerCRM: React.FC = () => {
           <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Nivel:</span>
           <select
             value={tierFilter}
-            onChange={(e) => setTierFilter(e.target.value)}
+            onChange={(e) => {
+              setTierFilter(e.target.value)
+              setCurrentPage(1)
+            }}
             className={`rounded-xl border px-3 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
               isDark
                 ? "border-slate-700 bg-slate-800 text-slate-100"
@@ -206,7 +220,7 @@ export const CustomerCRM: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {filteredCustomers.map((cust) => (
+              {paginatedCustomers.map((cust) => (
                 <tr
                   key={cust.id}
                   className={`transition-colors ${
@@ -270,6 +284,22 @@ export const CustomerCRM: React.FC = () => {
             </tbody>
           </table>
         </div>
+
+        {/* Table Pagination */}
+        {filteredCustomers.length > 0 && (
+          <div className="border-t border-slate-100 dark:border-slate-800 px-4 py-2">
+            <Pagination
+              currentPage={currentPage}
+              totalItems={filteredCustomers.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size)
+                setCurrentPage(1)
+              }}
+            />
+          </div>
+        )}
       </div>
 
       {/* Customer Profile & Notes Modal */}

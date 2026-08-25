@@ -159,6 +159,9 @@ export const OrdersKanban: React.FC = () => {
       <div className="flex gap-4 overflow-x-auto pb-4 items-start xl:grid xl:grid-cols-5 min-w-full">
         {columns.map((col) => {
           const colOrders = filteredOrders.filter((o) => o.status === col.id)
+          const isTerminalCol = col.id === "delivered" || col.id === "cancelled"
+          const maxVisible = 25
+          const visibleOrders = isTerminalCol ? colOrders.slice(0, maxVisible) : colOrders
 
           return (
             <div
@@ -205,130 +208,141 @@ export const OrdersKanban: React.FC = () => {
                     <span>Sin pedidos en esta fase</span>
                   </div>
                 ) : (
-                  colOrders.map((ord) => (
-                    <div
-                      key={ord.id}
-                      className={`group relative rounded-xl border p-3.5 shadow-xs transition-all duration-150 hover:shadow-md ${
-                        col.id === "pending"
-                          ? isDark
-                            ? "border-amber-500/40 bg-slate-900 hover:border-amber-400"
-                            : "border-amber-400/60 bg-amber-50/40 hover:border-amber-500"
-                          : isDark
-                          ? "border-slate-800 bg-slate-900 hover:border-slate-700"
-                          : "border-slate-200 bg-white hover:border-slate-300"
-                      }`}
-                    >
-                      {/* Card Header */}
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <span className="text-xs font-black text-indigo-600 dark:text-indigo-400">
-                            #{ord.orderNumber}
-                          </span>
-                          <h4 className="mt-0.5 text-xs font-bold leading-tight line-clamp-1 text-slate-900 dark:text-white">
-                            {ord.customer.nombre}
-                          </h4>
-                        </div>
-                        <span className="text-[10px] font-medium text-slate-400 dark:text-slate-400 whitespace-nowrap">
-                          {formatElapsed(ord.createdAt)}
-                        </span>
-                      </div>
-
-                      {/* Address preview */}
-                      <div className="mt-2 flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1">
-                        <MapPin className="size-3 shrink-0 text-slate-400" />
-                        <span className="truncate">
-                          {ord.customer.barrio} - {ord.customer.direccion}
-                        </span>
-                      </div>
-
-                      {/* Items Summary */}
+                  <>
+                    {visibleOrders.map((ord) => (
                       <div
-                        className={`mt-2.5 rounded-lg p-2 text-[11px] ${
-                          isDark ? "bg-slate-800/80 text-slate-200" : "bg-slate-50 text-slate-700"
+                        key={ord.id}
+                        className={`group relative rounded-xl border p-3.5 shadow-xs transition-all duration-150 hover:shadow-md ${
+                          col.id === "pending"
+                            ? isDark
+                              ? "border-amber-500/40 bg-slate-900 hover:border-amber-400"
+                              : "border-amber-400/60 bg-amber-50/40 hover:border-amber-500"
+                            : isDark
+                            ? "border-slate-800 bg-slate-900 hover:border-slate-700"
+                            : "border-slate-200 bg-white hover:border-slate-300"
                         }`}
                       >
-                        <div className="space-y-1 font-medium">
-                          {ord.items.map((item, idx) => (
-                            <div key={idx} className="flex justify-between truncate">
-                              <span className="truncate">
-                                {item.cantidad}× {item.name}
-                              </span>
-                            </div>
-                          ))}
+                        {/* Card Header */}
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <span className="text-xs font-black text-indigo-600 dark:text-indigo-400">
+                              #{ord.orderNumber}
+                            </span>
+                            <h4 className="mt-0.5 text-xs font-bold leading-tight line-clamp-1 text-slate-900 dark:text-white">
+                              {ord.customer.nombre}
+                            </h4>
+                          </div>
+                          <span className="text-[10px] font-medium text-slate-400 dark:text-slate-400 whitespace-nowrap">
+                            {formatElapsed(ord.createdAt)}
+                          </span>
                         </div>
-                        {ord.comentario && (
-                          <p className="mt-1.5 border-t border-slate-200/40 dark:border-slate-700/60 pt-1 text-[10px] italic text-amber-600 dark:text-amber-300 line-clamp-2">
-                            "{ord.comentario}"
-                          </p>
-                        )}
-                      </div>
 
-                      {/* Amount & Method */}
-                      <div className="mt-3 flex items-center justify-between pt-1">
-                        <div>
-                          <span className="text-xs font-bold text-slate-900 dark:text-white">
+                        {/* Address preview */}
+                        <div className="mt-2 flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1">
+                          <MapPin className="size-3 shrink-0 text-slate-400" />
+                          <span className="truncate">
+                            {ord.customer.barrio} - {ord.customer.direccion}
+                          </span>
+                        </div>
+
+                        {/* Items Summary */}
+                        <div
+                          className={`mt-2.5 rounded-lg p-2 text-[11px] ${
+                            isDark ? "bg-slate-800/80 text-slate-200" : "bg-slate-50 text-slate-700"
+                          }`}
+                        >
+                          <div className="space-y-1 font-medium">
+                            {ord.items.map((item, idx) => (
+                              <div key={idx} className="flex justify-between truncate">
+                                <span className="truncate">
+                                  {item.cantidad}× {item.name}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                          {ord.comentario && (
+                            <p className="mt-1.5 border-t border-slate-200/40 dark:border-slate-700/60 pt-1 text-[10px] italic text-amber-600 dark:text-amber-300 line-clamp-2">
+                              "{ord.comentario}"
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Totals & Payment */}
+                        <div className="mt-3 flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-2.5">
+                          <span className="text-xs font-black text-slate-900 dark:text-white">
                             ${ord.finalTotal.toLocaleString()}
                           </span>
-                          <span className="ml-1.5 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300 border dark:border-slate-700">
+                          <span
+                            className={`rounded-md px-2 py-0.5 text-[10px] font-bold ${
+                              ord.metodo === "Efectivo"
+                                ? "bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400"
+                                : "bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400"
+                            }`}
+                          >
                             {ord.metodo}
                           </span>
                         </div>
 
-                        <button
-                          type="button"
-                          onClick={() => setSelectedOrder(ord)}
-                          className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-                          title="Ver detalle completo"
-                        >
-                          <Eye className="size-4" />
-                        </button>
-                      </div>
+                        {/* Action Buttons */}
+                        <div className="mt-3 flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedOrder(ord)}
+                            className="rounded-lg border border-slate-200 dark:border-slate-700 p-1.5 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+                            title="Ver detalles completos del pedido"
+                          >
+                            <Eye className="size-3.5" />
+                          </button>
 
-                      {/* Quick Move Action Buttons */}
-                      <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 flex gap-1.5">
-                        {ord.status === "pending" && (
-                          <button
-                            type="button"
-                            onClick={() => updateOrderStatus(ord.id, "cooking")}
-                            className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-orange-500 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-orange-600"
-                          >
-                            <ChefHat className="size-3.5" />
-                            <span>A Cocina</span>
-                          </button>
-                        )}
-                        {ord.status === "cooking" && (
-                          <button
-                            type="button"
-                            onClick={() => updateOrderStatus(ord.id, "delivering")}
-                            className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-blue-600 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-blue-700"
-                          >
-                            <Bike className="size-3.5" />
-                            <span>Despachar</span>
-                          </button>
-                        )}
-                        {ord.status === "delivering" && (
-                          <button
-                            type="button"
-                            onClick={() => updateOrderStatus(ord.id, "delivered")}
-                            className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-emerald-600 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-emerald-700"
-                          >
-                            <CheckCircle2 className="size-3.5" />
-                            <span>Entregado</span>
-                          </button>
-                        )}
-                        {ord.status !== "cancelled" && ord.status !== "delivered" && (
-                          <button
-                            type="button"
-                            onClick={() => openCustomerWhatsApp(ord)}
-                            className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-1.5 text-emerald-600 hover:bg-emerald-500/20 dark:text-emerald-400"
-                            title="Chat WhatsApp con cliente"
-                          >
-                            <MessageCircle className="size-3.5" />
-                          </button>
-                        )}
+                          {ord.status === "pending" && (
+                            <button
+                              type="button"
+                              onClick={() => updateOrderStatus(ord.id, "cooking")}
+                              className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-orange-500 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-orange-600"
+                            >
+                              <ChefHat className="size-3.5" />
+                              <span>A Cocina</span>
+                            </button>
+                          )}
+                          {ord.status === "cooking" && (
+                            <button
+                              type="button"
+                              onClick={() => updateOrderStatus(ord.id, "delivering")}
+                              className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-blue-600 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-blue-700"
+                            >
+                              <Bike className="size-3.5" />
+                              <span>Despachar</span>
+                            </button>
+                          )}
+                          {ord.status === "delivering" && (
+                            <button
+                              type="button"
+                              onClick={() => updateOrderStatus(ord.id, "delivered")}
+                              className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-emerald-600 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-emerald-700"
+                            >
+                              <CheckCircle2 className="size-3.5" />
+                              <span>Entregado</span>
+                            </button>
+                          )}
+                          {ord.status !== "cancelled" && ord.status !== "delivered" && (
+                            <button
+                              type="button"
+                              onClick={() => openCustomerWhatsApp(ord)}
+                              className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-1.5 text-emerald-600 hover:bg-emerald-500/20 dark:text-emerald-400"
+                              title="Chat WhatsApp con cliente"
+                            >
+                              <MessageCircle className="size-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    ))}
+                    {isTerminalCol && colOrders.length > maxVisible && (
+                      <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-800 p-2.5 text-center text-[11px] text-slate-500 dark:text-slate-400 bg-slate-50/50 dark:bg-slate-900/50">
+                        Mostrando las {maxVisible} órdenes más recientes ({colOrders.length} en total). Para consultar el histórico completo, ve a <strong>Reportes</strong>.
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>

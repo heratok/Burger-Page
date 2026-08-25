@@ -10,6 +10,7 @@ import {
 import { GlobalPlatformSummary } from "./GlobalPlatformSummary"
 import { CreateRestaurantModal } from "./CreateRestaurantModal"
 import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
+import { Pagination } from "@/components/ui/pagination"
 import { useAppRouter } from "@/core/router/useAppRouter"
 
 export const RestaurantsDirectory: React.FC = () => {
@@ -27,6 +28,8 @@ export const RestaurantsDirectory: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("")
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [restaurantToDelete, setRestaurantToDelete] = useState<RestaurantRecord | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
 
   const isDark = adminTheme === "dark"
 
@@ -38,6 +41,11 @@ export const RestaurantsDirectory: React.FC = () => {
         r.config.tagline.toLowerCase().includes(searchTerm.toLowerCase())
     )
   }, [restaurants, searchTerm])
+
+  const paginatedRestaurants = useMemo(() => {
+    const start = (currentPage - 1) * pageSize
+    return filteredRestaurants.slice(start, start + pageSize)
+  }, [filteredRestaurants, currentPage, pageSize])
 
   const handleManage = (r: RestaurantRecord) => {
     switchRestaurant(r.id)
@@ -67,7 +75,10 @@ export const RestaurantsDirectory: React.FC = () => {
             <input
               type="text"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value)
+                setCurrentPage(1)
+              }}
               placeholder="Buscar por nombre, slug o tipo..."
               className={`w-full rounded-xl border pl-9 pr-4 py-2 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                 isDark
@@ -96,7 +107,7 @@ export const RestaurantsDirectory: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {filteredRestaurants.map((r) => {
+              {paginatedRestaurants.map((r) => {
                 const totalSales = r.orders
                   .filter((o) => o.status !== "cancelled")
                   .reduce((sum, o) => sum + o.finalTotal, 0)
@@ -212,6 +223,22 @@ export const RestaurantsDirectory: React.FC = () => {
             </tbody>
           </table>
         </div>
+
+        {/* Directory Pagination */}
+        {filteredRestaurants.length > 0 && (
+          <div className="border-t border-slate-100 dark:border-slate-800 px-4 py-2">
+            <Pagination
+              currentPage={currentPage}
+              totalItems={filteredRestaurants.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size)
+                setCurrentPage(1)
+              }}
+            />
+          </div>
+        )}
       </div>
 
       <CreateRestaurantModal
