@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useCallback, useMemo } from "react"
 import type { InventoryItem, Supplier } from "@/types/restaurant"
+import { apiClient } from "@/core/api/apiClient"
 import { useTenant } from "./TenantContext"
 import { toast } from "sonner"
 
@@ -48,6 +49,18 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const updateInventoryItem = useCallback(
     (id: string, updates: Partial<InventoryItem>) => {
+      if (updates.currentStock !== undefined) {
+        const currentItem = (activeRestaurant.inventory || []).find((item) => item.id === id)
+        if (currentItem) {
+          const delta = updates.currentStock - currentItem.currentStock
+          if (delta !== 0) {
+            apiClient.updateInventoryStock(id, delta).catch((error) => {
+              console.warn(`Could not sync stock update for inventory item ${id} to backend:`, error)
+            })
+          }
+        }
+      }
+
       updateActiveRestaurantRecord((current) => ({
         ...current,
         inventory: (current.inventory || []).map((item) =>
@@ -56,7 +69,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       }))
       toast.success("Insumo actualizado")
     },
-    [updateActiveRestaurantRecord]
+    [activeRestaurant.inventory, updateActiveRestaurantRecord]
   )
 
   const deleteInventoryItem = useCallback(
@@ -96,6 +109,11 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           ...current,
           inventory: updatedList,
         }
+      })
+
+      // Backend API Integration with graceful offline fallback
+      apiClient.updateInventoryStock(id, deltaQuantity).catch((error) => {
+        console.warn(`Could not sync stock adjustment for inventory item ${id} to backend API:`, error)
       })
     },
     [updateActiveRestaurantRecord]
