@@ -675,7 +675,7 @@ export const MenuManager: React.FC = () => {
                     onChange={(e) => setProductForm({ ...productForm, isPopular: e.target.checked })}
                     className="rounded text-indigo-600"
                   />
-                  <span>Destacar como "Popular 🔥"</span>
+                  <span>Destacar como &quot;Popular 🔥&quot;</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer select-none text-slate-800 dark:text-slate-200">
                   <input
@@ -684,7 +684,7 @@ export const MenuManager: React.FC = () => {
                     onChange={(e) => setProductForm({ ...productForm, isNew: e.target.checked })}
                     className="rounded text-indigo-600"
                   />
-                  <span>Etiqueta "Nuevo ✨"</span>
+                  <span>Etiqueta &quot;Nuevo ✨&quot;</span>
                 </label>
               </div>
 

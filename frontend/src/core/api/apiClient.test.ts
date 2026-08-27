@@ -17,7 +17,7 @@ describe('ApiClient', () => {
   })
 
   const mockResponse = (data: any, ok = true, status = 200, statusText = 'OK') => {
-    ;(globalThis.fetch as any).mockResolvedValueOnce({
+    (globalThis.fetch as any).mockResolvedValueOnce({
       ok,
       status,
       statusText,
