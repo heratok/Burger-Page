@@ -11,8 +11,8 @@ export class SqliteCustomerRepository implements CustomerRepository {
     return new Customer(
       row.id,
       row.name,
-      row.phone, // email / phone
-      row.phone,
+      row.email || '',
+      row.phone || '',
       row.total_spent || 0,
       row.total_orders || 0
     );
@@ -23,8 +23,8 @@ export class SqliteCustomerRepository implements CustomerRepository {
     return rows.map(row => new Customer(
       row.id,
       row.name,
-      row.phone,
-      row.phone,
+      row.email || '',
+      row.phone || '',
       row.total_spent || 0,
       row.total_orders || 0
     ));
@@ -32,10 +32,11 @@ export class SqliteCustomerRepository implements CustomerRepository {
 
   async save(customer: Customer): Promise<void> {
     const stmt = this.db.prepare(`
-      INSERT INTO customers (id, name, phone, address, total_orders, total_spent, loyalty_tier, last_order_date)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO customers (id, name, email, phone, address, total_orders, total_spent, loyalty_tier, last_order_date)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         name = excluded.name,
+        email = excluded.email,
         phone = excluded.phone,
         address = excluded.address,
         total_orders = excluded.total_orders,
@@ -46,8 +47,9 @@ export class SqliteCustomerRepository implements CustomerRepository {
     stmt.run(
       customer.id,
       customer.name,
-      customer.phone,
       customer.email,
+      customer.phone,
+      '',
       customer.totalOrders,
       customer.totalSpend,
       customer.loyaltyTier,

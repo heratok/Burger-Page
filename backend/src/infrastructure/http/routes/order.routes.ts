@@ -39,6 +39,7 @@ export async function orderRoutes(fastify: FastifyInstance, opts: { controller: 
       description: 'Streams live order status updates and creations to kitchen and customer screens.',
     }
   }, (req, reply) => {
+    reply.hijack();
     reply.raw.setHeader('Content-Type', 'text/event-stream');
     reply.raw.setHeader('Cache-Control', 'no-cache');
     reply.raw.setHeader('Connection', 'keep-alive');

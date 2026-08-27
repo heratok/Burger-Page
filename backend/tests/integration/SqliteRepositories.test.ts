@@ -89,8 +89,15 @@ describe('SQLite Persistence Adapter Suite (TDD)', () => {
 
     expect(retrieved).not.toBeNull();
     expect(retrieved?.name).toBe('Laura Gómez');
+    expect(retrieved?.email).toBe('laura@test.com');
+    expect(retrieved?.phone).toBe('3151234567');
     expect(retrieved?.totalSpend).toBe(350000);
     expect(retrieved?.loyaltyTier).toBe('Gold');
+
+    const allCustomers = await customerRepo.findAll();
+    expect(allCustomers.length).toBe(1);
+    expect(allCustomers[0].email).toBe('laura@test.com');
+    expect(allCustomers[0].phone).toBe('3151234567');
   });
 
   it('should manage inventory items and stock changes in SQLite', async () => {

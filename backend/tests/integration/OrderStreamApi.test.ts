@@ -69,4 +69,27 @@ describe('Real-Time Order SSE Stream (TDD)', () => {
     expect(updatedEvent).toBeDefined();
     expect(updatedEvent.status).toBe('cooking');
   });
+
+  it('should establish SSE stream connection with correct headers and connected event', async () => {
+    const address = await app.listen({ port: 0, host: '127.0.0.1' });
+    const abortController = new AbortController();
+    try {
+      const response = await fetch(`${address}/api/orders/stream`, {
+        signal: abortController.signal
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get('content-type')).toContain('text/event-stream');
+      expect(response.headers.get('cache-control')).toContain('no-cache');
+
+      const reader = response.body?.getReader();
+      expect(reader).toBeDefined();
+      const { value } = await reader!.read();
+      const text = new TextDecoder().decode(value);
+      expect(text).toContain('event: connected');
+      expect(text).toContain('Connected to live orders stream');
+    } finally {
+      abortController.abort();
+    }
+  });
 });

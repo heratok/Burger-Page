@@ -12,7 +12,18 @@ export class InventoryController {
 
   async list(req: FastifyRequest, reply: FastifyReply) {
     const inventory = await this.getInventoryUseCase.execute();
-    return reply.status(200).send(inventory);
+    const mapped = inventory.map(item => ({
+      id: item.id,
+      name: item.name,
+      category: (item as any).category || 'ingredients',
+      currentStock: item.quantity,
+      quantity: item.quantity,
+      minStockAlert: item.alertThreshold,
+      alertThreshold: item.alertThreshold,
+      unit: item.unit,
+      costPerUnit: (item as any).costPerUnit || 0
+    }));
+    return reply.status(200).send(mapped);
   }
 
   async updateStock(req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
@@ -20,7 +31,11 @@ export class InventoryController {
     if (!parsed.success) {
       throw new ValidationError(parsed.error.message);
     }
-    await this.updateInventoryStockUseCase.execute(req.params.id, parsed.data.quantityChange);
-    return reply.status(200).send({ message: 'Stock updated successfully' });
+    const updated = await this.updateInventoryStockUseCase.execute(req.params.id, parsed.data.quantityChange);
+    return reply.status(200).send({
+      id: updated.id,
+      currentStock: updated.quantity,
+      message: 'Stock updated successfully'
+    });
   }
 }

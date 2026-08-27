@@ -17,7 +17,9 @@ export async function inventoryRoutes(fastify: FastifyInstance, opts: { controll
               name: { type: 'string' },
               category: { type: 'string' },
               currentStock: { type: 'number' },
+              quantity: { type: 'number' },
               minStockAlert: { type: 'number' },
+              alertThreshold: { type: 'number' },
               unit: { type: 'string' },
               costPerUnit: { type: 'number' }
             }
@@ -51,7 +53,8 @@ export async function inventoryRoutes(fastify: FastifyInstance, opts: { controll
           type: 'object',
           properties: {
             id: { type: 'string' },
-            currentStock: { type: 'number' }
+            currentStock: { type: 'number' },
+            message: { type: 'string' }
           }
         },
         400: {

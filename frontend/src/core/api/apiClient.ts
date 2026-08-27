@@ -5,7 +5,7 @@ import {
   OrderStatus,
   InventoryItem,
 } from '@/types/restaurant'
-import type { OrderEvent } from '@burger-page/contracts'
+import type { OrderEvent, CreateOrderInput } from '@burger-page/contracts'
 
 export interface ApiClientConfig {
   baseUrl: string
@@ -42,10 +42,10 @@ export class ApiClient {
     return this.request<MenuItem[]>('/products')
   }
 
-  async createOrder(orderData: Omit<Order, 'id' | 'orderNumber' | 'createdAt' | 'updatedAt' | 'status'> & Partial<Order>): Promise<Order> {
+  async createOrder(orderInput: CreateOrderInput): Promise<Order> {
     return this.request<Order>('/orders', {
       method: 'POST',
-      body: JSON.stringify(orderData),
+      body: JSON.stringify(orderInput),
     })
   }
 
@@ -64,10 +64,10 @@ export class ApiClient {
     return this.request<InventoryItem[]>('/inventory')
   }
 
-  async updateInventoryStock(itemId: string, stock: number): Promise<InventoryItem> {
+  async updateInventoryStock(itemId: string, quantityChange: number): Promise<InventoryItem> {
     return this.request<InventoryItem>(`/inventory/${itemId}/stock`, {
       method: 'PATCH',
-      body: JSON.stringify({ stock }),
+      body: JSON.stringify({ quantityChange }),
     })
   }
 

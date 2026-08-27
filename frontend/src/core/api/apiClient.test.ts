@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import type { CreateOrderInput } from '@burger-page/contracts'
 import { ApiClient } from './apiClient'
 
 describe('ApiClient', () => {
@@ -72,7 +73,11 @@ describe('ApiClient', () => {
     const mockData = { id: 'o1' }
     mockResponse(mockData)
 
-    const newOrder = { total: 100 } as any
+    const newOrder: CreateOrderInput = {
+      customerId: 'c1',
+      items: [{ productId: 'p1', quantity: 2, additions: ['cheese'] }],
+      deliveryFee: 4500,
+    }
     const data = await client.createOrder(newOrder)
     expect(data).toEqual(mockData)
     expect(globalThis.fetch).toHaveBeenCalledWith('http://localhost:3001/api/orders', {
@@ -99,12 +104,12 @@ describe('ApiClient', () => {
     const mockData = { id: 'i1', currentStock: 50 }
     mockResponse(mockData)
 
-    const data = await client.updateInventoryStock('i1', 50)
+    const data = await client.updateInventoryStock('i1', 10)
     expect(data).toEqual(mockData)
     expect(globalThis.fetch).toHaveBeenCalledWith('http://localhost:3001/api/inventory/i1/stock', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ stock: 50 }),
+      body: JSON.stringify({ quantityChange: 10 }),
     })
   })
 

@@ -52,8 +52,9 @@ export function createSqliteDatabase(dbPath = ':memory:'): Database {
     CREATE TABLE IF NOT EXISTS customers (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
+      email TEXT NOT NULL DEFAULT '',
       phone TEXT NOT NULL,
-      address TEXT NOT NULL,
+      address TEXT NOT NULL DEFAULT '',
       total_orders INTEGER NOT NULL DEFAULT 0,
       total_spent REAL NOT NULL DEFAULT 0,
       loyalty_tier TEXT NOT NULL DEFAULT 'bronze',
@@ -70,6 +71,12 @@ export function createSqliteDatabase(dbPath = ':memory:'): Database {
       cost_per_unit REAL NOT NULL
     );
   `);
+
+  const customerColumns = db.prepare("PRAGMA table_info(customers)").all() as Array<{ name: string }>;
+  const hasEmail = customerColumns.some(c => c.name === 'email');
+  if (!hasEmail) {
+    db.exec("ALTER TABLE customers ADD COLUMN email TEXT NOT NULL DEFAULT ''");
+  }
 
   return db;
 }
