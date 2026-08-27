@@ -262,7 +262,7 @@ export const OrdersKanban: React.FC = () => {
                           </div>
                           {ord.comentario && (
                             <p className="mt-1.5 border-t border-slate-200/40 dark:border-slate-700/60 pt-1 text-[10px] italic text-amber-600 dark:text-amber-300 line-clamp-2">
-                              "{ord.comentario}"
+                              &quot;{ord.comentario}&quot;
                             </p>
                           )}
                         </div>

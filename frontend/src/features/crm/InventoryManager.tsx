@@ -799,7 +799,7 @@ export const InventoryManager: React.FC = () => {
                         </div>
                         {sup.notes && (
                           <p className="text-[11px] text-slate-400/90 italic mt-2 bg-slate-900/40 p-2 rounded-xl border border-slate-800">
-                            "{sup.notes}"
+                            &quot;{sup.notes}&quot;
                           </p>
                         )}
                       </div>
