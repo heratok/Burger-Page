@@ -13,7 +13,20 @@ export class InMemoryRestaurantRepository implements RestaurantRepository {
     return this.restaurants.get(id) || null;
   }
 
+  async findBySlug(slug: string): Promise<Restaurant | null> {
+    for (const restaurant of this.restaurants.values()) {
+      if (restaurant.slug === slug) {
+        return { ...restaurant };
+      }
+    }
+    return null;
+  }
+
   async save(restaurant: Restaurant): Promise<void> {
-    this.restaurants.set(restaurant.id, { ...restaurant });
+    const slug =
+      restaurant.slug?.trim() ||
+      restaurant.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') ||
+      restaurant.id;
+    this.restaurants.set(restaurant.id, { ...restaurant, slug });
   }
 }

@@ -10,6 +10,12 @@ import { InMemoryProductRepository } from '../persistence/InMemoryProductReposit
 import { InMemoryOrderRepository } from '../persistence/InMemoryOrderRepository.js';
 import { InMemoryCustomerRepository } from '../persistence/InMemoryCustomerRepository.js';
 import { InMemoryInventoryRepository } from '../persistence/InMemoryInventoryRepository.js';
+import { createSqliteDatabase } from '../persistence/sqlite/SqliteDatabase.js';
+import { SqliteRestaurantRepository } from '../persistence/sqlite/SqliteRestaurantRepository.js';
+import { SqliteProductRepository } from '../persistence/sqlite/SqliteProductRepository.js';
+import { SqliteOrderRepository } from '../persistence/sqlite/SqliteOrderRepository.js';
+import { SqliteCustomerRepository } from '../persistence/sqlite/SqliteCustomerRepository.js';
+import { SqliteInventoryRepository } from '../persistence/sqlite/SqliteInventoryRepository.js';
 
 // Use Cases
 import { GetRestaurantUseCase } from '../../application/use-cases/GetRestaurantUseCase.js';
@@ -48,13 +54,16 @@ export interface AppDependencies {
   inventoryController: InventoryController;
 }
 
-export function buildDependencies(): AppDependencies {
+export function buildDependencies(dbPath?: string, driver?: 'memory' | 'sqlite'): AppDependencies {
+  const isSqlite = driver === 'sqlite' || (!driver && process.env.STORAGE_DRIVER === 'sqlite');
+  const db = isSqlite ? createSqliteDatabase(dbPath || process.env.DATABASE_PATH || ':memory:') : null;
+
   // Repos
-  const restaurantRepo = new InMemoryRestaurantRepository();
-  const productRepo = new InMemoryProductRepository();
-  const orderRepo = new InMemoryOrderRepository();
-  const customerRepo = new InMemoryCustomerRepository();
-  const inventoryRepo = new InMemoryInventoryRepository();
+  const restaurantRepo = db ? new SqliteRestaurantRepository(db) : new InMemoryRestaurantRepository();
+  const productRepo = db ? new SqliteProductRepository(db) : new InMemoryProductRepository();
+  const orderRepo = db ? new SqliteOrderRepository(db) : new InMemoryOrderRepository();
+  const customerRepo = db ? new SqliteCustomerRepository(db) : new InMemoryCustomerRepository();
+  const inventoryRepo = db ? new SqliteInventoryRepository(db) : new InMemoryInventoryRepository();
 
   // Use Cases
   const getRestaurant = new GetRestaurantUseCase(restaurantRepo);
@@ -85,7 +94,10 @@ export function buildDependencies(): AppDependencies {
   };
 }
 
-export function buildApp(dependencies?: Partial<AppDependencies>): FastifyInstance {
+export function buildApp(
+  dependencies?: Partial<AppDependencies>,
+  options?: { dbPath?: string; driver?: 'memory' | 'sqlite' }
+): FastifyInstance {
   const app = fastify({
     logger: true,
     ajv: {
@@ -96,7 +108,7 @@ export function buildApp(dependencies?: Partial<AppDependencies>): FastifyInstan
     }
   });
 
-  const deps = { ...buildDependencies(), ...dependencies };
+  const deps = { ...buildDependencies(options?.dbPath, options?.driver), ...dependencies };
 
   app.register(cors, { origin: '*' });
 

@@ -5,8 +5,11 @@ import { EntityNotFoundError } from '../../domain/errors/DomainErrors.js';
 export class GetRestaurantUseCase {
   constructor(private restaurantRepo: RestaurantRepository) {}
 
-  async execute(id: string): Promise<Restaurant> {
-    const restaurant = await this.restaurantRepo.findById(id);
+  async execute(identifier: string): Promise<Restaurant> {
+    let restaurant = await this.restaurantRepo.findBySlug(identifier);
+    if (!restaurant) {
+      restaurant = await this.restaurantRepo.findById(identifier);
+    }
     if (!restaurant) throw new EntityNotFoundError('Restaurant not found');
     return restaurant;
   }

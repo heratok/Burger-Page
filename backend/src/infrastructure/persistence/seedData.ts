@@ -6,6 +6,7 @@ import { Inventory } from '../../domain/models/Inventory.js';
 
 export const defaultRestaurant: Restaurant = {
   id: 'burger-craft',
+  slug: 'burger-craft',
   name: 'Burger Craft',
   theme: 'dark',
   openingHours: { open: '10:00', close: '22:00' },
