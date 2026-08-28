@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Order, OrderItem } from '../../domain/models/Order.js';
 import { OrderRepository } from '../../domain/ports/out/OrderRepository.js';
 import { ProductRepository } from '../../domain/ports/out/ProductRepository.js';
@@ -26,7 +27,7 @@ export class CreateOrderUseCase {
     }
 
     const order = new Order(
-      crypto.randomUUID(),
+      randomUUID(),
       dto.customerId,
       items,
       'pending',
