@@ -4,7 +4,7 @@ services:
     runtime: node
     plan: free
     region: oregon
-    buildCommand: npm install && npm --prefix packages/contracts run build && npm --prefix backend run build
+    buildCommand: npm install --include=dev && npm --prefix packages/contracts run build && npm --prefix backend run build
     startCommand: node backend/dist/index.js
     healthCheckPath: /health
     autoDeploy: true
