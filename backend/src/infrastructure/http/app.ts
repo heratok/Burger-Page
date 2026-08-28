@@ -162,7 +162,7 @@ export function buildApp(
     }
   }, async () => ({ status: 'ok' }));
 
-  app.register(async (api) => {
+  app.register(async (api: FastifyInstance) => {
     api.register(restaurantRoutes, { prefix: '/restaurant', controller: deps.restaurantController });
     api.register(productRoutes, { prefix: '/products', controller: deps.productController });
     api.register(orderRoutes, { prefix: '/orders', controller: deps.orderController });

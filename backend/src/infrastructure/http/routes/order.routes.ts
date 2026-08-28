@@ -1,4 +1,4 @@
-import { FastifyInstance } from 'fastify';
+import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { OrderController } from '../controllers/OrderController.js';
 import { globalOrderEventBus } from '../../events/OrderEventBus.js';
 
@@ -38,7 +38,7 @@ export async function orderRoutes(fastify: FastifyInstance, opts: { controller: 
       summary: 'Real-time SSE stream for order updates',
       description: 'Streams live order status updates and creations to kitchen and customer screens.',
     }
-  }, (req, reply) => {
+  }, (req: FastifyRequest, reply: FastifyReply) => {
     reply.hijack();
     reply.raw.setHeader('Content-Type', 'text/event-stream');
     reply.raw.setHeader('Cache-Control', 'no-cache');
