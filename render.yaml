@@ -15,3 +15,9 @@ services:
         value: production
       - key: HOST
         value: 0.0.0.0
+      - key: STORAGE_DRIVER
+        value: supabase
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false

@@ -12,7 +12,16 @@ import { Customer } from '../../src/domain/models/Customer.js';
 import { Restaurant } from '../../src/domain/models/Restaurant.js';
 import { buildDependencies } from '../../src/infrastructure/http/app.js';
 
-describe('SQLite Persistence Adapter Suite (TDD)', () => {
+let hasSqliteBinding = false;
+try {
+  const testDb = createSqliteDatabase(':memory:');
+  testDb.close();
+  hasSqliteBinding = true;
+} catch {
+  hasSqliteBinding = false;
+}
+
+describe.skipIf(!hasSqliteBinding)('SQLite Persistence Adapter Suite (TDD)', () => {
   let db: Database;
   let restaurantRepo: SqliteRestaurantRepository;
   let productRepo: SqliteProductRepository;

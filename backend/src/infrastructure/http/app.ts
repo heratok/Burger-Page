@@ -16,6 +16,18 @@ import { SqliteProductRepository } from '../persistence/sqlite/SqliteProductRepo
 import { SqliteOrderRepository } from '../persistence/sqlite/SqliteOrderRepository.js';
 import { SqliteCustomerRepository } from '../persistence/sqlite/SqliteCustomerRepository.js';
 import { SqliteInventoryRepository } from '../persistence/sqlite/SqliteInventoryRepository.js';
+import { getSupabaseClient } from '../persistence/supabase/SupabaseClient.js';
+import { SupabaseRestaurantRepository } from '../persistence/supabase/SupabaseRestaurantRepository.js';
+import { SupabaseProductRepository } from '../persistence/supabase/SupabaseProductRepository.js';
+import { SupabaseOrderRepository } from '../persistence/supabase/SupabaseOrderRepository.js';
+import { SupabaseCustomerRepository } from '../persistence/supabase/SupabaseCustomerRepository.js';
+import { SupabaseInventoryRepository } from '../persistence/supabase/SupabaseInventoryRepository.js';
+import { RestaurantRepository } from '../../domain/ports/out/RestaurantRepository.js';
+import { ProductRepository } from '../../domain/ports/out/ProductRepository.js';
+import { OrderRepository } from '../../domain/ports/out/OrderRepository.js';
+import { CustomerRepository } from '../../domain/ports/out/CustomerRepository.js';
+import { InventoryRepository } from '../../domain/ports/out/InventoryRepository.js';
+
 
 // Use Cases
 import { GetRestaurantUseCase } from '../../application/use-cases/GetRestaurantUseCase.js';
@@ -54,16 +66,62 @@ export interface AppDependencies {
   inventoryController: InventoryController;
 }
 
-export function buildDependencies(dbPath?: string, driver?: 'memory' | 'sqlite'): AppDependencies {
-  const isSqlite = driver === 'sqlite' || (!driver && process.env.STORAGE_DRIVER === 'sqlite');
-  const db = isSqlite ? createSqliteDatabase(dbPath || process.env.DATABASE_PATH || ':memory:') : null;
+export type StorageDriver = 'memory' | 'sqlite' | 'supabase';
 
-  // Repos
-  const restaurantRepo = db ? new SqliteRestaurantRepository(db) : new InMemoryRestaurantRepository();
-  const productRepo = db ? new SqliteProductRepository(db) : new InMemoryProductRepository();
-  const orderRepo = db ? new SqliteOrderRepository(db) : new InMemoryOrderRepository();
-  const customerRepo = db ? new SqliteCustomerRepository(db) : new InMemoryCustomerRepository();
-  const inventoryRepo = db ? new SqliteInventoryRepository(db) : new InMemoryInventoryRepository();
+export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppDependencies {
+  let selectedDriver: StorageDriver = driver || (process.env.STORAGE_DRIVER as StorageDriver);
+  if (!selectedDriver && process.env.SUPABASE_URL) {
+    selectedDriver = 'supabase';
+  }
+  if (!selectedDriver) {
+    selectedDriver = 'memory';
+  }
+
+  let restaurantRepo: RestaurantRepository;
+  let productRepo: ProductRepository;
+  let orderRepo: OrderRepository;
+  let customerRepo: CustomerRepository;
+  let inventoryRepo: InventoryRepository;
+
+  if (selectedDriver === 'supabase') {
+    try {
+      const supabaseClient = getSupabaseClient();
+      restaurantRepo = new SupabaseRestaurantRepository(supabaseClient);
+      productRepo = new SupabaseProductRepository(supabaseClient);
+      orderRepo = new SupabaseOrderRepository(supabaseClient);
+      customerRepo = new SupabaseCustomerRepository(supabaseClient);
+      inventoryRepo = new SupabaseInventoryRepository(supabaseClient);
+    } catch (err) {
+      console.warn('Supabase initialization failed, falling back to InMemory/SQLite:', err);
+      if (process.env.DATABASE_PATH) {
+        const db = createSqliteDatabase(dbPath || process.env.DATABASE_PATH);
+        restaurantRepo = new SqliteRestaurantRepository(db);
+        productRepo = new SqliteProductRepository(db);
+        orderRepo = new SqliteOrderRepository(db);
+        customerRepo = new SqliteCustomerRepository(db);
+        inventoryRepo = new SqliteInventoryRepository(db);
+      } else {
+        restaurantRepo = new InMemoryRestaurantRepository();
+        productRepo = new InMemoryProductRepository();
+        orderRepo = new InMemoryOrderRepository();
+        customerRepo = new InMemoryCustomerRepository();
+        inventoryRepo = new InMemoryInventoryRepository();
+      }
+    }
+  } else if (selectedDriver === 'sqlite') {
+    const db = createSqliteDatabase(dbPath || process.env.DATABASE_PATH || ':memory:');
+    restaurantRepo = new SqliteRestaurantRepository(db);
+    productRepo = new SqliteProductRepository(db);
+    orderRepo = new SqliteOrderRepository(db);
+    customerRepo = new SqliteCustomerRepository(db);
+    inventoryRepo = new SqliteInventoryRepository(db);
+  } else {
+    restaurantRepo = new InMemoryRestaurantRepository();
+    productRepo = new InMemoryProductRepository();
+    orderRepo = new InMemoryOrderRepository();
+    customerRepo = new InMemoryCustomerRepository();
+    inventoryRepo = new InMemoryInventoryRepository();
+  }
 
   // Use Cases
   const getRestaurant = new GetRestaurantUseCase(restaurantRepo);
@@ -96,7 +154,7 @@ export function buildDependencies(dbPath?: string, driver?: 'memory' | 'sqlite')
 
 export function buildApp(
   dependencies?: Partial<AppDependencies>,
-  options?: { dbPath?: string; driver?: 'memory' | 'sqlite' }
+  options?: { dbPath?: string; driver?: StorageDriver }
 ): FastifyInstance {
   const app = fastify({
     logger: true,

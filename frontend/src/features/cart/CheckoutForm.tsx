@@ -5,13 +5,13 @@ import { toast } from "sonner"
 import {
   ArrowLeft,
   Banknote,
+  Check,
   ChevronDown,
   CircleAlert,
   CreditCard,
   Home,
   MapPin,
   Phone,
-  Send,
   User,
   Wallet,
 } from "lucide-react"
@@ -31,12 +31,7 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/in
 import { Textarea } from "@/components/ui/textarea"
 import CharacterCounter from "@/components/CharacterCounter"
 import { formSchema, LIMITS, type FormValues } from "@/lib/validation"
-import {
-  buildOrderMessage,
-  buildWhatsAppUrl,
-  calculateChange,
-  generateOrderId,
-} from "./whatsapp"
+import { calculateChange } from "./whatsapp"
 import { cartItemToOrderItem, type CartItem } from "./cartEngine"
 import { useRestaurant } from "@/context/RestaurantContext"
 
@@ -75,8 +70,6 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
   const metodo = watch("metodo")
   const pagoCon = watch("pagoCon")
 
-  const [orderId] = useState(generateOrderId)
-
   const total = cartItems.reduce(
     (acc, item) => acc + item.total,
     0
@@ -104,26 +97,10 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
       status: "pending",
     })
 
-    // 2. Build WhatsApp message
-    const message = buildOrderMessage({
-      orderId,
-      customer: {
-        nombre: values.nombre,
-        telefono: values.telefono,
-        direccion: values.dir,
-        barrio: values.barrio,
-      },
-      items: cartItems,
-      metodo: values.metodo,
-      pagoCon: values.pagoCon,
-      comentario: values.mensaje,
-      restaurantName: storeConfig.name,
-      deliveryFee: storeConfig.deliveryFee,
+    // 2. Direct sale confirmation feedback
+    toast.success("¡Venta registrada con éxito!", {
+      description: `${values.nombre} • Total: $${(total + storeConfig.deliveryFee).toLocaleString()}`,
     })
-
-    const targetPhone = storeConfig.whatsappNumber.replace(/\D/g, "")
-    window.open(buildWhatsAppUrl(targetPhone, message), "_blank", "noreferrer")
-    toast.success("¡Pedido enviado con éxito a la cocina!")
     onClose()
   }
 
@@ -340,8 +317,8 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
             style={{ backgroundColor: storeConfig.primaryColor, color: "#FFFFFF" }}
             className="h-12 flex-1 text-base text-white font-bold shadow-md cursor-pointer hover:opacity-90"
           >
-            <Send data-icon="inline-start" />
-            Enviar pedido por WhatsApp
+            <Check data-icon="inline-start" />
+            Registrar venta
           </Button>
           <Button
             type="button"

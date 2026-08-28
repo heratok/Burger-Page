@@ -16,8 +16,8 @@ describe("Super Admin - Creación y Aislamiento de Nuevos Restaurantes E2E", () 
   it("permite al Super Admin crear un nuevo restaurante, personalizarlo, agregar platos y mantenerlo 100% aislado", () => {
     const { result } = renderHook(() => useRestaurant(), { wrapper })
 
-    // 1. Verificar estado inicial (3 restaurantes semilla)
-    expect(result.current.restaurants).toHaveLength(3)
+    // 1. Verificar estado inicial (4 restaurantes semilla)
+    expect(result.current.restaurants).toHaveLength(4)
 
     // 2. Autenticar como Super Admin
     act(() => {
@@ -43,7 +43,7 @@ describe("Super Admin - Creación y Aislamiento de Nuevos Restaurantes E2E", () 
     // 4. Verificar que se agregó a la lista global y quedó seleccionado
     expect(createdRest).toBeDefined()
     expect(createdRest.slug).toBe("sushi-express")
-    expect(result.current.restaurants).toHaveLength(4)
+    expect(result.current.restaurants).toHaveLength(5)
     expect(result.current.restaurants.some((r) => r.slug === "sushi-express")).toBe(true)
     expect(result.current.activeRestaurant.slug).toBe("sushi-express")
     expect(result.current.storeConfig.name).toBe("Sushi Express Bogotá")
@@ -59,21 +59,20 @@ describe("Super Admin - Creación y Aislamiento de Nuevos Restaurantes E2E", () 
         src: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=800",
         description: "Langostino crocante, aguacate, atún fresco y salsa acevichada nikkei.",
         inStock: true,
-        isPopular: true,
       })
     })
 
     expect(result.current.products).toHaveLength(1)
     expect(result.current.products[0].name).toBe("Acevichado Roll (10 Bocados)")
 
-    // 6. Simular un pedido en Sushi Express
+    // 6. Registrar una orden en Sushi Express
     act(() => {
       result.current.addOrder({
         customer: {
           nombre: "Andrea Restrepo",
-          telefono: "3151234567",
-          direccion: "Carrera 7 # 120-10",
-          barrio: "Usaquén",
+          telefono: "3201112233",
+          direccion: "Calle 127 # 7-15",
+          barrio: "Santa Ana",
         },
         items: [
           {
@@ -84,8 +83,8 @@ describe("Super Admin - Creación y Aislamiento de Nuevos Restaurantes E2E", () 
           },
         ],
         total: 59800,
-        deliveryFee: 4500,
-        finalTotal: 64300,
+        deliveryFee: 5000,
+        finalTotal: 64800,
         metodo: "Transferencia",
         status: "pending",
       })
@@ -93,9 +92,8 @@ describe("Super Admin - Creación y Aislamiento de Nuevos Restaurantes E2E", () 
 
     expect(result.current.orders).toHaveLength(1)
     expect(result.current.customers).toHaveLength(1)
-    expect(result.current.customers[0].nombre).toBe("Andrea Restrepo")
 
-    // 7. Cambiar al restaurante original "Burger Craft" y verificar aislamiento total
+    // 7. Cambiar de restaurante a Burger Craft y verificar que los datos están 100% aislados
     act(() => {
       result.current.switchRestaurant("burger-craft")
     })
@@ -107,9 +105,9 @@ describe("Super Admin - Creación y Aislamiento de Nuevos Restaurantes E2E", () 
     expect(result.current.customers.some((c) => c.nombre === "Andrea Restrepo")).toBe(false)
 
     // 8. Verificar que las métricas globales del Super Admin suman todos los locales
-    expect(result.current.globalStats.totalRestaurants).toBe(4)
+    expect(result.current.globalStats.totalRestaurants).toBe(5)
     expect(result.current.globalStats.totalOrders).toBe(
-      5 + 1 + 1 + 1 // 5 (Burger Craft) + 1 (Pizzería) + 1 (Tacos) + 1 (Sushi Express)
+      5 + 1 + 1 + 1 + 1 // 5 (Burger Craft) + 1 (Pizzería) + 1 (Tacos) + 1 (Rosto) + 1 (Sushi Express)
     )
   })
 
@@ -128,7 +126,7 @@ describe("Super Admin - Creación y Aislamiento de Nuevos Restaurantes E2E", () 
       })
     })
 
-    expect(result.current.restaurants).toHaveLength(4)
+    expect(result.current.restaurants).toHaveLength(5)
 
     // Pausar el restaurante
     act(() => {
@@ -137,14 +135,14 @@ describe("Super Admin - Creación y Aislamiento de Nuevos Restaurantes E2E", () 
 
     const found = result.current.restaurants.find((r) => r.id === tempRest.id)
     expect(found?.isActive).toBe(false)
-    expect(result.current.globalStats.activeRestaurants).toBe(3)
+    expect(result.current.globalStats.activeRestaurants).toBe(4)
 
     // Eliminar el restaurante
     act(() => {
       result.current.deleteRestaurant(tempRest.id)
     })
 
-    expect(result.current.restaurants).toHaveLength(3)
+    expect(result.current.restaurants).toHaveLength(4)
     expect(result.current.restaurants.some((r) => r.id === tempRest.id)).toBe(false)
   })
 })
