@@ -14,6 +14,7 @@ import {
   MessageCircle,
   X,
   Plus,
+  Trash2,
 } from "lucide-react"
 import { OrderStatusBadge } from "@/components/ui/status-badge"
 import { Button } from "@/components/ui/button"
@@ -21,7 +22,7 @@ import { buildWhatsAppUrl } from "@/features/cart"
 import { ManualSaleModal } from "./ManualSaleModal"
 
 export const OrdersKanban: React.FC = () => {
-  const { orders, updateOrderStatus, adminTheme, storeConfig } =
+  const { orders, updateOrderStatus, deleteOrder, adminTheme, storeConfig } =
     useRestaurant()
 
   const [isManualSaleOpen, setIsManualSaleOpen] = useState(false)
@@ -526,6 +527,18 @@ export const OrdersKanban: React.FC = () => {
                 className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-2.5 py-1 text-xs font-bold text-rose-600 hover:bg-rose-500/20 dark:bg-rose-500/20 dark:text-rose-300"
               >
                 🔴 Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  deleteOrder(selectedOrder.id)
+                  setSelectedOrder(null)
+                }}
+                className="flex items-center gap-1 rounded-lg border border-rose-500/40 bg-rose-500/10 px-2.5 py-1 text-xs font-bold text-rose-500 hover:bg-rose-500/20 ml-auto cursor-pointer"
+                title="Eliminar orden definitivamente"
+              >
+                <Trash2 className="size-3" />
+                <span>Eliminar Orden</span>
               </button>
             </div>
           </div>

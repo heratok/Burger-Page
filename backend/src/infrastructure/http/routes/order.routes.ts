@@ -40,6 +40,7 @@ export async function orderRoutes(fastify: FastifyInstance, opts: { controller: 
     }
   }, (req: FastifyRequest, reply: FastifyReply) => {
     reply.hijack();
+    reply.raw.setHeader('Access-Control-Allow-Origin', '*');
     reply.raw.setHeader('Content-Type', 'text/event-stream');
     reply.raw.setHeader('Cache-Control', 'no-cache');
     reply.raw.setHeader('Connection', 'keep-alive');

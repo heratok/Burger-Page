@@ -938,46 +938,7 @@ export const SEED_RESTAURANTS: RestaurantRecord[] = [
         notes: "Entrega cortes madurados al vacío los martes y jueves.",
       },
     ],
-    orders: [
-      {
-        id: "rosto-ord-1",
-        orderNumber: 40101,
-        customer: {
-          nombre: "Mateo Cárdenas",
-          telefono: "3119988776",
-          direccion: "Calle 10 # 35-12, Apto 301",
-          barrio: "El Poblado",
-        },
-        items: [
-          {
-            name: "Rosto Clásica Ahumada",
-            price: 28000,
-            cantidad: 1,
-            total: 32000,
-            adiciones: [{ name: "Tocineta Glaseada Extra", price: 4000, cantidad: 1 }],
-          },
-        ],
-        total: 32000,
-        deliveryFee: 5000,
-        finalTotal: 37000,
-        metodo: "Transferencia",
-        status: "cooking",
-        createdAt: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-    ],
-    customers: [
-      {
-        id: "rosto-cust-1",
-        nombre: "Mateo Cárdenas",
-        telefono: "3119988776",
-        direccion: "Calle 10 # 35-12, Apto 301",
-        barrio: "El Poblado",
-        totalOrders: 3,
-        totalSpent: 111000,
-        lastOrderDate: "2026-08-21T11:00:00.000Z",
-        loyaltyTier: "silver",
-      },
-    ],
+    orders: [],
+    customers: [],
   },
 ]

@@ -107,7 +107,7 @@ describe("Super Admin - Creación y Aislamiento de Nuevos Restaurantes E2E", () 
     // 8. Verificar que las métricas globales del Super Admin suman todos los locales
     expect(result.current.globalStats.totalRestaurants).toBe(5)
     expect(result.current.globalStats.totalOrders).toBe(
-      5 + 1 + 1 + 1 + 1 // 5 (Burger Craft) + 1 (Pizzería) + 1 (Tacos) + 1 (Rosto) + 1 (Sushi Express)
+      5 + 1 + 1 + 0 + 1 // 5 (Burger Craft) + 1 (Pizzería) + 1 (Tacos) + 0 (Rosto limpio) + 1 (Sushi Express)
     )
   })
 
