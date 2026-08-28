@@ -383,20 +383,20 @@ function FormSummary({ cartItems, total }: FormSummaryProps) {
       </button>
       {open && (
         <ul id="order-summary" className="space-y-2 px-4 pt-1 pb-4 border-t border-slate-100 dark:border-slate-800/40">
-          {cartItems.map((burger, i) => (
+          {cartItems.map((item, i) => (
             <li
-              key={burger.id || i}
+              key={item.id || i}
               style={{ color: "var(--color-text-secondary)" }}
               className="flex items-center justify-between text-sm"
             >
               <span className="truncate">
-                {burger.cantidad}× {burger.name}
+                {item.cantidad}× {item.name}
               </span>
               <span
                 style={{ color: "var(--color-text-primary)" }}
                 className="ml-3 shrink-0 font-bold"
               >
-                ${burger.total.toLocaleString()}
+                ${item.total.toLocaleString()}
               </span>
             </li>
           ))}

@@ -313,7 +313,7 @@ export const StorefrontCustomizer: React.FC = () => {
                   type="text"
                   value={draft.tagline}
                   onChange={(e) => setDraft({ ...draft, tagline: e.target.value })}
-                  placeholder="Ej. Hamburguesas artesanales de autor"
+                  placeholder="Ej. Cocina artesanal con sabor inolvidable"
                   className="w-full rounded-xl border p-2.5 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white"
                 />
               </div>
@@ -971,7 +971,7 @@ export const StorefrontCustomizer: React.FC = () => {
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-bold">Menú Destacado</span>
                   <span style={{ color: draft.primaryColor }} className="font-semibold text-[11px]">
-                    {products.length} hamburguesas
+                    {products.length} productos
                   </span>
                 </div>
 

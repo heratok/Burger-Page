@@ -1,18 +1,18 @@
 import { useState, useMemo } from "react"
 import type { MenuItem } from "@/types/restaurant"
 
-export function useMenuFilter(products: MenuItem[]) {
+export function useMenuFilter(products: MenuItem[], availableCategories?: string[]) {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL")
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid")
 
   const categories = useMemo(() => {
-    const set = new Set<string>()
+    const set = new Set<string>(availableCategories || [])
     products.forEach((p) => {
       if (p.category) set.add(p.category)
     })
     return Array.from(set)
-  }, [products])
+  }, [products, availableCategories])
 
   const filteredProducts = useMemo(() => {
     const query = searchTerm.toLowerCase().trim()

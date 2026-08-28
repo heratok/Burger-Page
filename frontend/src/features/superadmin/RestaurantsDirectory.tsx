@@ -165,10 +165,10 @@ export const RestaurantsDirectory: React.FC = () => {
                     {/* Products Count */}
                     <td className="px-4 py-4">
                       <span className="font-semibold text-slate-700 dark:text-slate-200">
-                        {r.products.length} platos
+                        {r.products.length} productos
                       </span>
                       <span className="text-[11px] text-slate-400 ml-1">
-                        ({r.additions.length} toppings)
+                        ({r.additions.length} adiciones)
                       </span>
                     </td>
 

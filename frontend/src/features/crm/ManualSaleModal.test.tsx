@@ -66,7 +66,7 @@ describe("ManualSaleModal - Point of Sale (POS) Component", () => {
 
     // Should now show item in order list
     expect(screen.queryByText(/Venta vacía/i)).toBeNull()
-    expect(screen.getByText(/Subtotal platos:/i)).toBeDefined()
+    expect(screen.getByText(/Subtotal productos:/i)).toBeDefined()
 
     // Add another item
     if (addButtons.length > 1) {

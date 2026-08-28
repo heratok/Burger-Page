@@ -39,6 +39,14 @@ export class ApiClient {
     return this.request<RestaurantRecord>('/restaurant')
   }
 
+  async updateCategories(categories: string[], slug?: string): Promise<{ categories: string[] }> {
+    const endpoint = slug ? `/restaurant/${slug}/categories` : '/restaurant/categories'
+    return this.request<{ categories: string[] }>(endpoint, {
+      method: 'PUT',
+      body: JSON.stringify({ categories }),
+    })
+  }
+
   async fetchProducts(): Promise<MenuItem[]> {
     return this.request<MenuItem[]>('/products')
   }

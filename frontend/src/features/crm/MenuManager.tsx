@@ -12,6 +12,7 @@ import {
   X,
   LayoutGrid,
   List,
+  Tags,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
@@ -29,6 +30,10 @@ export const MenuManager: React.FC = () => {
     addAddition,
     updateAddition,
     deleteAddition,
+    categories: restaurantCategories,
+    addCategory,
+    updateCategory,
+    deleteCategory,
     adminTheme,
   } = useRestaurant()
 
@@ -37,6 +42,13 @@ export const MenuManager: React.FC = () => {
   const [additionToDelete, setAdditionToDelete] = useState<AdditionItem | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(12)
+
+  // Category Management Modal State
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
+  const [newCategoryName, setNewCategoryName] = useState("")
+  const [editingCategoryName, setEditingCategoryName] = useState<string | null>(null)
+  const [editCategoryInputValue, setEditCategoryInputValue] = useState("")
+  const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null)
 
   const {
     searchTerm,
@@ -47,7 +59,7 @@ export const MenuManager: React.FC = () => {
     setViewMode,
     categories,
     filteredProducts,
-  } = useMenuFilter(products)
+  } = useMenuFilter(products, restaurantCategories)
 
   const paginatedProducts = React.useMemo(() => {
     const start = (currentPage - 1) * pageSize
@@ -57,10 +69,11 @@ export const MenuManager: React.FC = () => {
   // Modal State for Products
   const [isProductModalOpen, setIsProductModalOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<MenuItem | null>(null)
+  const [isCustomCategoryInput, setIsCustomCategoryInput] = useState(false)
   const [productForm, setProductForm] = useState({
     name: "",
     price: 25000,
-    category: "Clásicas",
+    category: "Platos Principales",
     src: "",
     description: "",
     inStock: true,
@@ -82,10 +95,11 @@ export const MenuManager: React.FC = () => {
 
   const openNewProductModal = () => {
     setEditingProduct(null)
+    setIsCustomCategoryInput(false)
     setProductForm({
       name: "",
       price: 26000,
-      category: categories[0] || "Especiales",
+      category: categories[0] || "Platos Principales",
       src: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800&auto=format&fit=crop&q=80",
       description: "",
       inStock: true,
@@ -167,7 +181,7 @@ export const MenuManager: React.FC = () => {
                   : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
               }`}
             >
-              Platos & Burgers ({products.length})
+              Platos & Productos ({products.length})
             </button>
             <button
               type="button"
@@ -187,16 +201,16 @@ export const MenuManager: React.FC = () => {
           <Button
             type="button"
             onClick={openNewProductModal}
-            className="gap-2 rounded-xl bg-indigo-600 font-semibold text-white shadow-md shadow-indigo-600/20 hover:bg-indigo-700"
+            className="gap-2 rounded-xl bg-indigo-600 font-semibold text-white shadow-md shadow-indigo-600/20 hover:bg-indigo-700 cursor-pointer"
           >
             <Plus className="size-4" />
-            <span>Crear Plato / Hamburguesa</span>
+            <span>Crear Producto</span>
           </Button>
         ) : (
           <Button
             type="button"
             onClick={openNewAdditionModal}
-            className="gap-2 rounded-xl bg-indigo-600 font-semibold text-white shadow-md shadow-indigo-600/20 hover:bg-indigo-700"
+            className="gap-2 rounded-xl bg-indigo-600 font-semibold text-white shadow-md shadow-indigo-600/20 hover:bg-indigo-700 cursor-pointer"
           >
             <Plus className="size-4" />
             <span>Añadir Topping</span>
@@ -245,6 +259,17 @@ export const MenuManager: React.FC = () => {
                   {cat}
                 </button>
               ))}
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsCategoryModalOpen(true)}
+                className="gap-1.5 rounded-xl border-dashed border-indigo-400/50 bg-indigo-50/50 text-indigo-600 hover:bg-indigo-100 hover:text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-950/30 dark:text-indigo-400 dark:hover:bg-indigo-900/40 text-xs font-semibold cursor-pointer"
+              >
+                <Tags className="size-3.5" />
+                <span>Gestionar Categorías</span>
+              </Button>
             </div>
 
             <div className="flex items-center gap-2">
@@ -566,12 +591,12 @@ export const MenuManager: React.FC = () => {
           >
             <div className="flex items-center justify-between border-b pb-4 border-slate-100 dark:border-slate-800">
               <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                {editingProduct ? `Editar "${editingProduct.name}"` : "Nuevo Plato / Hamburguesa"}
+                {editingProduct ? `Editar "${editingProduct.name}"` : "Nuevo Producto"}
               </h3>
               <button
                 type="button"
                 onClick={() => setIsProductModalOpen(false)}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
               >
                 <X className="size-5" />
               </button>
@@ -581,14 +606,14 @@ export const MenuManager: React.FC = () => {
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <label className="font-semibold block mb-1 text-slate-800 dark:text-slate-200">
-                    Nombre del Plato *
+                    Nombre del Producto *
                   </label>
                   <input
                     type="text"
                     required
                     value={productForm.name}
                     onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
-                    placeholder="Ej. Bacon King Deluxe"
+                    placeholder="Ej. Plato Especial de la Casa"
                     className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500 font-medium"
                   />
                 </div>
@@ -610,16 +635,49 @@ export const MenuManager: React.FC = () => {
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
-                  <label className="font-semibold block mb-1 text-slate-800 dark:text-slate-200">
-                    Categoría
-                  </label>
-                  <input
-                    type="text"
-                    value={productForm.category}
-                    onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}
-                    placeholder="Ej. Clásicas, Gourmet, Pollo"
-                    className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                  />
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-semibold text-slate-800 dark:text-slate-200">
+                      Categoría
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setIsCustomCategoryInput(!isCustomCategoryInput)}
+                      className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
+                    >
+                      {isCustomCategoryInput ? "Elegir existente" : "+ Nueva categoría"}
+                    </button>
+                  </div>
+
+                  {isCustomCategoryInput ? (
+                    <input
+                      type="text"
+                      required
+                      value={productForm.category}
+                      onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}
+                      placeholder="Ej. Entradas, Postres, Bebidas"
+                      className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                    />
+                  ) : (
+                    <select
+                      value={productForm.category}
+                      onChange={(e) => {
+                        if (e.target.value === "__NEW__") {
+                          setIsCustomCategoryInput(true)
+                          setProductForm({ ...productForm, category: "" })
+                        } else {
+                          setProductForm({ ...productForm, category: e.target.value })
+                        }
+                      }}
+                      className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                    >
+                      {categories.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {cat}
+                        </option>
+                      ))}
+                      <option value="__NEW__">+ Crear nueva categoría...</option>
+                    </select>
+                  )}
                 </div>
                 <div>
                   <label className="font-semibold block mb-1 text-slate-800 dark:text-slate-200">
@@ -662,7 +720,7 @@ export const MenuManager: React.FC = () => {
                   rows={3}
                   value={productForm.description}
                   onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
-                  placeholder="Describe la carne, salsas, panes y acompañamientos..."
+                  placeholder="Describe los ingredientes, preparación y acompañamientos..."
                   className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                 />
               </div>
@@ -720,7 +778,7 @@ export const MenuManager: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsAddModalOpen(false)}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
               >
                 <X className="size-4" />
               </button>
@@ -758,7 +816,7 @@ export const MenuManager: React.FC = () => {
                 <Button type="button" variant="outline" size="sm" onClick={() => setIsAddModalOpen(false)}>
                   Cancelar
                 </Button>
-                <Button type="submit" size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold">
+                <Button type="submit" size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold cursor-pointer">
                   Guardar
                 </Button>
               </div>
@@ -766,6 +824,185 @@ export const MenuManager: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Category Management Modal */}
+      {isCategoryModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 backdrop-blur-xs">
+          <div
+            className={`w-full max-w-md rounded-2xl border p-6 shadow-2xl transition-all ${
+              isDark ? "border-slate-800 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-900"
+            }`}
+          >
+            <div className="flex items-center justify-between border-b pb-3 border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <Tags className="size-5 text-indigo-600 dark:text-indigo-400" />
+                <h3 className="font-bold text-base text-slate-900 dark:text-white">
+                  Gestionar Categorías del Menú
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCategoryModalOpen(false)
+                  setEditingCategoryName(null)
+                }}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+
+            {/* Create Category Form */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                if (!newCategoryName.trim()) return
+                addCategory(newCategoryName.trim())
+                setNewCategoryName("")
+              }}
+              className="mt-4 flex gap-2"
+            >
+              <input
+                type="text"
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                placeholder="Nueva categoría (ej. Pizzas, Entradas, Postres)..."
+                className="flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+              />
+              <Button
+                type="submit"
+                size="sm"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl cursor-pointer"
+              >
+                <Plus className="size-3.5 mr-1" />
+                Agregar
+              </Button>
+            </form>
+
+            {/* Existing Categories List */}
+            <div className="mt-4 max-h-64 overflow-y-auto space-y-2 pr-1 text-xs">
+              <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+                Categorías Activas ({categories.length})
+              </p>
+              {categories.map((cat) => {
+                const count = products.filter((p) => p.category === cat).length
+                const isEditing = editingCategoryName === cat
+
+                return (
+                  <div
+                    key={cat}
+                    className={`flex items-center justify-between rounded-xl border p-2.5 transition-all ${
+                      isDark
+                        ? "border-slate-800 bg-slate-800/60"
+                        : "border-slate-100 bg-slate-50/80"
+                    }`}
+                  >
+                    {isEditing ? (
+                      <div className="flex flex-1 items-center gap-2 mr-2">
+                        <input
+                          type="text"
+                          value={editCategoryInputValue}
+                          onChange={(e) => setEditCategoryInputValue(e.target.value)}
+                          className="flex-1 rounded-lg border border-indigo-500 bg-white px-2 py-1 text-xs text-slate-900 dark:bg-slate-900 dark:text-white"
+                          autoFocus
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (editCategoryInputValue.trim()) {
+                              updateCategory(cat, editCategoryInputValue.trim())
+                              setEditingCategoryName(null)
+                              setEditCategoryInputValue("")
+                            }
+                          }}
+                          className="rounded-lg bg-indigo-600 px-2 py-1 text-[11px] font-bold text-white hover:bg-indigo-700 cursor-pointer"
+                        >
+                          Guardar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingCategoryName(null)}
+                          className="rounded-lg bg-slate-200 dark:bg-slate-700 px-2 py-1 text-[11px] font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-300 cursor-pointer"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-slate-800 dark:text-slate-200">
+                            {cat}
+                          </span>
+                          <span className="rounded-md bg-indigo-100 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-400">
+                            {count} {count === 1 ? "producto" : "productos"}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingCategoryName(cat)
+                              setEditCategoryInputValue(cat)
+                            }}
+                            className="rounded-lg p-1 text-slate-400 hover:bg-indigo-100 hover:text-indigo-600 dark:hover:bg-indigo-950/40 cursor-pointer"
+                            title="Renombrar categoría"
+                          >
+                            <Edit2 className="size-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setCategoryToDelete(cat)}
+                            className="rounded-lg p-1 text-slate-400 hover:bg-rose-100 hover:text-rose-600 dark:hover:bg-rose-950/40 cursor-pointer"
+                            title="Eliminar categoría"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+
+            <div className="mt-5 flex justify-end border-t pt-3 border-slate-100 dark:border-slate-800">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setIsCategoryModalOpen(false)
+                  setEditingCategoryName(null)
+                }}
+                className="text-xs"
+              >
+                Cerrar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Category Confirmation Modal */}
+      <ConfirmDeleteModal
+        isOpen={!!categoryToDelete}
+        onClose={() => setCategoryToDelete(null)}
+        onConfirm={() => {
+          if (categoryToDelete) {
+            deleteCategory(categoryToDelete)
+            setCategoryToDelete(null)
+          }
+        }}
+        title="¿Eliminar categoría?"
+        targetName={categoryToDelete || undefined}
+        description={
+          categoryToDelete
+            ? `¿Estás seguro de que deseas eliminar la categoría "${categoryToDelete}"? Los productos asignados a esta categoría se moverán automáticamente a otra categoría activa.`
+            : undefined
+        }
+        confirmText="Eliminar categoría"
+      />
 
       {/* Delete Product Confirmation Modal */}
       <ConfirmDeleteModal
@@ -777,14 +1014,14 @@ export const MenuManager: React.FC = () => {
             setProductToDelete(null)
           }
         }}
-        title="¿Eliminar plato de la carta?"
+        title="¿Eliminar producto del menú?"
         targetName={productToDelete?.name}
         description={
           productToDelete
             ? `¿Estás seguro de que deseas eliminar "${productToDelete.name}" ($${productToDelete.price.toLocaleString()}) del menú? Ya no estará disponible para los clientes.`
             : undefined
         }
-        confirmText="Eliminar plato"
+        confirmText="Eliminar producto"
       />
 
       {/* Delete Addition Confirmation Modal */}

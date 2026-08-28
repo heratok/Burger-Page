@@ -10,4 +10,5 @@ export interface Restaurant {
   theme: string;
   openingHours: OpeningHours;
   isActive: boolean;
+  categories?: string[];
 }

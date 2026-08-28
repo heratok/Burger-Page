@@ -365,7 +365,7 @@ export const DashboardOverview: React.FC = () => {
               onClick={() => navigateTo("/admin/menu")}
               className="flex w-full items-center justify-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 cursor-pointer"
             >
-              <span>Gestionar Carta Completa ({products.length} platos)</span>
+              <span>Gestionar Catálogo Completo ({products.length} productos)</span>
               <ChevronRight className="size-3.5" />
             </button>
           </div>

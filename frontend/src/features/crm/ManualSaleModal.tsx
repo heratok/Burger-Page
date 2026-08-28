@@ -369,7 +369,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                           : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                       }`}
                     >
-                      {cat === "all" ? "Todos los platos" : cat}
+                      {cat === "all" ? "Todos los productos" : cat}
                     </button>
                   )
                 })}
@@ -523,7 +523,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                       Venta vacía
                     </h5>
                     <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400 max-w-[220px]">
-                      Seleccioná platos en el catálogo izquierdo para armar el pedido.
+                      Seleccioná productos en el catálogo izquierdo para armar el pedido.
                     </p>
                   </div>
                 ) : (
@@ -797,7 +797,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                 {/* Subtotal, Fee and Grand Total Breakdown */}
                 <div className="pt-2 border-t border-slate-200 dark:border-slate-800 space-y-1">
                   <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400">
-                    <span>Subtotal platos:</span>
+                    <span>Subtotal productos:</span>
                     <span>{formatCOP(subtotal)}</span>
                   </div>
                   {deliveryFee > 0 && (

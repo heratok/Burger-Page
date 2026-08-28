@@ -32,6 +32,11 @@ export const storefrontConfigSchema = z.object({
 
 export type StorefrontConfigDTO = z.infer<typeof storefrontConfigSchema>;
 
+export const updateRestaurantCategoriesSchema = z.object({
+  categories: z.array(z.string().min(1, 'Category name cannot be empty')).min(1, 'At least one category is required'),
+});
+export type UpdateRestaurantCategoriesInput = z.infer<typeof updateRestaurantCategoriesSchema>;
+
 // ==========================================
 // PRODUCT / MENU CONTRACTS
 // ==========================================

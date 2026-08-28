@@ -65,6 +65,11 @@ export interface RestaurantContextType {
   updateStoreConfig: (newConfig: Partial<StorefrontConfig>) => void
   resetStoreConfig: () => void
 
+  categories: string[]
+  addCategory: (categoryName: string) => void
+  updateCategory: (oldName: string, newName: string) => void
+  deleteCategory: (categoryName: string) => void
+
   products: MenuItem[]
   addProduct: (item: Omit<MenuItem, "id">) => void
   updateProduct: (id: string, updates: Partial<MenuItem>) => void
@@ -187,6 +192,11 @@ export const useRestaurant = (): RestaurantContextType => {
     storeConfig: catalog.storeConfig,
     updateStoreConfig: catalog.updateStoreConfig,
     resetStoreConfig: catalog.resetStoreConfig,
+
+    categories: catalog.categories,
+    addCategory: catalog.addCategory,
+    updateCategory: catalog.updateCategory,
+    deleteCategory: catalog.deleteCategory,
 
     products: catalog.products,
     addProduct: catalog.addProduct,

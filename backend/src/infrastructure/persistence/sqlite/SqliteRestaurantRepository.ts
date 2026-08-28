@@ -25,13 +25,23 @@ export class SqliteRestaurantRepository implements RestaurantRepository {
       }
     }
 
+    let categories: string[] = [];
+    if (row.categories) {
+      try {
+        categories = JSON.parse(row.categories);
+      } catch {
+        categories = [];
+      }
+    }
+
     return {
       id: row.id,
       slug: row.slug,
       name: row.name,
       theme,
       openingHours,
-      isActive: true
+      isActive: true,
+      categories,
     };
   }
 
@@ -54,22 +64,24 @@ export class SqliteRestaurantRepository implements RestaurantRepository {
       restaurant.id;
 
     const stmt = this.db.prepare(`
-      INSERT INTO restaurants (id, slug, name, tagline, config, opening_hours, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO restaurants (id, slug, name, tagline, config, opening_hours, categories, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         slug = excluded.slug,
         name = excluded.name,
         config = excluded.config,
-        opening_hours = excluded.opening_hours
+        opening_hours = excluded.opening_hours,
+        categories = excluded.categories
     `);
 
     stmt.run(
       restaurant.id,
       slug,
       restaurant.name,
-      'Hamburguesas artesanales',
+      'Cocina artesanal',
       JSON.stringify({ bgTheme: restaurant.theme, theme: restaurant.theme }),
       JSON.stringify(restaurant.openingHours),
+      JSON.stringify(restaurant.categories || []),
       new Date().toISOString()
     );
   }

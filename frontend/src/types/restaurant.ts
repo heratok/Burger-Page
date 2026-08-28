@@ -145,6 +145,7 @@ export interface RestaurantRecord {
   slug: string
   adminPassword?: string
   config: StorefrontConfig
+  categories?: string[]
   products: MenuItem[]
   additions: AdditionItem[]
   inventory?: InventoryItem[]

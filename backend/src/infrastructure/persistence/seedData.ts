@@ -10,7 +10,8 @@ export const defaultRestaurant: Restaurant = {
   name: 'Burger Craft',
   theme: 'dark',
   openingHours: { open: '10:00', close: '22:00' },
-  isActive: true
+  isActive: true,
+  categories: ['Burgers', 'Sides', 'Bebidas'],
 };
 
 export const initialProducts: Product[] = [

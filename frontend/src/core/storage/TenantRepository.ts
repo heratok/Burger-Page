@@ -30,7 +30,20 @@ export class TenantRepository {
           Array.isArray(parsed.restaurants) &&
           parsed.restaurants.length > 0
         ) {
-          return parsed
+          const migratedRestaurants = parsed.restaurants.map((r) => {
+            if (!r.categories || r.categories.length === 0) {
+              const fromProducts = Array.from(new Set((r.products || []).map((p) => p.category).filter(Boolean)))
+              return {
+                ...r,
+                categories: fromProducts.length > 0 ? fromProducts : ["Platos Principales"],
+              }
+            }
+            return r
+          })
+          return {
+            ...parsed,
+            restaurants: migratedRestaurants,
+          }
         }
       }
       return DEFAULT_ENVELOPE

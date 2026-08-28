@@ -23,6 +23,7 @@ export function createSqliteDatabase(dbPath = ':memory:'): Database {
       tagline TEXT,
       config TEXT NOT NULL,
       opening_hours TEXT NOT NULL,
+      categories TEXT,
       created_at TEXT NOT NULL
     );
 
@@ -76,6 +77,12 @@ export function createSqliteDatabase(dbPath = ':memory:'): Database {
   const hasEmail = customerColumns.some(c => c.name === 'email');
   if (!hasEmail) {
     db.exec("ALTER TABLE customers ADD COLUMN email TEXT NOT NULL DEFAULT ''");
+  }
+
+  const restaurantColumns = db.prepare("PRAGMA table_info(restaurants)").all() as Array<{ name: string }>;
+  const hasCategories = restaurantColumns.some(c => c.name === 'categories');
+  if (!hasCategories) {
+    db.exec("ALTER TABLE restaurants ADD COLUMN categories TEXT");
   }
 
   return db;

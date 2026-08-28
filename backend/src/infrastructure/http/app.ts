@@ -31,6 +31,7 @@ import { InventoryRepository } from '../../domain/ports/out/InventoryRepository.
 
 // Use Cases
 import { GetRestaurantUseCase } from '../../application/use-cases/GetRestaurantUseCase.js';
+import { UpdateRestaurantCategoriesUseCase } from '../../application/use-cases/UpdateRestaurantCategoriesUseCase.js';
 import { ListProductsUseCase } from '../../application/use-cases/ListProductsUseCase.js';
 import { GetProductByIdUseCase } from '../../application/use-cases/GetProductByIdUseCase.js';
 import { CreateProductUseCase } from '../../application/use-cases/CreateProductUseCase.js';
@@ -125,6 +126,7 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
 
   // Use Cases
   const getRestaurant = new GetRestaurantUseCase(restaurantRepo);
+  const updateRestaurantCategories = new UpdateRestaurantCategoriesUseCase(restaurantRepo);
   
   const listProducts = new ListProductsUseCase(productRepo);
   const getProductById = new GetProductByIdUseCase(productRepo);
@@ -144,7 +146,7 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
 
   // Controllers
   return {
-    restaurantController: new RestaurantController(getRestaurant),
+    restaurantController: new RestaurantController(getRestaurant, updateRestaurantCategories),
     productController: new ProductController(listProducts, getProductById, createProduct, updateProduct, deleteProduct),
     orderController: new OrderController(listOrders, getOrderById, createOrder, updateOrderStatus),
     customerController: new CustomerController(listCustomers),

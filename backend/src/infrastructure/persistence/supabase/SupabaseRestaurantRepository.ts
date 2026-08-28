@@ -40,13 +40,27 @@ export class SupabaseRestaurantRepository implements RestaurantRepository {
       }
     }
 
+    let categories: string[] = [];
+    if (row.categories) {
+      if (Array.isArray(row.categories)) {
+        categories = row.categories;
+      } else if (typeof row.categories === 'string') {
+        try {
+          categories = JSON.parse(row.categories);
+        } catch {
+          categories = [];
+        }
+      }
+    }
+
     return {
       id: row.id,
       slug: row.slug,
       name: row.name,
       theme,
       openingHours,
-      isActive: row.is_active !== undefined ? Boolean(row.is_active) : true
+      isActive: row.is_active !== undefined ? Boolean(row.is_active) : true,
+      categories,
     };
   }
 
@@ -88,9 +102,10 @@ export class SupabaseRestaurantRepository implements RestaurantRepository {
       id: restaurant.id,
       slug,
       name: restaurant.name,
-      tagline: 'Hamburguesas artesanales',
+      tagline: 'Cocina artesanal',
       config: { bgTheme: restaurant.theme, theme: restaurant.theme },
       opening_hours: restaurant.openingHours,
+      categories: restaurant.categories || [],
       created_at: new Date().toISOString()
     };
 

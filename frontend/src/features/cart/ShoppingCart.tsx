@@ -28,7 +28,7 @@ function ShoppingCart({
     onCloseCart()
   }
 
-  const total = items.reduce((acc, burger) => acc + burger.total, 0)
+  const total = items.reduce((acc, item) => acc + item.total, 0)
 
   const deleteItem = (i: number) => {
     onDeleteCart(items.filter((_, index) => index !== i))

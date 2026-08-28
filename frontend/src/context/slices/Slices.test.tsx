@@ -498,3 +498,76 @@ describe("OrderContext Slice", () => {
   })
 })
 
+describe("CatalogContext Slice - Dynamic Category Management", () => {
+  beforeEach(() => {
+    localStorage.clear()
+    vi.clearAllMocks()
+  })
+
+  it("supports adding, updating/renaming, and deleting categories with product cascade", async () => {
+    const { TenantProvider } = await import("./TenantContext")
+    const { CatalogProvider, useCatalog } = await import("./CatalogContext")
+    const { apiClient } = await import("@/core/api/apiClient")
+
+    const updateCategoriesSpy = vi.spyOn(apiClient, "updateCategories").mockResolvedValue({
+      categories: ["Especiales", "Pollo", "Gourmet", "Clásicas", "Entradas"],
+    })
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>
+        <CatalogProvider>{children}</CatalogProvider>
+      </TenantProvider>
+    )
+
+    const { result } = renderHook(() => useCatalog(), { wrapper })
+
+    // 1. Add Category
+    act(() => {
+      result.current.addCategory("Entradas")
+    })
+
+    expect(result.current.categories).toContain("Entradas")
+    expect(updateCategoriesSpy).toHaveBeenCalledWith(
+      expect.arrayContaining(["Entradas"]),
+      expect.any(String)
+    )
+
+    // Add a product in this category
+    act(() => {
+      result.current.addProduct({
+        name: "Aros de Cebolla",
+        price: 12000,
+        category: "Entradas",
+        src: "",
+        description: "Crujientes",
+        inStock: true,
+      })
+    })
+
+    const onionRings = result.current.products.find((p) => p.name === "Aros de Cebolla")
+    expect(onionRings?.category).toBe("Entradas")
+
+    // 2. Rename Category -> Should cascade to product
+    act(() => {
+      result.current.updateCategory("Entradas", "Aperitivos")
+    })
+
+    expect(result.current.categories).toContain("Aperitivos")
+    expect(result.current.categories).not.toContain("Entradas")
+
+    const updatedOnionRings = result.current.products.find((p) => p.name === "Aros de Cebolla")
+    expect(updatedOnionRings?.category).toBe("Aperitivos")
+
+    // 3. Delete Category -> Should reassign product to fallback category
+    act(() => {
+      result.current.deleteCategory("Aperitivos")
+    })
+
+    expect(result.current.categories).not.toContain("Aperitivos")
+    const reassignedProduct = result.current.products.find((p) => p.name === "Aros de Cebolla")
+    expect(reassignedProduct?.category).not.toBe("Aperitivos")
+    expect(result.current.categories).toContain(reassignedProduct?.category)
+  })
+})
+
+

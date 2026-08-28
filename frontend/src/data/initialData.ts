@@ -553,6 +553,7 @@ export const SEED_RESTAURANTS: RestaurantRecord[] = [
     isActive: true,
     createdAt: "2026-08-01T12:00:00.000Z",
     config: DEFAULT_STORE_CONFIG,
+    categories: ["Especiales", "Pollo", "Gourmet", "Clásicas"],
     products: INITIAL_PRODUCTS,
     additions: INITIAL_ADDITIONS,
     inventory: INITIAL_INVENTORY,
@@ -591,6 +592,7 @@ export const SEED_RESTAURANTS: RestaurantRecord[] = [
       compactGrid: false,
       showBadges: true,
     },
+    categories: ["Clásicas", "Gourmet", "Picantes", "Calzones"],
     products: [
       {
         id: "piz-1",
@@ -715,6 +717,7 @@ export const SEED_RESTAURANTS: RestaurantRecord[] = [
       compactGrid: false,
       showBadges: true,
     },
+    categories: ["Tacos", "Quesadillas", "Bebidas"],
     products: [
       {
         id: "tac-1",
@@ -830,6 +833,7 @@ export const SEED_RESTAURANTS: RestaurantRecord[] = [
       compactGrid: false,
       showBadges: true,
     },
+    categories: ["Burgers", "Parrilla", "Sándwiches", "Bebidas"],
     products: [
       {
         id: "rosto-1",

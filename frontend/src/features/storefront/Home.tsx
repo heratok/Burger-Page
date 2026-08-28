@@ -17,7 +17,7 @@ import { useRestaurant } from "@/context/RestaurantContext"
 import { getFontFamilyClass } from "@/features/crm/utils/customizerStyles"
 
 export default function Home() {
-  const { products, storeConfig } = useRestaurant()
+  const { products, storeConfig, categories: contextCategories } = useRestaurant()
   const [isAdditionsModalOpen, setIsAdditionsModalOpen] = useState(false)
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false)
@@ -36,12 +36,12 @@ export default function Home() {
   }, [products, selectedProduct])
 
   const categories = useMemo(() => {
-    const set = new Set<string>()
+    const set = new Set<string>(contextCategories || [])
     products.forEach((p) => {
       if (p.category) set.add(p.category)
     })
     return Array.from(set)
-  }, [products])
+  }, [products, contextCategories])
 
   const handleAddToCart = (cartItem: CartItem) => {
     if (editingIndex !== null) {

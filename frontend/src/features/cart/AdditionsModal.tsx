@@ -78,8 +78,8 @@ export default function AdditionsModal({
     onClose()
   }
 
-  const aumentarBurger = () => setCantidad((c) => c + 1)
-  const disminuirBurger = () => {
+  const aumentarCantidad = () => setCantidad((c) => c + 1)
+  const disminuirCantidad = () => {
     if (cantidad > 1) setCantidad((c) => c - 1)
   }
 
@@ -229,7 +229,7 @@ export default function AdditionsModal({
                   type="button"
                   variant="secondary"
                   size="icon-sm"
-                  onClick={disminuirBurger}
+                  onClick={disminuirCantidad}
                   aria-label="Disminuir cantidad"
                   disabled={cantidad === 1}
                   className="size-11 rounded-full bg-bg-elevated-2 hover:bg-accent disabled:opacity-40"
@@ -246,7 +246,7 @@ export default function AdditionsModal({
                   type="button"
                   variant="default"
                   size="icon-sm"
-                  onClick={aumentarBurger}
+                  onClick={aumentarCantidad}
                   aria-label="Aumentar cantidad"
                   className="size-11 rounded-full bg-accent hover:bg-accent-hover"
                 >
