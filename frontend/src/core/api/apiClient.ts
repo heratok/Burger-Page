@@ -15,7 +15,7 @@ export class ApiClient {
   private baseUrl: string
 
   constructor(config?: ApiClientConfig) {
-    this.baseUrl = config?.baseUrl || '/api'
+    this.baseUrl = config?.baseUrl || (import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace(/\/$/, '') : '/api')
   }
 
   private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
