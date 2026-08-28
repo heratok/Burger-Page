@@ -11,7 +11,6 @@ import {
   Moon,
   Volume2,
   VolumeX,
-  Sparkles,
   Store,
   Menu as MenuIcon,
   X,
@@ -21,10 +20,12 @@ import {
   LogOut,
   Crown,
   BarChart3,
+  Plus,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { AdminSwitcher } from "@/features/superadmin"
 import { useAppRouter } from "@/core/router/useAppRouter"
+import { ManualSaleModal } from "./ManualSaleModal"
 
 interface AdminLayoutProps {
   children: React.ReactNode
@@ -39,7 +40,6 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     toggleAdminTheme,
     soundEnabled,
     setSoundEnabled,
-    simulateIncomingOrder,
     pendingOrdersCount,
     lowStockCount,
     session,
@@ -50,6 +50,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
   const isMobileSidebarOpenState = useState(false)
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = isMobileSidebarOpenState
+  const [isManualSaleOpen, setIsManualSaleOpen] = useState(false)
   const isDark = adminTheme === "dark"
   const isSuper = session.role === "super"
 
@@ -325,25 +326,6 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
             {/* Right: Quick Action Controls */}
             <div className="flex items-center gap-2 sm:gap-3">
-              {/* Simulate order quick button (Only for restaurant kitchen testing) */}
-              {!isSuper && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={simulateIncomingOrder}
-                  className={`items-center gap-1.5 border-dashed font-medium text-xs rounded-xl transition-all ${
-                    isDark
-                      ? "border-amber-500/40 text-amber-300 hover:bg-amber-500/10 hover:border-amber-400"
-                      : "border-amber-400 text-amber-800 hover:bg-amber-50 hover:border-amber-500"
-                  }`}
-                >
-                  <Sparkles className="size-3.5 text-amber-500 animate-pulse" />
-                  <span className="hidden sm:inline">Simular Pedido</span>
-                  <span className="sm:hidden">Simular</span>
-                </Button>
-              )}
-
               {/* Sound notification toggle icon (Only for restaurant kitchens) */}
               {!isSuper && (
                 <button
@@ -378,12 +360,32 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 {isDark ? <Sun className="size-4" /> : <Moon className="size-4" />}
               </button>
 
+              {/* New Manual Sale POS Button (Only for restaurant admin) */}
+              {!isSuper && (
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => setIsManualSaleOpen(true)}
+                  className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-xs font-bold text-white shadow-md shadow-orange-500/20 hover:from-orange-600 hover:to-amber-600 cursor-pointer"
+                >
+                  <Plus className="size-3.5" />
+                  <span className="hidden sm:inline">Nueva Venta</span>
+                  <span className="sm:hidden">Venta</span>
+                </Button>
+              )}
+
               {/* View Storefront button on top bar (Only for restaurant admin) */}
               {!isSuper && (
                 <Button
                   type="button"
+                  variant="outline"
+                  size="sm"
                   onClick={() => navigateTo(`/${activeRestaurant.slug}`)}
-                  className="hidden md:flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-xs font-semibold text-white shadow-xs hover:from-orange-600 hover:to-amber-600 cursor-pointer"
+                  className={`hidden md:flex items-center gap-1.5 rounded-xl text-xs font-semibold cursor-pointer ${
+                    isDark
+                      ? "border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700"
+                      : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                  }`}
                 >
                   <Eye className="size-3.5" />
                   <span>Tienda Pública</span>
@@ -398,6 +400,14 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           </main>
         </div>
       </div>
+
+      {/* Manual Sale POS Modal */}
+      {!isSuper && (
+        <ManualSaleModal
+          isOpen={isManualSaleOpen}
+          onClose={() => setIsManualSaleOpen(false)}
+        />
+      )}
     </div>
   )
 }

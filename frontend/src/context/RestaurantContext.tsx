@@ -80,7 +80,6 @@ export interface RestaurantContextType {
   addOrder: (orderData: Omit<Order, "id" | "orderNumber" | "createdAt" | "updatedAt">) => Order
   updateOrderStatus: (orderId: string, newStatus: OrderStatus) => void
   deleteOrder: (orderId: string) => void
-  simulateIncomingOrder: () => void
 
   customers: Customer[]
   updateCustomer: (id: string, updates: Partial<Customer>) => void
@@ -216,7 +215,6 @@ export const useRestaurant = (): RestaurantContextType => {
     addOrder: orders.addOrder,
     updateOrderStatus: orders.updateOrderStatus,
     deleteOrder: orders.deleteOrder,
-    simulateIncomingOrder: orders.simulateIncomingOrder,
 
     customers: orders.customers,
     updateCustomer: orders.updateCustomer,

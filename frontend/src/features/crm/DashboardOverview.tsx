@@ -1,18 +1,19 @@
-import React, { useMemo } from "react"
+import React, { useState, useMemo } from "react"
 import { useRestaurant } from "@/context/RestaurantContext"
 import {
   DollarSign,
   ShoppingBag,
   TrendingUp,
   Users,
-  Sparkles,
   ArrowUpRight,
   ChevronRight,
   Flame,
+  Plus,
 } from "lucide-react"
 import { OrderStatusBadge } from "@/components/ui/status-badge"
 import { Button } from "@/components/ui/button"
 import { useAppRouter } from "@/core/router/useAppRouter"
+import { ManualSaleModal } from "./ManualSaleModal"
 
 export const DashboardOverview: React.FC = () => {
   const {
@@ -21,11 +22,11 @@ export const DashboardOverview: React.FC = () => {
     customers,
     storeConfig,
     adminTheme,
-    simulateIncomingOrder,
     updateOrderStatus,
   } = useRestaurant()
 
   const { navigateTo } = useAppRouter()
+  const [isManualSaleOpen, setIsManualSaleOpen] = useState(false)
 
   // Calculate Metrics
   const metrics = useMemo(() => {
@@ -118,11 +119,11 @@ export const DashboardOverview: React.FC = () => {
           <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
-              onClick={simulateIncomingOrder}
-              className="gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 font-semibold text-white shadow-md shadow-amber-500/20 hover:from-amber-600 hover:to-orange-600"
+              onClick={() => setIsManualSaleOpen(true)}
+              className="gap-1.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 font-bold text-white shadow-md shadow-orange-500/20 hover:from-orange-600 hover:to-amber-600 cursor-pointer"
             >
-              <Sparkles className="size-4" />
-              <span>Simular Pedido de Prueba</span>
+              <Plus className="size-4" />
+              <span>Nueva Venta</span>
             </Button>
             <Button
               type="button"
@@ -477,6 +478,11 @@ export const DashboardOverview: React.FC = () => {
           </table>
         </div>
       </div>
+
+      <ManualSaleModal
+        isOpen={isManualSaleOpen}
+        onClose={() => setIsManualSaleOpen(false)}
+      />
     </div>
   )
 }

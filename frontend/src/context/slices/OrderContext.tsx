@@ -12,7 +12,6 @@ export interface OrderContextType {
   addOrder: (orderData: Omit<Order, "id" | "orderNumber" | "createdAt" | "updatedAt">) => Order
   updateOrderStatus: (orderId: string, newStatus: OrderStatus) => void
   deleteOrder: (orderId: string) => void
-  simulateIncomingOrder: () => void
   customers: Customer[]
   updateCustomer: (id: string, updates: Partial<Customer>) => void
   pendingOrdersCount: number
@@ -240,59 +239,6 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     [updateActiveRestaurantRecord]
   )
 
-  const simulateIncomingOrder = useCallback(() => {
-    const randomNames = [
-      "Santiago Cruz",
-      "Camila Restrepo",
-      "Mateo Valencia",
-      "Daniela Ospina",
-      "Lucas Ramírez",
-    ]
-    const randomBarrios = [
-      "Cedritos",
-      "Rosales",
-      "Chicó Reservado",
-      "Modelia",
-      "Teusaquillo",
-    ]
-    const randomName =
-      randomNames[Math.floor(Math.random() * randomNames.length)]
-    const randomBarrio =
-      randomBarrios[Math.floor(Math.random() * randomBarrios.length)]
-
-    const availableProducts = activeRestaurant.products.filter((p) => p.inStock)
-    const product1 =
-      availableProducts[Math.floor(Math.random() * availableProducts.length)] ||
-      activeRestaurant.products[0]
-    if (!product1) return
-
-    const qty = Math.floor(Math.random() * 2) + 1
-    const itemTotal = product1.price * qty
-
-    addOrder({
-      customer: {
-        nombre: randomName,
-        telefono: `3${Math.floor(100000000 + Math.random() * 900000000)}`,
-        direccion: `Calle ${Math.floor(20 + Math.random() * 120)} # ${Math.floor(10 + Math.random() * 90)}-${Math.floor(10 + Math.random() * 90)}`,
-        barrio: randomBarrio,
-      },
-      items: [
-        {
-          name: product1.name,
-          price: product1.price,
-          cantidad: qty,
-          total: itemTotal,
-          observacion: "Por favor enviar salsa extra de la casa.",
-        },
-      ],
-      total: itemTotal,
-      deliveryFee: activeRestaurant.config.deliveryFee,
-      finalTotal: itemTotal + activeRestaurant.config.deliveryFee,
-      metodo: Math.random() > 0.5 ? "Transferencia" : "Efectivo",
-      status: "pending",
-    })
-  }, [activeRestaurant, addOrder])
-
   const updateCustomer = useCallback(
     (id: string, updates: Partial<Customer>) => {
       updateActiveRestaurantRecord((current) => ({
@@ -315,7 +261,6 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     addOrder,
     updateOrderStatus,
     deleteOrder,
-    simulateIncomingOrder,
     customers: activeRestaurant.customers,
     updateCustomer,
     pendingOrdersCount,

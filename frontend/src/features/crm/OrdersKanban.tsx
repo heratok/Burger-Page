@@ -8,21 +8,23 @@ import {
   CheckCircle2,
   XCircle,
   MapPin,
-  Sparkles,
   Search,
   Filter,
   Eye,
   MessageCircle,
   X,
+  Plus,
 } from "lucide-react"
 import { OrderStatusBadge } from "@/components/ui/status-badge"
 import { Button } from "@/components/ui/button"
 import { buildWhatsAppUrl } from "@/features/cart"
+import { ManualSaleModal } from "./ManualSaleModal"
 
 export const OrdersKanban: React.FC = () => {
-  const { orders, updateOrderStatus, simulateIncomingOrder, adminTheme, storeConfig } =
+  const { orders, updateOrderStatus, adminTheme, storeConfig } =
     useRestaurant()
 
+  const [isManualSaleOpen, setIsManualSaleOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [methodFilter, setMethodFilter] = useState<string>("ALL")
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
@@ -147,11 +149,11 @@ export const OrdersKanban: React.FC = () => {
 
         <Button
           type="button"
-          onClick={simulateIncomingOrder}
-          className="gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 font-semibold text-white shadow-md shadow-amber-500/20 hover:from-amber-600 hover:to-orange-600"
+          onClick={() => setIsManualSaleOpen(true)}
+          className="gap-1.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 font-bold text-white shadow-md shadow-orange-500/20 hover:from-orange-600 hover:to-amber-600 cursor-pointer"
         >
-          <Sparkles className="size-4 animate-pulse" />
-          <span>Simular Pedido Entrante</span>
+          <Plus className="size-4" />
+          <span>Nueva Venta</span>
         </Button>
       </div>
 
@@ -529,6 +531,11 @@ export const OrdersKanban: React.FC = () => {
           </div>
         </div>
       )}
+
+      <ManualSaleModal
+        isOpen={isManualSaleOpen}
+        onClose={() => setIsManualSaleOpen(false)}
+      />
     </div>
   )
 }
