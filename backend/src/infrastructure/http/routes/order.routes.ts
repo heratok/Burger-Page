@@ -48,11 +48,20 @@ export async function orderRoutes(fastify: FastifyInstance, opts: { controller: 
 
     reply.raw.write(`event: connected\ndata: ${JSON.stringify({ message: 'Connected to live orders stream' })}\n\n`);
 
+    const pingInterval = setInterval(() => {
+      try {
+        reply.raw.write(': ping\n\n');
+      } catch {
+        clearInterval(pingInterval);
+      }
+    }, 15000);
+
     const unsubscribe = globalOrderEventBus.subscribe((event) => {
       reply.raw.write(`event: ${event.eventType}\ndata: ${JSON.stringify(event)}\n\n`);
     });
 
     req.raw.on('close', () => {
+      clearInterval(pingInterval);
       unsubscribe();
     });
   });

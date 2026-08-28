@@ -18,6 +18,7 @@ import {
 } from "lucide-react"
 import { OrderStatusBadge } from "@/components/ui/status-badge"
 import { Button } from "@/components/ui/button"
+import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
 import { buildWhatsAppUrl } from "@/features/cart"
 import { ManualSaleModal } from "./ManualSaleModal"
 
@@ -29,6 +30,7 @@ export const OrdersKanban: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("")
   const [methodFilter, setMethodFilter] = useState<string>("ALL")
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
+  const [orderToDelete, setOrderToDelete] = useState<Order | null>(null)
 
   const isDark = adminTheme === "dark"
 
@@ -531,7 +533,7 @@ export const OrdersKanban: React.FC = () => {
               <button
                 type="button"
                 onClick={() => {
-                  deleteOrder(selectedOrder.id)
+                  setOrderToDelete(selectedOrder)
                   setSelectedOrder(null)
                 }}
                 className="flex items-center gap-1 rounded-lg border border-rose-500/40 bg-rose-500/10 px-2.5 py-1 text-xs font-bold text-rose-500 hover:bg-rose-500/20 ml-auto cursor-pointer"
@@ -544,6 +546,26 @@ export const OrdersKanban: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Delete Order Confirmation Modal */}
+      <ConfirmDeleteModal
+        isOpen={!!orderToDelete}
+        onClose={() => setOrderToDelete(null)}
+        onConfirm={() => {
+          if (orderToDelete) {
+            deleteOrder(orderToDelete.id)
+            setOrderToDelete(null)
+          }
+        }}
+        title="¿Eliminar orden permanentemente?"
+        targetName={orderToDelete ? `Pedido #${orderToDelete.orderNumber} — ${orderToDelete.customer.nombre}` : undefined}
+        description={
+          orderToDelete
+            ? `¿Estás seguro de que deseas eliminar permanentemente el Pedido #${orderToDelete.orderNumber} ($${orderToDelete.finalTotal.toLocaleString()})? Esta acción no se puede deshacer.`
+            : undefined
+        }
+        confirmText="Eliminar orden"
+      />
 
       <ManualSaleModal
         isOpen={isManualSaleOpen}

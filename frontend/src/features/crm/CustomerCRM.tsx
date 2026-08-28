@@ -60,8 +60,8 @@ export const CustomerCRM: React.FC = () => {
     const fullPhone = phone.startsWith("57") ? phone : `57${phone}`
     const greeting =
       cust.loyaltyTier === "vip"
-        ? `¡Hola ${cust.nombre}! 👑 Como cliente VIP de *${storeConfig.name}*, queremos regalarte un cupón especial del 15% OFF en tu próximo pedido usando el código *VIPBURGER*. ¿Te gustaría pedir hoy?`
-        : `¡Hola ${cust.nombre}! Te saludamos de *${storeConfig.name}*. Tenemos novedades en nuestra carta que seguro te encantarán. ¡Visita nuestra tienda para ver lo nuevo!`
+        ? `¡Hola ${cust.nombre}! 👑 Como cliente VIP de *${storeConfig.name}*, queremos regalarte un cupón especial del 15% OFF en tu próximo pedido usando el código *VIP15*. ¿Te gustaría pedir hoy?`
+        : `¡Hola ${cust.nombre}! Te saludamos de *${storeConfig.name}*. Tenemos novedades en nuestro menú que seguro te encantarán. ¡Visita nuestra tienda para ver lo nuevo!`
 
     window.open(buildWhatsAppUrl(fullPhone, greeting), "_blank", "noreferrer")
   }

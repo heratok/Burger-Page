@@ -53,7 +53,11 @@ export class TenantRepository {
   }
 
   saveEnvelope(envelope: StorageEnvelopeV2): void {
-    this.adapter.setItem(STORAGE_KEYS.ENVELOPE, JSON.stringify(envelope))
+    try {
+      this.adapter.setItem(STORAGE_KEYS.ENVELOPE, JSON.stringify(envelope))
+    } catch (err) {
+      console.error("Failed to save storage envelope to localStorage (quota exceeded or storage blocked):", err)
+    }
   }
 
   getActiveRestaurantId(defaultId = "rest-burger-craft"): string {
