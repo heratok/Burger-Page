@@ -29,6 +29,7 @@ import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { toast } from "sonner"
 import { optimizeImageToWebP } from "@/lib/imageOptimizer"
+import { uploadImageToStorage } from "@/core/storage/supabaseStorage"
 import { useCustomizerDraft } from "./hooks/useCustomizerDraft"
 import {
   getRadiusClass,
@@ -84,7 +85,14 @@ export const StorefrontCustomizer: React.FC = () => {
         quality: isLogo ? 0.85 : 0.82,
       })
 
-      setDraft((prev) => ({ ...prev, [field]: optimizedWebP }))
+      const finalUrl = await uploadImageToStorage(optimizedWebP, {
+        restaurantId: activeRestaurant?.id || "default",
+        folder: "branding",
+        filename: isLogo ? "logo" : "banner",
+        bucketName: "image",
+      })
+
+      setDraft((prev) => ({ ...prev, [field]: finalUrl }))
       toast.success(isLogo ? "Logo optimizado y cargado en WebP" : "Foto de portada optimizada en WebP")
     } catch (err: any) {
       console.error("Image optimization failed:", err)

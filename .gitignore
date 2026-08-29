@@ -56,3 +56,7 @@ capture*.mjs
 *.png
 *.jpg
 *.jpeg
+
+# Supabase CLI Local State
+supabase/.temp/
+supabase/.branches/

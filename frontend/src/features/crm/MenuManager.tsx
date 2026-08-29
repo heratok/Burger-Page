@@ -22,9 +22,11 @@ import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
 import { Pagination } from "@/components/ui/pagination"
 import { toast } from "sonner"
 import { optimizeImageToWebP } from "@/lib/imageOptimizer"
+import { uploadImageToStorage } from "@/core/storage/supabaseStorage"
 
 export const MenuManager: React.FC = () => {
   const {
+    activeRestaurant,
     products,
     addProduct,
     updateProduct,
@@ -160,14 +162,28 @@ export const MenuManager: React.FC = () => {
     setIsProductModalOpen(true)
   }
 
-  const handleSaveProduct = (e: React.FormEvent) => {
+  const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!productForm.name.trim()) return
 
+    let finalSrc = productForm.src
+    if (finalSrc && finalSrc.startsWith("data:")) {
+      try {
+        finalSrc = await uploadImageToStorage(finalSrc, {
+          restaurantId: activeRestaurant?.id || "default",
+          folder: "products",
+          bucketName: "image",
+        })
+      } catch (err) {
+        console.warn("Storage upload fallback:", err)
+      }
+    }
+
+    const payload = { ...productForm, src: finalSrc }
     if (editingProduct) {
-      updateProduct(editingProduct.id, productForm)
+      updateProduct(editingProduct.id, payload)
     } else {
-      addProduct(productForm)
+      addProduct(payload)
     }
     setIsProductModalOpen(false)
   }
