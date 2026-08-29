@@ -1,4 +1,4 @@
-import React, { useRef } from "react"
+import React, { useRef, useState } from "react"
 import { useRestaurant } from "@/context/RestaurantContext"
 import {
   THEME_COLOR_PRESETS,
@@ -31,6 +31,7 @@ import { toast } from "sonner"
 import { optimizeImageToWebP } from "@/lib/imageOptimizer"
 import { uploadImageToStorage } from "@/core/storage/supabaseStorage"
 import { LazyImage } from "@/components/ui/LazyImage"
+import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
 import { useCustomizerDraft } from "./hooks/useCustomizerDraft"
 import {
   getRadiusClass,
@@ -65,6 +66,7 @@ export const StorefrontCustomizer: React.FC = () => {
   const currentBgStyle = getBgStyle(draft.bgTheme)
   const logoInputRef = useRef<HTMLInputElement>(null)
   const bannerInputRef = useRef<HTMLInputElement>(null)
+  const [confirmDeleteMedia, setConfirmDeleteMedia] = useState<"logo" | "banner" | null>(null)
 
   const handleImageUpload = async (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -386,7 +388,7 @@ export const StorefrontCustomizer: React.FC = () => {
                           type="button"
                           variant="outline"
                           size="sm"
-                          onClick={() => setDraft((prev) => ({ ...prev, logoUrl: "" }))}
+                          onClick={() => setConfirmDeleteMedia("logo")}
                           className="px-2.5 text-rose-500 hover:bg-rose-500/10 hover:text-rose-600 border-rose-500/30 cursor-pointer"
                           title="Eliminar logo"
                         >
@@ -417,7 +419,7 @@ export const StorefrontCustomizer: React.FC = () => {
                     />
                     <button
                       type="button"
-                      onClick={() => setDraft((prev) => ({ ...prev, bannerUrl: "" }))}
+                      onClick={() => setConfirmDeleteMedia("banner")}
                       className="absolute top-2 right-2 z-10 rounded-lg bg-black/70 p-1.5 text-white hover:bg-rose-600 transition-colors cursor-pointer"
                       title="Eliminar foto de portada"
                     >
@@ -1096,6 +1098,33 @@ export const StorefrontCustomizer: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Confirm Delete Media Modal */}
+      <ConfirmDeleteModal
+        isOpen={confirmDeleteMedia !== null}
+        onClose={() => setConfirmDeleteMedia(null)}
+        onConfirm={() => {
+          if (confirmDeleteMedia === "logo") {
+            setDraft((prev) => ({ ...prev, logoUrl: "" }))
+            toast.success("Logo eliminado del diseño")
+          } else if (confirmDeleteMedia === "banner") {
+            setDraft((prev) => ({ ...prev, bannerUrl: "" }))
+            toast.success("Foto de portada eliminada del diseño")
+          }
+          setConfirmDeleteMedia(null)
+        }}
+        title={
+          confirmDeleteMedia === "logo"
+            ? "¿Eliminar logo del restaurante?"
+            : "¿Eliminar foto de portada?"
+        }
+        description={
+          confirmDeleteMedia === "logo"
+            ? "El logo se quitará del encabezado y de la carta digital de tus clientes. Podrás volver a subir uno en cualquier momento."
+            : "La foto de portada se quitará del encabezado de la tienda. Podrás subir una nueva foto panorámica cuando quieras."
+        }
+        confirmText="Eliminar foto"
+      />
     </div>
   )
 }
