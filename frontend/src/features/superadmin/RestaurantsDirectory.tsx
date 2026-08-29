@@ -12,6 +12,7 @@ import { CreateRestaurantModal } from "./CreateRestaurantModal"
 import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
 import { Pagination } from "@/components/ui/pagination"
 import { useAppRouter } from "@/core/router/useAppRouter"
+import { formatCurrency } from "@/lib/utils"
 
 export const RestaurantsDirectory: React.FC = () => {
   const {
@@ -174,7 +175,7 @@ export const RestaurantsDirectory: React.FC = () => {
 
                     {/* Total Sales */}
                     <td className="px-4 py-4 font-bold text-slate-900 dark:text-white">
-                      ${totalSales.toLocaleString()}
+                      {formatCurrency(totalSales)}
                     </td>
 
                     {/* Orders count */}

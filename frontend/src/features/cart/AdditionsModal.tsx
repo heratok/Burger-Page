@@ -15,6 +15,7 @@ import { createCartItem, type CartAddition, type CartItem } from "./cartEngine"
 import CharacterCounter from "@/components/CharacterCounter"
 import { LIMITS } from "@/lib/validation"
 import { useRestaurant } from "@/context/RestaurantContext"
+import { formatCurrency } from "@/lib/utils"
 
 export interface AdditionsModalProps {
   onClose: () => void
@@ -120,7 +121,7 @@ export default function AdditionsModal({
               {product.description}
             </DialogDescription>
             <p className="mt-1.5 text-sm font-bold text-accent">
-              ${product.price.toLocaleString()}
+              {formatCurrency(product.price)}
             </p>
           </div>
           <Button
@@ -156,7 +157,7 @@ export default function AdditionsModal({
                       {adicion.name}
                     </p>
                     <p className="text-xs text-text-muted">
-                      +${adicion.price.toLocaleString()}
+                      +{formatCurrency(adicion.price)}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -264,7 +265,7 @@ export default function AdditionsModal({
               className="h-12 w-full rounded-xl text-base text-white font-bold shadow-md cursor-pointer hover:opacity-90 min-[420px]:w-auto min-[420px]:flex-1 sm:min-w-[200px] sm:flex-none"
             >
               <Plus data-icon="inline-start" strokeWidth={2.5} />
-              {editing ? "Guardar cambios" : "Agregar"} · ${calcularTotal().toLocaleString()}
+              {editing ? "Guardar cambios" : "Agregar"} · {formatCurrency(calcularTotal())}
             </Button>
           </div>
         </footer>

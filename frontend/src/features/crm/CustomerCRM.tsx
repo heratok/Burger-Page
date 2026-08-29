@@ -11,6 +11,7 @@ import { LoyaltyBadge } from "@/components/ui/status-badge"
 import { Button } from "@/components/ui/button"
 import { Pagination } from "@/components/ui/pagination"
 import { buildWhatsAppUrl } from "@/features/cart"
+import { formatCurrency, cleanPhoneNumber, formatWhatsAppPhone } from "@/lib/utils"
 
 export const CustomerCRM: React.FC = () => {
   const { customers, orders, updateCustomer, storeConfig, adminTheme } = useRestaurant()
@@ -56,8 +57,7 @@ export const CustomerCRM: React.FC = () => {
   }, [customers])
 
   const openWhatsAppMarketing = (cust: Customer) => {
-    const phone = cust.telefono.replace(/\D/g, "")
-    const fullPhone = phone.startsWith("57") ? phone : `57${phone}`
+    const fullPhone = formatWhatsAppPhone(cust.telefono)
     const greeting =
       cust.loyaltyTier === "vip"
         ? `¡Hola ${cust.nombre}! 👑 Como cliente VIP de *${storeConfig.name}*, queremos regalarte un cupón especial del 15% OFF en tu próximo pedido usando el código *VIP15*. ¿Te gustaría pedir hoy?`
@@ -80,10 +80,9 @@ export const CustomerCRM: React.FC = () => {
 
   const customerOrders = useMemo(() => {
     if (!selectedCustomer) return []
+    const selectedPhone = cleanPhoneNumber(selectedCustomer.telefono)
     return orders.filter(
-      (o) =>
-        o.customer.telefono.replace(/\D/g, "") ===
-        selectedCustomer.telefono.replace(/\D/g, "")
+      (o) => cleanPhoneNumber(o.customer.telefono) === selectedPhone
     )
   }, [orders, selectedCustomer])
 
@@ -131,7 +130,7 @@ export const CustomerCRM: React.FC = () => {
           </span>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
-              ${stats.totalSpentAll.toLocaleString()}
+              {formatCurrency(stats.totalSpentAll)}
             </span>
           </div>
         </div>
@@ -253,7 +252,7 @@ export const CustomerCRM: React.FC = () => {
                     {cust.totalOrders}
                   </td>
                   <td className="py-3 px-4 font-bold text-emerald-600 dark:text-emerald-400">
-                    ${cust.totalSpent.toLocaleString()}
+                    {formatCurrency(cust.totalSpent)}
                   </td>
                   <td className="py-3 px-4">
                     <LoyaltyBadge tier={cust.loyaltyTier} />
@@ -342,7 +341,7 @@ export const CustomerCRM: React.FC = () => {
               <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-800 border dark:border-slate-700">
                 <span className="text-slate-500 dark:text-slate-400 font-medium">Inversión Total</span>
                 <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">
-                  ${selectedCustomer.totalSpent.toLocaleString()}
+                  {formatCurrency(selectedCustomer.totalSpent)}
                 </p>
               </div>
             </div>
@@ -387,7 +386,7 @@ export const CustomerCRM: React.FC = () => {
                       </span>
                     </div>
                     <span className="font-bold text-slate-900 dark:text-white">
-                      ${ord.finalTotal.toLocaleString()}
+                      {formatCurrency(ord.finalTotal)}
                     </span>
                   </div>
                 ))}

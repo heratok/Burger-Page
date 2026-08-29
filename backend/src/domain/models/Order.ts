@@ -16,7 +16,8 @@ export class Order {
     public items: OrderItem[],
     public status: OrderStatus,
     public createdAt: Date,
-    public deliveryFee: number = 0
+    public deliveryFee: number = 0,
+    public orderNumber?: number
   ) {}
 
   public get subtotal(): number {

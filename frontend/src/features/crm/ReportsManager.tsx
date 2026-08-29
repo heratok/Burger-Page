@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button"
 import { OrderStatusBadge } from "@/components/ui/status-badge"
 import { Pagination } from "@/components/ui/pagination"
 import { toast } from "sonner"
+import { formatCurrency } from "@/lib/utils"
 import {
   calculateCashCloseout,
   generateSalesCsv,
@@ -350,7 +351,7 @@ export const ReportsManager: React.FC = () => {
           </div>
           <div className="mt-3">
             <span className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
-              ${closeout.totalSales.toLocaleString()}
+              {formatCurrency(closeout.totalSales)}
             </span>
           </div>
           <div className="mt-1 flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
@@ -377,7 +378,7 @@ export const ReportsManager: React.FC = () => {
           </div>
           <div className="mt-3">
             <span className="text-2xl font-black tracking-tight text-amber-600 dark:text-amber-400">
-              ${closeout.cashTotal.toLocaleString()}
+              {formatCurrency(closeout.cashTotal)}
             </span>
           </div>
           <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
@@ -401,7 +402,7 @@ export const ReportsManager: React.FC = () => {
           </div>
           <div className="mt-3">
             <span className="text-2xl font-black tracking-tight text-blue-600 dark:text-blue-400">
-              ${closeout.transferTotal.toLocaleString()}
+              {formatCurrency(closeout.transferTotal)}
             </span>
           </div>
           <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
@@ -425,12 +426,12 @@ export const ReportsManager: React.FC = () => {
           </div>
           <div className="mt-3">
             <span className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
-              ${closeout.avgTicket.toLocaleString()}
+              {formatCurrency(closeout.avgTicket)}
             </span>
           </div>
           <div className="mt-1 flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
             <Truck className="size-3 text-slate-400" />
-            <span>Domicilios: ${closeout.deliveryFeesTotal.toLocaleString()}</span>
+            <span>Domicilios: {formatCurrency(closeout.deliveryFeesTotal)}</span>
           </div>
         </div>
       </div>
@@ -482,7 +483,7 @@ export const ReportsManager: React.FC = () => {
               <div className="flex items-center justify-between pt-1">
                 <span>Ventas Totales Brutas</span>
                 <span className="font-bold text-slate-900 dark:text-white">
-                  ${closeout.totalSales.toLocaleString()}
+                  {formatCurrency(closeout.totalSales)}
                 </span>
               </div>
               <div className="flex items-center justify-between pt-2">
@@ -490,7 +491,7 @@ export const ReportsManager: React.FC = () => {
                   <Banknote className="size-3 text-amber-500" /> Efectivo Recibido
                 </span>
                 <span className="font-bold text-amber-600 dark:text-amber-400">
-                  ${closeout.cashTotal.toLocaleString()}
+                  {formatCurrency(closeout.cashTotal)}
                 </span>
               </div>
               <div className="flex items-center justify-between pt-2">
@@ -498,13 +499,13 @@ export const ReportsManager: React.FC = () => {
                   <CreditCard className="size-3 text-blue-500" /> Transferencias
                 </span>
                 <span className="font-bold text-blue-600 dark:text-blue-400">
-                  ${closeout.transferTotal.toLocaleString()}
+                  {formatCurrency(closeout.transferTotal)}
                 </span>
               </div>
               <div className="flex items-center justify-between pt-2">
                 <span>Total Fletes / Domicilios</span>
                 <span className="font-medium text-slate-900 dark:text-white">
-                  ${closeout.deliveryFeesTotal.toLocaleString()}
+                  {formatCurrency(closeout.deliveryFeesTotal)}
                 </span>
               </div>
               <div className="flex items-center justify-between pt-2">
@@ -743,7 +744,7 @@ export const ReportsManager: React.FC = () => {
                           {ord.customer.nombre}
                         </td>
                         <td className="py-2.5 px-3 font-bold text-slate-900 dark:text-white">
-                          ${ord.finalTotal.toLocaleString()}
+                          {formatCurrency(ord.finalTotal)}
                         </td>
                         <td className="py-2.5 px-3">
                           <span

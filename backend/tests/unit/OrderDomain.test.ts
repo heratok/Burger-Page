@@ -67,12 +67,15 @@ describe('Customer Loyalty (Domain Entity)', () => {
 
   it('should update loyalty tier based on total spend', () => {
     const customer = new Customer('1', 'John Doe', 'john@example.com', '123456');
-    expect(customer.loyaltyTier).toBe('Bronze');
+    expect(customer.loyaltyTier).toBe('bronze');
 
-    customer.addOrderSpend(250); // total 250 > 200
-    expect(customer.loyaltyTier).toBe('Silver');
+    customer.addOrderSpend(100000); // 100k -> silver
+    expect(customer.loyaltyTier).toBe('silver');
 
-    customer.addOrderSpend(300); // total 550 > 500
-    expect(customer.loyaltyTier).toBe('Gold');
+    customer.addOrderSpend(150000); // total 250k -> gold
+    expect(customer.loyaltyTier).toBe('gold');
+
+    customer.addOrderSpend(150000); // total 400k -> vip
+    expect(customer.loyaltyTier).toBe('vip');
   });
 });

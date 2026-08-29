@@ -4,4 +4,7 @@ export interface Inventory {
   quantity: number;
   unit: string;
   alertThreshold: number;
+  category?: string;
+  costPerUnit?: number;
+  minStockAlert?: number;
 }

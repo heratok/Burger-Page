@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { cleanPhoneNumber } from "./utils"
 
 /**
  * Límites de longitud de los campos del formulario de pedido.
@@ -28,7 +29,7 @@ export const formSchema = z.object({
   telefono: z
     .string()
     .trim()
-    .transform((v) => v.replace(/\D/g, ""))
+    .transform((v) => cleanPhoneNumber(v))
     .refine((v) => v.length >= LIMITS.telefono.min, {
       message: `Ingresa un celular válido (mín. ${LIMITS.telefono.min} dígitos).`,
     })

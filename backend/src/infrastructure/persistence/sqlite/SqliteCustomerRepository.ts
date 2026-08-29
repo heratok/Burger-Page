@@ -8,26 +8,12 @@ export class SqliteCustomerRepository implements CustomerRepository {
   async findById(id: string): Promise<Customer | null> {
     const row = this.db.prepare('SELECT * FROM customers WHERE id = ?').get(id) as any;
     if (!row) return null;
-    return new Customer(
-      row.id,
-      row.name,
-      row.email || '',
-      row.phone || '',
-      row.total_spent || 0,
-      row.total_orders || 0
-    );
+    return this.mapToDomain(row);
   }
 
   async findAll(): Promise<Customer[]> {
     const rows = this.db.prepare('SELECT * FROM customers').all() as any[];
-    return rows.map(row => new Customer(
-      row.id,
-      row.name,
-      row.email || '',
-      row.phone || '',
-      row.total_spent || 0,
-      row.total_orders || 0
-    ));
+    return rows.map(row => this.mapToDomain(row));
   }
 
   async save(customer: Customer): Promise<void> {
@@ -51,9 +37,20 @@ export class SqliteCustomerRepository implements CustomerRepository {
       customer.phone,
       '',
       customer.totalOrders,
-      customer.totalSpend,
+      customer.totalSpent,
       customer.loyaltyTier,
       new Date().toISOString()
+    );
+  }
+
+  private mapToDomain(row: any): Customer {
+    return new Customer(
+      row.id,
+      row.name,
+      row.email || '',
+      row.phone || '',
+      Number(row.total_spent ?? 0),
+      Number(row.total_orders ?? 0)
     );
   }
 }

@@ -34,6 +34,7 @@ import { formSchema, LIMITS, type FormValues } from "@/lib/validation"
 import { calculateChange } from "./whatsapp"
 import { cartItemToOrderItem, type CartItem } from "./cartEngine"
 import { useRestaurant } from "@/context/RestaurantContext"
+import { formatCurrency } from "@/lib/utils"
 
 const METODOS = [
   { value: "Efectivo", Icon: Banknote },
@@ -99,7 +100,7 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
 
     // 2. Direct sale confirmation feedback
     toast.success("¡Venta registrada con éxito!", {
-      description: `${values.nombre} • Total: $${(total + storeConfig.deliveryFee).toLocaleString()}`,
+      description: `${values.nombre} • Total: ${formatCurrency(total + storeConfig.deliveryFee)}`,
     })
     onClose()
   }
@@ -288,7 +289,7 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
                 <FieldDescription className="text-text-secondary">
                   Tu cambio:{" "}
                   <span className="font-bold text-accent">
-                    ${cambio.toLocaleString()}
+                    {formatCurrency(cambio)}
                   </span>
                 </FieldDescription>
               )}
@@ -372,7 +373,7 @@ function FormSummary({ cartItems, total }: FormSummaryProps) {
             style={{ color: storeConfig.primaryColor }}
             className="text-base font-black"
           >
-            ${total.toLocaleString()}
+            {formatCurrency(total)}
           </span>
           <ChevronDown
             style={{ color: "var(--color-text-muted)" }}
@@ -396,7 +397,7 @@ function FormSummary({ cartItems, total }: FormSummaryProps) {
                 style={{ color: "var(--color-text-primary)" }}
                 className="ml-3 shrink-0 font-bold"
               >
-                ${item.total.toLocaleString()}
+                {formatCurrency(item.total)}
               </span>
             </li>
           ))}

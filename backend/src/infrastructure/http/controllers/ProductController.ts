@@ -4,7 +4,7 @@ import { GetProductByIdUseCase } from '../../../application/use-cases/GetProduct
 import { CreateProductUseCase } from '../../../application/use-cases/CreateProductUseCase.js';
 import { UpdateProductUseCase } from '../../../application/use-cases/UpdateProductUseCase.js';
 import { DeleteProductUseCase } from '../../../application/use-cases/DeleteProductUseCase.js';
-import { createProductSchema, updateProductSchema } from '../schemas/product.schema.js';
+import { createProductSchema, updateProductSchema } from '@burger-page/contracts';
 import { ValidationError } from '../../../domain/errors/DomainErrors.js';
 import { CreateProductDTO, UpdateProductDTO } from '../../../application/dtos/index.js';
 

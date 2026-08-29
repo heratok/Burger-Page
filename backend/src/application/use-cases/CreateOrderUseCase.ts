@@ -26,13 +26,15 @@ export class CreateOrderUseCase {
       });
     }
 
+    const orderNumber = Math.floor(10000 + Math.random() * 90000);
     const order = new Order(
       randomUUID(),
       dto.customerId,
       items,
       'pending',
       new Date(),
-      dto.deliveryFee || 0
+      dto.deliveryFee || 0,
+      orderNumber
     );
 
     await this.orderRepo.save(order);

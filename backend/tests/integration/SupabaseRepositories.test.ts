@@ -226,7 +226,7 @@ describe('Supabase Persistence Adapter Suite', () => {
       const repo = new SupabaseCustomerRepository(mockSupabaseClient as unknown as SupabaseClient);
 
       const customer = new Customer('cust-sb-1', 'Camila Rivas', 'camila@example.com', '+573001112233');
-      customer.addOrderSpend(400);
+      customer.addOrderSpend(150000);
 
       await repo.save(customer);
 
@@ -234,7 +234,7 @@ describe('Supabase Persistence Adapter Suite', () => {
       expect(retrieved).not.toBeNull();
       expect(retrieved?.name).toBe('Camila Rivas');
       expect(retrieved?.email).toBe('camila@example.com');
-      expect(retrieved?.loyaltyTier).toBe('Silver');
+      expect(retrieved?.loyaltyTier).toBe('silver');
 
       const all = await repo.findAll();
       expect(all.length).toBe(1);
@@ -248,9 +248,12 @@ describe('Supabase Persistence Adapter Suite', () => {
       const inventory: Inventory = {
         id: 'inv-truffle-sauce',
         name: 'Truffle Aioli Sauce',
+        category: 'Salsas',
         quantity: 35,
         unit: 'bottles',
-        alertThreshold: 5
+        alertThreshold: 5,
+        minStockAlert: 5,
+        costPerUnit: 8500
       };
 
       await repo.save(inventory);
@@ -258,8 +261,11 @@ describe('Supabase Persistence Adapter Suite', () => {
       const retrieved = await repo.findById('inv-truffle-sauce');
       expect(retrieved).not.toBeNull();
       expect(retrieved?.name).toBe('Truffle Aioli Sauce');
+      expect(retrieved?.category).toBe('Salsas');
       expect(retrieved?.quantity).toBe(35);
       expect(retrieved?.alertThreshold).toBe(5);
+      expect(retrieved?.minStockAlert).toBe(5);
+      expect(retrieved?.costPerUnit).toBe(8500);
 
       const all = await repo.findAll();
       expect(all.length).toBe(1);

@@ -64,10 +64,17 @@ describe('Real-Time Order SSE Stream (TDD)', () => {
     const createdEvent = receivedEvents.find(e => e.eventType === 'ORDER_CREATED' && e.orderId === order.id);
     expect(createdEvent).toBeDefined();
     expect(createdEvent.status).toBe('pending');
+    expect(typeof createdEvent.orderNumber).toBe('number');
+    expect(typeof createdEvent.timestamp).toBe('string');
+    expect(createdEvent.payload).toBeDefined();
+    expect(createdEvent.payload.id).toBe(order.id);
+    expect(createdEvent.payload.customerId).toBe('cust-1');
+    expect(createdEvent.payload.items.length).toBe(1);
 
     const updatedEvent = receivedEvents.find(e => e.eventType === 'ORDER_STATUS_UPDATED' && e.orderId === order.id);
     expect(updatedEvent).toBeDefined();
     expect(updatedEvent.status).toBe('cooking');
+    expect(typeof updatedEvent.timestamp).toBe('string');
   });
 
   it('should establish SSE stream connection with correct headers and connected event', async () => {

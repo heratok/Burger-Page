@@ -54,8 +54,11 @@ export const initialInventory: Inventory[] = [
   {
     id: 'i1',
     name: 'Beef Patty',
+    category: 'ingredients',
     quantity: 50,
     unit: 'units',
-    alertThreshold: 10
+    alertThreshold: 10,
+    minStockAlert: 10,
+    costPerUnit: 4500
   }
 ];

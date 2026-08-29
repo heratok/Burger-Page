@@ -6,6 +6,7 @@ import { useTenant } from "./TenantContext"
 import { useUi } from "./UiContext"
 import { playNotificationChime } from "@/core/audio/soundEffects"
 import { toast } from "sonner"
+import { formatCurrency, cleanPhoneNumber } from "@/lib/utils"
 
 export interface OrderContextType {
   orders: Order[]
@@ -108,10 +109,10 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       updateActiveRestaurantRecord((current) => {
         // Record or update customer
-        const phone = newOrder.customer.telefono.replace(/\D/g, "")
+        const phone = cleanPhoneNumber(newOrder.customer.telefono)
         const nextCustomers = [...current.customers]
         const existingIdx = nextCustomers.findIndex(
-          (c) => c.telefono.replace(/\D/g, "") === phone
+          (c) => cleanPhoneNumber(c.telefono) === phone
         )
 
         if (existingIdx >= 0) {
@@ -159,14 +160,14 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
 
       toast.success(`Orden #${newOrder.orderNumber} registrada`, {
-        description: `${newOrder.customer.nombre} - $${newOrder.finalTotal.toLocaleString()}`,
+        description: `${newOrder.customer.nombre} - ${formatCurrency(newOrder.finalTotal)}`,
       })
 
       // Backend API Integration with graceful offline fallback
       try {
-        const phone = newOrder.customer.telefono.replace(/\D/g, "")
+        const phone = cleanPhoneNumber(newOrder.customer.telefono)
         const existingCustomer = activeRestaurant.customers?.find(
-          (c) => c.telefono.replace(/\D/g, "") === phone
+          (c) => cleanPhoneNumber(c.telefono) === phone
         )
         const customerId = existingCustomer ? existingCustomer.id : `cust-${Date.now()}`
 

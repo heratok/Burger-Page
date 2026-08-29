@@ -50,7 +50,7 @@ export class SupabaseCustomerRepository implements CustomerRepository {
       phone: customer.phone,
       address: '',
       total_orders: customer.totalOrders,
-      total_spent: customer.totalSpend,
+      total_spent: customer.totalSpent,
       loyalty_tier: customer.loyaltyTier,
       last_order_date: new Date().toISOString()
     };

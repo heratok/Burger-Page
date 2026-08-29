@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button"
 import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
 import { buildWhatsAppUrl } from "@/features/cart"
 import { ManualSaleModal } from "./ManualSaleModal"
+import { formatCurrency, formatWhatsAppPhone } from "@/lib/utils"
 
 export const OrdersKanban: React.FC = () => {
   const { orders, updateOrderStatus, deleteOrder, adminTheme, storeConfig } =
@@ -89,8 +90,7 @@ export const OrdersKanban: React.FC = () => {
   }
 
   const openCustomerWhatsApp = (order: Order, customText?: string) => {
-    const phone = order.customer.telefono.replace(/\D/g, "")
-    const fullPhone = phone.startsWith("57") ? phone : `57${phone}`
+    const fullPhone = formatWhatsAppPhone(order.customer.telefono)
     const defaultMsg =
       customText ||
       `¡Hola ${order.customer.nombre}! Te escribimos de *${storeConfig.name}* sobre tu pedido #${order.orderNumber}.`
@@ -275,7 +275,7 @@ export const OrdersKanban: React.FC = () => {
                         {/* Totals & Payment */}
                         <div className="mt-3 flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-2.5">
                           <span className="text-xs font-black text-slate-900 dark:text-white">
-                            ${ord.finalTotal.toLocaleString()}
+                            {formatCurrency(ord.finalTotal)}
                           </span>
                           <span
                             className={`rounded-md px-2 py-0.5 text-[10px] font-bold ${
@@ -423,14 +423,14 @@ export const OrdersKanban: React.FC = () => {
                       {item.cantidad || (item as any).quantity || 1}× {item.name}
                     </span>
                     <span className="text-indigo-600 dark:text-indigo-400 font-extrabold">
-                      ${(item.total ?? item.price * (item.cantidad || (item as any).quantity || 1)).toLocaleString()}
+                      {formatCurrency(item.total ?? item.price * (item.cantidad || (item as any).quantity || 1))}
                     </span>
                   </div>
                   {item.adiciones && item.adiciones.length > 0 && (
                     <div className="text-[11px] text-slate-600 dark:text-slate-300 pl-3 border-l-2 border-slate-300 dark:border-slate-600 space-y-0.5">
                       {item.adiciones.map((a, i) => (
                         <div key={i}>
-                          + {a.cantidad}× {a.name} (${(a.price * a.cantidad).toLocaleString()})
+                          + {a.cantidad}× {a.name} ({formatCurrency(a.price * a.cantidad)})
                         </div>
                       ))}
                     </div>
@@ -449,27 +449,27 @@ export const OrdersKanban: React.FC = () => {
               <div className="flex justify-between text-slate-500 dark:text-slate-400">
                 <span>Subtotal productos</span>
                 <span className="font-semibold text-slate-800 dark:text-slate-200">
-                  ${(selectedOrder.total ?? (selectedOrder as any).subtotal ?? 0).toLocaleString()}
+                  {formatCurrency(selectedOrder.total ?? (selectedOrder as any).subtotal ?? 0)}
                 </span>
               </div>
               <div className="flex justify-between text-slate-500 dark:text-slate-400">
                 <span>Costo de domicilio</span>
                 <span className="font-semibold text-slate-800 dark:text-slate-200">
-                  ${(selectedOrder.deliveryFee ?? (selectedOrder as any).costoEnvio ?? 0).toLocaleString()}
+                  {formatCurrency(selectedOrder.deliveryFee ?? (selectedOrder as any).costoEnvio ?? 0)}
                 </span>
               </div>
               <div className="flex justify-between text-sm font-bold pt-1.5 border-t border-slate-100 dark:border-slate-800 text-slate-900 dark:text-white">
                 <span>Total a Pagar</span>
                 <span className="text-indigo-600 dark:text-indigo-400 text-base font-black">
-                  ${(selectedOrder.finalTotal || 0).toLocaleString()}
+                  {formatCurrency(selectedOrder.finalTotal || 0)}
                 </span>
               </div>
               <div className="mt-2 rounded-lg bg-slate-100 dark:bg-slate-800 p-2.5 text-[11px] flex justify-between border dark:border-slate-700 text-slate-800 dark:text-slate-200">
                 <span>Método: <strong>{selectedOrder.metodo}</strong></span>
                 {selectedOrder.pagoCon && (
                   <span>
-                    Paga con: ${Number(selectedOrder.pagoCon).toLocaleString()}{" "}
-                    {selectedOrder.cambio ? `(Cambio: $${selectedOrder.cambio.toLocaleString()})` : ""}
+                    Paga con: {formatCurrency(Number(selectedOrder.pagoCon))}{" "}
+                    {selectedOrder.cambio ? `(Cambio: ${formatCurrency(selectedOrder.cambio)})` : ""}
                   </span>
                 )}
               </div>
@@ -561,7 +561,7 @@ export const OrdersKanban: React.FC = () => {
         targetName={orderToDelete ? `Pedido #${orderToDelete.orderNumber} — ${orderToDelete.customer.nombre}` : undefined}
         description={
           orderToDelete
-            ? `¿Estás seguro de que deseas eliminar permanentemente el Pedido #${orderToDelete.orderNumber} ($${orderToDelete.finalTotal.toLocaleString()})? Esta acción no se puede deshacer.`
+            ? `¿Estás seguro de que deseas eliminar permanentemente el Pedido #${orderToDelete.orderNumber} (${formatCurrency(orderToDelete.finalTotal)})? Esta acción no se puede deshacer.`
             : undefined
         }
         confirmText="Eliminar orden"

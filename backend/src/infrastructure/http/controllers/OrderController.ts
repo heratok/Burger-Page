@@ -37,8 +37,20 @@ export class OrderController {
     globalOrderEventBus.publish({
       eventType: 'ORDER_CREATED',
       orderId: order.id,
+      orderNumber: order.orderNumber,
       status: order.status,
       timestamp: new Date().toISOString(),
+      payload: {
+        id: order.id,
+        orderNumber: order.orderNumber,
+        customerId: order.customerId,
+        items: order.items,
+        status: order.status,
+        createdAt: order.createdAt,
+        deliveryFee: order.deliveryFee,
+        subtotal: order.subtotal,
+        total: order.total,
+      },
     });
 
     return reply.status(201).send(order);
@@ -49,16 +61,28 @@ export class OrderController {
     if (!parsed.success) {
       throw new ValidationError(parsed.error.message);
     }
-    await this.updateOrderStatus.execute(req.params.id, parsed.data as UpdateOrderStatusDTO);
+    const updatedOrder = await this.updateOrderStatus.execute(req.params.id, parsed.data as UpdateOrderStatusDTO);
 
     // Publish SSE Real-time Event
     globalOrderEventBus.publish({
       eventType: 'ORDER_STATUS_UPDATED',
       orderId: req.params.id,
+      orderNumber: updatedOrder.orderNumber,
       status: parsed.data.status,
       timestamp: new Date().toISOString(),
+      payload: {
+        id: updatedOrder.id,
+        orderNumber: updatedOrder.orderNumber,
+        customerId: updatedOrder.customerId,
+        items: updatedOrder.items,
+        status: updatedOrder.status,
+        createdAt: updatedOrder.createdAt,
+        deliveryFee: updatedOrder.deliveryFee,
+        subtotal: updatedOrder.subtotal,
+        total: updatedOrder.total,
+      },
     });
 
-    return reply.status(200).send({ message: 'Order status updated successfully' });
+    return reply.status(200).send(updatedOrder);
   }
 }

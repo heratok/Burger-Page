@@ -1,7 +1,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { GetInventoryUseCase } from '../../../application/use-cases/GetInventoryUseCase.js';
 import { UpdateInventoryStockUseCase } from '../../../application/use-cases/UpdateInventoryStockUseCase.js';
-import { updateInventoryStockSchema } from '../schemas/inventory.schema.js';
+import { updateInventoryStockSchema } from '@burger-page/contracts';
 import { ValidationError } from '../../../domain/errors/DomainErrors.js';
 
 export class InventoryController {
@@ -15,13 +15,13 @@ export class InventoryController {
     const mapped = inventory.map(item => ({
       id: item.id,
       name: item.name,
-      category: (item as any).category || 'ingredients',
+      category: item.category || 'ingredients',
       currentStock: item.quantity,
       quantity: item.quantity,
-      minStockAlert: item.alertThreshold,
+      minStockAlert: item.minStockAlert ?? item.alertThreshold,
       alertThreshold: item.alertThreshold,
       unit: item.unit,
-      costPerUnit: (item as any).costPerUnit || 0
+      costPerUnit: item.costPerUnit || 0
     }));
     return reply.status(200).send(mapped);
   }

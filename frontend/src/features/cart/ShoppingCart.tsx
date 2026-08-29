@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button"
 import EmptyCart from "./EmptyCart"
 import type { CartItem } from "./cartEngine"
 import { useRestaurant } from "@/context/RestaurantContext"
+import { formatCurrency } from "@/lib/utils"
 
 export interface ShoppingCartProps {
   onClose: () => void
@@ -143,7 +144,7 @@ function ShoppingCart({
                 style={{ color: storeConfig.primaryColor }}
                 className="mt-2 text-base font-black tracking-tight"
               >
-                ${cartItem.total.toLocaleString()}
+                {formatCurrency(cartItem.total)}
               </p>
             </div>
           </li>
@@ -169,7 +170,7 @@ function ShoppingCart({
               style={{ color: storeConfig.primaryColor }}
               className="text-xl font-black"
             >
-              ${total.toLocaleString()}
+              {formatCurrency(total)}
             </span>
           </div>
           <div className="flex gap-2 sm:flex-row-reverse">

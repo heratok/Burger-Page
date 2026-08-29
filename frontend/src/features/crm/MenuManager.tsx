@@ -26,6 +26,7 @@ import { toast } from "sonner"
 import { optimizeImageToWebP } from "@/lib/imageOptimizer"
 import { uploadImageToStorage } from "@/core/storage/supabaseStorage"
 import { LazyImage } from "@/components/ui/LazyImage"
+import { formatCurrency } from "@/lib/utils"
 
 export const MenuManager: React.FC = () => {
   const {
@@ -452,7 +453,7 @@ export const MenuManager: React.FC = () => {
                         {product.name}
                       </h3>
                       <span className="text-base font-black text-indigo-600 dark:text-indigo-400 whitespace-nowrap">
-                        ${product.price.toLocaleString()}
+                        {formatCurrency(product.price)}
                       </span>
                     </div>
 
@@ -539,7 +540,7 @@ export const MenuManager: React.FC = () => {
                         </span>
                       </td>
                       <td className="py-3 px-4 font-bold text-indigo-600 dark:text-indigo-400">
-                        ${prod.price.toLocaleString()}
+                        {formatCurrency(prod.price)}
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex gap-1">
@@ -633,7 +634,7 @@ export const MenuManager: React.FC = () => {
                 <div>
                   <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">{add.name}</h4>
                   <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                    +${add.price.toLocaleString()}
+                    +{formatCurrency(add.price)}
                   </span>
                 </div>
 
@@ -1201,7 +1202,7 @@ export const MenuManager: React.FC = () => {
         targetName={productToDelete?.name}
         description={
           productToDelete
-            ? `¿Estás seguro de que deseas eliminar "${productToDelete.name}" ($${productToDelete.price.toLocaleString()}) del menú? Ya no estará disponible para los clientes.`
+            ? `¿Estás seguro de que deseas eliminar "${productToDelete.name}" (${formatCurrency(productToDelete.price)}) del menú? Ya no estará disponible para los clientes.`
             : undefined
         }
         confirmText="Eliminar producto"
@@ -1221,7 +1222,7 @@ export const MenuManager: React.FC = () => {
         targetName={additionToDelete?.name}
         description={
           additionToDelete
-            ? `¿Estás seguro de que deseas eliminar la adición "${additionToDelete.name}" (+${additionToDelete.price.toLocaleString()})?`
+            ? `¿Estás seguro de que deseas eliminar la adición "${additionToDelete.name}" (+${formatCurrency(additionToDelete.price)})?`
             : undefined
         }
         confirmText="Eliminar adición"

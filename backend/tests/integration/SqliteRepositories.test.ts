@@ -106,7 +106,7 @@ describe.skipIf(!hasSqliteBinding)('SQLite Persistence Adapter Suite (TDD)', () 
     expect(retrieved?.email).toBe('laura@test.com');
     expect(retrieved?.phone).toBe('3151234567');
     expect(retrieved?.totalSpend).toBe(350000);
-    expect(retrieved?.loyaltyTier).toBe('Gold');
+    expect(retrieved?.loyaltyTier).toBe('gold');
 
     const allCustomers = await customerRepo.findAll();
     expect(allCustomers.length).toBe(1);
@@ -118,14 +118,25 @@ describe.skipIf(!hasSqliteBinding)('SQLite Persistence Adapter Suite (TDD)', () 
     await inventoryRepo.save({
       id: 'inv-pan-brioche',
       name: 'Pan Brioche Sellado',
+      category: 'Panadería',
       quantity: 50,
       unit: 'unidades',
-      alertThreshold: 15
+      alertThreshold: 15,
+      minStockAlert: 15,
+      costPerUnit: 1200
     });
 
     const item = await inventoryRepo.findById('inv-pan-brioche');
     expect(item).not.toBeNull();
     expect(item?.quantity).toBe(50);
+    expect(item?.category).toBe('Panadería');
+    expect(item?.minStockAlert).toBe(15);
+    expect(item?.costPerUnit).toBe(1200);
+
+    const allItems = await inventoryRepo.findAll();
+    expect(allItems.length).toBe(1);
+    expect(allItems[0].category).toBe('Panadería');
+    expect(allItems[0].costPerUnit).toBe(1200);
   });
 
   it('should support multi-tenant restaurants with distinct slugs and isolated updates', async () => {

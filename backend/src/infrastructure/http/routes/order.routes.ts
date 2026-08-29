@@ -178,10 +178,17 @@ export async function orderRoutes(fastify: FastifyInstance, opts: { controller: 
           type: 'object',
           properties: {
             id: { type: 'string' },
+            orderNumber: { type: 'number' },
+            customerId: { type: 'string' },
             status: { type: 'string' },
-            message: { type: 'string' },
+            total: { type: 'number' },
+            deliveryFee: { type: 'number' },
+            finalTotal: { type: 'number' },
+            items: { type: 'array', items: { type: 'object', additionalProperties: true } },
+            createdAt: { type: 'string' },
             updatedAt: { type: 'string' }
-          }
+          },
+          additionalProperties: true
         },
         400: {
           type: 'object',

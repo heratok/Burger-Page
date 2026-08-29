@@ -22,6 +22,8 @@ import {
 import { Button } from "@/components/ui/button"
 import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
 import { Pagination } from "@/components/ui/pagination"
+import { formatCurrency, cleanPhoneNumber, formatWhatsAppPhone } from "@/lib/utils"
+import { buildWhatsAppUrl } from "@/features/cart"
 
 const CATEGORY_LABELS: Record<InventoryCategory, string> = {
   ingredients: "Ingredientes & Alimentos",
@@ -260,9 +262,7 @@ export const InventoryManager: React.FC = () => {
 
     msg += `\n\n¿Tienen disponibilidad y fecha estimada de entrega? Muchas gracias.`
 
-    const cleanPhone = sup.phone.replace(/\D/g, "")
-    const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`
-    window.open(url, "_blank")
+    window.open(buildWhatsAppUrl(sup.phone, msg), "_blank")
   }
 
   return (
@@ -338,7 +338,7 @@ export const InventoryManager: React.FC = () => {
             </div>
           </div>
           <div className="mt-2 text-2xl font-black text-emerald-500">
-            ${totalInventoryValue.toLocaleString()}
+            {formatCurrency(totalInventoryValue)}
           </div>
           <span className="text-[11px] text-slate-400">Valorización total a costo actual</span>
         </div>
@@ -633,10 +633,10 @@ export const InventoryManager: React.FC = () => {
                           {/* Cost / Value */}
                           <td className="px-4 py-3 font-mono">
                             <div className="text-slate-900 dark:text-slate-200">
-                              ${item.costPerUnit.toLocaleString()} /{item.unit.slice(0, 3)}
+                              {formatCurrency(item.costPerUnit)} /{item.unit.slice(0, 3)}
                             </div>
                             <div className="text-[10px] text-slate-400">
-                              Total: ${itemValuation.toLocaleString()}
+                              Total: {formatCurrency(itemValuation)}
                             </div>
                           </td>
 

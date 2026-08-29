@@ -6,12 +6,16 @@ export class SupabaseInventoryRepository implements InventoryRepository {
   constructor(private client: SupabaseClient) {}
 
   private mapToDomain(row: any): Inventory {
+    const alert = Number(row.min_stock_alert ?? row.alert_threshold ?? row.alertThreshold ?? 0);
     return {
       id: row.id,
       name: row.name,
+      category: row.category || 'ingredients',
       quantity: Number(row.current_stock ?? row.quantity ?? 0),
       unit: row.unit || 'units',
-      alertThreshold: Number(row.min_stock_alert ?? row.alert_threshold ?? row.alertThreshold ?? 0)
+      alertThreshold: alert,
+      minStockAlert: alert,
+      costPerUnit: Number(row.cost_per_unit ?? row.costPerUnit ?? 0)
     };
   }
 
@@ -42,14 +46,15 @@ export class SupabaseInventoryRepository implements InventoryRepository {
   }
 
   async save(inventory: Inventory): Promise<void> {
+    const minAlert = inventory.minStockAlert ?? inventory.alertThreshold ?? 0;
     const payload = {
       id: inventory.id,
       name: inventory.name,
-      category: 'ingredients',
+      category: inventory.category || 'ingredients',
       current_stock: inventory.quantity,
-      min_stock_alert: inventory.alertThreshold,
+      min_stock_alert: minAlert,
       unit: inventory.unit,
-      cost_per_unit: 0
+      cost_per_unit: inventory.costPerUnit || 0
     };
 
     const { error } = await this.client

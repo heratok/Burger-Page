@@ -28,6 +28,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { toast } from "sonner"
+import { formatCurrency } from "@/lib/utils"
 import { optimizeImageToWebP } from "@/lib/imageOptimizer"
 import { uploadImageToStorage } from "@/core/storage/supabaseStorage"
 import { LazyImage } from "@/components/ui/LazyImage"
@@ -1059,7 +1060,7 @@ export const StorefrontCustomizer: React.FC = () => {
                               style={{ color: draft.primaryColor }}
                               className="text-xs font-black"
                             >
-                              ${p.price.toLocaleString()}
+                              {formatCurrency(p.price)}
                             </span>
                             <span
                               style={{ backgroundColor: draft.primaryColor }}

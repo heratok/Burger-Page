@@ -1,5 +1,6 @@
 import { ShoppingCart } from "lucide-react"
 import { useRestaurant } from "@/context/RestaurantContext"
+import { formatCurrency, formatWhatsAppPhone } from "@/lib/utils"
 
 interface NavbarProps {
   cantidad: number
@@ -10,7 +11,7 @@ interface NavbarProps {
 export default function Navbar({ cantidad, total, onOpenCart }: NavbarProps) {
   const { storeConfig } = useRestaurant()
 
-  const cartLabel = `Ver orden, ${cantidad} ${cantidad === 1 ? "producto" : "productos"}, total $${total.toLocaleString()}`
+  const cartLabel = `Ver orden, ${cantidad} ${cantidad === 1 ? "producto" : "productos"}, total ${formatCurrency(total)}`
 
   return (
     <header className="sticky top-0 z-30 border-b border-border-subtle bg-bg-base/85 backdrop-blur-md transition-colors">
@@ -99,7 +100,7 @@ export default function Navbar({ cantidad, total, onOpenCart }: NavbarProps) {
           {/* WhatsApp Direct Link */}
           {storeConfig.whatsappNumber && (
             <a
-              href={`https://wa.me/${storeConfig.whatsappNumber.replace(/\D/g, "")}`}
+              href={`https://wa.me/${formatWhatsAppPhone(storeConfig.whatsappNumber)}`}
               target="_blank"
               rel="noreferrer"
               aria-label="Contactar por WhatsApp"

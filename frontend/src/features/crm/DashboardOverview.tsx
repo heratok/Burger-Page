@@ -14,6 +14,7 @@ import { OrderStatusBadge } from "@/components/ui/status-badge"
 import { Button } from "@/components/ui/button"
 import { useAppRouter } from "@/core/router/useAppRouter"
 import { ManualSaleModal } from "./ManualSaleModal"
+import { formatCurrency } from "@/lib/utils"
 
 export const DashboardOverview: React.FC = () => {
   const {
@@ -160,7 +161,7 @@ export const DashboardOverview: React.FC = () => {
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-2xl font-black tracking-tight sm:text-3xl text-slate-900 dark:text-white">
-              ${metrics.totalSales.toLocaleString()}
+              {formatCurrency(metrics.totalSales)}
             </span>
           </div>
           <div className="mt-2 flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
@@ -217,7 +218,7 @@ export const DashboardOverview: React.FC = () => {
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-2xl font-black tracking-tight sm:text-3xl text-slate-900 dark:text-white">
-              ${metrics.avgTicket.toLocaleString()}
+              {formatCurrency(metrics.avgTicket)}
             </span>
           </div>
           <div className="mt-2 flex items-center gap-1.5 text-xs text-violet-600 dark:text-violet-400">
@@ -285,7 +286,7 @@ export const DashboardOverview: React.FC = () => {
               <div key={idx} className="group relative flex flex-1 flex-col items-center gap-2">
                 {/* Tooltip on hover */}
                 <div className="pointer-events-none absolute -top-8 hidden rounded-md bg-slate-900 px-2 py-1 text-[11px] font-bold text-white shadow-md group-hover:block dark:bg-slate-800 border dark:border-slate-700">
-                  ${item.amount.toLocaleString()}
+                  {formatCurrency(item.amount)}
                 </div>
                 {/* Bar */}
                 <div className="w-full max-w-[44px] rounded-t-lg bg-slate-100 dark:bg-slate-800 overflow-hidden h-36 flex items-end">
@@ -430,7 +431,7 @@ export const DashboardOverview: React.FC = () => {
                     {ord.items.map((i) => `${i.cantidad}× ${i.name}`).join(", ")}
                   </td>
                   <td className="py-3 px-3 font-bold text-slate-900 dark:text-slate-100">
-                    ${ord.finalTotal.toLocaleString()}
+                    {formatCurrency(ord.finalTotal)}
                   </td>
                   <td className="py-3 px-3">
                     <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300 border dark:border-slate-700">

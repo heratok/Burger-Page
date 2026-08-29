@@ -4,6 +4,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import type { MenuItem } from "@/types/restaurant"
 import { useRestaurant } from "@/context/RestaurantContext"
 import { LazyImage } from "@/components/ui/LazyImage"
+import { formatCurrency } from "@/lib/utils"
 
 export interface ProductCardProps {
   product: MenuItem
@@ -59,7 +60,7 @@ export default function ProductCard({ product, onSelectProduct }: ProductCardPro
       tabIndex={0}
       onClick={onSelectProduct}
       onKeyDown={handleKeyDown}
-      aria-label={`Agregar ${product.name} al carrito, $${product.price.toLocaleString()}`}
+      aria-label={`Agregar ${product.name} al carrito, ${formatCurrency(product.price)}`}
       style={{
         backgroundColor: "var(--color-bg-elevated)",
         borderColor: "var(--color-border-subtle)",
@@ -129,7 +130,7 @@ export default function ProductCard({ product, onSelectProduct }: ProductCardPro
           style={{ color: storeConfig.primaryColor }}
           className="text-lg font-black tracking-tight"
         >
-          ${product.price.toLocaleString()}
+          {formatCurrency(product.price)}
         </span>
         <span
           aria-hidden="true"

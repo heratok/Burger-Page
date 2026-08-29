@@ -49,4 +49,30 @@ describe('Restaurant API', () => {
     expect(getResponse.statusCode).toBe(200);
     expect(getResponse.json().categories).toEqual(['Entradas', 'Platos Fuertes', 'Bebidas', 'Postres']);
   });
+
+  it('PUT /api/restaurant/categories should return 400 for empty categories array', async () => {
+    const response = await app.inject({
+      method: 'PUT',
+      url: '/api/restaurant/categories',
+      payload: {
+        categories: []
+      }
+    });
+
+    expect(response.statusCode).toBe(400);
+    const body = response.json();
+    expect(body.detail || body.message).toBeDefined();
+  });
+
+  it('PUT /api/restaurant/categories should return 400 for empty category string or invalid payload', async () => {
+    const response = await app.inject({
+      method: 'PUT',
+      url: '/api/restaurant/categories',
+      payload: {
+        categories: ['']
+      }
+    });
+
+    expect(response.statusCode).toBe(400);
+  });
 });

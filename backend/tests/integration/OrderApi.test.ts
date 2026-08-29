@@ -97,7 +97,9 @@ describe('Order API', () => {
     });
 
     expect(updateRes.statusCode).toBe(200);
-    expect(updateRes.json().message).toBe('Order status updated successfully');
+    const updated = updateRes.json();
+    expect(updated.id).toBe(order.id);
+    expect(updated.status).toBe('cooking');
   });
 
   it('PATCH /api/orders/:id/status should fail for invalid transition', async () => {
