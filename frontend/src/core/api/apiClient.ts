@@ -111,6 +111,40 @@ export class ApiClient {
       eventSource.close()
     }
   }
+
+  async login(username: string, password: string): Promise<{
+    success: boolean
+    user?: { id: string; username: string; role: string; restaurantId?: string }
+    error?: string
+  }> {
+    return this.request('/users/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    })
+  }
+
+  async createUser(data: {
+    username: string
+    password: string
+    role: 'super_admin' | 'restaurant_admin'
+    restaurantId?: string
+  }): Promise<{ id: string; username: string; role: string; restaurantId?: string }> {
+    return this.request('/users', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async listUsers(restaurantId?: string): Promise<Array<{
+    id: string
+    username: string
+    role: string
+    restaurantId?: string
+    createdAt: string
+  }>> {
+    const query = restaurantId ? `?restaurantId=${restaurantId}` : ''
+    return this.request(`/users${query}`)
+  }
 }
 
 export const apiClient = new ApiClient()

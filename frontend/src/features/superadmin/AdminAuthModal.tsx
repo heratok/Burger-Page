@@ -13,8 +13,10 @@ import {
   ShoppingBag,
   Users,
   KeyRound,
+  User,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { apiClient } from "@/core/api/apiClient"
 
 interface AdminAuthModalProps {
   isOpen: boolean
@@ -25,6 +27,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
   const { login } = useRestaurant()
   const { navigateTo } = useAppRouter()
 
+  const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [errorMsg, setErrorMsg] = useState("")
@@ -37,25 +40,45 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
     navigateTo("/")
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setErrorMsg("")
     setIsLoading(true)
 
-    const result = login(password)
+    try {
+      const result = await apiClient.login(username.trim(), password.trim())
 
-    if (!result.success) {
-      setErrorMsg(result.error || "Contraseña incorrecta. Verifica tu clave de acceso.")
-      setIsLoading(false)
-    } else {
-      setPassword("")
-      setIsLoading(false)
-      if (window.location.pathname.startsWith("/admin")) {
-        navigateTo(window.location.pathname)
-      } else {
-        navigateTo("/admin")
+      if (result.success && result.user) {
+        login(password)
+        setUsername("")
+        setPassword("")
+        if (window.location.pathname.startsWith("/admin")) {
+          navigateTo(window.location.pathname)
+        } else {
+          navigateTo("/admin")
+        }
+        setIsLoading(false)
+        return
       }
+      setErrorMsg(result.error || "Credenciales incorrectas")
+    } catch {
+      // Fallback to legacy password-only login
+      const legacyResult = login(password)
+      if (legacyResult.success) {
+        setPassword("")
+        setUsername("")
+        if (window.location.pathname.startsWith("/admin")) {
+          navigateTo(window.location.pathname)
+        } else {
+          navigateTo("/admin")
+        }
+        setIsLoading(false)
+        return
+      }
+      setErrorMsg(legacyResult.error || "Credenciales incorrectas. Verifica tu usuario y contraseña.")
     }
+
+    setIsLoading(false)
   }
 
   return (
@@ -165,12 +188,32 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
                 Iniciar Sesión
               </h2>
               <p className="text-xs text-slate-400 mt-1 max-w-xs">
-                Ingresá tu contraseña para acceder a tu panel de administración
+                Ingresá tus credenciales para acceder al panel de administración
               </p>
             </div>
 
-            {/* Zero-Knowledge Universal Form */}
+            {/* Login Form */}
             <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold mb-1.5 text-slate-300">
+                  Usuario
+                </label>
+                <div className="relative">
+                  <User className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    required
+                    autoFocus
+                    value={username}
+                    onChange={(e) => {
+                      setUsername(e.target.value)
+                      setErrorMsg("")
+                    }}
+                    placeholder="Tu nombre de usuario"
+                    className="w-full rounded-2xl border border-slate-700/80 bg-slate-800/90 py-3 pl-10 pr-4 text-xs text-white placeholder-slate-500 transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 font-medium"
+                  />
+                </div>
+              </div>
               <div>
                 <label className="block text-xs font-bold mb-1.5 text-slate-300">
                   Contraseña de Acceso
@@ -180,7 +223,6 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
                   <input
                     type={showPassword ? "text" : "password"}
                     required
-                    autoFocus
                     value={password}
                     onChange={(e) => {
                       setPassword(e.target.value)

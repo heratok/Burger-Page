@@ -161,6 +161,7 @@ export type UserRole = "super" | "restaurant" | "guest"
 export interface AdminSession {
   role: UserRole
   restaurantId?: string
+  username?: string
   authenticatedAt?: string
 }
 

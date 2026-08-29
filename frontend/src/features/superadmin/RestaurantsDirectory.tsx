@@ -6,9 +6,11 @@ import {
   Trash2,
   Search,
   Eye,
+  UserPlus,
 } from "lucide-react"
 import { GlobalPlatformSummary } from "./GlobalPlatformSummary"
 import { CreateRestaurantModal } from "./CreateRestaurantModal"
+import { CreateUserModal } from "./CreateUserModal"
 import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
 import { Pagination } from "@/components/ui/pagination"
 import { useAppRouter } from "@/core/router/useAppRouter"
@@ -28,6 +30,7 @@ export const RestaurantsDirectory: React.FC = () => {
 
   const [searchTerm, setSearchTerm] = useState("")
   const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [isCreateUserOpen, setIsCreateUserOpen] = useState(false)
   const [restaurantToDelete, setRestaurantToDelete] = useState<RestaurantRecord | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
@@ -89,8 +92,18 @@ export const RestaurantsDirectory: React.FC = () => {
             />
           </div>
 
-          <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
-            Mostrando <strong>{filteredRestaurants.length}</strong> de {restaurants.length} restaurantes
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setIsCreateUserOpen(true)}
+              className="flex items-center gap-1.5 rounded-xl bg-violet-600 px-3 py-2 text-xs font-bold text-white shadow-xs hover:bg-violet-700 transition-colors"
+            >
+              <UserPlus className="size-3.5" />
+              <span>Crear Usuario</span>
+            </button>
+            <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
+              Mostrando <strong>{filteredRestaurants.length}</strong> de {restaurants.length} restaurantes
+            </div>
           </div>
         </div>
 
@@ -245,6 +258,11 @@ export const RestaurantsDirectory: React.FC = () => {
       <CreateRestaurantModal
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
+      />
+
+      <CreateUserModal
+        isOpen={isCreateUserOpen}
+        onClose={() => setIsCreateUserOpen(false)}
       />
 
       <ConfirmDeleteModal

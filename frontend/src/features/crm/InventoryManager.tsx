@@ -381,7 +381,9 @@ export const InventoryManager: React.FC = () => {
             className={`flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-bold transition-all ${
               activeTab === "inventory"
                 ? "bg-indigo-600 text-white shadow-xs"
-                : "text-slate-400 hover:text-white"
+                : isDark
+                ? "text-slate-400 hover:text-white"
+                : "text-slate-600 hover:text-slate-900"
             }`}
           >
             <Boxes className="size-3.5" />
@@ -399,7 +401,9 @@ export const InventoryManager: React.FC = () => {
             className={`flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-bold transition-all ${
               activeTab === "suppliers"
                 ? "bg-indigo-600 text-white shadow-xs"
-                : "text-slate-400 hover:text-white"
+                : isDark
+                ? "text-slate-400 hover:text-white"
+                : "text-slate-600 hover:text-slate-900"
             }`}
           >
             <Truck className="size-3.5" />
@@ -606,7 +610,11 @@ export const InventoryManager: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => adjustStock(item.id, -1)}
-                                className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-1 text-[11px] font-bold text-slate-200 hover:bg-slate-700"
+                                className={`rounded-lg border px-2 py-1 text-[11px] font-bold transition-colors ${
+                                  isDark
+                                    ? "border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700"
+                                    : "border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200"
+                                }`}
                                 title="Descontar 1"
                               >
                                 -1
@@ -770,7 +778,12 @@ export const InventoryManager: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => openEditSupplierModal(sup)}
-                            className="rounded-lg p-1 text-slate-400 hover:bg-slate-800 hover:text-white"
+                            className={`rounded-lg p-1 transition-colors ${
+                              isDark
+                                ? "text-slate-400 hover:bg-slate-800 hover:text-white"
+                                : "text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                            }`}
+                            title="Editar proveedor"
                           >
                             <Edit2 className="size-3.5" />
                           </button>
@@ -786,29 +799,39 @@ export const InventoryManager: React.FC = () => {
                       </div>
 
                       {/* Contact details */}
-                      <div className="space-y-1 text-xs text-slate-400 my-3">
+                      <div className="space-y-1.5 text-xs my-3">
                         <div className="flex items-center gap-2">
-                          <span className="text-slate-500">Contacto:</span>
-                          <span className="font-medium text-slate-300">
+                          <span className={isDark ? "text-slate-400" : "text-slate-500"}>Contacto:</span>
+                          <span className={`font-semibold ${isDark ? "text-slate-200" : "text-slate-800"}`}>
                             {sup.contactName || "No especificado"}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Phone className="size-3 text-slate-500" />
-                          <span className="font-mono text-slate-300">{sup.phone}</span>
+                          <Phone className={`size-3 ${isDark ? "text-slate-400" : "text-slate-500"}`} />
+                          <span className={`font-mono font-medium ${isDark ? "text-slate-200" : "text-slate-800"}`}>{sup.phone}</span>
                         </div>
                         {sup.notes && (
-                          <p className="text-[11px] text-slate-400/90 italic mt-2 bg-slate-900/40 p-2 rounded-xl border border-slate-800">
+                          <p
+                            className={`text-[11px] italic mt-2.5 p-2.5 rounded-xl border transition-colors ${
+                              isDark
+                                ? "border-slate-800 bg-slate-900/60 text-slate-300"
+                                : "border-slate-200 bg-slate-50 text-slate-700 font-medium"
+                            }`}
+                          >
                             &quot;{sup.notes}&quot;
                           </p>
                         )}
                       </div>
 
                       {/* Supplied Items Summary */}
-                      <div className="pt-2 border-t border-slate-800/60 text-[11px] text-slate-400 flex items-center justify-between">
+                      <div
+                        className={`pt-2.5 border-t text-[11px] flex items-center justify-between ${
+                          isDark ? "border-slate-800/60 text-slate-400" : "border-slate-100 text-slate-500"
+                        }`}
+                      >
                         <span>{suppliedItems.length} insumos provistos</span>
                         {criticalItems.length > 0 && (
-                          <span className="text-amber-400 font-bold flex items-center gap-1">
+                          <span className="text-amber-500 font-bold flex items-center gap-1">
                             <AlertTriangle className="size-3" />
                             {criticalItems.length} por reponer
                           </span>
@@ -817,7 +840,7 @@ export const InventoryManager: React.FC = () => {
                     </div>
 
                     {/* WhatsApp Action Button */}
-                    <div className="mt-4 pt-3 border-t border-slate-800/60">
+                    <div className={`mt-4 pt-3 border-t ${isDark ? "border-slate-800/60" : "border-slate-100"}`}>
                       <Button
                         type="button"
                         onClick={() => handleSendSupplierWhatsApp(sup)}

@@ -125,6 +125,10 @@ test.describe('Kanban Board - High Load & Responsiveness Suite', () => {
     await page.goto('/admin/orders');
 
     // 1. Authenticate with tenant password
+    const userInput = page.getByPlaceholder(/Tu nombre de usuario/i);
+    await expect(userInput).toBeVisible();
+    await userInput.fill('admin_craft');
+
     const passwordInput = page.locator('input[type="password"]');
     await expect(passwordInput).toBeVisible();
     await passwordInput.fill('craft');
@@ -185,6 +189,10 @@ test.describe('Kanban Board - High Load & Responsiveness Suite', () => {
     await page.goto('/admin/orders');
 
     // Authenticate
+    const userInput = page.getByPlaceholder(/Tu nombre de usuario/i);
+    await expect(userInput).toBeVisible();
+    await userInput.fill('admin_craft');
+
     const passwordInput = page.locator('input[type="password"]');
     await passwordInput.fill('craft');
     await page.getByRole('button', { name: /Acceder al Panel/i }).click();
@@ -217,6 +225,10 @@ test.describe('Kanban Board - High Load & Responsiveness Suite', () => {
     await page.goto('/admin/orders');
 
     // Authenticate
+    const userInput = page.getByPlaceholder(/Tu nombre de usuario/i);
+    await expect(userInput).toBeVisible();
+    await userInput.fill('admin_craft');
+
     const passwordInput = page.locator('input[type="password"]');
     await passwordInput.fill('craft');
     await page.getByRole('button', { name: /Acceder al Panel/i }).click();
@@ -242,6 +254,10 @@ test.describe('Kanban Board - High Load & Responsiveness Suite', () => {
     await page.goto('/admin/orders');
 
     // Authenticate
+    const userInput = page.getByPlaceholder(/Tu nombre de usuario/i);
+    await expect(userInput).toBeVisible();
+    await userInput.fill('admin_craft');
+
     const passwordInput = page.locator('input[type="password"]');
     await passwordInput.fill('craft');
     await page.getByRole('button', { name: /Acceder al Panel/i }).click();

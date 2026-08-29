@@ -90,6 +90,10 @@ test.describe('Menu & Categories Full CRUD & Customization E2E Suite', () => {
     await page.goto('/admin/menu');
 
     // 1. Authenticate
+    const userInput = page.getByPlaceholder(/Tu nombre de usuario/i);
+    await expect(userInput).toBeVisible();
+    await userInput.fill('admin_craft');
+
     const passwordInput = page.locator('input[type="password"]');
     await expect(passwordInput).toBeVisible();
     await passwordInput.fill('craft');

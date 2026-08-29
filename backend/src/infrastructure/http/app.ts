@@ -10,6 +10,7 @@ import { InMemoryProductRepository } from '../persistence/InMemoryProductReposit
 import { InMemoryOrderRepository } from '../persistence/InMemoryOrderRepository.js';
 import { InMemoryCustomerRepository } from '../persistence/InMemoryCustomerRepository.js';
 import { InMemoryInventoryRepository } from '../persistence/InMemoryInventoryRepository.js';
+import { InMemoryUserRepository } from '../persistence/InMemoryUserRepository.js';
 import { createSqliteDatabase } from '../persistence/sqlite/SqliteDatabase.js';
 import { SqliteRestaurantRepository } from '../persistence/sqlite/SqliteRestaurantRepository.js';
 import { SqliteProductRepository } from '../persistence/sqlite/SqliteProductRepository.js';
@@ -27,6 +28,9 @@ import { ProductRepository } from '../../domain/ports/out/ProductRepository.js';
 import { OrderRepository } from '../../domain/ports/out/OrderRepository.js';
 import { CustomerRepository } from '../../domain/ports/out/CustomerRepository.js';
 import { InventoryRepository } from '../../domain/ports/out/InventoryRepository.js';
+import { UserRepository } from '../../domain/ports/out/UserRepository.js';
+import { PasswordHasher } from '../../domain/ports/out/PasswordHasher.js';
+import { CryptoPasswordHasher } from '../security/CryptoPasswordHasher.js';
 
 
 // Use Cases
@@ -44,6 +48,9 @@ import { UpdateOrderStatusUseCase } from '../../application/use-cases/UpdateOrde
 import { ListCustomersUseCase } from '../../application/use-cases/ListCustomersUseCase.js';
 import { GetInventoryUseCase } from '../../application/use-cases/GetInventoryUseCase.js';
 import { UpdateInventoryStockUseCase } from '../../application/use-cases/UpdateInventoryStockUseCase.js';
+import { CreateUserUseCase } from '../../application/use-cases/CreateUserUseCase.js';
+import { AuthenticateUserUseCase } from '../../application/use-cases/AuthenticateUserUseCase.js';
+import { ListUsersUseCase } from '../../application/use-cases/ListUsersUseCase.js';
 
 // Controllers
 import { RestaurantController } from './controllers/RestaurantController.js';
@@ -51,6 +58,7 @@ import { ProductController } from './controllers/ProductController.js';
 import { OrderController } from './controllers/OrderController.js';
 import { CustomerController } from './controllers/CustomerController.js';
 import { InventoryController } from './controllers/InventoryController.js';
+import { UserController } from './controllers/UserController.js';
 
 // Routes
 import { restaurantRoutes } from './routes/restaurant.routes.js';
@@ -58,6 +66,7 @@ import { productRoutes } from './routes/product.routes.js';
 import { orderRoutes } from './routes/order.routes.js';
 import { customerRoutes } from './routes/customer.routes.js';
 import { inventoryRoutes } from './routes/inventory.routes.js';
+import { userRoutes } from './routes/user.routes.js';
 
 export interface AppDependencies {
   restaurantController: RestaurantController;
@@ -65,6 +74,7 @@ export interface AppDependencies {
   orderController: OrderController;
   customerController: CustomerController;
   inventoryController: InventoryController;
+  userController: UserController;
 }
 
 export type StorageDriver = 'memory' | 'sqlite' | 'supabase';
@@ -83,6 +93,7 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
   let orderRepo: OrderRepository;
   let customerRepo: CustomerRepository;
   let inventoryRepo: InventoryRepository;
+  let userRepo: UserRepository;
 
   if (selectedDriver === 'supabase') {
     try {
@@ -92,6 +103,7 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
       orderRepo = new SupabaseOrderRepository(supabaseClient);
       customerRepo = new SupabaseCustomerRepository(supabaseClient);
       inventoryRepo = new SupabaseInventoryRepository(supabaseClient);
+      userRepo = new InMemoryUserRepository(); // TODO: SupabaseUserRepository
     } catch (err) {
       console.warn('Supabase initialization failed, falling back to InMemory/SQLite:', err);
       if (process.env.DATABASE_PATH) {
@@ -101,12 +113,14 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
         orderRepo = new SqliteOrderRepository(db);
         customerRepo = new SqliteCustomerRepository(db);
         inventoryRepo = new SqliteInventoryRepository(db);
+        userRepo = new InMemoryUserRepository();
       } else {
         restaurantRepo = new InMemoryRestaurantRepository();
         productRepo = new InMemoryProductRepository();
         orderRepo = new InMemoryOrderRepository();
         customerRepo = new InMemoryCustomerRepository();
         inventoryRepo = new InMemoryInventoryRepository();
+        userRepo = new InMemoryUserRepository();
       }
     }
   } else if (selectedDriver === 'sqlite') {
@@ -116,12 +130,14 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
     orderRepo = new SqliteOrderRepository(db);
     customerRepo = new SqliteCustomerRepository(db);
     inventoryRepo = new SqliteInventoryRepository(db);
+    userRepo = new InMemoryUserRepository();
   } else {
     restaurantRepo = new InMemoryRestaurantRepository();
     productRepo = new InMemoryProductRepository();
     orderRepo = new InMemoryOrderRepository();
     customerRepo = new InMemoryCustomerRepository();
     inventoryRepo = new InMemoryInventoryRepository();
+    userRepo = new InMemoryUserRepository();
   }
 
   // Use Cases
@@ -144,13 +160,19 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
   const getInventory = new GetInventoryUseCase(inventoryRepo);
   const updateInventoryStock = new UpdateInventoryStockUseCase(inventoryRepo);
 
+  const hasher: PasswordHasher = new CryptoPasswordHasher();
+  const createUser = new CreateUserUseCase(userRepo, hasher);
+  const authenticateUser = new AuthenticateUserUseCase(userRepo, hasher);
+  const listUsersUC = new ListUsersUseCase(userRepo);
+
   // Controllers
   return {
     restaurantController: new RestaurantController(getRestaurant, updateRestaurantCategories),
     productController: new ProductController(listProducts, getProductById, createProduct, updateProduct, deleteProduct),
     orderController: new OrderController(listOrders, getOrderById, createOrder, updateOrderStatus),
     customerController: new CustomerController(listCustomers),
-    inventoryController: new InventoryController(getInventory, updateInventoryStock)
+    inventoryController: new InventoryController(getInventory, updateInventoryStock),
+    userController: new UserController(createUser, authenticateUser, listUsersUC),
   };
 }
 
@@ -191,6 +213,7 @@ export function buildApp(
         { name: 'Orders', description: 'Order lifecycle management and checkout' },
         { name: 'Inventory', description: 'Stock levels, suppliers, and ingredients' },
         { name: 'Customers', description: 'Customer profiles and loyalty tiers' },
+        { name: 'Users', description: 'User management and authentication' },
         { name: 'Health', description: 'Server health status' },
       ]
     }
@@ -228,6 +251,7 @@ export function buildApp(
     api.register(orderRoutes, { prefix: '/orders', controller: deps.orderController });
     api.register(customerRoutes, { prefix: '/customers', controller: deps.customerController });
     api.register(inventoryRoutes, { prefix: '/inventory', controller: deps.inventoryController });
+    api.register(userRoutes, { prefix: '/users', controller: deps.userController });
   }, { prefix: '/api' });
 
   return app;

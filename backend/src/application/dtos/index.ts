@@ -24,3 +24,21 @@ export interface CreateOrderDTO {
 export interface UpdateOrderStatusDTO {
   status: 'pending' | 'cooking' | 'delivering' | 'delivered' | 'cancelled';
 }
+
+export interface CreateUserDTO {
+  username: string;
+  password: string;
+  role: 'super_admin' | 'restaurant_admin';
+  restaurantId?: string;
+}
+
+export interface AuthResult {
+  success: boolean;
+  user?: {
+    id: string;
+    username: string;
+    role: 'super_admin' | 'restaurant_admin';
+    restaurantId?: string;
+  };
+  error?: string;
+}
