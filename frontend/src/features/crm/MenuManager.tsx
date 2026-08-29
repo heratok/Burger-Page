@@ -168,7 +168,19 @@ export const MenuManager: React.FC = () => {
 
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!productForm.name.trim()) return
+    const trimmedName = productForm.name.trim()
+    if (!trimmedName) {
+      toast.error("El nombre del producto no puede estar vacío")
+      return
+    }
+    if (productForm.price <= 0 || isNaN(productForm.price)) {
+      toast.error("El precio del producto debe ser mayor a 0")
+      return
+    }
+    if (!productForm.category) {
+      toast.error("Debes seleccionar una categoría válida")
+      return
+    }
 
     let finalSrc = productForm.src
     if (finalSrc && finalSrc.startsWith("data:")) {
@@ -183,7 +195,7 @@ export const MenuManager: React.FC = () => {
       }
     }
 
-    const payload = { ...productForm, src: finalSrc }
+    const payload = { ...productForm, name: trimmedName, src: finalSrc }
     if (editingProduct) {
       updateProduct(editingProduct.id, payload)
     } else {
@@ -206,11 +218,21 @@ export const MenuManager: React.FC = () => {
 
   const handleSaveAddition = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!additionForm.name.trim()) return
+    const trimmedName = additionForm.name.trim()
+    if (!trimmedName) {
+      toast.error("El nombre del adicional no puede estar vacío")
+      return
+    }
+    if (additionForm.price < 0 || isNaN(additionForm.price)) {
+      toast.error("El precio del adicional no puede ser negativo")
+      return
+    }
+
+    const payload = { ...additionForm, name: trimmedName }
     if (editingAddition) {
-      updateAddition(editingAddition.id, additionForm)
+      updateAddition(editingAddition.id, payload)
     } else {
-      addAddition(additionForm)
+      addAddition(payload)
     }
     setIsAddModalOpen(false)
   }

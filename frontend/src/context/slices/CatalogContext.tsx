@@ -190,6 +190,10 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const existing = current.categories && current.categories.length > 0
           ? current.categories
           : Array.from(new Set(current.products.map((p) => p.category).filter(Boolean)))
+        if (existing.some((c) => c.toLowerCase() === trimmedNew.toLowerCase() && c.toLowerCase() !== oldName.toLowerCase())) {
+          toast.warning(`Ya existe una categoría llamada "${trimmedNew}"`)
+          return current
+        }
         const nextCategories = existing.map((c) => (c === oldName ? trimmedNew : c))
         const nextProducts = current.products.map((p) => (p.category === oldName ? { ...p, category: trimmedNew } : p))
         apiClient.updateCategories(nextCategories, current.slug).catch((err) => {
