@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useState, Suspense } from "react"
 import { useRestaurant } from "@/context/RestaurantContext"
 import {
   LayoutDashboard,
@@ -25,6 +25,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { AdminSwitcher } from "@/features/superadmin"
 import { useAppRouter } from "@/core/router/useAppRouter"
+import { AdminContentFallback } from "@/components/ui/LoadingFallbacks"
 import { ManualSaleModal } from "./ManualSaleModal"
 
 interface AdminLayoutProps {
@@ -396,7 +397,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
           {/* Content Body */}
           <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
-            {children}
+            <Suspense fallback={<AdminContentFallback isDark={isDark} />}>
+              {children}
+            </Suspense>
           </main>
         </div>
       </div>
