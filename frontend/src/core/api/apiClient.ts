@@ -15,7 +15,10 @@ export class ApiClient {
   private baseUrl: string
 
   constructor(config?: ApiClientConfig) {
-    const rawUrl = import.meta.env.BACKEND_API_URL || import.meta.env.VITE_API_URL
+    const rawUrl =
+      import.meta.env.PUBLIC_API_URL ||
+      import.meta.env.BACKEND_API_URL ||
+      import.meta.env.VITE_API_URL
     this.baseUrl = config?.baseUrl || (rawUrl ? rawUrl.replace(/\/$/, '') : '/api')
   }
 

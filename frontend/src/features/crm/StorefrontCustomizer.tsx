@@ -50,6 +50,7 @@ export const StorefrontCustomizer: React.FC = () => {
     products,
     setActiveView,
     adminTheme,
+    activeRestaurant,
   } = useRestaurant()
 
   const {

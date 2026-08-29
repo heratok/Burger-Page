@@ -22,7 +22,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
 import { Pagination } from "@/components/ui/pagination"
-import { formatCurrency, cleanPhoneNumber, formatWhatsAppPhone } from "@/lib/utils"
+import { formatCurrency } from "@/lib/utils"
 import { buildWhatsAppUrl } from "@/features/cart"
 
 const CATEGORY_LABELS: Record<InventoryCategory, string> = {
@@ -694,7 +694,7 @@ export const InventoryManager: React.FC = () => {
                   totalItems={filteredInventory.length}
                   pageSize={pageSize}
                   onPageChange={setCurrentPage}
-                  onPageSizeChange={(size) => {
+                  onPageSizeChange={(size: number) => {
                     setPageSize(size)
                     setCurrentPage(1)
                   }}

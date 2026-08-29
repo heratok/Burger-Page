@@ -5,7 +5,7 @@ import path from 'node:path'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  envPrefix: ['VITE_', 'BACKEND_'],
+  envPrefix: ['PUBLIC_', 'VITE_', 'BACKEND_'],
   resolve: {
     alias: { '@': path.resolve(import.meta.dirname, './src') },
   },

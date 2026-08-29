@@ -26,7 +26,7 @@ export interface UploadImageOptions {
 
 /**
  * Uploads an optimized WebP image directly to Supabase Storage:
- * - If Supabase credentials (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY) are configured,
+ * - If Supabase credentials (PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY) are configured,
  *   uploads to the bucket (default 'image') and returns the permanent CDN public URL.
  * - If credentials are not present, gracefully returns the Data URL for local/offline usage.
  */
@@ -37,13 +37,17 @@ export async function uploadImageToStorage(
   const supabaseUrl =
     options.supabaseUrl !== undefined
       ? options.supabaseUrl
-      : import.meta.env.VITE_SUPABASE_URL || (typeof process !== 'undefined' ? process.env?.VITE_SUPABASE_URL : '');
+      : import.meta.env.PUBLIC_SUPABASE_URL ||
+        import.meta.env.VITE_SUPABASE_URL ||
+        '';
   const supabaseKey =
     options.supabaseKey !== undefined
       ? options.supabaseKey
-      : import.meta.env.VITE_SUPABASE_ANON_KEY ||
+      : import.meta.env.PUBLIC_SUPABASE_ANON_KEY ||
+        import.meta.env.PUBLIC_SUPABASE_KEY ||
+        import.meta.env.VITE_SUPABASE_ANON_KEY ||
         import.meta.env.VITE_SUPABASE_KEY ||
-        (typeof process !== 'undefined' ? process.env?.VITE_SUPABASE_ANON_KEY : '');
+        '';
 
   // If no Supabase config is set or imageSource is already a full http URL, return as is
   if (!supabaseUrl || !supabaseKey) {

@@ -76,7 +76,7 @@ export async function optimizeImageToWebP(
       }
     };
 
-    img.onerror = (err) => {
+    img.onerror = () => {
       URL.revokeObjectURL(objectUrl);
       reject(new Error('No se pudo procesar la imagen seleccionada'));
     };
