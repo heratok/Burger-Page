@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useState, useRef } from "react"
 import { useRestaurant } from "@/context/RestaurantContext"
 import { useMenuFilter } from "./hooks/useMenuFilter"
 import type { MenuItem, AdditionItem } from "@/types/restaurant"
@@ -13,11 +13,15 @@ import {
   LayoutGrid,
   List,
   Tags,
+  Upload,
+  Image as ImageIcon,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
 import { Pagination } from "@/components/ui/pagination"
+import { toast } from "sonner"
+import { optimizeImageToWebP } from "@/lib/imageOptimizer"
 
 export const MenuManager: React.FC = () => {
   const {
@@ -90,6 +94,36 @@ export const MenuManager: React.FC = () => {
     price: 3000,
     available: true,
   })
+
+  const productFileInputRef = useRef<HTMLInputElement>(null)
+  const [isOptimizingImage, setIsOptimizingImage] = useState(false)
+
+  const handleProductImageFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("La imagen original debe ser menor a 10MB")
+      return
+    }
+
+    try {
+      setIsOptimizingImage(true)
+      const optimizedWebP = await optimizeImageToWebP(file, {
+        maxWidth: 800,
+        maxHeight: 600,
+        quality: 0.82,
+      })
+      setProductForm((prev) => ({ ...prev, src: optimizedWebP }))
+      toast.success("Foto optimizada y cargada en formato WebP")
+    } catch (err: any) {
+      console.error("Failed to optimize product image:", err)
+      toast.error("No se pudo procesar la imagen seleccionada")
+    } finally {
+      setIsOptimizingImage(false)
+      e.target.value = ""
+    }
+  }
 
   const isDark = adminTheme === "dark"
 
@@ -696,18 +730,80 @@ export const MenuManager: React.FC = () => {
 
               <div>
                 <label className="font-semibold block mb-1 text-slate-800 dark:text-slate-200">
-                  URL de Imagen (Unsplash o enlace directo)
+                  Foto del Producto
                 </label>
+
                 <input
-                  type="url"
-                  value={productForm.src}
-                  onChange={(e) => setProductForm({ ...productForm, src: e.target.value })}
-                  placeholder="https://..."
-                  className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  ref={productFileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/avif"
+                  onChange={handleProductImageFile}
+                  className="hidden"
                 />
-                {productForm.src && (
-                  <div className="mt-2 h-24 w-full overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                    <img src={productForm.src} alt="Preview" className="size-full object-cover" />
+
+                {productForm.src ? (
+                  <div className="relative overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 p-2.5 space-y-2">
+                    <div className="relative h-36 w-full overflow-hidden rounded-lg bg-slate-900 border border-slate-200/50 dark:border-slate-700">
+                      <img src={productForm.src} alt="Preview" className="size-full object-cover" />
+                      <div className="absolute top-2 left-2 flex items-center gap-1 rounded-md bg-black/75 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur-xs">
+                        <Sparkles className="size-3 text-emerald-400" />
+                        <span>Vista Previa (WebP Optimizado)</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 pt-1">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={isOptimizingImage}
+                        onClick={() => productFileInputRef.current?.click()}
+                        className="gap-1.5 text-xs font-semibold cursor-pointer"
+                      >
+                        <Upload className="size-3.5 text-indigo-500" />
+                        <span>{isOptimizingImage ? "Procesando..." : "Cambiar Foto"}</span>
+                      </Button>
+                      <button
+                        type="button"
+                        onClick={() => setProductForm({ ...productForm, src: "" })}
+                        className="text-xs text-rose-500 hover:text-rose-600 font-semibold px-2 py-1 cursor-pointer"
+                      >
+                        Quitar Foto
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div
+                      onClick={() => !isOptimizingImage && productFileInputRef.current?.click()}
+                      className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40 p-5 text-center hover:border-indigo-500 dark:hover:border-indigo-400 cursor-pointer transition-all"
+                    >
+                      <div className="rounded-full bg-indigo-50 dark:bg-indigo-950/60 p-2 text-indigo-600 dark:text-indigo-400">
+                        <Upload className="size-4" />
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                          {isOptimizingImage ? "Optimizando a WebP..." : "Subir foto desde tu teléfono o PC"}
+                        </span>
+                        <p className="text-[10px] text-slate-400 mt-0.5">
+                          Se comprime automáticamente a formato WebP ultraliviano
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-1">
+                      <div className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
+                      <span className="text-[10px] uppercase font-bold text-slate-400">o ingresa una URL</span>
+                      <div className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
+                    </div>
+
+                    <input
+                      type="url"
+                      value={productForm.src}
+                      onChange={(e) => setProductForm({ ...productForm, src: e.target.value })}
+                      placeholder="https://images.unsplash.com/..."
+                      className="w-full rounded-xl border border-slate-300 bg-white p-2 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white text-xs"
+                    />
                   </div>
                 )}
               </div>

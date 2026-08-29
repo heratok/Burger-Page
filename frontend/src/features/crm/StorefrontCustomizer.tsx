@@ -28,6 +28,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { toast } from "sonner"
+import { optimizeImageToWebP } from "@/lib/imageOptimizer"
 import { useCustomizerDraft } from "./hooks/useCustomizerDraft"
 import {
   getRadiusClass,
@@ -63,26 +64,35 @@ export const StorefrontCustomizer: React.FC = () => {
   const logoInputRef = useRef<HTMLInputElement>(null)
   const bannerInputRef = useRef<HTMLInputElement>(null)
 
-  const handleImageUpload = (
+  const handleImageUpload = async (
     e: React.ChangeEvent<HTMLInputElement>,
     field: "logoUrl" | "bannerUrl"
   ) => {
     const file = e.target.files?.[0]
     if (!file) return
 
-    if (file.size > 3 * 1024 * 1024) {
-      toast.error("La imagen debe ser menor a 3MB")
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("La imagen original debe ser menor a 10MB")
       return
     }
 
-    const reader = new FileReader()
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        setDraft((prev) => ({ ...prev, [field]: reader.result as string }))
-        toast.success("Foto cargada exitosamente")
-      }
+    try {
+      const isLogo = field === "logoUrl"
+      const optimizedWebP = await optimizeImageToWebP(file, {
+        maxWidth: isLogo ? 400 : 1200,
+        maxHeight: isLogo ? 400 : 600,
+        quality: isLogo ? 0.85 : 0.82,
+      })
+
+      setDraft((prev) => ({ ...prev, [field]: optimizedWebP }))
+      toast.success(isLogo ? "Logo optimizado y cargado en WebP" : "Foto de portada optimizada en WebP")
+    } catch (err: any) {
+      console.error("Image optimization failed:", err)
+      toast.error("No se pudo procesar la imagen seleccionada")
+    } finally {
+      // Clear input value so same file can be re-selected if needed
+      e.target.value = ""
     }
-    reader.readAsDataURL(file)
   }
 
   return (
