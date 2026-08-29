@@ -15,6 +15,8 @@ import {
   Tags,
   Upload,
   Image as ImageIcon,
+  Eye,
+  Maximize2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
@@ -23,6 +25,7 @@ import { Pagination } from "@/components/ui/pagination"
 import { toast } from "sonner"
 import { optimizeImageToWebP } from "@/lib/imageOptimizer"
 import { uploadImageToStorage } from "@/core/storage/supabaseStorage"
+import { LazyImage } from "@/components/ui/LazyImage"
 
 export const MenuManager: React.FC = () => {
   const {
@@ -99,6 +102,7 @@ export const MenuManager: React.FC = () => {
 
   const productFileInputRef = useRef<HTMLInputElement>(null)
   const [isOptimizingImage, setIsOptimizingImage] = useState(false)
+  const [previewFitMode, setPreviewFitMode] = useState<"cover" | "contain">("cover")
 
   const handleProductImageFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -386,12 +390,13 @@ export const MenuManager: React.FC = () => {
                 >
                   {/* Image with overlay tags */}
                   <div className="relative aspect-video w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
-                    <img
+                    <LazyImage
                       src={product.src}
                       alt={product.name}
+                      containerClassName="size-full"
                       className="size-full object-cover transition duration-300 group-hover:scale-105"
                     />
-                    <div className="absolute top-2.5 left-2.5 flex flex-wrap gap-1.5">
+                    <div className="absolute top-2.5 left-2.5 flex flex-wrap gap-1.5 z-10">
                       <span className="rounded-md bg-black/75 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur-xs">
                         {product.category}
                       </span>
@@ -492,10 +497,11 @@ export const MenuManager: React.FC = () => {
                     >
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-3">
-                          <img
+                          <LazyImage
                             src={prod.src}
-                            alt=""
-                            className="size-10 rounded-lg object-cover bg-slate-100 dark:bg-slate-800 border dark:border-slate-700"
+                            alt={prod.name}
+                            containerClassName="size-10 rounded-lg shrink-0 border dark:border-slate-700 bg-slate-100 dark:bg-slate-800"
+                            className="size-full object-cover"
                           />
                           <div>
                             <div className="font-bold text-slate-900 dark:text-white">{prod.name}</div>
@@ -758,15 +764,58 @@ export const MenuManager: React.FC = () => {
                 />
 
                 {productForm.src ? (
-                  <div className="relative overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 p-2.5 space-y-2">
-                    <div className="relative h-36 w-full overflow-hidden rounded-lg bg-slate-900 border border-slate-200/50 dark:border-slate-700">
-                      <img src={productForm.src} alt="Preview" className="size-full object-cover" />
-                      <div className="absolute top-2 left-2 flex items-center gap-1 rounded-md bg-black/75 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur-xs">
-                        <Sparkles className="size-3 text-emerald-400" />
-                        <span>Vista Previa (WebP Optimizado)</span>
+                  <div className="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-850 p-3 space-y-3">
+                    {/* Viewport Header with Fit Controls */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-200">
+                        <Sparkles className="size-3.5 text-emerald-500" />
+                        <span>Previsualización del Plato</span>
+                      </div>
+                      <div className="flex items-center gap-1 rounded-lg bg-slate-200/80 p-0.5 dark:bg-slate-800 text-[11px] font-semibold">
+                        <button
+                          type="button"
+                          onClick={() => setPreviewFitMode("cover")}
+                          className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${
+                            previewFitMode === "cover"
+                              ? "bg-white text-indigo-600 shadow-xs dark:bg-slate-700 dark:text-white"
+                              : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                          }`}
+                          title="Ver cómo se recortará en la tarjeta del menú"
+                        >
+                          Encuadre Tarjeta
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPreviewFitMode("contain")}
+                          className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${
+                            previewFitMode === "contain"
+                              ? "bg-white text-indigo-600 shadow-xs dark:bg-slate-700 dark:text-white"
+                              : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                          }`}
+                          title="Ver la imagen completa sin recortes"
+                        >
+                          Foto Completa
+                        </button>
                       </div>
                     </div>
 
+                    {/* Generous Preview Canvas */}
+                    <div className="relative h-56 sm:h-64 w-full overflow-hidden rounded-xl bg-slate-950 border border-slate-200/60 dark:border-slate-700/80 flex items-center justify-center">
+                      <LazyImage
+                        src={productForm.src}
+                        alt="Vista previa del producto"
+                        containerClassName="size-full flex items-center justify-center"
+                        className={`size-full transition-all duration-200 ${
+                          previewFitMode === "cover" ? "object-cover" : "object-contain p-2"
+                        }`}
+                      />
+                      <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1.5 rounded-lg bg-black/80 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur-md border border-white/10">
+                        <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
+                        <span>Formato WebP Optimizado</span>
+                      </div>
+                    </div>
+
+                    {/* Action controls */}
                     <div className="flex items-center justify-between gap-2 pt-1">
                       <Button
                         type="button"
@@ -777,7 +826,7 @@ export const MenuManager: React.FC = () => {
                         className="gap-1.5 text-xs font-semibold cursor-pointer"
                       >
                         <Upload className="size-3.5 text-indigo-500" />
-                        <span>{isOptimizingImage ? "Procesando..." : "Cambiar Foto"}</span>
+                        <span>{isOptimizingImage ? "Optimizando..." : "Cambiar Foto"}</span>
                       </Button>
                       <button
                         type="button"

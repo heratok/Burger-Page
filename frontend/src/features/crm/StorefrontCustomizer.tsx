@@ -30,6 +30,7 @@ import { Switch } from "@/components/ui/switch"
 import { toast } from "sonner"
 import { optimizeImageToWebP } from "@/lib/imageOptimizer"
 import { uploadImageToStorage } from "@/core/storage/supabaseStorage"
+import { LazyImage } from "@/components/ui/LazyImage"
 import { useCustomizerDraft } from "./hooks/useCustomizerDraft"
 import {
   getRadiusClass,
@@ -345,10 +346,11 @@ export const StorefrontCustomizer: React.FC = () => {
                 <div className="flex items-center gap-3">
                   {draft.logoUrl ? (
                     <div className="relative size-16 shrink-0">
-                      <img
+                      <LazyImage
                         src={draft.logoUrl}
                         alt="Logo preview"
-                        className="size-full rounded-2xl object-cover ring-2 ring-indigo-500/40 shadow-xs"
+                        containerClassName="size-full rounded-2xl ring-2 ring-indigo-500/40 shadow-xs"
+                        className="size-full object-cover"
                       />
                     </div>
                   ) : (
@@ -407,11 +409,16 @@ export const StorefrontCustomizer: React.FC = () => {
 
                 {draft.bannerUrl && (
                   <div className="relative h-24 w-full overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs">
-                    <img src={draft.bannerUrl} alt="Banner Preview" className="size-full object-cover" />
+                    <LazyImage
+                      src={draft.bannerUrl}
+                      alt="Banner Preview"
+                      containerClassName="size-full"
+                      className="size-full object-cover"
+                    />
                     <button
                       type="button"
                       onClick={() => setDraft((prev) => ({ ...prev, bannerUrl: "" }))}
-                      className="absolute top-2 right-2 rounded-lg bg-black/70 p-1.5 text-white hover:bg-rose-600 transition-colors cursor-pointer"
+                      className="absolute top-2 right-2 z-10 rounded-lg bg-black/70 p-1.5 text-white hover:bg-rose-600 transition-colors cursor-pointer"
                       title="Eliminar foto de portada"
                     >
                       <Trash2 className="size-3.5" />
@@ -934,10 +941,11 @@ export const StorefrontCustomizer: React.FC = () => {
               >
                 <div className="flex items-center gap-2.5">
                   {draft.logoUrl ? (
-                    <img
+                    <LazyImage
                       src={draft.logoUrl}
                       alt="Logo"
-                      className="size-8 rounded-full object-cover border"
+                      containerClassName="size-8 rounded-full border shrink-0"
+                      className="size-full object-cover"
                       style={{ borderColor: draft.primaryColor }}
                     />
                   ) : (
@@ -975,8 +983,13 @@ export const StorefrontCustomizer: React.FC = () => {
               {/* Simulated Hero Banner */}
               {draft.showBanner && draft.bannerUrl && (
                 <div className="relative h-28 w-full overflow-hidden">
-                  <img src={draft.bannerUrl} alt="Banner" className="size-full object-cover" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end p-3">
+                  <LazyImage
+                    src={draft.bannerUrl}
+                    alt="Banner"
+                    containerClassName="size-full"
+                    className="size-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end p-3 z-10">
                     <span className="text-xs font-bold text-white">
                       {draft.tagline}
                     </span>
@@ -1010,11 +1023,16 @@ export const StorefrontCustomizer: React.FC = () => {
                         className={`overflow-hidden transition-all ${cardRadiusClass} ${cardStyleClass} flex flex-col`}
                       >
                         <div className="relative aspect-video w-full overflow-hidden bg-slate-800/20">
-                          <img src={p.src} alt={p.name} className="size-full object-cover" />
+                          <LazyImage
+                            src={p.src}
+                            alt={p.name}
+                            containerClassName="size-full"
+                            className="size-full object-cover"
+                          />
                           {draft.showBadges && p.isPopular && (
                             <span
                               style={{ backgroundColor: draft.primaryColor }}
-                              className="absolute top-1.5 left-1.5 rounded px-1.5 py-0.5 text-[9px] font-bold text-white shadow-xs"
+                              className="absolute top-1.5 left-1.5 rounded px-1.5 py-0.5 text-[9px] font-bold text-white shadow-xs z-10"
                             >
                               Popular
                             </span>

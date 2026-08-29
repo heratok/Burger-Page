@@ -18,6 +18,8 @@ describe('supabaseStorage - Direct-to-Storage upload & fallback', () => {
     const url = await uploadImageToStorage(mockDataUrl, {
       restaurantId: 'burger-craft',
       folder: 'products',
+      supabaseUrl: '',
+      supabaseKey: '',
     });
     expect(url).toBe(mockDataUrl);
   });

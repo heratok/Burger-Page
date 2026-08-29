@@ -3,6 +3,7 @@ import { Plus, Flame, Sparkles } from "lucide-react"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import type { MenuItem } from "@/types/restaurant"
 import { useRestaurant } from "@/context/RestaurantContext"
+import { LazyImage } from "@/components/ui/LazyImage"
 
 export interface ProductCardProps {
   product: MenuItem
@@ -69,10 +70,10 @@ export default function ProductCard({ product, onSelectProduct }: ProductCardPro
         style={{ backgroundColor: "var(--color-bg-elevated-2)" }}
         className="relative aspect-video overflow-hidden"
       >
-        <img
+        <LazyImage
           src={product.src}
           alt={product.name}
-          loading="lazy"
+          containerClassName="size-full"
           className="size-full object-cover transition duration-300 ease-out group-hover:scale-105"
         />
 

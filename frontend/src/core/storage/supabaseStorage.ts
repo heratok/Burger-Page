@@ -20,6 +20,8 @@ export interface UploadImageOptions {
   folder?: 'products' | 'branding' | 'general';
   filename?: string;
   bucketName?: string;
+  supabaseUrl?: string;
+  supabaseKey?: string;
 }
 
 /**
@@ -32,11 +34,16 @@ export async function uploadImageToStorage(
   imageSource: string | File | Blob,
   options: UploadImageOptions
 ): Promise<string> {
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || (typeof process !== 'undefined' ? process.env?.VITE_SUPABASE_URL : '');
+  const supabaseUrl =
+    options.supabaseUrl !== undefined
+      ? options.supabaseUrl
+      : import.meta.env.VITE_SUPABASE_URL || (typeof process !== 'undefined' ? process.env?.VITE_SUPABASE_URL : '');
   const supabaseKey =
-    import.meta.env.VITE_SUPABASE_ANON_KEY ||
-    import.meta.env.VITE_SUPABASE_KEY ||
-    (typeof process !== 'undefined' ? process.env?.VITE_SUPABASE_ANON_KEY : '');
+    options.supabaseKey !== undefined
+      ? options.supabaseKey
+      : import.meta.env.VITE_SUPABASE_ANON_KEY ||
+        import.meta.env.VITE_SUPABASE_KEY ||
+        (typeof process !== 'undefined' ? process.env?.VITE_SUPABASE_ANON_KEY : '');
 
   // If no Supabase config is set or imageSource is already a full http URL, return as is
   if (!supabaseUrl || !supabaseKey) {
