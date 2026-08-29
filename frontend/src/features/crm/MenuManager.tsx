@@ -192,7 +192,7 @@ export const MenuManager: React.FC = () => {
                   : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
               }`}
             >
-              Adiciones & Toppings ({additions.length})
+              Adicionales & Extras ({additions.length})
             </button>
           </div>
         </div>
@@ -213,7 +213,7 @@ export const MenuManager: React.FC = () => {
             className="gap-2 rounded-xl bg-indigo-600 font-semibold text-white shadow-md shadow-indigo-600/20 hover:bg-indigo-700 cursor-pointer"
           >
             <Plus className="size-4" />
-            <span>Añadir Topping</span>
+            <span>Añadir Adicional</span>
           </Button>
         )}
       </div>
@@ -773,7 +773,7 @@ export const MenuManager: React.FC = () => {
           >
             <div className="flex items-center justify-between border-b pb-3 border-slate-100 dark:border-slate-800">
               <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                {editingAddition ? "Editar Adición" : "Nueva Adición / Topping"}
+                {editingAddition ? "Editar Adicional" : "Nuevo Adicional / Extra"}
               </h3>
               <button
                 type="button"

@@ -109,7 +109,7 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
         ...current,
         additions: [...current.additions, newItem],
       }))
-      toast.success(`Topping "${item.name}" creado`)
+      toast.success(`Adicional "${item.name}" creado`)
     },
     [updateActiveRestaurantRecord]
   )
@@ -122,7 +122,7 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
           a.id === id ? { ...a, ...updates } : a
         ),
       }))
-      toast.success("Topping actualizado")
+      toast.success("Adicional actualizado")
     },
     [updateActiveRestaurantRecord]
   )
@@ -133,7 +133,7 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
         ...current,
         additions: current.additions.filter((a) => a.id !== id),
       }))
-      toast.success("Topping eliminado")
+      toast.success("Adicional eliminado")
     },
     [updateActiveRestaurantRecord]
   )

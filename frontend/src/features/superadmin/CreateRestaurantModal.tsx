@@ -196,8 +196,8 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
             </label>
             <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
               {[
-                { id: "burger", name: "🍔 Hamburguesería", desc: "6 platos + 7 toppings" },
-                { id: "pizza", name: "🍕 Pizzería", desc: "4 pizzas + adiciones" },
+                { id: "burger", name: "🍔 Hamburguesería", desc: "6 platos + 7 adicionales" },
+                { id: "pizza", name: "🍕 Pizzería", desc: "4 pizzas + adicionales" },
                 { id: "tacos", name: "🌮 Taquería", desc: "3 tipos de tacos" },
                 { id: "blank", name: "📝 En Blanco", desc: "Menú vacío desde cero" },
               ].map((tpl) => (
