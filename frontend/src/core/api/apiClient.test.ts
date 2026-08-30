@@ -74,6 +74,7 @@ describe('ApiClient', () => {
     mockResponse(mockData)
 
     const newOrder: CreateOrderInput = {
+      restaurantId: 'rest-1',
       customerId: 'c1',
       items: [{ productId: 'p1', quantity: 2, additions: ['cheese'] }],
       deliveryFee: 4500,

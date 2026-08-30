@@ -172,6 +172,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const customerId = existingCustomer ? existingCustomer.id : `cust-${Date.now()}`
 
         const orderInput: CreateOrderInput = {
+          restaurantId: activeRestaurant.id,
           customerId,
           items: newOrder.items.map((item) => {
             const matchedProduct = activeRestaurant.products?.find(

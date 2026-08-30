@@ -6,10 +6,11 @@ import { InvalidOrderStateError } from '../../src/domain/errors/DomainErrors.js'
 describe('Order Domain Entity', () => {
   const createMockOrder = () => new Order(
     '1',
+    'burger-craft',
     'customer-1',
     [
-      { productId: 'p1', quantity: 2, price: 10, additions: [] },
-      { productId: 'p2', quantity: 1, price: 15, additions: ['cheese'] }
+      { productId: 'p1', productName: 'Burger A', unitPrice: 10, quantity: 2, additions: [] },
+      { productId: 'p2', productName: 'Burger B', unitPrice: 15, quantity: 1, additions: [{ additionId: 'add-cheese', additionName: 'Cheese', unitPrice: 0, quantity: 1 }] }
     ],
     'pending',
     new Date(),
@@ -50,32 +51,16 @@ describe('Order Domain Entity', () => {
   });
 });
 
-describe('Customer Loyalty (Domain Entity)', () => {
-  it('should calculate total spend and total orders correctly', () => {
-    const customer = new Customer('1', 'John Doe', 'john@example.com', '123456');
-    expect(customer.totalSpend).toBe(0);
-    expect(customer.totalOrders).toBe(0);
-
-    customer.addOrderSpend(100);
-    expect(customer.totalSpend).toBe(100);
-    expect(customer.totalOrders).toBe(1);
-
-    customer.addOrderSpend(150);
-    expect(customer.totalSpend).toBe(250);
-    expect(customer.totalOrders).toBe(2);
-  });
-
-  it('should update loyalty tier based on total spend', () => {
-    const customer = new Customer('1', 'John Doe', 'john@example.com', '123456');
-    expect(customer.loyaltyTier).toBe('bronze');
-
-    customer.addOrderSpend(100000); // 100k -> silver
-    expect(customer.loyaltyTier).toBe('silver');
-
-    customer.addOrderSpend(150000); // total 250k -> gold
-    expect(customer.loyaltyTier).toBe('gold');
-
-    customer.addOrderSpend(150000); // total 400k -> vip
-    expect(customer.loyaltyTier).toBe('vip');
+describe('Customer Buyer Entity', () => {
+  it('should instantiate customer buyer profile with mandatory tenant and contact data', () => {
+    const customer = new Customer('1', 'burger-craft', 'John Doe', '123456', 'Calle 10 # 5-20', 'Centro', 'Timbre 201', 'john@example.com');
+    expect(customer.id).toBe('1');
+    expect(customer.restaurantId).toBe('burger-craft');
+    expect(customer.name).toBe('John Doe');
+    expect(customer.phone).toBe('123456');
+    expect(customer.address).toBe('Calle 10 # 5-20');
+    expect(customer.barrio).toBe('Centro');
+    expect(customer.notes).toBe('Timbre 201');
+    expect(customer.email).toBe('john@example.com');
   });
 });

@@ -6,24 +6,28 @@ export class SupabaseInventoryRepository implements InventoryRepository {
   constructor(private client: SupabaseClient) {}
 
   private mapToDomain(row: any): Inventory {
-    const alert = Number(row.min_stock_alert ?? row.alert_threshold ?? row.alertThreshold ?? 0);
+    const minAlert = Number(row.min_stock_alert ?? row.alert_threshold ?? row.alertThreshold ?? 5);
     return {
       id: row.id,
+      restaurantId: row.restaurant_id,
       name: row.name,
       category: row.category || 'ingredients',
       quantity: Number(row.current_stock ?? row.quantity ?? 0),
-      unit: row.unit || 'units',
-      alertThreshold: alert,
-      minStockAlert: alert,
-      costPerUnit: Number(row.cost_per_unit ?? row.costPerUnit ?? 0)
+      unit: row.unit || 'unidades',
+      minStockAlert: minAlert,
+      alertThreshold: minAlert,
+      costPerUnit: Number(row.cost_per_unit ?? row.costPerUnit ?? 0),
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
     };
   }
 
-  async findById(id: string): Promise<Inventory | null> {
+  async findById(id: string, restaurantId: string): Promise<Inventory | null> {
     const { data, error } = await this.client
       .from('inventory')
       .select('*')
       .eq('id', id)
+      .eq('restaurant_id', restaurantId)
       .maybeSingle();
 
     if (error) {
@@ -33,10 +37,11 @@ export class SupabaseInventoryRepository implements InventoryRepository {
     return this.mapToDomain(data);
   }
 
-  async findAll(): Promise<Inventory[]> {
+  async findByRestaurantId(restaurantId: string): Promise<Inventory[]> {
     const { data, error } = await this.client
       .from('inventory')
       .select('*')
+      .eq('restaurant_id', restaurantId)
       .order('name', { ascending: true });
 
     if (error) {
@@ -46,15 +51,17 @@ export class SupabaseInventoryRepository implements InventoryRepository {
   }
 
   async save(inventory: Inventory): Promise<void> {
-    const minAlert = inventory.minStockAlert ?? inventory.alertThreshold ?? 0;
+    const minAlert = inventory.minStockAlert ?? inventory.alertThreshold ?? 5;
     const payload = {
       id: inventory.id,
+      restaurant_id: inventory.restaurantId,
       name: inventory.name,
       category: inventory.category || 'ingredients',
       current_stock: inventory.quantity,
       min_stock_alert: minAlert,
       unit: inventory.unit,
-      cost_per_unit: inventory.costPerUnit || 0
+      cost_per_unit: inventory.costPerUnit || 0,
+      updated_at: inventory.updatedAt || new Date().toISOString(),
     };
 
     const { error } = await this.client
@@ -63,6 +70,18 @@ export class SupabaseInventoryRepository implements InventoryRepository {
 
     if (error) {
       throw new Error(`Failed to save inventory: ${error.message}`);
+    }
+  }
+
+  async delete(id: string, restaurantId: string): Promise<void> {
+    const { error } = await this.client
+      .from('inventory')
+      .delete()
+      .eq('id', id)
+      .eq('restaurant_id', restaurantId);
+
+    if (error) {
+      throw new Error(`Failed to delete inventory item: ${error.message}`);
     }
   }
 }

@@ -1,7 +1,8 @@
-import { Order } from '../../models/Order.js';
+import { Order, OrderStatus } from '../../models/Order.js';
 
 export interface OrderRepository {
-  findById(id: string): Promise<Order | null>;
-  findAll(): Promise<Order[]>;
+  findById(id: string, restaurantId: string): Promise<Order | null>;
+  findByRestaurantId(restaurantId: string): Promise<Order[]>;
   save(order: Order): Promise<void>;
+  updateStatus(id: string, status: OrderStatus, restaurantId: string, actorId?: string): Promise<void>;
 }

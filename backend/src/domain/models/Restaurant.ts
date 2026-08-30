@@ -12,6 +12,8 @@ export interface Restaurant {
   adminPassword?: string;
   primaryColor?: string;
   theme: string;
+  deliveryFee?: number;
+  minOrderAmount?: number;
   config?: any;
   openingHours: OpeningHours;
   isActive: boolean;

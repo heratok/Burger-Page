@@ -76,11 +76,18 @@ export type UpdateRestaurantCategoriesInput = z.infer<typeof updateRestaurantCat
 // ==========================================
 
 export const createProductSchema = z.object({
+  restaurantId: z.string().optional(), // Injected from JWT on backend
   name: z.string().min(1, 'Product name is required'),
-  description: z.string(),
-  price: z.number().positive('Price must be greater than 0'),
+  description: z.string().default(''),
+  price: z.number().nonnegative('Price must be greater than or equal to 0'),
   category: z.string().min(1, 'Category is required'),
+  categoryId: z.string().optional(),
+  imageUrl: z.string().optional(),
   isAvailable: z.boolean().default(true),
+  isPopular: z.boolean().optional(),
+  isNew: z.boolean().optional(),
+  preparationTimeMinutes: z.number().nonnegative().optional(),
+  displayOrder: z.number().optional(),
   additions: z.array(z.string()).default([]),
 });
 
@@ -91,6 +98,7 @@ export type UpdateProductInput = z.infer<typeof updateProductSchema>;
 
 export const productDTOSchema = createProductSchema.extend({
   id: z.string(),
+  restaurantId: z.string(),
 });
 export type ProductDTO = z.infer<typeof productDTOSchema>;
 
@@ -107,17 +115,29 @@ export const orderStatusEnum = z.enum([
 ]);
 export type OrderStatusType = z.infer<typeof orderStatusEnum>;
 
+export const orderItemAdditionInputSchema = z.object({
+  additionId: z.string().min(1, 'Addition ID is required'),
+  quantity: z.number().int().positive().optional().default(1),
+});
+export type OrderItemAdditionInput = z.infer<typeof orderItemAdditionInputSchema>;
+
 export const orderItemInputSchema = z.object({
   productId: z.string().min(1, 'Product ID is required'),
   quantity: z.number().int().positive('Quantity must be at least 1'),
-  additions: z.array(z.string()).default([]),
+  observation: z.string().optional(),
+  additions: z.array(z.union([z.string(), orderItemAdditionInputSchema])).default([]),
 });
 export type OrderItemInput = z.infer<typeof orderItemInputSchema>;
 
 export const createOrderSchema = z.object({
-  customerId: z.string().min(1, 'Customer ID is required'),
+  restaurantId: z.string().min(1, 'Restaurant ID is required'),
+  customerId: z.string().optional(),
   items: z.array(orderItemInputSchema).min(1, 'Order must have at least one item'),
   deliveryFee: z.number().nonnegative().optional(),
+  paymentMethod: z.enum(['Efectivo', 'Transferencia']).optional(),
+  paymentAmount: z.number().nonnegative().optional(),
+  changeAmount: z.number().nonnegative().optional(),
+  comment: z.string().optional(),
 });
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;
 

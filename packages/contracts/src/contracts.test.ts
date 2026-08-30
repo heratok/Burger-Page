@@ -31,6 +31,7 @@ describe('@burger-page/contracts', () => {
 
   it('should validate valid createOrder payload', () => {
     const valid = {
+      restaurantId: 'burger-craft',
       customerId: 'cust-101',
       items: [
         { productId: 'prod-1', quantity: 2, additions: ['add-1'] },

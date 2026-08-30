@@ -8,19 +8,24 @@ export class SupabaseCustomerRepository implements CustomerRepository {
   private mapToDomain(row: any): Customer {
     return new Customer(
       row.id,
+      row.restaurant_id,
       row.name,
-      row.email || '',
       row.phone || '',
-      Number(row.total_spent ?? row.total_spend ?? 0),
-      Number(row.total_orders ?? row.totalOrders ?? 0)
+      row.address || '',
+      row.barrio || '',
+      row.notes || '',
+      row.email || '',
+      row.created_at,
+      row.updated_at
     );
   }
 
-  async findById(id: string): Promise<Customer | null> {
+  async findById(id: string, restaurantId: string): Promise<Customer | null> {
     const { data, error } = await this.client
       .from('customers')
       .select('*')
       .eq('id', id)
+      .eq('restaurant_id', restaurantId)
       .maybeSingle();
 
     if (error) {
@@ -30,10 +35,11 @@ export class SupabaseCustomerRepository implements CustomerRepository {
     return this.mapToDomain(data);
   }
 
-  async findAll(): Promise<Customer[]> {
+  async findByRestaurantId(restaurantId: string): Promise<Customer[]> {
     const { data, error } = await this.client
       .from('customers')
       .select('*')
+      .eq('restaurant_id', restaurantId)
       .order('name', { ascending: true });
 
     if (error) {
@@ -42,17 +48,32 @@ export class SupabaseCustomerRepository implements CustomerRepository {
     return (data || []).map((row) => this.mapToDomain(row));
   }
 
+  async findByPhone(phone: string, restaurantId: string): Promise<Customer | null> {
+    const { data, error } = await this.client
+      .from('customers')
+      .select('*')
+      .eq('phone', phone)
+      .eq('restaurant_id', restaurantId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Failed to find customer by phone: ${error.message}`);
+    }
+    if (!data) return null;
+    return this.mapToDomain(data);
+  }
+
   async save(customer: Customer): Promise<void> {
     const payload = {
       id: customer.id,
+      restaurant_id: customer.restaurantId,
       name: customer.name,
-      email: customer.email,
       phone: customer.phone,
-      address: '',
-      total_orders: customer.totalOrders,
-      total_spent: customer.totalSpent,
-      loyalty_tier: customer.loyaltyTier,
-      last_order_date: new Date().toISOString()
+      address: customer.address || '',
+      barrio: customer.barrio || '',
+      notes: customer.notes || '',
+      email: customer.email || '',
+      updated_at: customer.updatedAt || new Date().toISOString(),
     };
 
     const { error } = await this.client
@@ -61,6 +82,18 @@ export class SupabaseCustomerRepository implements CustomerRepository {
 
     if (error) {
       throw new Error(`Failed to save customer: ${error.message}`);
+    }
+  }
+
+  async delete(id: string, restaurantId: string): Promise<void> {
+    const { error } = await this.client
+      .from('customers')
+      .delete()
+      .eq('id', id)
+      .eq('restaurant_id', restaurantId);
+
+    if (error) {
+      throw new Error(`Failed to delete customer: ${error.message}`);
     }
   }
 }

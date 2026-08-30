@@ -11,15 +11,31 @@ export class InMemoryInventoryRepository implements InventoryRepository {
     }
   }
 
-  async findById(id: string): Promise<Inventory | null> {
-    return this.inventoryMap.get(id) || null;
+  async findById(id: string, restaurantId: string): Promise<Inventory | null> {
+    const item = this.inventoryMap.get(id);
+    if (!item) return null;
+    if (item.restaurantId !== restaurantId) return null;
+    return { ...item };
   }
 
-  async findAll(): Promise<Inventory[]> {
-    return Array.from(this.inventoryMap.values());
+  async findByRestaurantId(restaurantId: string): Promise<Inventory[]> {
+    return Array.from(this.inventoryMap.values())
+      .filter((item) => item.restaurantId === restaurantId)
+      .map((item) => ({ ...item }));
   }
 
   async save(inventory: Inventory): Promise<void> {
     this.inventoryMap.set(inventory.id, { ...inventory });
+  }
+
+  async delete(id: string, restaurantId: string): Promise<void> {
+    const item = this.inventoryMap.get(id);
+    if (item && item.restaurantId === restaurantId) {
+      this.inventoryMap.delete(id);
+    }
+  }
+
+  clear(): void {
+    this.inventoryMap.clear();
   }
 }

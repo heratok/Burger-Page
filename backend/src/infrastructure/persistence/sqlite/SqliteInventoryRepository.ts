@@ -5,52 +5,70 @@ import { InventoryRepository } from '../../../domain/ports/out/InventoryReposito
 export class SqliteInventoryRepository implements InventoryRepository {
   constructor(private db: Database) {}
 
-  async findById(id: string): Promise<Inventory | null> {
-    const row = this.db.prepare('SELECT * FROM inventory WHERE id = ?').get(id) as any;
+  private mapToDomain(row: any): Inventory {
+    const minAlert = Number(row.min_stock_alert ?? 5);
+    return {
+      id: row.id,
+      restaurantId: row.restaurant_id,
+      name: row.name,
+      category: row.category || 'ingredients',
+      quantity: Number(row.current_stock ?? 0),
+      unit: row.unit || 'unidades',
+      minStockAlert: minAlert,
+      alertThreshold: minAlert,
+      costPerUnit: Number(row.cost_per_unit ?? 0),
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
+  }
+
+  async findById(id: string, restaurantId: string): Promise<Inventory | null> {
+    const row = this.db
+      .prepare('SELECT * FROM inventory WHERE id = ? AND restaurant_id = ?')
+      .get(id, restaurantId) as any;
     if (!row) return null;
     return this.mapToDomain(row);
   }
 
-  async findAll(): Promise<Inventory[]> {
-    const rows = this.db.prepare('SELECT * FROM inventory').all() as any[];
-    return rows.map(row => this.mapToDomain(row));
+  async findByRestaurantId(restaurantId: string): Promise<Inventory[]> {
+    const rows = this.db
+      .prepare('SELECT * FROM inventory WHERE restaurant_id = ? ORDER BY name ASC')
+      .all(restaurantId) as any[];
+    return rows.map((r) => this.mapToDomain(r));
   }
 
   async save(inventory: Inventory): Promise<void> {
     const stmt = this.db.prepare(`
-      INSERT INTO inventory (id, name, category, current_stock, min_stock_alert, unit, cost_per_unit)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO inventory (id, restaurant_id, name, category, current_stock, min_stock_alert, unit, cost_per_unit, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
+        restaurant_id = excluded.restaurant_id,
         name = excluded.name,
         category = excluded.category,
         current_stock = excluded.current_stock,
         min_stock_alert = excluded.min_stock_alert,
         unit = excluded.unit,
-        cost_per_unit = excluded.cost_per_unit
+        cost_per_unit = excluded.cost_per_unit,
+        updated_at = excluded.updated_at
     `);
-    const minAlert = inventory.minStockAlert ?? inventory.alertThreshold ?? 0;
+    const minAlert = inventory.minStockAlert ?? inventory.alertThreshold ?? 5;
     stmt.run(
       inventory.id,
+      inventory.restaurantId,
       inventory.name,
       inventory.category || 'ingredients',
       inventory.quantity,
       minAlert,
-      inventory.unit,
-      inventory.costPerUnit || 0
+      inventory.unit || 'unidades',
+      inventory.costPerUnit || 0,
+      inventory.createdAt || new Date().toISOString(),
+      inventory.updatedAt || new Date().toISOString()
     );
   }
 
-  private mapToDomain(row: any): Inventory {
-    const minAlert = Number(row.min_stock_alert ?? 0);
-    return {
-      id: row.id,
-      name: row.name,
-      category: row.category || 'ingredients',
-      quantity: Number(row.current_stock ?? 0),
-      unit: row.unit,
-      alertThreshold: minAlert,
-      minStockAlert: minAlert,
-      costPerUnit: Number(row.cost_per_unit ?? 0),
-    };
+  async delete(id: string, restaurantId: string): Promise<void> {
+    this.db
+      .prepare('DELETE FROM inventory WHERE id = ? AND restaurant_id = ?')
+      .run(id, restaurantId);
   }
 }

@@ -4,25 +4,34 @@ import { GetOrderByIdUseCase } from '../../../application/use-cases/GetOrderById
 import { CreateOrderUseCase } from '../../../application/use-cases/CreateOrderUseCase.js';
 import { UpdateOrderStatusUseCase } from '../../../application/use-cases/UpdateOrderStatusUseCase.js';
 import { createOrderSchema, updateOrderStatusSchema } from '@burger-page/contracts';
-import { ValidationError } from '../../../domain/errors/DomainErrors.js';
+import { UnauthorizedError, ValidationError } from '../../../domain/errors/DomainErrors.js';
 import { CreateOrderDTO, UpdateOrderStatusDTO } from '../../../application/dtos/index.js';
 import { globalOrderEventBus } from '../../events/OrderEventBus.js';
 
 export class OrderController {
   constructor(
     private listOrdersUseCase: ListOrdersUseCase,
-    private getOrderById: GetOrderByIdUseCase,
+    private getOrderByIdUseCase: GetOrderByIdUseCase,
     private createOrderUseCase: CreateOrderUseCase,
-    private updateOrderStatus: UpdateOrderStatusUseCase
+    private updateOrderStatusUseCase: UpdateOrderStatusUseCase
   ) {}
 
   async list(req: FastifyRequest, reply: FastifyReply) {
-    const orders = await this.listOrdersUseCase.execute();
+    const restaurantId = req.authContext?.restaurantId;
+    if (!restaurantId) {
+      throw new UnauthorizedError('Restaurant context is required to list orders.');
+    }
+    const orders = await this.listOrdersUseCase.execute(restaurantId);
     return reply.status(200).send(orders);
   }
 
-  async getById(req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
-    const order = await this.getOrderById.execute(req.params.id);
+  async getById(req: FastifyRequest, reply: FastifyReply) {
+    const params = req.params as { id: string };
+    const restaurantId = req.authContext?.restaurantId;
+    if (!restaurantId) {
+      throw new UnauthorizedError('Restaurant context is required to fetch an order.');
+    }
+    const order = await this.getOrderByIdUseCase.execute(params.id, restaurantId);
     return reply.status(200).send(order);
   }
 
@@ -32,8 +41,8 @@ export class OrderController {
       throw new ValidationError(parsed.error.message);
     }
     const order = await this.createOrderUseCase.execute(parsed.data as CreateOrderDTO);
-    
-    // Publish SSE Real-time Event
+
+    // Publish SSE Real-time Event with tenant ID
     globalOrderEventBus.publish({
       eventType: 'ORDER_CREATED',
       orderId: order.id,
@@ -42,6 +51,7 @@ export class OrderController {
       timestamp: new Date().toISOString(),
       payload: {
         id: order.id,
+        restaurantId: order.restaurantId,
         orderNumber: order.orderNumber,
         customerId: order.customerId,
         items: order.items,
@@ -49,6 +59,7 @@ export class OrderController {
         createdAt: order.createdAt,
         deliveryFee: order.deliveryFee,
         subtotal: order.subtotal,
+        finalTotal: order.finalTotal,
         total: order.total,
       },
     });
@@ -56,22 +67,36 @@ export class OrderController {
     return reply.status(201).send(order);
   }
 
-  async updateStatus(req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+  async updateStatus(req: FastifyRequest, reply: FastifyReply) {
+    const params = req.params as { id: string };
+    const restaurantId = req.authContext?.restaurantId;
+    const actorId = req.authContext?.userId;
+    if (!restaurantId) {
+      throw new UnauthorizedError('Restaurant context is required to update order status.');
+    }
+
     const parsed = updateOrderStatusSchema.safeParse(req.body);
     if (!parsed.success) {
       throw new ValidationError(parsed.error.message);
     }
-    const updatedOrder = await this.updateOrderStatus.execute(req.params.id, parsed.data as UpdateOrderStatusDTO);
 
-    // Publish SSE Real-time Event
+    const updatedOrder = await this.updateOrderStatusUseCase.execute(
+      params.id,
+      parsed.data as UpdateOrderStatusDTO,
+      restaurantId,
+      actorId
+    );
+
+    // Publish SSE Real-time Event with tenant ID
     globalOrderEventBus.publish({
       eventType: 'ORDER_STATUS_UPDATED',
-      orderId: req.params.id,
+      orderId: params.id,
       orderNumber: updatedOrder.orderNumber,
       status: parsed.data.status,
       timestamp: new Date().toISOString(),
       payload: {
         id: updatedOrder.id,
+        restaurantId: updatedOrder.restaurantId,
         orderNumber: updatedOrder.orderNumber,
         customerId: updatedOrder.customerId,
         items: updatedOrder.items,
@@ -79,6 +104,7 @@ export class OrderController {
         createdAt: updatedOrder.createdAt,
         deliveryFee: updatedOrder.deliveryFee,
         subtotal: updatedOrder.subtotal,
+        finalTotal: updatedOrder.finalTotal,
         total: updatedOrder.total,
       },
     });

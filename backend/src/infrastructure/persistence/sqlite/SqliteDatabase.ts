@@ -29,22 +29,44 @@ export function createSqliteDatabase(dbPath = ':memory:'): Database {
 
     CREATE TABLE IF NOT EXISTS products (
       id TEXT PRIMARY KEY,
+      restaurant_id TEXT NOT NULL,
       name TEXT NOT NULL,
       description TEXT NOT NULL,
       price REAL NOT NULL,
       category TEXT NOT NULL,
+      category_id TEXT,
+      image_url TEXT,
       is_available INTEGER NOT NULL DEFAULT 1,
-      additions TEXT NOT NULL
+      is_popular INTEGER NOT NULL DEFAULT 0,
+      is_new INTEGER NOT NULL DEFAULT 0,
+      preparation_time_minutes INTEGER DEFAULT 15,
+      display_order INTEGER DEFAULT 0,
+      additions TEXT NOT NULL DEFAULT '[]'
+    );
+
+    CREATE TABLE IF NOT EXISTS product_additions (
+      id TEXT PRIMARY KEY,
+      restaurant_id TEXT NOT NULL,
+      product_id TEXT,
+      name TEXT NOT NULL,
+      price REAL NOT NULL DEFAULT 0.0,
+      is_available INTEGER NOT NULL DEFAULT 1,
+      display_order INTEGER NOT NULL DEFAULT 0
     );
 
     CREATE TABLE IF NOT EXISTS orders (
       id TEXT PRIMARY KEY,
-      order_number INTEGER NOT NULL,
-      customer_id TEXT NOT NULL,
+      restaurant_id TEXT NOT NULL,
+      order_number INTEGER,
+      customer_id TEXT,
       status TEXT NOT NULL,
       total REAL NOT NULL,
       delivery_fee REAL NOT NULL,
       final_total REAL NOT NULL,
+      payment_method TEXT DEFAULT 'Efectivo',
+      payment_amount REAL,
+      change_amount REAL,
+      comment TEXT,
       items TEXT NOT NULL,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
@@ -52,26 +74,36 @@ export function createSqliteDatabase(dbPath = ':memory:'): Database {
 
     CREATE TABLE IF NOT EXISTS customers (
       id TEXT PRIMARY KEY,
+      restaurant_id TEXT NOT NULL,
       name TEXT NOT NULL,
-      email TEXT NOT NULL DEFAULT '',
       phone TEXT NOT NULL,
       address TEXT NOT NULL DEFAULT '',
-      total_orders INTEGER NOT NULL DEFAULT 0,
-      total_spent REAL NOT NULL DEFAULT 0,
-      loyalty_tier TEXT NOT NULL DEFAULT 'bronze',
-      last_order_date TEXT
+      barrio TEXT NOT NULL DEFAULT '',
+      notes TEXT NOT NULL DEFAULT '',
+      email TEXT NOT NULL DEFAULT '',
+      created_at TEXT,
+      updated_at TEXT
     );
 
     CREATE TABLE IF NOT EXISTS inventory (
       id TEXT PRIMARY KEY,
+      restaurant_id TEXT NOT NULL,
       name TEXT NOT NULL,
-      category TEXT NOT NULL,
-      current_stock REAL NOT NULL,
-      min_stock_alert REAL NOT NULL,
-      unit TEXT NOT NULL,
-      cost_per_unit REAL NOT NULL
+      category TEXT NOT NULL DEFAULT 'ingredients',
+      current_stock REAL NOT NULL DEFAULT 0,
+      min_stock_alert REAL NOT NULL DEFAULT 5,
+      unit TEXT NOT NULL DEFAULT 'unidades',
+      cost_per_unit REAL NOT NULL DEFAULT 0,
+      created_at TEXT,
+      updated_at TEXT
     );
   `);
+
+  const inventoryColumns = db.prepare("PRAGMA table_info(inventory)").all() as Array<{ name: string }>;
+  const hasInvRestaurant = inventoryColumns.some(c => c.name === 'restaurant_id');
+  if (!hasInvRestaurant) {
+    db.exec("ALTER TABLE inventory ADD COLUMN restaurant_id TEXT NOT NULL DEFAULT 'burger-craft'");
+  }
 
   const customerColumns = db.prepare("PRAGMA table_info(customers)").all() as Array<{ name: string }>;
   const hasEmail = customerColumns.some(c => c.name === 'email');

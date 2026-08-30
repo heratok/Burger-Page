@@ -6,7 +6,9 @@ import { SqliteOrderRepository } from '../../src/infrastructure/persistence/sqli
 import { SqliteCustomerRepository } from '../../src/infrastructure/persistence/sqlite/SqliteCustomerRepository.js';
 import { SqliteInventoryRepository } from '../../src/infrastructure/persistence/sqlite/SqliteInventoryRepository.js';
 import { SqliteRestaurantRepository } from '../../src/infrastructure/persistence/sqlite/SqliteRestaurantRepository.js';
+import { SqliteProductAdditionRepository } from '../../src/infrastructure/persistence/sqlite/SqliteProductAdditionRepository.js';
 import { Product } from '../../src/domain/models/Product.js';
+import { ProductAddition } from '../../src/domain/models/ProductAddition.js';
 import { Order } from '../../src/domain/models/Order.js';
 import { Customer } from '../../src/domain/models/Customer.js';
 import { Restaurant } from '../../src/domain/models/Restaurant.js';
@@ -25,6 +27,7 @@ describe.skipIf(!hasSqliteBinding)('SQLite Persistence Adapter Suite (TDD)', () 
   let db: Database;
   let restaurantRepo: SqliteRestaurantRepository;
   let productRepo: SqliteProductRepository;
+  let additionRepo: SqliteProductAdditionRepository;
   let orderRepo: SqliteOrderRepository;
   let customerRepo: SqliteCustomerRepository;
   let inventoryRepo: SqliteInventoryRepository;
@@ -33,6 +36,7 @@ describe.skipIf(!hasSqliteBinding)('SQLite Persistence Adapter Suite (TDD)', () 
     db = createSqliteDatabase(':memory:');
     restaurantRepo = new SqliteRestaurantRepository(db);
     productRepo = new SqliteProductRepository(db);
+    additionRepo = new SqliteProductAdditionRepository(db);
     orderRepo = new SqliteOrderRepository(db);
     customerRepo = new SqliteCustomerRepository(db);
     inventoryRepo = new SqliteInventoryRepository(db);
@@ -42,9 +46,10 @@ describe.skipIf(!hasSqliteBinding)('SQLite Persistence Adapter Suite (TDD)', () 
     db.close();
   });
 
-  it('should save and retrieve products from SQLite', async () => {
+  it('should save and retrieve products from SQLite with strict tenant isolation', async () => {
     const product: Product = {
       id: 'p-100',
+      restaurantId: 'burger-craft',
       name: 'Artisan BBQ Burger',
       description: 'Smoked bacon with homemade BBQ sauce',
       price: 29000,
@@ -54,35 +59,58 @@ describe.skipIf(!hasSqliteBinding)('SQLite Persistence Adapter Suite (TDD)', () 
     };
 
     await productRepo.save(product);
-    const retrieved = await productRepo.findById('p-100');
+    const retrieved = await productRepo.findById('p-100', 'burger-craft');
 
     expect(retrieved).not.toBeNull();
+    expect(retrieved?.restaurantId).toBe('burger-craft');
     expect(retrieved?.name).toBe('Artisan BBQ Burger');
     expect(retrieved?.price).toBe(29000);
     expect(retrieved?.additions).toEqual(['Extra Bacon', 'Cheddar']);
 
-    const all = await productRepo.findAll();
+    const all = await productRepo.findByRestaurantId('burger-craft');
     expect(all.length).toBe(1);
 
-    await productRepo.delete('p-100');
-    expect(await productRepo.findById('p-100')).toBeNull();
+    // Cross-tenant isolation check
+    const foreign = await productRepo.findById('p-100', 'other-restaurant');
+    expect(foreign).toBeNull();
+
+    await productRepo.delete('p-100', 'burger-craft');
+    expect(await productRepo.findById('p-100', 'burger-craft')).toBeNull();
+  });
+
+  it('should save, list and delete product additions in SQLite with tenant isolation', async () => {
+    const addition = new ProductAddition('add-1', 'burger-craft', 'Extra Bacon', 3000, true);
+    await additionRepo.save(addition);
+
+    const retrieved = await additionRepo.findById('add-1', 'burger-craft');
+    expect(retrieved).not.toBeNull();
+    expect(retrieved?.name).toBe('Extra Bacon');
+    expect(retrieved?.price).toBe(3000);
+
+    const foreign = await additionRepo.findById('add-1', 'other-tenant');
+    expect(foreign).toBeNull();
+
+    const all = await additionRepo.findByRestaurantId('burger-craft');
+    expect(all.length).toBe(1);
   });
 
   it('should save, update and list orders from SQLite', async () => {
     const order = new Order(
       'ord-999',
+      'burger-craft',
       'cust-501',
-      [{ productId: 'p-100', quantity: 2, price: 25000, additions: [] }],
+      [{ productId: 'p-100', productName: 'Burger', unitPrice: 25000, quantity: 2, additions: [] }],
       'pending',
       new Date(),
       4500
     );
 
     await orderRepo.save(order);
-    const retrieved = await orderRepo.findById('ord-999');
+    const retrieved = await orderRepo.findById('ord-999', 'burger-craft');
 
     expect(retrieved).not.toBeNull();
     expect(retrieved?.id).toBe('ord-999');
+    expect(retrieved?.restaurantId).toBe('burger-craft');
     expect(retrieved?.status).toBe('pending');
     expect(retrieved?.total).toBe(54500);
 
@@ -90,35 +118,53 @@ describe.skipIf(!hasSqliteBinding)('SQLite Persistence Adapter Suite (TDD)', () 
     retrieved?.transitionTo('cooking');
     await orderRepo.save(retrieved!);
 
-    const updated = await orderRepo.findById('ord-999');
+    const updated = await orderRepo.findById('ord-999', 'burger-craft');
     expect(updated?.status).toBe('cooking');
+
+    // Tenant isolation check
+    const foreign = await orderRepo.findById('ord-999', 'other-tenant');
+    expect(foreign).toBeNull();
   });
 
-  it('should track customer spend and loyalty tiers in SQLite', async () => {
-    const customer = new Customer('cust-777', 'Laura Gómez', 'laura@test.com', '3151234567');
-    customer.addOrderSpend(350000);
+  it('should save and retrieve customer buyer profiles in SQLite with strict tenant isolation', async () => {
+    const customer = new Customer(
+      'cust-777',
+      'burger-craft',
+      'Laura Gómez',
+      '3151234567',
+      'Carrera 15 # 85-30',
+      'Chicó',
+      'Dejar en portería',
+      'laura@test.com'
+    );
 
     await customerRepo.save(customer);
-    const retrieved = await customerRepo.findById('cust-777');
+    const retrieved = await customerRepo.findById('cust-777', 'burger-craft');
 
     expect(retrieved).not.toBeNull();
+    expect(retrieved?.restaurantId).toBe('burger-craft');
     expect(retrieved?.name).toBe('Laura Gómez');
-    expect(retrieved?.email).toBe('laura@test.com');
     expect(retrieved?.phone).toBe('3151234567');
-    expect(retrieved?.totalSpend).toBe(350000);
-    expect(retrieved?.loyaltyTier).toBe('gold');
+    expect(retrieved?.address).toBe('Carrera 15 # 85-30');
+    expect(retrieved?.barrio).toBe('Chicó');
+    expect(retrieved?.notes).toBe('Dejar en portería');
+    expect(retrieved?.email).toBe('laura@test.com');
 
-    const allCustomers = await customerRepo.findAll();
+    // Tenant isolation: foreign tenant lookup returns null
+    const foreign = await customerRepo.findById('cust-777', 'other-tenant');
+    expect(foreign).toBeNull();
+
+    const allCustomers = await customerRepo.findByRestaurantId('burger-craft');
     expect(allCustomers.length).toBe(1);
-    expect(allCustomers[0].email).toBe('laura@test.com');
     expect(allCustomers[0].phone).toBe('3151234567');
   });
 
-  it('should manage inventory items and stock changes in SQLite', async () => {
+  it('should manage inventory items and stock changes in SQLite with strict tenant isolation', async () => {
     await inventoryRepo.save({
       id: 'inv-pan-brioche',
+      restaurantId: 'burger-craft',
       name: 'Pan Brioche Sellado',
-      category: 'Panadería',
+      category: 'ingredients',
       quantity: 50,
       unit: 'unidades',
       alertThreshold: 15,
@@ -126,16 +172,21 @@ describe.skipIf(!hasSqliteBinding)('SQLite Persistence Adapter Suite (TDD)', () 
       costPerUnit: 1200
     });
 
-    const item = await inventoryRepo.findById('inv-pan-brioche');
+    const item = await inventoryRepo.findById('inv-pan-brioche', 'burger-craft');
     expect(item).not.toBeNull();
+    expect(item?.restaurantId).toBe('burger-craft');
     expect(item?.quantity).toBe(50);
-    expect(item?.category).toBe('Panadería');
+    expect(item?.category).toBe('ingredients');
     expect(item?.minStockAlert).toBe(15);
     expect(item?.costPerUnit).toBe(1200);
 
-    const allItems = await inventoryRepo.findAll();
+    // Foreign tenant returns null
+    const foreign = await inventoryRepo.findById('inv-pan-brioche', 'other-tenant');
+    expect(foreign).toBeNull();
+
+    const allItems = await inventoryRepo.findByRestaurantId('burger-craft');
     expect(allItems.length).toBe(1);
-    expect(allItems[0].category).toBe('Panadería');
+    expect(allItems[0].category).toBe('ingredients');
     expect(allItems[0].costPerUnit).toBe(1200);
   });
 

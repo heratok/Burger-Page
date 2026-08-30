@@ -1,16 +1,58 @@
 import { ProductRepository } from '../../domain/ports/out/ProductRepository.js';
+import { ProductAdditionRepository } from '../../domain/ports/out/ProductAdditionRepository.js';
 import { Product } from '../../domain/models/Product.js';
 import { UpdateProductDTO } from '../dtos/index.js';
-import { EntityNotFoundError } from '../../domain/errors/DomainErrors.js';
+import { EntityNotFoundError, ValidationError } from '../../domain/errors/DomainErrors.js';
 
 export class UpdateProductUseCase {
-  constructor(private productRepo: ProductRepository) {}
+  constructor(
+    private productRepo: ProductRepository,
+    private additionRepo?: ProductAdditionRepository
+  ) {}
 
-  async execute(id: string, dto: UpdateProductDTO): Promise<Product> {
-    const product = await this.productRepo.findById(id);
-    if (!product) throw new EntityNotFoundError('Product not found');
+  async execute(id: string, dto: UpdateProductDTO, restaurantId: string): Promise<Product> {
+    if (!restaurantId) {
+      throw new ValidationError('Restaurant ID is required to update a product.');
+    }
 
-    const updated = { ...product, ...dto };
+    const product = await this.productRepo.findById(id, restaurantId);
+    if (!product) {
+      throw new EntityNotFoundError(`Product '${id}' not found for restaurant '${restaurantId}'.`);
+    }
+
+    if (dto.name !== undefined && dto.name.trim() === '') {
+      throw new ValidationError('Product name cannot be empty.');
+    }
+    if (dto.price !== undefined && (isNaN(dto.price) || dto.price < 0)) {
+      throw new ValidationError('Product price must be a non-negative number.');
+    }
+
+    // Validar adiciones si se especificaron
+    if (dto.additions && dto.additions.length > 0 && this.additionRepo) {
+      for (const addId of dto.additions) {
+        const addition = await this.additionRepo.findById(addId, restaurantId);
+        if (!addition || addition.restaurantId !== restaurantId) {
+          throw new ValidationError(`Addition '${addId}' does not belong to restaurant '${restaurantId}'.`);
+        }
+      }
+    }
+
+    const updated: Product = {
+      ...product,
+      name: dto.name !== undefined ? dto.name.trim() : product.name,
+      description: dto.description !== undefined ? dto.description : product.description,
+      price: dto.price !== undefined ? Number(dto.price) : product.price,
+      category: dto.category !== undefined ? dto.category : product.category,
+      categoryId: dto.categoryId !== undefined ? dto.categoryId : product.categoryId,
+      imageUrl: dto.imageUrl !== undefined ? dto.imageUrl : product.imageUrl,
+      isAvailable: dto.isAvailable !== undefined ? Boolean(dto.isAvailable) : product.isAvailable,
+      isPopular: dto.isPopular !== undefined ? Boolean(dto.isPopular) : product.isPopular,
+      isNew: dto.isNew !== undefined ? Boolean(dto.isNew) : product.isNew,
+      preparationTimeMinutes: dto.preparationTimeMinutes !== undefined ? Number(dto.preparationTimeMinutes) : product.preparationTimeMinutes,
+      displayOrder: dto.displayOrder !== undefined ? Number(dto.displayOrder) : product.displayOrder,
+      additions: dto.additions !== undefined ? dto.additions : product.additions,
+    };
+
     await this.productRepo.save(updated);
     return updated;
   }

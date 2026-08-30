@@ -17,6 +17,7 @@ export const defaultRestaurant: Restaurant = {
 export const initialProducts: Product[] = [
   {
     id: 'p1',
+    restaurantId: 'burger-craft',
     name: 'Classic Burger',
     description: 'A classic beef burger',
     price: 9.99,
@@ -26,6 +27,7 @@ export const initialProducts: Product[] = [
   },
   {
     id: 'p2',
+    restaurantId: 'burger-craft',
     name: 'Fries',
     description: 'Crispy golden fries',
     price: 3.99,
@@ -36,30 +38,34 @@ export const initialProducts: Product[] = [
 ];
 
 export const initialCustomers: Customer[] = [
-  new Customer('c1', 'John Doe', 'john@example.com', '+1-555-9876', 0, 0)
+  new Customer('c1', 'burger-craft', 'John Doe', '+1-555-9876', '123 Main St', 'Downtown', 'Likes extra sauce', 'john@example.com')
 ];
 
 const item: OrderItem = {
   productId: 'p1',
+  productName: 'Classic Burger',
+  unitPrice: 9.99,
   quantity: 2,
-  price: 9.99,
-  additions: ['Bacon']
+  additions: [{ additionId: 'add-bacon', additionName: 'Bacon', unitPrice: 1.50, quantity: 1 }]
 };
 
 export const initialOrders: Order[] = [
-  new Order('o1', 'c1', [item], 'pending', new Date(), 2.0)
+  new Order('o1', 'burger-craft', 'c1', [item], 'pending', new Date(), 2.0, 1001)
 ];
 
 export const initialInventory: Inventory[] = [
   {
     id: 'i1',
+    restaurantId: 'burger-craft',
     name: 'Beef Patty',
     category: 'ingredients',
     quantity: 50,
-    unit: 'units',
+    unit: 'unidades',
     alertThreshold: 10,
     minStockAlert: 10,
-    costPerUnit: 4500
+    costPerUnit: 4500,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   }
 ];
 

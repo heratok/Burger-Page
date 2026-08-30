@@ -17,6 +17,7 @@ import { SqliteProductRepository } from '../persistence/sqlite/SqliteProductRepo
 import { SqliteOrderRepository } from '../persistence/sqlite/SqliteOrderRepository.js';
 import { SqliteCustomerRepository } from '../persistence/sqlite/SqliteCustomerRepository.js';
 import { SqliteInventoryRepository } from '../persistence/sqlite/SqliteInventoryRepository.js';
+import { SqliteProductAdditionRepository } from '../persistence/sqlite/SqliteProductAdditionRepository.js';
 import { getSupabaseClient } from '../persistence/supabase/SupabaseClient.js';
 import { SupabaseRestaurantRepository } from '../persistence/supabase/SupabaseRestaurantRepository.js';
 import { SupabaseProductRepository } from '../persistence/supabase/SupabaseProductRepository.js';
@@ -24,8 +25,11 @@ import { SupabaseOrderRepository } from '../persistence/supabase/SupabaseOrderRe
 import { SupabaseCustomerRepository } from '../persistence/supabase/SupabaseCustomerRepository.js';
 import { SupabaseInventoryRepository } from '../persistence/supabase/SupabaseInventoryRepository.js';
 import { SupabaseUserRepository } from '../persistence/supabase/SupabaseUserRepository.js';
+import { SupabaseProductAdditionRepository } from '../persistence/supabase/SupabaseProductAdditionRepository.js';
+import { InMemoryProductAdditionRepository } from '../persistence/InMemoryProductAdditionRepository.js';
 import { RestaurantRepository } from '../../domain/ports/out/RestaurantRepository.js';
 import { ProductRepository } from '../../domain/ports/out/ProductRepository.js';
+import { ProductAdditionRepository } from '../../domain/ports/out/ProductAdditionRepository.js';
 import { OrderRepository } from '../../domain/ports/out/OrderRepository.js';
 import { CustomerRepository } from '../../domain/ports/out/CustomerRepository.js';
 import { InventoryRepository } from '../../domain/ports/out/InventoryRepository.js';
@@ -50,8 +54,16 @@ import { GetOrderByIdUseCase } from '../../application/use-cases/GetOrderByIdUse
 import { CreateOrderUseCase } from '../../application/use-cases/CreateOrderUseCase.js';
 import { UpdateOrderStatusUseCase } from '../../application/use-cases/UpdateOrderStatusUseCase.js';
 import { ListCustomersUseCase } from '../../application/use-cases/ListCustomersUseCase.js';
-import { GetInventoryUseCase } from '../../application/use-cases/GetInventoryUseCase.js';
+import { GetCustomerByIdUseCase } from '../../application/use-cases/GetCustomerByIdUseCase.js';
+import { CreateCustomerUseCase } from '../../application/use-cases/CreateCustomerUseCase.js';
+import { UpdateCustomerUseCase } from '../../application/use-cases/UpdateCustomerUseCase.js';
+import { DeleteCustomerUseCase } from '../../application/use-cases/DeleteCustomerUseCase.js';
+import { ListInventoryUseCase } from '../../application/use-cases/ListInventoryUseCase.js';
+import { GetInventoryItemByIdUseCase } from '../../application/use-cases/GetInventoryItemByIdUseCase.js';
+import { CreateInventoryItemUseCase } from '../../application/use-cases/CreateInventoryItemUseCase.js';
 import { UpdateInventoryStockUseCase } from '../../application/use-cases/UpdateInventoryStockUseCase.js';
+import { UpdateInventoryItemUseCase } from '../../application/use-cases/UpdateInventoryItemUseCase.js';
+import { DeleteInventoryItemUseCase } from '../../application/use-cases/DeleteInventoryItemUseCase.js';
 import { CreateUserUseCase } from '../../application/use-cases/CreateUserUseCase.js';
 import { AuthenticateUserUseCase } from '../../application/use-cases/AuthenticateUserUseCase.js';
 import { ListUsersUseCase } from '../../application/use-cases/ListUsersUseCase.js';
@@ -95,6 +107,7 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
 
   let restaurantRepo: RestaurantRepository;
   let productRepo: ProductRepository;
+  let additionRepo: ProductAdditionRepository;
   let orderRepo: OrderRepository;
   let customerRepo: CustomerRepository;
   let inventoryRepo: InventoryRepository;
@@ -104,6 +117,7 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
     const supabaseClient = getSupabaseClient();
     restaurantRepo = new SupabaseRestaurantRepository(supabaseClient);
     productRepo = new SupabaseProductRepository(supabaseClient);
+    additionRepo = new SupabaseProductAdditionRepository(supabaseClient);
     orderRepo = new SupabaseOrderRepository(supabaseClient);
     customerRepo = new SupabaseCustomerRepository(supabaseClient);
     inventoryRepo = new SupabaseInventoryRepository(supabaseClient);
@@ -112,6 +126,7 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
     const db = createSqliteDatabase(dbPath || process.env.DATABASE_PATH || ':memory:');
     restaurantRepo = new SqliteRestaurantRepository(db);
     productRepo = new SqliteProductRepository(db);
+    additionRepo = new SqliteProductAdditionRepository(db);
     orderRepo = new SqliteOrderRepository(db);
     customerRepo = new SqliteCustomerRepository(db);
     inventoryRepo = new SqliteInventoryRepository(db);
@@ -119,6 +134,7 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
   } else {
     restaurantRepo = new InMemoryRestaurantRepository();
     productRepo = new InMemoryProductRepository();
+    additionRepo = new InMemoryProductAdditionRepository();
     orderRepo = new InMemoryOrderRepository();
     customerRepo = new InMemoryCustomerRepository();
     inventoryRepo = new InMemoryInventoryRepository();
@@ -134,19 +150,27 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
   
   const listProducts = new ListProductsUseCase(productRepo);
   const getProductById = new GetProductByIdUseCase(productRepo);
-  const createProduct = new CreateProductUseCase(productRepo);
-  const updateProduct = new UpdateProductUseCase(productRepo);
+  const createProduct = new CreateProductUseCase(productRepo, additionRepo);
+  const updateProduct = new UpdateProductUseCase(productRepo, additionRepo);
   const deleteProduct = new DeleteProductUseCase(productRepo);
 
   const listOrders = new ListOrdersUseCase(orderRepo);
   const getOrderById = new GetOrderByIdUseCase(orderRepo);
-  const createOrder = new CreateOrderUseCase(orderRepo, productRepo, customerRepo);
+  const createOrder = new CreateOrderUseCase(orderRepo, productRepo, restaurantRepo, additionRepo, customerRepo);
   const updateOrderStatus = new UpdateOrderStatusUseCase(orderRepo);
 
   const listCustomers = new ListCustomersUseCase(customerRepo);
+  const getCustomerById = new GetCustomerByIdUseCase(customerRepo);
+  const createCustomer = new CreateCustomerUseCase(customerRepo);
+  const updateCustomer = new UpdateCustomerUseCase(customerRepo);
+  const deleteCustomer = new DeleteCustomerUseCase(customerRepo);
 
-  const getInventory = new GetInventoryUseCase(inventoryRepo);
+  const listInventory = new ListInventoryUseCase(inventoryRepo);
+  const getInventoryItemById = new GetInventoryItemByIdUseCase(inventoryRepo);
+  const createInventoryItem = new CreateInventoryItemUseCase(inventoryRepo);
   const updateInventoryStock = new UpdateInventoryStockUseCase(inventoryRepo);
+  const updateInventoryItem = new UpdateInventoryItemUseCase(inventoryRepo);
+  const deleteInventoryItem = new DeleteInventoryItemUseCase(inventoryRepo);
 
   const hasher: PasswordHasher = new CryptoPasswordHasher();
   const createUser = new CreateUserUseCase(userRepo, hasher);
@@ -162,10 +186,30 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
       deleteRestaurant,
       updateRestaurantCategories
     ),
-    productController: new ProductController(listProducts, getProductById, createProduct, updateProduct, deleteProduct),
+    productController: new ProductController(
+      listProducts,
+      getProductById,
+      createProduct,
+      updateProduct,
+      deleteProduct,
+      restaurantRepo
+    ),
     orderController: new OrderController(listOrders, getOrderById, createOrder, updateOrderStatus),
-    customerController: new CustomerController(listCustomers),
-    inventoryController: new InventoryController(getInventory, updateInventoryStock),
+    customerController: new CustomerController(
+      listCustomers,
+      getCustomerById,
+      createCustomer,
+      updateCustomer,
+      deleteCustomer
+    ),
+    inventoryController: new InventoryController(
+      listInventory,
+      updateInventoryStock,
+      getInventoryItemById,
+      createInventoryItem,
+      updateInventoryItem,
+      deleteInventoryItem
+    ),
     userController: new UserController(createUser, authenticateUser, listUsersUC),
   };
 }

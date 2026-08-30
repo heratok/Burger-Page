@@ -30,15 +30,13 @@ describe('Supabase Persistence Adapter Suite', () => {
       from: (tableName: string) => {
         return {
           select: (columns: string = '*') => {
-            let filterField: string | null = null;
-            let filterValue: any = null;
+            const filters: Array<{ field: string; value: any }> = [];
             let sortField: string | null = null;
             let sortAscending = true;
 
             const queryBuilder: any = {
               eq: (field: string, value: any) => {
-                filterField = field;
-                filterValue = value;
+                filters.push({ field, value });
                 return queryBuilder;
               },
               order: (field: string, options?: { ascending?: boolean }) => {
@@ -48,15 +46,15 @@ describe('Supabase Persistence Adapter Suite', () => {
               },
               maybeSingle: async () => {
                 const table = mockTables[tableName] || [];
-                const matched = filterField
-                  ? table.find((row) => row[filterField!] === filterValue)
+                const matched = filters.length > 0
+                  ? table.find((row) => filters.every((f) => row[f.field] === f.value))
                   : table[0];
                 return { data: matched || null, error: null };
               },
               then: (resolve: any, reject: any) => {
                 let rows = [...(mockTables[tableName] || [])];
-                if (filterField) {
-                  rows = rows.filter((row) => row[filterField!] === filterValue);
+                if (filters.length > 0) {
+                  rows = rows.filter((row) => filters.every((f) => row[f.field] === f.value));
                 }
                 if (sortField) {
                   rows.sort((a, b) => {
@@ -84,21 +82,67 @@ describe('Supabase Persistence Adapter Suite', () => {
             return { data: payload, error: null };
           },
           delete: () => {
-            let filterField: string | null = null;
-            let filterValue: any = null;
+            const deleteFilters: Array<{ field: string; value: any }> = [];
 
             const deleteBuilder: any = {
-              eq: async (field: string, value: any) => {
-                filterField = field;
-                filterValue = value;
+              eq: (field: string, value: any) => {
+                deleteFilters.push({ field, value });
+                return deleteBuilder;
+              },
+              then: (resolve: any, reject: any) => {
                 const table = mockTables[tableName] || [];
-                mockTables[tableName] = table.filter((row) => row[filterField!] !== filterValue);
-                return { data: null, error: null };
+                mockTables[tableName] = table.filter(
+                  (row) => !deleteFilters.every((f) => row[f.field] === f.value)
+                );
+                return Promise.resolve({ data: null, error: null }).then(resolve, reject);
               }
             };
             return deleteBuilder;
           }
         };
+      },
+      rpc: async (functionName: string, params: any) => {
+        if (functionName === 'create_order_atomic') {
+          const newOrder = {
+            id: params.p_order_id,
+            restaurant_id: params.p_restaurant_id,
+            customer_id: params.p_customer_id,
+            order_number: 10023,
+            status: 'pending',
+            subtotal: 64000,
+            delivery_fee: 5000,
+            final_total: 69000,
+            payment_method: params.p_payment_method || 'Efectivo',
+            order_items: (params.p_items || []).map((i: any) => ({
+              id: i.id,
+              order_id: params.p_order_id,
+              product_id: i.product_id,
+              product_name: 'Mock Product',
+              unit_price: 32000,
+              quantity: i.quantity,
+              order_item_additions: (i.additions || []).map((a: any) => ({
+                id: a.id,
+                addition_id: a.addition_id,
+                addition_name: 'Mock Addition',
+                unit_price: 0,
+                quantity: a.quantity || 1
+              }))
+            })),
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+          mockTables.orders.push(newOrder);
+          return { data: newOrder, error: null };
+        }
+        if (functionName === 'update_order_status_with_actor') {
+          const order = mockTables.orders.find(o => o.id === params.p_order_id && o.restaurant_id === params.p_restaurant_id);
+          if (order) {
+            order.status = params.p_new_status;
+            return { data: true, error: null };
+          }
+          return { data: false, error: null };
+        }
+        return { data: null, error: null };
       }
     };
   });
@@ -163,11 +207,12 @@ describe('Supabase Persistence Adapter Suite', () => {
   });
 
   describe('SupabaseProductRepository', () => {
-    it('saves, finds by id, lists all, and deletes product', async () => {
+    it('saves, finds by id, lists by restaurant, and deletes product with strict tenant isolation', async () => {
       const repo = new SupabaseProductRepository(mockSupabaseClient as unknown as SupabaseClient);
 
       const product: Product = {
         id: 'prod-10',
+        restaurantId: 'burger-craft',
         name: 'Truffle Smash Burger',
         description: 'Double patty with truffle aioli',
         price: 32000,
@@ -178,17 +223,22 @@ describe('Supabase Persistence Adapter Suite', () => {
 
       await repo.save(product);
 
-      const found = await repo.findById('prod-10');
+      const found = await repo.findById('prod-10', 'burger-craft');
       expect(found).not.toBeNull();
+      expect(found?.restaurantId).toBe('burger-craft');
       expect(found?.name).toBe('Truffle Smash Burger');
       expect(found?.price).toBe(32000);
       expect(found?.additions).toEqual(['Extra Truffle', 'Crispy Onions']);
 
-      const all = await repo.findAll();
+      // Tenant isolation: querying with foreign restaurantId returns null
+      const foreign = await repo.findById('prod-10', 'foreign-restaurant');
+      expect(foreign).toBeNull();
+
+      const all = await repo.findByRestaurantId('burger-craft');
       expect(all.length).toBe(1);
 
-      await repo.delete('prod-10');
-      expect(await repo.findById('prod-10')).toBeNull();
+      await repo.delete('prod-10', 'burger-craft');
+      expect(await repo.findById('prod-10', 'burger-craft')).toBeNull();
     });
   });
 
@@ -198,8 +248,9 @@ describe('Supabase Persistence Adapter Suite', () => {
 
       const order = new Order(
         'order-supabase-1',
+        'burger-craft',
         'cust-10',
-        [{ productId: 'prod-10', quantity: 2, price: 32000, additions: ['Extra Truffle'] }],
+        [{ productId: 'prod-10', productName: 'Truffle Burger', unitPrice: 32000, quantity: 2, additions: [{ additionId: 'add-1', additionName: 'Extra Truffle', unitPrice: 0, quantity: 1 }] }],
         'pending',
         new Date('2026-08-28T12:00:00Z'),
         5000
@@ -207,50 +258,72 @@ describe('Supabase Persistence Adapter Suite', () => {
 
       await repo.save(order);
 
-      const retrieved = await repo.findById('order-supabase-1');
+      const retrieved = await repo.findById('order-supabase-1', 'burger-craft');
       expect(retrieved).not.toBeNull();
       expect(retrieved?.id).toBe('order-supabase-1');
+      expect(retrieved?.restaurantId).toBe('burger-craft');
       expect(retrieved?.customerId).toBe('cust-10');
       expect(retrieved?.subtotal).toBe(64000);
       expect(retrieved?.deliveryFee).toBe(5000);
       expect(retrieved?.total).toBe(69000);
       expect(retrieved?.status).toBe('pending');
 
-      const all = await repo.findAll();
+      const all = await repo.findByRestaurantId('burger-craft');
       expect(all.length).toBe(1);
+
+      // Foreign tenant isolation
+      const foreign = await repo.findById('order-supabase-1', 'other-tenant');
+      expect(foreign).toBeNull();
     });
   });
 
   describe('SupabaseCustomerRepository', () => {
-    it('saves and retrieves customer calculating loyalty tier', async () => {
+    it('saves and retrieves customer buyer profile with strict tenant isolation', async () => {
       const repo = new SupabaseCustomerRepository(mockSupabaseClient as unknown as SupabaseClient);
 
-      const customer = new Customer('cust-sb-1', 'Camila Rivas', 'camila@example.com', '+573001112233');
-      customer.addOrderSpend(150000);
+      const customer = new Customer(
+        'cust-sb-1',
+        'burger-craft',
+        'Camila Rivas',
+        '+573001112233',
+        'Calle 100 # 19-20',
+        'Usaquén',
+        'Dejar en recepción',
+        'camila@example.com'
+      );
 
       await repo.save(customer);
 
-      const retrieved = await repo.findById('cust-sb-1');
+      const retrieved = await repo.findById('cust-sb-1', 'burger-craft');
       expect(retrieved).not.toBeNull();
+      expect(retrieved?.restaurantId).toBe('burger-craft');
       expect(retrieved?.name).toBe('Camila Rivas');
+      expect(retrieved?.phone).toBe('+573001112233');
+      expect(retrieved?.address).toBe('Calle 100 # 19-20');
+      expect(retrieved?.barrio).toBe('Usaquén');
+      expect(retrieved?.notes).toBe('Dejar en recepción');
       expect(retrieved?.email).toBe('camila@example.com');
-      expect(retrieved?.loyaltyTier).toBe('silver');
 
-      const all = await repo.findAll();
+      // Tenant isolation: foreign tenant lookup returns null
+      const foreign = await repo.findById('cust-sb-1', 'other-tenant');
+      expect(foreign).toBeNull();
+
+      const all = await repo.findByRestaurantId('burger-craft');
       expect(all.length).toBe(1);
     });
   });
 
   describe('SupabaseInventoryRepository', () => {
-    it('saves and updates inventory stock item', async () => {
+    it('saves and updates inventory stock item with strict tenant isolation', async () => {
       const repo = new SupabaseInventoryRepository(mockSupabaseClient as unknown as SupabaseClient);
 
       const inventory: Inventory = {
         id: 'inv-truffle-sauce',
+        restaurantId: 'burger-craft',
         name: 'Truffle Aioli Sauce',
-        category: 'Salsas',
+        category: 'ingredients',
         quantity: 35,
-        unit: 'bottles',
+        unit: 'litros',
         alertThreshold: 5,
         minStockAlert: 5,
         costPerUnit: 8500
@@ -258,16 +331,21 @@ describe('Supabase Persistence Adapter Suite', () => {
 
       await repo.save(inventory);
 
-      const retrieved = await repo.findById('inv-truffle-sauce');
+      const retrieved = await repo.findById('inv-truffle-sauce', 'burger-craft');
       expect(retrieved).not.toBeNull();
+      expect(retrieved?.restaurantId).toBe('burger-craft');
       expect(retrieved?.name).toBe('Truffle Aioli Sauce');
-      expect(retrieved?.category).toBe('Salsas');
+      expect(retrieved?.category).toBe('ingredients');
       expect(retrieved?.quantity).toBe(35);
       expect(retrieved?.alertThreshold).toBe(5);
       expect(retrieved?.minStockAlert).toBe(5);
       expect(retrieved?.costPerUnit).toBe(8500);
 
-      const all = await repo.findAll();
+      // Foreign tenant returns null
+      const foreign = await repo.findById('inv-truffle-sauce', 'other-tenant');
+      expect(foreign).toBeNull();
+
+      const all = await repo.findByRestaurantId('burger-craft');
       expect(all.length).toBe(1);
     });
   });

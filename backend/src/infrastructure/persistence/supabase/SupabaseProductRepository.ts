@@ -19,20 +19,28 @@ export class SupabaseProductRepository implements ProductRepository {
 
     return {
       id: row.id,
+      restaurantId: row.restaurant_id,
       name: row.name,
       description: row.description || '',
       price: Number(row.price),
-      category: row.category,
+      category: row.category_name || row.category || 'General',
+      categoryId: row.category_id || undefined,
+      imageUrl: row.image_url || undefined,
       isAvailable: Boolean(row.is_available),
-      additions
+      isPopular: Boolean(row.is_popular),
+      isNew: Boolean(row.is_new),
+      preparationTimeMinutes: row.preparation_time_minutes ? Number(row.preparation_time_minutes) : 15,
+      displayOrder: row.display_order ? Number(row.display_order) : 0,
+      additions,
     };
   }
 
-  async findById(id: string): Promise<Product | null> {
+  async findById(id: string, restaurantId: string): Promise<Product | null> {
     const { data, error } = await this.client
       .from('products')
       .select('*')
       .eq('id', id)
+      .eq('restaurant_id', restaurantId)
       .maybeSingle();
 
     if (error) {
@@ -42,10 +50,12 @@ export class SupabaseProductRepository implements ProductRepository {
     return this.mapRow(data);
   }
 
-  async findAll(): Promise<Product[]> {
+  async findByRestaurantId(restaurantId: string): Promise<Product[]> {
     const { data, error } = await this.client
       .from('products')
       .select('*')
+      .eq('restaurant_id', restaurantId)
+      .order('display_order', { ascending: true })
       .order('id', { ascending: true });
 
     if (error) {
@@ -57,12 +67,19 @@ export class SupabaseProductRepository implements ProductRepository {
   async save(product: Product): Promise<void> {
     const payload = {
       id: product.id,
+      restaurant_id: product.restaurantId,
       name: product.name,
       description: product.description,
       price: product.price,
-      category: product.category,
+      category_name: product.category,
+      category_id: product.categoryId || null,
+      image_url: product.imageUrl || null,
       is_available: product.isAvailable,
-      additions: product.additions || []
+      is_popular: product.isPopular || false,
+      is_new: product.isNew || false,
+      preparation_time_minutes: product.preparationTimeMinutes || 15,
+      display_order: product.displayOrder || 0,
+      additions: product.additions || [],
     };
 
     const { error } = await this.client
@@ -74,11 +91,12 @@ export class SupabaseProductRepository implements ProductRepository {
     }
   }
 
-  async delete(id: string): Promise<void> {
+  async delete(id: string, restaurantId: string): Promise<void> {
     const { error } = await this.client
       .from('products')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('restaurant_id', restaurantId);
 
     if (error) {
       throw new Error(`Failed to delete product: ${error.message}`);
