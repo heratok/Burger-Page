@@ -19,6 +19,7 @@
     "build:contracts": "npm --prefix packages/contracts run build",
     "build:frontend": "npm --prefix frontend run build",
     "build:backend": "npm --prefix backend run build",
+    "create:admin": "npm --prefix backend run create:admin",
     "test": "npm --prefix packages/contracts run test && npm --prefix frontend run test && npm --prefix backend run test",
     "test:contracts": "npm --prefix packages/contracts run test",
     "test:frontend": "npm --prefix frontend run test",
