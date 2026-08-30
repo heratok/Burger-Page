@@ -38,6 +38,7 @@ export interface TenantContextType {
   updateRestaurant: (id: string, updates: Partial<RestaurantRecord>) => void
   deleteRestaurant: (id: string) => void
   updateActiveRestaurantRecord: (updater: (current: RestaurantRecord) => RestaurantRecord) => void
+  refreshRestaurants: () => Promise<void>
   globalStats: GlobalPlatformStats
 }
 
@@ -61,58 +62,51 @@ export const TenantProvider: React.FC<{
     return envelope.restaurants[0]?.id || "rest-burger-craft"
   })
 
-  // Sync with Backend DB on mount
-  useEffect(() => {
-    let isMounted = true
-    apiClient
-      .listRestaurants()
-      .then((backendRestaurants) => {
-        if (!isMounted) return
-        if (Array.isArray(backendRestaurants) && backendRestaurants.length > 0) {
-          setEnvelope((prev) => {
-            const merged = backendRestaurants.map((br: any) => {
-              const local = prev.restaurants.find((r) => r.id === br.id || r.slug === br.slug)
-              return {
-                ...local,
-                id: br.id,
-                slug: br.slug,
-                adminPassword: br.adminPassword || local?.adminPassword || "admin123",
-                isActive: br.isActive !== undefined ? Boolean(br.isActive) : true,
-                createdAt: br.createdAt || local?.createdAt || new Date().toISOString(),
-                categories: br.categories && br.categories.length > 0 ? br.categories : local?.categories || ['General'],
-                config: {
-                  ...DEFAULT_STORE_CONFIG,
-                  ...(local?.config || {}),
-                  ...(br.config || {}),
-                  name: br.name || br.config?.name || local?.config?.name || DEFAULT_STORE_CONFIG.name,
-                  tagline: br.tagline || br.config?.tagline || local?.config?.tagline || DEFAULT_STORE_CONFIG.tagline,
-                },
-                products: local?.products || [],
-                additions: local?.additions || [],
-                orders: local?.orders || [],
-                customers: local?.customers || [],
-                inventory: local?.inventory || [],
-                suppliers: local?.suppliers || [],
-              } as RestaurantRecord
-            })
-            const localOnly = prev.restaurants.filter(
-              (r) => !backendRestaurants.some((br: any) => br.id === r.id || br.slug === r.slug)
-            )
+  const refreshRestaurants = useCallback(async () => {
+    try {
+      const backendRestaurants = await apiClient.listRestaurants()
+      if (Array.isArray(backendRestaurants)) {
+        setEnvelope((prev) => {
+          const merged = backendRestaurants.map((br: any) => {
+            const local = prev.restaurants.find((r) => r.id === br.id || r.slug === br.slug)
             return {
-              ...prev,
-              restaurants: [...merged, ...localOnly],
-            }
+              ...local,
+              id: br.id,
+              slug: br.slug,
+              adminPassword: br.adminPassword || local?.adminPassword || "admin123",
+              isActive: br.isActive !== undefined ? Boolean(br.isActive) : true,
+              createdAt: br.createdAt || local?.createdAt || new Date().toISOString(),
+              categories: br.categories && br.categories.length > 0 ? br.categories : local?.categories || ['General'],
+              config: {
+                ...DEFAULT_STORE_CONFIG,
+                ...(local?.config || {}),
+                ...(br.config || {}),
+                name: br.name || br.config?.name || local?.config?.name || DEFAULT_STORE_CONFIG.name,
+                tagline: br.tagline || br.config?.tagline || local?.config?.tagline || DEFAULT_STORE_CONFIG.tagline,
+              },
+              products: local?.products || [],
+              additions: local?.additions || [],
+              orders: local?.orders || [],
+              customers: local?.customers || [],
+              inventory: local?.inventory || [],
+              suppliers: local?.suppliers || [],
+            } as RestaurantRecord
           })
-        }
-      })
-      .catch((err) => {
-        console.warn("Could not sync restaurants from backend API:", err)
-      })
-
-    return () => {
-      isMounted = false
+          return {
+            ...prev,
+            restaurants: merged,
+          }
+        })
+      }
+    } catch (err) {
+      console.warn("Could not sync restaurants from backend API:", err)
     }
   }, [])
+
+  // Sync with Backend DB on mount
+  useEffect(() => {
+    refreshRestaurants()
+  }, [refreshRestaurants])
 
   useEffect(() => {
     repository.saveEnvelope(envelope)
@@ -296,11 +290,13 @@ export const TenantProvider: React.FC<{
     let totalCustomers = 0
 
     envelope.restaurants.forEach((r) => {
-      totalRevenue += r.orders
+      const orders = r.orders || []
+      const customers = r.customers || []
+      totalRevenue += orders
         .filter((o) => o.status !== "cancelled")
-        .reduce((sum, o) => sum + o.finalTotal, 0)
-      totalOrders += r.orders.length
-      totalCustomers += r.customers.length
+        .reduce((sum, o) => sum + (o.finalTotal || 0), 0)
+      totalOrders += orders.length
+      totalCustomers += customers.length
     })
 
     return {
@@ -323,6 +319,7 @@ export const TenantProvider: React.FC<{
     updateRestaurant,
     deleteRestaurant,
     updateActiveRestaurantRecord,
+    refreshRestaurants,
     globalStats,
   }
 

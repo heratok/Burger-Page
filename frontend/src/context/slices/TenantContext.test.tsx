@@ -109,4 +109,36 @@ describe("TenantContext - Backend Multi-Tenant Integration", () => {
 
     expect(deleteSpy).toHaveBeenCalledWith(restToDelete.id)
   })
+
+  it("updates restaurants to empty array when backend database is empty", async () => {
+    // Seed local storage with old stale data
+    localStorage.setItem(
+      "burger_page_platform_v2",
+      JSON.stringify({
+        version: 2,
+        superAdminPassword: "admin",
+        restaurants: [
+          {
+            id: "rest-stale",
+            slug: "stale-burger",
+            adminPassword: "stale",
+            isActive: true,
+            config: { name: "Stale Burger", tagline: "Old" },
+          },
+        ],
+      })
+    )
+
+    vi.spyOn(apiClient, "listRestaurants").mockResolvedValue([])
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>{children}</TenantProvider>
+    )
+
+    const { result } = renderHook(() => useTenant(), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.restaurants).toEqual([])
+    })
+  })
 })

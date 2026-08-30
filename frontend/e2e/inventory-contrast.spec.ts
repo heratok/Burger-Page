@@ -27,6 +27,23 @@ test.describe('Inventory & Suppliers Theme Contrast E2E Suite', () => {
       localStorage.setItem('burger_page_active_rest_v2', 'rosto');
       localStorage.setItem('burger_page_admin_theme_v2', 'light');
     });
+
+    await page.route('**/api/restaurants', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([
+          {
+            id: 'rosto',
+            slug: 'rosto',
+            name: 'Rosto Burger',
+            adminPassword: 'rosto',
+            isActive: true,
+            config: { name: 'Rosto Burger', tagline: 'Artesanal' },
+          },
+        ]),
+      });
+    });
   });
 
   test('Supplier notes and details are clearly visible in Light Mode and Dark Mode', async ({ page }) => {
