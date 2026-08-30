@@ -5,7 +5,6 @@ import {
   ShoppingBag,
   TrendingUp,
   Users,
-  ArrowUpRight,
   ChevronRight,
   Flame,
   Plus,
@@ -39,13 +38,25 @@ export const DashboardOverview: React.FC = () => {
     const avgTicket = validOrders.length > 0 ? Math.round(totalSales / validOrders.length) : 0
     const vipCount = customers.filter((c) => c.loyaltyTier === "vip" || c.loyaltyTier === "gold").length
 
+    const ordersLast24h = orders.filter((o) => {
+      if (!o.createdAt) return false
+      const d = new Date(o.createdAt).getTime()
+      return !isNaN(d) && Date.now() - d <= 24 * 60 * 60 * 1000
+    }).length
+
+    const repeatCustomers = customers.filter((c) => c.totalOrders > 1).length
+    const repeatRate = customers.length > 0 ? Math.round((repeatCustomers / customers.length) * 100) : 0
+
     return {
       totalSales,
+      validOrdersCount: validOrders.length,
       totalOrdersCount: orders.length,
       activeOrdersCount: activeOrders.length,
+      ordersLast24h,
       avgTicket,
       totalCustomers: customers.length,
       vipCount,
+      repeatRate,
     }
   }, [orders, customers])
 
@@ -76,16 +87,51 @@ export const DashboardOverview: React.FC = () => {
 
   const maxProductCount = topProducts.length > 0 ? Math.max(...topProducts.map((p) => p.count), 1) : 1
 
-  // 7-day Sales Bar simulation
-  const chartDays = [
-    { day: "Lun", amount: 145000, height: 45 },
-    { day: "Mar", amount: 189000, height: 58 },
-    { day: "Mié", amount: 220000, height: 68 },
-    { day: "Jue", amount: 265000, height: 80 },
-    { day: "Vie", amount: 380000, height: 98 },
-    { day: "Sáb", amount: 410000, height: 100 },
-    { day: "Hoy", amount: metrics.totalSales > 0 ? metrics.totalSales : 290000, height: 85 },
-  ]
+  // 7-day Sales Bar dynamic calculation
+  const chartDays = useMemo(() => {
+    const dayNames = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"]
+    const now = new Date()
+    const daysWindow: { dateKey: string; day: string; amount: number }[] = []
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i)
+      const year = d.getFullYear()
+      const month = String(d.getMonth() + 1).padStart(2, "0")
+      const day = String(d.getDate()).padStart(2, "0")
+      const dateKey = `${year}-${month}-${day}`
+      const dayLabel = i === 0 ? "Hoy" : dayNames[d.getDay()]
+      daysWindow.push({ dateKey, day: dayLabel, amount: 0 })
+    }
+
+    orders
+      .filter((o) => o.status !== "cancelled")
+      .forEach((ord) => {
+        if (!ord.createdAt) return
+        const ordDate = new Date(ord.createdAt)
+        if (isNaN(ordDate.getTime())) return
+        const year = ordDate.getFullYear()
+        const month = String(ordDate.getMonth() + 1).padStart(2, "0")
+        const day = String(ordDate.getDate()).padStart(2, "0")
+        const ordDateKey = `${year}-${month}-${day}`
+
+        const match = daysWindow.find((dw) => dw.dateKey === ordDateKey)
+        if (match) {
+          match.amount += ord.finalTotal
+        }
+      })
+
+    const maxAmount = Math.max(...daysWindow.map((d) => d.amount), 0)
+    const hasData = maxAmount > 0
+
+    return {
+      hasData,
+      items: daysWindow.map((d) => ({
+        day: d.day,
+        amount: d.amount,
+        height: hasData ? Math.max(Math.round((d.amount / maxAmount) * 100), 4) : 0,
+      })),
+    }
+  }, [orders])
 
   const isDark = adminTheme === "dark"
 
@@ -165,9 +211,14 @@ export const DashboardOverview: React.FC = () => {
             </span>
           </div>
           <div className="mt-2 flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
-            <ArrowUpRight className="size-3.5" />
-            <span className="font-semibold">+18.4%</span>
-            <span className={isDark ? "text-slate-400" : "text-slate-500"}>vs semana pasada</span>
+            {metrics.validOrdersCount > 0 ? (
+              <>
+                <span className="font-semibold">{metrics.validOrdersCount}</span>
+                <span className={isDark ? "text-slate-400" : "text-slate-500"}>órdenes completadas</span>
+              </>
+            ) : (
+              <span className={isDark ? "text-slate-400" : "text-slate-500"}>Sin órdenes completadas aún</span>
+            )}
           </div>
         </div>
 
@@ -196,8 +247,7 @@ export const DashboardOverview: React.FC = () => {
             )}
           </div>
           <div className="mt-2 flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400">
-            <ArrowUpRight className="size-3.5" />
-            <span className="font-semibold">+12 pedidos</span>
+            <span className="font-semibold">{metrics.ordersLast24h} pedidos</span>
             <span className={isDark ? "text-slate-400" : "text-slate-500"}>en últimas 24h</span>
           </div>
         </div>
@@ -222,9 +272,9 @@ export const DashboardOverview: React.FC = () => {
             </span>
           </div>
           <div className="mt-2 flex items-center gap-1.5 text-xs text-violet-600 dark:text-violet-400">
-            <ArrowUpRight className="size-3.5" />
-            <span className="font-semibold">+5.8%</span>
-            <span className={isDark ? "text-slate-400" : "text-slate-500"}>por orden</span>
+            <span className={isDark ? "text-slate-400" : "text-slate-500"}>
+              {metrics.validOrdersCount > 0 ? "Promedio por orden cobrada" : "Sin órdenes cobradas"}
+            </span>
           </div>
         </div>
 
@@ -251,8 +301,7 @@ export const DashboardOverview: React.FC = () => {
             </span>
           </div>
           <div className="mt-2 flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
-            <ArrowUpRight className="size-3.5" />
-            <span className="font-semibold">94%</span>
+            <span className="font-semibold">{metrics.repeatRate}%</span>
             <span className={isDark ? "text-slate-400" : "text-slate-500"}>tasa de recompra</span>
           </div>
         </div>
@@ -276,35 +325,46 @@ export const DashboardOverview: React.FC = () => {
               </p>
             </div>
             <span className="rounded-lg bg-indigo-500/10 px-2.5 py-1 text-xs font-semibold text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300">
-              Semana Actual
+              Últimos 7 días
             </span>
           </div>
 
           {/* Bar Chart Visualizer */}
-          <div className="mt-6 flex h-48 items-end justify-between gap-2 sm:gap-4 pt-4">
-            {chartDays.map((item, idx) => (
-              <div key={idx} className="group relative flex flex-1 flex-col items-center gap-2">
-                {/* Tooltip on hover */}
-                <div className="pointer-events-none absolute -top-8 hidden rounded-md bg-slate-900 px-2 py-1 text-[11px] font-bold text-white shadow-md group-hover:block dark:bg-slate-800 border dark:border-slate-700">
-                  {formatCurrency(item.amount)}
-                </div>
-                {/* Bar */}
-                <div className="w-full max-w-[44px] rounded-t-lg bg-slate-100 dark:bg-slate-800 overflow-hidden h-36 flex items-end">
-                  <div
-                    style={{ height: `${item.height}%` }}
-                    className={`w-full rounded-t-lg transition-all duration-500 group-hover:opacity-80 ${
-                      idx === chartDays.length - 1
-                        ? "bg-gradient-to-t from-orange-500 to-amber-400"
-                        : "bg-gradient-to-t from-indigo-600 to-violet-400"
-                    }`}
-                  />
-                </div>
-                <span className={`text-xs font-medium ${isDark ? "text-slate-400" : "text-slate-500"}`}>
-                  {item.day}
-                </span>
+          {!chartDays.hasData ? (
+            <div className="mt-6 flex h-48 flex-col items-center justify-center gap-2 pt-4 text-center">
+              <div className="flex size-10 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400">
+                <TrendingUp className="size-5" />
               </div>
-            ))}
-          </div>
+              <p className="text-xs font-medium text-slate-400">
+                No hay ventas registradas en los últimos 7 días.
+              </p>
+            </div>
+          ) : (
+            <div className="mt-6 flex h-48 items-end justify-between gap-2 sm:gap-4 pt-4">
+              {chartDays.items.map((item, idx) => (
+                <div key={idx} className="group relative flex flex-1 flex-col items-center gap-2">
+                  {/* Tooltip on hover */}
+                  <div className="pointer-events-none absolute -top-8 hidden rounded-md bg-slate-900 px-2 py-1 text-[11px] font-bold text-white shadow-md group-hover:block dark:bg-slate-800 border dark:border-slate-700">
+                    {formatCurrency(item.amount)}
+                  </div>
+                  {/* Bar */}
+                  <div className="w-full max-w-[44px] rounded-t-lg bg-slate-100 dark:bg-slate-800 overflow-hidden h-36 flex items-end">
+                    <div
+                      style={{ height: `${item.height}%` }}
+                      className={`w-full rounded-t-lg transition-all duration-500 group-hover:opacity-80 ${
+                        idx === chartDays.items.length - 1
+                          ? "bg-gradient-to-t from-orange-500 to-amber-400"
+                          : "bg-gradient-to-t from-indigo-600 to-violet-400"
+                      }`}
+                    />
+                  </div>
+                  <span className={`text-xs font-medium ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                    {item.day}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Top Products */}
@@ -413,68 +473,76 @@ export const DashboardOverview: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {orders.slice(0, 5).map((ord) => (
-                <tr
-                  key={ord.id}
-                  className={`transition-colors ${
-                    isDark ? "hover:bg-slate-800/60" : "hover:bg-slate-50"
-                  }`}
-                >
-                  <td className="py-3 px-3 font-bold text-indigo-600 dark:text-indigo-400">
-                    #{ord.orderNumber}
-                  </td>
-                  <td className="py-3 px-3">
-                    <div className="font-semibold text-slate-900 dark:text-slate-100">{ord.customer.nombre}</div>
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400">{ord.customer.barrio}</div>
-                  </td>
-                  <td className="py-3 px-3 max-w-[200px] truncate text-slate-700 dark:text-slate-300">
-                    {ord.items.map((i) => `${i.cantidad}× ${i.name}`).join(", ")}
-                  </td>
-                  <td className="py-3 px-3 font-bold text-slate-900 dark:text-slate-100">
-                    {formatCurrency(ord.finalTotal)}
-                  </td>
-                  <td className="py-3 px-3">
-                    <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300 border dark:border-slate-700">
-                      {ord.metodo}
-                    </span>
-                  </td>
-                  <td className="py-3 px-3">
-                    <OrderStatusBadge status={ord.status} pulse />
-                  </td>
-                  <td className="py-3 px-3 text-right">
-                    {ord.status === "pending" && (
-                      <button
-                        type="button"
-                        onClick={() => updateOrderStatus(ord.id, "cooking")}
-                        className="rounded-lg bg-orange-500/10 px-2.5 py-1 text-[11px] font-semibold text-orange-600 hover:bg-orange-500/20 dark:bg-orange-500/20 dark:text-orange-300"
-                      >
-                        Pasar a Cocina
-                      </button>
-                    )}
-                    {ord.status === "cooking" && (
-                      <button
-                        type="button"
-                        onClick={() => updateOrderStatus(ord.id, "delivering")}
-                        className="rounded-lg bg-blue-500/10 px-2.5 py-1 text-[11px] font-semibold text-blue-600 hover:bg-blue-500/20 dark:bg-blue-500/20 dark:text-blue-300"
-                      >
-                        Enviar en Reparto
-                      </button>
-                    )}
-                    {ord.status === "delivering" && (
-                      <button
-                        type="button"
-                        onClick={() => updateOrderStatus(ord.id, "delivered")}
-                        className="rounded-lg bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-600 hover:bg-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-300"
-                      >
-                        Completar Entrega
-                      </button>
-                    )}
-                    {ord.status === "delivered" && (
-                      <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Finalizado</span>
-                    )}
+              {orders.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-8 text-center text-slate-400">
+                    No hay pedidos registrados en el sistema.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                orders.slice(0, 5).map((ord) => (
+                  <tr
+                    key={ord.id}
+                    className={`transition-colors ${
+                      isDark ? "hover:bg-slate-800/60" : "hover:bg-slate-50"
+                    }`}
+                  >
+                    <td className="py-3 px-3 font-bold text-indigo-600 dark:text-indigo-400">
+                      #{ord.orderNumber}
+                    </td>
+                    <td className="py-3 px-3">
+                      <div className="font-semibold text-slate-900 dark:text-slate-100">{ord.customer.nombre}</div>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400">{ord.customer.barrio}</div>
+                    </td>
+                    <td className="py-3 px-3 max-w-[200px] truncate text-slate-700 dark:text-slate-300">
+                      {ord.items.map((i) => `${i.cantidad}× ${i.name}`).join(", ")}
+                    </td>
+                    <td className="py-3 px-3 font-bold text-slate-900 dark:text-slate-100">
+                      {formatCurrency(ord.finalTotal)}
+                    </td>
+                    <td className="py-3 px-3">
+                      <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300 border dark:border-slate-700">
+                        {ord.metodo}
+                      </span>
+                    </td>
+                    <td className="py-3 px-3">
+                      <OrderStatusBadge status={ord.status} pulse />
+                    </td>
+                    <td className="py-3 px-3 text-right">
+                      {ord.status === "pending" && (
+                        <button
+                          type="button"
+                          onClick={() => updateOrderStatus(ord.id, "cooking")}
+                          className="rounded-lg bg-orange-500/10 px-2.5 py-1 text-[11px] font-semibold text-orange-600 hover:bg-orange-500/20 dark:bg-orange-500/20 dark:text-orange-300"
+                        >
+                          Pasar a Cocina
+                        </button>
+                      )}
+                      {ord.status === "cooking" && (
+                        <button
+                          type="button"
+                          onClick={() => updateOrderStatus(ord.id, "delivering")}
+                          className="rounded-lg bg-blue-500/10 px-2.5 py-1 text-[11px] font-semibold text-blue-600 hover:bg-blue-500/20 dark:bg-blue-500/20 dark:text-blue-300"
+                        >
+                          Enviar en Reparto
+                        </button>
+                      )}
+                      {ord.status === "delivering" && (
+                        <button
+                          type="button"
+                          onClick={() => updateOrderStatus(ord.id, "delivered")}
+                          className="rounded-lg bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-600 hover:bg-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-300"
+                        >
+                          Completar Entrega
+                        </button>
+                      )}
+                      {ord.status === "delivered" && (
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Finalizado</span>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
