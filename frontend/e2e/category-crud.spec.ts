@@ -164,17 +164,20 @@ test.describe('Menu & Categories Full CRUD & Customization E2E Suite', () => {
     await expect(productModal).toBeVisible();
 
     await productModal.locator('input[placeholder*="Plato Especial"]').fill('Volcán de Chocolate y Arequipe');
-    await productModal.locator('input[type="number"][min="1000"]').fill('16000');
+    await productModal.locator('input[type="number"]').first().fill('16000');
     
     // Select category "Postres Artesanales" in product modal
     const categorySelect = productModal.locator('select');
     await categorySelect.selectOption('Postres Artesanales');
 
-    await productModal.locator('textarea').fill('Delicioso volcán con centro líquido y helado de vainilla');
     await productModal.getByRole('button', { name: /Guardar en Menú/i }).click();
+    await expect(productModal).not.toBeVisible();
+
+    // Switch category filter to "Postres Artesanales" or "Todos" to view new product
+    await page.getByRole('button', { name: 'Postres Artesanales', exact: true }).click();
 
     // Verify new product is listed under "Postres Artesanales"
-    await expect(page.getByText('Volcán de Chocolate y Arequipe')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Volcán de Chocolate y Arequipe' })).toBeVisible();
 
     // 9. Navigate to public Storefront using client-side navigation and verify owner changes appear live
     await page.getByRole('button', { name: /Ver Tienda|Tienda Pública/i }).first().click();

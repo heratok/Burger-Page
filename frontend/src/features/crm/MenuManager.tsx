@@ -662,7 +662,7 @@ export const MenuManager: React.FC = () => {
       {isProductModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 backdrop-blur-xs">
           <div
-            className={`w-full max-w-lg rounded-2xl border p-6 shadow-2xl transition-all ${
+            className={`w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border p-6 shadow-2xl transition-all ${
               isDark ? "border-slate-800 bg-slate-900 text-slate-100" : "border-slate-200 bg-white text-slate-900"
             }`}
           >
@@ -939,9 +939,13 @@ export const MenuManager: React.FC = () => {
                 >
                   Cancelar
                 </Button>
-                <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold">
+                <button
+                  type="submit"
+                  onClick={handleSaveProduct}
+                  className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-indigo-700 cursor-pointer"
+                >
                   {editingProduct ? "Actualizar Producto" : "Guardar en Menú"}
-                </Button>
+                </button>
               </div>
             </form>
           </div>
@@ -1003,9 +1007,12 @@ export const MenuManager: React.FC = () => {
                 <Button type="button" variant="outline" size="sm" onClick={() => setIsAddModalOpen(false)}>
                   Cancelar
                 </Button>
-                <Button type="submit" size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold cursor-pointer">
+                <button
+                  type="submit"
+                  className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-indigo-700 cursor-pointer"
+                >
                   Guardar
-                </Button>
+                </button>
               </div>
             </form>
           </div>
