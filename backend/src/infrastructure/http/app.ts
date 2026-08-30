@@ -101,33 +101,13 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
   let userRepo: UserRepository;
 
   if (selectedDriver === 'supabase') {
-    try {
-      const supabaseClient = getSupabaseClient();
-      restaurantRepo = new SupabaseRestaurantRepository(supabaseClient);
-      productRepo = new SupabaseProductRepository(supabaseClient);
-      orderRepo = new SupabaseOrderRepository(supabaseClient);
-      customerRepo = new SupabaseCustomerRepository(supabaseClient);
-      inventoryRepo = new SupabaseInventoryRepository(supabaseClient);
-      userRepo = new SupabaseUserRepository(supabaseClient);
-    } catch (err) {
-      console.warn('Supabase initialization failed, falling back to InMemory/SQLite:', err);
-      if (process.env.DATABASE_PATH) {
-        const db = createSqliteDatabase(dbPath || process.env.DATABASE_PATH);
-        restaurantRepo = new SqliteRestaurantRepository(db);
-        productRepo = new SqliteProductRepository(db);
-        orderRepo = new SqliteOrderRepository(db);
-        customerRepo = new SqliteCustomerRepository(db);
-        inventoryRepo = new SqliteInventoryRepository(db);
-        userRepo = new InMemoryUserRepository();
-      } else {
-        restaurantRepo = new InMemoryRestaurantRepository();
-        productRepo = new InMemoryProductRepository();
-        orderRepo = new InMemoryOrderRepository();
-        customerRepo = new InMemoryCustomerRepository();
-        inventoryRepo = new InMemoryInventoryRepository();
-        userRepo = new InMemoryUserRepository();
-      }
-    }
+    const supabaseClient = getSupabaseClient();
+    restaurantRepo = new SupabaseRestaurantRepository(supabaseClient);
+    productRepo = new SupabaseProductRepository(supabaseClient);
+    orderRepo = new SupabaseOrderRepository(supabaseClient);
+    customerRepo = new SupabaseCustomerRepository(supabaseClient);
+    inventoryRepo = new SupabaseInventoryRepository(supabaseClient);
+    userRepo = new SupabaseUserRepository(supabaseClient);
   } else if (selectedDriver === 'sqlite') {
     const db = createSqliteDatabase(dbPath || process.env.DATABASE_PATH || ':memory:');
     restaurantRepo = new SqliteRestaurantRepository(db);
