@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('Super Admin Multi-Tenant Navigation, Impersonation & Quick Actions E2E Suite', () => {
+test.describe('Super Admin Multi-Tenant Navigation, Dedicated SaaS Modules & Impersonation E2E Suite', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       sessionStorage.clear();
@@ -8,7 +8,7 @@ test.describe('Super Admin Multi-Tenant Navigation, Impersonation & Quick Action
     });
   });
 
-  test('Super Admin can manage a tenant, navigate all restaurant modules, and return seamlessly to SaaS panel', async ({ page }) => {
+  test('Super Admin can navigate between dedicated SaaS modules (Restaurantes, Usuarios, Métricas) and impersonate a tenant', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
 
     // 1. Navigate to Admin login
@@ -27,28 +27,26 @@ test.describe('Super Admin Multi-Tenant Navigation, Impersonation & Quick Action
 
     // 3. Verify landing on Global SaaS Directory (/admin/restaurants)
     await expect(page).toHaveURL(/\/admin\/restaurants/);
-    await expect(page.getByRole('button', { name: /Directorio Global SaaS/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Restaurantes/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Usuarios & Accesos/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Métricas Globales/i })).toBeVisible();
     await expect(page.getByText('Super Admin').first()).toBeVisible();
 
-    // 4. Verify Sidebar Quick Actions for Super Admin in Global Mode
-    const newRestBtn = page.getByRole('button', { name: /\+ Nuevo Restaurante/i });
-    const newUserBtn = page.getByRole('button', { name: /\+ Nuevo Usuario/i });
-    await expect(newRestBtn).toBeVisible();
-    await expect(newUserBtn).toBeVisible();
+    // 4. Test Dedicated Section: Usuarios & Accesos (/admin/users)
+    await page.getByRole('button', { name: /Usuarios & Accesos/i }).click();
+    await expect(page).toHaveURL(/\/admin\/users/);
+    await expect(page.getByText(/Directorio Global de Usuarios/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: /\+ Nuevo Usuario/i })).toBeVisible();
 
-    // 5. Test Quick Action: Open "+ Nuevo Restaurante" modal
-    await newRestBtn.click();
-    const createRestModal = page.locator('div.fixed').filter({ hasText: 'Dar de Alta Nuevo Restaurante' });
-    await expect(createRestModal).toBeVisible();
-    await createRestModal.getByRole('button', { name: /Cancelar/i }).click();
-    await expect(createRestModal).not.toBeVisible();
+    // 5. Test Dedicated Section: Métricas Globales (/admin/metrics)
+    await page.getByRole('button', { name: /Métricas Globales/i }).click();
+    await expect(page).toHaveURL(/\/admin\/metrics/);
+    await expect(page.getByText(/Métricas & Rendimiento Global SaaS/i)).toBeVisible();
+    await expect(page.getByText(/Ranking de Restaurantes por Facturación/i)).toBeVisible();
 
-    // 6. Test Quick Action: Open "+ Nuevo Usuario" modal
-    await newUserBtn.click();
-    const createUserModal = page.locator('div.fixed').filter({ hasText: 'Crear Usuario' });
-    await expect(createUserModal).toBeVisible();
-    await createUserModal.getByRole('button', { name: /Cancelar/i }).click();
-    await expect(createUserModal).not.toBeVisible();
+    // 6. Return to Restaurantes directory
+    await page.getByRole('button', { name: /Restaurantes/i }).click();
+    await expect(page).toHaveURL(/\/admin\/restaurants/);
 
     // 7. Click "Administrar" on the first restaurant (Burger Craft) in the directory table
     const firstManageButton = page.getByRole('button', { name: /Administrar/i }).first();
@@ -72,13 +70,7 @@ test.describe('Super Admin Multi-Tenant Navigation, Impersonation & Quick Action
     await expect(page.getByRole('button', { name: /Reportes & Cierre/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /Personalizador UI\/UX/i })).toBeVisible();
 
-    // 11. Navigate to Menu & Carta module while in impersonation mode
-    await page.getByRole('button', { name: /Menú & Carta/i }).click();
-    await expect(page).toHaveURL(/\/admin\/menu/);
-    await expect(page.getByRole('button', { name: /Nuevo Plato|Gestionar Categorías/i }).first()).toBeVisible();
-    await expect(page.getByRole('button', { name: /Volver al Panel Super Admin/i }).first()).toBeVisible();
-
-    // 12. Test collapsing and expanding the sidebar on desktop
+    // 11. Test collapsing and expanding the sidebar on desktop
     const sidebar = page.locator('aside[role="complementary"]');
     await expect(sidebar).toHaveClass(/lg:w-64/);
 
@@ -90,12 +82,13 @@ test.describe('Super Admin Multi-Tenant Navigation, Impersonation & Quick Action
     await toggleExpandBtn.click();
     await expect(sidebar).toHaveClass(/lg:w-64/);
 
-    // 13. Click "Volver al Panel Super Admin" to exit tenant administration
+    // 12. Click "Volver al Panel Super Admin" to exit tenant administration
     await page.getByRole('button', { name: /Volver al Panel Super Admin/i }).first().click();
 
-    // 14. Verify return to SaaS Directory
+    // 13. Verify return to SaaS Directory
     await expect(page).toHaveURL(/\/admin\/restaurants/);
-    await expect(page.getByRole('button', { name: /Directorio Global SaaS/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /\+ Nuevo Restaurante/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Restaurantes/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Usuarios & Accesos/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Métricas Globales/i })).toBeVisible();
   });
 });

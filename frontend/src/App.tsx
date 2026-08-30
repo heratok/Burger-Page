@@ -59,6 +59,16 @@ const RestaurantsDirectory = lazy(() =>
     default: m.RestaurantsDirectory,
   }))
 )
+const UsersDirectory = lazy(() =>
+  import("@/features/superadmin/UsersDirectory").then((m) => ({
+    default: m.UsersDirectory,
+  }))
+)
+const GlobalAnalytics = lazy(() =>
+  import("@/features/superadmin/GlobalAnalytics").then((m) => ({
+    default: m.GlobalAnalytics,
+  }))
+)
 const AdminAuthModal = lazy(() =>
   import("@/features/superadmin/AdminAuthModal").then((m) => ({
     default: m.AdminAuthModal,
@@ -95,6 +105,8 @@ function MainRouter() {
       <Suspense fallback={<AdminLoadingFallback />}>
         <AdminLayout>
           {adminTab === "restaurants" && <RestaurantsDirectory />}
+          {adminTab === "users" && <UsersDirectory />}
+          {adminTab === "metrics" && <GlobalAnalytics />}
           {adminTab === "dashboard" && <DashboardOverview />}
           {adminTab === "orders" && <OrdersKanban />}
           {adminTab === "menu" && <MenuManager />}

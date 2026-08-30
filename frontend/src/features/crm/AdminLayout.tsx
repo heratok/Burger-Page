@@ -22,7 +22,6 @@ import {
   BarChart3,
   Plus,
   ArrowLeft,
-  UserPlus,
   PanelLeftClose,
   PanelLeftOpen,
 } from "lucide-react"
@@ -38,6 +37,7 @@ interface AdminLayoutProps {
 
 export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const {
+    restaurants,
     storeConfig,
     activeRestaurant,
     adminTab,
@@ -77,16 +77,30 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
   const isDark = adminTheme === "dark"
   const isSuper = session.role === "super"
-  const isSuperGlobalMode = isSuper && adminTab === "restaurants"
-  const isSuperTenantMode = isSuper && adminTab !== "restaurants"
+  const isSuperGlobalMode = isSuper && (adminTab === "restaurants" || adminTab === "users" || adminTab === "metrics")
+  const isSuperTenantMode = isSuper && !isSuperGlobalMode
 
-  // Global SaaS navigation items for platform-wide management
+  // Global SaaS navigation modules for platform-wide management
   const globalNavItems = [
     {
       id: "restaurants" as const,
-      label: "Directorio Global SaaS",
+      label: "Restaurantes",
       icon: Building2,
-      description: "Gestión de inquilinos y métricas globales",
+      description: "Directorio de franquicias e inquilinos",
+      badge: `${restaurants.length}`,
+    },
+    {
+      id: "users" as const,
+      label: "Usuarios & Accesos",
+      icon: Users,
+      description: "Directorio global de administradores",
+      badge: undefined,
+    },
+    {
+      id: "metrics" as const,
+      label: "Métricas Globales",
+      icon: BarChart3,
+      description: "Consolidado financiero y rendimiento",
       badge: "SaaS",
     },
   ]
@@ -178,7 +192,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
               : "border-slate-200/80 bg-white shadow-xs"
           }`}
         >
-          {/* Sidebar Top: Logo & Branding (Cleanly centered when collapsed) */}
+          {/* Sidebar Top: Logo & Branding */}
           <div
             className={`flex h-14 shrink-0 items-center border-b px-2.5 border-slate-200/60 dark:border-slate-800 ${
               isSidebarCollapsed ? "justify-center" : "justify-between"
@@ -261,7 +275,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
               </div>
             )}
 
-            {/* Mobile Close Button (only visible in mobile drawer) */}
+            {/* Mobile Close Button */}
             <button
               type="button"
               aria-label="Cerrar menú"
@@ -281,7 +295,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           <nav className="flex-1 space-y-1.5 p-1.5 overflow-y-auto" aria-label="Menú Lateral">
             {!isSidebarCollapsed && (
               <div className="px-2 pb-1 text-[9px] font-bold uppercase tracking-wider text-slate-400">
-                {isSuperGlobalMode ? "Administración SaaS" : "Módulos del Restaurante"}
+                {isSuperGlobalMode ? "Módulos SaaS Global" : "Módulos del Restaurante"}
               </div>
             )}
 
@@ -344,51 +358,6 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 </button>
               )
             })}
-
-            {/* Quick Actions in Sidebar for Super Admin in Global Mode */}
-            {isSuperGlobalMode && (
-              <div className={`space-y-2 ${isSidebarCollapsed ? "pt-2 border-t border-slate-200/40 dark:border-slate-800/60" : "pt-3 space-y-1.5"}`}>
-                {!isSidebarCollapsed && (
-                  <div className="px-2 pb-1 text-[9px] font-bold uppercase tracking-wider text-slate-400">
-                    Acciones Rápidas SaaS
-                  </div>
-                )}
-                <button
-                  type="button"
-                  title="+ Nuevo Restaurante"
-                  aria-label="+ Nuevo Restaurante"
-                  onClick={() => {
-                    setIsCreateRestaurantOpen(true)
-                    setIsMobileSidebarOpen(false)
-                  }}
-                  className={`flex items-center rounded-xl border border-indigo-500/30 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20 hover:scale-105 transition-all cursor-pointer font-bold ${
-                    isSidebarCollapsed
-                      ? "size-10 mx-auto justify-center"
-                      : "w-full gap-2 px-2.5 py-2 text-xs"
-                  }`}
-                >
-                  <Plus className="size-4.5 shrink-0" />
-                  {!isSidebarCollapsed && <span className="truncate">+ Nuevo Restaurante</span>}
-                </button>
-                <button
-                  type="button"
-                  title="+ Nuevo Usuario"
-                  aria-label="+ Nuevo Usuario"
-                  onClick={() => {
-                    setIsCreateUserOpen(true)
-                    setIsMobileSidebarOpen(false)
-                  }}
-                  className={`flex items-center rounded-xl border border-violet-500/30 bg-violet-500/10 text-violet-600 dark:text-violet-400 hover:bg-violet-500/20 hover:scale-105 transition-all cursor-pointer font-bold ${
-                    isSidebarCollapsed
-                      ? "size-10 mx-auto justify-center"
-                      : "w-full gap-2 px-2.5 py-2 text-xs"
-                  }`}
-                >
-                  <UserPlus className="size-4.5 shrink-0" />
-                  {!isSidebarCollapsed && <span className="truncate">+ Nuevo Usuario</span>}
-                </button>
-              </div>
-            )}
           </nav>
 
           {/* Sidebar Footer Controls */}

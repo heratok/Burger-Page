@@ -5,7 +5,7 @@ import { RestaurantProvider, useRestaurant } from "@/context/RestaurantContext"
 import { AdminLayout } from "./AdminLayout"
 import * as routerModule from "@/core/router/useAppRouter"
 
-describe("AdminLayout - Super Admin Navigation & Quick Actions (TDD)", () => {
+describe("AdminLayout - Super Admin Navigation & Global Modules (TDD)", () => {
   beforeEach(() => {
     localStorage.clear()
     sessionStorage.clear()
@@ -16,7 +16,7 @@ describe("AdminLayout - Super Admin Navigation & Quick Actions (TDD)", () => {
     cleanup()
   })
 
-  it("renders Global SaaS directory and quick create action buttons when Super Admin is in global mode", async () => {
+  it("renders Global SaaS navigation modules (Restaurantes, Usuarios & Accesos, Métricas Globales) when Super Admin is in global mode", async () => {
     // Setup Super Admin session in global mode (/admin/restaurants)
     sessionStorage.setItem(
       "burger_page_session_v2",
@@ -42,15 +42,12 @@ describe("AdminLayout - Super Admin Navigation & Quick Actions (TDD)", () => {
       </RestaurantProvider>
     )
 
-    // Verify SaaS Global branding & navigation item
-    expect(screen.getAllByText(/Directorio Global SaaS/i).length).toBeGreaterThan(0)
-    expect(screen.getAllByText(/Super Admin/i).length).toBeGreaterThan(0)
+    // Verify SaaS Global branding & dedicated navigation modules
+    expect(screen.getAllByText(/Restaurantes/i).length).toBeGreaterThan(0)
+    expect(screen.getByText(/Usuarios & Accesos/i)).toBeDefined()
+    expect(screen.getByText(/Métricas Globales/i)).toBeDefined()
 
-    // Verify Quick Creation Action Buttons in sidebar
-    expect(screen.getByRole("button", { name: /\+ Nuevo Restaurante/i })).toBeDefined()
-    expect(screen.getByRole("button", { name: /\+ Nuevo Usuario/i })).toBeDefined()
-
-    // Impersonation return button should NOT be visible when already in SaaS directory
+    // Impersonation return button should NOT be visible when in global SaaS mode
     expect(screen.queryByText(/Volver al Panel Super Admin/i)).toBeNull()
   })
 
@@ -105,70 +102,6 @@ describe("AdminLayout - Super Admin Navigation & Quick Actions (TDD)", () => {
     expect(navigateToMock).toHaveBeenCalledWith("/admin/restaurants")
   })
 
-  it("opens CreateRestaurantModal when clicking the quick create restaurant button", async () => {
-    sessionStorage.setItem(
-      "burger_page_session_v2",
-      JSON.stringify({ role: "super", authenticatedAt: new Date().toISOString() })
-    )
-
-    const TestComponent = () => {
-      const { setAdminTab } = useRestaurant()
-      React.useEffect(() => {
-        setAdminTab("restaurants")
-      }, [setAdminTab])
-
-      return (
-        <AdminLayout>
-          <div>Directorio</div>
-        </AdminLayout>
-      )
-    }
-
-    render(
-      <RestaurantProvider>
-        <TestComponent />
-      </RestaurantProvider>
-    )
-
-    const createRestBtn = screen.getByRole("button", { name: /\+ Nuevo Restaurante/i })
-    fireEvent.click(createRestBtn)
-
-    // Verify modal is open
-    expect(screen.getByText(/Dar de Alta Nuevo Restaurante/i)).toBeDefined()
-  })
-
-  it("opens CreateUserModal when clicking the quick create user button", async () => {
-    sessionStorage.setItem(
-      "burger_page_session_v2",
-      JSON.stringify({ role: "super", authenticatedAt: new Date().toISOString() })
-    )
-
-    const TestComponent = () => {
-      const { setAdminTab } = useRestaurant()
-      React.useEffect(() => {
-        setAdminTab("restaurants")
-      }, [setAdminTab])
-
-      return (
-        <AdminLayout>
-          <div>Directorio</div>
-        </AdminLayout>
-      )
-    }
-
-    render(
-      <RestaurantProvider>
-        <TestComponent />
-      </RestaurantProvider>
-    )
-
-    const createUserBtn = screen.getByRole("button", { name: /\+ Nuevo Usuario/i })
-    fireEvent.click(createUserBtn)
-
-    // Verify modal is open (checking the modal title heading)
-    expect(screen.getByRole("heading", { name: "Crear Usuario" })).toBeDefined()
-  })
-
   it("isolates regular restaurant admin: never shows Super Admin controls or return banners", async () => {
     sessionStorage.setItem(
       "burger_page_session_v2",
@@ -203,10 +136,8 @@ describe("AdminLayout - Super Admin Navigation & Quick Actions (TDD)", () => {
     expect(screen.getByText(/Pedidos en Vivo/i)).toBeDefined()
 
     // Must NOT see Super Admin controls
-    expect(screen.queryByText(/Directorio Global SaaS/i)).toBeNull()
+    expect(screen.queryByText(/Métricas Globales/i)).toBeNull()
     expect(screen.queryByText(/Volver al Panel Super Admin/i)).toBeNull()
-    expect(screen.queryByRole("button", { name: /\+ Nuevo Restaurante/i })).toBeNull()
-    expect(screen.queryByRole("button", { name: /\+ Nuevo Usuario/i })).toBeNull()
   })
 
   it("allows collapsing and expanding the sidebar on desktop", () => {

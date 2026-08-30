@@ -19,6 +19,8 @@ export const VALID_ADMIN_TABS: AdminTab[] = [
   "reports",
   "customizer",
   "restaurants",
+  "users",
+  "metrics",
 ]
 
 /**
