@@ -1,3 +1,26 @@
+import { existsSync } from 'node:fs';
+import path from 'node:path';
+
+// Automatically load .env file from backend/ or project root
+const envCandidates = [
+  path.resolve(process.cwd(), '.env'),
+  path.resolve(process.cwd(), 'backend', '.env'),
+  path.resolve(import.meta.dirname, '../.env'),
+  path.resolve(import.meta.dirname, '../../.env'),
+];
+
+for (const envPath of envCandidates) {
+  if (existsSync(envPath)) {
+    try {
+      if (typeof process.loadEnvFile === 'function') {
+        process.loadEnvFile(envPath);
+      }
+    } catch {
+      // Continue searching other candidates
+    }
+  }
+}
+
 import { buildApp } from './infrastructure/http/app.js';
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;

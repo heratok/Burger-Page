@@ -105,6 +105,18 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
     selectedDriver = 'memory';
   }
 
+  console.log(`\n======================================================`);
+  console.log(`📦 [DATABASE] Driver Activo: ${selectedDriver.toUpperCase()}`);
+  if (selectedDriver === 'supabase') {
+    console.log(`🔗 [SUPABASE] URL: ${process.env.SUPABASE_URL}`);
+    console.log(`🔑 [SUPABASE] Key: ${process.env.SUPABASE_KEY ? 'Configurada (***)' : 'FALTANTE'}`);
+  } else if (selectedDriver === 'sqlite') {
+    console.log(`💾 [SQLITE] Base de datos: ${dbPath || process.env.DATABASE_PATH || ':memory:'}`);
+  } else {
+    console.log(`⚠️  [STORAGE] Modo MEMORIA RAM (Los datos NO se guardan en Postgres/Supabase).`);
+  }
+  console.log(`======================================================\n`);
+
   let restaurantRepo: RestaurantRepository;
   let productRepo: ProductRepository;
   let additionRepo: ProductAdditionRepository;

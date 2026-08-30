@@ -1,6 +1,29 @@
 import readline from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
 import { randomUUID } from 'node:crypto';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
+
+// Automatically load .env file
+const envCandidates = [
+  path.resolve(process.cwd(), '.env'),
+  path.resolve(process.cwd(), 'backend', '.env'),
+  path.resolve(import.meta.dirname, '../.env'),
+  path.resolve(import.meta.dirname, '../../.env'),
+];
+
+for (const envPath of envCandidates) {
+  if (existsSync(envPath)) {
+    try {
+      if (typeof process.loadEnvFile === 'function') {
+        process.loadEnvFile(envPath);
+      }
+    } catch {
+      // Continue searching
+    }
+  }
+}
+
 import { CryptoPasswordHasher } from '../infrastructure/security/CryptoPasswordHasher.js';
 import { SupabaseUserRepository } from '../infrastructure/persistence/supabase/SupabaseUserRepository.js';
 import { getSupabaseClient } from '../infrastructure/persistence/supabase/SupabaseClient.js';
