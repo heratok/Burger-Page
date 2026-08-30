@@ -81,7 +81,7 @@ describe('MenuManager - Strict Validation and Deletion Safeguards', () => {
     fireEvent.change(nameInput, { target: { value: '   ' } });
 
     const saveBtn = screen.getByRole('button', { name: /Guardar en Menú/i });
-    fireEvent.click(saveBtn);
+    fireEvent.submit(saveBtn.closest('form') || saveBtn);
 
     expect(toast.error).toHaveBeenCalledWith('El nombre del producto no puede estar vacío');
   });

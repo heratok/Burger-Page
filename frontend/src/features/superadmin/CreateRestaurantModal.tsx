@@ -93,6 +93,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
               <input
                 type="text"
                 required
+                maxLength={80}
                 value={name}
                 onChange={(e) => handleNameChange(e.target.value)}
                 placeholder="Ej. Sushi Master Bogotá"
@@ -115,8 +116,9 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
                 <input
                   type="text"
                   required
+                  maxLength={40}
                   value={slug}
-                  onChange={(e) => setSlug(e.target.value)}
+                  onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
                   placeholder="sushi-master"
                   className={`w-full rounded-xl border pl-6 pr-3.5 py-2 text-xs font-mono transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                     isDark
@@ -135,6 +137,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
             </label>
             <input
               type="text"
+              maxLength={120}
               value={tagline}
               onChange={(e) => setTagline(e.target.value)}
               placeholder="Ej. Rollos artesanales y cocina nikkei contemporánea"
@@ -156,6 +159,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
                 <Phone className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
+                  maxLength={20}
                   value={whatsapp}
                   onChange={(e) => setWhatsapp(e.target.value)}
                   placeholder="573001234567"
@@ -176,6 +180,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
                 <Lock className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
+                  maxLength={100}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="admin123"

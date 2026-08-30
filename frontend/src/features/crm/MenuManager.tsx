@@ -688,6 +688,7 @@ export const MenuManager: React.FC = () => {
                   <input
                     type="text"
                     required
+                    maxLength={80}
                     value={productForm.name}
                     onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
                     placeholder="Ej. Plato Especial de la Casa"
@@ -701,7 +702,8 @@ export const MenuManager: React.FC = () => {
                   <input
                     type="number"
                     required
-                    min={1000}
+                    min={100}
+                    max={50000000}
                     step={500}
                     value={productForm.price}
                     onChange={(e) => setProductForm({ ...productForm, price: Number(e.target.value) })}
@@ -729,6 +731,7 @@ export const MenuManager: React.FC = () => {
                     <input
                       type="text"
                       required
+                      maxLength={50}
                       value={productForm.category}
                       onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}
                       placeholder="Ej. Entradas, Postres, Bebidas"
@@ -759,6 +762,8 @@ export const MenuManager: React.FC = () => {
                   </label>
                   <input
                     type="number"
+                    min={0}
+                    max={300}
                     value={productForm.preparationTimeMinutes}
                     onChange={(e) =>
                       setProductForm({ ...productForm, preparationTimeMinutes: Number(e.target.value) })
@@ -897,6 +902,7 @@ export const MenuManager: React.FC = () => {
                 </label>
                 <textarea
                   rows={3}
+                  maxLength={350}
                   value={productForm.description}
                   onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
                   placeholder="Describe los ingredientes, preparación y acompañamientos..."
@@ -921,7 +927,7 @@ export const MenuManager: React.FC = () => {
                     onChange={(e) => setProductForm({ ...productForm, isNew: e.target.checked })}
                     className="rounded text-indigo-600"
                   />
-                  <span>Etiqueta &quot;Nuevo ✨&quot;</span>
+                  <span>Marcar como &quot;Nuevo ✨&quot;</span>
                 </label>
               </div>
 
@@ -934,7 +940,7 @@ export const MenuManager: React.FC = () => {
                   Cancelar
                 </Button>
                 <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold">
-                  Guardar en Menú
+                  {editingProduct ? "Actualizar Producto" : "Guardar en Menú"}
                 </Button>
               </div>
             </form>
@@ -971,6 +977,7 @@ export const MenuManager: React.FC = () => {
                 <input
                   type="text"
                   required
+                  maxLength={60}
                   value={additionForm.name}
                   onChange={(e) => setAdditionForm({ ...additionForm, name: e.target.value })}
                   placeholder="Ej. Tocineta ahumada extra"
@@ -985,6 +992,7 @@ export const MenuManager: React.FC = () => {
                   type="number"
                   required
                   min={0}
+                  max={10000000}
                   step={500}
                   value={additionForm.price}
                   onChange={(e) => setAdditionForm({ ...additionForm, price: Number(e.target.value) })}
@@ -1043,6 +1051,7 @@ export const MenuManager: React.FC = () => {
             >
               <input
                 type="text"
+                maxLength={50}
                 value={newCategoryName}
                 onChange={(e) => setNewCategoryName(e.target.value)}
                 placeholder="Nueva categoría (ej. Pizzas, Entradas, Postres)..."
@@ -1080,6 +1089,7 @@ export const MenuManager: React.FC = () => {
                       <div className="flex flex-1 items-center gap-2 mr-2">
                         <input
                           type="text"
+                          maxLength={50}
                           value={editCategoryInputValue}
                           onChange={(e) => setEditCategoryInputValue(e.target.value)}
                           className="flex-1 rounded-lg border border-indigo-500 bg-white px-2 py-1 text-xs text-slate-900 dark:bg-slate-900 dark:text-white"

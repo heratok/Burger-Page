@@ -104,6 +104,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ isOpen, onClos
             <input
               type="text"
               required
+              maxLength={50}
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="Ej. admin_rosto"
@@ -120,6 +121,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ isOpen, onClos
               type="password"
               required
               minLength={6}
+              maxLength={100}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Contraseña segura"

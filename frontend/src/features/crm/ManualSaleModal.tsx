@@ -332,6 +332,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                 <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
+                  maxLength={60}
                   placeholder="Buscar producto por nombre..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -617,6 +618,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                       </label>
                       <input
                         type="text"
+                        maxLength={25}
                         placeholder="Ej: 3, Terraza 1"
                         value={tableNumber}
                         onChange={(e) => setTableNumber(e.target.value)}
@@ -631,6 +633,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                       </label>
                       <input
                         type="text"
+                        maxLength={80}
                         placeholder="Nombre o apodo"
                         value={customerName}
                         onChange={(e) => setCustomerName(e.target.value)}
@@ -649,6 +652,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                         </label>
                         <input
                           type="text"
+                          maxLength={80}
                           placeholder="Nombre completo"
                           value={customerName}
                           onChange={(e) => setCustomerName(e.target.value)}
@@ -663,6 +667,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                         </label>
                         <input
                           type="text"
+                          maxLength={20}
                           placeholder="300 123 4567"
                           value={customerPhone}
                           onChange={(e) => setCustomerPhone(e.target.value)}
@@ -679,6 +684,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                         </label>
                         <input
                           type="text"
+                          maxLength={150}
                           placeholder="Calle 10 # 4-20"
                           value={customerAddress}
                           onChange={(e) => setCustomerAddress(e.target.value)}
@@ -693,6 +699,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                         </label>
                         <input
                           type="text"
+                          maxLength={80}
                           placeholder="Barrio o sector"
                           value={customerBarrio}
                           onChange={(e) => setCustomerBarrio(e.target.value)}
@@ -711,6 +718,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                       </label>
                       <input
                         type="text"
+                        maxLength={80}
                         placeholder="Cliente Mostrador"
                         value={customerName}
                         onChange={(e) => setCustomerName(e.target.value)}
@@ -725,6 +733,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                       </label>
                       <input
                         type="text"
+                        maxLength={20}
                         placeholder="Para fidelización"
                         value={customerPhone}
                         onChange={(e) => setCustomerPhone(e.target.value)}
@@ -744,6 +753,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                   </label>
                   <input
                     type="text"
+                    maxLength={250}
                     placeholder="Ej: Sin cebolla, salsas aparte, observaciones del cliente..."
                     value={orderNotes}
                     onChange={(e) => setOrderNotes(e.target.value)}
@@ -794,9 +804,10 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                       <div className="flex-1">
                         <input
                           type="text"
+                          maxLength={12}
                           placeholder="Paga con: $..."
                           value={pagoCon}
-                          onChange={(e) => setPagoCon(e.target.value)}
+                          onChange={(e) => setPagoCon(e.target.value.replace(/\D/g, ""))}
                           className={`w-full rounded-lg border px-2.5 py-1 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-emerald-500 ${
                             isDark ? "border-slate-700 bg-slate-950 text-white" : "border-slate-300 bg-white"
                           }`}
@@ -936,6 +947,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                   </label>
                   <input
                     type="text"
+                    maxLength={150}
                     placeholder="Ej: Sin cebolla, término medio..."
                     value={customItemNote}
                     onChange={(e) => setCustomItemNote(e.target.value)}

@@ -446,6 +446,7 @@ export const InventoryManager: React.FC = () => {
               <Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
+                maxLength={60}
                 placeholder="Buscar insumo por nombre o categoría..."
                 value={searchTerm}
                 onChange={(e) => {
@@ -893,6 +894,7 @@ export const InventoryManager: React.FC = () => {
                 <input
                   type="text"
                   required
+                  maxLength={80}
                   placeholder="Ej: Pan Brioche de Papa, Carne Angus 150g, etc."
                   value={itemForm.name}
                   onChange={(e) => setItemForm({ ...itemForm, name: e.target.value })}
@@ -949,6 +951,7 @@ export const InventoryManager: React.FC = () => {
                   <input
                     type="number"
                     min="0"
+                    max={1000000}
                     step="any"
                     required
                     value={itemForm.currentStock}
@@ -969,7 +972,8 @@ export const InventoryManager: React.FC = () => {
                   </label>
                   <input
                     type="number"
-                    min="1"
+                    min="0"
+                    max={100000}
                     required
                     value={itemForm.minStockAlert}
                     onChange={(e) =>
@@ -990,6 +994,7 @@ export const InventoryManager: React.FC = () => {
                   <input
                     type="number"
                     min="0"
+                    max={50000000}
                     required
                     value={itemForm.costPerUnit}
                     onChange={(e) =>
@@ -1010,10 +1015,10 @@ export const InventoryManager: React.FC = () => {
                 value={itemForm.supplierId}
                 onChange={(e) => setItemForm({ ...itemForm, supplierId: e.target.value })}
                 options={[
-                  { value: "", label: "-- Sin proveedor vinculado --" },
+                  { value: "", label: "Sin proveedor específico" },
                   ...suppliers.map((s) => ({
                     value: s.id,
-                    label: `${s.name} (${s.category})`,
+                    label: s.name,
                   })),
                 ]}
               />
@@ -1077,6 +1082,7 @@ export const InventoryManager: React.FC = () => {
                 <input
                   type="text"
                   required
+                  maxLength={80}
                   placeholder="Ej: Distribuidora Cárnicos San José"
                   value={supplierForm.name}
                   onChange={(e) => setSupplierForm({ ...supplierForm, name: e.target.value })}
@@ -1096,6 +1102,7 @@ export const InventoryManager: React.FC = () => {
                   <input
                     type="text"
                     required
+                    maxLength={50}
                     placeholder="Ej: Carnes, Panadería, Bebidas"
                     value={supplierForm.category}
                     onChange={(e) =>
@@ -1115,6 +1122,7 @@ export const InventoryManager: React.FC = () => {
                   </label>
                   <input
                     type="text"
+                    maxLength={80}
                     placeholder="Ej: Carlos Gómez"
                     value={supplierForm.contactName}
                     onChange={(e) =>
@@ -1136,6 +1144,7 @@ export const InventoryManager: React.FC = () => {
                 <input
                   type="text"
                   required
+                  maxLength={20}
                   placeholder="Ej: 573105551234"
                   value={supplierForm.phone}
                   onChange={(e) => setSupplierForm({ ...supplierForm, phone: e.target.value })}
@@ -1153,6 +1162,7 @@ export const InventoryManager: React.FC = () => {
                 </label>
                 <textarea
                   rows={2}
+                  maxLength={300}
                   placeholder="Ej: Entregan martes y viernes. Pedido mínimo $150.000."
                   value={supplierForm.notes}
                   onChange={(e) => setSupplierForm({ ...supplierForm, notes: e.target.value })}

@@ -220,6 +220,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
                     type="text"
                     required
                     autoFocus
+                    maxLength={50}
                     value={username}
                     onChange={(e) => {
                       setUsername(e.target.value)
@@ -239,6 +240,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
                   <input
                     type={showPassword ? "text" : "password"}
                     required
+                    maxLength={100}
                     value={password}
                     onChange={(e) => {
                       setPassword(e.target.value)

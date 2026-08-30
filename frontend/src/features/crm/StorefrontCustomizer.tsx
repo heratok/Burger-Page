@@ -321,6 +321,7 @@ export const StorefrontCustomizer: React.FC = () => {
                 </label>
                 <input
                   type="text"
+                  maxLength={80}
                   value={draft.name}
                   onChange={(e) => setDraft({ ...draft, name: e.target.value })}
                   placeholder="Ej. Burger Craft"
@@ -334,6 +335,7 @@ export const StorefrontCustomizer: React.FC = () => {
                 </label>
                 <input
                   type="text"
+                  maxLength={120}
                   value={draft.tagline}
                   onChange={(e) => setDraft({ ...draft, tagline: e.target.value })}
                   placeholder="Ej. Cocina artesanal con sabor inolvidable"
@@ -761,6 +763,7 @@ export const StorefrontCustomizer: React.FC = () => {
                 </label>
                 <input
                   type="tel"
+                  maxLength={20}
                   value={draft.whatsappNumber}
                   onChange={(e) => setDraft({ ...draft, whatsappNumber: e.target.value })}
                   placeholder="573022575805"
@@ -778,6 +781,8 @@ export const StorefrontCustomizer: React.FC = () => {
                   </label>
                   <input
                     type="number"
+                    min={0}
+                    max={10000000}
                     value={draft.deliveryFee}
                     onChange={(e) => setDraft({ ...draft, deliveryFee: Number(e.target.value) })}
                     className="w-full rounded-xl border p-2.5 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white"
@@ -789,6 +794,8 @@ export const StorefrontCustomizer: React.FC = () => {
                   </label>
                   <input
                     type="number"
+                    min={0}
+                    max={10000000}
                     value={draft.minOrderAmount || 0}
                     onChange={(e) => setDraft({ ...draft, minOrderAmount: Number(e.target.value) })}
                     placeholder="20000"
@@ -804,6 +811,7 @@ export const StorefrontCustomizer: React.FC = () => {
                   </label>
                   <input
                     type="text"
+                    maxLength={50}
                     value={draft.estimatedDeliveryTime}
                     onChange={(e) => setDraft({ ...draft, estimatedDeliveryTime: e.target.value })}
                     placeholder="30 - 45 min"
@@ -816,6 +824,7 @@ export const StorefrontCustomizer: React.FC = () => {
                   </label>
                   <input
                     type="text"
+                    maxLength={5}
                     value={draft.currencySymbol || "$"}
                     onChange={(e) => setDraft({ ...draft, currencySymbol: e.target.value })}
                     placeholder="$"
@@ -830,6 +839,7 @@ export const StorefrontCustomizer: React.FC = () => {
                 </label>
                 <input
                   type="text"
+                  maxLength={100}
                   value={draft.openingHours}
                   onChange={(e) => setDraft({ ...draft, openingHours: e.target.value })}
                   placeholder="Mar - Dom: 12:00 PM - 10:30 PM"
@@ -843,6 +853,7 @@ export const StorefrontCustomizer: React.FC = () => {
                 </label>
                 <input
                   type="text"
+                  maxLength={150}
                   value={draft.address}
                   onChange={(e) => setDraft({ ...draft, address: e.target.value })}
                   placeholder="Calle 45 # 22-18"
