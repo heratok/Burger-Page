@@ -8,6 +8,7 @@ import {
   TenantRepository,
   defaultTenantRepository,
 } from "@/core/storage/TenantRepository"
+import { apiClient } from "@/core/api/apiClient"
 import { toast } from "sonner"
 
 export interface GlobalPlatformStats {
@@ -59,6 +60,59 @@ export const TenantProvider: React.FC<{
     }
     return envelope.restaurants[0]?.id || "rest-burger-craft"
   })
+
+  // Sync with Backend DB on mount
+  useEffect(() => {
+    let isMounted = true
+    apiClient
+      .listRestaurants()
+      .then((backendRestaurants) => {
+        if (!isMounted) return
+        if (Array.isArray(backendRestaurants) && backendRestaurants.length > 0) {
+          setEnvelope((prev) => {
+            const merged = backendRestaurants.map((br: any) => {
+              const local = prev.restaurants.find((r) => r.id === br.id || r.slug === br.slug)
+              return {
+                ...local,
+                id: br.id,
+                slug: br.slug,
+                adminPassword: br.adminPassword || local?.adminPassword || "admin123",
+                isActive: br.isActive !== undefined ? Boolean(br.isActive) : true,
+                createdAt: br.createdAt || local?.createdAt || new Date().toISOString(),
+                categories: br.categories && br.categories.length > 0 ? br.categories : local?.categories || ['General'],
+                config: {
+                  ...DEFAULT_STORE_CONFIG,
+                  ...(local?.config || {}),
+                  ...(br.config || {}),
+                  name: br.name || br.config?.name || local?.config?.name || DEFAULT_STORE_CONFIG.name,
+                  tagline: br.tagline || br.config?.tagline || local?.config?.tagline || DEFAULT_STORE_CONFIG.tagline,
+                },
+                products: local?.products || [],
+                additions: local?.additions || [],
+                orders: local?.orders || [],
+                customers: local?.customers || [],
+                inventory: local?.inventory || [],
+                suppliers: local?.suppliers || [],
+              } as RestaurantRecord
+            })
+            const localOnly = prev.restaurants.filter(
+              (r) => !backendRestaurants.some((br: any) => br.id === r.id || br.slug === r.slug)
+            )
+            return {
+              ...prev,
+              restaurants: [...merged, ...localOnly],
+            }
+          })
+        }
+      })
+      .catch((err) => {
+        console.warn("Could not sync restaurants from backend API:", err)
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   useEffect(() => {
     repository.saveEnvelope(envelope)
@@ -165,6 +219,33 @@ export const TenantProvider: React.FC<{
       }))
 
       setActiveRestaurantId(newRecord.id)
+
+      apiClient
+        .createRestaurant({
+          name: data.name,
+          slug: newRecord.slug,
+          tagline: data.tagline,
+          whatsappNumber: data.whatsappNumber,
+          adminPassword: data.adminPassword,
+          primaryColor: data.primaryColor,
+          templateType: data.templateType,
+          categories: ["General"],
+          config: newRecord.config,
+        })
+        .then((created) => {
+          if (created && created.id) {
+            setEnvelope((prev) => ({
+              ...prev,
+              restaurants: prev.restaurants.map((r) =>
+                r.id === newRecord.id ? { ...r, id: created.id } : r
+              ),
+            }))
+          }
+        })
+        .catch((err) => {
+          console.warn("Could not persist restaurant to backend API:", err)
+        })
+
       toast.success(`Restaurante "${data.name}" creado exitosamente`)
       return newRecord
     },
@@ -199,6 +280,11 @@ export const TenantProvider: React.FC<{
           restaurants: remaining,
         }
       })
+
+      apiClient.deleteRestaurant(id).catch((err) => {
+        console.warn("Could not delete restaurant from backend API:", err)
+      })
+
       toast.success("Restaurante eliminado correctamente")
     },
     [envelope.restaurants.length, activeRestaurantId]

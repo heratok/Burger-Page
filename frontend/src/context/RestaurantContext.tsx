@@ -177,10 +177,13 @@ export const useRestaurant = (): RestaurantContextType => {
       )
       if (res.success) {
         if (res.role === "super") {
-          ui.setAdminTab("restaurants")
+          const isDeepRoute = window.location.pathname.toLowerCase().startsWith("/admin/") && window.location.pathname.toLowerCase() !== "/admin"
+          if (!isDeepRoute) {
+            ui.setAdminTab("restaurants")
+          }
         } else if (res.role === "restaurant" && res.restaurantId) {
           tenant.switchRestaurant(res.restaurantId)
-          const isDeepRoute = window.location.pathname.toLowerCase().startsWith("/admin/")
+          const isDeepRoute = window.location.pathname.toLowerCase().startsWith("/admin/") && window.location.pathname.toLowerCase() !== "/admin"
           if (!isDeepRoute) {
             ui.setAdminTab("dashboard")
           }

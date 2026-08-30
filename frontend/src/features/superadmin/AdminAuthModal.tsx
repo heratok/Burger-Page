@@ -49,7 +49,10 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
       const result = await apiClient.login(username.trim(), password.trim())
 
       if (result.success && result.user) {
-        const authRes = login(password)
+        let authRes = login(password, result.user.restaurantId)
+        if (!authRes.success) {
+          authRes = login(password)
+        }
         setUsername("")
         setPassword("")
         if (authRes.role === "super") {
@@ -68,6 +71,29 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
         setIsLoading(false)
         return
       }
+
+      // If backend user auth wasn't successful, try local restaurant/super admin password fallback
+      const fallbackResult = login(password)
+      if (fallbackResult.success) {
+        setPassword("")
+        setUsername("")
+        if (fallbackResult.role === "super") {
+          if (window.location.pathname.startsWith("/admin/") && window.location.pathname !== "/admin") {
+            navigateTo(window.location.pathname)
+          } else {
+            navigateTo("/admin/restaurants")
+          }
+        } else {
+          if (window.location.pathname.startsWith("/admin/") && window.location.pathname !== "/admin") {
+            navigateTo(window.location.pathname)
+          } else {
+            navigateTo("/admin/dashboard")
+          }
+        }
+        setIsLoading(false)
+        return
+      }
+
       setErrorMsg(result.error || "Credenciales incorrectas")
     } catch {
       // Fallback to legacy password-only login

@@ -1,6 +1,28 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Admin Mobile Sidebar Drawer Responsiveness', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('burger_page_platform_v2', JSON.stringify({
+        version: 2,
+        superAdminPassword: 'admin',
+        restaurants: [{
+          id: 'rest-burger-craft',
+          slug: 'burger-craft',
+          adminPassword: 'craft',
+          isActive: true,
+          config: { name: 'Burger Craft', tagline: 'Artesanal' },
+          products: [],
+          categories: ['General'],
+          orders: [],
+          customers: [],
+          additions: []
+        }]
+      }));
+      localStorage.setItem('burger_page_active_rest_v2', 'rest-burger-craft');
+    });
+  });
+
   test('Mobile Small Viewport (375x667 iPhone SE): All nav items, Ver Tienda, and Cerrar Sesión are fully visible and clickable in drawer', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 });
 
@@ -74,9 +96,18 @@ test.describe('Admin Mobile Sidebar Drawer Responsiveness', () => {
     // 4. Take screenshot of Super Admin mobile drawer in global SaaS mode
     await page.screenshot({ path: 'e2e/screenshots/mobile-sidebar-superadmin-global.png' });
 
-    // 5. Navigate to tenant mode via switcher select
-    await sidebar.locator('select').selectOption('rest-burger-craft');
-    await page.waitForTimeout(350);
+    // Close drawer
+    const closeBtn = page.locator('button[aria-label="Cerrar menú"], button[title="Cerrar menú"]').first();
+    if (await closeBtn.isVisible()) {
+      await closeBtn.click();
+      await page.waitForTimeout(400);
+    }
+
+    // 5. Navigate to tenant mode by clicking Administrar on first restaurant
+    const firstManageButton = page.getByRole('button', { name: /Administrar/i }).first();
+    await expect(firstManageButton).toBeVisible();
+    await firstManageButton.click();
+    await expect(page).toHaveURL(/\/admin\/dashboard/);
 
     // 6. Open drawer in tenant mode
     await page.getByRole('button', { name: /Abrir menú/i }).click();

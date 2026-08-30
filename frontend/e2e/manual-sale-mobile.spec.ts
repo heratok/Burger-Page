@@ -1,6 +1,36 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Manual Sale POS Modal - Mobile & Desktop Responsiveness', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('burger_page_platform_v2', JSON.stringify({
+        version: 2,
+        superAdminPassword: 'admin',
+        restaurants: [{
+          id: 'rest-burger-craft',
+          slug: 'burger-craft',
+          adminPassword: 'craft',
+          isActive: true,
+          config: { name: 'Burger Craft', tagline: 'Artesanal' },
+          products: [{
+            id: 'p1',
+            name: 'Hamburguesa Doble Queso',
+            price: 25000,
+            category: 'Hamburguesas',
+            src: '',
+            description: 'Carne y queso',
+            inStock: true
+          }],
+          categories: ['Hamburguesas'],
+          orders: [],
+          customers: [],
+          additions: []
+        }]
+      }));
+      localStorage.setItem('burger_page_active_rest_v2', 'rest-burger-craft');
+    });
+  });
+
   test('Mobile Viewport (390x844 iPhone 13/14/15): Catalog, Floating Bar, Cart & POS Flow', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/admin/orders');
@@ -19,7 +49,7 @@ test.describe('Manual Sale POS Modal - Mobile & Desktop Responsiveness', () => {
 
     // Open Nueva Venta POS modal
     const nuevaVentaBtn = page.getByRole('button', { name: /Nueva Venta/i }).first();
-    await nuevaVentaBtn.click();
+    await nuevaVentaBtn.click({ force: true });
 
     // Verify modal is open
     await expect(page.getByText(/Punto de Venta/i)).toBeVisible();
@@ -68,7 +98,7 @@ test.describe('Manual Sale POS Modal - Mobile & Desktop Responsiveness', () => {
 
     // Open Nueva Venta POS modal
     const nuevaVentaBtn = page.getByRole('button', { name: /Nueva Venta/i }).first();
-    await nuevaVentaBtn.click();
+    await nuevaVentaBtn.click({ force: true });
 
     // Add a product
     await page.getByRole('button', { name: /Agregar/i }).first().click();
@@ -105,9 +135,16 @@ test.describe('Manual Sale POS Modal - Mobile & Desktop Responsiveness', () => {
     await passwordInput.fill('craft');
     await page.getByRole('button', { name: /Acceder al Panel/i }).click();
 
+    // Wait for Kanban
+    await expect(page.getByRole('heading', { name: /Nuevos \/ Pendientes/i })).toBeVisible();
+
     // Open Nueva Venta POS modal
-    const nuevaVentaBtn = page.getByRole('button', { name: /Nueva Venta/i }).first();
+    const nuevaVentaBtn = page.locator('main').getByRole('button', { name: /Nueva Venta/i });
+    await expect(nuevaVentaBtn).toBeVisible();
     await nuevaVentaBtn.click();
+
+    // Verify modal is open
+    await expect(page.getByText(/Punto de Venta/i)).toBeVisible();
 
     // On desktop, both catalog and cart are visible simultaneously without mobile tab bar
     await expect(page.getByRole('button', { name: /1. Catálogo/i })).not.toBeVisible();

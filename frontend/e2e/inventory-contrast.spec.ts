@@ -3,9 +3,28 @@ import { test, expect } from '@playwright/test';
 test.describe('Inventory & Suppliers Theme Contrast E2E Suite', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
-      // Set active restaurant to 'rosto'
+      localStorage.setItem('burger_page_platform_v2', JSON.stringify({
+        version: 2,
+        superAdminPassword: 'admin',
+        restaurants: [{
+          id: 'rosto',
+          slug: 'rosto',
+          adminPassword: 'rosto',
+          isActive: true,
+          config: { name: 'Rosto Burger', tagline: 'Artesanal' },
+          suppliers: [{
+            id: 'sup-1',
+            name: 'Carnes Premium',
+            contactName: 'Mauricio Restrepo',
+            phone: '573112233445',
+            notes: 'Entrega cortes madurados al vacío los martes y jueves'
+          }],
+          products: [],
+          orders: [],
+          customers: []
+        }]
+      }));
       localStorage.setItem('burger_page_active_rest_v2', 'rosto');
-      // Set light theme initially
       localStorage.setItem('burger_page_admin_theme_v2', 'light');
     });
   });
@@ -19,7 +38,7 @@ test.describe('Inventory & Suppliers Theme Contrast E2E Suite', () => {
     await expect(userInput).toBeVisible();
     await userInput.fill('admin_rosto');
 
-    const passwordInput = page.getByPlaceholder(/Ingresá tu clave de administración/i);
+    const passwordInput = page.locator('input[type="password"]');
     await expect(passwordInput).toBeVisible();
     await passwordInput.fill('rosto');
 

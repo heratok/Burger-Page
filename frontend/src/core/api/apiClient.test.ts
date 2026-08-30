@@ -118,6 +118,42 @@ describe('ApiClient', () => {
     await expect(client.fetchRestaurant()).rejects.toThrow('API Error: 404 Not Found')
   })
 
+  it('should list restaurants', async () => {
+    const mockData = [{ id: 'r1', name: 'Burger Craft', slug: 'burger-craft' }]
+    mockResponse(mockData)
+
+    const data = await client.listRestaurants()
+    expect(data).toEqual(mockData)
+    expect(globalThis.fetch).toHaveBeenCalledWith('http://localhost:3001/api/restaurants', {
+      headers: { 'Content-Type': 'application/json' },
+    })
+  })
+
+  it('should create restaurant', async () => {
+    const mockData = { id: 'r2', name: 'Pizza Hub', slug: 'pizza-hub' }
+    mockResponse(mockData)
+
+    const data = await client.createRestaurant({ name: 'Pizza Hub', slug: 'pizza-hub' })
+    expect(data).toEqual(mockData)
+    expect(globalThis.fetch).toHaveBeenCalledWith('http://localhost:3001/api/restaurants', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'Pizza Hub', slug: 'pizza-hub' }),
+    })
+  })
+
+  it('should delete restaurant', async () => {
+    const mockData = { message: 'Restaurant deleted successfully' }
+    mockResponse(mockData)
+
+    const data = await client.deleteRestaurant('r2')
+    expect(data).toEqual(mockData)
+    expect(globalThis.fetch).toHaveBeenCalledWith('http://localhost:3001/api/restaurants/r2', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+    })
+  })
+
   it('should support subscribeToOrderStream gracefully when EventSource is unavailable', () => {
     const unsub = client.subscribeToOrderStream(() => {})
     expect(typeof unsub).toBe('function')

@@ -57,6 +57,11 @@ export class SqliteRestaurantRepository implements RestaurantRepository {
     return this.mapRow(row);
   }
 
+  async findAll(): Promise<Restaurant[]> {
+    const rows = this.db.prepare('SELECT * FROM restaurants ORDER BY created_at ASC').all() as any[];
+    return rows.map((row) => this.mapRow(row));
+  }
+
   async save(restaurant: Restaurant): Promise<void> {
     const slug =
       restaurant.slug?.trim() ||
@@ -78,11 +83,15 @@ export class SqliteRestaurantRepository implements RestaurantRepository {
       restaurant.id,
       slug,
       restaurant.name,
-      'Cocina artesanal',
-      JSON.stringify({ bgTheme: restaurant.theme, theme: restaurant.theme }),
+      restaurant.tagline || 'Cocina artesanal',
+      JSON.stringify(restaurant.config || { bgTheme: restaurant.theme, theme: restaurant.theme }),
       JSON.stringify(restaurant.openingHours),
       JSON.stringify(restaurant.categories || []),
-      new Date().toISOString()
+      restaurant.createdAt || new Date().toISOString()
     );
+  }
+
+  async delete(id: string): Promise<void> {
+    this.db.prepare('DELETE FROM restaurants WHERE id = ?').run(id);
   }
 }

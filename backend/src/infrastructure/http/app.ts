@@ -35,6 +35,9 @@ import { CryptoPasswordHasher } from '../security/CryptoPasswordHasher.js';
 
 // Use Cases
 import { GetRestaurantUseCase } from '../../application/use-cases/GetRestaurantUseCase.js';
+import { ListRestaurantsUseCase } from '../../application/use-cases/ListRestaurantsUseCase.js';
+import { CreateRestaurantUseCase } from '../../application/use-cases/CreateRestaurantUseCase.js';
+import { DeleteRestaurantUseCase } from '../../application/use-cases/DeleteRestaurantUseCase.js';
 import { UpdateRestaurantCategoriesUseCase } from '../../application/use-cases/UpdateRestaurantCategoriesUseCase.js';
 import { ListProductsUseCase } from '../../application/use-cases/ListProductsUseCase.js';
 import { GetProductByIdUseCase } from '../../application/use-cases/GetProductByIdUseCase.js';
@@ -62,6 +65,7 @@ import { UserController } from './controllers/UserController.js';
 
 // Routes
 import { restaurantRoutes } from './routes/restaurant.routes.js';
+import { restaurantsRoutes } from './routes/restaurants.routes.js';
 import { productRoutes } from './routes/product.routes.js';
 import { orderRoutes } from './routes/order.routes.js';
 import { customerRoutes } from './routes/customer.routes.js';
@@ -142,6 +146,9 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
 
   // Use Cases
   const getRestaurant = new GetRestaurantUseCase(restaurantRepo);
+  const listRestaurants = new ListRestaurantsUseCase(restaurantRepo);
+  const createRestaurant = new CreateRestaurantUseCase(restaurantRepo);
+  const deleteRestaurant = new DeleteRestaurantUseCase(restaurantRepo);
   const updateRestaurantCategories = new UpdateRestaurantCategoriesUseCase(restaurantRepo);
   
   const listProducts = new ListProductsUseCase(productRepo);
@@ -167,7 +174,13 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
 
   // Controllers
   return {
-    restaurantController: new RestaurantController(getRestaurant, updateRestaurantCategories),
+    restaurantController: new RestaurantController(
+      getRestaurant,
+      listRestaurants,
+      createRestaurant,
+      deleteRestaurant,
+      updateRestaurantCategories
+    ),
     productController: new ProductController(listProducts, getProductById, createProduct, updateProduct, deleteProduct),
     orderController: new OrderController(listOrders, getOrderById, createOrder, updateOrderStatus),
     customerController: new CustomerController(listCustomers),
@@ -247,6 +260,7 @@ export function buildApp(
 
   app.register(async (api: FastifyInstance) => {
     api.register(restaurantRoutes, { prefix: '/restaurant', controller: deps.restaurantController });
+    api.register(restaurantsRoutes, { prefix: '/restaurants', controller: deps.restaurantController });
     api.register(productRoutes, { prefix: '/products', controller: deps.productController });
     api.register(orderRoutes, { prefix: '/orders', controller: deps.orderController });
     api.register(customerRoutes, { prefix: '/customers', controller: deps.customerController });

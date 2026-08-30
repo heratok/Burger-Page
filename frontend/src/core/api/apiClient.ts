@@ -5,7 +5,7 @@ import {
   OrderStatus,
   InventoryItem,
 } from '@/types/restaurant'
-import type { OrderEvent, CreateOrderInput } from '@burger-page/contracts'
+import type { OrderEvent, CreateOrderInput, CreateRestaurantInput } from '@burger-page/contracts'
 
 export interface ApiClientConfig {
   baseUrl: string
@@ -19,7 +19,13 @@ export class ApiClient {
       import.meta.env.PUBLIC_API_URL ||
       import.meta.env.BACKEND_API_URL ||
       import.meta.env.VITE_API_URL
-    this.baseUrl = config?.baseUrl || (rawUrl ? rawUrl.replace(/\/$/, '') : '/api')
+    this.baseUrl =
+      config?.baseUrl ||
+      (rawUrl
+        ? rawUrl.replace(/\/$/, '')
+        : typeof window !== 'undefined' && window.location?.origin
+        ? `${window.location.origin}/api`
+        : 'http://localhost:3001/api')
   }
 
   private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
@@ -38,8 +44,26 @@ export class ApiClient {
     return response.json() as Promise<T>
   }
 
-  async fetchRestaurant(): Promise<RestaurantRecord> {
-    return this.request<RestaurantRecord>('/restaurant')
+  async fetchRestaurant(slug?: string): Promise<RestaurantRecord> {
+    const endpoint = slug ? `/restaurants/${slug}` : '/restaurant'
+    return this.request<RestaurantRecord>(endpoint)
+  }
+
+  async listRestaurants(): Promise<RestaurantRecord[]> {
+    return this.request<RestaurantRecord[]>('/restaurants')
+  }
+
+  async createRestaurant(data: CreateRestaurantInput): Promise<RestaurantRecord> {
+    return this.request<RestaurantRecord>('/restaurants', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async deleteRestaurant(id: string): Promise<{ message: string }> {
+    return this.request<{ message: string }>(`/restaurants/${id}`, {
+      method: 'DELETE',
+    })
   }
 
   async updateCategories(categories: string[], slug?: string): Promise<{ categories: string[] }> {

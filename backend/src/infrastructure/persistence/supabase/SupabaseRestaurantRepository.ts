@@ -92,6 +92,18 @@ export class SupabaseRestaurantRepository implements RestaurantRepository {
     return this.mapRow(data);
   }
 
+  async findAll(): Promise<Restaurant[]> {
+    const { data, error } = await this.client
+      .from('restaurants')
+      .select('*')
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      throw new Error(`Failed to list restaurants: ${error.message}`);
+    }
+    return (data || []).map((row: any) => this.mapRow(row));
+  }
+
   async save(restaurant: Restaurant): Promise<void> {
     const slug =
       restaurant.slug?.trim() ||
@@ -102,11 +114,11 @@ export class SupabaseRestaurantRepository implements RestaurantRepository {
       id: restaurant.id,
       slug,
       name: restaurant.name,
-      tagline: 'Cocina artesanal',
-      config: { bgTheme: restaurant.theme, theme: restaurant.theme },
+      tagline: restaurant.tagline || 'Cocina artesanal',
+      config: restaurant.config || { bgTheme: restaurant.theme, theme: restaurant.theme },
       opening_hours: restaurant.openingHours,
       categories: restaurant.categories || [],
-      created_at: new Date().toISOString()
+      created_at: restaurant.createdAt || new Date().toISOString()
     };
 
     const { error } = await this.client
@@ -115,6 +127,17 @@ export class SupabaseRestaurantRepository implements RestaurantRepository {
 
     if (error) {
       throw new Error(`Failed to save restaurant: ${error.message}`);
+    }
+  }
+
+  async delete(id: string): Promise<void> {
+    const { error } = await this.client
+      .from('restaurants')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      throw new Error(`Failed to delete restaurant: ${error.message}`);
     }
   }
 }

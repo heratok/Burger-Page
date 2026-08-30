@@ -32,6 +32,40 @@ export const storefrontConfigSchema = z.object({
 
 export type StorefrontConfigDTO = z.infer<typeof storefrontConfigSchema>;
 
+export const createRestaurantSchema = z.object({
+  name: z.string().min(1, 'Restaurant name is required'),
+  slug: z.string().min(1, 'Restaurant slug is required'),
+  tagline: z.string().optional(),
+  whatsappNumber: z.string().optional(),
+  adminPassword: z.string().optional(),
+  primaryColor: z.string().optional(),
+  templateType: z.enum(['burger', 'pizza', 'tacos', 'blank']).optional(),
+  categories: z.array(z.string()).optional(),
+  theme: z.string().optional(),
+  config: storefrontConfigSchema.partial().optional(),
+});
+
+export type CreateRestaurantInput = z.infer<typeof createRestaurantSchema>;
+
+export const updateRestaurantSchema = createRestaurantSchema.partial();
+export type UpdateRestaurantInput = z.infer<typeof updateRestaurantSchema>;
+
+export const restaurantDTOSchema = z.object({
+  id: z.string(),
+  slug: z.string(),
+  name: z.string(),
+  tagline: z.string().optional(),
+  theme: z.string().optional(),
+  adminPassword: z.string().optional(),
+  isActive: z.boolean().default(true),
+  createdAt: z.string().optional(),
+  categories: z.array(z.string()).default([]),
+  config: storefrontConfigSchema.partial().optional(),
+  openingHours: z.object({ open: z.string(), close: z.string() }).optional(),
+});
+
+export type RestaurantDTO = z.infer<typeof restaurantDTOSchema>;
+
 export const updateRestaurantCategoriesSchema = z.object({
   categories: z.array(z.string().min(1, 'Category name cannot be empty')).min(1, 'At least one category is required'),
 });
