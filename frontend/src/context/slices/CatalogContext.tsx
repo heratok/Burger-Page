@@ -164,7 +164,9 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
         const nextCategories = [...existing, trimmed]
         apiClient.updateCategories(nextCategories, current.slug).catch((err) => {
-          console.warn("Could not sync categories to backend API:", err)
+          if (import.meta.env?.MODE !== 'test') {
+            console.warn("Could not sync categories to backend API:", err)
+          }
         })
         toast.success(`Categoría "${trimmed}" creada`)
         return {
@@ -197,7 +199,9 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const nextCategories = existing.map((c) => (c === oldName ? trimmedNew : c))
         const nextProducts = current.products.map((p) => (p.category === oldName ? { ...p, category: trimmedNew } : p))
         apiClient.updateCategories(nextCategories, current.slug).catch((err) => {
-          console.warn("Could not sync categories to backend API:", err)
+          if (import.meta.env?.MODE !== 'test') {
+            console.warn("Could not sync categories to backend API:", err)
+          }
         })
         toast.success(`Categoría renombrada a "${trimmedNew}"`)
         return {
@@ -224,7 +228,9 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const fallback = nextCategories[0] || "General"
         const nextProducts = current.products.map((p) => (p.category === categoryName ? { ...p, category: fallback } : p))
         apiClient.updateCategories(nextCategories, current.slug).catch((err) => {
-          console.warn("Could not sync categories to backend API:", err)
+          if (import.meta.env?.MODE !== 'test') {
+            console.warn("Could not sync categories to backend API:", err)
+          }
         })
         toast.success(`Categoría "${categoryName}" eliminada`)
         return {

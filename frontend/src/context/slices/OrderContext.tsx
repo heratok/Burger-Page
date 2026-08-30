@@ -200,10 +200,14 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             }
           })
           .catch((error) => {
-            console.warn("Could not sync order to backend API, falling back to local state:", error)
+            if (import.meta.env?.MODE !== 'test') {
+              console.warn("Could not sync order to backend API, falling back to local state:", error)
+            }
           })
       } catch (err) {
-        console.warn("Error preparing order input for backend API:", err)
+        if (import.meta.env?.MODE !== 'test') {
+          console.warn("Error preparing order input for backend API:", err)
+        }
       }
 
       return newOrder
@@ -224,7 +228,9 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       toast.info(`Orden actualizada a: ${newStatus.toUpperCase()}`)
 
       apiClient.updateOrderStatus(orderId, newStatus).catch((error) => {
-        console.warn(`Could not sync status update for order ${orderId} to backend API:`, error)
+        if (import.meta.env?.MODE !== 'test') {
+          console.warn(`Could not sync status update for order ${orderId} to backend API:`, error)
+        }
       })
     },
     [updateActiveRestaurantRecord]

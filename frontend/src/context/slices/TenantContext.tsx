@@ -99,7 +99,9 @@ export const TenantProvider: React.FC<{
         })
       }
     } catch (err) {
-      console.warn("Could not sync restaurants from backend API:", err)
+      if (import.meta.env?.MODE !== 'test') {
+        console.warn("Could not sync restaurants from backend API:", err)
+      }
     }
   }, [])
 
@@ -237,7 +239,9 @@ export const TenantProvider: React.FC<{
           }
         })
         .catch((err) => {
-          console.warn("Could not persist restaurant to backend API:", err)
+          if (import.meta.env?.MODE !== 'test') {
+            console.warn("Could not persist restaurant to backend API:", err)
+          }
         })
 
       toast.success(`Restaurante "${data.name}" creado exitosamente`)
@@ -276,7 +280,9 @@ export const TenantProvider: React.FC<{
       })
 
       apiClient.deleteRestaurant(id).catch((err) => {
-        console.warn("Could not delete restaurant from backend API:", err)
+        if (import.meta.env?.MODE !== 'test') {
+          console.warn("Could not delete restaurant from backend API:", err)
+        }
       })
 
       toast.success("Restaurante eliminado correctamente")

@@ -55,7 +55,9 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           const delta = updates.currentStock - currentItem.currentStock
           if (delta !== 0) {
             apiClient.updateInventoryStock(id, delta).catch((error) => {
-              console.warn(`Could not sync stock update for inventory item ${id} to backend:`, error)
+              if (import.meta.env?.MODE !== 'test') {
+                console.warn(`Could not sync stock update for inventory item ${id} to backend:`, error)
+              }
             })
           }
         }
@@ -113,7 +115,9 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
       // Backend API Integration with graceful offline fallback
       apiClient.updateInventoryStock(id, deltaQuantity).catch((error) => {
-        console.warn(`Could not sync stock adjustment for inventory item ${id} to backend API:`, error)
+        if (import.meta.env?.MODE !== 'test') {
+          console.warn(`Could not sync stock adjustment for inventory item ${id} to backend API:`, error)
+        }
       })
     },
     [updateActiveRestaurantRecord]
