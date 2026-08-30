@@ -24,7 +24,7 @@ interface AdminAuthModalProps {
 }
 
 export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose }) => {
-  const { login } = useRestaurant()
+  const { setSession, switchRestaurant } = useRestaurant()
   const { navigateTo } = useAppRouter()
 
   const [username, setUsername] = useState("")
@@ -49,35 +49,19 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
       const result = await apiClient.login(username.trim(), password.trim())
 
       if (result.success && result.user) {
-        let authRes = login(password, result.user.restaurantId)
-        if (!authRes.success) {
-          authRes = login(password)
+        const isSuper = result.user.role === "super_admin"
+        const role = isSuper ? ("super" as const) : ("restaurant" as const)
+        setSession({
+          role,
+          restaurantId: result.user.restaurantId,
+          authenticatedAt: new Date().toISOString(),
+        })
+        if (result.user.restaurantId) {
+          switchRestaurant(result.user.restaurantId)
         }
         setUsername("")
         setPassword("")
-        if (authRes.role === "super") {
-          if (window.location.pathname.startsWith("/admin/") && window.location.pathname !== "/admin") {
-            navigateTo(window.location.pathname)
-          } else {
-            navigateTo("/admin/restaurants")
-          }
-        } else {
-          if (window.location.pathname.startsWith("/admin/") && window.location.pathname !== "/admin") {
-            navigateTo(window.location.pathname)
-          } else {
-            navigateTo("/admin/dashboard")
-          }
-        }
-        setIsLoading(false)
-        return
-      }
-
-      // If backend user auth wasn't successful, try local restaurant/super admin password fallback
-      const fallbackResult = login(password)
-      if (fallbackResult.success) {
-        setPassword("")
-        setUsername("")
-        if (fallbackResult.role === "super") {
+        if (isSuper) {
           if (window.location.pathname.startsWith("/admin/") && window.location.pathname !== "/admin") {
             navigateTo(window.location.pathname)
           } else {
@@ -96,31 +80,10 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
 
       setErrorMsg(result.error || "Credenciales incorrectas")
     } catch {
-      // Fallback to legacy password-only login
-      const legacyResult = login(password)
-      if (legacyResult.success) {
-        setPassword("")
-        setUsername("")
-        if (legacyResult.role === "super") {
-          if (window.location.pathname.startsWith("/admin/") && window.location.pathname !== "/admin") {
-            navigateTo(window.location.pathname)
-          } else {
-            navigateTo("/admin/restaurants")
-          }
-        } else {
-          if (window.location.pathname.startsWith("/admin/") && window.location.pathname !== "/admin") {
-            navigateTo(window.location.pathname)
-          } else {
-            navigateTo("/admin/dashboard")
-          }
-        }
-        setIsLoading(false)
-        return
-      }
-      setErrorMsg(legacyResult.error || "Credenciales incorrectas. Verifica tu usuario y contraseña.")
+      setErrorMsg("Error de conexión al servidor de autenticación")
+    } finally {
+      setIsLoading(false)
     }
-
-    setIsLoading(false)
   }
 
   return (

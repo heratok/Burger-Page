@@ -1,8 +1,15 @@
 import { User } from '../../domain/models/User.js';
 import { UserRepository } from '../../domain/ports/out/UserRepository.js';
+import { initialUsers } from './seedData.js';
 
 export class InMemoryUserRepository implements UserRepository {
   private users = new Map<string, User>();
+
+  constructor() {
+    for (const u of initialUsers) {
+      this.users.set(u.id, { ...u });
+    }
+  }
 
   async findById(id: string): Promise<User | null> {
     return this.users.get(id) ?? null;

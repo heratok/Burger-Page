@@ -55,9 +55,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // 1. Check Super Admin Password
       if (
-        trimmed === superAdminPassword ||
-        trimmed === "admin" ||
-        trimmed === "superadmin"
+        superAdminPassword &&
+        trimmed === superAdminPassword
       ) {
         const newSession: AdminSession = {
           role: "super",

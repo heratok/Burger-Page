@@ -23,6 +23,7 @@ import { SupabaseProductRepository } from '../persistence/supabase/SupabaseProdu
 import { SupabaseOrderRepository } from '../persistence/supabase/SupabaseOrderRepository.js';
 import { SupabaseCustomerRepository } from '../persistence/supabase/SupabaseCustomerRepository.js';
 import { SupabaseInventoryRepository } from '../persistence/supabase/SupabaseInventoryRepository.js';
+import { SupabaseUserRepository } from '../persistence/supabase/SupabaseUserRepository.js';
 import { RestaurantRepository } from '../../domain/ports/out/RestaurantRepository.js';
 import { ProductRepository } from '../../domain/ports/out/ProductRepository.js';
 import { OrderRepository } from '../../domain/ports/out/OrderRepository.js';
@@ -107,7 +108,7 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
       orderRepo = new SupabaseOrderRepository(supabaseClient);
       customerRepo = new SupabaseCustomerRepository(supabaseClient);
       inventoryRepo = new SupabaseInventoryRepository(supabaseClient);
-      userRepo = new InMemoryUserRepository(); // TODO: SupabaseUserRepository
+      userRepo = new SupabaseUserRepository(supabaseClient);
     } catch (err) {
       console.warn('Supabase initialization failed, falling back to InMemory/SQLite:', err);
       if (process.env.DATABASE_PATH) {

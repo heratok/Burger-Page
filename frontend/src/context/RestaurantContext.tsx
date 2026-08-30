@@ -54,6 +54,7 @@ export interface RestaurantContextType {
 
   // Auth & Session
   session: AdminSession
+  setSession: React.Dispatch<React.SetStateAction<AdminSession>>
   login: (password: string, targetRestaurantIdOrSlug?: string) => {
     success: boolean
     role: "super" | "restaurant" | null
@@ -169,6 +170,7 @@ export const useRestaurant = (): RestaurantContextType => {
     globalStats: tenant.globalStats,
 
     session: auth.session,
+    setSession: auth.setSession,
     login: (password: string, targetRestaurantIdOrSlug?: string) => {
       const res = auth.login(
         password,
