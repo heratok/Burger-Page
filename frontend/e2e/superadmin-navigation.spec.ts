@@ -78,10 +78,22 @@ test.describe('Super Admin Multi-Tenant Navigation, Impersonation & Quick Action
     await expect(page.getByRole('button', { name: /Nuevo Plato|Gestionar Categorías/i }).first()).toBeVisible();
     await expect(page.getByRole('button', { name: /Volver al Panel Super Admin/i }).first()).toBeVisible();
 
-    // 12. Click "Volver al Panel Super Admin" to exit tenant administration
+    // 12. Test collapsing and expanding the sidebar on desktop
+    const sidebar = page.locator('aside[role="complementary"]');
+    await expect(sidebar).toHaveClass(/lg:w-64/);
+
+    const toggleCollapseBtn = page.getByRole('button', { name: /Contraer menú/i }).first();
+    await toggleCollapseBtn.click();
+    await expect(sidebar).toHaveClass(/lg:w-20/);
+
+    const toggleExpandBtn = page.getByRole('button', { name: /Expandir menú/i }).first();
+    await toggleExpandBtn.click();
+    await expect(sidebar).toHaveClass(/lg:w-64/);
+
+    // 13. Click "Volver al Panel Super Admin" to exit tenant administration
     await page.getByRole('button', { name: /Volver al Panel Super Admin/i }).first().click();
 
-    // 13. Verify return to SaaS Directory
+    // 14. Verify return to SaaS Directory
     await expect(page).toHaveURL(/\/admin\/restaurants/);
     await expect(page.getByRole('button', { name: /Directorio Global SaaS/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /\+ Nuevo Restaurante/i })).toBeVisible();

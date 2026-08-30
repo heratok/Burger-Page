@@ -208,4 +208,49 @@ describe("AdminLayout - Super Admin Navigation & Quick Actions (TDD)", () => {
     expect(screen.queryByRole("button", { name: /\+ Nuevo Restaurante/i })).toBeNull()
     expect(screen.queryByRole("button", { name: /\+ Nuevo Usuario/i })).toBeNull()
   })
+
+  it("allows collapsing and expanding the sidebar on desktop", () => {
+    sessionStorage.setItem(
+      "burger_page_session_v2",
+      JSON.stringify({
+        role: "restaurant",
+        restaurantId: "burger-craft",
+        authenticatedAt: new Date().toISOString(),
+      })
+    )
+
+    const TestComponent = () => {
+      const { setAdminTab } = useRestaurant()
+      React.useEffect(() => {
+        setAdminTab("dashboard")
+      }, [setAdminTab])
+
+      return (
+        <AdminLayout>
+          <div>Dashboard</div>
+        </AdminLayout>
+      )
+    }
+
+    render(
+      <RestaurantProvider>
+        <TestComponent />
+      </RestaurantProvider>
+    )
+
+    const collapseButtons = screen.getAllByRole("button", { name: /Contraer menú|Expandir menú/i })
+    expect(collapseButtons.length).toBeGreaterThan(0)
+
+    const aside = screen.getByRole("complementary")
+    expect(aside.className).toContain("lg:w-64")
+
+    // Click collapse
+    fireEvent.click(collapseButtons[0])
+    expect(aside.className).toContain("lg:w-20")
+
+    // Click expand
+    const expandButtons = screen.getAllByRole("button", { name: /Contraer menú|Expandir menú/i })
+    fireEvent.click(expandButtons[0])
+    expect(aside.className).toContain("lg:w-64")
+  })
 })

@@ -23,6 +23,8 @@ import {
   Plus,
   ArrowLeft,
   UserPlus,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { AdminSwitcher, CreateRestaurantModal, CreateUserModal } from "@/features/superadmin"
@@ -55,6 +57,23 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const [isManualSaleOpen, setIsManualSaleOpen] = useState(false)
   const [isCreateRestaurantOpen, setIsCreateRestaurantOpen] = useState(false)
   const [isCreateUserOpen, setIsCreateUserOpen] = useState(false)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("burger_page_sidebar_collapsed") === "true"
+    } catch {
+      return false
+    }
+  })
+
+  const toggleSidebarCollapse = () => {
+    setIsSidebarCollapsed((prev) => {
+      const next = !prev
+      try {
+        localStorage.setItem("burger_page_sidebar_collapsed", String(next))
+      } catch {}
+      return next
+    })
+  }
 
   const isDark = adminTheme === "dark"
   const isSuper = session.role === "super"
@@ -147,29 +166,35 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         {/* DESKTOP & MOBILE SIDEBAR                                  */}
         {/* ======================================================== */}
         <aside
-          className={`fixed inset-y-0 left-0 z-50 flex h-screen w-64 flex-col border-r transition-transform duration-300 ease-in-out lg:sticky lg:top-0 lg:translate-x-0 ${
+          role="complementary"
+          aria-label="Sidebar de navegación"
+          className={`fixed inset-y-0 left-0 z-50 flex h-screen flex-col border-r transition-all duration-300 ease-in-out lg:sticky lg:top-0 lg:translate-x-0 ${
             isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
+          } ${
+            isSidebarCollapsed ? "w-64 lg:w-20" : "w-64 lg:w-64"
           } ${
             isDark
               ? "border-slate-800 bg-[#0E1322] shadow-xl"
               : "border-slate-200/80 bg-white shadow-xs"
           }`}
         >
-          {/* Sidebar Top: Logo & Branding */}
-          <div className="flex h-14 shrink-0 items-center justify-between border-b px-4 border-slate-200/60 dark:border-slate-800">
+          {/* Sidebar Top: Logo & Branding + Collapse Button */}
+          <div className="flex h-14 shrink-0 items-center justify-between border-b px-3.5 border-slate-200/60 dark:border-slate-800">
             {isSuperGlobalMode ? (
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-tr from-amber-500 to-indigo-600 text-white font-bold text-xs shrink-0 shadow-md">
                   <Crown className="size-4" />
                 </div>
-                <div className="flex flex-col min-w-0 leading-tight">
-                  <span className="font-bold tracking-tight text-xs truncate text-slate-900 dark:text-white">
-                    SaaS Platform
-                  </span>
-                  <span className="text-[9px] font-bold tracking-wider uppercase text-amber-500">
-                    Super Admin
-                  </span>
-                </div>
+                {!isSidebarCollapsed && (
+                  <div className="flex flex-col min-w-0 leading-tight">
+                    <span className="font-bold tracking-tight text-xs truncate text-slate-900 dark:text-white">
+                      SaaS Platform
+                    </span>
+                    <span className="text-[9px] font-bold tracking-wider uppercase text-amber-500">
+                      Super Admin
+                    </span>
+                  </div>
+                )}
               </div>
             ) : isSuperTenantMode ? (
               <div className="flex items-center gap-2.5 min-w-0">
@@ -184,14 +209,16 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                     <Crown className="size-4" />
                   </div>
                 )}
-                <div className="flex flex-col min-w-0 leading-tight">
-                  <span className="font-bold tracking-tight text-xs truncate text-slate-900 dark:text-white">
-                    {storeConfig.name}
-                  </span>
-                  <span className="text-[9px] font-bold tracking-wider uppercase text-amber-500">
-                    👑 Super Admin
-                  </span>
-                </div>
+                {!isSidebarCollapsed && (
+                  <div className="flex flex-col min-w-0 leading-tight">
+                    <span className="font-bold tracking-tight text-xs truncate text-slate-900 dark:text-white">
+                      {storeConfig.name}
+                    </span>
+                    <span className="text-[9px] font-bold tracking-wider uppercase text-amber-500">
+                      👑 Super Admin
+                    </span>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="flex items-center gap-2.5 min-w-0">
@@ -206,37 +233,57 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                     <Store className="size-4" />
                   </div>
                 )}
-                <div className="flex flex-col min-w-0 leading-tight">
-                  <span className="font-bold tracking-tight text-xs truncate text-slate-900 dark:text-white">
-                    {storeConfig.name}
-                  </span>
-                  <span className="text-[9px] font-semibold tracking-wider uppercase text-indigo-600 dark:text-indigo-400">
-                    Panel Local
-                  </span>
-                </div>
+                {!isSidebarCollapsed && (
+                  <div className="flex flex-col min-w-0 leading-tight">
+                    <span className="font-bold tracking-tight text-xs truncate text-slate-900 dark:text-white">
+                      {storeConfig.name}
+                    </span>
+                    <span className="text-[9px] font-semibold tracking-wider uppercase text-indigo-600 dark:text-indigo-400">
+                      Panel Local
+                    </span>
+                  </div>
+                )}
               </div>
             )}
 
             {/* Mobile Close Button */}
             <button
               type="button"
+              aria-label="Cerrar menú"
               onClick={() => setIsMobileSidebarOpen(false)}
-              className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 lg:hidden"
+              className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 lg:hidden cursor-pointer"
             >
               <X className="size-4" />
             </button>
+
+            {/* Desktop Collapse / Expand Toggle Button */}
+            <button
+              type="button"
+              onClick={toggleSidebarCollapse}
+              aria-label={isSidebarCollapsed ? "Expandir menú" : "Contraer menú"}
+              title={isSidebarCollapsed ? "Expandir menú lateral" : "Contraer menú lateral"}
+              className="hidden lg:flex items-center justify-center rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer"
+            >
+              {isSidebarCollapsed ? (
+                <PanelLeftOpen className="size-4" />
+              ) : (
+                <PanelLeftClose className="size-4" />
+              )}
+            </button>
           </div>
 
-          {/* Restaurant Switcher Widget (Visible for Super Admin and Local Admin) */}
+          {/* Restaurant Switcher Widget */}
           <div className="p-2.5 border-b border-slate-100 dark:border-slate-800/60 shrink-0">
-            <AdminSwitcher />
+            <AdminSwitcher collapsed={isSidebarCollapsed} />
           </div>
 
           {/* Navigation Links */}
-          <nav className="flex-1 space-y-1 p-2.5 overflow-y-auto" aria-label="Menú Lateral">
-            <div className="px-2 pb-1 text-[9px] font-bold uppercase tracking-wider text-slate-400">
-              {isSuperGlobalMode ? "Administración SaaS" : "Módulos del Restaurante"}
-            </div>
+          <nav className="flex-1 space-y-1 p-2 overflow-y-auto" aria-label="Menú Lateral">
+            {!isSidebarCollapsed && (
+              <div className="px-2 pb-1 text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                {isSuperGlobalMode ? "Administración SaaS" : "Módulos del Restaurante"}
+              </div>
+            )}
 
             {navItems.map((item) => {
               const Icon = item.icon
@@ -246,11 +293,17 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 <button
                   key={item.id}
                   type="button"
+                  title={item.label}
+                  aria-label={item.label}
                   onClick={() => {
                     navigateTo(`/admin/${item.id}`)
                     setIsMobileSidebarOpen(false)
                   }}
-                  className={`group flex w-full items-center justify-between rounded-xl px-2.5 py-2 text-xs font-semibold transition-all ${
+                  className={`group relative flex w-full items-center rounded-xl transition-all ${
+                    isSidebarCollapsed
+                      ? "justify-center p-2.5"
+                      : "justify-between px-2.5 py-2 text-xs font-semibold"
+                  } ${
                     isActive
                       ? "bg-indigo-600 text-white shadow-xs"
                       : isDark
@@ -258,7 +311,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                       : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                   }`}
                 >
-                  <div className="flex items-center gap-2.5 truncate">
+                  <div className={`flex items-center gap-2.5 ${isSidebarCollapsed ? "justify-center" : "truncate"}`}>
                     <Icon
                       className={`size-4 shrink-0 transition-colors ${
                         isActive
@@ -268,19 +321,23 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                           : "text-slate-500 group-hover:text-slate-900"
                       }`}
                     />
-                    <span className="truncate">{item.label}</span>
+                    {!isSidebarCollapsed && <span className="truncate">{item.label}</span>}
                   </div>
 
                   {item.badge !== undefined && (
-                    <span
-                      className={`ml-1.5 shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
-                        isActive
-                          ? "bg-white/20 text-white"
-                          : "bg-indigo-500/15 text-indigo-500 dark:bg-indigo-500/20 dark:text-indigo-300"
-                      }`}
-                    >
-                      {item.badge}
-                    </span>
+                    isSidebarCollapsed ? (
+                      <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-indigo-500 ring-2 ring-white dark:ring-slate-900" />
+                    ) : (
+                      <span
+                        className={`ml-1.5 shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                          isActive
+                            ? "bg-white/20 text-white"
+                            : "bg-indigo-500/15 text-indigo-500 dark:bg-indigo-500/20 dark:text-indigo-300"
+                        }`}
+                      >
+                        {item.badge}
+                      </span>
+                    )
                   )}
                 </button>
               )
@@ -288,50 +345,70 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
             {/* Quick Actions in Sidebar for Super Admin in Global Mode */}
             {isSuperGlobalMode && (
-              <div className="pt-4 space-y-1.5">
-                <div className="px-2 pb-1 text-[9px] font-bold uppercase tracking-wider text-slate-400">
-                  Acciones Rápidas SaaS
-                </div>
+              <div className="pt-3 space-y-1.5">
+                {!isSidebarCollapsed && (
+                  <div className="px-2 pb-1 text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                    Acciones Rápidas SaaS
+                  </div>
+                )}
                 <button
                   type="button"
+                  title="+ Nuevo Restaurante"
+                  aria-label="+ Nuevo Restaurante"
                   onClick={() => {
                     setIsCreateRestaurantOpen(true)
                     setIsMobileSidebarOpen(false)
                   }}
-                  className="flex w-full items-center gap-2 rounded-xl border border-indigo-500/20 bg-indigo-500/10 px-2.5 py-2 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20 transition-all cursor-pointer"
+                  className={`flex w-full items-center rounded-xl border border-indigo-500/20 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20 transition-all cursor-pointer font-bold ${
+                    isSidebarCollapsed
+                      ? "justify-center p-2.5"
+                      : "gap-2 px-2.5 py-2 text-xs"
+                  }`}
                 >
-                  <Plus className="size-3.5 shrink-0" />
-                  <span className="truncate">+ Nuevo Restaurante</span>
+                  <Plus className="size-4 shrink-0" />
+                  {!isSidebarCollapsed && <span className="truncate">+ Nuevo Restaurante</span>}
                 </button>
                 <button
                   type="button"
+                  title="+ Nuevo Usuario"
+                  aria-label="+ Nuevo Usuario"
                   onClick={() => {
                     setIsCreateUserOpen(true)
                     setIsMobileSidebarOpen(false)
                   }}
-                  className="flex w-full items-center gap-2 rounded-xl border border-violet-500/20 bg-violet-500/10 px-2.5 py-2 text-xs font-bold text-violet-600 dark:text-violet-400 hover:bg-violet-500/20 transition-all cursor-pointer"
+                  className={`flex w-full items-center rounded-xl border border-violet-500/20 bg-violet-500/10 text-violet-600 dark:text-violet-400 hover:bg-violet-500/20 transition-all cursor-pointer font-bold ${
+                    isSidebarCollapsed
+                      ? "justify-center p-2.5"
+                      : "gap-2 px-2.5 py-2 text-xs"
+                  }`}
                 >
-                  <UserPlus className="size-3.5 shrink-0" />
-                  <span className="truncate">+ Nuevo Usuario</span>
+                  <UserPlus className="size-4 shrink-0" />
+                  {!isSidebarCollapsed && <span className="truncate">+ Nuevo Usuario</span>}
                 </button>
               </div>
             )}
           </nav>
 
           {/* Sidebar Footer Controls */}
-          <div className="border-t p-2.5 space-y-2 border-slate-200/60 dark:border-slate-800 shrink-0">
+          <div className="border-t p-2 space-y-1.5 border-slate-200/60 dark:border-slate-800 shrink-0">
             {/* Context Return Button for Super Admin managing a restaurant */}
             {isSuperTenantMode && (
               <button
                 type="button"
+                title="Volver al Panel Super Admin"
+                aria-label="Volver al Panel Super Admin"
                 onClick={() => {
                   navigateTo("/admin/restaurants")
                   setIsMobileSidebarOpen(false)
                 }}
-                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-amber-500/40 bg-amber-500/10 py-2 text-xs font-bold text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 transition-all shadow-xs cursor-pointer"
+                className={`flex w-full items-center rounded-xl border border-amber-500/40 bg-amber-500/10 font-bold text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 transition-all shadow-xs cursor-pointer ${
+                  isSidebarCollapsed
+                    ? "justify-center p-2.5"
+                    : "justify-center gap-1.5 py-2 text-xs"
+                }`}
               >
-                <ArrowLeft className="size-3.5 shrink-0" />
-                <span className="truncate">Volver al Panel Super Admin</span>
+                <ArrowLeft className="size-4 shrink-0" />
+                {!isSidebarCollapsed && <span className="truncate">Volver al Panel Super Admin</span>}
               </button>
             )}
 
@@ -339,11 +416,15 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
             {!isSuperGlobalMode && (
               <Button
                 type="button"
+                title="Ver Tienda Pública"
+                aria-label="Ver Tienda Pública"
                 onClick={() => navigateTo(`/${activeRestaurant.slug}`)}
-                className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 py-2 text-xs font-bold text-white shadow-sm shadow-orange-500/20 hover:from-orange-600 hover:to-amber-600 cursor-pointer"
+                className={`flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 font-bold text-white shadow-sm shadow-orange-500/20 hover:from-orange-600 hover:to-amber-600 cursor-pointer ${
+                  isSidebarCollapsed ? "p-2.5 h-10" : "gap-1.5 py-2 text-xs"
+                }`}
               >
-                <Eye className="size-3.5" />
-                <span>Ver Tienda</span>
+                <Eye className="size-4 shrink-0" />
+                {!isSidebarCollapsed && <span>Ver Tienda</span>}
               </Button>
             )}
 
@@ -351,14 +432,18 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
             {session.role !== "guest" && (
               <button
                 type="button"
+                title="Cerrar Sesión"
+                aria-label="Cerrar Sesión"
                 onClick={() => {
                   logout()
                   navigateTo("/")
                 }}
-                className="flex w-full items-center justify-center gap-1 rounded-lg py-1.5 text-[11px] font-semibold text-slate-400 hover:bg-rose-500/10 hover:text-rose-500 transition-colors cursor-pointer"
+                className={`flex w-full items-center justify-center rounded-lg text-[11px] font-semibold text-slate-400 hover:bg-rose-500/10 hover:text-rose-500 transition-colors cursor-pointer ${
+                  isSidebarCollapsed ? "p-2 h-9" : "gap-1 py-1.5"
+                }`}
               >
-                <LogOut className="size-3" />
-                <span>Cerrar Sesión</span>
+                <LogOut className="size-3.5 shrink-0" />
+                {!isSidebarCollapsed && <span>Cerrar Sesión</span>}
               </button>
             )}
           </div>
@@ -367,7 +452,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         {/* ======================================================== */}
         {/* RIGHT MAIN CONTENT AREA                                   */}
         {/* ======================================================== */}
-        <div className="flex flex-1 flex-col overflow-hidden">
+        <div className="flex flex-1 flex-col overflow-hidden min-w-0">
           {/* Top Header Bar */}
           <header
             className={`sticky top-0 z-30 flex h-16 items-center justify-between border-b px-4 backdrop-blur-md transition-colors sm:px-6 lg:px-8 ${
@@ -376,8 +461,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 : "border-slate-200/80 bg-white/90 shadow-xs"
             }`}
           >
-            {/* Left: Mobile Toggle & Breadcrumb */}
+            {/* Left: Mobile & Desktop Collapse Toggle & Breadcrumb */}
             <div className="flex items-center gap-3 min-w-0">
+              {/* Mobile Drawer Open Toggle */}
               <button
                 type="button"
                 onClick={() => setIsMobileSidebarOpen(true)}
@@ -385,6 +471,21 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 aria-label="Abrir menú"
               >
                 <MenuIcon className="size-5" />
+              </button>
+
+              {/* Desktop Sidebar Toggle in Top Bar */}
+              <button
+                type="button"
+                onClick={toggleSidebarCollapse}
+                aria-label={isSidebarCollapsed ? "Expandir menú lateral" : "Contraer menú lateral"}
+                title={isSidebarCollapsed ? "Expandir menú lateral" : "Contraer menú lateral"}
+                className="hidden lg:inline-flex items-center justify-center rounded-xl border p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                {isSidebarCollapsed ? (
+                  <PanelLeftOpen className="size-4.5" />
+                ) : (
+                  <PanelLeftClose className="size-4.5" />
+                )}
               </button>
 
               {/* Breadcrumb Navigation */}

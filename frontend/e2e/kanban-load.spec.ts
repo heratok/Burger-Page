@@ -246,7 +246,7 @@ test.describe('Kanban Board - High Load & Responsiveness Suite', () => {
     await expect(page.getByRole('button', { name: /Menú & Carta/i })).toBeVisible();
 
     // Close sidebar
-    await page.locator('aside button').first().click();
+    await page.getByRole('button', { name: /Cerrar menú/i }).click();
   });
 
   test('Tablet Viewport (768x1024): Kanban renders cards with high density', async ({ page }) => {
