@@ -49,13 +49,21 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
       const result = await apiClient.login(username.trim(), password.trim())
 
       if (result.success && result.user) {
-        login(password)
+        const authRes = login(password)
         setUsername("")
         setPassword("")
-        if (window.location.pathname.startsWith("/admin")) {
-          navigateTo(window.location.pathname)
+        if (authRes.role === "super") {
+          if (window.location.pathname.startsWith("/admin/") && window.location.pathname !== "/admin") {
+            navigateTo(window.location.pathname)
+          } else {
+            navigateTo("/admin/restaurants")
+          }
         } else {
-          navigateTo("/admin")
+          if (window.location.pathname.startsWith("/admin/") && window.location.pathname !== "/admin") {
+            navigateTo(window.location.pathname)
+          } else {
+            navigateTo("/admin/dashboard")
+          }
         }
         setIsLoading(false)
         return
@@ -67,10 +75,18 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
       if (legacyResult.success) {
         setPassword("")
         setUsername("")
-        if (window.location.pathname.startsWith("/admin")) {
-          navigateTo(window.location.pathname)
+        if (legacyResult.role === "super") {
+          if (window.location.pathname.startsWith("/admin/") && window.location.pathname !== "/admin") {
+            navigateTo(window.location.pathname)
+          } else {
+            navigateTo("/admin/restaurants")
+          }
         } else {
-          navigateTo("/admin")
+          if (window.location.pathname.startsWith("/admin/") && window.location.pathname !== "/admin") {
+            navigateTo(window.location.pathname)
+          } else {
+            navigateTo("/admin/dashboard")
+          }
         }
         setIsLoading(false)
         return

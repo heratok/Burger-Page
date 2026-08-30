@@ -21,9 +21,11 @@ import {
   Crown,
   BarChart3,
   Plus,
+  ArrowLeft,
+  UserPlus,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { AdminSwitcher } from "@/features/superadmin"
+import { AdminSwitcher, CreateRestaurantModal, CreateUserModal } from "@/features/superadmin"
 import { useAppRouter } from "@/core/router/useAppRouter"
 import { AdminContentFallback } from "@/components/ui/LoadingFallbacks"
 import { ManualSaleModal } from "./ManualSaleModal"
@@ -49,75 +51,81 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
   const { navigateTo } = useAppRouter()
 
-  const isMobileSidebarOpenState = useState(false)
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = isMobileSidebarOpenState
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
   const [isManualSaleOpen, setIsManualSaleOpen] = useState(false)
+  const [isCreateRestaurantOpen, setIsCreateRestaurantOpen] = useState(false)
+  const [isCreateUserOpen, setIsCreateUserOpen] = useState(false)
+
   const isDark = adminTheme === "dark"
   const isSuper = session.role === "super"
+  const isSuperGlobalMode = isSuper && adminTab === "restaurants"
+  const isSuperTenantMode = isSuper && adminTab !== "restaurants"
 
-  // Strict role navigation: Super Admin only sees SaaS Directory; Restaurant Admin sees store operations
-  const navItems = isSuper
-    ? [
-        {
-          id: "restaurants" as const,
-          label: "Directorio Global SaaS",
-          icon: Building2,
-          description: "Gestión de inquilinos y métricas globales",
-          badge: "SaaS",
-        },
-      ]
-    : [
-        {
-          id: "dashboard" as const,
-          label: "Dashboard",
-          icon: LayoutDashboard,
-          description: "Métricas y rendimiento",
-          badge: undefined,
-        },
-        {
-          id: "orders" as const,
-          label: "Pedidos en Vivo",
-          icon: ShoppingBag,
-          description: "Flujo Kanban de cocina",
-          badge: pendingOrdersCount > 0 ? pendingOrdersCount : undefined,
-        },
-        {
-          id: "menu" as const,
-          label: "Menú & Carta",
-          icon: UtensilsCrossed,
-          description: "Platos, stock y adiciones",
-          badge: undefined,
-        },
-        {
-          id: "inventory" as const,
-          label: "Stock & Insumos",
-          icon: Boxes,
-          description: "Control de inventario y proveedores",
-          badge: lowStockCount > 0 ? lowStockCount : undefined,
-        },
-        {
-          id: "customers" as const,
-          label: "Clientes CRM",
-          icon: Users,
-          description: "Base de datos y fidelización",
-          badge: undefined,
-        },
-        {
-          id: "reports" as const,
-          label: "Reportes & Cierre",
-          icon: BarChart3,
-          description: "Cierre de caja y exportación de datos",
-          badge: undefined,
-        },
-        {
-          id: "customizer" as const,
-          label: "Personalizador UI/UX",
-          icon: Palette,
-          description: "Diseño no-code de tienda",
-          badge: "No-Code",
-        },
-      ]
+  // Global SaaS navigation items for platform-wide management
+  const globalNavItems = [
+    {
+      id: "restaurants" as const,
+      label: "Directorio Global SaaS",
+      icon: Building2,
+      description: "Gestión de inquilinos y métricas globales",
+      badge: "SaaS",
+    },
+  ]
 
+  // Local operational modules for tenant administration
+  const restaurantNavItems = [
+    {
+      id: "dashboard" as const,
+      label: "Dashboard",
+      icon: LayoutDashboard,
+      description: "Métricas y rendimiento",
+      badge: undefined,
+    },
+    {
+      id: "orders" as const,
+      label: "Pedidos en Vivo",
+      icon: ShoppingBag,
+      description: "Flujo Kanban de cocina",
+      badge: pendingOrdersCount > 0 ? pendingOrdersCount : undefined,
+    },
+    {
+      id: "menu" as const,
+      label: "Menú & Carta",
+      icon: UtensilsCrossed,
+      description: "Platos, stock y adiciones",
+      badge: undefined,
+    },
+    {
+      id: "inventory" as const,
+      label: "Stock & Insumos",
+      icon: Boxes,
+      description: "Control de inventario y proveedores",
+      badge: lowStockCount > 0 ? lowStockCount : undefined,
+    },
+    {
+      id: "customers" as const,
+      label: "Clientes CRM",
+      icon: Users,
+      description: "Base de datos y fidelización",
+      badge: undefined,
+    },
+    {
+      id: "reports" as const,
+      label: "Reportes & Cierre",
+      icon: BarChart3,
+      description: "Cierre de caja y exportación de datos",
+      badge: undefined,
+    },
+    {
+      id: "customizer" as const,
+      label: "Personalizador UI/UX",
+      icon: Palette,
+      description: "Diseño no-code de tienda",
+      badge: "No-Code",
+    },
+  ]
+
+  const navItems = isSuperGlobalMode ? globalNavItems : restaurantNavItems
   const activeItem = navItems.find((item) => item.id === adminTab) || navItems[0]
 
   return (
@@ -149,7 +157,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         >
           {/* Sidebar Top: Logo & Branding */}
           <div className="flex h-14 shrink-0 items-center justify-between border-b px-4 border-slate-200/60 dark:border-slate-800">
-            {isSuper ? (
+            {isSuperGlobalMode ? (
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-tr from-amber-500 to-indigo-600 text-white font-bold text-xs shrink-0 shadow-md">
                   <Crown className="size-4" />
@@ -160,6 +168,28 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                   </span>
                   <span className="text-[9px] font-bold tracking-wider uppercase text-amber-500">
                     Super Admin
+                  </span>
+                </div>
+              </div>
+            ) : isSuperTenantMode ? (
+              <div className="flex items-center gap-2.5 min-w-0">
+                {storeConfig.logoUrl ? (
+                  <img
+                    src={storeConfig.logoUrl}
+                    alt=""
+                    className="size-8 rounded-lg object-cover border border-amber-500/40 shrink-0"
+                  />
+                ) : (
+                  <div className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-tr from-amber-500 to-indigo-600 text-white font-bold text-xs shrink-0">
+                    <Crown className="size-4" />
+                  </div>
+                )}
+                <div className="flex flex-col min-w-0 leading-tight">
+                  <span className="font-bold tracking-tight text-xs truncate text-slate-900 dark:text-white">
+                    {storeConfig.name}
+                  </span>
+                  <span className="text-[9px] font-bold tracking-wider uppercase text-amber-500">
+                    👑 Super Admin
                   </span>
                 </div>
               </div>
@@ -197,17 +227,15 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
             </button>
           </div>
 
-          {/* Restaurant Switcher Widget (Only for local multi-tenant testing or when not in superadmin) */}
-          {!isSuper && (
-            <div className="p-2.5 border-b border-slate-100 dark:border-slate-800/60 shrink-0">
-              <AdminSwitcher />
-            </div>
-          )}
+          {/* Restaurant Switcher Widget (Visible for Super Admin and Local Admin) */}
+          <div className="p-2.5 border-b border-slate-100 dark:border-slate-800/60 shrink-0">
+            <AdminSwitcher />
+          </div>
 
           {/* Navigation Links */}
           <nav className="flex-1 space-y-1 p-2.5 overflow-y-auto" aria-label="Menú Lateral">
             <div className="px-2 pb-1 text-[9px] font-bold uppercase tracking-wider text-slate-400">
-              {isSuper ? "Administración SaaS" : "Módulos del Restaurante"}
+              {isSuperGlobalMode ? "Administración SaaS" : "Módulos del Restaurante"}
             </div>
 
             {navItems.map((item) => {
@@ -257,12 +285,58 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 </button>
               )
             })}
+
+            {/* Quick Actions in Sidebar for Super Admin in Global Mode */}
+            {isSuperGlobalMode && (
+              <div className="pt-4 space-y-1.5">
+                <div className="px-2 pb-1 text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                  Acciones Rápidas SaaS
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCreateRestaurantOpen(true)
+                    setIsMobileSidebarOpen(false)
+                  }}
+                  className="flex w-full items-center gap-2 rounded-xl border border-indigo-500/20 bg-indigo-500/10 px-2.5 py-2 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20 transition-all cursor-pointer"
+                >
+                  <Plus className="size-3.5 shrink-0" />
+                  <span className="truncate">+ Nuevo Restaurante</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCreateUserOpen(true)
+                    setIsMobileSidebarOpen(false)
+                  }}
+                  className="flex w-full items-center gap-2 rounded-xl border border-violet-500/20 bg-violet-500/10 px-2.5 py-2 text-xs font-bold text-violet-600 dark:text-violet-400 hover:bg-violet-500/20 transition-all cursor-pointer"
+                >
+                  <UserPlus className="size-3.5 shrink-0" />
+                  <span className="truncate">+ Nuevo Usuario</span>
+                </button>
+              </div>
+            )}
           </nav>
 
           {/* Sidebar Footer Controls */}
           <div className="border-t p-2.5 space-y-2 border-slate-200/60 dark:border-slate-800 shrink-0">
-            {/* Quick Switch to Public Storefront (Only for restaurant admins) */}
-            {!isSuper && (
+            {/* Context Return Button for Super Admin managing a restaurant */}
+            {isSuperTenantMode && (
+              <button
+                type="button"
+                onClick={() => {
+                  navigateTo("/admin/restaurants")
+                  setIsMobileSidebarOpen(false)
+                }}
+                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-amber-500/40 bg-amber-500/10 py-2 text-xs font-bold text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 transition-all shadow-xs cursor-pointer"
+              >
+                <ArrowLeft className="size-3.5 shrink-0" />
+                <span className="truncate">Volver al Panel Super Admin</span>
+              </button>
+            )}
+
+            {/* Quick Switch to Public Storefront */}
+            {!isSuperGlobalMode && (
               <Button
                 type="button"
                 onClick={() => navigateTo(`/${activeRestaurant.slug}`)}
@@ -303,7 +377,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
             }`}
           >
             {/* Left: Mobile Toggle & Breadcrumb */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 min-w-0">
               <button
                 type="button"
                 onClick={() => setIsMobileSidebarOpen(true)}
@@ -314,12 +388,12 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
               </button>
 
               {/* Breadcrumb Navigation */}
-              <div className="flex items-center gap-2 text-xs sm:text-sm">
-                <span className="font-semibold text-slate-500 dark:text-slate-400 hidden sm:inline">
-                  {isSuper ? "SaaS Platform" : storeConfig.name}
+              <div className="flex items-center gap-2 text-xs sm:text-sm min-w-0">
+                <span className="font-semibold text-slate-500 dark:text-slate-400 hidden sm:inline truncate">
+                  {isSuperGlobalMode ? "SaaS Platform" : storeConfig.name}
                 </span>
-                <ChevronRight className="size-3.5 text-slate-400 hidden sm:inline" />
-                <span className="font-bold text-slate-900 dark:text-white">
+                <ChevronRight className="size-3.5 text-slate-400 hidden sm:inline shrink-0" />
+                <span className="font-bold text-slate-900 dark:text-white truncate">
                   {activeItem.label}
                 </span>
               </div>
@@ -327,8 +401,30 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
             {/* Right: Quick Action Controls */}
             <div className="flex items-center gap-2 sm:gap-3">
+              {/* Context Banner & Return button for Super Admin in Tenant Mode */}
+              {isSuperTenantMode && (
+                <div className="flex items-center gap-2">
+                  <div className="hidden xl:flex items-center gap-2 rounded-xl bg-amber-500/10 border border-amber-500/30 px-3 py-1.5 text-xs text-amber-700 dark:text-amber-300 font-semibold shadow-xs">
+                    <Crown className="size-3.5 text-amber-500 shrink-0" />
+                    <span>Modo Super Admin: <strong>{activeRestaurant.config.name}</strong></span>
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigateTo("/admin/restaurants")}
+                    className="flex items-center gap-1.5 rounded-xl border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 font-bold text-xs cursor-pointer shadow-xs"
+                  >
+                    <ArrowLeft className="size-3.5" />
+                    <span className="hidden sm:inline">Volver al Panel Super Admin</span>
+                    <span className="sm:hidden">Volver a SaaS</span>
+                  </Button>
+                </div>
+              )}
+
               {/* Sound notification toggle icon (Only for restaurant kitchens) */}
-              {!isSuper && (
+              {!isSuperGlobalMode && (
                 <button
                   type="button"
                   onClick={() => setSoundEnabled(!soundEnabled)}
@@ -361,8 +457,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 {isDark ? <Sun className="size-4" /> : <Moon className="size-4" />}
               </button>
 
-              {/* New Manual Sale POS Button (Only for restaurant admin) */}
-              {!isSuper && (
+              {/* New Manual Sale POS Button (When inside a restaurant) */}
+              {!isSuperGlobalMode && (
                 <Button
                   type="button"
                   size="sm"
@@ -375,8 +471,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 </Button>
               )}
 
-              {/* View Storefront button on top bar (Only for restaurant admin) */}
-              {!isSuper && (
+              {/* View Storefront button on top bar (When inside a restaurant) */}
+              {!isSuperGlobalMode && (
                 <Button
                   type="button"
                   variant="outline"
@@ -405,11 +501,25 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       </div>
 
       {/* Manual Sale POS Modal */}
-      {!isSuper && (
+      {!isSuperGlobalMode && (
         <ManualSaleModal
           isOpen={isManualSaleOpen}
           onClose={() => setIsManualSaleOpen(false)}
         />
+      )}
+
+      {/* Super Admin Quick Creation Modals */}
+      {isSuper && (
+        <>
+          <CreateRestaurantModal
+            isOpen={isCreateRestaurantOpen}
+            onClose={() => setIsCreateRestaurantOpen(false)}
+          />
+          <CreateUserModal
+            isOpen={isCreateUserOpen}
+            onClose={() => setIsCreateUserOpen(false)}
+          />
+        </>
       )}
     </div>
   )
