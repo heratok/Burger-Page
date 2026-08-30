@@ -2,7 +2,7 @@ import React, { useState } from "react"
 import { useRestaurant } from "@/context/RestaurantContext"
 import { Store, X, Sparkles, Check, Lock, Phone } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { THEME_COLOR_PRESETS } from "@/data/initialData"
+import { THEME_COLOR_PRESETS } from "@/constants/themePresets"
 
 interface CreateRestaurantModalProps {
   isOpen: boolean

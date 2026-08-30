@@ -1,7 +1,4 @@
-import type {
-  StorefrontConfig,
-  RestaurantRecord,
-} from "@/types/restaurant"
+import type { StorefrontConfig } from "@/types/restaurant"
 
 export const DEFAULT_STORE_CONFIG: StorefrontConfig = {
   name: "Mi Restaurante",
@@ -159,9 +156,3 @@ export const CARD_RADIUS_OPTIONS = [
   { id: "lg", name: "Pronunciado (24px)", radiusClass: "rounded-3xl" },
   { id: "full", name: "Píldora / Suave", radiusClass: "rounded-[28px]" },
 ]
-
-// =========================================================================
-// EMPTY SEED STATE — Initial state starts with 0 mock entities
-// Users create restaurants and catalog items from the UI or API.
-// =========================================================================
-export const SEED_RESTAURANTS: RestaurantRecord[] = []

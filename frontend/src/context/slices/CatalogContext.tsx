@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useCallback, useMemo } from "react"
 import type { StorefrontConfig, MenuItem, AdditionItem } from "@/types/restaurant"
-import { DEFAULT_STORE_CONFIG } from "@/data/initialData"
+import { DEFAULT_STORE_CONFIG } from "@/constants/themePresets"
 import { useTenant } from "./TenantContext"
 import { apiClient } from "@/core/api/apiClient"
 import { toast } from "sonner"

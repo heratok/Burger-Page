@@ -8,7 +8,7 @@ import type {
   InventoryItem,
   Supplier,
 } from "@/types/restaurant"
-import { DEFAULT_STORE_CONFIG } from "@/data/initialData"
+import { DEFAULT_STORE_CONFIG } from "@/constants/themePresets"
 
 export const TEST_PRODUCTS: MenuItem[] = [
   {

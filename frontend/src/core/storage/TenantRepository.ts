@@ -1,5 +1,4 @@
 import type { RestaurantRecord, StorageEnvelopeV2 } from "@/types/restaurant"
-import { SEED_RESTAURANTS } from "@/data/initialData"
 import { type StorageAdapter, LocalStorageAdapter } from "./StorageAdapter"
 
 export const STORAGE_KEYS = {
@@ -10,7 +9,7 @@ export const STORAGE_KEYS = {
 export const DEFAULT_ENVELOPE: StorageEnvelopeV2 = {
   version: 2,
   superAdminPassword: "admin",
-  restaurants: SEED_RESTAURANTS,
+  restaurants: [],
 }
 
 export class TenantRepository {

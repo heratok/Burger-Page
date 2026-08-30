@@ -3,7 +3,7 @@ import { useRestaurant } from "@/context/RestaurantContext"
 import {
   THEME_COLOR_PRESETS,
   BG_THEME_OPTIONS,
-} from "@/data/initialData"
+} from "@/constants/themePresets"
 import type { StoreBgTheme, CardStyle, CardRadius } from "@/types/restaurant"
 import {
   Palette,

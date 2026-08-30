@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest"
 import { renderHook, act } from "@testing-library/react"
 import { useCustomizerDraft } from "./useCustomizerDraft"
-import { DEFAULT_STORE_CONFIG } from "@/data/initialData"
+import { DEFAULT_STORE_CONFIG } from "@/constants/themePresets"
 
 describe("useCustomizerDraft", () => {
   it("initializes with storeConfig draft", () => {

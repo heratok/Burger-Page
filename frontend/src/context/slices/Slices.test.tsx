@@ -4,7 +4,7 @@ import React from "react"
 import { UiProvider, useUi } from "./UiContext"
 import { AuthProvider, useAuth } from "./AuthContext"
 import type { RestaurantRecord } from "@/types/restaurant"
-import { DEFAULT_STORE_CONFIG } from "@/data/initialData"
+import { DEFAULT_STORE_CONFIG } from "@/constants/themePresets"
 
 const mockRestaurants: RestaurantRecord[] = [
   {

@@ -3,7 +3,7 @@ import type {
   RestaurantRecord,
   StorageEnvelopeV2,
 } from "@/types/restaurant"
-import { DEFAULT_STORE_CONFIG } from "@/data/initialData"
+import { DEFAULT_STORE_CONFIG } from "@/constants/themePresets"
 import {
   TenantRepository,
   defaultTenantRepository,
