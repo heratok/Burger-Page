@@ -264,15 +264,10 @@ export const TenantProvider: React.FC<{
 
   const deleteRestaurant = useCallback(
     (id: string) => {
-      if (envelope.restaurants.length <= 1) {
-        toast.error("Debe existir al menos un restaurante en la plataforma.")
-        return
-      }
-
       setEnvelope((prev) => {
         const remaining = prev.restaurants.filter((r) => r.id !== id && r.slug !== id)
-        if ((activeRestaurantId === id || activeRestaurant?.slug === id) && remaining[0]) {
-          setActiveRestaurantId(remaining[0].id)
+        if ((activeRestaurantId === id || activeRestaurant?.slug === id)) {
+          setActiveRestaurantId(remaining[0]?.id || "rest-default")
         }
         return {
           ...prev,
@@ -291,7 +286,7 @@ export const TenantProvider: React.FC<{
           }
         })
     },
-    [envelope.restaurants.length, activeRestaurantId, activeRestaurant?.slug]
+    [activeRestaurantId, activeRestaurant?.slug]
   )
 
   const globalStats = useMemo<GlobalPlatformStats>(() => {
