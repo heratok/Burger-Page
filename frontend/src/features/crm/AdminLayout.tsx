@@ -178,11 +178,18 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
               : "border-slate-200/80 bg-white shadow-xs"
           }`}
         >
-          {/* Sidebar Top: Logo & Branding + Collapse Button */}
-          <div className="flex h-14 shrink-0 items-center justify-between border-b px-3.5 border-slate-200/60 dark:border-slate-800">
+          {/* Sidebar Top: Logo & Branding (Cleanly centered when collapsed) */}
+          <div
+            className={`flex h-14 shrink-0 items-center border-b px-3.5 border-slate-200/60 dark:border-slate-800 ${
+              isSidebarCollapsed ? "justify-center" : "justify-between"
+            }`}
+          >
             {isSuperGlobalMode ? (
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-tr from-amber-500 to-indigo-600 text-white font-bold text-xs shrink-0 shadow-md">
+              <div className={`flex items-center gap-2.5 min-w-0 ${isSidebarCollapsed ? "justify-center" : ""}`}>
+                <div
+                  title={isSidebarCollapsed ? "SaaS Platform (Super Admin)" : undefined}
+                  className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-tr from-amber-500 to-indigo-600 text-white font-bold text-xs shrink-0 shadow-md"
+                >
                   <Crown className="size-4" />
                 </div>
                 {!isSidebarCollapsed && (
@@ -197,15 +204,19 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 )}
               </div>
             ) : isSuperTenantMode ? (
-              <div className="flex items-center gap-2.5 min-w-0">
+              <div className={`flex items-center gap-2.5 min-w-0 ${isSidebarCollapsed ? "justify-center" : ""}`}>
                 {storeConfig.logoUrl ? (
                   <img
                     src={storeConfig.logoUrl}
                     alt=""
+                    title={isSidebarCollapsed ? `${storeConfig.name} (Super Admin)` : undefined}
                     className="size-8 rounded-lg object-cover border border-amber-500/40 shrink-0"
                   />
                 ) : (
-                  <div className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-tr from-amber-500 to-indigo-600 text-white font-bold text-xs shrink-0">
+                  <div
+                    title={isSidebarCollapsed ? `${storeConfig.name} (Super Admin)` : undefined}
+                    className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-tr from-amber-500 to-indigo-600 text-white font-bold text-xs shrink-0"
+                  >
                     <Crown className="size-4" />
                   </div>
                 )}
@@ -221,15 +232,19 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 )}
               </div>
             ) : (
-              <div className="flex items-center gap-2.5 min-w-0">
+              <div className={`flex items-center gap-2.5 min-w-0 ${isSidebarCollapsed ? "justify-center" : ""}`}>
                 {storeConfig.logoUrl ? (
                   <img
                     src={storeConfig.logoUrl}
                     alt=""
+                    title={isSidebarCollapsed ? `${storeConfig.name} (Panel Local)` : undefined}
                     className="size-8 rounded-lg object-cover border border-indigo-500/30 shrink-0"
                   />
                 ) : (
-                  <div className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-tr from-indigo-600 to-violet-500 text-white font-bold text-xs shrink-0">
+                  <div
+                    title={isSidebarCollapsed ? `${storeConfig.name} (Panel Local)` : undefined}
+                    className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-tr from-indigo-600 to-violet-500 text-white font-bold text-xs shrink-0"
+                  >
                     <Store className="size-4" />
                   </div>
                 )}
@@ -246,7 +261,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
               </div>
             )}
 
-            {/* Mobile Close Button */}
+            {/* Mobile Close Button (Only visible inside mobile drawer) */}
             <button
               type="button"
               aria-label="Cerrar menú"
@@ -254,21 +269,6 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
               className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 lg:hidden cursor-pointer"
             >
               <X className="size-4" />
-            </button>
-
-            {/* Desktop Collapse / Expand Toggle Button */}
-            <button
-              type="button"
-              onClick={toggleSidebarCollapse}
-              aria-label={isSidebarCollapsed ? "Expandir menú" : "Contraer menú"}
-              title={isSidebarCollapsed ? "Expandir menú lateral" : "Contraer menú lateral"}
-              className="hidden lg:flex items-center justify-center rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer"
-            >
-              {isSidebarCollapsed ? (
-                <PanelLeftOpen className="size-4" />
-              ) : (
-                <PanelLeftClose className="size-4" />
-              )}
             </button>
           </div>
 
@@ -461,23 +461,23 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 : "border-slate-200/80 bg-white/90 shadow-xs"
             }`}
           >
-            {/* Left: Mobile & Desktop Collapse Toggle & Breadcrumb */}
+            {/* Left: Mobile Drawer Trigger & Desktop Sidebar Toggle & Breadcrumb */}
             <div className="flex items-center gap-3 min-w-0">
               {/* Mobile Drawer Open Toggle */}
               <button
                 type="button"
                 onClick={() => setIsMobileSidebarOpen(true)}
-                className="rounded-xl border p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 lg:hidden"
+                className="rounded-xl border p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 lg:hidden cursor-pointer"
                 aria-label="Abrir menú"
               >
                 <MenuIcon className="size-5" />
               </button>
 
-              {/* Desktop Sidebar Toggle in Top Bar */}
+              {/* Single Desktop Sidebar Collapse/Expand Toggle Button */}
               <button
                 type="button"
                 onClick={toggleSidebarCollapse}
-                aria-label={isSidebarCollapsed ? "Expandir menú lateral" : "Contraer menú lateral"}
+                aria-label={isSidebarCollapsed ? "Expandir menú" : "Contraer menú"}
                 title={isSidebarCollapsed ? "Expandir menú lateral" : "Contraer menú lateral"}
                 className="hidden lg:inline-flex items-center justify-center rounded-xl border p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               >
