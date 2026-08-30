@@ -19,10 +19,16 @@ export class ApiClient {
       import.meta.env.PUBLIC_API_URL ||
       import.meta.env.BACKEND_API_URL ||
       import.meta.env.VITE_API_URL
+
+    let resolvedUrl = rawUrl ? rawUrl.replace(/\/$/, '') : ''
+    if (resolvedUrl && !resolvedUrl.endsWith('/api')) {
+      resolvedUrl = `${resolvedUrl}/api`
+    }
+
     this.baseUrl =
       config?.baseUrl ||
-      (rawUrl
-        ? rawUrl.replace(/\/$/, '')
+      (resolvedUrl
+        ? resolvedUrl
         : typeof window !== 'undefined' && window.location?.origin
         ? `${window.location.origin}/api`
         : 'http://localhost:3001/api')

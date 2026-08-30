@@ -5,7 +5,7 @@ const API_BASE = 'http://localhost:3001/api';
 test.describe('Playwright Full Multi-Tenant & Security E2E Suite', () => {
   let tokenTenantA: string;
   let tokenTenantB: string;
-  let superAdminToken: string;
+  let _superAdminToken: string;
 
   test.beforeAll(async ({ request }) => {
     // 1. Authenticate as Tenant A admin (Burger Craft)
@@ -30,7 +30,7 @@ test.describe('Playwright Full Multi-Tenant & Security E2E Suite', () => {
     });
     expect(loginSuper.status()).toBe(200);
     const bodySuper = await loginSuper.json();
-    superAdminToken = bodySuper.token;
+    _superAdminToken = bodySuper.token;
   });
 
   // ==========================================================================
