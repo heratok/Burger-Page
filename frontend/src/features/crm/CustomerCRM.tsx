@@ -10,6 +10,7 @@ import {
 import { LoyaltyBadge } from "@/components/ui/status-badge"
 import { Button } from "@/components/ui/button"
 import { Pagination } from "@/components/ui/pagination"
+import { Select } from "@/components/ui/select"
 import { buildWhatsAppUrl } from "@/features/cart"
 import { formatCurrency, cleanPhoneNumber, formatWhatsAppPhone } from "@/lib/utils"
 
@@ -176,26 +177,23 @@ export const CustomerCRM: React.FC = () => {
           />
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Nivel:</span>
-          <select
+        <div className="w-44">
+          <Select
+            size="md"
             value={tierFilter}
             onChange={(e) => {
               setTierFilter(e.target.value)
               setCurrentPage(1)
             }}
-            className={`rounded-xl border px-3 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-              isDark
-                ? "border-slate-700 bg-slate-800 text-slate-100"
-                : "border-slate-200 bg-slate-50 text-slate-700"
-            }`}
-          >
-            <option value="ALL">Todos los niveles</option>
-            <option value="vip">👑 VIP</option>
-            <option value="gold">🥇 Oro</option>
-            <option value="silver">🥈 Plata</option>
-            <option value="bronze">🥉 Bronce</option>
-          </select>
+            aria-label="Filtrar por nivel de fidelidad"
+            options={[
+              { value: "ALL", label: "Todos los niveles" },
+              { value: "vip", label: "👑 VIP" },
+              { value: "gold", label: "🥇 Oro" },
+              { value: "silver", label: "🥈 Plata" },
+              { value: "bronze", label: "🥉 Bronce" },
+            ]}
+          />
         </div>
       </div>
 

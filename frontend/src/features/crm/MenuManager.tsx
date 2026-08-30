@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
 import { Pagination } from "@/components/ui/pagination"
+import { Select } from "@/components/ui/select"
 import { toast } from "sonner"
 import { optimizeImageToWebP } from "@/lib/imageOptimizer"
 import { uploadImageToStorage } from "@/core/storage/supabaseStorage"
@@ -734,7 +735,8 @@ export const MenuManager: React.FC = () => {
                       className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                     />
                   ) : (
-                    <select
+                    <Select
+                      size="md"
                       value={productForm.category}
                       onChange={(e) => {
                         if (e.target.value === "__NEW__") {
@@ -744,15 +746,11 @@ export const MenuManager: React.FC = () => {
                           setProductForm({ ...productForm, category: e.target.value })
                         }
                       }}
-                      className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                    >
-                      {categories.map((cat) => (
-                        <option key={cat} value={cat}>
-                          {cat}
-                        </option>
-                      ))}
-                      <option value="__NEW__">+ Crear nueva categoría...</option>
-                    </select>
+                      options={[
+                        ...categories.map((cat) => ({ value: cat, label: cat })),
+                        { value: "__NEW__", label: "+ Crear nueva categoría..." },
+                      ]}
+                    />
                   )}
                 </div>
                 <div>

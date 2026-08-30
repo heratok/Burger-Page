@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button"
 import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
 import { buildWhatsAppUrl } from "@/features/cart"
 import { ManualSaleModal } from "./ManualSaleModal"
+import { Select } from "@/components/ui/select"
 import { formatCurrency, formatWhatsAppPhone } from "@/lib/utils"
 
 export const OrdersKanban: React.FC = () => {
@@ -132,21 +133,19 @@ export const OrdersKanban: React.FC = () => {
           </div>
 
           {/* Payment filter */}
-          <div className="flex items-center gap-1.5">
-            <Filter className="size-3.5 text-slate-400 ml-1" />
-            <select
+          <div className="w-48">
+            <Select
+              size="md"
+              leftIcon={<Filter className="size-3.5 text-slate-400" />}
               value={methodFilter}
               onChange={(e) => setMethodFilter(e.target.value)}
-              className={`rounded-xl border px-3 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                isDark
-                  ? "border-slate-700 bg-slate-800 text-slate-100"
-                  : "border-slate-200 bg-slate-50 text-slate-700"
-              }`}
-            >
-              <option value="ALL">Todos los métodos</option>
-              <option value="Efectivo">💵 Efectivo</option>
-              <option value="Transferencia">💳 Transferencia</option>
-            </select>
+              aria-label="Filtrar por método de pago"
+              options={[
+                { value: "ALL", label: "Todos los métodos" },
+                { value: "Efectivo", label: "💵 Efectivo" },
+                { value: "Transferencia", label: "💳 Transferencia" },
+              ]}
+            />
           </div>
         </div>
 

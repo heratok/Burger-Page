@@ -22,6 +22,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
 import { Pagination } from "@/components/ui/pagination"
+import { Select } from "@/components/ui/select"
 import { formatCurrency } from "@/lib/utils"
 import { buildWhatsAppUrl } from "@/features/cart"
 
@@ -460,25 +461,25 @@ export const InventoryManager: React.FC = () => {
             </div>
 
             {/* Category Filter */}
-            <select
-              value={selectedCategory}
-              onChange={(e) => {
-                setSelectedCategory(e.target.value)
-                setCurrentPage(1)
-              }}
-              className={`rounded-xl border px-3 py-2 text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer ${
-                isDark
-                  ? "border-slate-800 bg-[#0E1322] text-slate-200"
-                  : "border-slate-200 bg-white text-slate-700"
-              }`}
-            >
-              <option value="all">Todas las Categorías</option>
-              <option value="ingredients">Ingredientes & Alimentos</option>
-              <option value="beverages">Bebidas & Refrescos</option>
-              <option value="packaging">Empaques & Descartables</option>
-              <option value="cleaning">Limpieza</option>
-              <option value="other">Otros</option>
-            </select>
+            <div className="w-48 sm:w-56">
+              <Select
+                size="md"
+                value={selectedCategory}
+                onChange={(e) => {
+                  setSelectedCategory(e.target.value)
+                  setCurrentPage(1)
+                }}
+                aria-label="Filtrar por categoría de inventario"
+                options={[
+                  { value: "all", label: "Todas las Categorías" },
+                  { value: "ingredients", label: "Ingredientes & Alimentos" },
+                  { value: "beverages", label: "Bebidas & Refrescos" },
+                  { value: "packaging", label: "Empaques & Descartables" },
+                  { value: "cleaning", label: "Limpieza" },
+                  { value: "other", label: "Otros" },
+                ]}
+              />
+            </div>
 
             {/* Low Stock Toggle */}
             <button
@@ -904,57 +905,40 @@ export const InventoryManager: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className={`block font-semibold mb-1 ${isDark ? "text-slate-200" : "text-slate-700"}`}>
-                    Categoría
-                  </label>
-                  <select
-                    value={itemForm.category}
-                    onChange={(e) =>
-                      setItemForm({
-                        ...itemForm,
-                        category: e.target.value as InventoryCategory,
-                      })
-                    }
-                    className={`w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer ${
-                      isDark
-                        ? "border-slate-700 bg-slate-800 text-white"
-                        : "border-slate-300 bg-white text-slate-900"
-                    }`}
-                  >
-                    <option value="ingredients">Ingredientes & Alimentos</option>
-                    <option value="beverages">Bebidas & Refrescos</option>
-                    <option value="packaging">Empaques & Descartables</option>
-                    <option value="cleaning">Limpieza</option>
-                    <option value="other">Otros</option>
-                  </select>
-                </div>
+                <Select
+                  label="Categoría"
+                  size="md"
+                  value={itemForm.category}
+                  onChange={(e) =>
+                    setItemForm({
+                      ...itemForm,
+                      category: e.target.value as InventoryCategory,
+                    })
+                  }
+                  options={[
+                    { value: "ingredients", label: "Ingredientes & Alimentos" },
+                    { value: "beverages", label: "Bebidas & Refrescos" },
+                    { value: "packaging", label: "Empaques & Descartables" },
+                    { value: "cleaning", label: "Limpieza" },
+                    { value: "other", label: "Otros" },
+                  ]}
+                />
 
-                <div>
-                  <label className={`block font-semibold mb-1 ${isDark ? "text-slate-200" : "text-slate-700"}`}>
-                    Unidad de Medida
-                  </label>
-                  <select
-                    value={itemForm.unit}
-                    onChange={(e) =>
-                      setItemForm({
-                        ...itemForm,
-                        unit: e.target.value as InventoryUnit,
-                      })
-                    }
-                    className={`w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer ${
-                      isDark
-                        ? "border-slate-700 bg-slate-800 text-white"
-                        : "border-slate-300 bg-white text-slate-900"
-                    }`}
-                  >
-                    {UNIT_OPTIONS.map((u) => (
-                      <option key={u} value={u}>
-                        {u}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <Select
+                  label="Unidad de Medida"
+                  size="md"
+                  value={itemForm.unit}
+                  onChange={(e) =>
+                    setItemForm({
+                      ...itemForm,
+                      unit: e.target.value as InventoryUnit,
+                    })
+                  }
+                  options={UNIT_OPTIONS.map((u) => ({
+                    value: u,
+                    label: u,
+                  }))}
+                />
               </div>
 
               <div className="grid grid-cols-3 gap-3">
@@ -1020,27 +1004,19 @@ export const InventoryManager: React.FC = () => {
                 </div>
               </div>
 
-              <div>
-                <label className={`block font-semibold mb-1 ${isDark ? "text-slate-200" : "text-slate-700"}`}>
-                  Proveedor Asignado
-                </label>
-                <select
-                  value={itemForm.supplierId}
-                  onChange={(e) => setItemForm({ ...itemForm, supplierId: e.target.value })}
-                  className={`w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer ${
-                    isDark
-                      ? "border-slate-700 bg-slate-800 text-white"
-                      : "border-slate-300 bg-white text-slate-900"
-                  }`}
-                >
-                  <option value="">-- Sin proveedor vinculado --</option>
-                  {suppliers.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name} ({s.category})
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <Select
+                label="Proveedor Asignado"
+                size="md"
+                value={itemForm.supplierId}
+                onChange={(e) => setItemForm({ ...itemForm, supplierId: e.target.value })}
+                options={[
+                  { value: "", label: "-- Sin proveedor vinculado --" },
+                  ...suppliers.map((s) => ({
+                    value: s.id,
+                    label: `${s.name} (${s.category})`,
+                  })),
+                ]}
+              />
 
               <div className={`flex items-center justify-end gap-2 pt-3 border-t ${isDark ? "border-slate-800" : "border-slate-200"}`}>
                 <Button

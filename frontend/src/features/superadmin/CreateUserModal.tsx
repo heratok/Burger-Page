@@ -2,6 +2,7 @@ import React, { useState } from "react"
 import { useRestaurant } from "@/context/RestaurantContext"
 import { UserPlus, X, Shield, Store } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Select } from "@/components/ui/select"
 import { apiClient } from "@/core/api/apiClient"
 import { toast } from "sonner"
 
@@ -55,6 +56,14 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ isOpen, onClos
       ? "border-slate-700 bg-slate-800 text-white placeholder-slate-500"
       : "border-slate-200 bg-slate-50 text-slate-900 placeholder-slate-400"
   }`
+
+  const restaurantOptions = [
+    { value: "", label: "Seleccionar restaurante..." },
+    ...restaurants.map((r) => ({
+      value: r.id,
+      label: `${r.config.name} (/${r.slug})`,
+    })),
+  ]
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-md">
@@ -157,24 +166,14 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ isOpen, onClos
 
           {/* Restaurant selector (only for restaurant_admin) */}
           {role === "restaurant_admin" && (
-            <div>
-              <label className="block text-xs font-bold mb-1 text-slate-700 dark:text-slate-300">
-                Restaurante Asignado *
-              </label>
-              <select
-                required
-                value={restaurantId}
-                onChange={(e) => setRestaurantId(e.target.value)}
-                className={inputClass}
-              >
-                <option value="">Seleccionar restaurante...</option>
-                {restaurants.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.config.name} (/{r.slug})
-                  </option>
-                ))}
-              </select>
-            </div>
+            <Select
+              label="Restaurante Asignado *"
+              required
+              leftIcon={<Store className="size-4 text-indigo-500" />}
+              value={restaurantId}
+              onChange={(e) => setRestaurantId(e.target.value)}
+              options={restaurantOptions}
+            />
           )}
 
           {/* Actions */}
