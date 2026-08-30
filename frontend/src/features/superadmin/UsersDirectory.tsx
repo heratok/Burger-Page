@@ -7,8 +7,6 @@ import {
   Shield,
   Store,
   Calendar,
-  KeyRound,
-  Trash2,
   Filter,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -16,7 +14,6 @@ import { Select } from "@/components/ui/select"
 import { Pagination } from "@/components/ui/pagination"
 import { CreateUserModal } from "./CreateUserModal"
 import { apiClient } from "@/core/api/apiClient"
-import { toast } from "sonner"
 
 interface UserRecord {
   id: string
@@ -29,7 +26,6 @@ interface UserRecord {
 export const UsersDirectory: React.FC = () => {
   const { restaurants, adminTheme } = useRestaurant()
   const [users, setUsers] = useState<UserRecord[]>([])
-  const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [roleFilter, setRoleFilter] = useState<string>("ALL")
   const [restaurantFilter, setRestaurantFilter] = useState<string>("ALL")
@@ -41,7 +37,6 @@ export const UsersDirectory: React.FC = () => {
 
   // Load users from backend / local storage
   const loadUsers = async () => {
-    setIsLoading(true)
     try {
       const fetched = await apiClient.listUsers()
       if (fetched && fetched.length > 0) {
@@ -103,8 +98,6 @@ export const UsersDirectory: React.FC = () => {
           createdAt: "2026-08-02T10:00:00.000Z",
         },
       ])
-    } finally {
-      setIsLoading(false)
     }
   }
 

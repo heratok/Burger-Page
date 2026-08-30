@@ -70,7 +70,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       const next = !prev
       try {
         localStorage.setItem("burger_page_sidebar_collapsed", String(next))
-      } catch {}
+      } catch (err) {
+        console.warn("Could not persist sidebar collapse state", err)
+      }
       return next
     })
   }

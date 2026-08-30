@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest"
 import { render, screen, cleanup } from "@testing-library/react"
-import React from "react"
 import { GlobalAnalytics } from "./GlobalAnalytics"
 import { RestaurantProvider } from "@/context/RestaurantContext"
 

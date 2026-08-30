@@ -1,16 +1,11 @@
-import React, { useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 import { useRestaurant } from "@/context/RestaurantContext"
 import {
   TrendingUp,
   DollarSign,
   ShoppingBag,
   Store,
-  ArrowUpRight,
-  PieChart,
   BarChart3,
-  CreditCard,
-  Banknote,
-  Eye,
   Sliders,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -19,7 +14,7 @@ import { useAppRouter } from "@/core/router/useAppRouter"
 import { formatCurrency } from "@/lib/utils"
 
 export const GlobalAnalytics: React.FC = () => {
-  const { restaurants, orders, adminTheme, switchRestaurant } = useRestaurant()
+  const { restaurants, adminTheme, switchRestaurant } = useRestaurant()
   const { navigateTo } = useAppRouter()
   const [period, setPeriod] = useState<string>("ALL")
 
@@ -29,15 +24,11 @@ export const GlobalAnalytics: React.FC = () => {
   const stats = useMemo(() => {
     let totalRevenue = 0
     let totalOrders = 0
-    let totalCash = 0
-    let totalTransfer = 0
 
     // Restaurant breakdown
     const breakdown = restaurants.map((r) => {
-      // Calculate revenue from mock data in config or orders
-      const tenantOrders = orders.filter((o) => o.restaurantId === r.id || (!o.restaurantId && r.id === "burger-craft"))
-      const ordersCount = r.metrics?.totalOrders || tenantOrders.length || 0
-      const revenue = r.metrics?.revenue || tenantOrders.reduce((sum, o) => sum + (o.total || 0), 0) || 0
+      const revenue = r.orders?.reduce((sum, o) => sum + (o.total || 0), 0) || 0
+      const ordersCount = r.orders?.length || 0
 
       totalRevenue += revenue
       totalOrders += ordersCount
@@ -49,8 +40,7 @@ export const GlobalAnalytics: React.FC = () => {
         logoUrl: r.config.logoUrl,
         revenue,
         ordersCount,
-        category: r.config.category || "Gastronomía",
-        status: r.status,
+        isActive: r.isActive,
       }
     })
 
@@ -58,7 +48,7 @@ export const GlobalAnalytics: React.FC = () => {
     breakdown.sort((a, b) => b.revenue - a.revenue)
 
     const avgTicket = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0
-    const activeCount = restaurants.filter((r) => r.status === "active").length
+    const activeCount = restaurants.filter((r) => r.isActive).length
 
     return {
       totalRevenue,
@@ -68,7 +58,7 @@ export const GlobalAnalytics: React.FC = () => {
       totalTenants: restaurants.length,
       breakdown,
     }
-  }, [restaurants, orders])
+  }, [restaurants])
 
   const handleManage = (restaurantId: string) => {
     switchRestaurant(restaurantId)
@@ -233,12 +223,12 @@ export const GlobalAnalytics: React.FC = () => {
 
                     <td className="px-4 py-3.5">
                       <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                        r.status === "active"
+                        r.isActive
                           ? "bg-emerald-500/10 text-emerald-500"
                           : "bg-amber-500/10 text-amber-500"
                       }`}>
-                        <span className={`size-1.5 rounded-full ${r.status === "active" ? "bg-emerald-500" : "bg-amber-500"}`} />
-                        <span>{r.status === "active" ? "Operando" : "Pausado"}</span>
+                        <span className={`size-1.5 rounded-full ${r.isActive ? "bg-emerald-500" : "bg-amber-500"}`} />
+                        <span>{r.isActive ? "Operando" : "Pausado"}</span>
                       </span>
                     </td>
 
