@@ -184,10 +184,10 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         <aside
           role="complementary"
           aria-label="Sidebar de navegación"
-          className={`fixed inset-y-0 left-0 z-50 flex h-screen flex-col border-r transition-all duration-300 ease-in-out lg:sticky lg:top-0 lg:translate-x-0 ${
+          className={`fixed inset-y-0 left-0 z-50 flex h-dvh max-h-dvh flex-col border-r transition-all duration-300 ease-in-out lg:sticky lg:top-0 lg:h-screen lg:max-h-screen lg:translate-x-0 ${
             isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
           } ${
-            isSidebarCollapsed ? "w-64 lg:w-16" : "w-64 lg:w-64"
+            isSidebarCollapsed ? "w-72 sm:w-80 max-w-[85vw] lg:w-16" : "w-72 sm:w-80 max-w-[85vw] lg:w-64"
           } ${
             isDark
               ? "border-slate-800 bg-[#0E1322] shadow-xl"
@@ -197,30 +197,28 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           {/* Sidebar Top: Logo & Branding */}
           <div
             className={`flex h-14 shrink-0 items-center border-b px-2.5 border-slate-200/60 dark:border-slate-800 ${
-              isSidebarCollapsed ? "justify-center" : "justify-between"
+              isSidebarCollapsed ? "justify-between lg:justify-center" : "justify-between"
             }`}
           >
             {isSuperGlobalMode ? (
-              <div className={`flex items-center gap-2.5 min-w-0 ${isSidebarCollapsed ? "justify-center" : ""}`}>
+              <div className={`flex items-center gap-2.5 min-w-0 ${isSidebarCollapsed ? "lg:justify-center" : ""}`}>
                 <div
                   title={isSidebarCollapsed ? "SaaS Platform (Super Admin)" : undefined}
                   className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-tr from-amber-500 to-indigo-600 text-white font-bold text-xs shrink-0 shadow-md ring-1 ring-amber-500/20"
                 >
                   <Crown className="size-4.5" />
                 </div>
-                {!isSidebarCollapsed && (
-                  <div className="flex flex-col min-w-0 leading-tight">
-                    <span className="font-bold tracking-tight text-xs truncate text-slate-900 dark:text-white">
-                      SaaS Platform
-                    </span>
-                    <span className="text-[9px] font-bold tracking-wider uppercase text-amber-500">
-                      Super Admin
-                    </span>
-                  </div>
-                )}
+                <div className={`flex flex-col min-w-0 leading-tight ${isSidebarCollapsed ? "lg:hidden" : ""}`}>
+                  <span className="font-bold tracking-tight text-xs truncate text-slate-900 dark:text-white">
+                    SaaS Platform
+                  </span>
+                  <span className="text-[9px] font-bold tracking-wider uppercase text-amber-500">
+                    Super Admin
+                  </span>
+                </div>
               </div>
             ) : isSuperTenantMode ? (
-              <div className={`flex items-center gap-2.5 min-w-0 ${isSidebarCollapsed ? "justify-center" : ""}`}>
+              <div className={`flex items-center gap-2.5 min-w-0 ${isSidebarCollapsed ? "lg:justify-center" : ""}`}>
                 {storeConfig.logoUrl ? (
                   <img
                     src={storeConfig.logoUrl}
@@ -236,19 +234,17 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                     <Crown className="size-4.5" />
                   </div>
                 )}
-                {!isSidebarCollapsed && (
-                  <div className="flex flex-col min-w-0 leading-tight">
-                    <span className="font-bold tracking-tight text-xs truncate text-slate-900 dark:text-white">
-                      {storeConfig.name}
-                    </span>
-                    <span className="text-[9px] font-bold tracking-wider uppercase text-amber-500">
-                      👑 Super Admin
-                    </span>
-                  </div>
-                )}
+                <div className={`flex flex-col min-w-0 leading-tight ${isSidebarCollapsed ? "lg:hidden" : ""}`}>
+                  <span className="font-bold tracking-tight text-xs truncate text-slate-900 dark:text-white">
+                    {storeConfig.name}
+                  </span>
+                  <span className="text-[9px] font-bold tracking-wider uppercase text-amber-500">
+                    👑 Super Admin
+                  </span>
+                </div>
               </div>
             ) : (
-              <div className={`flex items-center gap-2.5 min-w-0 ${isSidebarCollapsed ? "justify-center" : ""}`}>
+              <div className={`flex items-center gap-2.5 min-w-0 ${isSidebarCollapsed ? "lg:justify-center" : ""}`}>
                 {storeConfig.logoUrl ? (
                   <img
                     src={storeConfig.logoUrl}
@@ -264,16 +260,14 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                     <Store className="size-4.5" />
                   </div>
                 )}
-                {!isSidebarCollapsed && (
-                  <div className="flex flex-col min-w-0 leading-tight">
-                    <span className="font-bold tracking-tight text-xs truncate text-slate-900 dark:text-white">
-                      {storeConfig.name}
-                    </span>
-                    <span className="text-[9px] font-semibold tracking-wider uppercase text-indigo-600 dark:text-indigo-400">
-                      Panel Local
-                    </span>
-                  </div>
-                )}
+                <div className={`flex flex-col min-w-0 leading-tight ${isSidebarCollapsed ? "lg:hidden" : ""}`}>
+                  <span className="font-bold tracking-tight text-xs truncate text-slate-900 dark:text-white">
+                    {storeConfig.name}
+                  </span>
+                  <span className="text-[9px] font-semibold tracking-wider uppercase text-indigo-600 dark:text-indigo-400">
+                    Panel Local
+                  </span>
+                </div>
               </div>
             )}
 
@@ -282,24 +276,25 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
               type="button"
               aria-label="Cerrar menú"
               onClick={() => setIsMobileSidebarOpen(false)}
-              className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 lg:hidden cursor-pointer"
+              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 lg:hidden cursor-pointer"
             >
-              <X className="size-4" />
+              <X className="size-5" />
             </button>
           </div>
 
           {/* Restaurant Switcher Widget */}
-          <div className="p-1.5 border-b border-slate-100 dark:border-slate-800/60 shrink-0">
-            <AdminSwitcher collapsed={isSidebarCollapsed} />
+          <div className="p-2 border-b border-slate-100 dark:border-slate-800/60 shrink-0">
+            <AdminSwitcher
+              collapsed={isSidebarCollapsed}
+              onSelect={() => setIsMobileSidebarOpen(false)}
+            />
           </div>
 
           {/* Navigation Links */}
-          <nav className="flex-1 space-y-1.5 p-1.5 overflow-y-auto" aria-label="Menú Lateral">
-            {!isSidebarCollapsed && (
-              <div className="px-2 pb-1 text-[9px] font-bold uppercase tracking-wider text-slate-400">
-                {isSuperGlobalMode ? "Módulos SaaS Global" : "Módulos del Restaurante"}
-              </div>
-            )}
+          <nav className="flex-1 min-h-0 space-y-1 p-2 overflow-y-auto overscroll-contain" aria-label="Menú Lateral">
+            <div className={`px-2 pb-1 text-[9px] font-bold uppercase tracking-wider text-slate-400 ${isSidebarCollapsed ? "lg:hidden" : ""}`}>
+              {isSuperGlobalMode ? "Módulos SaaS Global" : "Módulos del Restaurante"}
+            </div>
 
             {navItems.map((item) => {
               const Icon = item.icon
@@ -317,8 +312,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                   }}
                   className={`group relative flex items-center transition-all ${
                     isSidebarCollapsed
-                      ? "size-10 mx-auto justify-center rounded-xl"
-                      : "w-full justify-between rounded-xl px-2.5 py-2 text-xs font-semibold"
+                      ? "lg:size-10 lg:mx-auto lg:justify-center w-full justify-between rounded-xl px-3 py-2.5 text-xs font-semibold"
+                      : "w-full justify-between rounded-xl px-3 py-2.5 text-xs font-semibold"
                   } ${
                     isActive
                       ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
@@ -336,26 +331,24 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                         : "text-slate-500 group-hover:text-slate-900"
                     }`}
                   />
-                  {!isSidebarCollapsed && (
-                    <span className="truncate flex-1 text-left ml-2.5">{item.label}</span>
-                  )}
+                  <span className={`truncate flex-1 text-left ml-2.5 ${isSidebarCollapsed ? "lg:hidden" : ""}`}>
+                    {item.label}
+                  </span>
 
                   {item.badge !== undefined && (
-                    isSidebarCollapsed ? (
-                      <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white shadow-xs">
-                        {typeof item.badge === "number" ? item.badge : "!"}
-                      </span>
-                    ) : (
-                      <span
-                        className={`ml-1.5 shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
-                          isActive
-                            ? "bg-white/20 text-white"
-                            : "bg-indigo-500/15 text-indigo-500 dark:bg-indigo-500/20 dark:text-indigo-300"
-                        }`}
-                      >
-                        {item.badge}
-                      </span>
-                    )
+                    <span
+                      className={`ml-1.5 shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                        isSidebarCollapsed
+                          ? "lg:absolute lg:-top-1 lg:-right-1 lg:flex lg:h-4 lg:min-w-4 lg:items-center lg:justify-center lg:bg-rose-500 lg:px-1 lg:text-[9px] lg:text-white lg:shadow-xs"
+                          : ""
+                      } ${
+                        isActive
+                          ? "bg-white/20 text-white"
+                          : "bg-indigo-500/15 text-indigo-500 dark:bg-indigo-500/20 dark:text-indigo-300"
+                      }`}
+                    >
+                      {item.badge}
+                    </span>
                   )}
                 </button>
               )
@@ -363,7 +356,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           </nav>
 
           {/* Sidebar Footer Controls */}
-          <div className="border-t p-1.5 space-y-1.5 border-slate-200/60 dark:border-slate-800 shrink-0">
+          <div className="border-t p-2.5 pb-4 sm:pb-3 space-y-2 border-slate-200/60 dark:border-slate-800 shrink-0 bg-slate-50/50 dark:bg-slate-900/40 backdrop-blur-xs">
             {/* Context Return Button for Super Admin managing a restaurant */}
             {isSuperTenantMode && (
               <button
@@ -374,14 +367,16 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                   navigateTo("/admin/restaurants")
                   setIsMobileSidebarOpen(false)
                 }}
-                className={`flex items-center rounded-xl border border-amber-500/40 bg-amber-500/10 font-bold text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 hover:scale-105 transition-all shadow-xs cursor-pointer ${
+                className={`flex items-center rounded-xl border border-amber-500/40 bg-amber-500/10 font-bold text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 active:scale-95 transition-all shadow-xs cursor-pointer ${
                   isSidebarCollapsed
-                    ? "size-10 mx-auto justify-center"
-                    : "w-full justify-center gap-1.5 py-2 text-xs"
+                    ? "lg:size-10 lg:mx-auto lg:justify-center w-full justify-center gap-2 py-2.5 text-xs"
+                    : "w-full justify-center gap-2 py-2.5 text-xs"
                 }`}
               >
                 <ArrowLeft className="size-4.5 shrink-0" />
-                {!isSidebarCollapsed && <span className="truncate">Volver al Panel Super Admin</span>}
+                <span className={isSidebarCollapsed ? "lg:hidden truncate" : "truncate"}>
+                  Volver al Panel Super Admin
+                </span>
               </button>
             )}
 
@@ -392,12 +387,14 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 title="Ver Tienda Pública"
                 aria-label="Ver Tienda Pública"
                 onClick={() => navigateTo(`/${activeRestaurant.slug}`)}
-                className={`flex items-center justify-center rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 font-bold text-white shadow-sm shadow-orange-500/20 hover:from-orange-600 hover:to-amber-600 hover:scale-105 transition-all cursor-pointer ${
-                  isSidebarCollapsed ? "size-10 mx-auto" : "w-full gap-1.5 py-2 text-xs"
+                className={`flex items-center justify-center rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 font-bold text-white shadow-sm shadow-orange-500/20 hover:from-orange-600 hover:to-amber-600 active:scale-95 transition-all cursor-pointer ${
+                  isSidebarCollapsed
+                    ? "lg:size-10 lg:mx-auto w-full gap-2 py-2.5 text-xs"
+                    : "w-full gap-2 py-2.5 text-xs"
                 }`}
               >
                 <Eye className="size-4.5 shrink-0" />
-                {!isSidebarCollapsed && <span>Ver Tienda</span>}
+                <span className={isSidebarCollapsed ? "lg:hidden" : ""}>Ver Tienda</span>
               </button>
             )}
 
@@ -411,12 +408,14 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                   logout()
                   navigateTo("/")
                 }}
-                className={`flex items-center justify-center rounded-xl text-slate-400 hover:bg-rose-500/10 hover:text-rose-500 hover:scale-105 transition-all cursor-pointer ${
-                  isSidebarCollapsed ? "size-10 mx-auto" : "w-full gap-1 py-1.5 text-[11px] font-semibold"
+                className={`flex items-center justify-center rounded-xl text-slate-400 hover:bg-rose-500/10 hover:text-rose-500 active:scale-95 transition-all cursor-pointer ${
+                  isSidebarCollapsed
+                    ? "lg:size-10 lg:mx-auto w-full gap-1.5 py-1.5 text-xs font-semibold"
+                    : "w-full gap-1.5 py-1.5 text-xs font-semibold"
                 }`}
               >
                 <LogOut className="size-4 shrink-0" />
-                {!isSidebarCollapsed && <span>Cerrar Sesión</span>}
+                <span className={isSidebarCollapsed ? "lg:hidden" : ""}>Cerrar Sesión</span>
               </button>
             )}
           </div>

@@ -6,9 +6,10 @@ import { Select } from "@/components/ui/select"
 
 export interface AdminSwitcherProps {
   collapsed?: boolean
+  onSelect?: () => void
 }
 
-export const AdminSwitcher: React.FC<AdminSwitcherProps> = ({ collapsed = false }) => {
+export const AdminSwitcher: React.FC<AdminSwitcherProps> = ({ collapsed = false, onSelect }) => {
   const {
     restaurants,
     activeRestaurant,
@@ -99,6 +100,7 @@ export const AdminSwitcher: React.FC<AdminSwitcherProps> = ({ collapsed = false 
                 switchRestaurant(val)
                 navigateTo("/admin/dashboard")
               }
+              onSelect?.()
             }}
             className="absolute inset-0 size-full opacity-0 cursor-pointer z-10"
           >
@@ -146,6 +148,7 @@ export const AdminSwitcher: React.FC<AdminSwitcherProps> = ({ collapsed = false 
             switchRestaurant(val)
             navigateTo("/admin/dashboard")
           }
+          onSelect?.()
         }}
         options={switcherOptions}
         className="text-xs font-semibold"
