@@ -268,9 +268,10 @@ export const TenantProvider: React.FC<{
         toast.error("Debe existir al menos un restaurante en la plataforma.")
         return
       }
+
       setEnvelope((prev) => {
-        const remaining = prev.restaurants.filter((r) => r.id !== id)
-        if (activeRestaurantId === id && remaining[0]) {
+        const remaining = prev.restaurants.filter((r) => r.id !== id && r.slug !== id)
+        if ((activeRestaurantId === id || activeRestaurant?.slug === id) && remaining[0]) {
           setActiveRestaurantId(remaining[0].id)
         }
         return {
@@ -279,15 +280,18 @@ export const TenantProvider: React.FC<{
         }
       })
 
-      apiClient.deleteRestaurant(id).catch((err) => {
-        if (import.meta.env?.MODE !== 'test') {
-          console.warn("Could not delete restaurant from backend API:", err)
-        }
-      })
-
-      toast.success("Restaurante eliminado correctamente")
+      apiClient
+        .deleteRestaurant(id)
+        .then(() => {
+          toast.success("Restaurante eliminado correctamente")
+        })
+        .catch((err) => {
+          if (import.meta.env?.MODE !== 'test') {
+            console.warn("Could not delete restaurant from backend API:", err)
+          }
+        })
     },
-    [envelope.restaurants.length, activeRestaurantId]
+    [envelope.restaurants.length, activeRestaurantId, activeRestaurant?.slug]
   )
 
   const globalStats = useMemo<GlobalPlatformStats>(() => {
