@@ -15,8 +15,11 @@ export default defineConfig({
     {
       command: 'npm --prefix ../backend run dev',
       url: 'http://localhost:3001/health',
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: false,
       timeout: 30000,
+      env: {
+        STORAGE_DRIVER: 'memory',
+      },
     },
     {
       command: 'npm run dev',

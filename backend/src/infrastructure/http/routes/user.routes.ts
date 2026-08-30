@@ -60,6 +60,7 @@ export async function userRoutes(
           type: 'object',
           properties: {
             success: { type: 'boolean' },
+            token: { type: 'string' },
             user: {
               type: 'object',
               properties: {
