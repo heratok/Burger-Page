@@ -736,6 +736,23 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                   </div>
                 )}
 
+                {/* General Order Notes / Kitchen Observations */}
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 flex items-center justify-between">
+                    <span>Observaciones del Pedido (Opcional)</span>
+                    <span className="text-[9px] font-normal text-slate-400">Cocina & Entrega</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ej: Sin cebolla, salsas aparte, observaciones del cliente..."
+                    value={orderNotes}
+                    onChange={(e) => setOrderNotes(e.target.value)}
+                    className={`mt-1 w-full rounded-lg border px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-orange-500 ${
+                      isDark ? "border-slate-700 bg-slate-950 text-white placeholder-slate-500" : "border-slate-300 bg-white placeholder-slate-400"
+                    }`}
+                  />
+                </div>
+
                 {/* Payment Method & Cash Change */}
                 <div className="space-y-2 pt-1 border-t border-slate-200 dark:border-slate-800">
                   <div className="flex items-center justify-between">

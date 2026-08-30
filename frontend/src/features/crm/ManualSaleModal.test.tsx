@@ -111,4 +111,32 @@ describe("ManualSaleModal - Point of Sale (POS) Component", () => {
       expect(toast.error).toHaveBeenCalledWith("Ingresa la dirección para el domicilio")
     })
   })
+
+  it("allows entering order observations and includes them in the registered sale", async () => {
+    render(
+      <RestaurantProvider>
+        <ManualSaleModal isOpen={true} onClose={() => {}} />
+      </RestaurantProvider>
+    )
+
+    // Add a product
+    const addButtons = screen.getAllByRole("button", { name: /Agregar/i })
+    fireEvent.click(addButtons[0])
+
+    // Find observations input
+    const notesInput = screen.getByPlaceholderText(/Sin cebolla|observaciones/i)
+    expect(notesInput).toBeDefined()
+    fireEvent.change(notesInput, { target: { value: "Sin cebolla y salsas aparte" } })
+
+    // Submit sale
+    const submitBtn = screen.getByRole("button", { name: /Registrar Venta/i })
+    fireEvent.click(submitBtn)
+
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledWith(
+        "¡Venta manual registrada en el sistema!",
+        expect.anything()
+      )
+    })
+  })
 })
