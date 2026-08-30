@@ -2,10 +2,13 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest"
 import { render, screen, fireEvent, cleanup } from "@testing-library/react"
 import { InventoryManager } from "./InventoryManager"
 import { RestaurantProvider } from "@/context/RestaurantContext"
+import { STORAGE_KEYS } from "@/core/storage/TenantRepository"
+import { TEST_STORAGE_ENVELOPE } from "@/test/fixtures"
 
 describe("InventoryManager - Theme Contrast and Supplier Notes Legibility (TDD)", () => {
   beforeEach(() => {
     localStorage.clear()
+    localStorage.setItem(STORAGE_KEYS.ENVELOPE, JSON.stringify(TEST_STORAGE_ENVELOPE))
   })
 
   afterEach(() => {

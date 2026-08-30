@@ -2,6 +2,15 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest"
 import { render, screen, cleanup } from "@testing-library/react"
 import { GlobalAnalytics } from "./GlobalAnalytics"
 import { RestaurantProvider } from "@/context/RestaurantContext"
+import { InMemoryStorageAdapter } from "@/core/storage/StorageAdapter"
+import { TenantRepository, STORAGE_KEYS } from "@/core/storage/TenantRepository"
+import { TEST_STORAGE_ENVELOPE } from "@/test/fixtures"
+
+const createTestRepo = () => {
+  const adapter = new InMemoryStorageAdapter()
+  adapter.setItem(STORAGE_KEYS.ENVELOPE, JSON.stringify(TEST_STORAGE_ENVELOPE))
+  return new TenantRepository(adapter)
+}
 
 describe("GlobalAnalytics - Super Admin SaaS Performance Metrics (TDD)", () => {
   beforeEach(() => {
@@ -15,7 +24,7 @@ describe("GlobalAnalytics - Super Admin SaaS Performance Metrics (TDD)", () => {
 
   it("renders global platform KPIs, revenue summary, and restaurant breakdown ranking", () => {
     render(
-      <RestaurantProvider>
+      <RestaurantProvider repository={createTestRepo()}>
         <GlobalAnalytics />
       </RestaurantProvider>
     )

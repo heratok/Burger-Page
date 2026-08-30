@@ -3,6 +3,15 @@ import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/re
 import { RestaurantProvider } from "@/context/RestaurantContext"
 import { ManualSaleModal } from "./ManualSaleModal"
 import { toast } from "sonner"
+import { InMemoryStorageAdapter } from "@/core/storage/StorageAdapter"
+import { TenantRepository, STORAGE_KEYS } from "@/core/storage/TenantRepository"
+import { TEST_STORAGE_ENVELOPE } from "@/test/fixtures"
+
+const createTestRepo = () => {
+  const adapter = new InMemoryStorageAdapter()
+  adapter.setItem(STORAGE_KEYS.ENVELOPE, JSON.stringify(TEST_STORAGE_ENVELOPE))
+  return new TenantRepository(adapter)
+}
 
 vi.mock("sonner", () => ({
   toast: {
@@ -26,7 +35,7 @@ describe("ManualSaleModal - Point of Sale (POS) Component", () => {
 
   it("does not render when isOpen is false", () => {
     render(
-      <RestaurantProvider>
+      <RestaurantProvider repository={createTestRepo()}>
         <ManualSaleModal isOpen={false} onClose={() => {}} />
       </RestaurantProvider>
     )
@@ -36,7 +45,7 @@ describe("ManualSaleModal - Point of Sale (POS) Component", () => {
 
   it("renders catalog, service modes, and payment methods when open", () => {
     render(
-      <RestaurantProvider>
+      <RestaurantProvider repository={createTestRepo()}>
         <ManualSaleModal isOpen={true} onClose={() => {}} />
       </RestaurantProvider>
     )
@@ -51,7 +60,7 @@ describe("ManualSaleModal - Point of Sale (POS) Component", () => {
 
   it("allows searching products, adding items to order, updating quantity and calculating total", async () => {
     render(
-      <RestaurantProvider>
+      <RestaurantProvider repository={createTestRepo()}>
         <ManualSaleModal isOpen={true} onClose={() => {}} />
       </RestaurantProvider>
     )
@@ -90,7 +99,7 @@ describe("ManualSaleModal - Point of Sale (POS) Component", () => {
 
   it("requires address and barrio when service mode is Domicilio", async () => {
     render(
-      <RestaurantProvider>
+      <RestaurantProvider repository={createTestRepo()}>
         <ManualSaleModal isOpen={true} onClose={() => {}} />
       </RestaurantProvider>
     )
@@ -114,7 +123,7 @@ describe("ManualSaleModal - Point of Sale (POS) Component", () => {
 
   it("allows entering order observations and includes them in the registered sale", async () => {
     render(
-      <RestaurantProvider>
+      <RestaurantProvider repository={createTestRepo()}>
         <ManualSaleModal isOpen={true} onClose={() => {}} />
       </RestaurantProvider>
     )

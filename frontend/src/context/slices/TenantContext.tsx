@@ -3,7 +3,7 @@ import type {
   RestaurantRecord,
   StorageEnvelopeV2,
 } from "@/types/restaurant"
-import { SEED_RESTAURANTS, DEFAULT_STORE_CONFIG } from "@/data/initialData"
+import { DEFAULT_STORE_CONFIG } from "@/data/initialData"
 import {
   TenantRepository,
   defaultTenantRepository,
@@ -103,14 +103,24 @@ export const TenantProvider: React.FC<{
 
   const updateActiveRestaurantRecord = useCallback(
     (updater: (current: RestaurantRecord) => RestaurantRecord) => {
-      setEnvelope((prev) => ({
-        ...prev,
-        restaurants: prev.restaurants.map((r) =>
-          r.id === activeRestaurant.id ? updater(r) : r
-        ),
-      }))
+      setEnvelope((prev) => {
+        const exists = prev.restaurants.some((r) => r.id === activeRestaurant.id)
+        if (!exists) {
+          const updated = updater(activeRestaurant)
+          return {
+            ...prev,
+            restaurants: [updated, ...prev.restaurants],
+          }
+        }
+        return {
+          ...prev,
+          restaurants: prev.restaurants.map((r) =>
+            r.id === activeRestaurant.id ? updater(r) : r
+          ),
+        }
+      })
     },
-    [activeRestaurant.id]
+    [activeRestaurant]
   )
 
   const createRestaurant = useCallback(
@@ -129,13 +139,6 @@ export const TenantProvider: React.FC<{
         .replace(/[^a-z0-9-]/g, "-")
         .replace(/-+/g, "-")
 
-      const templateRest =
-        data.templateType === "pizza"
-          ? SEED_RESTAURANTS[1]
-          : data.templateType === "tacos"
-          ? SEED_RESTAURANTS[2]
-          : SEED_RESTAURANTS[0]
-
       const newRecord: RestaurantRecord = {
         id: `rest-${Date.now()}`,
         slug: cleanSlug || `rest-${Date.now().toString(36)}`,
@@ -143,14 +146,15 @@ export const TenantProvider: React.FC<{
         isActive: true,
         createdAt: new Date().toISOString(),
         config: {
-          ...templateRest.config,
+          ...DEFAULT_STORE_CONFIG,
           name: data.name,
-          tagline: data.tagline,
+          tagline: data.tagline || DEFAULT_STORE_CONFIG.tagline,
           whatsappNumber: data.whatsappNumber,
-          primaryColor: data.primaryColor || templateRest.config.primaryColor,
+          primaryColor: data.primaryColor || DEFAULT_STORE_CONFIG.primaryColor,
         },
-        products: data.templateType === "blank" ? [] : templateRest.products,
-        additions: data.templateType === "blank" ? [] : templateRest.additions,
+        categories: ["General"],
+        products: [],
+        additions: [],
         orders: [],
         customers: [],
       }

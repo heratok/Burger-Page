@@ -3,6 +3,15 @@ import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { MenuManager } from './MenuManager';
 import { RestaurantProvider } from '@/context/RestaurantContext';
 import { toast } from 'sonner';
+import { InMemoryStorageAdapter } from '@/core/storage/StorageAdapter';
+import { TenantRepository, STORAGE_KEYS } from '@/core/storage/TenantRepository';
+import { TEST_STORAGE_ENVELOPE } from '@/test/fixtures';
+
+const createTestRepo = () => {
+  const adapter = new InMemoryStorageAdapter();
+  adapter.setItem(STORAGE_KEYS.ENVELOPE, JSON.stringify(TEST_STORAGE_ENVELOPE));
+  return new TenantRepository(adapter);
+};
 
 // Mock Sonner toast
 vi.mock('sonner', () => ({
@@ -26,7 +35,7 @@ describe('MenuManager - Strict Validation and Deletion Safeguards', () => {
 
   it('renders products and additions correctly and opens modals', () => {
     render(
-      <RestaurantProvider>
+      <RestaurantProvider repository={createTestRepo()}>
         <MenuManager />
       </RestaurantProvider>
     );
@@ -37,7 +46,7 @@ describe('MenuManager - Strict Validation and Deletion Safeguards', () => {
 
   it('validates addition creation: rejects empty addition name', async () => {
     render(
-      <RestaurantProvider>
+      <RestaurantProvider repository={createTestRepo()}>
         <MenuManager />
       </RestaurantProvider>
     );
@@ -65,7 +74,7 @@ describe('MenuManager - Strict Validation and Deletion Safeguards', () => {
 
   it('validates product save: rejects empty product name and zero price', async () => {
     render(
-      <RestaurantProvider>
+      <RestaurantProvider repository={createTestRepo()}>
         <MenuManager />
       </RestaurantProvider>
     );
@@ -88,7 +97,7 @@ describe('MenuManager - Strict Validation and Deletion Safeguards', () => {
 
   it('validates category modal: prevents duplicate category creation', async () => {
     render(
-      <RestaurantProvider>
+      <RestaurantProvider repository={createTestRepo()}>
         <MenuManager />
       </RestaurantProvider>
     );

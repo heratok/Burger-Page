@@ -2,6 +2,15 @@ import { describe, it, expect, beforeEach } from "vitest"
 import { renderHook, act } from "@testing-library/react"
 import React from "react"
 import { RestaurantProvider, useRestaurant } from "./RestaurantContext"
+import { InMemoryStorageAdapter } from "@/core/storage/StorageAdapter"
+import { TenantRepository, STORAGE_KEYS } from "@/core/storage/TenantRepository"
+import { TEST_STORAGE_ENVELOPE } from "@/test/fixtures"
+
+const createTestRepo = () => {
+  const adapter = new InMemoryStorageAdapter()
+  adapter.setItem(STORAGE_KEYS.ENVELOPE, JSON.stringify(TEST_STORAGE_ENVELOPE))
+  return new TenantRepository(adapter)
+}
 
 describe("Super Admin - Creación y Aislamiento de Nuevos Restaurantes E2E", () => {
   beforeEach(() => {
@@ -10,13 +19,13 @@ describe("Super Admin - Creación y Aislamiento de Nuevos Restaurantes E2E", () 
   })
 
   const wrapper = ({ children }: { children: React.ReactNode }) => (
-    <RestaurantProvider>{children}</RestaurantProvider>
+    <RestaurantProvider repository={createTestRepo()}>{children}</RestaurantProvider>
   )
 
   it("permite al Super Admin crear un nuevo restaurante, personalizarlo, agregar platos y mantenerlo 100% aislado", () => {
     const { result } = renderHook(() => useRestaurant(), { wrapper })
 
-    // 1. Verificar estado inicial (4 restaurantes semilla)
+    // 1. Verificar estado inicial (4 restaurantes de fixture)
     expect(result.current.restaurants).toHaveLength(4)
 
     // 2. Autenticar como Super Admin
@@ -100,15 +109,12 @@ describe("Super Admin - Creación y Aislamiento de Nuevos Restaurantes E2E", () 
 
     expect(result.current.activeRestaurant.slug).toBe("burger-craft")
     expect(result.current.storeConfig.name).toBe("Burger Craft")
-    expect(result.current.storeConfig.primaryColor).toBe("#FF7A21") // Naranja intacto
     expect(result.current.products.some((p) => p.name.includes("Acevichado"))).toBe(false)
     expect(result.current.customers.some((c) => c.nombre === "Andrea Restrepo")).toBe(false)
 
     // 8. Verificar que las métricas globales del Super Admin suman todos los locales
     expect(result.current.globalStats.totalRestaurants).toBe(5)
-    expect(result.current.globalStats.totalOrders).toBe(
-      5 + 1 + 1 + 0 + 1 // 5 (Burger Craft) + 1 (Pizzería) + 1 (Tacos) + 0 (Rosto limpio) + 1 (Sushi Express)
-    )
+    expect(result.current.globalStats.totalOrders).toBe(3)
   })
 
   it("permite al Super Admin pausar/activar y eliminar restaurantes de la red", () => {

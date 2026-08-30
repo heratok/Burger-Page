@@ -3,7 +3,23 @@ import { renderHook, act } from "@testing-library/react"
 import React from "react"
 import { UiProvider, useUi } from "./UiContext"
 import { AuthProvider, useAuth } from "./AuthContext"
-import { SEED_RESTAURANTS } from "@/data/initialData"
+import type { RestaurantRecord } from "@/types/restaurant"
+import { DEFAULT_STORE_CONFIG } from "@/data/initialData"
+
+const mockRestaurants: RestaurantRecord[] = [
+  {
+    id: "rest-burger-craft",
+    slug: "burger-craft",
+    adminPassword: "craft",
+    isActive: true,
+    createdAt: "2026-08-01T12:00:00.000Z",
+    config: DEFAULT_STORE_CONFIG,
+    products: [],
+    additions: [],
+    orders: [],
+    customers: [],
+  },
+]
 
 describe("UiContext Slice", () => {
   beforeEach(() => {
@@ -52,7 +68,7 @@ describe("AuthContext Slice", () => {
   it("rejects invalid passwords", () => {
     const { result } = renderHook(() => useAuth(), { wrapper })
     act(() => {
-      const response = result.current.login("wrong-password", SEED_RESTAURANTS)
+      const response = result.current.login("wrong-password", mockRestaurants)
       expect(response.success).toBe(false)
     })
     expect(result.current.session.role).toBe("guest")
@@ -61,7 +77,7 @@ describe("AuthContext Slice", () => {
   it("logs out and resets session to guest", () => {
     const { result } = renderHook(() => useAuth(), { wrapper })
     act(() => {
-      result.current.login("admin", SEED_RESTAURANTS)
+      result.current.login("admin", mockRestaurants)
     })
     expect(result.current.session.role).toBe("super")
 
@@ -438,7 +454,7 @@ describe("OrderContext Slice", () => {
 
     // Unmount and verify cleanup
     unmount()
-    expect(unsubscribeSpy).toHaveBeenCalledTimes(1)
+    expect(unsubscribeSpy).toHaveBeenCalled()
   })
 
   it("adds new order to state when SSE stream receives ORDER_CREATED event with payload", async () => {

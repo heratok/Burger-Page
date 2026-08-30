@@ -19,6 +19,7 @@ import { CatalogProvider, useCatalog } from "./slices/CatalogContext"
 import { OrderProvider, useOrders } from "./slices/OrderContext"
 import { InventoryProvider, useInventory } from "./slices/InventoryContext"
 import type { InventoryItem, Supplier } from "@/types/restaurant"
+import type { TenantRepository } from "@/core/storage/TenantRepository"
 
 // Export individual slice hooks for fine-grained subscriptions
 export { useUi } from "./slices/UiContext"
@@ -122,12 +123,13 @@ export interface RestaurantContextType {
 /**
  * Composed Provider wrapping all domain slices.
  */
-export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => {
+export const RestaurantProvider: React.FC<{
+  children: React.ReactNode
+  repository?: TenantRepository
+}> = ({ children, repository }) => {
   return (
     <UiProvider>
-      <TenantProvider>
+      <TenantProvider repository={repository}>
         <AuthProvider>
           <CatalogProvider>
             <InventoryProvider>
