@@ -176,16 +176,11 @@ CREATE TABLE public.customers (
     id              TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
     restaurant_id   TEXT NOT NULL REFERENCES public.restaurants(id) ON DELETE CASCADE,
     name            TEXT NOT NULL,
-    email           TEXT DEFAULT '',
     phone           TEXT NOT NULL,
+    email           TEXT DEFAULT '',
     address         TEXT DEFAULT '',
     barrio          TEXT DEFAULT '',
-    total_orders    INTEGER NOT NULL DEFAULT 0 CHECK (total_orders >= 0),
-    total_spent     NUMERIC(12, 2) NOT NULL DEFAULT 0.00 CHECK (total_spent >= 0),
-    loyalty_tier    TEXT NOT NULL DEFAULT 'bronze'
-                      CHECK (loyalty_tier IN ('bronze', 'silver', 'gold', 'vip')),
     notes           TEXT,
-    last_order_date TIMESTAMPTZ,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT uq_customers_restaurant_phone
@@ -598,9 +593,8 @@ $$;
 -- Permisos explícitos de ejecución (Principio de Menor Privilegio)
 REVOKE ALL ON FUNCTION public.create_order_atomic FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.update_order_status_with_actor FROM PUBLIC;
-
-GRANT EXECUTE ON FUNCTION public.create_order_atomic TO service_role, authenticated, anon;
-GRANT EXECUTE ON FUNCTION public.update_order_status_with_actor TO service_role, authenticated;
+GRANT EXECUTE ON FUNCTION public.create_order_atomic TO service_role;
+GRANT EXECUTE ON FUNCTION public.update_order_status_with_actor TO service_role;
 
 
 -- ============================================================================
