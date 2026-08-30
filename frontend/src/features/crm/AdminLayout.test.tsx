@@ -246,7 +246,7 @@ describe("AdminLayout - Super Admin Navigation & Quick Actions (TDD)", () => {
 
     // Click collapse
     fireEvent.click(collapseButtons[0])
-    expect(aside.className).toContain("lg:w-20")
+    expect(aside.className).toContain("lg:w-16")
 
     // Click expand
     const expandButtons = screen.getAllByRole("button", { name: /Contraer menú|Expandir menú/i })

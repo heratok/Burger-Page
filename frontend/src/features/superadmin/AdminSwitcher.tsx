@@ -25,13 +25,17 @@ export const AdminSwitcher: React.FC<AdminSwitcherProps> = ({ collapsed = false 
       return (
         <div
           title={`${activeRestaurant.config.name} (Admin Local)`}
-          className="flex size-10 items-center justify-center mx-auto rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-900/60 shadow-xs"
+          className="flex size-10 items-center justify-center mx-auto rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60 shadow-xs"
         >
-          <img
-            src={activeRestaurant.config.logoUrl}
-            alt={activeRestaurant.config.name}
-            className="size-7 rounded-lg object-cover ring-1 ring-slate-200 dark:ring-slate-700 shadow-xs"
-          />
+          {activeRestaurant.config.logoUrl ? (
+            <img
+              src={activeRestaurant.config.logoUrl}
+              alt={activeRestaurant.config.name}
+              className="size-7 rounded-lg object-cover ring-1 ring-slate-200 dark:ring-slate-700"
+            />
+          ) : (
+            <Store className="size-5 text-indigo-500" />
+          )}
         </div>
       )
     }
@@ -39,11 +43,17 @@ export const AdminSwitcher: React.FC<AdminSwitcherProps> = ({ collapsed = false 
     return (
       <div className="rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-900/60 p-2.5 shadow-xs">
         <div className="flex items-center gap-2">
-          <img
-            src={activeRestaurant.config.logoUrl}
-            alt={activeRestaurant.config.name}
-            className="size-7 rounded-lg object-cover ring-1 ring-slate-200 dark:ring-slate-700 shadow-xs"
-          />
+          {activeRestaurant.config.logoUrl ? (
+            <img
+              src={activeRestaurant.config.logoUrl}
+              alt={activeRestaurant.config.name}
+              className="size-7 rounded-lg object-cover ring-1 ring-slate-200 dark:ring-slate-700 shadow-xs"
+            />
+          ) : (
+            <div className="flex size-7 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-500">
+              <Store className="size-4" />
+            </div>
+          )}
           <div className="flex-1 min-w-0">
             <h4 className="text-xs font-bold truncate text-slate-900 dark:text-white">
               {activeRestaurant.config.name}
@@ -77,11 +87,9 @@ export const AdminSwitcher: React.FC<AdminSwitcherProps> = ({ collapsed = false 
   if (collapsed) {
     return (
       <div className="flex justify-center" title="Cambiar restaurante / Directorio SaaS">
-        <div className="relative group w-10">
-          <Select
+        <div className="relative group size-10">
+          <select
             aria-label="Selector de restaurante"
-            size="sm"
-            leftIcon={<Store className="size-3.5 text-indigo-500" />}
             value={adminTab === "restaurants" ? "DIRECTORY" : activeRestaurant.id}
             onChange={(e) => {
               const val = e.target.value
@@ -92,11 +100,21 @@ export const AdminSwitcher: React.FC<AdminSwitcherProps> = ({ collapsed = false 
                 navigateTo("/admin/dashboard")
               }
             }}
-            options={switcherOptions}
-            className="w-10 pl-7 pr-0 text-transparent opacity-0 absolute inset-0 cursor-pointer z-20"
-          />
-          <div className="flex size-10 items-center justify-center rounded-xl border border-indigo-500/30 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 group-hover:bg-indigo-500/20 transition-all shadow-xs">
-            <Store className="size-4" />
+            className="absolute inset-0 size-full opacity-0 cursor-pointer z-10"
+          >
+            <optgroup label="🏢 Plataforma SaaS">
+              <option value="DIRECTORY">🌐 Directorio Global SaaS</option>
+            </optgroup>
+            <optgroup label="🍔 Restaurantes Registrados">
+              {restaurants.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.config.name} (/{r.slug})
+                </option>
+              ))}
+            </optgroup>
+          </select>
+          <div className="flex size-10 items-center justify-center rounded-xl border border-indigo-500/30 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 group-hover:bg-indigo-500/20 group-hover:border-indigo-500/50 transition-all shadow-xs">
+            <Store className="size-5" />
           </div>
         </div>
       </div>

@@ -84,7 +84,7 @@ test.describe('Super Admin Multi-Tenant Navigation, Impersonation & Quick Action
 
     const toggleCollapseBtn = page.getByRole('button', { name: /Contraer menú/i }).first();
     await toggleCollapseBtn.click();
-    await expect(sidebar).toHaveClass(/lg:w-20/);
+    await expect(sidebar).toHaveClass(/lg:w-16/);
 
     const toggleExpandBtn = page.getByRole('button', { name: /Expandir menú/i }).first();
     await toggleExpandBtn.click();
