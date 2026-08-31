@@ -69,7 +69,7 @@ export class CreateOrderUseCase {
 
       // Validar Producto en BD
       let product = await this.productRepo.findById(itemDto.productId, restaurant.id);
-      if (!product) {
+      if (!product && typeof this.productRepo.findByRestaurantId === 'function') {
         const allProducts = await this.productRepo.findByRestaurantId(restaurant.id);
         product = allProducts.find(p => p.name.toLowerCase() === itemDto.productId.toLowerCase() || p.id === itemDto.productId) || null;
       }
@@ -98,7 +98,7 @@ export class CreateOrderUseCase {
           }
 
           let addition = await this.additionRepo.findById(additionId, restaurant.id);
-          if (!addition) {
+          if (!addition && typeof this.additionRepo.findByRestaurantId === 'function') {
             const allAdditions = await this.additionRepo.findByRestaurantId(restaurant.id);
             addition = allAdditions.find(a => a.name.toLowerCase() === additionId.toLowerCase() || a.id === additionId) || null;
           }

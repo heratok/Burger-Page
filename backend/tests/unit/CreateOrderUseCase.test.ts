@@ -39,6 +39,7 @@ describe('CreateOrderUseCase', () => {
 
     mockProductRepo = {
       findById: vi.fn(),
+      findByRestaurantId: vi.fn().mockResolvedValue([]),
       findAll: vi.fn(),
       save: vi.fn(),
       delete: vi.fn(),
