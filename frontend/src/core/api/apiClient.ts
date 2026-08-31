@@ -12,8 +12,21 @@ export interface ApiClientConfig {
   baseUrl: string
 }
 
+const AUTH_TOKEN_STORAGE_KEY = 'burger_page_auth_token_v2'
+
+function readStoredToken(): string | null {
+  try {
+    return typeof window !== 'undefined' && typeof sessionStorage !== 'undefined'
+      ? sessionStorage.getItem(AUTH_TOKEN_STORAGE_KEY)
+      : null
+  } catch {
+    return null
+  }
+}
+
 export class ApiClient {
   private baseUrl: string
+  private token: string | null
 
   constructor(config?: ApiClientConfig) {
     const rawUrl =
@@ -33,6 +46,22 @@ export class ApiClient {
         : typeof window !== 'undefined' && window.location?.origin
         ? `${window.location.origin}/api`
         : 'http://localhost:3001/api')
+
+    this.token = readStoredToken()
+  }
+
+  setToken(token: string | null): void {
+    this.token = token
+    try {
+      if (typeof window === 'undefined' || typeof sessionStorage === 'undefined') return
+      if (token) {
+        sessionStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token)
+      } else {
+        sessionStorage.removeItem(AUTH_TOKEN_STORAGE_KEY)
+      }
+    } catch {
+      // sessionStorage unavailable (private mode, SSR, tests) — token stays in-memory only
+    }
   }
 
   private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
@@ -41,6 +70,9 @@ export class ApiClient {
     }
     if (options?.body) {
       headers['Content-Type'] = 'application/json'
+    }
+    if (this.token) {
+      headers['Authorization'] = `Bearer ${this.token}`
     }
 
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
@@ -203,13 +235,23 @@ export class ApiClient {
 
   async login(username: string, password: string): Promise<{
     success: boolean
+    token?: string
     user?: { id: string; username: string; role: string; restaurantId?: string }
     error?: string
   }> {
-    return this.request('/users/login', {
+    const result = await this.request<{
+      success: boolean
+      token?: string
+      user?: { id: string; username: string; role: string; restaurantId?: string }
+      error?: string
+    }>('/users/login', {
       method: 'POST',
       body: JSON.stringify({ username, password }),
     })
+    if (result.token) {
+      this.setToken(result.token)
+    }
+    return result
   }
 
   async createUser(data: {

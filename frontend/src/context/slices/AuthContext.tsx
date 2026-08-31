@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react"
 import type { AdminSession, RestaurantRecord } from "@/types/restaurant"
 import { toast } from "sonner"
+import { apiClient } from "@/core/api/apiClient"
 
 export interface AuthContextType {
   session: AdminSession
@@ -122,6 +123,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = useCallback(() => {
     setSession({ role: "guest" })
+    apiClient.setToken(null)
     toast.info("Sesión cerrada")
   }, [])
 
