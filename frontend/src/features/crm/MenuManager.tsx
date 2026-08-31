@@ -24,6 +24,7 @@ import { toast } from "sonner"
 import { optimizeImageToWebP } from "@/lib/imageOptimizer"
 import { uploadImageToStorage } from "@/core/storage/supabaseStorage"
 import { LazyImage } from "@/components/ui/LazyImage"
+import { MenuGridSkeleton } from "@/components/ui/Skeletons"
 import { formatCurrency } from "@/lib/utils"
 
 export const MenuManager: React.FC = () => {
@@ -48,6 +49,7 @@ export const MenuManager: React.FC = () => {
   const [activeSubTab, setActiveSubTab] = useState<"dishes" | "additions">("dishes")
   const [productToDelete, setProductToDelete] = useState<MenuItem | null>(null)
   const [additionToDelete, setAdditionToDelete] = useState<AdditionItem | null>(null)
+  const [deletingProductIds, setDeletingProductIds] = useState<Set<string>>(new Set())
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(12)
 
@@ -403,7 +405,11 @@ export const MenuManager: React.FC = () => {
               {paginatedProducts.map((product) => (
                 <div
                   key={product.id}
-                  className={`group relative overflow-hidden rounded-2xl border transition-all duration-200 hover:shadow-md ${
+                  className={`group relative overflow-hidden rounded-2xl border transition-all duration-300 ${
+                    deletingProductIds.has(product.id)
+                      ? "opacity-0 scale-95 pointer-events-none"
+                      : "opacity-100 scale-100 hover:shadow-md"
+                  } ${
                     isDark
                       ? "border-slate-800 bg-slate-900 hover:border-slate-700"
                       : "border-slate-200 bg-white hover:border-slate-300"
@@ -1206,8 +1212,10 @@ export const MenuManager: React.FC = () => {
         onClose={() => setProductToDelete(null)}
         onConfirm={() => {
           if (productToDelete) {
-            deleteProduct(productToDelete.id)
+            const idToDelete = productToDelete.id
+            setDeletingProductIds((prev) => new Set(prev).add(idToDelete))
             setProductToDelete(null)
+            deleteProduct(idToDelete)
           }
         }}
         title="¿Eliminar producto del menú?"

@@ -25,6 +25,7 @@ export interface TenantContextType {
   activeRestaurantId: string
   activeRestaurantSlug: string
   superAdminPassword: string
+  isSyncing: boolean
   switchRestaurant: (idOrSlug: string) => void
   createRestaurant: (data: {
     name: string
@@ -35,8 +36,8 @@ export interface TenantContextType {
     primaryColor?: string
     templateType?: "burger" | "pizza" | "tacos" | "blank"
   }) => RestaurantRecord
-  updateRestaurant: (id: string, updates: Partial<RestaurantRecord>) => void
-  deleteRestaurant: (id: string) => void
+  updateRestaurant: (id: string, updates: Partial<RestaurantRecord>) => Promise<void>
+  deleteRestaurant: (id: string) => Promise<void>
   updateActiveRestaurantRecord: (updater: (current: RestaurantRecord) => RestaurantRecord) => void
   refreshRestaurants: () => Promise<void>
   globalStats: GlobalPlatformStats
@@ -51,6 +52,7 @@ export const TenantProvider: React.FC<{
   const [envelope, setEnvelope] = useState<StorageEnvelopeV2>(() =>
     repository.loadEnvelope()
   )
+  const [isSyncing, setIsSyncing] = useState<boolean>(false)
 
   const [activeRestaurantId, setActiveRestaurantId] = useState<string>(() => {
     const saved = repository.getActiveRestaurantId(
@@ -63,6 +65,7 @@ export const TenantProvider: React.FC<{
   })
 
   const refreshRestaurants = useCallback(async () => {
+    setIsSyncing(true)
     try {
       const backendRestaurants = await apiClient.listRestaurants()
       if (Array.isArray(backendRestaurants)) {
@@ -105,6 +108,8 @@ export const TenantProvider: React.FC<{
       if (import.meta.env?.MODE !== 'test') {
         console.warn("Could not sync restaurants from backend API:", err)
       }
+    } finally {
+      setIsSyncing(false)
     }
   }, [repository])
 
@@ -267,19 +272,29 @@ export const TenantProvider: React.FC<{
   )
 
   const updateRestaurant = useCallback(
-    (id: string, updates: Partial<RestaurantRecord>) => {
+    async (id: string, updates: Partial<RestaurantRecord>) => {
+      const snapshot = envelope
       setEnvelope((prev) => ({
         ...prev,
         restaurants: prev.restaurants.map((r) =>
           r.id === id ? { ...r, ...updates } : r
         ),
       }))
+
+      if (updates.isActive !== undefined) {
+        toast.success(
+          updates.isActive ? "Restaurante activado" : "Restaurante pausado temporalmente"
+        )
+      } else {
+        toast.success("Restaurante actualizado correctamente")
+      }
     },
-    []
+    [envelope]
   )
 
   const deleteRestaurant = useCallback(
     async (id: string) => {
+      const snapshot = envelope
       setEnvelope((prev) => {
         const remaining = prev.restaurants.filter((r) => r.id !== id && r.slug !== id)
         if ((activeRestaurantId === id || activeRestaurant?.slug === id)) {
@@ -291,16 +306,20 @@ export const TenantProvider: React.FC<{
         }
       })
 
+      toast.success("Restaurante eliminado correctamente")
+
       try {
         await apiClient.deleteRestaurant(id)
-        toast.success("Restaurante eliminado correctamente")
       } catch (err) {
         if (import.meta.env?.MODE !== 'test') {
-          console.warn("Could not delete restaurant from backend API:", err)
+          console.warn("Could not delete restaurant from backend API, rolling back:", err)
         }
+        // Rollback state on backend rejection
+        setEnvelope(snapshot)
+        toast.error("No se pudo eliminar el restaurante en el servidor. Cambios revertidos.")
       }
     },
-    [activeRestaurantId, activeRestaurant?.slug]
+    [activeRestaurantId, activeRestaurant?.slug, envelope]
   )
 
   const globalStats = useMemo<GlobalPlatformStats>(() => {
@@ -333,6 +352,7 @@ export const TenantProvider: React.FC<{
     activeRestaurantId: activeRestaurant.id,
     activeRestaurantSlug: activeRestaurant.slug,
     superAdminPassword: envelope.superAdminPassword,
+    isSyncing,
     switchRestaurant,
     createRestaurant,
     updateRestaurant,

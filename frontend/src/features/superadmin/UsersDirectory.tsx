@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Select } from "@/components/ui/select"
 import { Pagination } from "@/components/ui/pagination"
+import { TableSkeleton } from "@/components/ui/Skeletons"
 import { CreateUserModal } from "./CreateUserModal"
 import { apiClient } from "@/core/api/apiClient"
 
@@ -26,6 +27,7 @@ interface UserRecord {
 export const UsersDirectory: React.FC = () => {
   const { restaurants, adminTheme } = useRestaurant()
   const [users, setUsers] = useState<UserRecord[]>([])
+  const [isLoading, setIsLoading] = useState<boolean>(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [roleFilter, setRoleFilter] = useState<string>("ALL")
   const [restaurantFilter, setRestaurantFilter] = useState<string>("ALL")
@@ -37,6 +39,7 @@ export const UsersDirectory: React.FC = () => {
 
   // Load users from backend / local storage
   const loadUsers = async () => {
+    setIsLoading(true)
     try {
       const fetched = await apiClient.listUsers()
       if (fetched && fetched.length > 0) {
@@ -98,6 +101,8 @@ export const UsersDirectory: React.FC = () => {
           createdAt: "2026-08-02T10:00:00.000Z",
         },
       ])
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -274,110 +279,114 @@ export const UsersDirectory: React.FC = () => {
       </div>
 
       {/* Users Table */}
-      <div className={`overflow-hidden rounded-2xl border shadow-xs ${isDark ? "border-slate-800 bg-[#0E1322]" : "border-slate-200 bg-white"}`}>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className={`border-b text-[11px] font-bold uppercase tracking-wider ${isDark ? "border-slate-800 bg-slate-900/60 text-slate-400" : "border-slate-200 bg-slate-50/80 text-slate-500"}`}>
-              <tr>
-                <th className="px-4 py-3">Usuario</th>
-                <th className="px-4 py-3">Rol</th>
-                <th className="px-4 py-3">Restaurante Asignado</th>
-                <th className="px-4 py-3">Fecha de Registro</th>
-                <th className="px-4 py-3 text-right">Estado</th>
-              </tr>
-            </thead>
-            <tbody className={`divide-y ${isDark ? "divide-slate-800/60 text-slate-200" : "divide-slate-100 text-slate-700"}`}>
-              {paginatedUsers.length === 0 ? (
+      {isLoading ? (
+        <TableSkeleton isDark={isDark} rows={5} columns={5} />
+      ) : (
+        <div className={`overflow-hidden rounded-2xl border shadow-xs ${isDark ? "border-slate-800 bg-[#0E1322]" : "border-slate-200 bg-white"}`}>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className={`border-b text-[11px] font-bold uppercase tracking-wider ${isDark ? "border-slate-800 bg-slate-900/60 text-slate-400" : "border-slate-200 bg-slate-50/80 text-slate-500"}`}>
                 <tr>
-                  <td colSpan={5} className="py-12 text-center text-slate-400">
-                    <Users className="size-8 mx-auto mb-2 opacity-30" />
-                    <p className="font-semibold">No se encontraron usuarios coincidentes</p>
-                  </td>
+                  <th className="px-4 py-3">Usuario</th>
+                  <th className="px-4 py-3">Rol</th>
+                  <th className="px-4 py-3">Restaurante Asignado</th>
+                  <th className="px-4 py-3">Fecha de Registro</th>
+                  <th className="px-4 py-3 text-right">Estado</th>
                 </tr>
-              ) : (
-                paginatedUsers.map((u) => {
-                  const isSuperAdmin = u.role === "super_admin" || u.role === "super"
-                  const assignedName = u.restaurantId ? restaurantMap.get(u.restaurantId) || u.restaurantId : null
+              </thead>
+              <tbody className={`divide-y ${isDark ? "divide-slate-800/60 text-slate-200" : "divide-slate-100 text-slate-700"}`}>
+                {paginatedUsers.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-12 text-center text-slate-400">
+                      <Users className="size-8 mx-auto mb-2 opacity-30" />
+                      <p className="font-semibold">No se encontraron usuarios coincidentes</p>
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedUsers.map((u) => {
+                    const isSuperAdmin = u.role === "super_admin" || u.role === "super"
+                    const assignedName = u.restaurantId ? restaurantMap.get(u.restaurantId) || u.restaurantId : null
 
-                  return (
-                    <tr key={u.id} className={`transition-colors ${isDark ? "hover:bg-slate-800/40" : "hover:bg-slate-50/80"}`}>
-                      <td className="px-4 py-3 font-semibold">
-                        <div className="flex items-center gap-2.5">
-                          <div className={`flex size-8 items-center justify-center rounded-xl font-bold text-xs ${
-                            isSuperAdmin
-                              ? "bg-amber-500/15 text-amber-500 border border-amber-500/30"
-                              : "bg-indigo-500/15 text-indigo-500 border border-indigo-500/30"
-                          }`}>
-                            {u.username.charAt(0).toUpperCase()}
+                    return (
+                      <tr key={u.id} className={`transition-colors ${isDark ? "hover:bg-slate-800/40" : "hover:bg-slate-50/80"}`}>
+                        <td className="px-4 py-3 font-semibold">
+                          <div className="flex items-center gap-2.5">
+                            <div className={`flex size-8 items-center justify-center rounded-xl font-bold text-xs ${
+                              isSuperAdmin
+                                ? "bg-amber-500/15 text-amber-500 border border-amber-500/30"
+                                : "bg-indigo-500/15 text-indigo-500 border border-indigo-500/30"
+                            }`}>
+                              {u.username.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <div className="font-bold text-slate-900 dark:text-white">{u.username}</div>
+                              <div className="text-[10px] text-slate-400 font-mono">ID: {u.id}</div>
+                            </div>
                           </div>
-                          <div>
-                            <div className="font-bold text-slate-900 dark:text-white">{u.username}</div>
-                            <div className="text-[10px] text-slate-400 font-mono">ID: {u.id}</div>
-                          </div>
-                        </div>
-                      </td>
+                        </td>
 
-                      <td className="px-4 py-3">
-                        {isSuperAdmin ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2.5 py-0.5 text-[11px] font-bold text-amber-600 dark:text-amber-400 border border-amber-500/30">
-                            <Shield className="size-3" />
-                            <span>Super Admin</span>
+                        <td className="px-4 py-3">
+                          {isSuperAdmin ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2.5 py-0.5 text-[11px] font-bold text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                              <Shield className="size-3" />
+                              <span>Super Admin</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-indigo-500/15 px-2.5 py-0.5 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 border border-indigo-500/30">
+                              <Store className="size-3" />
+                              <span>Admin Local</span>
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="px-4 py-3">
+                          {isSuperAdmin ? (
+                            <span className="text-slate-400 italic">Acceso Global (Todos los locales)</span>
+                          ) : assignedName ? (
+                            <div className="flex items-center gap-1.5 font-semibold text-slate-900 dark:text-slate-100">
+                              <Store className="size-3.5 text-indigo-500" />
+                              <span>{assignedName}</span>
+                            </div>
+                          ) : (
+                            <span className="text-rose-400 font-semibold">Sin local vinculado</span>
+                          )}
+                        </td>
+
+                        <td className="px-4 py-3 text-slate-400">
+                          <div className="flex items-center gap-1.5">
+                            <Calendar className="size-3 text-slate-400" />
+                            <span>{formatDate(u.createdAt)}</span>
+                          </div>
+                        </td>
+
+                        <td className="px-4 py-3 text-right">
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-500">
+                            <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            <span>Activo</span>
                           </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-indigo-500/15 px-2.5 py-0.5 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 border border-indigo-500/30">
-                            <Store className="size-3" />
-                            <span>Admin Local</span>
-                          </span>
-                        )}
-                      </td>
+                        </td>
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
 
-                      <td className="px-4 py-3">
-                        {isSuperAdmin ? (
-                          <span className="text-slate-400 italic">Acceso Global (Todos los locales)</span>
-                        ) : assignedName ? (
-                          <div className="flex items-center gap-1.5 font-semibold text-slate-900 dark:text-slate-100">
-                            <Store className="size-3.5 text-indigo-500" />
-                            <span>{assignedName}</span>
-                          </div>
-                        ) : (
-                          <span className="text-rose-400 font-semibold">Sin local vinculado</span>
-                        )}
-                      </td>
-
-                      <td className="px-4 py-3 text-slate-400">
-                        <div className="flex items-center gap-1.5">
-                          <Calendar className="size-3 text-slate-400" />
-                          <span>{formatDate(u.createdAt)}</span>
-                        </div>
-                      </td>
-
-                      <td className="px-4 py-3 text-right">
-                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-500">
-                          <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                          <span>Activo</span>
-                        </span>
-                      </td>
-                    </tr>
-                  )
-                })
-              )}
-            </tbody>
-          </table>
+          {/* Pagination */}
+          <Pagination
+            currentPage={currentPage}
+            totalItems={filteredUsers.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={(size) => {
+              setPageSize(size)
+              setCurrentPage(1)
+            }}
+            className="border-t border-slate-100 dark:border-slate-800"
+          />
         </div>
-
-        {/* Pagination */}
-        <Pagination
-          currentPage={currentPage}
-          totalItems={filteredUsers.length}
-          pageSize={pageSize}
-          onPageChange={setCurrentPage}
-          onPageSizeChange={(size) => {
-            setPageSize(size)
-            setCurrentPage(1)
-          }}
-          className="border-t border-slate-100 dark:border-slate-800"
-        />
-      </div>
+      )}
 
       {/* Creation Modal */}
       <CreateUserModal
