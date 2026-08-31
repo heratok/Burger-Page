@@ -24,7 +24,7 @@ interface AdminAuthModalProps {
 }
 
 export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose }) => {
-  const { setSession, switchRestaurant } = useRestaurant()
+  const { setSession, switchRestaurant, refreshRestaurants } = useRestaurant()
   const { navigateTo } = useAppRouter()
 
   const [username, setUsername] = useState("")
@@ -59,6 +59,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
         if (result.user.restaurantId) {
           switchRestaurant(result.user.restaurantId)
         }
+        await refreshRestaurants()
         setUsername("")
         setPassword("")
         if (isSuper) {

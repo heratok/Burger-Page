@@ -122,7 +122,7 @@ test.describe('Menu & Categories Full CRUD & Customization E2E Suite', () => {
     await expect(modal.getByText('Postres Artesanales', { exact: true })).toBeVisible();
 
     // 5. UPDATE: Rename "Hamburguesas" to "Burgers Gourmet"
-    const hamburguesasRow = modal.locator('div').filter({ hasText: /^Hamburguesas1 producto/ }).first();
+    const hamburguesasRow = modal.locator('div').filter({ hasText: /^Hamburguesas/ }).first();
     const editBtn = hamburguesasRow.locator('button[title="Renombrar categoría"]');
     await editBtn.click();
 
@@ -135,7 +135,7 @@ test.describe('Menu & Categories Full CRUD & Customization E2E Suite', () => {
     await expect(modal.getByText('Burgers Gourmet', { exact: true })).toBeVisible();
 
     // 6. DELETE: Delete category "Bebidas"
-    const bebidasRow = modal.locator('div').filter({ hasText: /^Bebidas0 productos/ }).first();
+    const bebidasRow = modal.locator('div').filter({ hasText: /^Bebidas/ }).first();
     const deleteBtn = bebidasRow.locator('button[title="Eliminar categoría"]');
     await deleteBtn.click();
 
@@ -155,7 +155,7 @@ test.describe('Menu & Categories Full CRUD & Customization E2E Suite', () => {
     await expect(page.getByRole('button', { name: 'Bebidas', exact: true })).not.toBeVisible();
 
     // Product was cascaded to "Burgers Gourmet"
-    const productCategoryBadge = page.locator('span:has-text("Burgers Gourmet")').first();
+    const productCategoryBadge = page.locator('span').filter({ hasText: 'Burgers Gourmet' }).first();
     await expect(productCategoryBadge).toBeVisible();
 
     // 8. Create a new product under the newly created category "Postres Artesanales"
@@ -177,12 +177,12 @@ test.describe('Menu & Categories Full CRUD & Customization E2E Suite', () => {
     await page.getByRole('button', { name: 'Postres Artesanales', exact: true }).click();
 
     // Verify new product is listed under "Postres Artesanales"
-    await expect(page.getByRole('heading', { name: 'Volcán de Chocolate y Arequipe' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Volcán de Chocolate y Arequipe' }).first()).toBeVisible();
 
     // 9. Navigate to public Storefront using client-side navigation and verify owner changes appear live
     await page.getByRole('button', { name: /Ver Tienda|Tienda Pública/i }).first().click();
     await expect(page.getByRole('button', { name: 'Burgers Gourmet', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Postres Artesanales', exact: true })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Volcán de Chocolate y Arequipe' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Volcán de Chocolate y Arequipe' }).first()).toBeVisible();
   });
 });

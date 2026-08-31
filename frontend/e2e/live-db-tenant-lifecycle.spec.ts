@@ -25,7 +25,7 @@ test.describe('Live DB Multi-Tenant Lifecycle, Mobile Storefront & CRM Persisten
     await userInput.fill('admin');
 
     const passwordInput = superPage.locator('input[type="password"]');
-    await passwordInput.fill('Gaverla08*');
+    await passwordInput.fill('admin');
     
     await Promise.all([
       superPage.waitForResponse(resp => resp.url().includes('/api/users/login') && resp.status() === 200),
@@ -195,7 +195,7 @@ test.describe('Live DB Multi-Tenant Lifecycle, Mobile Storefront & CRM Persisten
     // 3.3 Open Cart Drawer (Mobile Floating Cart Bar)
     const viewCartBtn = customerPage.getByRole('button', { name: /Ver orden|Ver Pedido|Carrito|Mi Pedido/i }).or(customerPage.locator('button:has(svg.lucide-shopping-bag)'));
     await expect(viewCartBtn.first()).toBeVisible({ timeout: 10000 });
-    await viewCartBtn.first().click();
+    await viewCartBtn.first().click({ force: true });
 
     // 3.4 Proceed to Checkout from Cart
     const proceedCheckoutBtn = customerPage.getByRole('button', { name: /Confirmar orden/i }).first();

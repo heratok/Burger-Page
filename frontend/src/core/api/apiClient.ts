@@ -136,11 +136,17 @@ export class ApiClient {
     })
   }
 
-  async fetchProducts(): Promise<MenuItem[]> {
-    return this.request<MenuItem[]>('/products')
+  async fetchProducts(params?: { restaurantId?: string; slug?: string }): Promise<MenuItem[]> {
+    const query = new URLSearchParams()
+    if (params?.restaurantId) query.set('restaurantId', params.restaurantId)
+    if (params?.slug) query.set('slug', params.slug)
+    const qs = query.toString() ? `?${query.toString()}` : ''
+    const raw = await this.request<any[]>(`/products${qs}`)
+    return Array.isArray(raw) ? raw.map(mapProductResponse) : []
   }
 
   async createProduct(data: {
+    restaurantId?: string
     name: string
     description?: string
     price: number
@@ -176,8 +182,9 @@ export class ApiClient {
     return mapProductResponse(raw)
   }
 
-  async deleteProduct(id: string): Promise<void> {
-    await this.request<void>(`/products/${id}`, {
+  async deleteProduct(id: string, restaurantId?: string): Promise<void> {
+    const qs = restaurantId ? `?restaurantId=${encodeURIComponent(restaurantId)}` : ''
+    await this.request<void>(`/products/${id}${qs}`, {
       method: 'DELETE',
     })
   }

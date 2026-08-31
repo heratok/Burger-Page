@@ -78,7 +78,11 @@ export class ProductController {
   }
 
   async create(req: FastifyRequest, reply: FastifyReply) {
-    const restaurantId = req.authContext?.restaurantId;
+    let restaurantId = req.authContext?.restaurantId;
+    if (!restaurantId && req.authContext?.role === 'super_admin') {
+      const body = req.body as any;
+      restaurantId = body?.restaurantId || (req.query as any)?.restaurantId;
+    }
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to create a product.');
     }
@@ -94,7 +98,11 @@ export class ProductController {
 
   async update(req: FastifyRequest, reply: FastifyReply) {
     const params = req.params as { id: string };
-    const restaurantId = req.authContext?.restaurantId;
+    let restaurantId = req.authContext?.restaurantId;
+    if (!restaurantId && req.authContext?.role === 'super_admin') {
+      const body = req.body as any;
+      restaurantId = body?.restaurantId || (req.query as any)?.restaurantId;
+    }
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to update a product.');
     }
@@ -110,7 +118,10 @@ export class ProductController {
 
   async delete(req: FastifyRequest, reply: FastifyReply) {
     const params = req.params as { id: string };
-    const restaurantId = req.authContext?.restaurantId;
+    let restaurantId = req.authContext?.restaurantId;
+    if (!restaurantId && req.authContext?.role === 'super_admin') {
+      restaurantId = (req.query as any)?.restaurantId || (req.body as any)?.restaurantId;
+    }
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to delete a product.');
     }

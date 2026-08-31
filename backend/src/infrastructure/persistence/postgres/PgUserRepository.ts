@@ -48,17 +48,26 @@ export class PgUserRepository implements UserRepository {
   }
 
   async save(user: User): Promise<void> {
-    await withTenantContext({ restaurantId: user.restaurantId ?? null }, async (client) => {
-      await client.query(
-        `INSERT INTO public.users (id, username, password_hash, role, restaurant_id, is_active, created_at)
-         VALUES ($1, $2, $3, $4, $5, true, $6)
-         ON CONFLICT (id) DO UPDATE SET
-           username = EXCLUDED.username,
-           password_hash = EXCLUDED.password_hash,
-           role = EXCLUDED.role,
-           restaurant_id = EXCLUDED.restaurant_id`,
-        [user.id, user.username, user.passwordHash, user.role, user.restaurantId || null, user.createdAt || new Date().toISOString()]
-      );
+    await withTenantContext({ restaurantId: user.restaurantId ?? null, actorRole: 'super_admin' }, async (client) => {
+      const existing = await client.query(`SELECT id FROM public.users WHERE username = $1 OR id = $2`, [user.username, user.id]);
+      if (existing.rows.length > 0) {
+        await client.query(
+          `UPDATE public.users SET
+             username = $1,
+             password_hash = $2,
+             role = $3,
+             restaurant_id = $4,
+             updated_at = NOW()
+           WHERE id = $5`,
+          [user.username, user.passwordHash, user.role, user.restaurantId || null, existing.rows[0].id]
+        );
+      } else {
+        await client.query(
+          `INSERT INTO public.users (id, username, password_hash, role, restaurant_id, is_active, created_at)
+           VALUES ($1, $2, $3, $4, $5, true, $6)`,
+          [user.id, user.username, user.passwordHash, user.role, user.restaurantId || null, user.createdAt || new Date().toISOString()]
+        );
+      }
     });
   }
 

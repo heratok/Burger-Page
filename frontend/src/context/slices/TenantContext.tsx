@@ -166,6 +166,43 @@ export const TenantProvider: React.FC<{
       )
       if (target) {
         setActiveRestaurantId(target.id)
+      } else {
+        apiClient
+          .fetchRestaurant(idOrSlug)
+          .then((fetched) => {
+            if (fetched && fetched.id) {
+              setEnvelope((prev) => {
+                if (prev.restaurants.some((r) => r.id === fetched.id || r.slug === fetched.slug)) {
+                  return prev
+                }
+                const formatted: RestaurantRecord = {
+                  id: fetched.id,
+                  slug: fetched.slug,
+                  adminPassword: (fetched as any).adminPassword || "admin123",
+                  isActive: fetched.isActive !== undefined ? Boolean(fetched.isActive) : true,
+                  createdAt: (fetched as any).createdAt || new Date().toISOString(),
+                  categories: fetched.categories && fetched.categories.length > 0 ? fetched.categories : ['Hamburguesas', 'Bebidas', 'Acompañamientos'],
+                  config: {
+                    ...DEFAULT_STORE_CONFIG,
+                    ...(fetched.config || {}),
+                    name: (fetched as any).name || (fetched.config as any)?.name || DEFAULT_STORE_CONFIG.name,
+                  },
+                  products: (fetched as any).products || [],
+                  additions: (fetched as any).additions || [],
+                  orders: (fetched as any).orders || [],
+                  customers: (fetched as any).customers || [],
+                  inventory: (fetched as any).inventory || [],
+                  suppliers: (fetched as any).suppliers || [],
+                }
+                return {
+                  ...prev,
+                  restaurants: [formatted, ...prev.restaurants],
+                }
+              })
+              setActiveRestaurantId(fetched.id)
+            }
+          })
+          .catch(() => {})
       }
     },
     [envelope.restaurants]
@@ -175,23 +212,19 @@ export const TenantProvider: React.FC<{
     (updater: (current: RestaurantRecord) => RestaurantRecord) => {
       setEnvelope((prev) => {
         const targetId = activeRestaurantId || prev.restaurants[0]?.id
-        const exists = prev.restaurants.some((r) => r.id === targetId || r.slug === targetId)
-        if (!exists) {
-          const updated = updater(activeRestaurant)
-          return {
-            ...prev,
-            restaurants: [updated, ...prev.restaurants],
-          }
-        }
+        const target = prev.restaurants.find((r) => r.id === targetId || r.slug === targetId) || prev.restaurants[0]
+        if (!target) return prev
+
+        const updated = updater(target)
         return {
           ...prev,
           restaurants: prev.restaurants.map((r) =>
-            (r.id === targetId || r.slug === targetId) ? updater(r) : r
+            (r.id === target.id || r.slug === target.slug) ? updated : r
           ),
         }
       })
     },
-    [activeRestaurant, activeRestaurantId]
+    [activeRestaurantId]
   )
 
   const createRestaurant = useCallback(
@@ -296,12 +329,10 @@ export const TenantProvider: React.FC<{
       const snapshot = envelope
       setEnvelope((prev) => ({
         ...prev,
-        restaurants: prev.restaurants.map((r) =>
-          (r.id === id || r.slug === id) ? { ...r, isActive: false } : r
-        ),
+        restaurants: prev.restaurants.filter((r) => r.id !== id && r.slug !== id),
       }))
 
-      toast.success("Restaurante desactivado correctamente (Soft Delete)")
+      toast.success("Restaurante eliminado correctamente")
 
       try {
         await apiClient.deleteRestaurant(id)

@@ -26,6 +26,7 @@ for (const envPath of envCandidates) {
 
 import { CryptoPasswordHasher } from '../infrastructure/security/CryptoPasswordHasher.js';
 import { SupabaseUserRepository } from '../infrastructure/persistence/supabase/SupabaseUserRepository.js';
+import { PgUserRepository } from '../infrastructure/persistence/postgres/PgUserRepository.js';
 import { getSupabaseClient } from '../infrastructure/persistence/supabase/SupabaseClient.js';
 
 async function main() {
@@ -53,6 +54,9 @@ async function main() {
     process.exit(1);
   }
 
+  let role = (process.argv[4] as any) || 'super_admin';
+  let restaurantId = process.argv[5] || undefined;
+
   const hasher = new CryptoPasswordHasher();
   const passwordHash = await hasher.hash(password);
   const userId = `usr_${randomUUID()}`;
@@ -61,7 +65,53 @@ async function main() {
   console.log('\n⚙️  Generando credenciales y hash criptográfico (scrypt)...');
   console.log(`- ID: ${userId}`);
   console.log(`- Usuario: ${username}`);
+  console.log(`- Rol: ${role}`);
+  if (restaurantId) console.log(`- Restaurante: ${restaurantId}`);
   console.log(`- Hash: ${passwordHash}\n`);
+
+  // Intentar guardar directamente si DATABASE_URL existe (PostgreSQL directo)
+  if (process.env.DATABASE_URL) {
+    try {
+      console.log('📡 Conectando con PostgreSQL para insertar el usuario...');
+      const userRepo = new PgUserRepository();
+
+      if (restaurantId) {
+        const { PgRestaurantRepository } = await import('../infrastructure/persistence/postgres/PgRestaurantRepository.js');
+        const restRepo = new PgRestaurantRepository();
+        const existingRest = (await restRepo.findById(restaurantId)) || (await restRepo.findBySlug(restaurantId.replace(/^rest-/, '')));
+        if (!existingRest) {
+          const dynamicSlug = restaurantId.replace(/^rest-/, '') || restaurantId;
+          const dynamicName = dynamicSlug.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ');
+          await restRepo.save({
+            id: restaurantId,
+            slug: dynamicSlug,
+            name: dynamicName,
+            isActive: true,
+            theme: 'burger',
+            openingHours: { open: '10:00', close: '22:00' },
+            categories: ['Hamburguesas', 'Bebidas', 'Acompañamientos'],
+          });
+          console.log(`🏢 Restaurante ${restaurantId} (${dynamicSlug}) creado automáticamente.`);
+        } else {
+          restaurantId = existingRest.id;
+        }
+      }
+
+      await userRepo.save({
+        id: userId,
+        username,
+        passwordHash,
+        role,
+        restaurantId,
+        createdAt: now,
+      });
+
+      console.log(`✅ ¡Usuario ${username} (${role}) creado exitosamente en la base de datos PostgreSQL!`);
+      return;
+    } catch (err: any) {
+      console.warn(`⚠️ No se pudo insertar directamente en PostgreSQL: ${err.message}`);
+    }
+  }
 
   // Intentar guardar directamente si las variables de entorno de Supabase existen
   if (process.env.SUPABASE_URL && (process.env.SUPABASE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY)) {

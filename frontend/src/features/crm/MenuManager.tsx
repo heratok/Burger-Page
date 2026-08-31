@@ -1111,7 +1111,11 @@ export const MenuManager: React.FC = () => {
                           type="button"
                           onClick={() => {
                             if (editCategoryInputValue.trim()) {
-                              updateCategory(cat, editCategoryInputValue.trim())
+                              const newCatName = editCategoryInputValue.trim()
+                              updateCategory(cat, newCatName)
+                              if (selectedCategory === cat) {
+                                setSelectedCategory(newCatName)
+                              }
                               setEditingCategoryName(null)
                               setEditCategoryInputValue("")
                             }
@@ -1192,6 +1196,9 @@ export const MenuManager: React.FC = () => {
         onConfirm={() => {
           if (categoryToDelete) {
             deleteCategory(categoryToDelete)
+            if (selectedCategory === categoryToDelete) {
+              setSelectedCategory("ALL")
+            }
             setCategoryToDelete(null)
           }
         }}
