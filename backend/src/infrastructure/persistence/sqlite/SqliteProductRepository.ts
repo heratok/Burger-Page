@@ -12,7 +12,7 @@ export class SqliteProductRepository implements ProductRepository {
       name: row.name,
       description: row.description,
       price: Number(row.price),
-      category: row.category,
+      category: row.category_name || row.category || 'General',
       categoryId: row.category_id || undefined,
       imageUrl: row.image_url || undefined,
       isAvailable: Boolean(row.is_available),
@@ -26,7 +26,12 @@ export class SqliteProductRepository implements ProductRepository {
 
   async findById(id: string, restaurantId: string): Promise<Product | null> {
     const row = this.db
-      .prepare('SELECT * FROM products WHERE id = ? AND restaurant_id = ?')
+      .prepare(`
+        SELECT p.*, c.name as category_name
+        FROM products p
+        LEFT JOIN categories c ON p.category_id = c.id
+        WHERE p.id = ? AND p.restaurant_id = ?
+      `)
       .get(id, restaurantId) as any;
     if (!row) return null;
     return this.mapRow(row);
@@ -34,7 +39,13 @@ export class SqliteProductRepository implements ProductRepository {
 
   async findByRestaurantId(restaurantId: string): Promise<Product[]> {
     const rows = this.db
-      .prepare('SELECT * FROM products WHERE restaurant_id = ? ORDER BY display_order ASC, id ASC')
+      .prepare(`
+        SELECT p.*, c.name as category_name
+        FROM products p
+        LEFT JOIN categories c ON p.category_id = c.id
+        WHERE p.restaurant_id = ?
+        ORDER BY p.display_order ASC, p.id ASC
+      `)
       .all(restaurantId) as any[];
     return rows.map((r) => this.mapRow(r));
   }
