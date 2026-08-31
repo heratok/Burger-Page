@@ -39,12 +39,20 @@ export const InventoryManager: React.FC = () => {
   ), [suppliers, searchTerm])
 
   const handleSaveItem = (data: InventoryItemFormData) => {
-    editingItem ? updateInventoryItem(editingItem.id, data) : addInventoryItem(data)
+    if (editingItem) {
+      updateInventoryItem(editingItem.id, data)
+    } else {
+      addInventoryItem(data)
+    }
     setIsItemModalOpen(false)
   }
 
   const handleSaveSupplier = (data: SupplierFormData) => {
-    editingSupplier ? updateSupplier(editingSupplier.id, data) : addSupplier(data)
+    if (editingSupplier) {
+      updateSupplier(editingSupplier.id, data)
+    } else {
+      addSupplier(data)
+    }
     setIsSupplierModalOpen(false)
   }
 
@@ -92,7 +100,13 @@ export const InventoryManager: React.FC = () => {
         <Button
           type="button"
           onClick={() => {
-            activeTab === "inventory" ? (setEditingItem(null), setIsItemModalOpen(true)) : (setEditingSupplier(null), setIsSupplierModalOpen(true))
+            if (activeTab === "inventory") {
+              setEditingItem(null)
+              setIsItemModalOpen(true)
+            } else {
+              setEditingSupplier(null)
+              setIsSupplierModalOpen(true)
+            }
           }}
           className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white shadow-md hover:bg-indigo-700"
         >

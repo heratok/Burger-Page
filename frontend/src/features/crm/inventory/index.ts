@@ -1,8 +1,9 @@
 export { InventoryStats } from "./InventoryStats"
 export type { InventoryStatsProps } from "./InventoryStats"
 
-export { InventoryTable, CATEGORY_LABELS } from "./InventoryTable"
+export { InventoryTable } from "./InventoryTable"
 export type { InventoryTableProps } from "./InventoryTable"
+export { CATEGORY_LABELS } from "./constants"
 
 export { SuppliersList } from "./SuppliersList"
 export type { SuppliersListProps } from "./SuppliersList"

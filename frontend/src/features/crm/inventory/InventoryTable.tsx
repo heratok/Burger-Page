@@ -2,7 +2,6 @@ import React from "react"
 import type {
   InventoryItem,
   Supplier,
-  InventoryCategory,
 } from "@/types/restaurant"
 import {
   Search,
@@ -16,13 +15,7 @@ import { Pagination } from "@/components/ui/pagination"
 import { Select } from "@/components/ui/select"
 import { formatCurrency } from "@/lib/utils"
 
-export const CATEGORY_LABELS: Record<InventoryCategory, string> = {
-  ingredients: "Ingredientes & Alimentos",
-  beverages: "Bebidas & Refrescos",
-  packaging: "Empaques & Descartables",
-  cleaning: "Limpieza & Desinfección",
-  other: "Otros Insumos",
-}
+import { CATEGORY_LABELS } from "./constants"
 
 export interface InventoryTableProps {
   items: InventoryItem[]
