@@ -21,6 +21,7 @@
     "@supabase/supabase-js": "^2.49.1",
     "@types/better-sqlite3": "^7.6.12",
     "@types/node": "^22.13.4",
+    "@types/pg": "^8.23.1",
     "better-sqlite3": "^11.8.1",
     "fastify": "^5.2.1",
     "pg": "^8.23.0",
@@ -29,7 +30,6 @@
     "zod-to-json-schema": "^3.25.2"
   },
   "devDependencies": {
-    "@types/pg": "^8.23.1",
     "tsx": "^4.19.3",
     "vitest": "^3.0.6"
   }
