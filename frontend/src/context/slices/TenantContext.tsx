@@ -211,16 +211,33 @@ export const TenantProvider: React.FC<{
   const updateActiveRestaurantRecord = useCallback(
     (updater: (current: RestaurantRecord) => RestaurantRecord) => {
       setEnvelope((prev) => {
-        const targetId = activeRestaurantId || prev.restaurants[0]?.id
-        const target = prev.restaurants.find((r) => r.id === targetId || r.slug === targetId) || prev.restaurants[0]
-        if (!target) return prev
+        const targetId = activeRestaurantId || prev.restaurants[0]?.id || "rest-burger-craft"
+        const target =
+          prev.restaurants.find((r) => r.id === targetId || r.slug === targetId) ||
+          prev.restaurants[0] || {
+            id: targetId,
+            slug: targetId.replace(/^rest-/, ""),
+            isActive: true,
+            createdAt: new Date().toISOString(),
+            config: DEFAULT_STORE_CONFIG,
+            categories: ["Platos Principales"],
+            products: [],
+            additions: [],
+            orders: [],
+            customers: [],
+            inventory: [],
+            suppliers: [],
+          }
 
         const updated = updater(target)
+        const exists = prev.restaurants.some((r) => r.id === target.id || r.slug === target.slug)
         return {
           ...prev,
-          restaurants: prev.restaurants.map((r) =>
-            (r.id === target.id || r.slug === target.slug) ? updated : r
-          ),
+          restaurants: exists
+            ? prev.restaurants.map((r) =>
+                r.id === target.id || r.slug === target.slug ? updated : r
+              )
+            : [updated, ...prev.restaurants],
         }
       })
     },
@@ -329,7 +346,9 @@ export const TenantProvider: React.FC<{
       const snapshot = envelope
       setEnvelope((prev) => ({
         ...prev,
-        restaurants: prev.restaurants.filter((r) => r.id !== id && r.slug !== id),
+        restaurants: prev.restaurants.map((r) =>
+          (r.id === id || r.slug === id) ? { ...r, isActive: false } : r
+        ),
       }))
 
       toast.success("Restaurante eliminado correctamente")

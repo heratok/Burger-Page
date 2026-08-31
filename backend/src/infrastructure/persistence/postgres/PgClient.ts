@@ -10,12 +10,41 @@ export function getPgPool(): pg.Pool {
     if (!connectionString) {
       throw new Error('PgClient requires DATABASE_URL to be defined.');
     }
+    const isLocalhost = connectionString.includes('localhost') || connectionString.includes('127.0.0.1');
+    const sslDisabled = connectionString.includes('sslmode=disable');
     pool = new Pool({
       connectionString,
-      ssl: connectionString.includes('sslmode=disable') ? undefined : { rejectUnauthorized: false },
+      ssl: sslDisabled || isLocalhost ? undefined : { rejectUnauthorized: false },
     });
   }
   return pool;
+}
+
+export async function verifyPgConnection(): Promise<{
+  ok: boolean;
+  host?: string;
+  database?: string;
+  user?: string;
+  error?: string;
+}> {
+  try {
+    const p = getPgPool();
+    const res = await p.query(
+      'SELECT current_user, current_database(), inet_server_addr() as host, inet_server_port() as port'
+    );
+    const row = res.rows[0];
+    return {
+      ok: true,
+      user: row?.current_user,
+      database: row?.current_database,
+      host: row?.host || 'localhost',
+    };
+  } catch (err: any) {
+    return {
+      ok: false,
+      error: err?.message || String(err),
+    };
+  }
 }
 
 export interface TenantContext {

@@ -37,11 +37,24 @@ describe('ApiClient', () => {
   })
 
   it('should fetch products', async () => {
-    const mockData = [{ id: 'p1', name: 'Burger' }]
-    mockResponse(mockData)
+    const mockRawData = [{ id: 'p1', name: 'Burger', price: 15000, category: 'Burgers', imageUrl: 'img.png', isAvailable: true }]
+    mockResponse(mockRawData)
 
     const data = await client.fetchProducts()
-    expect(data).toEqual(mockData)
+    expect(data).toEqual([
+      {
+        id: 'p1',
+        name: 'Burger',
+        price: 15000,
+        category: 'Burgers',
+        src: 'img.png',
+        description: '',
+        inStock: true,
+        isPopular: false,
+        isNew: false,
+        preparationTimeMinutes: undefined,
+      },
+    ])
     expect(globalThis.fetch).toHaveBeenCalledWith('http://localhost:3001/api/products', {
       headers: {},
     })
