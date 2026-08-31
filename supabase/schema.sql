@@ -209,32 +209,42 @@ CREATE TABLE public.orders (
 );
 
 -- 2.7.1 ORDER STATUS HISTORY --------------------------------------------------
+-- restaurant_id está denormalizado desde orders.restaurant_id (poblado por el
+-- trigger log_order_status_change vía NEW.restaurant_id) para que las políticas
+-- RLS de esta tabla no necesiten un join contra 'orders' en cada chequeo.
 CREATE TABLE public.order_status_history (
-    id          TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-    order_id    TEXT NOT NULL REFERENCES public.orders(id) ON DELETE CASCADE,
-    old_status  TEXT,
-    new_status  TEXT NOT NULL,
-    changed_by  TEXT,
-    changed_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    id            TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    order_id      TEXT NOT NULL REFERENCES public.orders(id) ON DELETE CASCADE,
+    restaurant_id TEXT NOT NULL REFERENCES public.restaurants(id) ON DELETE CASCADE,
+    old_status    TEXT,
+    new_status    TEXT NOT NULL,
+    changed_by    TEXT,
+    changed_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- 2.8 ORDER ITEMS (Line Items — Fully Normalized) ----------------------------
+-- restaurant_id denormalizado desde orders.restaurant_id (poblado por
+-- create_order_atomic vía p_restaurant_id) — mismo motivo que arriba.
 CREATE TABLE public.order_items (
-    id           TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-    order_id     TEXT NOT NULL REFERENCES public.orders(id) ON DELETE CASCADE,
-    product_id   TEXT REFERENCES public.products(id) ON DELETE SET NULL,
-    product_name TEXT NOT NULL, -- historical snapshot at time of sale
-    unit_price   NUMERIC(12, 2) NOT NULL CHECK (unit_price >= 0),
-    quantity     INTEGER NOT NULL DEFAULT 1 CHECK (quantity > 0),
-    subtotal     NUMERIC(12, 2) GENERATED ALWAYS AS (unit_price * quantity) STORED,
-    observation  TEXT,
-    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    id            TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    order_id      TEXT NOT NULL REFERENCES public.orders(id) ON DELETE CASCADE,
+    restaurant_id TEXT NOT NULL REFERENCES public.restaurants(id) ON DELETE CASCADE,
+    product_id    TEXT REFERENCES public.products(id) ON DELETE SET NULL,
+    product_name  TEXT NOT NULL, -- historical snapshot at time of sale
+    unit_price    NUMERIC(12, 2) NOT NULL CHECK (unit_price >= 0),
+    quantity      INTEGER NOT NULL DEFAULT 1 CHECK (quantity > 0),
+    subtotal      NUMERIC(12, 2) GENERATED ALWAYS AS (unit_price * quantity) STORED,
+    observation   TEXT,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- 2.9 ORDER ITEM ADDITIONS (Modifiers selected per order item) --------------
+-- restaurant_id denormalizado desde orders.restaurant_id (poblado por
+-- create_order_atomic vía p_restaurant_id) — mismo motivo que arriba.
 CREATE TABLE public.order_item_additions (
     id            TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
     order_item_id TEXT NOT NULL REFERENCES public.order_items(id) ON DELETE CASCADE,
+    restaurant_id TEXT NOT NULL REFERENCES public.restaurants(id) ON DELETE CASCADE,
     addition_id   TEXT REFERENCES public.product_additions(id) ON DELETE SET NULL,
     addition_name TEXT NOT NULL, -- historical snapshot
     unit_price    NUMERIC(12, 2) NOT NULL DEFAULT 0.00 CHECK (unit_price >= 0),
@@ -355,11 +365,11 @@ SET search_path = public, pg_temp
 AS $$
 BEGIN
     IF TG_OP = 'INSERT' THEN
-        INSERT INTO public.order_status_history (order_id, old_status, new_status, changed_by)
-        VALUES (NEW.id, NULL, NEW.status, NULLIF(current_setting('app.actor', true), ''));
+        INSERT INTO public.order_status_history (order_id, restaurant_id, old_status, new_status, changed_by)
+        VALUES (NEW.id, NEW.restaurant_id, NULL, NEW.status, NULLIF(current_setting('app.actor', true), ''));
     ELSIF TG_OP = 'UPDATE' AND NEW.status IS DISTINCT FROM OLD.status THEN
-        INSERT INTO public.order_status_history (order_id, old_status, new_status, changed_by)
-        VALUES (NEW.id, OLD.status, NEW.status, NULLIF(current_setting('app.actor', true), ''));
+        INSERT INTO public.order_status_history (order_id, restaurant_id, old_status, new_status, changed_by)
+        VALUES (NEW.id, NEW.restaurant_id, OLD.status, NEW.status, NULLIF(current_setting('app.actor', true), ''));
     END IF;
     RETURN NEW;
 END;
@@ -456,6 +466,228 @@ REVOKE ALL ON FUNCTION public.adjust_inventory_stock(TEXT, TEXT, NUMERIC) FROM a
 GRANT EXECUTE ON FUNCTION public.adjust_inventory_stock(TEXT, TEXT, NUMERIC) TO service_role;
 GRANT EXECUTE ON FUNCTION public.adjust_inventory_stock(TEXT, TEXT, NUMERIC) TO postgres;
 
+-- 3.4 Atomic order creation ----------------------------------------------------
+-- Reconciliado desde el estado real de producción (no versionado desde el
+-- commit 933024d, que las quitó de este archivo sin actualizar el backend, que
+-- las sigue invocando vía SupabaseOrderRepository.ts). p_restaurant_id se
+-- propaga a order_items/order_item_additions para la denormalización de
+-- restaurant_id (sección 2.7.1/2.8/2.9).
+CREATE OR REPLACE FUNCTION public.create_order_atomic(
+    p_order_id TEXT,
+    p_restaurant_id TEXT,
+    p_customer_id TEXT,
+    p_payment_method TEXT,
+    p_payment_amount NUMERIC,
+    p_change_amount NUMERIC,
+    p_comment TEXT,
+    p_items JSONB
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+    v_rest RECORD;
+    v_item RECORD;
+    v_prod RECORD;
+    v_add RECORD;
+    v_prod_add RECORD;
+    v_qty INTEGER;
+    v_add_qty INTEGER;
+    v_calculated_subtotal NUMERIC(12, 2) := 0.00;
+    v_final_total NUMERIC(12, 2);
+    v_created_order RECORD;
+BEGIN
+    -- 1. Validar estructura básica de items
+    IF p_items IS NULL OR jsonb_typeof(p_items) <> 'array' OR jsonb_array_length(p_items) = 0 THEN
+        RAISE EXCEPTION 'Order must contain at least one item' USING ERRCODE = 'P0001';
+    END IF;
+
+    -- 2. Validar que el restaurante exista y esté ACTIVO
+    SELECT * INTO v_rest FROM public.restaurants WHERE id = p_restaurant_id;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Restaurant % not found', p_restaurant_id USING ERRCODE = 'P0002';
+    END IF;
+    IF NOT v_rest.is_active THEN
+        RAISE EXCEPTION 'Restaurant % is inactive', v_rest.name USING ERRCODE = 'P0001';
+    END IF;
+
+    -- 3. Validar customer_id si fue provisto
+    IF p_customer_id IS NOT NULL AND p_customer_id <> '' THEN
+        IF NOT EXISTS (SELECT 1 FROM public.customers WHERE id = p_customer_id AND restaurant_id = p_restaurant_id) THEN
+            RAISE EXCEPTION 'Customer % does not belong to restaurant %', p_customer_id, p_restaurant_id USING ERRCODE = 'P0001';
+        END IF;
+    END IF;
+
+    -- 4. Crear cabecera temporal de la orden con subtotal 0 (se actualiza al final del loop)
+    INSERT INTO public.orders (
+        id, restaurant_id, customer_id, status, subtotal,
+        delivery_fee, final_total, payment_method, payment_amount,
+        change_amount, comment, created_at, updated_at
+    ) VALUES (
+        p_order_id,
+        p_restaurant_id,
+        NULLIF(p_customer_id, ''),
+        'pending',
+        0.00,
+        v_rest.delivery_fee,
+        v_rest.delivery_fee,
+        COALESCE(p_payment_method, 'Efectivo'),
+        p_payment_amount,
+        p_change_amount,
+        NULLIF(p_comment, ''),
+        NOW(),
+        NOW()
+    );
+
+    -- 5. Iterar sobre los items consultando el precio REAL en la tabla 'products'
+    FOR v_item IN SELECT * FROM jsonb_array_elements(p_items)
+    LOOP
+        v_qty := (v_item.value->>'quantity')::integer;
+        IF v_qty IS NULL OR v_qty <= 0 OR v_qty > 100 THEN
+            RAISE EXCEPTION 'Invalid item quantity: %', v_qty USING ERRCODE = 'P0001';
+        END IF;
+
+        SELECT * INTO v_prod FROM public.products
+        WHERE id = v_item.value->>'product_id' AND restaurant_id = p_restaurant_id;
+
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'Product % does not belong to restaurant % or does not exist', v_item.value->>'product_id', p_restaurant_id USING ERRCODE = 'P0002';
+        END IF;
+        IF NOT v_prod.is_available THEN
+            RAISE EXCEPTION 'Product % is not available', v_prod.name USING ERRCODE = 'P0001';
+        END IF;
+
+        -- Insertar order_item con el unit_price oficial de la BD (subtotal es GENERATED)
+        INSERT INTO public.order_items (
+            id, order_id, restaurant_id, product_id, product_name, unit_price, quantity, observation
+        ) VALUES (
+            v_item.value->>'id',
+            p_order_id,
+            p_restaurant_id,
+            v_prod.id,
+            v_prod.name,
+            v_prod.price,
+            v_qty,
+            NULLIF(v_item.value->>'observation', '')
+        );
+
+        v_calculated_subtotal := v_calculated_subtotal + (v_prod.price * v_qty);
+
+        -- 6. Iterar sobre las adiciones consultando el precio REAL en 'product_additions'
+        IF v_item.value ? 'additions' AND jsonb_array_length(v_item.value->'additions') > 0 THEN
+            FOR v_add IN SELECT * FROM jsonb_array_elements(v_item.value->'additions')
+            LOOP
+                v_add_qty := COALESCE((v_add.value->>'quantity')::integer, 1);
+                IF v_add_qty <= 0 OR v_add_qty > 10 THEN
+                    RAISE EXCEPTION 'Invalid addition quantity: %', v_add_qty USING ERRCODE = 'P0001';
+                END IF;
+
+                SELECT * INTO v_prod_add FROM public.product_additions
+                WHERE id = v_add.value->>'addition_id' AND restaurant_id = p_restaurant_id;
+
+                IF NOT FOUND THEN
+                    RAISE EXCEPTION 'Addition % does not belong to restaurant %', v_add.value->>'addition_id', p_restaurant_id USING ERRCODE = 'P0002';
+                END IF;
+                IF v_prod_add.product_id IS NOT NULL AND v_prod_add.product_id <> v_prod.id THEN
+                    RAISE EXCEPTION 'Addition % does not apply to product %', v_prod_add.name, v_prod.name USING ERRCODE = 'P0001';
+                END IF;
+                IF NOT v_prod_add.is_available THEN
+                    RAISE EXCEPTION 'Addition % is not available', v_prod_add.name USING ERRCODE = 'P0001';
+                END IF;
+
+                -- Insertar order_item_addition con unit_price oficial (total es GENERATED)
+                INSERT INTO public.order_item_additions (
+                    id, order_item_id, restaurant_id, addition_id, addition_name, unit_price, quantity
+                ) VALUES (
+                    v_add.value->>'id',
+                    v_item.value->>'id',
+                    p_restaurant_id,
+                    v_prod_add.id,
+                    v_prod_add.name,
+                    v_prod_add.price,
+                    v_add_qty
+                );
+
+                v_calculated_subtotal := v_calculated_subtotal + (v_prod_add.price * v_add_qty * v_qty);
+            END LOOP;
+        END IF;
+    END LOOP;
+
+    -- 7. Validar monto mínimo de compra
+    IF v_rest.min_order_amount > 0 AND v_calculated_subtotal < v_rest.min_order_amount THEN
+        RAISE EXCEPTION 'Subtotal % is below minimum order amount %', v_calculated_subtotal, v_rest.min_order_amount USING ERRCODE = 'P0001';
+    END IF;
+
+    -- 8. Validar efectivo vs monto pagado si aplica
+    v_final_total := v_calculated_subtotal + v_rest.delivery_fee;
+    IF p_payment_method = 'Efectivo' AND p_payment_amount IS NOT NULL THEN
+        IF p_payment_amount < v_final_total THEN
+            RAISE EXCEPTION 'Payment amount % is less than final total %', p_payment_amount, v_final_total USING ERRCODE = 'P0001';
+        END IF;
+    END IF;
+
+    -- 9. Actualizar totales calculados oficialmente
+    UPDATE public.orders
+    SET subtotal = v_calculated_subtotal, final_total = v_final_total
+    WHERE id = p_order_id
+    RETURNING * INTO v_created_order;
+
+    RETURN to_jsonb(v_created_order);
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.create_order_atomic(TEXT, TEXT, TEXT, TEXT, NUMERIC, NUMERIC, TEXT, JSONB) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.create_order_atomic(TEXT, TEXT, TEXT, TEXT, NUMERIC, NUMERIC, TEXT, JSONB) FROM anon;
+REVOKE ALL ON FUNCTION public.create_order_atomic(TEXT, TEXT, TEXT, TEXT, NUMERIC, NUMERIC, TEXT, JSONB) FROM authenticated;
+
+GRANT EXECUTE ON FUNCTION public.create_order_atomic(TEXT, TEXT, TEXT, TEXT, NUMERIC, NUMERIC, TEXT, JSONB) TO service_role;
+GRANT EXECUTE ON FUNCTION public.create_order_atomic(TEXT, TEXT, TEXT, TEXT, NUMERIC, NUMERIC, TEXT, JSONB) TO postgres;
+
+-- 3.5 Atomic order status update with actor audit ------------------------------
+CREATE OR REPLACE FUNCTION public.update_order_status_with_actor(
+    p_order_id TEXT,
+    p_new_status TEXT,
+    p_restaurant_id TEXT,
+    p_actor TEXT
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+    v_rows_affected INTEGER;
+BEGIN
+    -- Validar actor si fue provisto
+    IF p_actor IS NOT NULL AND p_actor <> '' THEN
+        IF NOT EXISTS (
+            SELECT 1 FROM public.users
+            WHERE id = p_actor AND (restaurant_id = p_restaurant_id OR role = 'super_admin')
+        ) THEN
+            RAISE EXCEPTION 'Actor % is not authorized for restaurant %', p_actor, p_restaurant_id USING ERRCODE = 'P0001';
+        END IF;
+        PERFORM set_config('app.actor', p_actor, true);
+    END IF;
+
+    -- Actualizar status aislando estrictamente por id Y restaurant_id
+    UPDATE public.orders
+    SET status = p_new_status, updated_at = NOW()
+    WHERE id = p_order_id AND restaurant_id = p_restaurant_id;
+
+    GET DIAGNOSTICS v_rows_affected = ROW_COUNT;
+    RETURN v_rows_affected > 0;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.update_order_status_with_actor(TEXT, TEXT, TEXT, TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.update_order_status_with_actor(TEXT, TEXT, TEXT, TEXT) FROM anon;
+REVOKE ALL ON FUNCTION public.update_order_status_with_actor(TEXT, TEXT, TEXT, TEXT) FROM authenticated;
+
+GRANT EXECUTE ON FUNCTION public.update_order_status_with_actor(TEXT, TEXT, TEXT, TEXT) TO service_role;
+GRANT EXECUTE ON FUNCTION public.update_order_status_with_actor(TEXT, TEXT, TEXT, TEXT) TO postgres;
+
 
 -- ============================================================================
 -- 4. PERFORMANCE INDEXES (Multi-Tenancy & Query Patterns)
@@ -472,8 +704,12 @@ CREATE INDEX idx_orders_rest_status        ON public.orders(restaurant_id, statu
 CREATE INDEX idx_orders_customer           ON public.orders(customer_id);
 CREATE INDEX idx_order_items_order_id      ON public.order_items(order_id);
 CREATE INDEX idx_order_items_product_id    ON public.order_items(product_id);
+CREATE INDEX idx_order_items_restaurant    ON public.order_items(restaurant_id);
 CREATE INDEX idx_order_item_additions_item ON public.order_item_additions(order_item_id);
+CREATE INDEX idx_order_item_additions_addition ON public.order_item_additions(addition_id);
+CREATE INDEX idx_order_item_additions_restaurant ON public.order_item_additions(restaurant_id);
 CREATE INDEX idx_order_status_history_order ON public.order_status_history(order_id, changed_at DESC);
+CREATE INDEX idx_order_status_history_restaurant ON public.order_status_history(restaurant_id);
 CREATE INDEX idx_restaurant_hours_rest     ON public.restaurant_hours(restaurant_id);
 CREATE INDEX idx_suppliers_restaurant      ON public.suppliers(restaurant_id);
 CREATE INDEX idx_inventory_items_restaurant ON public.inventory_items(restaurant_id);
@@ -508,3 +744,212 @@ CREATE POLICY "public_read_available_products"
 CREATE POLICY "public_read_available_additions"
     ON public.product_additions FOR SELECT
     USING (is_available = TRUE);
+
+
+-- ============================================================================
+-- 6. APP TENANT ROLE + WRITE RLS (Real Multi-Tenant Isolation)
+-- ============================================================================
+-- Rol de Postgres sin BYPASSRLS que el backend usa vía 'pg' (conexión cruda,
+-- no PostgREST/supabase-js) para las 14 tablas de negocio, fijando dos GUCs
+-- de sesión por transacción con SET LOCAL (mismo patrón que 'app.actor'):
+--   - app.restaurant_id: tenant activo de la operación
+--   - app.actor_role:    'super_admin' | 'restaurant_admin' (permite
+--                         operaciones legítimas cross-tenant de super-admin)
+-- 100% Postgres estándar — sin auth.uid()/auth.jwt() de Supabase — sobrevive
+-- intacta una futura migración fuera de Supabase.
+--
+-- IMPORTANTE: este archivo no fija el password de app_user. En local (Docker)
+-- se fija en docker-compose.yml o a mano tras el bootstrap; en producción se
+-- fija una única vez fuera de git, vía secret manager.
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'app_user') THEN
+        CREATE ROLE app_user LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE;
+    END IF;
+END $$;
+
+GRANT USAGE ON SCHEMA public TO app_user;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON
+    public.restaurants,
+    public.restaurant_hours,
+    public.users,
+    public.categories,
+    public.products,
+    public.product_additions,
+    public.customers,
+    public.restaurant_order_counters,
+    public.orders,
+    public.order_status_history,
+    public.order_items,
+    public.order_item_additions,
+    public.suppliers,
+    public.inventory_items
+TO app_user;
+
+ALTER TABLE public.customers                 ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.customers                 FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.orders                    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.orders                    FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.order_items               ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.order_items               FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.order_item_additions      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.order_item_additions      FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.order_status_history      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.order_status_history      FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.suppliers                 ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.suppliers                 FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.inventory_items           ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.inventory_items           FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.restaurant_order_counters ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.restaurant_order_counters FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.restaurants               FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.users                     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.users                     FORCE ROW LEVEL SECURITY;
+
+CREATE POLICY "tenant_isolation_customers" ON public.customers
+    FOR ALL
+    USING (restaurant_id = current_setting('app.restaurant_id', true) OR current_setting('app.actor_role', true) = 'super_admin')
+    WITH CHECK (restaurant_id = current_setting('app.restaurant_id', true) OR current_setting('app.actor_role', true) = 'super_admin');
+
+CREATE POLICY "tenant_isolation_orders" ON public.orders
+    FOR ALL
+    USING (restaurant_id = current_setting('app.restaurant_id', true) OR current_setting('app.actor_role', true) = 'super_admin')
+    WITH CHECK (restaurant_id = current_setting('app.restaurant_id', true) OR current_setting('app.actor_role', true) = 'super_admin');
+
+CREATE POLICY "tenant_isolation_order_items" ON public.order_items
+    FOR ALL
+    USING (restaurant_id = current_setting('app.restaurant_id', true) OR current_setting('app.actor_role', true) = 'super_admin')
+    WITH CHECK (restaurant_id = current_setting('app.restaurant_id', true) OR current_setting('app.actor_role', true) = 'super_admin');
+
+CREATE POLICY "tenant_isolation_order_item_additions" ON public.order_item_additions
+    FOR ALL
+    USING (restaurant_id = current_setting('app.restaurant_id', true) OR current_setting('app.actor_role', true) = 'super_admin')
+    WITH CHECK (restaurant_id = current_setting('app.restaurant_id', true) OR current_setting('app.actor_role', true) = 'super_admin');
+
+CREATE POLICY "tenant_isolation_order_status_history" ON public.order_status_history
+    FOR ALL
+    USING (restaurant_id = current_setting('app.restaurant_id', true) OR current_setting('app.actor_role', true) = 'super_admin')
+    WITH CHECK (restaurant_id = current_setting('app.restaurant_id', true) OR current_setting('app.actor_role', true) = 'super_admin');
+
+CREATE POLICY "tenant_isolation_suppliers" ON public.suppliers
+    FOR ALL
+    USING (restaurant_id = current_setting('app.restaurant_id', true) OR current_setting('app.actor_role', true) = 'super_admin')
+    WITH CHECK (restaurant_id = current_setting('app.restaurant_id', true) OR current_setting('app.actor_role', true) = 'super_admin');
+
+CREATE POLICY "tenant_isolation_inventory_items" ON public.inventory_items
+    FOR ALL
+    USING (restaurant_id = current_setting('app.restaurant_id', true) OR current_setting('app.actor_role', true) = 'super_admin')
+    WITH CHECK (restaurant_id = current_setting('app.restaurant_id', true) OR current_setting('app.actor_role', true) = 'super_admin');
+
+CREATE POLICY "tenant_isolation_restaurant_order_counters" ON public.restaurant_order_counters
+    FOR ALL
+    USING (restaurant_id = current_setting('app.restaurant_id', true) OR current_setting('app.actor_role', true) = 'super_admin')
+    WITH CHECK (restaurant_id = current_setting('app.restaurant_id', true) OR current_setting('app.actor_role', true) = 'super_admin');
+
+CREATE POLICY "tenant_isolation_restaurants_write" ON public.restaurants
+    FOR ALL
+    USING (id = current_setting('app.restaurant_id', true) OR current_setting('app.actor_role', true) = 'super_admin')
+    WITH CHECK (id = current_setting('app.restaurant_id', true) OR current_setting('app.actor_role', true) = 'super_admin');
+
+-- users: caso especial — findByUsername (login) necesita resolver el usuario
+-- ANTES de conocer restaurant_id. app_user nunca se expone a clientes
+-- externos (vive solo en el backend, mismo modelo de confianza que hoy tiene
+-- service_role), así que un SELECT sin scoping es aceptable; la escritura sí
+-- queda scoped al tenant (o a super_admin).
+CREATE POLICY "users_select_for_auth" ON public.users
+    FOR SELECT
+    USING (true);
+
+CREATE POLICY "tenant_isolation_users_write" ON public.users
+    FOR INSERT
+    WITH CHECK (restaurant_id = current_setting('app.restaurant_id', true) OR restaurant_id IS NULL OR current_setting('app.actor_role', true) = 'super_admin');
+
+CREATE POLICY "tenant_isolation_users_update" ON public.users
+    FOR UPDATE
+    USING (restaurant_id = current_setting('app.restaurant_id', true) OR restaurant_id IS NULL OR current_setting('app.actor_role', true) = 'super_admin')
+    WITH CHECK (restaurant_id = current_setting('app.restaurant_id', true) OR restaurant_id IS NULL OR current_setting('app.actor_role', true) = 'super_admin');
+
+CREATE POLICY "tenant_isolation_users_delete" ON public.users
+    FOR DELETE
+    USING (restaurant_id = current_setting('app.restaurant_id', true) OR current_setting('app.actor_role', true) = 'super_admin');
+
+-- 6.1 Catálogo (categories, products, product_additions, restaurant_hours):
+-- ya tenían RLS habilitado con solo lectura pública (sección 5) — se les
+-- agrega escritura tenant-scoped con el mismo predicado.
+ALTER TABLE public.categories        FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.products          FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.product_additions FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.restaurant_hours  FORCE ROW LEVEL SECURITY;
+
+CREATE POLICY "tenant_isolation_categories_write" ON public.categories
+    FOR INSERT
+    WITH CHECK (restaurant_id = current_setting('app.restaurant_id', true) OR current_setting('app.actor_role', true) = 'super_admin');
+CREATE POLICY "tenant_isolation_categories_update" ON public.categories
+    FOR UPDATE
+    USING (restaurant_id = current_setting('app.restaurant_id', true) OR current_setting('app.actor_role', true) = 'super_admin')
+    WITH CHECK (restaurant_id = current_setting('app.restaurant_id', true) OR current_setting('app.actor_role', true) = 'super_admin');
+CREATE POLICY "tenant_isolation_categories_delete" ON public.categories
+    FOR DELETE
+    USING (restaurant_id = current_setting('app.restaurant_id', true) OR current_setting('app.actor_role', true) = 'super_admin');
+
+CREATE POLICY "tenant_isolation_products_write" ON public.products
+    FOR INSERT
+    WITH CHECK (restaurant_id = current_setting('app.restaurant_id', true) OR current_setting('app.actor_role', true) = 'super_admin');
+CREATE POLICY "tenant_isolation_products_update" ON public.products
+    FOR UPDATE
+    USING (restaurant_id = current_setting('app.restaurant_id', true) OR current_setting('app.actor_role', true) = 'super_admin')
+    WITH CHECK (restaurant_id = current_setting('app.restaurant_id', true) OR current_setting('app.actor_role', true) = 'super_admin');
+CREATE POLICY "tenant_isolation_products_delete" ON public.products
+    FOR DELETE
+    USING (restaurant_id = current_setting('app.restaurant_id', true) OR current_setting('app.actor_role', true) = 'super_admin');
+
+CREATE POLICY "tenant_isolation_product_additions_write" ON public.product_additions
+    FOR INSERT
+    WITH CHECK (restaurant_id = current_setting('app.restaurant_id', true) OR current_setting('app.actor_role', true) = 'super_admin');
+CREATE POLICY "tenant_isolation_product_additions_update" ON public.product_additions
+    FOR UPDATE
+    USING (restaurant_id = current_setting('app.restaurant_id', true) OR current_setting('app.actor_role', true) = 'super_admin')
+    WITH CHECK (restaurant_id = current_setting('app.restaurant_id', true) OR current_setting('app.actor_role', true) = 'super_admin');
+CREATE POLICY "tenant_isolation_product_additions_delete" ON public.product_additions
+    FOR DELETE
+    USING (restaurant_id = current_setting('app.restaurant_id', true) OR current_setting('app.actor_role', true) = 'super_admin');
+
+CREATE POLICY "tenant_isolation_restaurant_hours_write" ON public.restaurant_hours
+    FOR INSERT
+    WITH CHECK (restaurant_id = current_setting('app.restaurant_id', true) OR current_setting('app.actor_role', true) = 'super_admin');
+CREATE POLICY "tenant_isolation_restaurant_hours_update" ON public.restaurant_hours
+    FOR UPDATE
+    USING (restaurant_id = current_setting('app.restaurant_id', true) OR current_setting('app.actor_role', true) = 'super_admin')
+    WITH CHECK (restaurant_id = current_setting('app.restaurant_id', true) OR current_setting('app.actor_role', true) = 'super_admin');
+CREATE POLICY "tenant_isolation_restaurant_hours_delete" ON public.restaurant_hours
+    FOR DELETE
+    USING (restaurant_id = current_setting('app.restaurant_id', true) OR current_setting('app.actor_role', true) = 'super_admin');
+
+-- 6.1.1 Postgres exige, además del WITH CHECK de UPDATE, que la fila (vieja y
+-- nueva) sea visible bajo alguna política de SELECT permisiva. Sin esto, un
+-- UPDATE que apaga is_active/is_available queda imposible (verificado
+-- empíricamente: "new row violates row-level security policy") porque la
+-- única política de SELECT era la pública (is_active/is_available = TRUE).
+CREATE POLICY "tenant_isolation_categories_select" ON public.categories
+    FOR SELECT
+    USING (restaurant_id = current_setting('app.restaurant_id', true) OR current_setting('app.actor_role', true) = 'super_admin');
+
+CREATE POLICY "tenant_isolation_products_select" ON public.products
+    FOR SELECT
+    USING (restaurant_id = current_setting('app.restaurant_id', true) OR current_setting('app.actor_role', true) = 'super_admin');
+
+CREATE POLICY "tenant_isolation_product_additions_select" ON public.product_additions
+    FOR SELECT
+    USING (restaurant_id = current_setting('app.restaurant_id', true) OR current_setting('app.actor_role', true) = 'super_admin');
+
+CREATE POLICY "tenant_isolation_restaurant_hours_select" ON public.restaurant_hours
+    FOR SELECT
+    USING (restaurant_id = current_setting('app.restaurant_id', true) OR current_setting('app.actor_role', true) = 'super_admin');
+
+-- 6.2 app_user reusa la lógica ya validada de estas 3 RPC SECURITY DEFINER
+-- (cada una ya valida que las entidades referenciadas pertenezcan al
+-- restaurant_id recibido) en vez de reimplementarla en TypeScript.
+GRANT EXECUTE ON FUNCTION public.create_order_atomic(TEXT, TEXT, TEXT, TEXT, NUMERIC, NUMERIC, TEXT, JSONB) TO app_user;
+GRANT EXECUTE ON FUNCTION public.update_order_status_with_actor(TEXT, TEXT, TEXT, TEXT) TO app_user;
+GRANT EXECUTE ON FUNCTION public.adjust_inventory_stock(TEXT, TEXT, NUMERIC) TO app_user;

@@ -30,6 +30,14 @@ import { SupabaseInventoryRepository } from '../persistence/supabase/SupabaseInv
 import { SupabaseUserRepository } from '../persistence/supabase/SupabaseUserRepository.js';
 import { SupabaseProductAdditionRepository } from '../persistence/supabase/SupabaseProductAdditionRepository.js';
 import { InMemoryProductAdditionRepository } from '../persistence/InMemoryProductAdditionRepository.js';
+import { PgRestaurantRepository } from '../persistence/postgres/PgRestaurantRepository.js';
+import { PgCategoryRepository } from '../persistence/postgres/PgCategoryRepository.js';
+import { PgProductRepository } from '../persistence/postgres/PgProductRepository.js';
+import { PgProductAdditionRepository } from '../persistence/postgres/PgProductAdditionRepository.js';
+import { PgOrderRepository } from '../persistence/postgres/PgOrderRepository.js';
+import { PgCustomerRepository } from '../persistence/postgres/PgCustomerRepository.js';
+import { PgInventoryRepository } from '../persistence/postgres/PgInventoryRepository.js';
+import { PgUserRepository } from '../persistence/postgres/PgUserRepository.js';
 import { RestaurantRepository } from '../../domain/ports/out/RestaurantRepository.js';
 import { CategoryRepository } from '../../domain/ports/out/CategoryRepository.js';
 import { ProductRepository } from '../../domain/ports/out/ProductRepository.js';
@@ -106,7 +114,7 @@ export interface AppDependencies {
   additionController: ProductAdditionController;
 }
 
-export type StorageDriver = 'memory' | 'sqlite' | 'supabase';
+export type StorageDriver = 'memory' | 'sqlite' | 'supabase' | 'postgres';
 
 export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppDependencies {
   let selectedDriver: StorageDriver = driver || (process.env.STORAGE_DRIVER as StorageDriver);
@@ -119,7 +127,9 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
 
   console.log(`\n======================================================`);
   console.log(`📦 [DATABASE] Driver Activo: ${selectedDriver.toUpperCase()}`);
-  if (selectedDriver === 'supabase') {
+  if (selectedDriver === 'postgres') {
+    console.log(`🔗 [POSTGRES] app_user (RLS-scoped, sin BYPASSRLS) via DATABASE_URL`);
+  } else if (selectedDriver === 'supabase') {
     console.log(`🔗 [SUPABASE] URL: ${process.env.SUPABASE_URL}`);
     console.log(`🔑 [SUPABASE] Key: ${process.env.SUPABASE_KEY ? 'Configurada (***)' : 'FALTANTE'}`);
   } else if (selectedDriver === 'sqlite') {
@@ -138,7 +148,16 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
   let inventoryRepo: InventoryRepository;
   let userRepo: UserRepository;
 
-  if (selectedDriver === 'supabase') {
+  if (selectedDriver === 'postgres') {
+    restaurantRepo = new PgRestaurantRepository();
+    categoryRepo = new PgCategoryRepository();
+    productRepo = new PgProductRepository();
+    additionRepo = new PgProductAdditionRepository();
+    orderRepo = new PgOrderRepository();
+    customerRepo = new PgCustomerRepository();
+    inventoryRepo = new PgInventoryRepository();
+    userRepo = new PgUserRepository();
+  } else if (selectedDriver === 'supabase') {
     const supabaseClient = getSupabaseClient();
     restaurantRepo = new SupabaseRestaurantRepository(supabaseClient);
     categoryRepo = new SupabaseCategoryRepository(supabaseClient);

@@ -10,6 +10,7 @@ services:
       - "5432:5432"
     volumes:
       - ./supabase/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      - ./supabase/docker-init/02_app_user_password.sql:/docker-entrypoint-initdb.d/02_app_user_password.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d burger_page_test"]
       interval: 2s
