@@ -1,4 +1,5 @@
 import { beforeEach, afterEach, vi } from 'vitest'
+import { cleanup } from '@testing-library/react'
 
 const originalFetch = globalThis.fetch
 
@@ -10,6 +11,8 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  cleanup()
   globalThis.fetch = originalFetch
   vi.restoreAllMocks()
 })
+
