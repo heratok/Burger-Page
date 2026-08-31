@@ -226,7 +226,6 @@ describe('Supabase Persistence Adapter Suite', () => {
         isNew: true,
         preparationTimeMinutes: 20,
         displayOrder: 2,
-        additions: ['Extra Truffle', 'Crispy Onions']
       };
 
       await repo.save(product);
@@ -241,7 +240,8 @@ describe('Supabase Persistence Adapter Suite', () => {
       expect(found?.isNew).toBe(true);
       expect(found?.preparationTimeMinutes).toBe(20);
       expect(found?.displayOrder).toBe(2);
-      expect(found?.additions).toEqual(['Extra Truffle', 'Crispy Onions']);
+      // additions ya no vive en products.additions -- ver product_additions
+      // (tabla relacional) y ProductAdditionApi.test.ts para su cobertura.
 
       // Tenant isolation: querying with foreign restaurantId returns null
       const foreign = await repo.findById('prod-10', 'foreign-restaurant');
