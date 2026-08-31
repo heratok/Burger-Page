@@ -160,10 +160,10 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     },
     {
       id: "customizer" as const,
-      label: "Personalizador UI/UX",
+      label: "Personalizar",
       icon: Palette,
-      description: "Diseño no-code de tienda",
-      badge: "No-Code",
+      description: "Diseño y apariencia de tienda",
+      badge: undefined,
     },
   ]
 

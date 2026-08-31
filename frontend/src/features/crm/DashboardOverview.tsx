@@ -10,6 +10,7 @@ import {
   Plus,
 } from "lucide-react"
 import { OrderStatusBadge } from "@/components/ui/status-badge"
+import { StatCard } from "@/components/ui/stat-card"
 import { Button } from "@/components/ui/button"
 import { useAppRouter } from "@/core/router/useAppRouter"
 import { ManualSaleModal } from "./ManualSaleModal"
@@ -192,119 +193,79 @@ export const DashboardOverview: React.FC = () => {
       {/* Metric Cards Grid */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* Total Sales */}
-        <div
-          className={`rounded-2xl border p-5 shadow-xs transition-all ${
-            isDark ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-white"
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <span className={`text-xs font-semibold uppercase tracking-wider ${isDark ? "text-slate-400" : "text-slate-500"}`}>
-              Ventas Totales
-            </span>
-            <span className="flex size-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500 dark:bg-emerald-500/20 dark:text-emerald-400">
-              <DollarSign className="size-5" />
-            </span>
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-black tracking-tight sm:text-3xl text-slate-900 dark:text-white">
-              {formatCurrency(metrics.totalSales)}
-            </span>
-          </div>
-          <div className="mt-2 flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
-            {metrics.validOrdersCount > 0 ? (
+        <StatCard
+          title="Ventas Totales"
+          value={formatCurrency(metrics.totalSales)}
+          variant="success"
+          icon={<DollarSign className="size-5" />}
+          isDark={isDark}
+          description={
+            metrics.validOrdersCount > 0 ? (
               <>
                 <span className="font-semibold">{metrics.validOrdersCount}</span>
                 <span className={isDark ? "text-slate-400" : "text-slate-500"}>órdenes completadas</span>
               </>
             ) : (
               <span className={isDark ? "text-slate-400" : "text-slate-500"}>Sin órdenes completadas aún</span>
-            )}
-          </div>
-        </div>
+            )
+          }
+        />
 
         {/* Active & Total Orders */}
-        <div
-          className={`rounded-2xl border p-5 shadow-xs transition-all ${
-            isDark ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-white"
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <span className={`text-xs font-semibold uppercase tracking-wider ${isDark ? "text-slate-400" : "text-slate-500"}`}>
-              Pedidos Totales
-            </span>
-            <span className="flex size-9 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-500 dark:bg-indigo-500/20 dark:text-indigo-400">
-              <ShoppingBag className="size-5" />
-            </span>
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-black tracking-tight sm:text-3xl text-slate-900 dark:text-white">
-              {metrics.totalOrdersCount}
-            </span>
-            {metrics.activeOrdersCount > 0 && (
+        <StatCard
+          title="Pedidos Totales"
+          value={metrics.totalOrdersCount}
+          variant="indigo"
+          icon={<ShoppingBag className="size-5" />}
+          isDark={isDark}
+          badge={
+            metrics.activeOrdersCount > 0 ? (
               <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-bold text-amber-600 dark:text-amber-400">
                 {metrics.activeOrdersCount} activos
               </span>
-            )}
-          </div>
-          <div className="mt-2 flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400">
-            <span className="font-semibold">{metrics.ordersLast24h} pedidos</span>
-            <span className={isDark ? "text-slate-400" : "text-slate-500"}>en últimas 24h</span>
-          </div>
-        </div>
+            ) : undefined
+          }
+          description={
+            <>
+              <span className="font-semibold">{metrics.ordersLast24h} pedidos</span>
+              <span className={isDark ? "text-slate-400" : "text-slate-500"}>en últimas 24h</span>
+            </>
+          }
+        />
 
         {/* Average Ticket */}
-        <div
-          className={`rounded-2xl border p-5 shadow-xs transition-all ${
-            isDark ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-white"
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <span className={`text-xs font-semibold uppercase tracking-wider ${isDark ? "text-slate-400" : "text-slate-500"}`}>
-              Ticket Promedio
-            </span>
-            <span className="flex size-9 items-center justify-center rounded-xl bg-violet-500/10 text-violet-500 dark:bg-violet-500/20 dark:text-violet-400">
-              <TrendingUp className="size-5" />
-            </span>
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-black tracking-tight sm:text-3xl text-slate-900 dark:text-white">
-              {formatCurrency(metrics.avgTicket)}
-            </span>
-          </div>
-          <div className="mt-2 flex items-center gap-1.5 text-xs text-violet-600 dark:text-violet-400">
+        <StatCard
+          title="Ticket Promedio"
+          value={formatCurrency(metrics.avgTicket)}
+          variant="info"
+          icon={<TrendingUp className="size-5" />}
+          isDark={isDark}
+          description={
             <span className={isDark ? "text-slate-400" : "text-slate-500"}>
               {metrics.validOrdersCount > 0 ? "Promedio por orden cobrada" : "Sin órdenes cobradas"}
             </span>
-          </div>
-        </div>
+          }
+        />
 
         {/* Customer Base */}
-        <div
-          className={`rounded-2xl border p-5 shadow-xs transition-all ${
-            isDark ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-white"
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <span className={`text-xs font-semibold uppercase tracking-wider ${isDark ? "text-slate-400" : "text-slate-500"}`}>
-              Clientes CRM
-            </span>
-            <span className="flex size-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500 dark:bg-amber-500/20 dark:text-amber-400">
-              <Users className="size-5" />
-            </span>
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-black tracking-tight sm:text-3xl text-slate-900 dark:text-white">
-              {metrics.totalCustomers}
-            </span>
+        <StatCard
+          title="Clientes CRM"
+          value={metrics.totalCustomers}
+          variant="warning"
+          icon={<Users className="size-5" />}
+          isDark={isDark}
+          badge={
             <span className="rounded-full bg-purple-500/15 px-2 py-0.5 text-xs font-bold text-purple-600 dark:text-purple-300">
               {metrics.vipCount} VIP/Oro
             </span>
-          </div>
-          <div className="mt-2 flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
-            <span className="font-semibold">{metrics.repeatRate}%</span>
-            <span className={isDark ? "text-slate-400" : "text-slate-500"}>tasa de recompra</span>
-          </div>
-        </div>
+          }
+          description={
+            <>
+              <span className="font-semibold">{metrics.repeatRate}%</span>
+              <span className={isDark ? "text-slate-400" : "text-slate-500"}>tasa de recompra</span>
+            </>
+          }
+        />
       </div>
 
       {/* Main Charts & Rankings Row */}
