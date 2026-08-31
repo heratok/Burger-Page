@@ -17,12 +17,13 @@ export class SupabaseProductAdditionRepository implements ProductAdditionReposit
     );
   }
 
-  async findById(id: string, restaurantId?: string): Promise<ProductAddition | null> {
-    let query = this.client.from('product_additions').select('*').eq('id', id);
-    if (restaurantId) {
-      query = query.eq('restaurant_id', restaurantId);
-    }
-    const { data, error } = await query.maybeSingle();
+  async findById(id: string, restaurantId: string): Promise<ProductAddition | null> {
+    const { data, error } = await this.client
+      .from('product_additions')
+      .select('*')
+      .eq('id', id)
+      .eq('restaurant_id', restaurantId)
+      .maybeSingle();
     if (error) {
       throw new Error(`Failed to find product addition: ${error.message}`);
     }

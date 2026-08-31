@@ -81,7 +81,6 @@ export class SupabaseProductRepository implements ProductRepository {
       is_new: product.isNew || false,
       preparation_time_minutes: product.preparationTimeMinutes || 15,
       display_order: product.displayOrder || 0,
-      additions: product.additions || [],
     };
 
     const { error } = await this.client

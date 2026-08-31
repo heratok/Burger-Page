@@ -71,6 +71,11 @@ import { DeleteInventoryItemUseCase } from '../../application/use-cases/DeleteIn
 import { CreateUserUseCase } from '../../application/use-cases/CreateUserUseCase.js';
 import { AuthenticateUserUseCase } from '../../application/use-cases/AuthenticateUserUseCase.js';
 import { ListUsersUseCase } from '../../application/use-cases/ListUsersUseCase.js';
+import { CreateProductAdditionUseCase } from '../../application/use-cases/CreateProductAdditionUseCase.js';
+import { GetProductAdditionByIdUseCase } from '../../application/use-cases/GetProductAdditionByIdUseCase.js';
+import { ListProductAdditionsUseCase } from '../../application/use-cases/ListProductAdditionsUseCase.js';
+import { UpdateProductAdditionUseCase } from '../../application/use-cases/UpdateProductAdditionUseCase.js';
+import { DeleteProductAdditionUseCase } from '../../application/use-cases/DeleteProductAdditionUseCase.js';
 
 // Controllers
 import { RestaurantController } from './controllers/RestaurantController.js';
@@ -79,6 +84,7 @@ import { OrderController } from './controllers/OrderController.js';
 import { CustomerController } from './controllers/CustomerController.js';
 import { InventoryController } from './controllers/InventoryController.js';
 import { UserController } from './controllers/UserController.js';
+import { ProductAdditionController } from './controllers/ProductAdditionController.js';
 
 // Routes
 import { restaurantRoutes } from './routes/restaurant.routes.js';
@@ -88,6 +94,7 @@ import { orderRoutes } from './routes/order.routes.js';
 import { customerRoutes } from './routes/customer.routes.js';
 import { inventoryRoutes } from './routes/inventory.routes.js';
 import { userRoutes } from './routes/user.routes.js';
+import { additionRoutes } from './routes/addition.routes.js';
 
 export interface AppDependencies {
   restaurantController: RestaurantController;
@@ -96,6 +103,7 @@ export interface AppDependencies {
   customerController: CustomerController;
   inventoryController: InventoryController;
   userController: UserController;
+  additionController: ProductAdditionController;
 }
 
 export type StorageDriver = 'memory' | 'sqlite' | 'supabase';
@@ -167,7 +175,7 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
   const createRestaurant = new CreateRestaurantUseCase(restaurantRepo);
   const deleteRestaurant = new DeleteRestaurantUseCase(restaurantRepo);
   const updateRestaurantCategories = new UpdateRestaurantCategoriesUseCase(restaurantRepo);
-  
+
   const listProducts = new ListProductsUseCase(productRepo);
   const getProductById = new GetProductByIdUseCase(productRepo);
   const createProduct = new CreateProductUseCase(productRepo, categoryRepo, additionRepo);
@@ -196,6 +204,12 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
   const createUser = new CreateUserUseCase(userRepo, hasher, restaurantRepo);
   const authenticateUser = new AuthenticateUserUseCase(userRepo, hasher);
   const listUsersUC = new ListUsersUseCase(userRepo);
+
+  const listAdditions = new ListProductAdditionsUseCase(additionRepo);
+  const getAdditionById = new GetProductAdditionByIdUseCase(additionRepo);
+  const createAddition = new CreateProductAdditionUseCase(additionRepo, productRepo);
+  const updateAddition = new UpdateProductAdditionUseCase(additionRepo, productRepo);
+  const deleteAddition = new DeleteProductAdditionUseCase(additionRepo);
 
   // Controllers
   return {
@@ -231,6 +245,14 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
       deleteInventoryItem
     ),
     userController: new UserController(createUser, authenticateUser, listUsersUC),
+    additionController: new ProductAdditionController(
+      listAdditions,
+      getAdditionById,
+      createAddition,
+      updateAddition,
+      deleteAddition,
+      restaurantRepo
+    ),
   };
 }
 
@@ -268,6 +290,7 @@ export function buildApp(
       tags: [
         { name: 'Restaurant', description: 'Storefront config and multi-tenant settings' },
         { name: 'Products', description: 'Menu items, burgers, and additions' },
+        { name: 'Additions', description: 'Product modifiers and extras' },
         { name: 'Orders', description: 'Order lifecycle management and checkout' },
         { name: 'Inventory', description: 'Stock levels, suppliers, and ingredients' },
         { name: 'Customers', description: 'Customer profiles and loyalty tiers' },
@@ -307,6 +330,7 @@ export function buildApp(
     api.register(restaurantRoutes, { prefix: '/restaurant', controller: deps.restaurantController });
     api.register(restaurantsRoutes, { prefix: '/restaurants', controller: deps.restaurantController });
     api.register(productRoutes, { prefix: '/products', controller: deps.productController });
+    api.register(additionRoutes, { prefix: '/additions', controller: deps.additionController });
     api.register(orderRoutes, { prefix: '/orders', controller: deps.orderController });
     api.register(customerRoutes, { prefix: '/customers', controller: deps.customerController });
     api.register(inventoryRoutes, { prefix: '/inventory', controller: deps.inventoryController });

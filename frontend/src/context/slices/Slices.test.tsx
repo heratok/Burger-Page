@@ -584,6 +584,72 @@ describe("CatalogContext Slice - Dynamic Category Management", () => {
     expect(reassignedProduct?.category).not.toBe("Aperitivos")
     expect(result.current.categories).toContain(reassignedProduct?.category)
   })
+
+  it("supports adding, updating, and deleting product additions with backend API sync", async () => {
+    const { TenantProvider } = await import("./TenantContext")
+    const { CatalogProvider, useCatalog } = await import("./CatalogContext")
+    const { apiClient } = await import("@/core/api/apiClient")
+
+    const createAdditionSpy = vi.spyOn(apiClient, "createAddition").mockResolvedValue({
+      id: "add-server-1",
+      name: "Tocineta Crujiente",
+      price: 3500,
+      available: true,
+    })
+    const updateAdditionSpy = vi.spyOn(apiClient, "updateAddition").mockResolvedValue({
+      id: "add-server-1",
+      name: "Tocineta Extra Crujiente",
+      price: 4000,
+      available: false,
+    })
+    const deleteAdditionSpy = vi.spyOn(apiClient, "deleteAddition").mockResolvedValue(undefined)
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>
+        <CatalogProvider>{children}</CatalogProvider>
+      </TenantProvider>
+    )
+
+    const { result } = renderHook(() => useCatalog(), { wrapper })
+
+    // 1. Add Addition
+    await act(async () => {
+      result.current.addAddition({
+        name: "Tocineta Crujiente",
+        price: 3500,
+        available: true,
+      })
+    })
+
+    expect(createAdditionSpy).toHaveBeenCalledWith({
+      name: "Tocineta Crujiente",
+      price: 3500,
+      isAvailable: true,
+    })
+
+    // 2. Update Addition
+    await act(async () => {
+      result.current.updateAddition("add-server-1", {
+        name: "Tocineta Extra Crujiente",
+        price: 4000,
+        available: false,
+      })
+    })
+
+    expect(updateAdditionSpy).toHaveBeenCalledWith("add-server-1", {
+      name: "Tocineta Extra Crujiente",
+      price: 4000,
+      isAvailable: false,
+    })
+
+    // 3. Delete Addition
+    await act(async () => {
+      result.current.deleteAddition("add-server-1")
+    })
+
+    expect(deleteAdditionSpy).toHaveBeenCalledWith("add-server-1")
+  })
 })
+
 
 

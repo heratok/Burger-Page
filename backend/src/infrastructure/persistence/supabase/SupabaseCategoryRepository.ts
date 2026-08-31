@@ -70,12 +70,27 @@ export class SupabaseCategoryRepository implements CategoryRepository {
       is_active: category.isActive !== undefined ? category.isActive : true,
     };
 
-    const { error } = await this.client
+    // First attempt UPDATE by (id, restaurant_id) to properly handle renames and updates
+    const { data: updatedRows, error: updateError } = await this.client
       .from('categories')
-      .upsert(payload, { onConflict: 'restaurant_id,name' });
+      .update(payload)
+      .eq('id', category.id)
+      .eq('restaurant_id', category.restaurantId)
+      .select('id');
 
-    if (error) {
-      throw new Error(`Failed to save category: ${error.message}`);
+    if (updateError) {
+      throw new Error(`Failed to save category: ${updateError.message}`);
+    }
+
+    // If no row was updated, it's a new category -> INSERT
+    if (!updatedRows || updatedRows.length === 0) {
+      const { error: insertError } = await this.client
+        .from('categories')
+        .insert(payload);
+
+      if (insertError) {
+        throw new Error(`Failed to save category: ${insertError.message}`);
+      }
     }
   }
 

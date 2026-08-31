@@ -89,7 +89,7 @@ export const createProductSchema = z.object({
   isNew: z.boolean().optional(),
   preparationTimeMinutes: z.number().nonnegative().optional(),
   displayOrder: z.number().optional(),
-  additions: z.array(z.string()).default([]),
+  additions: z.array(z.string()).optional(),
 });
 
 export type CreateProductInput = z.infer<typeof createProductSchema>;
@@ -102,6 +102,30 @@ export const productDTOSchema = createProductSchema.extend({
   restaurantId: z.string(),
 });
 export type ProductDTO = z.infer<typeof productDTOSchema>;
+
+// ==========================================
+// PRODUCT ADDITION CONTRACTS
+// ==========================================
+
+export const createProductAdditionSchema = z.object({
+  restaurantId: z.string().optional(), // Injected from JWT on backend
+  productId: z.string().optional(), // NULL/optional = global addition for restaurant
+  name: z.string().min(1, 'Addition name is required'),
+  price: z.number().nonnegative('Price must be greater than or equal to 0').default(0),
+  isAvailable: z.boolean().default(true),
+  displayOrder: z.number().optional().default(0),
+});
+export type CreateProductAdditionInput = z.infer<typeof createProductAdditionSchema>;
+
+export const updateProductAdditionSchema = createProductAdditionSchema.partial();
+export type UpdateProductAdditionInput = z.infer<typeof updateProductAdditionSchema>;
+
+export const productAdditionDTOSchema = createProductAdditionSchema.extend({
+  id: z.string(),
+  restaurantId: z.string(),
+});
+export type ProductAdditionDTO = z.infer<typeof productAdditionDTOSchema>;
+
 
 // ==========================================
 // ORDER CONTRACTS
