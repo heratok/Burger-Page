@@ -48,7 +48,8 @@ describe('Real-Time Order SSE Stream (TDD)', () => {
         name: 'Smash Classic',
         description: 'Cheese & Bacon',
         price: 22000,
-        category: 'Clásicas',
+        categoryId: 'cat-1',
+        category: 'Burgers',
         isAvailable: true,
         additions: []
       }

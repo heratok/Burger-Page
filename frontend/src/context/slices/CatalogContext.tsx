@@ -104,36 +104,104 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const addAddition = useCallback(
     (item: Omit<AdditionItem, "id">) => {
-      const newItem: AdditionItem = { ...item, id: `add-${Date.now()}` }
-      updateActiveRestaurantRecord((current) => ({
-        ...current,
-        additions: [...current.additions, newItem],
-      }))
+      const tempId = `add-${Date.now()}`
+      const newItem: AdditionItem = { ...item, id: tempId }
+      let previousAdditions: AdditionItem[] = []
+
+      updateActiveRestaurantRecord((current) => {
+        previousAdditions = current.additions
+        return {
+          ...current,
+          additions: [...current.additions, newItem],
+        }
+      })
       toast.success(`Adicional "${item.name}" creado`)
+
+      // Sync with backend API
+      apiClient.createAddition({
+        name: item.name,
+        price: item.price,
+        isAvailable: item.available,
+      }).then((created) => {
+        updateActiveRestaurantRecord((current) => ({
+          ...current,
+          additions: current.additions.map((a) => (a.id === tempId ? created : a)),
+        }))
+      }).catch((err) => {
+        if (import.meta.env?.MODE !== 'test') {
+          console.warn("Could not persist addition to backend API:", err)
+        }
+        // Rollback to pre-optimistic snapshot
+        updateActiveRestaurantRecord((current) => ({
+          ...current,
+          additions: previousAdditions,
+        }))
+        toast.error("Error al guardar adicional en el servidor")
+      })
     },
     [updateActiveRestaurantRecord]
   )
 
   const updateAddition = useCallback(
     (id: string, updates: Partial<AdditionItem>) => {
-      updateActiveRestaurantRecord((current) => ({
-        ...current,
-        additions: current.additions.map((a) =>
-          a.id === id ? { ...a, ...updates } : a
-        ),
-      }))
+      let previousAdditions: AdditionItem[] = []
+
+      updateActiveRestaurantRecord((current) => {
+        previousAdditions = current.additions
+        return {
+          ...current,
+          additions: current.additions.map((a) =>
+            a.id === id ? { ...a, ...updates } : a
+          ),
+        }
+      })
       toast.success("Adicional actualizado")
+
+      // Sync with backend API
+      apiClient.updateAddition(id, {
+        name: updates.name,
+        price: updates.price,
+        isAvailable: updates.available,
+      }).catch((err) => {
+        if (import.meta.env?.MODE !== 'test') {
+          console.warn("Could not update addition in backend API:", err)
+        }
+        // Rollback to pre-optimistic snapshot
+        updateActiveRestaurantRecord((current) => ({
+          ...current,
+          additions: previousAdditions,
+        }))
+        toast.error("Error al actualizar adicional en el servidor")
+      })
     },
     [updateActiveRestaurantRecord]
   )
 
   const deleteAddition = useCallback(
     (id: string) => {
-      updateActiveRestaurantRecord((current) => ({
-        ...current,
-        additions: current.additions.filter((a) => a.id !== id),
-      }))
+      let previousAdditions: AdditionItem[] = []
+
+      updateActiveRestaurantRecord((current) => {
+        previousAdditions = current.additions
+        return {
+          ...current,
+          additions: current.additions.filter((a) => a.id !== id),
+        }
+      })
       toast.success("Adicional eliminado")
+
+      // Sync with backend API
+      apiClient.deleteAddition(id).catch((err) => {
+        if (import.meta.env?.MODE !== 'test') {
+          console.warn("Could not delete addition from backend API:", err)
+        }
+        // Rollback to pre-optimistic snapshot
+        updateActiveRestaurantRecord((current) => ({
+          ...current,
+          additions: previousAdditions,
+        }))
+        toast.error("Error al eliminar adicional del servidor")
+      })
     },
     [updateActiveRestaurantRecord]
   )

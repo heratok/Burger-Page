@@ -43,6 +43,7 @@ describe('Product Module Multi-Tenant Security & Isolation (Integration)', () =>
         name: 'Burger Tenant A',
         price: 25000,
         description: 'Exclusive to Tenant A',
+        categoryId: 'cat-a1',
         category: 'Burgers',
         isAvailable: true,
       }
@@ -86,6 +87,7 @@ describe('Product Module Multi-Tenant Security & Isolation (Integration)', () =>
       payload: {
         name: 'Secret Recipe Burger',
         price: 30000,
+        categoryId: 'cat-a1',
         category: 'Burgers',
         isAvailable: true,
       }
@@ -111,6 +113,7 @@ describe('Product Module Multi-Tenant Security & Isolation (Integration)', () =>
       payload: {
         name: 'Original Price Burger',
         price: 20000,
+        categoryId: 'cat-a1',
         category: 'Burgers',
         isAvailable: true,
       }
@@ -148,6 +151,7 @@ describe('Product Module Multi-Tenant Security & Isolation (Integration)', () =>
       payload: {
         name: 'Protected Product',
         price: 24000,
+        categoryId: 'cat-a1',
         category: 'Burgers',
         isAvailable: true,
       }
@@ -182,7 +186,8 @@ describe('Product Module Multi-Tenant Security & Isolation (Integration)', () =>
       payload: {
         name: 'Available Promo',
         price: 15000,
-        category: 'Promos',
+        categoryId: 'cat-a1',
+        category: 'Burgers',
         isAvailable: true,
       }
     });
@@ -194,7 +199,8 @@ describe('Product Module Multi-Tenant Security & Isolation (Integration)', () =>
       payload: {
         name: 'Out of Stock Burger',
         price: 18000,
-        category: 'Promos',
+        categoryId: 'cat-a1',
+        category: 'Burgers',
         isAvailable: false,
       }
     });

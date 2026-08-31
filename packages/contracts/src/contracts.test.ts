@@ -12,6 +12,7 @@ describe('@burger-page/contracts', () => {
       name: 'Classic Cheeseburger',
       description: 'Juicy Angus patty with cheddar',
       price: 24000,
+      categoryId: 'cat-clasicas',
       category: 'Clásicas',
       isAvailable: true,
       additions: ['Bacon', 'Extra Cheese'],

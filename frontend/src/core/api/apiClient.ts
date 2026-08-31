@@ -4,6 +4,7 @@ import {
   Order,
   OrderStatus,
   InventoryItem,
+  AdditionItem,
 } from '@/types/restaurant'
 import type { OrderEvent, CreateOrderInput, CreateRestaurantInput } from '@burger-page/contracts'
 
@@ -86,6 +87,60 @@ export class ApiClient {
 
   async fetchProducts(): Promise<MenuItem[]> {
     return this.request<MenuItem[]>('/products')
+  }
+
+  async fetchAdditions(restaurantIdOrSlug?: string, productId?: string): Promise<AdditionItem[]> {
+    const params = new URLSearchParams()
+    if (restaurantIdOrSlug) {
+      if (restaurantIdOrSlug.startsWith('rest-') || restaurantIdOrSlug.startsWith('tenant-')) {
+        params.set('restaurantId', restaurantIdOrSlug)
+      } else {
+        params.set('slug', restaurantIdOrSlug)
+      }
+    }
+    if (productId) {
+      params.set('productId', productId)
+    }
+    const query = params.toString() ? `?${params.toString()}` : ''
+    const raw = await this.request<any[]>(`/additions${query}`)
+    return (raw || []).map((item) => ({
+      id: item.id,
+      name: item.name,
+      price: Number(item.price || 0),
+      available: item.isAvailable !== undefined ? Boolean(item.isAvailable) : Boolean(item.available ?? true),
+    }))
+  }
+
+  async createAddition(data: { name: string; price: number; isAvailable?: boolean; displayOrder?: number; productId?: string }): Promise<AdditionItem> {
+    const raw = await this.request<any>('/additions', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+    return {
+      id: raw.id,
+      name: raw.name,
+      price: Number(raw.price || 0),
+      available: raw.isAvailable !== undefined ? Boolean(raw.isAvailable) : true,
+    }
+  }
+
+  async updateAddition(id: string, data: Partial<{ name: string; price: number; isAvailable: boolean; displayOrder: number; productId?: string }>): Promise<AdditionItem> {
+    const raw = await this.request<any>(`/additions/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+    return {
+      id: raw.id,
+      name: raw.name,
+      price: Number(raw.price || 0),
+      available: raw.isAvailable !== undefined ? Boolean(raw.isAvailable) : true,
+    }
+  }
+
+  async deleteAddition(id: string): Promise<void> {
+    await this.request<void>(`/additions/${id}`, {
+      method: 'DELETE',
+    })
   }
 
   async createOrder(orderInput: CreateOrderInput): Promise<Order> {

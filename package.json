@@ -24,6 +24,7 @@
     "test:contracts": "npm --prefix packages/contracts run test",
     "test:frontend": "npm --prefix frontend run test",
     "test:backend": "npm --prefix backend run test",
+    "test:integration:postgres": "npx tsx backend/scripts/run-postgres-tests.ts",
     "typecheck": "npm --prefix packages/contracts run build && npm --prefix backend run typecheck && npm --prefix frontend run typecheck",
     "typecheck:frontend": "npm --prefix frontend run typecheck",
     "typecheck:backend": "npm --prefix backend run typecheck",

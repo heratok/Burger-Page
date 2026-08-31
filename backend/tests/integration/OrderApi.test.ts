@@ -29,6 +29,7 @@ describe('Order API', () => {
         name: 'Integration Burger',
         price: 10,
         description: 'For testing orders',
+        categoryId: 'cat-1',
         category: 'Burgers',
         isAvailable: true,
         additions: []

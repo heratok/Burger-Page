@@ -18,6 +18,17 @@ export interface CreateProductDTO {
 
 export interface UpdateProductDTO extends Partial<CreateProductDTO> {}
 
+export interface CreateProductAdditionDTO {
+  restaurantId?: string;
+  productId?: string;
+  name: string;
+  price: number;
+  isAvailable?: boolean;
+  displayOrder?: number;
+}
+
+export interface UpdateProductAdditionDTO extends Partial<CreateProductAdditionDTO> {}
+
 export interface OrderItemAdditionDTO {
   additionId: string;
   quantity?: number;

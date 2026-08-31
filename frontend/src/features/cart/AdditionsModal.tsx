@@ -38,12 +38,13 @@ export default function AdditionsModal({
 
   const availableAdditions = storeAdditions && storeAdditions.length > 0
     ? storeAdditions.filter((a) => a.available)
-    : [
-        { id: "add-1", name: "Papas Fritas", price: 5000, available: true },
-        { id: "add-2", name: "Cebolla Caramelizada", price: 1500, available: true },
-        { id: "add-3", name: "Extra Queso", price: 2700, available: true },
-        { id: "add-4", name: "Tocineta", price: 2500, available: true },
-      ]
+    : (product as any)?.additions && Array.isArray((product as any).additions) && (product as any).additions.length > 0
+    ? ((product as any).additions as any[]).map((item: any, idx: number) =>
+        typeof item === "string"
+          ? { id: `legacy-${idx}`, name: item, price: 0, available: true }
+          : { id: item.id || `legacy-${idx}`, name: item.name, price: Number(item.price || 0), available: true }
+      )
+    : []
 
   const [adiciones, setAdiciones] = useState<CartAddition[]>(() =>
     availableAdditions.map((ad) => {
@@ -137,62 +138,64 @@ export default function AdditionsModal({
         </header>
 
         <div className="scroll-add min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain px-5 py-4">
-          <section>
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold tracking-wide text-text-primary uppercase">
-                Adiciones
-              </h3>
-              <Badge variant="outline" className="bg-accent-soft text-accent">
-                Opcional
-              </Badge>
-            </div>
-            <ul className="flex flex-col gap-2">
-              {adiciones.map((adicion, i) => (
-                <li
-                  key={adicion.name}
-                  className="flex items-center gap-3 rounded-lg border border-border-subtle bg-bg-elevated p-3"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-text-primary">
-                      {adicion.name}
-                    </p>
-                    <p className="text-xs text-text-muted">
-                      +{formatCurrency(adicion.price)}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="icon-sm"
-                      onClick={() => modificarCantidadAdicion(i, "decrementar")}
-                      aria-label={`Quitar ${adicion.name}`}
-                      disabled={adicion.cantidad === 0}
-                      className="size-11 rounded-full bg-bg-elevated-2 hover:bg-accent disabled:opacity-40"
-                    >
-                      <Minus />
-                    </Button>
-                    <span
-                      aria-live="polite"
-                      className="w-6 text-center text-sm font-semibold text-text-primary"
-                    >
-                      {adicion.cantidad}
-                    </span>
-                    <Button
-                      type="button"
-                      variant="default"
-                      size="icon-sm"
-                      onClick={() => modificarCantidadAdicion(i, "incrementar")}
-                      aria-label={`Agregar ${adicion.name}`}
-                      className="size-11 rounded-full bg-accent hover:bg-accent-hover"
-                    >
-                      <Plus />
-                    </Button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </section>
+          {adiciones.length > 0 && (
+            <section>
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-sm font-semibold tracking-wide text-text-primary uppercase">
+                  Adiciones
+                </h3>
+                <Badge variant="outline" className="bg-accent-soft text-accent">
+                  Opcional
+                </Badge>
+              </div>
+              <ul className="flex flex-col gap-2">
+                {adiciones.map((adicion, i) => (
+                  <li
+                    key={adicion.name}
+                    className="flex items-center gap-3 rounded-lg border border-border-subtle bg-bg-elevated p-3"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-text-primary">
+                        {adicion.name}
+                      </p>
+                      <p className="text-xs text-text-muted">
+                        +{formatCurrency(adicion.price)}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="icon-sm"
+                        onClick={() => modificarCantidadAdicion(i, "decrementar")}
+                        aria-label={`Quitar ${adicion.name}`}
+                        disabled={adicion.cantidad === 0}
+                        className="size-11 rounded-full bg-bg-elevated-2 hover:bg-accent disabled:opacity-40"
+                      >
+                        <Minus />
+                      </Button>
+                      <span
+                        aria-live="polite"
+                        className="w-6 text-center text-sm font-semibold text-text-primary"
+                      >
+                        {adicion.cantidad}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="default"
+                        size="icon-sm"
+                        onClick={() => modificarCantidadAdicion(i, "incrementar")}
+                        aria-label={`Agregar ${adicion.name}`}
+                        className="size-11 rounded-full bg-accent hover:bg-accent-hover"
+                      >
+                        <Plus />
+                      </Button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
 
           <Field>
             <div className="mb-2 flex items-center justify-between">

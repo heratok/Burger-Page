@@ -1,4 +1,5 @@
 import { Restaurant } from '../../domain/models/Restaurant.js';
+import { Category } from '../../domain/models/Category.js';
 import { Product } from '../../domain/models/Product.js';
 import { Order, OrderItem } from '../../domain/models/Order.js';
 import { Customer } from '../../domain/models/Customer.js';
@@ -14,6 +15,14 @@ export const defaultRestaurant: Restaurant = {
   categories: ['Burgers', 'Sides', 'Bebidas'],
 };
 
+export const initialCategories: Category[] = [
+  { id: 'cat-1', restaurantId: 'burger-craft', name: 'Burgers', isActive: true },
+  { id: 'cat-2', restaurantId: 'burger-craft', name: 'Sides', isActive: true },
+  { id: 'cat-3', restaurantId: 'burger-craft', name: 'Bebidas', isActive: true },
+  { id: 'cat-a1', restaurantId: 'tenant-a', name: 'Burgers', isActive: true },
+  { id: 'cat-b1', restaurantId: 'tenant-b', name: 'Burgers', isActive: true },
+];
+
 export const initialProducts: Product[] = [
   {
     id: 'p1',
@@ -21,6 +30,7 @@ export const initialProducts: Product[] = [
     name: 'Classic Burger',
     description: 'A classic beef burger',
     price: 9.99,
+    categoryId: 'cat-1',
     category: 'Burgers',
     isAvailable: true,
     additions: ['Extra Cheese', 'Bacon']
@@ -31,6 +41,7 @@ export const initialProducts: Product[] = [
     name: 'Fries',
     description: 'Crispy golden fries',
     price: 3.99,
+    categoryId: 'cat-2',
     category: 'Sides',
     isAvailable: true,
     additions: ['Cheese Sauce']

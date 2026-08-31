@@ -37,6 +37,7 @@ describe('Order Module Multi-Tenant & Security Suite', () => {
         name: 'Gourmet Burger',
         price: 25,
         description: 'Quality ingredients',
+        categoryId: 'cat-1',
         category: 'Burgers',
         isAvailable: true,
         additions: []

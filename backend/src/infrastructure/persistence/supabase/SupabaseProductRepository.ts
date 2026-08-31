@@ -17,13 +17,15 @@ export class SupabaseProductRepository implements ProductRepository {
       }
     }
 
+    const categoryName = row.categories?.name || row.category_name || row.category || 'General';
+
     return {
       id: row.id,
       restaurantId: row.restaurant_id,
       name: row.name,
       description: row.description || '',
       price: Number(row.price),
-      category: row.category_name || row.category || 'General',
+      category: categoryName,
       categoryId: row.category_id || undefined,
       imageUrl: row.image_url || undefined,
       isAvailable: Boolean(row.is_available),
@@ -38,7 +40,7 @@ export class SupabaseProductRepository implements ProductRepository {
   async findById(id: string, restaurantId: string): Promise<Product | null> {
     const { data, error } = await this.client
       .from('products')
-      .select('*')
+      .select('*, categories(id, name)')
       .eq('id', id)
       .eq('restaurant_id', restaurantId)
       .maybeSingle();
@@ -53,7 +55,7 @@ export class SupabaseProductRepository implements ProductRepository {
   async findByRestaurantId(restaurantId: string): Promise<Product[]> {
     const { data, error } = await this.client
       .from('products')
-      .select('*')
+      .select('*, categories(id, name)')
       .eq('restaurant_id', restaurantId)
       .order('display_order', { ascending: true })
       .order('id', { ascending: true });
@@ -79,7 +81,6 @@ export class SupabaseProductRepository implements ProductRepository {
       is_new: product.isNew || false,
       preparation_time_minutes: product.preparationTimeMinutes || 15,
       display_order: product.displayOrder || 0,
-      additions: product.additions || [],
     };
 
     const { error } = await this.client

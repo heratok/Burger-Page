@@ -5,6 +5,7 @@ import { DeleteProductUseCase } from '../../src/application/use-cases/DeleteProd
 import { GetProductByIdUseCase } from '../../src/application/use-cases/GetProductByIdUseCase.js';
 import { ListProductsUseCase } from '../../src/application/use-cases/ListProductsUseCase.js';
 import { ProductRepository } from '../../src/domain/ports/out/ProductRepository.js';
+import { CategoryRepository } from '../../src/domain/ports/out/CategoryRepository.js';
 import { ProductAdditionRepository } from '../../src/domain/ports/out/ProductAdditionRepository.js';
 import { EntityNotFoundError, ValidationError } from '../../src/domain/errors/DomainErrors.js';
 import { Product } from '../../src/domain/models/Product.js';
@@ -12,12 +13,31 @@ import { ProductAddition } from '../../src/domain/models/ProductAddition.js';
 
 describe('Product Use Cases (Unit)', () => {
   let mockProductRepo: ProductRepository;
+  let mockCategoryRepo: CategoryRepository;
   let mockAdditionRepo: ProductAdditionRepository;
 
   beforeEach(() => {
     mockProductRepo = {
       findById: vi.fn(),
       findByRestaurantId: vi.fn(),
+      save: vi.fn(),
+      delete: vi.fn(),
+    };
+
+    mockCategoryRepo = {
+      findById: vi.fn().mockImplementation(async (id: string, rid: string) => {
+        if (id === 'cat-burgers' || id === 'cat-1') {
+          return { id, restaurantId: rid, name: 'Burgers', isActive: true };
+        }
+        return null;
+      }),
+      findByRestaurantId: vi.fn().mockResolvedValue([]),
+      findByName: vi.fn().mockImplementation(async (name: string, rid: string) => {
+        if (name === 'Burgers' || name === 'Food') {
+          return { id: `cat-${name.toLowerCase()}`, restaurantId: rid, name, isActive: true };
+        }
+        return null;
+      }),
       save: vi.fn(),
       delete: vi.fn(),
     };
@@ -33,7 +53,7 @@ describe('Product Use Cases (Unit)', () => {
 
   describe('CreateProductUseCase', () => {
     it('should create and save a new product for a specific tenant', async () => {
-      const useCase = new CreateProductUseCase(mockProductRepo, mockAdditionRepo);
+      const useCase = new CreateProductUseCase(mockProductRepo, mockCategoryRepo, mockAdditionRepo);
       const dto = { name: 'Gourmet Burger', price: 25, category: 'Burgers', isAvailable: true, additions: [] };
 
       const result = await useCase.execute(dto, 'burger-craft');
@@ -46,18 +66,23 @@ describe('Product Use Cases (Unit)', () => {
     });
 
     it('should reject product creation without restaurantId', async () => {
-      const useCase = new CreateProductUseCase(mockProductRepo, mockAdditionRepo);
+      const useCase = new CreateProductUseCase(mockProductRepo, mockCategoryRepo, mockAdditionRepo);
       await expect(useCase.execute({ name: 'Burger', price: 10, category: 'Food' }, '')).rejects.toThrow(ValidationError);
     });
 
     it('should reject product with negative price or empty name', async () => {
-      const useCase = new CreateProductUseCase(mockProductRepo, mockAdditionRepo);
+      const useCase = new CreateProductUseCase(mockProductRepo, mockCategoryRepo, mockAdditionRepo);
       await expect(useCase.execute({ name: '', price: 10, category: 'Food' }, 'burger-craft')).rejects.toThrow(ValidationError);
       await expect(useCase.execute({ name: 'Burger', price: -5, category: 'Food' }, 'burger-craft')).rejects.toThrow(ValidationError);
     });
 
+    it('should reject product creation if category does not exist', async () => {
+      const useCase = new CreateProductUseCase(mockProductRepo, mockCategoryRepo, mockAdditionRepo);
+      await expect(useCase.execute({ name: 'Burger', price: 10, categoryId: 'non-existent' }, 'burger-craft')).rejects.toThrow(ValidationError);
+    });
+
     it('should reject product creation if an addition belongs to another tenant', async () => {
-      const useCase = new CreateProductUseCase(mockProductRepo, mockAdditionRepo);
+      const useCase = new CreateProductUseCase(mockProductRepo, mockCategoryRepo, mockAdditionRepo);
       const foreignAddition = new ProductAddition('add-foreign', 'other-restaurant', 'Foreign Sauce', 3, true);
       vi.mocked(mockAdditionRepo.findById).mockResolvedValue(foreignAddition);
 
@@ -72,7 +97,7 @@ describe('Product Use Cases (Unit)', () => {
 
   describe('UpdateProductUseCase', () => {
     it('should update and save an existing product of the same tenant', async () => {
-      const useCase = new UpdateProductUseCase(mockProductRepo, mockAdditionRepo);
+      const useCase = new UpdateProductUseCase(mockProductRepo, mockCategoryRepo, mockAdditionRepo);
       const existingProduct: Product = {
         id: 'p1',
         restaurantId: 'burger-craft',
@@ -94,10 +119,27 @@ describe('Product Use Cases (Unit)', () => {
     });
 
     it('should throw EntityNotFoundError if product belongs to another tenant', async () => {
-      const useCase = new UpdateProductUseCase(mockProductRepo, mockAdditionRepo);
+      const useCase = new UpdateProductUseCase(mockProductRepo, mockCategoryRepo, mockAdditionRepo);
       vi.mocked(mockProductRepo.findById).mockResolvedValue(null);
 
       await expect(useCase.execute('p1', { price: 12 }, 'other-restaurant')).rejects.toThrow(EntityNotFoundError);
+    });
+
+    it('should reject update if specified categoryId does not exist', async () => {
+      const useCase = new UpdateProductUseCase(mockProductRepo, mockCategoryRepo, mockAdditionRepo);
+      const existingProduct: Product = {
+        id: 'p1',
+        restaurantId: 'burger-craft',
+        name: 'Burger',
+        price: 10,
+        category: 'Food',
+        isAvailable: true,
+        additions: [],
+        description: 'desc'
+      };
+      vi.mocked(mockProductRepo.findById).mockResolvedValue(existingProduct);
+
+      await expect(useCase.execute('p1', { categoryId: 'non-existent' }, 'burger-craft')).rejects.toThrow(ValidationError);
     });
   });
 
