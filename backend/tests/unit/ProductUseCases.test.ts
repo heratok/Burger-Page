@@ -93,6 +93,18 @@ describe('Product Use Cases (Unit)', () => {
         additions: ['add-foreign']
       }, 'burger-craft')).rejects.toThrow(ValidationError);
     });
+
+    it('should auto-create a category when creating a product with a new category name', async () => {
+      const useCase = new CreateProductUseCase(mockProductRepo, mockCategoryRepo, mockAdditionRepo);
+      const dto = { name: 'New Item', price: 9, category: 'Brand New Category' };
+
+      const result = await useCase.execute(dto, 'burger-craft');
+
+      expect(result.category).toBe('Brand New Category');
+      expect(mockCategoryRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ restaurantId: 'burger-craft', name: 'Brand New Category', isActive: true })
+      );
+    });
   });
 
   describe('UpdateProductUseCase', () => {
@@ -140,6 +152,28 @@ describe('Product Use Cases (Unit)', () => {
       vi.mocked(mockProductRepo.findById).mockResolvedValue(existingProduct);
 
       await expect(useCase.execute('p1', { categoryId: 'non-existent' }, 'burger-craft')).rejects.toThrow(ValidationError);
+    });
+
+    it('should auto-create a category when updating a product with a new category name', async () => {
+      const useCase = new UpdateProductUseCase(mockProductRepo, mockCategoryRepo, mockAdditionRepo);
+      const existingProduct: Product = {
+        id: 'p1',
+        restaurantId: 'burger-craft',
+        name: 'Burger',
+        price: 10,
+        category: 'Food',
+        isAvailable: true,
+        additions: [],
+        description: 'desc'
+      };
+      vi.mocked(mockProductRepo.findById).mockResolvedValue(existingProduct);
+
+      const result = await useCase.execute('p1', { category: 'Another New Category' }, 'burger-craft');
+
+      expect(result.category).toBe('Another New Category');
+      expect(mockCategoryRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ restaurantId: 'burger-craft', name: 'Another New Category', isActive: true })
+      );
     });
   });
 

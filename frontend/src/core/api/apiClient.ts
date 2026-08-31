@@ -12,6 +12,21 @@ export interface ApiClientConfig {
   baseUrl: string
 }
 
+function mapProductResponse(raw: any): MenuItem {
+  return {
+    id: raw.id,
+    name: raw.name,
+    price: Number(raw.price || 0),
+    category: raw.category,
+    src: raw.imageUrl || '',
+    description: raw.description || '',
+    inStock: raw.isAvailable !== undefined ? Boolean(raw.isAvailable) : true,
+    isPopular: Boolean(raw.isPopular),
+    isNew: Boolean(raw.isNew),
+    preparationTimeMinutes: raw.preparationTimeMinutes,
+  }
+}
+
 const AUTH_TOKEN_STORAGE_KEY = 'burger_page_auth_token_v2'
 
 function readStoredToken(): string | null {
@@ -84,6 +99,10 @@ export class ApiClient {
       throw new Error(`API Error: ${response.status} ${response.statusText}`)
     }
 
+    if (response.status === 204 || response.status === 205) {
+      return undefined as T
+    }
+
     return response.json() as Promise<T>
   }
 
@@ -119,6 +138,48 @@ export class ApiClient {
 
   async fetchProducts(): Promise<MenuItem[]> {
     return this.request<MenuItem[]>('/products')
+  }
+
+  async createProduct(data: {
+    name: string
+    description?: string
+    price: number
+    category: string
+    imageUrl?: string
+    isAvailable?: boolean
+    isPopular?: boolean
+    isNew?: boolean
+    preparationTimeMinutes?: number
+  }): Promise<MenuItem> {
+    const raw = await this.request<any>('/products', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+    return mapProductResponse(raw)
+  }
+
+  async updateProduct(id: string, data: Partial<{
+    name: string
+    description: string
+    price: number
+    category: string
+    imageUrl: string
+    isAvailable: boolean
+    isPopular: boolean
+    isNew: boolean
+    preparationTimeMinutes: number
+  }>): Promise<MenuItem> {
+    const raw = await this.request<any>(`/products/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+    return mapProductResponse(raw)
+  }
+
+  async deleteProduct(id: string): Promise<void> {
+    await this.request<void>(`/products/${id}`, {
+      method: 'DELETE',
+    })
   }
 
   async fetchAdditions(restaurantIdOrSlug?: string, productId?: string): Promise<AdditionItem[]> {

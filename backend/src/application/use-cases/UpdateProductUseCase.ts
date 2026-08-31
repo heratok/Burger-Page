@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { ProductRepository } from '../../domain/ports/out/ProductRepository.js';
 import { CategoryRepository } from '../../domain/ports/out/CategoryRepository.js';
 import { ProductAdditionRepository } from '../../domain/ports/out/ProductAdditionRepository.js';
@@ -43,9 +44,11 @@ export class UpdateProductUseCase {
       resolvedCategoryId = category.id;
       resolvedCategoryName = category.name;
     } else if (dto.category !== undefined && dto.category.trim() !== '') {
-      const category = await this.categoryRepo.findByName(dto.category.trim(), restaurantId);
+      const trimmedCategoryName = dto.category.trim();
+      let category = await this.categoryRepo.findByName(trimmedCategoryName, restaurantId);
       if (!category) {
-        throw new ValidationError(`Category '${dto.category.trim()}' does not exist for restaurant '${restaurantId}'.`);
+        category = { id: `cat_${randomUUID()}`, restaurantId, name: trimmedCategoryName, isActive: true };
+        await this.categoryRepo.save(category);
       }
       if (category.isActive === false) {
         throw new ValidationError(`Category '${category.name}' is currently inactive.`);

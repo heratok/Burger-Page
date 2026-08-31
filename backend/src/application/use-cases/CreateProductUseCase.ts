@@ -37,9 +37,10 @@ export class CreateProductUseCase {
       }
       resolvedCategoryName = category.name;
     } else if (resolvedCategoryName) {
-      const category = await this.categoryRepo.findByName(resolvedCategoryName, restaurantId);
+      let category = await this.categoryRepo.findByName(resolvedCategoryName, restaurantId);
       if (!category) {
-        throw new ValidationError(`Category '${resolvedCategoryName}' does not exist for restaurant '${restaurantId}'. Please create the category first.`);
+        category = { id: `cat_${randomUUID()}`, restaurantId, name: resolvedCategoryName, isActive: true };
+        await this.categoryRepo.save(category);
       }
       if (category.isActive === false) {
         throw new ValidationError(`Category '${category.name}' is currently inactive.`);
