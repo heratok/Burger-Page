@@ -288,7 +288,7 @@ export const TenantProvider: React.FC<{
         toast.success("Restaurante actualizado correctamente")
       }
     },
-    [envelope]
+    []
   )
 
   const deleteRestaurant = useCallback(

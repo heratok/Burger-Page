@@ -81,8 +81,8 @@ export const createProductSchema = z.object({
   name: z.string().min(1, 'Product name is required'),
   description: z.string().default(''),
   price: z.number().nonnegative('Price must be greater than or equal to 0'),
-  categoryId: z.string().optional(),
-  category: z.string().optional(), // Resolved category name or fallback
+  categoryId: z.string().min(1, 'Category ID is required'),
+  category: z.string().optional(), // Optional label; backend resolves canonical category name from categoryId
   imageUrl: z.string().optional(),
   isAvailable: z.boolean().default(true),
   isPopular: z.boolean().optional(),

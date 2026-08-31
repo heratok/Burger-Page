@@ -7,12 +7,14 @@ import { errorHandler } from './middlewares/errorHandler.js';
 // Repositories
 import { InMemoryRestaurantRepository } from '../persistence/InMemoryRestaurantRepository.js';
 import { InMemoryProductRepository } from '../persistence/InMemoryProductRepository.js';
+import { InMemoryCategoryRepository } from '../persistence/InMemoryCategoryRepository.js';
 import { InMemoryOrderRepository } from '../persistence/InMemoryOrderRepository.js';
 import { InMemoryCustomerRepository } from '../persistence/InMemoryCustomerRepository.js';
 import { InMemoryInventoryRepository } from '../persistence/InMemoryInventoryRepository.js';
 import { InMemoryUserRepository } from '../persistence/InMemoryUserRepository.js';
 import { createSqliteDatabase } from '../persistence/sqlite/SqliteDatabase.js';
 import { SqliteRestaurantRepository } from '../persistence/sqlite/SqliteRestaurantRepository.js';
+import { SqliteCategoryRepository } from '../persistence/sqlite/SqliteCategoryRepository.js';
 import { SqliteProductRepository } from '../persistence/sqlite/SqliteProductRepository.js';
 import { SqliteOrderRepository } from '../persistence/sqlite/SqliteOrderRepository.js';
 import { SqliteCustomerRepository } from '../persistence/sqlite/SqliteCustomerRepository.js';
@@ -20,6 +22,7 @@ import { SqliteInventoryRepository } from '../persistence/sqlite/SqliteInventory
 import { SqliteProductAdditionRepository } from '../persistence/sqlite/SqliteProductAdditionRepository.js';
 import { getSupabaseClient } from '../persistence/supabase/SupabaseClient.js';
 import { SupabaseRestaurantRepository } from '../persistence/supabase/SupabaseRestaurantRepository.js';
+import { SupabaseCategoryRepository } from '../persistence/supabase/SupabaseCategoryRepository.js';
 import { SupabaseProductRepository } from '../persistence/supabase/SupabaseProductRepository.js';
 import { SupabaseOrderRepository } from '../persistence/supabase/SupabaseOrderRepository.js';
 import { SupabaseCustomerRepository } from '../persistence/supabase/SupabaseCustomerRepository.js';
@@ -28,6 +31,7 @@ import { SupabaseUserRepository } from '../persistence/supabase/SupabaseUserRepo
 import { SupabaseProductAdditionRepository } from '../persistence/supabase/SupabaseProductAdditionRepository.js';
 import { InMemoryProductAdditionRepository } from '../persistence/InMemoryProductAdditionRepository.js';
 import { RestaurantRepository } from '../../domain/ports/out/RestaurantRepository.js';
+import { CategoryRepository } from '../../domain/ports/out/CategoryRepository.js';
 import { ProductRepository } from '../../domain/ports/out/ProductRepository.js';
 import { ProductAdditionRepository } from '../../domain/ports/out/ProductAdditionRepository.js';
 import { OrderRepository } from '../../domain/ports/out/OrderRepository.js';
@@ -118,6 +122,7 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
   console.log(`======================================================\n`);
 
   let restaurantRepo: RestaurantRepository;
+  let categoryRepo: CategoryRepository;
   let productRepo: ProductRepository;
   let additionRepo: ProductAdditionRepository;
   let orderRepo: OrderRepository;
@@ -128,6 +133,7 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
   if (selectedDriver === 'supabase') {
     const supabaseClient = getSupabaseClient();
     restaurantRepo = new SupabaseRestaurantRepository(supabaseClient);
+    categoryRepo = new SupabaseCategoryRepository(supabaseClient);
     productRepo = new SupabaseProductRepository(supabaseClient);
     additionRepo = new SupabaseProductAdditionRepository(supabaseClient);
     orderRepo = new SupabaseOrderRepository(supabaseClient);
@@ -137,6 +143,7 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
   } else if (selectedDriver === 'sqlite') {
     const db = createSqliteDatabase(dbPath || process.env.DATABASE_PATH || ':memory:');
     restaurantRepo = new SqliteRestaurantRepository(db);
+    categoryRepo = new SqliteCategoryRepository(db);
     productRepo = new SqliteProductRepository(db);
     additionRepo = new SqliteProductAdditionRepository(db);
     orderRepo = new SqliteOrderRepository(db);
@@ -145,6 +152,7 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
     userRepo = new InMemoryUserRepository();
   } else {
     restaurantRepo = new InMemoryRestaurantRepository();
+    categoryRepo = new InMemoryCategoryRepository();
     productRepo = new InMemoryProductRepository();
     additionRepo = new InMemoryProductAdditionRepository();
     orderRepo = new InMemoryOrderRepository();
@@ -162,8 +170,8 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
   
   const listProducts = new ListProductsUseCase(productRepo);
   const getProductById = new GetProductByIdUseCase(productRepo);
-  const createProduct = new CreateProductUseCase(productRepo, additionRepo);
-  const updateProduct = new UpdateProductUseCase(productRepo, additionRepo);
+  const createProduct = new CreateProductUseCase(productRepo, categoryRepo, additionRepo);
+  const updateProduct = new UpdateProductUseCase(productRepo, categoryRepo, additionRepo);
   const deleteProduct = new DeleteProductUseCase(productRepo);
 
   const listOrders = new ListOrdersUseCase(orderRepo);

@@ -110,16 +110,26 @@ async function runAudit() {
     });
   }
 
-  // 4. Inspect columns of categories and products table via RPC or direct insert test
-  const { data: catSample, error: catSampleErr } = await supabase
-    .from('categories')
-    .select('*');
-  console.log('\n🔎 Categories table status:', { data: catSample, error: catSampleErr });
-
-  const { data: prodSample, error: prodSampleErr } = await supabase
+  // Check column details on products
+  const { data: testNullInsert, error: testNullErr } = await supabase
     .from('products')
-    .select('*');
-  console.log('\n🔎 Products table status:', { data: prodSample, error: prodSampleErr });
+    .insert({
+      id: 'test_nullable_check',
+      restaurant_id: 'tenant-test-a',
+      name: 'Test Nullable',
+      price: 100,
+      category_name: null,
+      is_available: true,
+    } as any)
+    .select();
+
+  if (testNullErr) {
+    console.log('\n🔒 Column `products.category_name` is strictly NOT NULL:', testNullErr.message);
+  } else {
+    console.log('\n🔓 Column `products.category_name` is NULLABLE.');
+    // Clean up
+    await supabase.from('products').delete().eq('id', 'test_nullable_check');
+  }
 }
 
 runAudit().catch(console.error);

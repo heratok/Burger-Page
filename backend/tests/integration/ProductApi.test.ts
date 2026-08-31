@@ -54,6 +54,7 @@ describe('Product API Integration', () => {
       payload: {
         name: 'Unauthorized Burger',
         price: 15,
+        categoryId: 'cat-1',
         category: 'Burgers',
         isAvailable: true
       }
@@ -73,7 +74,8 @@ describe('Product API Integration', () => {
         name: 'Craft Artisan Burger',
         price: 26000,
         description: 'Special smoked cheese and bacon',
-        category: 'Especiales',
+        categoryId: 'cat-1',
+        category: 'Burgers',
         isAvailable: true,
         additions: []
       }
@@ -95,7 +97,8 @@ describe('Product API Integration', () => {
       payload: {
         name: 'Modifiable Burger',
         price: 20000,
-        category: 'Clásicas',
+        categoryId: 'cat-1',
+        category: 'Burgers',
         isAvailable: true
       }
     });
@@ -127,7 +130,8 @@ describe('Product API Integration', () => {
       payload: {
         name: 'To Delete Burger',
         price: 18000,
-        category: 'Clásicas',
+        categoryId: 'cat-1',
+        category: 'Burgers',
         isAvailable: true
       }
     });
