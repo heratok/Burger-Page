@@ -4,6 +4,7 @@ import {
   Order,
   OrderStatus,
   InventoryItem,
+  AdditionItem,
 } from '@/types/restaurant'
 import type { OrderEvent, CreateOrderInput, CreateRestaurantInput } from '@burger-page/contracts'
 
