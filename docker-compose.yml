@@ -1,31 +1,19 @@
 services:
-  backend:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
-    container_name: burger_backend
-    restart: unless-stopped
-    ports:
-      - "3001:3001"
+  postgres-test:
+    image: postgres:16-alpine
+    container_name: burger-page-postgres-test
     environment:
-      - PORT=3001
-      - HOST=0.0.0.0
-      - NODE_ENV=production
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3001/health"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
-      start_period: 5s
-
-  frontend:
-    build:
-      context: .
-      dockerfile: frontend/Dockerfile
-    container_name: burger_frontend
-    restart: unless-stopped
+      POSTGRES_DB: burger_page_test
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
     ports:
-      - "8080:80"
-    depends_on:
-      backend:
-        condition: service_healthy
+      - "5432:5432"
+    volumes:
+      - ./supabase/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d burger_page_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+    tmpfs:
+      - /var/lib/postgresql/data
