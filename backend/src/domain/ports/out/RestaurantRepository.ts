@@ -6,4 +6,5 @@ export interface RestaurantRepository {
   findAll(): Promise<Restaurant[]>;
   save(restaurant: Restaurant): Promise<void>;
   delete(id: string): Promise<void>;
+  hardDelete?(id: string): Promise<void>;
 }

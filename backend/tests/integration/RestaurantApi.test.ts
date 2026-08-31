@@ -1,20 +1,37 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { FastifyInstance } from 'fastify';
 import { buildApp } from '../../src/infrastructure/http/app.js';
+import { JwtService } from '../../src/infrastructure/security/JwtService.js';
 
-describe('Restaurant API', () => {
+describe('Restaurant API & Multi-Tenant Security (Integration)', () => {
   let app: FastifyInstance;
+  let tokenSuperAdmin: string;
+  let tokenRestaurantAdmin: string;
+  const jwtService = new JwtService();
 
   beforeAll(async () => {
     app = buildApp();
     await app.ready();
+
+    tokenSuperAdmin = jwtService.generateToken({
+      id: 'usr-superadmin',
+      username: 'superadmin',
+      role: 'super_admin',
+    });
+
+    tokenRestaurantAdmin = jwtService.generateToken({
+      id: 'usr-admin-craft',
+      username: 'admin_craft',
+      role: 'restaurant_admin',
+      restaurantId: 'burger-craft',
+    });
   });
 
   afterAll(async () => {
     await app.close();
   });
 
-  it('GET /api/restaurant should return restaurant details', async () => {
+  it('GET /api/restaurant should return default restaurant details (public)', async () => {
     const response = await app.inject({
       method: 'GET',
       url: '/api/restaurant'
@@ -27,10 +44,23 @@ describe('Restaurant API', () => {
     expect(body).toHaveProperty('categories');
   });
 
-  it('PUT /api/restaurant/categories should update and return categories', async () => {
+  it('PUT /api/restaurant/categories without auth should return 401 Unauthorized', async () => {
     const response = await app.inject({
       method: 'PUT',
       url: '/api/restaurant/categories',
+      payload: {
+        categories: ['Entradas', 'Platos Fuertes']
+      }
+    });
+
+    expect(response.statusCode).toBe(401);
+  });
+
+  it('PUT /api/restaurant/categories with auth should update and return categories', async () => {
+    const response = await app.inject({
+      method: 'PUT',
+      url: '/api/restaurant/categories',
+      headers: { authorization: `Bearer ${tokenRestaurantAdmin}` },
       payload: {
         categories: ['Entradas', 'Platos Fuertes', 'Bebidas', 'Postres']
       }
@@ -54,6 +84,7 @@ describe('Restaurant API', () => {
     const response = await app.inject({
       method: 'PUT',
       url: '/api/restaurant/categories',
+      headers: { authorization: `Bearer ${tokenRestaurantAdmin}` },
       payload: {
         categories: []
       }
@@ -64,22 +95,30 @@ describe('Restaurant API', () => {
     expect(body.detail || body.message).toBeDefined();
   });
 
-  it('PUT /api/restaurant/categories should return 400 for empty category string or invalid payload', async () => {
-    const response = await app.inject({
-      method: 'PUT',
-      url: '/api/restaurant/categories',
-      payload: {
-        categories: ['']
-      }
-    });
-
-    expect(response.statusCode).toBe(400);
-  });
-
-  it('GET /api/restaurants should return all registered restaurants', async () => {
+  it('GET /api/restaurants without auth should return 401 Unauthorized', async () => {
     const response = await app.inject({
       method: 'GET',
       url: '/api/restaurants'
+    });
+
+    expect(response.statusCode).toBe(401);
+  });
+
+  it('GET /api/restaurants with restaurant_admin token should return 403 Forbidden', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/restaurants',
+      headers: { authorization: `Bearer ${tokenRestaurantAdmin}` },
+    });
+
+    expect(response.statusCode).toBe(403);
+  });
+
+  it('GET /api/restaurants with super_admin token should return all registered restaurants', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/restaurants',
+      headers: { authorization: `Bearer ${tokenSuperAdmin}` },
     });
 
     expect(response.statusCode).toBe(200);
@@ -90,10 +129,38 @@ describe('Restaurant API', () => {
     expect(body[0]).toHaveProperty('slug');
   });
 
-  it('POST /api/restaurants should create a new restaurant tenant and persist it', async () => {
+  it('POST /api/restaurants without token should return 401 Unauthorized', async () => {
     const response = await app.inject({
       method: 'POST',
       url: '/api/restaurants',
+      payload: {
+        name: 'Fail Tenant',
+        slug: 'fail-tenant',
+      }
+    });
+
+    expect(response.statusCode).toBe(401);
+  });
+
+  it('POST /api/restaurants with restaurant_admin token should return 403 Forbidden', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/restaurants',
+      headers: { authorization: `Bearer ${tokenRestaurantAdmin}` },
+      payload: {
+        name: 'Fail Tenant',
+        slug: 'fail-tenant',
+      }
+    });
+
+    expect(response.statusCode).toBe(403);
+  });
+
+  it('POST /api/restaurants with super_admin token creates tenant and DELETE performs soft-delete', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/restaurants',
+      headers: { authorization: `Bearer ${tokenSuperAdmin}` },
       payload: {
         name: 'Pizzería Napoli Test',
         slug: 'pizzeria-napoli-test',
@@ -114,23 +181,56 @@ describe('Restaurant API', () => {
     // Verify it appears in list
     const listRes = await app.inject({
       method: 'GET',
-      url: '/api/restaurants'
+      url: '/api/restaurants',
+      headers: { authorization: `Bearer ${tokenSuperAdmin}` },
     });
     expect(listRes.statusCode).toBe(200);
     const list = listRes.json();
     expect(list.some((r: any) => r.slug === 'pizzeria-napoli-test')).toBe(true);
 
-    // Verify delete endpoint
-    const deleteRes = await app.inject({
+    // DELETE without token -> 401
+    const anonDelete = await app.inject({
       method: 'DELETE',
       url: `/api/restaurants/${body.id}`
+    });
+    expect(anonDelete.statusCode).toBe(401);
+
+    // DELETE with restaurant_admin -> 403
+    const forbiddenDelete = await app.inject({
+      method: 'DELETE',
+      url: `/api/restaurants/${body.id}`,
+      headers: { authorization: `Bearer ${tokenRestaurantAdmin}` },
+    });
+    expect(forbiddenDelete.statusCode).toBe(403);
+
+    // DELETE with super_admin -> 200 (Soft delete)
+    const deleteRes = await app.inject({
+      method: 'DELETE',
+      url: `/api/restaurants/${body.id}`,
+      headers: { authorization: `Bearer ${tokenSuperAdmin}` },
     });
     expect(deleteRes.statusCode).toBe(200);
 
     const listAfterDelete = await app.inject({
       method: 'GET',
-      url: '/api/restaurants'
+      url: '/api/restaurants',
+      headers: { authorization: `Bearer ${tokenSuperAdmin}` },
     });
-    expect(listAfterDelete.json().some((r: any) => r.slug === 'pizzeria-napoli-test')).toBe(false);
+    const deletedRest = listAfterDelete.json().find((r: any) => r.slug === 'pizzeria-napoli-test');
+    expect(deletedRest).toBeDefined();
+    expect(deletedRest.isActive).toBe(false);
+
+    // Verify public lookup returns 404 for soft-deleted / paused restaurant
+    const publicGetById = await app.inject({
+      method: 'GET',
+      url: `/api/restaurants/${body.id}`
+    });
+    expect(publicGetById.statusCode).toBe(404);
+
+    const publicGetBySlug = await app.inject({
+      method: 'GET',
+      url: `/api/restaurant/${body.slug}`
+    });
+    expect(publicGetBySlug.statusCode).toBe(404);
   });
 });

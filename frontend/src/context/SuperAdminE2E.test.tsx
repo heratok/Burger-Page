@@ -143,12 +143,12 @@ describe("Super Admin - Creación y Aislamiento de Nuevos Restaurantes E2E", () 
     expect(found?.isActive).toBe(false)
     expect(result.current.globalStats.activeRestaurants).toBe(4)
 
-    // Eliminar el restaurante
+    // Eliminar el restaurante (Soft Delete - permanece en directorio pero inactivo)
     act(() => {
       result.current.deleteRestaurant(tempRest.id)
     })
 
-    expect(result.current.restaurants).toHaveLength(4)
-    expect(result.current.restaurants.some((r) => r.id === tempRest.id)).toBe(false)
+    expect(result.current.restaurants).toHaveLength(5)
+    expect(result.current.restaurants.find((r) => r.id === tempRest.id)?.isActive).toBe(false)
   })
 })

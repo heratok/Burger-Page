@@ -12,19 +12,19 @@ export class UserController {
   ) {}
 
   async create(
-    request: FastifyRequest<{ Body: CreateUserDTO }>,
+    request: FastifyRequest,
     reply: FastifyReply
   ) {
-    const user = await this.createUser.execute(request.body);
+    const user = await this.createUser.execute(request.body as CreateUserDTO);
     const { passwordHash: _, ...safe } = user;
     return reply.status(201).send(safe);
   }
 
   async login(
-    request: FastifyRequest<{ Body: { username: string; password: string } }>,
+    request: FastifyRequest,
     reply: FastifyReply
   ) {
-    const { username, password } = request.body;
+    const { username, password } = (request.body || {}) as { username: string; password: string };
     request.log.info(`🔑 [AUTH] Intento de login para usuario: "${username}"`);
     try {
       const result = await this.authenticate.execute(username, password);
@@ -37,10 +37,21 @@ export class UserController {
   }
 
   async list(
-    request: FastifyRequest<{ Querystring: { restaurantId?: string } }>,
+    request: FastifyRequest,
     reply: FastifyReply
   ) {
-    const users = await this.listUsers.execute(request.query.restaurantId);
+    const auth = request.authContext;
+    const query = (request.query || {}) as { restaurantId?: string };
+    let resolvedRestaurantId: string | undefined;
+
+    if (auth?.role === 'super_admin') {
+      resolvedRestaurantId = query.restaurantId;
+    } else {
+      // restaurant_admin is strictly locked to their assigned restaurant
+      resolvedRestaurantId = auth?.restaurantId;
+    }
+
+    const users = await this.listUsers.execute(resolvedRestaurantId);
     return reply.send(users);
   }
 }

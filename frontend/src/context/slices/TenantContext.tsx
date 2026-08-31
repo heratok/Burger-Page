@@ -294,31 +294,27 @@ export const TenantProvider: React.FC<{
   const deleteRestaurant = useCallback(
     async (id: string) => {
       const snapshot = envelope
-      setEnvelope((prev) => {
-        const remaining = prev.restaurants.filter((r) => r.id !== id && r.slug !== id)
-        if ((activeRestaurantId === id || activeRestaurant?.slug === id)) {
-          setActiveRestaurantId(remaining[0]?.id || "rest-default")
-        }
-        return {
-          ...prev,
-          restaurants: remaining,
-        }
-      })
+      setEnvelope((prev) => ({
+        ...prev,
+        restaurants: prev.restaurants.map((r) =>
+          (r.id === id || r.slug === id) ? { ...r, isActive: false } : r
+        ),
+      }))
 
-      toast.success("Restaurante eliminado correctamente")
+      toast.success("Restaurante desactivado correctamente (Soft Delete)")
 
       try {
         await apiClient.deleteRestaurant(id)
       } catch (err) {
         if (import.meta.env?.MODE !== 'test') {
-          console.warn("Could not delete restaurant from backend API, rolling back:", err)
+          console.warn("Could not soft delete restaurant from backend API, rolling back:", err)
         }
         // Rollback state on backend rejection
         setEnvelope(snapshot)
-        toast.error("No se pudo eliminar el restaurante en el servidor. Cambios revertidos.")
+        toast.error("No se pudo desactivar el restaurante en el servidor. Cambios revertidos.")
       }
     },
-    [activeRestaurantId, activeRestaurant?.slug, envelope]
+    [envelope]
   )
 
   const globalStats = useMemo<GlobalPlatformStats>(() => {

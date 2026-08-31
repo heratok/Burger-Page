@@ -84,7 +84,7 @@ export class SupabaseProductRepository implements ProductRepository {
 
     const { error } = await this.client
       .from('products')
-      .upsert(payload, { onConflict: 'id' });
+      .upsert(payload, { onConflict: 'id,restaurant_id' });
 
     if (error) {
       throw new Error(`Failed to save product: ${error.message}`);

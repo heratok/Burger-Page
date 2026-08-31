@@ -71,8 +71,12 @@ describe('Supabase Persistence Adapter Suite', () => {
           },
           upsert: async (payload: any, options?: { onConflict?: string }) => {
             const table = mockTables[tableName] || [];
-            const conflictKey = options?.onConflict || 'id';
-            const index = table.findIndex((row) => row[conflictKey] === payload[conflictKey]);
+            const conflictKeys = options?.onConflict
+              ? options.onConflict.split(',').map((k) => k.trim())
+              : ['id'];
+            const index = table.findIndex((row) =>
+              conflictKeys.every((k) => row[k] === payload[k])
+            );
             if (index >= 0) {
               table[index] = { ...table[index], ...payload };
             } else {
@@ -218,6 +222,10 @@ describe('Supabase Persistence Adapter Suite', () => {
         price: 32000,
         category: 'Gourmet',
         isAvailable: true,
+        isPopular: true,
+        isNew: true,
+        preparationTimeMinutes: 20,
+        displayOrder: 2,
         additions: ['Extra Truffle', 'Crispy Onions']
       };
 
@@ -228,6 +236,11 @@ describe('Supabase Persistence Adapter Suite', () => {
       expect(found?.restaurantId).toBe('burger-craft');
       expect(found?.name).toBe('Truffle Smash Burger');
       expect(found?.price).toBe(32000);
+      expect(found?.isAvailable).toBe(true);
+      expect(found?.isPopular).toBe(true);
+      expect(found?.isNew).toBe(true);
+      expect(found?.preparationTimeMinutes).toBe(20);
+      expect(found?.displayOrder).toBe(2);
       expect(found?.additions).toEqual(['Extra Truffle', 'Crispy Onions']);
 
       // Tenant isolation: querying with foreign restaurantId returns null
@@ -236,6 +249,8 @@ describe('Supabase Persistence Adapter Suite', () => {
 
       const all = await repo.findByRestaurantId('burger-craft');
       expect(all.length).toBe(1);
+      expect(all[0].isPopular).toBe(true);
+      expect(all[0].isNew).toBe(true);
 
       await repo.delete('prod-10', 'burger-craft');
       expect(await repo.findById('prod-10', 'burger-craft')).toBeNull();

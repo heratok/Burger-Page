@@ -21,7 +21,7 @@ export class RestaurantController {
     return reply.status(200).send(restaurants);
   }
 
-  async create(req: FastifyRequest<{ Body: unknown }>, reply: FastifyReply) {
+  async create(req: FastifyRequest, reply: FastifyReply) {
     const parsed = createRestaurantSchema.safeParse(req.body);
     if (!parsed.success) {
       throw new ValidationError(parsed.error.message);
@@ -30,28 +30,40 @@ export class RestaurantController {
     return reply.status(201).send(created);
   }
 
-  async get(req: FastifyRequest<{ Params: { slug?: string; idOrSlug?: string } }>, reply: FastifyReply) {
-    const identifier = req.params.idOrSlug || req.params.slug || 'burger-craft';
+  async get(req: FastifyRequest, reply: FastifyReply) {
+    const params = (req.params || {}) as { slug?: string; idOrSlug?: string };
+    const identifier = params.idOrSlug || params.slug || 'burger-craft';
     const restaurant = await this.getRestaurantUseCase.execute(identifier);
     return reply.status(200).send(restaurant);
   }
 
-  async delete(req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
-    await this.deleteRestaurantUseCase.execute(req.params.id);
+  async delete(req: FastifyRequest, reply: FastifyReply) {
+    const params = (req.params || {}) as { id: string };
+    await this.deleteRestaurantUseCase.execute(params.id);
     return reply.status(200).send({ message: 'Restaurant deleted successfully' });
   }
 
   async updateCategories(
-    req: FastifyRequest<{ Params: { slug?: string }; Body: unknown }>,
+    req: FastifyRequest,
     reply: FastifyReply
   ) {
     const parsed = updateRestaurantCategoriesSchema.safeParse(req.body);
     if (!parsed.success) {
       throw new ValidationError(parsed.error.message);
     }
-    const slug = req.params.slug || 'burger-craft';
+    const auth = req.authContext;
+    const params = (req.params || {}) as { slug?: string };
+    let identifier: string;
+
+    if (auth?.role === 'super_admin') {
+      identifier = params.slug || auth.restaurantId || 'burger-craft';
+    } else {
+      // restaurant_admin is strictly bound to their assigned restaurant
+      identifier = auth?.restaurantId || 'burger-craft';
+    }
+
     const { categories } = parsed.data;
-    const updated = await this.updateCategoriesUseCase.execute(slug, categories);
+    const updated = await this.updateCategoriesUseCase.execute(identifier, categories);
     return reply.status(200).send({
       message: 'Restaurant categories updated successfully',
       categories: updated.categories || [],

@@ -48,7 +48,6 @@ export class SqliteCustomerRepository implements CustomerRepository {
       INSERT INTO customers (id, restaurant_id, name, phone, address, barrio, notes, email, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
-        restaurant_id = excluded.restaurant_id,
         name = excluded.name,
         phone = excluded.phone,
         address = excluded.address,
@@ -56,6 +55,7 @@ export class SqliteCustomerRepository implements CustomerRepository {
         notes = excluded.notes,
         email = excluded.email,
         updated_at = excluded.updated_at
+      WHERE customers.restaurant_id = excluded.restaurant_id
     `);
     stmt.run(
       customer.id,

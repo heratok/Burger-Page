@@ -92,6 +92,20 @@ export class SqliteRestaurantRepository implements RestaurantRepository {
   }
 
   async delete(id: string): Promise<void> {
+    const row = this.db.prepare('SELECT * FROM restaurants WHERE id = ?').get(id) as any;
+    if (row) {
+      let config: any = {};
+      try {
+        config = JSON.parse(row.config || '{}');
+      } catch {
+        config = {};
+      }
+      config.isActive = false;
+      this.db.prepare('UPDATE restaurants SET config = ? WHERE id = ?').run(JSON.stringify(config), id);
+    }
+  }
+
+  async hardDelete(id: string): Promise<void> {
     this.db.prepare('DELETE FROM restaurants WHERE id = ?').run(id);
   }
 }

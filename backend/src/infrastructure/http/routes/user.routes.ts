@@ -1,5 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { UserController } from '../controllers/UserController.js';
+import { requireAuth, requireSuperAdmin } from '../middleware/auth.middleware.js';
 
 interface UserRoutesOptions {
   prefix: string;
@@ -13,6 +14,7 @@ export async function userRoutes(
   const ctrl = opts.controller;
 
   app.post('/', {
+    preHandler: [requireSuperAdmin],
     schema: {
       tags: ['Users'],
       summary: 'Create a new user',
@@ -77,6 +79,7 @@ export async function userRoutes(
   }, ctrl.login.bind(ctrl));
 
   app.get('/', {
+    preHandler: [requireAuth],
     schema: {
       tags: ['Users'],
       summary: 'List users',

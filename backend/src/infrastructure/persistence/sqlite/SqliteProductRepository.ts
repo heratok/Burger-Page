@@ -46,7 +46,6 @@ export class SqliteProductRepository implements ProductRepository {
         image_url, is_available, is_popular, is_new, preparation_time_minutes, display_order, additions
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
-        restaurant_id = excluded.restaurant_id,
         name = excluded.name,
         description = excluded.description,
         price = excluded.price,
@@ -59,6 +58,7 @@ export class SqliteProductRepository implements ProductRepository {
         preparation_time_minutes = excluded.preparation_time_minutes,
         display_order = excluded.display_order,
         additions = excluded.additions
+      WHERE products.restaurant_id = excluded.restaurant_id
     `);
 
     stmt.run(

@@ -1,6 +1,7 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Inventory } from '../../../domain/models/Inventory.js';
 import { InventoryRepository } from '../../../domain/ports/out/InventoryRepository.js';
+import { EntityNotFoundError, ValidationError } from '../../../domain/errors/DomainErrors.js';
 
 export class SupabaseInventoryRepository implements InventoryRepository {
   constructor(private client: SupabaseClient) {}
@@ -24,7 +25,7 @@ export class SupabaseInventoryRepository implements InventoryRepository {
 
   async findById(id: string, restaurantId: string): Promise<Inventory | null> {
     const { data, error } = await this.client
-      .from('inventory')
+      .from('inventory_items')
       .select('*')
       .eq('id', id)
       .eq('restaurant_id', restaurantId)
@@ -39,7 +40,7 @@ export class SupabaseInventoryRepository implements InventoryRepository {
 
   async findByRestaurantId(restaurantId: string): Promise<Inventory[]> {
     const { data, error } = await this.client
-      .from('inventory')
+      .from('inventory_items')
       .select('*')
       .eq('restaurant_id', restaurantId)
       .order('name', { ascending: true });
@@ -65,17 +66,42 @@ export class SupabaseInventoryRepository implements InventoryRepository {
     };
 
     const { error } = await this.client
-      .from('inventory')
-      .upsert(payload, { onConflict: 'id' });
+      .from('inventory_items')
+      .upsert(payload, { onConflict: 'id,restaurant_id' });
 
     if (error) {
       throw new Error(`Failed to save inventory: ${error.message}`);
     }
   }
 
+  async adjustStock(id: string, restaurantId: string, delta: number): Promise<Inventory> {
+    const { data, error } = await this.client.rpc('adjust_inventory_stock', {
+      p_id: id,
+      p_restaurant_id: restaurantId,
+      p_delta: delta,
+    });
+
+    if (error) {
+      throw new Error(`Failed to adjust inventory stock: ${error.message}`);
+    }
+
+    const rows = Array.isArray(data) ? data : (data ? [data] : []);
+    if (rows.length === 0) {
+      const existing = await this.findById(id, restaurantId);
+      if (!existing) {
+        throw new EntityNotFoundError(`Inventory item '${id}' not found for restaurant '${restaurantId}'.`);
+      }
+      throw new ValidationError(
+        `Insufficient stock for item '${existing.name}'. Current stock is ${existing.quantity}, cannot reduce by ${Math.abs(delta)}.`
+      );
+    }
+
+    return this.mapToDomain(rows[0]);
+  }
+
   async delete(id: string, restaurantId: string): Promise<void> {
     const { error } = await this.client
-      .from('inventory')
+      .from('inventory_items')
       .delete()
       .eq('id', id)
       .eq('restaurant_id', restaurantId);

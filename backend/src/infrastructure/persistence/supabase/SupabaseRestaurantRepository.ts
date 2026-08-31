@@ -124,6 +124,20 @@ export class SupabaseRestaurantRepository implements RestaurantRepository {
   }
 
   async delete(id: string): Promise<void> {
+    const { error } = await this.client
+      .from('restaurants')
+      .update({
+        is_active: false,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id);
+
+    if (error) {
+      throw new Error(`Failed to soft delete restaurant: ${error.message}`);
+    }
+  }
+
+  async hardDelete(id: string): Promise<void> {
     try {
       // 1. Cascade delete order structure
       const { data: orderRows } = await this.client.from('orders').select('id').eq('restaurant_id', id);
@@ -152,7 +166,7 @@ export class SupabaseRestaurantRepository implements RestaurantRepository {
       .eq('id', id);
 
     if (error) {
-      throw new Error(`Failed to delete restaurant: ${error.message}`);
+      throw new Error(`Failed to hard delete restaurant: ${error.message}`);
     }
   }
 }

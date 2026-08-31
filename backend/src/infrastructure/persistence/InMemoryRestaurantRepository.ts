@@ -35,6 +35,13 @@ export class InMemoryRestaurantRepository implements RestaurantRepository {
   }
 
   async delete(id: string): Promise<void> {
+    const rest = this.restaurants.get(id);
+    if (rest) {
+      rest.isActive = false;
+    }
+  }
+
+  async hardDelete(id: string): Promise<void> {
     this.restaurants.delete(id);
   }
 }
