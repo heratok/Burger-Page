@@ -39,6 +39,7 @@ export async function restaurantsRoutes(fastify: FastifyInstance, opts: { contro
         type: 'object',
         required: ['name', 'slug'],
         properties: {
+          id: { type: 'string' },
           name: { type: 'string' },
           slug: { type: 'string' },
           tagline: { type: 'string' },

@@ -1,4 +1,4 @@
-import React, { useState, Suspense } from "react"
+import React, { useState, useEffect, Suspense } from "react"
 import { useRestaurant } from "@/context/RestaurantContext"
 import {
   LayoutDashboard,
@@ -40,6 +40,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     restaurants,
     storeConfig,
     activeRestaurant,
+    switchRestaurant,
     adminTab,
     adminTheme,
     toggleAdminTheme,
@@ -76,6 +77,12 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       return next
     })
   }
+
+  useEffect(() => {
+    if (session.role === "restaurant" && session.restaurantId && activeRestaurant.id !== session.restaurantId) {
+      switchRestaurant(session.restaurantId)
+    }
+  }, [session, activeRestaurant.id, switchRestaurant])
 
   const isDark = adminTheme === "dark"
   const isSuper = session.role === "super"

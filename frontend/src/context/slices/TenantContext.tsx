@@ -67,8 +67,11 @@ export const TenantProvider: React.FC<{
       const backendRestaurants = await apiClient.listRestaurants()
       if (Array.isArray(backendRestaurants)) {
         setEnvelope((prev) => {
+          const diskEnvelope = repository.loadEnvelope()
           const merged = backendRestaurants.map((br: any) => {
-            const local = prev.restaurants.find((r) => r.id === br.id || r.slug === br.slug)
+            const local =
+              prev.restaurants.find((r) => r.id === br.id || r.slug === br.slug) ||
+              diskEnvelope.restaurants.find((r) => r.id === br.id || r.slug === br.slug)
             return {
               ...local,
               id: br.id,
@@ -103,12 +106,24 @@ export const TenantProvider: React.FC<{
         console.warn("Could not sync restaurants from backend API:", err)
       }
     }
-  }, [])
+  }, [repository])
 
   // Sync with Backend DB on mount
   useEffect(() => {
     refreshRestaurants()
   }, [refreshRestaurants])
+
+  // Cross-tab synchronization via storage event
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "burger_page_platform_v2") {
+        const updated = repository.loadEnvelope()
+        setEnvelope(updated)
+      }
+    }
+    window.addEventListener("storage", handleStorageChange)
+    return () => window.removeEventListener("storage", handleStorageChange)
+  }, [repository])
 
   useEffect(() => {
     repository.saveEnvelope(envelope)
@@ -154,7 +169,8 @@ export const TenantProvider: React.FC<{
   const updateActiveRestaurantRecord = useCallback(
     (updater: (current: RestaurantRecord) => RestaurantRecord) => {
       setEnvelope((prev) => {
-        const exists = prev.restaurants.some((r) => r.id === activeRestaurant.id)
+        const targetId = activeRestaurantId || prev.restaurants[0]?.id
+        const exists = prev.restaurants.some((r) => r.id === targetId || r.slug === targetId)
         if (!exists) {
           const updated = updater(activeRestaurant)
           return {
@@ -165,12 +181,12 @@ export const TenantProvider: React.FC<{
         return {
           ...prev,
           restaurants: prev.restaurants.map((r) =>
-            r.id === activeRestaurant.id ? updater(r) : r
+            (r.id === targetId || r.slug === targetId) ? updater(r) : r
           ),
         }
       })
     },
-    [activeRestaurant]
+    [activeRestaurant, activeRestaurantId]
   )
 
   const createRestaurant = useCallback(
@@ -218,11 +234,11 @@ export const TenantProvider: React.FC<{
 
       apiClient
         .createRestaurant({
+          id: newRecord.id,
           name: data.name,
           slug: newRecord.slug,
           tagline: data.tagline,
           whatsappNumber: data.whatsappNumber,
-          adminPassword: data.adminPassword,
           primaryColor: data.primaryColor,
           templateType: data.templateType,
           categories: ["General"],

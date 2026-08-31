@@ -1,6 +1,6 @@
 import React, { useState } from "react"
 import { useRestaurant } from "@/context/RestaurantContext"
-import { Store, X, Sparkles, Check, Lock, Phone } from "lucide-react"
+import { Store, X, Sparkles, Check, Phone } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { THEME_COLOR_PRESETS } from "@/constants/themePresets"
 
@@ -16,7 +16,6 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
   const [slug, setSlug] = useState("")
   const [tagline, setTagline] = useState("")
   const [whatsapp, setWhatsapp] = useState("573001234567")
-  const [password, setPassword] = useState("")
   const [primaryColor, setPrimaryColor] = useState("#FF7A21")
   const [templateType, setTemplateType] = useState<"burger" | "pizza" | "tacos" | "blank">("burger")
 
@@ -45,7 +44,6 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
       slug: slug.trim(),
       tagline: tagline.trim() || "La mejor comida artesanal",
       whatsappNumber: whatsapp.trim() || "573001234567",
-      adminPassword: password.trim() || "admin123",
       primaryColor,
       templateType,
     })
@@ -149,48 +147,25 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
             />
           </div>
 
-          {/* WhatsApp & Admin Password */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label className="block text-xs font-bold mb-1 text-slate-700 dark:text-slate-300">
-                WhatsApp de Pedidos
-              </label>
-              <div className="relative">
-                <Phone className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  maxLength={20}
-                  value={whatsapp}
-                  onChange={(e) => setWhatsapp(e.target.value)}
-                  placeholder="573001234567"
-                  className={`w-full rounded-xl border pl-9 pr-3.5 py-2 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                    isDark
-                      ? "border-slate-700 bg-slate-800 text-white"
-                      : "border-slate-200 bg-slate-50 text-slate-900"
-                  }`}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold mb-1 text-slate-700 dark:text-slate-300">
-                Contraseña Admin del Local
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  maxLength={100}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="admin123"
-                  className={`w-full rounded-xl border pl-9 pr-3.5 py-2 text-xs font-mono transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                    isDark
-                      ? "border-slate-700 bg-slate-800 text-white"
-                      : "border-slate-200 bg-slate-50 text-slate-900"
-                  }`}
-                />
-              </div>
+          {/* WhatsApp */}
+          <div>
+            <label className="block text-xs font-bold mb-1 text-slate-700 dark:text-slate-300">
+              WhatsApp de Pedidos
+            </label>
+            <div className="relative">
+              <Phone className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                maxLength={20}
+                value={whatsapp}
+                onChange={(e) => setWhatsapp(e.target.value)}
+                placeholder="573001234567"
+                className={`w-full rounded-xl border pl-9 pr-3.5 py-2 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                  isDark
+                    ? "border-slate-700 bg-slate-800 text-white"
+                    : "border-slate-200 bg-slate-50 text-slate-900"
+                }`}
+              />
             </div>
           </div>
 

@@ -15,7 +15,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   onClose,
   targetRestaurantIdOrSlug,
 }) => {
-  const { login } = useRestaurant()
+  const { login, setSession } = useRestaurant()
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
@@ -45,8 +45,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       const result = await apiClient.login(username.trim(), password.trim())
 
       if (result.success && result.user) {
-        const role = result.user.role === 'super_admin' ? 'super' : 'restaurant'
-        login(password.trim(), targetRestaurantIdOrSlug)
+        const isSuper = result.user.role === 'super_admin'
+        const role = isSuper ? ('super' as const) : ('restaurant' as const)
+        setSession({
+          role,
+          restaurantId: result.user.restaurantId || (typeof targetRestaurantIdOrSlug === 'string' ? targetRestaurantIdOrSlug : undefined),
+          authenticatedAt: new Date().toISOString(),
+        })
 
         if (role === 'super') {
           toast.success(`Bienvenido, ${result.user.username}`)

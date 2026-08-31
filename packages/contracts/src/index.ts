@@ -33,6 +33,7 @@ export const storefrontConfigSchema = z.object({
 export type StorefrontConfigDTO = z.infer<typeof storefrontConfigSchema>;
 
 export const createRestaurantSchema = z.object({
+  id: z.string().optional(),
   name: z.string().min(1, 'Restaurant name is required'),
   slug: z.string().min(1, 'Restaurant slug is required'),
   tagline: z.string().optional(),

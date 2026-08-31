@@ -22,7 +22,7 @@ export class CreateRestaurantUseCase {
       throw new ValidationError(`Restaurant with slug "${cleanSlug}" already exists`);
     }
 
-    const restaurantId = `rest-${Date.now()}`;
+    const restaurantId = input.id || `rest-${Date.now()}`;
     const newRestaurant: Restaurant = {
       id: restaurantId,
       slug: cleanSlug,

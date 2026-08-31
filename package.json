@@ -24,9 +24,11 @@
     "test:contracts": "npm --prefix packages/contracts run test",
     "test:frontend": "npm --prefix frontend run test",
     "test:backend": "npm --prefix backend run test",
-    "test:e2e": "npm --prefix frontend run test:e2e",
-    "typecheck": "npm --prefix packages/contracts run build && npm --prefix frontend run typecheck && npm --prefix backend run build",
+    "typecheck": "npm --prefix packages/contracts run build && npm --prefix backend run typecheck && npm --prefix frontend run typecheck",
+    "typecheck:frontend": "npm --prefix frontend run typecheck",
+    "typecheck:backend": "npm --prefix backend run typecheck",
     "lint": "npm --prefix frontend run lint",
+    "prepare": "git config core.hooksPath .githooks 2>nul || git config core.hooksPath .githooks || true",
     "preview": "npm --prefix frontend run preview"
   }
 }
