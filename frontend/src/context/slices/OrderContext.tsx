@@ -179,9 +179,9 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               (p) => p.name.toLowerCase() === item.name.toLowerCase() || p.id === item.id
             )
             return {
-              productId: item.id || matchedProduct?.id || item.name,
+              productId: matchedProduct?.id || item.id || item.name,
               quantity: item.cantidad,
-              additions: (item.adiciones || []).map((a) => a.name),
+              additions: (item.adiciones || []).map((a) => (a as any).id || a.name),
             }
           }),
           deliveryFee: newOrder.deliveryFee,

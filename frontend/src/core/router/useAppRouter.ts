@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react"
 import type { RestaurantRecord, AppView, AdminTab } from "@/types/restaurant"
 import { useRestaurant } from "@/context/RestaurantContext"
+import { apiClient } from "@/core/api/apiClient"
 
 export interface RouteResolution {
   view: AppView
@@ -98,6 +99,29 @@ export function useAppRouter() {
     const resolution = resolveRoute(window.location.pathname, restaurants)
 
     if (resolution.isNotFound) {
+      const slug = resolution.attemptedSlug
+      if (slug && !slug.toLowerCase().startsWith('admin')) {
+        apiClient
+          .fetchRestaurant(slug)
+          .then((restaurant) => {
+            if (restaurant && restaurant.id) {
+              switchRestaurant(restaurant.id)
+              setIsNotFound(false)
+              setAttemptedSlug(null)
+              setActiveView("store")
+            } else {
+              setAttemptedSlug(slug)
+              setIsNotFound(true)
+              setActiveView("not-found")
+            }
+          })
+          .catch(() => {
+            setAttemptedSlug(slug)
+            setIsNotFound(true)
+            setActiveView("not-found")
+          })
+        return
+      }
       setAttemptedSlug(resolution.attemptedSlug ?? null)
       setIsNotFound(true)
       setActiveView("not-found")

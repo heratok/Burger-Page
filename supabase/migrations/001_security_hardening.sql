@@ -34,25 +34,31 @@ END $$;
 -- 2a. customers
 DO $$
 BEGIN
-    ALTER TABLE public.customers
-        ADD CONSTRAINT uq_customers_id_restaurant
-        UNIQUE (id, restaurant_id);
-    RAISE NOTICE 'Added uq_customers_id_restaurant';
-EXCEPTION
-    WHEN duplicate_object THEN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'uq_customers_id_restaurant'
+    ) THEN
+        ALTER TABLE public.customers
+            ADD CONSTRAINT uq_customers_id_restaurant
+            UNIQUE (id, restaurant_id);
+        RAISE NOTICE 'Added uq_customers_id_restaurant';
+    ELSE
         RAISE NOTICE 'Constraint uq_customers_id_restaurant already exists, skipping';
+    END IF;
 END $$;
 
 -- 2b. inventory_items
 DO $$
 BEGIN
-    ALTER TABLE public.inventory_items
-        ADD CONSTRAINT uq_inventory_items_id_restaurant
-        UNIQUE (id, restaurant_id);
-    RAISE NOTICE 'Added uq_inventory_items_id_restaurant';
-EXCEPTION
-    WHEN duplicate_object THEN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'uq_inventory_items_id_restaurant'
+    ) THEN
+        ALTER TABLE public.inventory_items
+            ADD CONSTRAINT uq_inventory_items_id_restaurant
+            UNIQUE (id, restaurant_id);
+        RAISE NOTICE 'Added uq_inventory_items_id_restaurant';
+    ELSE
         RAISE NOTICE 'Constraint uq_inventory_items_id_restaurant already exists, skipping';
+    END IF;
 END $$;
 
 -- 2c. suppliers (if table exists)
@@ -62,15 +68,16 @@ BEGIN
         SELECT 1 FROM information_schema.tables
         WHERE table_schema = 'public' AND table_name = 'suppliers'
     ) THEN
-        BEGIN
+        IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint WHERE conname = 'uq_suppliers_id_restaurant'
+        ) THEN
             ALTER TABLE public.suppliers
                 ADD CONSTRAINT uq_suppliers_id_restaurant
                 UNIQUE (id, restaurant_id);
             RAISE NOTICE 'Added uq_suppliers_id_restaurant';
-        EXCEPTION
-            WHEN duplicate_object THEN
-                RAISE NOTICE 'Constraint uq_suppliers_id_restaurant already exists, skipping';
-        END;
+        ELSE
+            RAISE NOTICE 'Constraint uq_suppliers_id_restaurant already exists, skipping';
+        END IF;
     ELSE
         RAISE NOTICE 'Table suppliers does not exist, skipping';
     END IF;

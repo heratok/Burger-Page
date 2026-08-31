@@ -13,7 +13,7 @@ test.describe('Optimistic UI Updates (Zero-Reload), Skeletons & Real-Time Feedba
     await userInput.fill('admin');
 
     const passwordInput = page.locator('input[type="password"]');
-    await passwordInput.fill('Gaverla08*');
+    await passwordInput.fill('admin');
 
     await Promise.all([
       page.waitForResponse(resp => resp.url().includes('/api/users/login') && resp.status() === 200),
@@ -88,6 +88,7 @@ test.describe('Optimistic UI Updates (Zero-Reload), Skeletons & Real-Time Feedba
     await expect(productHeading).toBeVisible({ timeout: 8000 });
 
     // 6. Delete Product from Menu
+    await page.waitForTimeout(500);
     const productCard = page.locator('div.group').filter({ has: productHeading }).first();
     const deleteProductBtn = productCard.locator('button[title="Eliminar plato"]');
     await deleteProductBtn.click();

@@ -68,7 +68,11 @@ export class CreateOrderUseCase {
       }
 
       // Validar Producto en BD
-      const product = await this.productRepo.findById(itemDto.productId, restaurant.id);
+      let product = await this.productRepo.findById(itemDto.productId, restaurant.id);
+      if (!product) {
+        const allProducts = await this.productRepo.findByRestaurantId(restaurant.id);
+        product = allProducts.find(p => p.name.toLowerCase() === itemDto.productId.toLowerCase() || p.id === itemDto.productId) || null;
+      }
       if (!product) {
         throw new EntityNotFoundError(`Product '${itemDto.productId}' not found.`);
       }
@@ -93,7 +97,11 @@ export class CreateOrderUseCase {
             throw new ValidationError(`Invalid addition quantity for addition '${additionId}'`);
           }
 
-          const addition = await this.additionRepo.findById(additionId, restaurant.id);
+          let addition = await this.additionRepo.findById(additionId, restaurant.id);
+          if (!addition) {
+            const allAdditions = await this.additionRepo.findByRestaurantId(restaurant.id);
+            addition = allAdditions.find(a => a.name.toLowerCase() === additionId.toLowerCase() || a.id === additionId) || null;
+          }
           if (!addition) {
             throw new EntityNotFoundError(`Addition '${additionId}' not found for restaurant '${restaurant.name}'.`);
           }

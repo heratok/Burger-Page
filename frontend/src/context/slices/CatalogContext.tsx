@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useCallback, useMemo } from "react"
+import React, { createContext, useContext, useCallback, useMemo, useEffect } from "react"
 import type { StorefrontConfig, MenuItem, AdditionItem } from "@/types/restaurant"
 import { DEFAULT_STORE_CONFIG } from "@/constants/themePresets"
 import { useTenant } from "./TenantContext"
@@ -28,6 +28,30 @@ const CatalogContext = createContext<CatalogContextType | undefined>(undefined)
 
 export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { activeRestaurant, updateActiveRestaurantRecord } = useTenant()
+
+  // Sync products from database for active tenant
+  useEffect(() => {
+    const restId = activeRestaurant?.id
+    const restSlug = activeRestaurant?.slug
+    if (!restId || restId === "rest-default") return
+
+    apiClient
+      .fetchProducts({ restaurantId: restId, slug: restSlug })
+      .then((backendProducts) => {
+        if (Array.isArray(backendProducts) && backendProducts.length > 0) {
+          updateActiveRestaurantRecord((current) => {
+            if (current.id !== restId && current.slug !== restSlug) {
+              return current
+            }
+            return {
+              ...current,
+              products: backendProducts,
+            }
+          })
+        }
+      })
+      .catch(() => {})
+  }, [activeRestaurant?.id, activeRestaurant?.slug, updateActiveRestaurantRecord])
 
   const updateStoreConfig = useCallback(
     (newConfig: Partial<StorefrontConfig>) => {
@@ -65,6 +89,7 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       // Sync with backend API
       apiClient.createProduct({
+        restaurantId: activeRestaurant.id,
         name: item.name,
         description: item.description,
         price: item.price,
@@ -91,7 +116,7 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
         toast.error("Error al guardar producto en el servidor")
       })
     },
-    [updateActiveRestaurantRecord]
+    [activeRestaurant.id, updateActiveRestaurantRecord]
   )
 
   const updateProduct = useCallback(
@@ -150,7 +175,7 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
       toast.success("Producto eliminado del menú")
 
       // Sync with backend API
-      apiClient.deleteProduct(id).catch((err) => {
+      apiClient.deleteProduct(id, activeRestaurant.id).catch((err) => {
         if (import.meta.env?.MODE !== 'test') {
           console.warn("Could not delete product from backend API:", err)
         }
@@ -162,7 +187,7 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
         toast.error("Error al eliminar producto del servidor")
       })
     },
-    [updateActiveRestaurantRecord]
+    [activeRestaurant.id, updateActiveRestaurantRecord]
   )
 
   const toggleProductStock = useCallback(
@@ -361,8 +386,8 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
           toast.warning(`Ya existe una categoría llamada "${trimmedNew}"`)
           return current
         }
-        const nextCategories = existing.map((c) => (c === oldName ? trimmedNew : c))
-        const nextProducts = current.products.map((p) => (p.category === oldName ? { ...p, category: trimmedNew } : p))
+        const nextCategories = existing.map((c) => (c.toLowerCase() === oldName.toLowerCase() ? trimmedNew : c))
+        const nextProducts = current.products.map((p) => (p.category?.toLowerCase() === oldName.toLowerCase() ? { ...p, category: trimmedNew } : p))
         apiClient.updateCategories(nextCategories, current.slug).catch((err) => {
           if (import.meta.env?.MODE !== 'test') {
             console.warn("Could not sync categories to backend API:", err)
