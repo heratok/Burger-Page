@@ -50,44 +50,128 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const addProduct = useCallback(
     (item: Omit<MenuItem, "id">) => {
-      const newItem: MenuItem = { ...item, id: `prod-${Date.now()}` }
-      updateActiveRestaurantRecord((current) => ({
-        ...current,
-        products: [newItem, ...current.products],
-      }))
+      const tempId = `prod-${Date.now()}`
+      const newItem: MenuItem = { ...item, id: tempId }
+      let previousProducts: MenuItem[] = []
+
+      updateActiveRestaurantRecord((current) => {
+        previousProducts = current.products
+        return {
+          ...current,
+          products: [newItem, ...current.products],
+        }
+      })
       toast.success(`"${item.name}" agregado al menú`)
+
+      // Sync with backend API
+      apiClient.createProduct({
+        name: item.name,
+        description: item.description,
+        price: item.price,
+        category: item.category,
+        imageUrl: item.src,
+        isAvailable: item.inStock,
+        isPopular: item.isPopular,
+        isNew: item.isNew,
+        preparationTimeMinutes: item.preparationTimeMinutes,
+      }).then((created) => {
+        updateActiveRestaurantRecord((current) => ({
+          ...current,
+          products: current.products.map((p) => (p.id === tempId ? created : p)),
+        }))
+      }).catch((err) => {
+        if (import.meta.env?.MODE !== 'test') {
+          console.warn("Could not persist product to backend API:", err)
+        }
+        // Rollback to pre-optimistic snapshot
+        updateActiveRestaurantRecord((current) => ({
+          ...current,
+          products: previousProducts,
+        }))
+        toast.error("Error al guardar producto en el servidor")
+      })
     },
     [updateActiveRestaurantRecord]
   )
 
   const updateProduct = useCallback(
     (id: string, updates: Partial<MenuItem>) => {
-      updateActiveRestaurantRecord((current) => ({
-        ...current,
-        products: current.products.map((p) =>
-          p.id === id ? { ...p, ...updates } : p
-        ),
-      }))
+      let previousProducts: MenuItem[] = []
+
+      updateActiveRestaurantRecord((current) => {
+        previousProducts = current.products
+        return {
+          ...current,
+          products: current.products.map((p) =>
+            p.id === id ? { ...p, ...updates } : p
+          ),
+        }
+      })
       toast.success("Producto actualizado")
+
+      // Sync with backend API
+      const payload: Record<string, unknown> = {}
+      if (updates.name !== undefined) payload.name = updates.name
+      if (updates.description !== undefined) payload.description = updates.description
+      if (updates.price !== undefined) payload.price = updates.price
+      if (updates.category !== undefined) payload.category = updates.category
+      if (updates.src !== undefined) payload.imageUrl = updates.src
+      if (updates.inStock !== undefined) payload.isAvailable = updates.inStock
+      if (updates.isPopular !== undefined) payload.isPopular = updates.isPopular
+      if (updates.isNew !== undefined) payload.isNew = updates.isNew
+      if (updates.preparationTimeMinutes !== undefined) payload.preparationTimeMinutes = updates.preparationTimeMinutes
+
+      apiClient.updateProduct(id, payload).catch((err) => {
+        if (import.meta.env?.MODE !== 'test') {
+          console.warn("Could not update product in backend API:", err)
+        }
+        // Rollback to pre-optimistic snapshot
+        updateActiveRestaurantRecord((current) => ({
+          ...current,
+          products: previousProducts,
+        }))
+        toast.error("Error al actualizar producto en el servidor")
+      })
     },
     [updateActiveRestaurantRecord]
   )
 
   const deleteProduct = useCallback(
     (id: string) => {
-      updateActiveRestaurantRecord((current) => ({
-        ...current,
-        products: current.products.filter((p) => p.id !== id),
-      }))
+      let previousProducts: MenuItem[] = []
+
+      updateActiveRestaurantRecord((current) => {
+        previousProducts = current.products
+        return {
+          ...current,
+          products: current.products.filter((p) => p.id !== id),
+        }
+      })
       toast.success("Producto eliminado del menú")
+
+      // Sync with backend API
+      apiClient.deleteProduct(id).catch((err) => {
+        if (import.meta.env?.MODE !== 'test') {
+          console.warn("Could not delete product from backend API:", err)
+        }
+        // Rollback to pre-optimistic snapshot
+        updateActiveRestaurantRecord((current) => ({
+          ...current,
+          products: previousProducts,
+        }))
+        toast.error("Error al eliminar producto del servidor")
+      })
     },
     [updateActiveRestaurantRecord]
   )
 
   const toggleProductStock = useCallback(
     (id: string) => {
+      let previousProducts: MenuItem[] = []
+      let isNowInStock = false
+
       updateActiveRestaurantRecord((current) => {
-        let isNowInStock = false
+        previousProducts = current.products
         const nextProducts = current.products.map((p) => {
           if (p.id === id) {
             isNowInStock = !p.inStock
@@ -97,6 +181,19 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
         })
         toast.info(`Producto marcado como ${isNowInStock ? "Disponible" : "Agotado"}`)
         return { ...current, products: nextProducts }
+      })
+
+      // Sync with backend API
+      apiClient.updateProduct(id, { isAvailable: isNowInStock }).catch((err) => {
+        if (import.meta.env?.MODE !== 'test') {
+          console.warn("Could not update product availability in backend API:", err)
+        }
+        // Rollback to pre-optimistic snapshot
+        updateActiveRestaurantRecord((current) => ({
+          ...current,
+          products: previousProducts,
+        }))
+        toast.error("Error al actualizar disponibilidad en el servidor")
       })
     },
     [updateActiveRestaurantRecord]
