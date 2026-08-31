@@ -269,10 +269,11 @@ export const RestaurantsDirectory: React.FC = () => {
       <ConfirmDeleteModal
         isOpen={!!restaurantToDelete}
         onClose={() => setRestaurantToDelete(null)}
-        onConfirm={() => {
+        onConfirm={async () => {
           if (restaurantToDelete) {
-            deleteRestaurant(restaurantToDelete.id)
+            const idToDelete = restaurantToDelete.id
             setRestaurantToDelete(null)
+            await deleteRestaurant(idToDelete)
           }
         }}
         title="¿Eliminar restaurante?"

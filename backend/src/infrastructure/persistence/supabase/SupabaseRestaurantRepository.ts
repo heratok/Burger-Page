@@ -124,6 +124,28 @@ export class SupabaseRestaurantRepository implements RestaurantRepository {
   }
 
   async delete(id: string): Promise<void> {
+    try {
+      // 1. Cascade delete order structure
+      const { data: orderRows } = await this.client.from('orders').select('id').eq('restaurant_id', id);
+      const orderIds = (orderRows || []).map((o: any) => o.id);
+      if (orderIds.length > 0) {
+        const { data: itemRows } = await this.client.from('order_items').select('id').in('order_id', orderIds);
+        const itemIds = (itemRows || []).map((i: any) => i.id);
+        if (itemIds.length > 0) {
+          await this.client.from('order_item_additions').delete().in('order_item_id', itemIds);
+        }
+        await this.client.from('order_items').delete().in('order_id', orderIds);
+        await this.client.from('orders').delete().eq('restaurant_id', id);
+      }
+
+      // 2. Cascade delete tenant users, products, and customers
+      await this.client.from('users').delete().eq('restaurant_id', id);
+      await this.client.from('products').delete().eq('restaurant_id', id);
+      await this.client.from('customers').delete().eq('restaurant_id', id);
+    } catch (cascadeErr) {
+      console.warn('Cascade cleanup partial warning:', cascadeErr);
+    }
+
     const { error } = await this.client
       .from('restaurants')
       .delete()

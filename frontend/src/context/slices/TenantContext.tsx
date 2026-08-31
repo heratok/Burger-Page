@@ -279,7 +279,7 @@ export const TenantProvider: React.FC<{
   )
 
   const deleteRestaurant = useCallback(
-    (id: string) => {
+    async (id: string) => {
       setEnvelope((prev) => {
         const remaining = prev.restaurants.filter((r) => r.id !== id && r.slug !== id)
         if ((activeRestaurantId === id || activeRestaurant?.slug === id)) {
@@ -291,16 +291,14 @@ export const TenantProvider: React.FC<{
         }
       })
 
-      apiClient
-        .deleteRestaurant(id)
-        .then(() => {
-          toast.success("Restaurante eliminado correctamente")
-        })
-        .catch((err) => {
-          if (import.meta.env?.MODE !== 'test') {
-            console.warn("Could not delete restaurant from backend API:", err)
-          }
-        })
+      try {
+        await apiClient.deleteRestaurant(id)
+        toast.success("Restaurante eliminado correctamente")
+      } catch (err) {
+        if (import.meta.env?.MODE !== 'test') {
+          console.warn("Could not delete restaurant from backend API:", err)
+        }
+      }
     },
     [activeRestaurantId, activeRestaurant?.slug]
   )

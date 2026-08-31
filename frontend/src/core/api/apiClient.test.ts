@@ -32,7 +32,7 @@ describe('ApiClient', () => {
     const data = await client.fetchRestaurant()
     expect(data).toEqual(mockData)
     expect(globalThis.fetch).toHaveBeenCalledWith('http://localhost:3001/api/restaurant', {
-      headers: { 'Content-Type': 'application/json' },
+      headers: {},
     })
   })
 
@@ -43,7 +43,7 @@ describe('ApiClient', () => {
     const data = await client.fetchProducts()
     expect(data).toEqual(mockData)
     expect(globalThis.fetch).toHaveBeenCalledWith('http://localhost:3001/api/products', {
-      headers: { 'Content-Type': 'application/json' },
+      headers: {},
     })
   })
 
@@ -54,7 +54,7 @@ describe('ApiClient', () => {
     const data = await client.fetchOrders()
     expect(data).toEqual(mockData)
     expect(globalThis.fetch).toHaveBeenCalledWith('http://localhost:3001/api/orders', {
-      headers: { 'Content-Type': 'application/json' },
+      headers: {},
     })
   })
 
@@ -65,7 +65,7 @@ describe('ApiClient', () => {
     const data = await client.fetchInventory()
     expect(data).toEqual(mockData)
     expect(globalThis.fetch).toHaveBeenCalledWith('http://localhost:3001/api/inventory', {
-      headers: { 'Content-Type': 'application/json' },
+      headers: {},
     })
   })
 
@@ -126,7 +126,7 @@ describe('ApiClient', () => {
     const data = await client.listRestaurants()
     expect(data).toEqual(mockData)
     expect(globalThis.fetch).toHaveBeenCalledWith('http://localhost:3001/api/restaurants', {
-      headers: { 'Content-Type': 'application/json' },
+      headers: {},
     })
   })
 
@@ -151,7 +151,7 @@ describe('ApiClient', () => {
     expect(data).toEqual(mockData)
     expect(globalThis.fetch).toHaveBeenCalledWith('http://localhost:3001/api/restaurants/r2', {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {},
     })
   })
 

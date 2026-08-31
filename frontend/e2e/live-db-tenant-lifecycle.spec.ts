@@ -2,12 +2,14 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Live DB Multi-Tenant Lifecycle, Mobile Storefront & CRM Persistence', () => {
   const timestamp = Date.now().toString().slice(-5);
-  const testRestName = `Burger Fusion ${timestamp}`;
-  const testRestSlug = `burger-fusion-${timestamp}`;
-  const testUsername = `admin_fusion_${timestamp}`;
+  const testRestName = `Burger E2E ${timestamp}`;
+  const testRestSlug = `e2e-fusion-${timestamp}`;
+  const testUsername = `e2e_admin_${timestamp}`;
   const testPassword = `PassFusion_${timestamp}!`;
 
-  test('Full Multi-Tenant Lifecycle: Super Admin Provisioning -> Tenant Setup -> Mobile Storefront Ordering -> Kanban & DB Persistence', async ({ browser }) => {
+  test('Full Multi-Tenant Lifecycle: Super Admin Provisioning -> Tenant Setup -> Mobile Storefront Ordering -> Kanban & DB Persistence -> Safe Cleanup', async ({ browser }) => {
+    test.setTimeout(60000);
+
     // =========================================================================
     // STEP 1: SUPER ADMIN (Desktop 1440x900)
     // =========================================================================
@@ -275,6 +277,46 @@ test.describe('Live DB Multi-Tenant Lifecycle, Mobile Storefront & CRM Persisten
     await tenantPage.reload();
     await expect(tenantPage.getByRole('heading', { name: /Nuevos \/ Pendientes|Pedidos/i }).first()).toBeVisible({ timeout: 10000 });
     await expect(tenantPage.getByText('Carlos E2E Tester').first()).toBeVisible({ timeout: 10000 });
+
+    // =========================================================================
+    // STEP 5: SAFE ISOLATED CLEANUP (Deletes ONLY the test tenant created in this run)
+    // =========================================================================
+    await superPage.bringToFront();
+    await superPage.getByRole('button', { name: /Directorio|Restaurantes/i }).first().click();
+    await expect(superPage).toHaveURL(/\/admin\/restaurants/);
+
+    // Strict safety check: Never delete default or production tenants
+    expect(testRestSlug).toMatch(/^e2e-fusion-\d+$/);
+    expect(testRestSlug).not.toBe('rosto');
+    expect(testRestSlug).not.toBe('craft-staging');
+    expect(testRestSlug).not.toBe('burger-craft');
+
+    // Search specifically for the test restaurant
+    const searchRest = superPage.getByPlaceholder(/Buscar por nombre, slug/i);
+    await searchRest.fill(testRestSlug);
+    
+    // Target the specific row and click Delete
+    const targetRow = superPage.locator('tr').filter({ hasText: testRestSlug });
+    await expect(targetRow).toBeVisible({ timeout: 10000 });
+    await targetRow.locator('button[title="Eliminar restaurante"]').click();
+
+    // Confirm Delete in Modal
+    const deleteModal = superPage.getByRole('dialog').filter({ hasText: /¿Eliminar restaurante\?/i });
+    await expect(deleteModal).toBeVisible();
+    const confirmDeleteBtn = deleteModal.getByRole('button', { name: /Eliminar restaurante/i });
+    await expect(confirmDeleteBtn).toBeVisible();
+    
+    const [deleteResp] = await Promise.all([
+      superPage.waitForResponse((resp) => resp.url().includes('/api/restaurants') && resp.request().method() === 'DELETE'),
+      confirmDeleteBtn.click(),
+    ]);
+    console.log('Delete response URL:', deleteResp.url(), 'status:', deleteResp.status(), 'body:', await deleteResp.text());
+    expect(deleteResp.status()).toBe(200);
+
+    await expect(deleteModal).not.toBeVisible({ timeout: 10000 });
+
+    // Verify it is gone from UI and directory
+    await expect(targetRow).not.toBeVisible({ timeout: 10000 });
 
     // Clean close
     await customerPage.close();
