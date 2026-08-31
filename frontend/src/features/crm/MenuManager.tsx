@@ -24,7 +24,6 @@ import { toast } from "sonner"
 import { optimizeImageToWebP } from "@/lib/imageOptimizer"
 import { uploadImageToStorage } from "@/core/storage/supabaseStorage"
 import { LazyImage } from "@/components/ui/LazyImage"
-import { MenuGridSkeleton } from "@/components/ui/Skeletons"
 import { formatCurrency } from "@/lib/utils"
 
 export const MenuManager: React.FC = () => {

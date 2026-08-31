@@ -35,6 +35,7 @@ export interface RestaurantContextType {
   activeRestaurant: RestaurantRecord
   activeRestaurantId: string
   activeRestaurantSlug: string
+  isSyncing: boolean
   switchRestaurant: (idOrSlug: string) => void
 
   // Super Admin Directory Actions
@@ -47,8 +48,8 @@ export interface RestaurantContextType {
     primaryColor?: string
     templateType?: "burger" | "pizza" | "tacos" | "blank"
   }) => RestaurantRecord
-  updateRestaurant: (id: string, updates: Partial<RestaurantRecord>) => void
-  deleteRestaurant: (id: string) => void
+  updateRestaurant: (id: string, updates: Partial<RestaurantRecord>) => Promise<void>
+  deleteRestaurant: (id: string) => Promise<void>
   refreshRestaurants: () => Promise<void>
   globalStats: GlobalPlatformStats
 
@@ -161,6 +162,7 @@ export const useRestaurant = (): RestaurantContextType => {
     activeRestaurant: tenant.activeRestaurant,
     activeRestaurantId: tenant.activeRestaurantId,
     activeRestaurantSlug: tenant.activeRestaurantSlug,
+    isSyncing: tenant.isSyncing,
     switchRestaurant: tenant.switchRestaurant,
 
     createRestaurant: tenant.createRestaurant,

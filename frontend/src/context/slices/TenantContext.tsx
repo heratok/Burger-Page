@@ -273,7 +273,6 @@ export const TenantProvider: React.FC<{
 
   const updateRestaurant = useCallback(
     async (id: string, updates: Partial<RestaurantRecord>) => {
-      const snapshot = envelope
       setEnvelope((prev) => ({
         ...prev,
         restaurants: prev.restaurants.map((r) =>
