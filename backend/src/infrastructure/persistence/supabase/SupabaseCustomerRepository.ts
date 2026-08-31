@@ -78,7 +78,7 @@ export class SupabaseCustomerRepository implements CustomerRepository {
 
     const { error } = await this.client
       .from('customers')
-      .upsert(payload, { onConflict: 'id' });
+      .upsert(payload, { onConflict: 'id,restaurant_id' });
 
     if (error) {
       throw new Error(`Failed to save customer: ${error.message}`);

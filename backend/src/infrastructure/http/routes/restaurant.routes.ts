@@ -1,5 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { RestaurantController } from '../controllers/RestaurantController.js';
+import { requireAuth } from '../middleware/auth.middleware.js';
 
 export async function restaurantRoutes(fastify: FastifyInstance, opts: { controller: RestaurantController }) {
   fastify.get('/', {
@@ -60,6 +61,7 @@ export async function restaurantRoutes(fastify: FastifyInstance, opts: { control
   }, opts.controller.get.bind(opts.controller));
 
   fastify.put('/categories', {
+    preHandler: [requireAuth],
     schema: {
       tags: ['Restaurant'],
       summary: 'Update categories for default restaurant',
@@ -84,6 +86,7 @@ export async function restaurantRoutes(fastify: FastifyInstance, opts: { control
   }, opts.controller.updateCategories.bind(opts.controller));
 
   fastify.put('/:slug/categories', {
+    preHandler: [requireAuth],
     schema: {
       tags: ['Restaurant'],
       summary: 'Update categories for restaurant tenant',

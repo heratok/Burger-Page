@@ -49,9 +49,18 @@ export class RestaurantController {
     if (!parsed.success) {
       throw new ValidationError(parsed.error.message);
     }
-    const slug = req.params.slug || 'burger-craft';
+    const auth = req.authContext;
+    let identifier: string;
+
+    if (auth?.role === 'super_admin') {
+      identifier = req.params.slug || auth.restaurantId || 'burger-craft';
+    } else {
+      // restaurant_admin is strictly bound to their assigned restaurant
+      identifier = auth?.restaurantId || 'burger-craft';
+    }
+
     const { categories } = parsed.data;
-    const updated = await this.updateCategoriesUseCase.execute(slug, categories);
+    const updated = await this.updateCategoriesUseCase.execute(identifier, categories);
     return reply.status(200).send({
       message: 'Restaurant categories updated successfully',
       categories: updated.categories || [],

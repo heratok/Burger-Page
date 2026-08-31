@@ -185,7 +185,7 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
   const deleteInventoryItem = new DeleteInventoryItemUseCase(inventoryRepo);
 
   const hasher: PasswordHasher = new CryptoPasswordHasher();
-  const createUser = new CreateUserUseCase(userRepo, hasher);
+  const createUser = new CreateUserUseCase(userRepo, hasher, restaurantRepo);
   const authenticateUser = new AuthenticateUserUseCase(userRepo, hasher);
   const listUsersUC = new ListUsersUseCase(userRepo);
 

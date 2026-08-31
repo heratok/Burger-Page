@@ -40,7 +40,17 @@ export class UserController {
     request: FastifyRequest<{ Querystring: { restaurantId?: string } }>,
     reply: FastifyReply
   ) {
-    const users = await this.listUsers.execute(request.query.restaurantId);
+    const auth = request.authContext;
+    let resolvedRestaurantId: string | undefined;
+
+    if (auth?.role === 'super_admin') {
+      resolvedRestaurantId = request.query.restaurantId;
+    } else {
+      // restaurant_admin is strictly locked to their assigned restaurant
+      resolvedRestaurantId = auth?.restaurantId;
+    }
+
+    const users = await this.listUsers.execute(resolvedRestaurantId);
     return reply.send(users);
   }
 }

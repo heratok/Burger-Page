@@ -1,5 +1,5 @@
 import { InventoryRepository } from '../../domain/ports/out/InventoryRepository.js';
-import { EntityNotFoundError, ValidationError } from '../../domain/errors/DomainErrors.js';
+import { ValidationError } from '../../domain/errors/DomainErrors.js';
 import { Inventory } from '../../domain/models/Inventory.js';
 
 export class UpdateInventoryStockUseCase {
@@ -13,20 +13,7 @@ export class UpdateInventoryStockUseCase {
       throw new ValidationError('Quantity change must be a valid number.');
     }
 
-    const delta = Number(quantityChange);
-    const item = await this.inventoryRepo.findById(id, restaurantId);
-    if (!item) {
-      throw new EntityNotFoundError(`Inventory item '${id}' not found for restaurant '${restaurantId}'.`);
-    }
-
-    const newQuantity = Number((item.quantity + delta).toFixed(2));
-    if (newQuantity < 0) {
-      throw new ValidationError(`Insufficient stock. Current stock is ${item.quantity}, cannot reduce by ${Math.abs(delta)}.`);
-    }
-
-    item.quantity = newQuantity;
-    item.updatedAt = new Date().toISOString();
-    await this.inventoryRepo.save(item);
-    return item;
+    // Delegates atomicity to the repository layer to avoid race conditions
+    return await this.inventoryRepo.adjustStock(id, restaurantId, Number(quantityChange));
   }
 }

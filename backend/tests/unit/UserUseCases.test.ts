@@ -4,12 +4,14 @@ import { AuthenticateUserUseCase } from '../../src/application/use-cases/Authent
 import { ListUsersUseCase } from '../../src/application/use-cases/ListUsersUseCase.js';
 import { UserRepository } from '../../src/domain/ports/out/UserRepository.js';
 import { PasswordHasher } from '../../src/domain/ports/out/PasswordHasher.js';
-import { ValidationError, UnauthorizedError } from '../../src/domain/errors/DomainErrors.js';
+import { RestaurantRepository } from '../../src/domain/ports/out/RestaurantRepository.js';
+import { ValidationError, UnauthorizedError, EntityNotFoundError } from '../../src/domain/errors/DomainErrors.js';
 import type { User } from '../../src/domain/models/User.js';
 
 describe('User Use Cases', () => {
   let mockUserRepo: UserRepository;
   let mockHasher: PasswordHasher;
+  let mockRestaurantRepo: RestaurantRepository;
 
   beforeEach(() => {
     mockUserRepo = {
@@ -25,6 +27,14 @@ describe('User Use Cases', () => {
       hash: vi.fn().mockResolvedValue('hashed_password'),
       verify: vi.fn(),
     };
+
+    mockRestaurantRepo = {
+      findById: vi.fn().mockResolvedValue({ id: 'rosto', name: 'Rosto Burger', slug: 'rosto', isActive: true, config: {} }),
+      findBySlug: vi.fn(),
+      findAll: vi.fn(),
+      save: vi.fn(),
+      delete: vi.fn(),
+    };
   });
 
   // ─────────────────────────────────────────────────────────
@@ -32,7 +42,7 @@ describe('User Use Cases', () => {
   // ─────────────────────────────────────────────────────────
   describe('CreateUserUseCase', () => {
     it('should create a user with a hashed password', async () => {
-      const useCase = new CreateUserUseCase(mockUserRepo, mockHasher);
+      const useCase = new CreateUserUseCase(mockUserRepo, mockHasher, mockRestaurantRepo);
       vi.mocked(mockUserRepo.findByUsername).mockResolvedValue(null);
 
       const result = await useCase.execute({
@@ -52,7 +62,7 @@ describe('User Use Cases', () => {
     });
 
     it('should throw ValidationError when username is empty', async () => {
-      const useCase = new CreateUserUseCase(mockUserRepo, mockHasher);
+      const useCase = new CreateUserUseCase(mockUserRepo, mockHasher, mockRestaurantRepo);
 
       await expect(
         useCase.execute({
@@ -64,7 +74,7 @@ describe('User Use Cases', () => {
     });
 
     it('should throw ValidationError when password is shorter than 6 characters', async () => {
-      const useCase = new CreateUserUseCase(mockUserRepo, mockHasher);
+      const useCase = new CreateUserUseCase(mockUserRepo, mockHasher, mockRestaurantRepo);
 
       await expect(
         useCase.execute({
@@ -76,7 +86,7 @@ describe('User Use Cases', () => {
     });
 
     it('should throw ValidationError when restaurant_admin has no restaurantId', async () => {
-      const useCase = new CreateUserUseCase(mockUserRepo, mockHasher);
+      const useCase = new CreateUserUseCase(mockUserRepo, mockHasher, mockRestaurantRepo);
 
       await expect(
         useCase.execute({
@@ -87,8 +97,42 @@ describe('User Use Cases', () => {
       ).rejects.toThrow(ValidationError);
     });
 
+    it('should throw EntityNotFoundError when restaurant_admin references a non-existent restaurant', async () => {
+      const useCase = new CreateUserUseCase(mockUserRepo, mockHasher, mockRestaurantRepo);
+      vi.mocked(mockRestaurantRepo.findById).mockResolvedValue(null);
+
+      await expect(
+        useCase.execute({
+          username: 'admin_ghost',
+          password: 'securePass123',
+          role: 'restaurant_admin',
+          restaurantId: 'non-existent-rest',
+        })
+      ).rejects.toThrow(EntityNotFoundError);
+    });
+
+    it('should throw EntityNotFoundError when restaurant_admin references an inactive restaurant', async () => {
+      const useCase = new CreateUserUseCase(mockUserRepo, mockHasher, mockRestaurantRepo);
+      vi.mocked(mockRestaurantRepo.findById).mockResolvedValue({
+        id: 'inactive-rest',
+        name: 'Inactive Restaurant',
+        slug: 'inactive',
+        isActive: false,
+        config: {},
+      });
+
+      await expect(
+        useCase.execute({
+          username: 'admin_inactive',
+          password: 'securePass123',
+          role: 'restaurant_admin',
+          restaurantId: 'inactive-rest',
+        })
+      ).rejects.toThrow(EntityNotFoundError);
+    });
+
     it('should throw ValidationError when username already exists', async () => {
-      const useCase = new CreateUserUseCase(mockUserRepo, mockHasher);
+      const useCase = new CreateUserUseCase(mockUserRepo, mockHasher, mockRestaurantRepo);
       const existingUser: User = {
         id: 'u1',
         username: 'admin_rosto',
@@ -110,7 +154,7 @@ describe('User Use Cases', () => {
     });
 
     it('should allow super_admin creation without restaurantId', async () => {
-      const useCase = new CreateUserUseCase(mockUserRepo, mockHasher);
+      const useCase = new CreateUserUseCase(mockUserRepo, mockHasher, mockRestaurantRepo);
       vi.mocked(mockUserRepo.findByUsername).mockResolvedValue(null);
 
       const result = await useCase.execute({

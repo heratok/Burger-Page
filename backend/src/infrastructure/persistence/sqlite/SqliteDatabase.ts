@@ -85,7 +85,7 @@ export function createSqliteDatabase(dbPath = ':memory:'): Database {
       updated_at TEXT
     );
 
-    CREATE TABLE IF NOT EXISTS inventory (
+    CREATE TABLE IF NOT EXISTS inventory_items (
       id TEXT PRIMARY KEY,
       restaurant_id TEXT NOT NULL,
       name TEXT NOT NULL,

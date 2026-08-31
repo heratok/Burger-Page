@@ -17,6 +17,7 @@ describe('Inventory Use Cases (Unit)', () => {
       findById: vi.fn(),
       findByRestaurantId: vi.fn(),
       save: vi.fn(),
+      adjustStock: vi.fn(),
       delete: vi.fn(),
     };
   });
@@ -96,7 +97,45 @@ describe('Inventory Use Cases (Unit)', () => {
   describe('UpdateInventoryStockUseCase', () => {
     it('7. should update stock only within the tenant', async () => {
       const useCase = new UpdateInventoryStockUseCase(mockInventoryRepo);
-      const item: Inventory = {
+      const updatedItem: Inventory = {
+        id: 'inv-1',
+        restaurantId: 'burger-craft',
+        name: 'Queso Cheddar',
+        category: 'ingredients',
+        quantity: 35,
+        unit: 'kg',
+        minStockAlert: 10,
+        alertThreshold: 10,
+        costPerUnit: 25000,
+      };
+      vi.mocked(mockInventoryRepo.adjustStock).mockResolvedValue(updatedItem);
+
+      const result = await useCase.execute('inv-1', -15, 'burger-craft');
+      expect(result.quantity).toBe(35);
+      expect(mockInventoryRepo.adjustStock).toHaveBeenCalledWith('inv-1', 'burger-craft', -15);
+    });
+
+    it('8. should reject stock adjustment that results in negative stock', async () => {
+      const useCase = new UpdateInventoryStockUseCase(mockInventoryRepo);
+      vi.mocked(mockInventoryRepo.adjustStock).mockRejectedValue(
+        new ValidationError('Insufficient stock for item \'Queso Cheddar\'. Current stock is 10, cannot reduce by 20.')
+      );
+
+      await expect(useCase.execute('inv-1', -20, 'burger-craft')).rejects.toThrow(ValidationError);
+    });
+
+    it('should throw EntityNotFoundError if item belongs to another tenant', async () => {
+      const useCase = new UpdateInventoryStockUseCase(mockInventoryRepo);
+      vi.mocked(mockInventoryRepo.adjustStock).mockRejectedValue(
+        new EntityNotFoundError('Inventory item \'inv-1\' not found for restaurant \'other-tenant\'.')
+      );
+
+      await expect(useCase.execute('inv-1', 10, 'other-tenant')).rejects.toThrow(EntityNotFoundError);
+    });
+
+    it('should allow restocking (delta > 0) even when current stock is 0', async () => {
+      const useCase = new UpdateInventoryStockUseCase(mockInventoryRepo);
+      const restockedItem: Inventory = {
         id: 'inv-1',
         restaurantId: 'burger-craft',
         name: 'Queso Cheddar',
@@ -107,36 +146,12 @@ describe('Inventory Use Cases (Unit)', () => {
         alertThreshold: 10,
         costPerUnit: 25000,
       };
-      vi.mocked(mockInventoryRepo.findById).mockResolvedValue(item);
+      // Repo returns the item after adjustment — stock guard does NOT apply for positive deltas
+      vi.mocked(mockInventoryRepo.adjustStock).mockResolvedValue(restockedItem);
 
-      const result = await useCase.execute('inv-1', -15, 'burger-craft');
-      expect(result.quantity).toBe(35);
-      expect(mockInventoryRepo.save).toHaveBeenCalledWith(item);
-    });
-
-    it('8. should reject stock adjustment that results in negative stock', async () => {
-      const useCase = new UpdateInventoryStockUseCase(mockInventoryRepo);
-      const item: Inventory = {
-        id: 'inv-1',
-        restaurantId: 'burger-craft',
-        name: 'Queso Cheddar',
-        category: 'ingredients',
-        quantity: 10,
-        unit: 'kg',
-        minStockAlert: 5,
-        alertThreshold: 5,
-        costPerUnit: 25000,
-      };
-      vi.mocked(mockInventoryRepo.findById).mockResolvedValue(item);
-
-      await expect(useCase.execute('inv-1', -20, 'burger-craft')).rejects.toThrow(ValidationError);
-    });
-
-    it('should throw EntityNotFoundError if item belongs to another tenant', async () => {
-      const useCase = new UpdateInventoryStockUseCase(mockInventoryRepo);
-      vi.mocked(mockInventoryRepo.findById).mockResolvedValue(null);
-
-      await expect(useCase.execute('inv-1', 10, 'other-tenant')).rejects.toThrow(EntityNotFoundError);
+      const result = await useCase.execute('inv-1', 50, 'burger-craft');
+      expect(result.quantity).toBe(50);
+      expect(mockInventoryRepo.adjustStock).toHaveBeenCalledWith('inv-1', 'burger-craft', 50);
     });
   });
 

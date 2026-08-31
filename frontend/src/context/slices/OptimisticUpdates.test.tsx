@@ -50,8 +50,8 @@ describe("TenantContext Optimistic Updates & Rollback", () => {
       await result.current.deleteRestaurant(targetId)
     })
 
-    // Instant in-memory removal
-    expect(result.current.restaurants.some((r) => r.id === targetId)).toBe(false)
+    // Instant in-memory soft delete (isActive becomes false)
+    expect(result.current.restaurants.find((r) => r.id === targetId)?.isActive).toBe(false)
     expect(deleteApiSpy).toHaveBeenCalledWith(targetId)
   })
 
@@ -75,9 +75,8 @@ describe("TenantContext Optimistic Updates & Rollback", () => {
       await result.current.deleteRestaurant(targetId)
     })
 
-    // Rollback restored the restaurant
-    expect(result.current.restaurants.length).toBe(2)
-    expect(result.current.restaurants.some((r) => r.id === targetId)).toBe(true)
+    // Rollback restored the restaurant isActive status
+    expect(result.current.restaurants.find((r) => r.id === targetId)?.isActive).toBe(true)
   })
 
   it("optimistically toggles active status instantly without reload", async () => {
