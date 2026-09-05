@@ -5,6 +5,7 @@ import { CreateOrderUseCase } from '../../../application/use-cases/CreateOrderUs
 import { UpdateOrderStatusUseCase } from '../../../application/use-cases/UpdateOrderStatusUseCase.js';
 import { UpdateOrderReceiptUseCase } from '../../../application/use-cases/UpdateOrderReceiptUseCase.js';
 import { createOrderSchema, updateOrderStatusSchema, updateOrderReceiptSchema } from '@burger-page/contracts';
+import { RestaurantRepository } from '../../../domain/ports/out/RestaurantRepository.js';
 import { UnauthorizedError, ValidationError } from '../../../domain/errors/DomainErrors.js';
 import { CreateOrderDTO, UpdateOrderStatusDTO, UpdateOrderReceiptDTO } from '../../../application/dtos/index.js';
 import { globalOrderEventBus } from '../../events/OrderEventBus.js';
@@ -15,11 +16,32 @@ export class OrderController {
     private getOrderByIdUseCase: GetOrderByIdUseCase,
     private createOrderUseCase: CreateOrderUseCase,
     private updateOrderStatusUseCase: UpdateOrderStatusUseCase,
-    private updateOrderReceiptUseCase?: UpdateOrderReceiptUseCase
+    private updateOrderReceiptUseCase?: UpdateOrderReceiptUseCase,
+    private restaurantRepo?: RestaurantRepository
   ) {}
 
+  private async resolveRestaurantId(req: FastifyRequest): Promise<string> {
+    let restaurantId = req.authContext?.restaurantId;
+    if (!restaurantId && req.authContext?.role === 'super_admin') {
+      const query = (req.query || {}) as any;
+      const body = (req.body || {}) as any;
+      const headers = (req.headers || {}) as any;
+      restaurantId =
+        query?.restaurantId ||
+        body?.restaurantId ||
+        headers?.['x-restaurant-id'];
+
+      if (!restaurantId && this.restaurantRepo) {
+        const all = await this.restaurantRepo.findAll();
+        const active = all.find((r) => r.isActive);
+        if (active) restaurantId = active.id;
+      }
+    }
+    return restaurantId || '';
+  }
+
   async list(req: FastifyRequest, reply: FastifyReply) {
-    const restaurantId = req.authContext?.restaurantId;
+    const restaurantId = await this.resolveRestaurantId(req);
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to list orders.');
     }
@@ -29,7 +51,7 @@ export class OrderController {
 
   async getById(req: FastifyRequest, reply: FastifyReply) {
     const params = req.params as { id: string };
-    const restaurantId = req.authContext?.restaurantId;
+    const restaurantId = await this.resolveRestaurantId(req);
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to fetch an order.');
     }
@@ -56,6 +78,7 @@ export class OrderController {
         restaurantId: order.restaurantId,
         orderNumber: order.orderNumber,
         customerId: order.customerId,
+        customer: (order as any).customer,
         items: order.items,
         status: order.status,
         createdAt: order.createdAt,
@@ -72,7 +95,7 @@ export class OrderController {
 
   async updateStatus(req: FastifyRequest, reply: FastifyReply) {
     const params = req.params as { id: string };
-    const restaurantId = req.authContext?.restaurantId;
+    const restaurantId = await this.resolveRestaurantId(req);
     const actorId = req.authContext?.userId;
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to update order status.');
@@ -118,7 +141,7 @@ export class OrderController {
 
   async updateReceipt(req: FastifyRequest, reply: FastifyReply) {
     const params = req.params as { id: string };
-    const restaurantId = req.authContext?.restaurantId;
+    const restaurantId = await this.resolveRestaurantId(req);
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to update order receipt.');
     }

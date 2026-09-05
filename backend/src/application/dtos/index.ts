@@ -41,9 +41,18 @@ export interface OrderItemDTO {
   additions?: Array<string | OrderItemAdditionDTO>;
 }
 
+export interface CreateOrderCustomerDTO {
+  name?: string;
+  phone?: string;
+  address?: string;
+  barrio?: string;
+  email?: string;
+}
+
 export interface CreateOrderDTO {
   restaurantId: string;
   customerId?: string;
+  customer?: CreateOrderCustomerDTO;
   items: OrderItemDTO[];
   deliveryFee?: number;
   paymentMethod?: 'Efectivo' | 'Transferencia';

@@ -174,10 +174,14 @@ export class ApiClient {
     isPopular: boolean
     isNew: boolean
     preparationTimeMinutes: number
-  }>): Promise<MenuItem> {
-    const raw = await this.request<any>(`/products/${id}`, {
+    restaurantId: string
+  }>, restaurantId?: string): Promise<MenuItem> {
+    const targetRest = restaurantId || data.restaurantId
+    const qs = targetRest ? `?restaurantId=${encodeURIComponent(targetRest)}` : ''
+    const payload = targetRest && !data.restaurantId ? { ...data, restaurantId: targetRest } : data
+    const raw = await this.request<any>(`/products/${id}${qs}`, {
       method: 'PUT',
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     })
     return mapProductResponse(raw)
   }
@@ -189,17 +193,24 @@ export class ApiClient {
     })
   }
 
-  async fetchAdditions(restaurantIdOrSlug?: string, productId?: string): Promise<AdditionItem[]> {
+  async fetchAdditions(
+    target?: { restaurantId?: string; slug?: string; productId?: string } | string,
+    productId?: string
+  ): Promise<AdditionItem[]> {
     const params = new URLSearchParams()
-    if (restaurantIdOrSlug) {
-      if (restaurantIdOrSlug.startsWith('rest-') || restaurantIdOrSlug.startsWith('tenant-')) {
-        params.set('restaurantId', restaurantIdOrSlug)
+    if (typeof target === 'object' && target !== null) {
+      if (target.restaurantId) params.set('restaurantId', target.restaurantId)
+      if (target.slug) params.set('slug', target.slug)
+      if (target.productId) params.set('productId', target.productId)
+    } else if (typeof target === 'string') {
+      if (target.startsWith('rest-') || target.startsWith('tenant-')) {
+        params.set('restaurantId', target)
       } else {
-        params.set('slug', restaurantIdOrSlug)
+        params.set('slug', target)
       }
-    }
-    if (productId) {
-      params.set('productId', productId)
+      if (productId) {
+        params.set('productId', productId)
+      }
     }
     const query = params.toString() ? `?${params.toString()}` : ''
     const raw = await this.request<any[]>(`/additions${query}`)
@@ -211,7 +222,7 @@ export class ApiClient {
     }))
   }
 
-  async createAddition(data: { name: string; price: number; isAvailable?: boolean; displayOrder?: number; productId?: string }): Promise<AdditionItem> {
+  async createAddition(data: { name: string; price: number; isAvailable?: boolean; displayOrder?: number; productId?: string; restaurantId?: string }): Promise<AdditionItem> {
     const raw = await this.request<any>('/additions', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -224,10 +235,16 @@ export class ApiClient {
     }
   }
 
-  async updateAddition(id: string, data: Partial<{ name: string; price: number; isAvailable: boolean; displayOrder: number; productId?: string }>): Promise<AdditionItem> {
-    const raw = await this.request<any>(`/additions/${id}`, {
+  async updateAddition(
+    id: string,
+    data: Partial<{ name: string; price: number; isAvailable: boolean; displayOrder: number; productId?: string; restaurantId?: string }>,
+    restaurantId?: string
+  ): Promise<AdditionItem> {
+    const qs = restaurantId ? `?restaurantId=${encodeURIComponent(restaurantId)}` : ''
+    const payload = restaurantId && !data.restaurantId ? { ...data, restaurantId } : data
+    const raw = await this.request<any>(`/additions/${id}${qs}`, {
       method: 'PUT',
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     })
     return {
       id: raw.id,
@@ -237,8 +254,9 @@ export class ApiClient {
     }
   }
 
-  async deleteAddition(id: string): Promise<void> {
-    await this.request<void>(`/additions/${id}`, {
+  async deleteAddition(id: string, restaurantId?: string): Promise<void> {
+    const qs = restaurantId ? `?restaurantId=${encodeURIComponent(restaurantId)}` : ''
+    await this.request<void>(`/additions/${id}${qs}`, {
       method: 'DELETE',
     })
   }
@@ -250,30 +268,81 @@ export class ApiClient {
     })
   }
 
-  async fetchOrders(): Promise<Order[]> {
-    return this.request<Order[]>('/orders')
+  async fetchOrders(restaurantId?: string): Promise<Order[]> {
+    const qs = restaurantId ? `?restaurantId=${encodeURIComponent(restaurantId)}` : ''
+    return this.request<Order[]>(`/orders${qs}`)
   }
 
-  async updateOrderStatus(orderId: string, status: OrderStatus): Promise<Order> {
-    return this.request<Order>(`/orders/${orderId}/status`, {
+  async updateOrderStatus(orderId: string, status: OrderStatus, restaurantId?: string): Promise<Order> {
+    const qs = restaurantId ? `?restaurantId=${encodeURIComponent(restaurantId)}` : ''
+    return this.request<Order>(`/orders/${orderId}/status${qs}`, {
       method: 'PATCH',
       body: JSON.stringify({ status }),
     })
   }
 
-  async updateOrderReceipt(orderId: string, receiptUrl: string): Promise<Order> {
-    return this.request<Order>(`/orders/${orderId}/receipt`, {
+  async updateOrderReceipt(orderId: string, receiptUrl: string, restaurantId?: string): Promise<Order> {
+    const qs = restaurantId ? `?restaurantId=${encodeURIComponent(restaurantId)}` : ''
+    return this.request<Order>(`/orders/${orderId}/receipt${qs}`, {
       method: 'PATCH',
       body: JSON.stringify({ receiptUrl }),
     })
   }
 
-  async fetchInventory(): Promise<InventoryItem[]> {
-    return this.request<InventoryItem[]>('/inventory')
+  async fetchInventory(restaurantId?: string): Promise<InventoryItem[]> {
+    const qs = restaurantId ? `?restaurantId=${encodeURIComponent(restaurantId)}` : ''
+    return this.request<InventoryItem[]>(`/inventory${qs}`)
   }
 
-  async updateInventoryStock(itemId: string, quantityChange: number): Promise<InventoryItem> {
-    return this.request<InventoryItem>(`/inventory/${itemId}/stock`, {
+  async createInventoryItem(data: {
+    restaurantId?: string
+    name: string
+    category?: string
+    quantity: number
+    unit: string
+    minStockAlert?: number
+    alertThreshold?: number
+    costPerUnit?: number
+  }): Promise<InventoryItem> {
+    return this.request<InventoryItem>('/inventory', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async updateInventoryItem(
+    id: string,
+    data: Partial<{
+      restaurantId?: string
+      name: string
+      category: string
+      quantity: number
+      unit: string
+      minStockAlert: number
+      alertThreshold: number
+      costPerUnit: number
+    }>,
+    restaurantId?: string
+  ): Promise<InventoryItem> {
+    const targetRest = restaurantId || data.restaurantId
+    const qs = targetRest ? `?restaurantId=${encodeURIComponent(targetRest)}` : ''
+    const payload = targetRest && !data.restaurantId ? { ...data, restaurantId: targetRest } : data
+    return this.request<InventoryItem>(`/inventory/${id}${qs}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    })
+  }
+
+  async deleteInventoryItem(id: string, restaurantId?: string): Promise<void> {
+    const qs = restaurantId ? `?restaurantId=${encodeURIComponent(restaurantId)}` : ''
+    await this.request<void>(`/inventory/${id}${qs}`, {
+      method: 'DELETE',
+    })
+  }
+
+  async updateInventoryStock(itemId: string, quantityChange: number, restaurantId?: string): Promise<InventoryItem> {
+    const qs = restaurantId ? `?restaurantId=${encodeURIComponent(restaurantId)}` : ''
+    return this.request<InventoryItem>(`/inventory/${itemId}/stock${qs}`, {
       method: 'PATCH',
       body: JSON.stringify({ quantityChange }),
     })
@@ -283,12 +352,17 @@ export class ApiClient {
    * Subscribes to real-time Server-Sent Events (SSE) for live order updates.
    * Returns an unsubscribe function.
    */
-  subscribeToOrderStream(onEvent: (event: OrderEvent) => void): () => void {
+  subscribeToOrderStream(onEvent: (event: OrderEvent) => void, restaurantId?: string): () => void {
     if (typeof EventSource === 'undefined') {
       return () => {}
     }
 
-    const eventSource = new EventSource(`${this.baseUrl}/orders/stream`)
+    const params = new URLSearchParams()
+    if (this.token) params.set('token', this.token)
+    if (restaurantId) params.set('restaurantId', restaurantId)
+    const qs = params.toString() ? `?${params.toString()}` : ''
+
+    const eventSource = new EventSource(`${this.baseUrl}/orders/stream${qs}`)
 
     const handleMessage = (e: MessageEvent) => {
       try {

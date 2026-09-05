@@ -5,6 +5,7 @@ import { CreateInventoryItemUseCase } from '../../../application/use-cases/Creat
 import { UpdateInventoryStockUseCase } from '../../../application/use-cases/UpdateInventoryStockUseCase.js';
 import { UpdateInventoryItemUseCase } from '../../../application/use-cases/UpdateInventoryItemUseCase.js';
 import { DeleteInventoryItemUseCase } from '../../../application/use-cases/DeleteInventoryItemUseCase.js';
+import { RestaurantRepository } from '../../../domain/ports/out/RestaurantRepository.js';
 import { updateInventoryStockSchema } from '@burger-page/contracts';
 import { UnauthorizedError, ValidationError } from '../../../domain/errors/DomainErrors.js';
 import { CreateInventoryItemDTO, UpdateInventoryItemDTO } from '../../../application/dtos/index.js';
@@ -16,11 +17,32 @@ export class InventoryController {
     private getInventoryItemByIdUseCase?: GetInventoryItemByIdUseCase,
     private createInventoryItemUseCase?: CreateInventoryItemUseCase,
     private updateInventoryItemUseCase?: UpdateInventoryItemUseCase,
-    private deleteInventoryItemUseCase?: DeleteInventoryItemUseCase
+    private deleteInventoryItemUseCase?: DeleteInventoryItemUseCase,
+    private restaurantRepo?: RestaurantRepository
   ) {}
 
+  private async resolveRestaurantId(req: FastifyRequest): Promise<string> {
+    let restaurantId = req.authContext?.restaurantId;
+    if (!restaurantId && req.authContext?.role === 'super_admin') {
+      const query = (req.query || {}) as any;
+      const body = (req.body || {}) as any;
+      const headers = (req.headers || {}) as any;
+      restaurantId =
+        query?.restaurantId ||
+        body?.restaurantId ||
+        headers?.['x-restaurant-id'];
+
+      if (!restaurantId && this.restaurantRepo) {
+        const all = await this.restaurantRepo.findAll();
+        const active = all.find((r) => r.isActive);
+        if (active) restaurantId = active.id;
+      }
+    }
+    return restaurantId || '';
+  }
+
   async list(req: FastifyRequest, reply: FastifyReply) {
-    const restaurantId = req.authContext?.restaurantId;
+    const restaurantId = await this.resolveRestaurantId(req);
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to list inventory.');
     }
@@ -43,7 +65,7 @@ export class InventoryController {
   }
 
   async getById(req: FastifyRequest, reply: FastifyReply) {
-    const restaurantId = req.authContext?.restaurantId;
+    const restaurantId = await this.resolveRestaurantId(req);
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to get inventory item.');
     }
@@ -69,7 +91,7 @@ export class InventoryController {
   }
 
   async create(req: FastifyRequest, reply: FastifyReply) {
-    const restaurantId = req.authContext?.restaurantId;
+    const restaurantId = await this.resolveRestaurantId(req);
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to create inventory item.');
     }
@@ -95,7 +117,7 @@ export class InventoryController {
   }
 
   async update(req: FastifyRequest, reply: FastifyReply) {
-    const restaurantId = req.authContext?.restaurantId;
+    const restaurantId = await this.resolveRestaurantId(req);
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to update inventory item.');
     }
@@ -122,7 +144,7 @@ export class InventoryController {
   }
 
   async updateStock(req: FastifyRequest, reply: FastifyReply) {
-    const restaurantId = req.authContext?.restaurantId;
+    const restaurantId = await this.resolveRestaurantId(req);
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to update stock.');
     }
@@ -146,7 +168,7 @@ export class InventoryController {
   }
 
   async delete(req: FastifyRequest, reply: FastifyReply) {
-    const restaurantId = req.authContext?.restaurantId;
+    const restaurantId = await this.resolveRestaurantId(req);
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to delete inventory item.');
     }

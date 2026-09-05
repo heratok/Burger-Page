@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { Order, OrderItem, OrderItemAddition } from '../../domain/models/Order.js';
+import { Customer } from '../../domain/models/Customer.js';
 import { OrderRepository } from '../../domain/ports/out/OrderRepository.js';
 import { ProductRepository } from '../../domain/ports/out/ProductRepository.js';
 import { ProductAdditionRepository } from '../../domain/ports/out/ProductAdditionRepository.js';
@@ -37,7 +38,7 @@ export class CreateOrderUseCase {
       throw new ValidationError('The order must contain at least one item.');
     }
 
-    // 2. Validar customer_id ANTES de procesar productos si fue provisto
+    // 2. Validar o registrar customer_id ANTES de procesar productos
     let validatedCustomerId: string | undefined = undefined;
     if (dto.customerId) {
       if (this.customerRepo) {
@@ -47,11 +48,47 @@ export class CreateOrderUseCase {
             throw new ValidationError(`Customer '${dto.customerId}' does not belong to restaurant '${restaurant.name}'.`);
           }
           validatedCustomerId = customer.id;
-        } else {
+        } else if (!dto.customerId.startsWith('cust-')) {
+          // Preserve custom/test IDs that are not temporary client IDs
           validatedCustomerId = dto.customerId;
+        } else {
+          // If customer ID was a temporary client ID not found in DB, omit invalid foreign key
+          validatedCustomerId = undefined;
         }
       } else {
-        validatedCustomerId = dto.customerId;
+        validatedCustomerId = dto.customerId.startsWith('cust-') ? undefined : dto.customerId;
+      }
+    }
+
+    // Auto-link or create customer in DB if customer details are provided
+    if (!validatedCustomerId && dto.customer && dto.customer.phone && dto.customer.name && this.customerRepo) {
+      try {
+        const phone = dto.customer.phone.trim();
+        let customer = await this.customerRepo.findByPhone(phone, restaurant.id);
+        if (customer) {
+          customer.name = dto.customer.name.trim();
+          if (dto.customer.address) customer.address = dto.customer.address.trim();
+          if (dto.customer.barrio) customer.barrio = dto.customer.barrio.trim();
+          customer.updatedAt = new Date().toISOString();
+          await this.customerRepo.save(customer);
+        } else {
+          customer = new Customer(
+            `cust_${randomUUID()}`,
+            restaurant.id,
+            dto.customer.name.trim(),
+            phone,
+            dto.customer.address?.trim() || '',
+            dto.customer.barrio?.trim() || '',
+            '',
+            dto.customer.email?.trim() || '',
+            new Date().toISOString(),
+            new Date().toISOString()
+          );
+          await this.customerRepo.save(customer);
+        }
+        validatedCustomerId = customer.id;
+      } catch {
+        // Fallback gracefully without blocking order creation
       }
     }
 
@@ -186,6 +223,15 @@ export class CreateOrderUseCase {
       dto.comment,
       dto.receiptUrl
     );
+
+    if (dto.customer) {
+      (order as any).customer = {
+        nombre: dto.customer.name || '',
+        telefono: dto.customer.phone || '',
+        direccion: dto.customer.address || '',
+        barrio: dto.customer.barrio || '',
+      };
+    }
 
     // 8. Guardar de forma atómica en BD
     await this.orderRepo.save(order);

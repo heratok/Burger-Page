@@ -10,6 +10,12 @@ export async function customerRoutes(fastify: FastifyInstance, opts: { controlle
       tags: ['Customers'],
       summary: 'List all restaurant customers',
       description: 'Fetch buyers for the authenticated restaurant (name, phone, address, barrio, notes, email).',
+      querystring: {
+        type: 'object',
+        properties: {
+          restaurantId: { type: 'string', description: 'Target restaurant identifier for super_admin override' },
+        },
+      },
       response: {
         200: {
           type: 'array',
@@ -46,7 +52,13 @@ export async function customerRoutes(fastify: FastifyInstance, opts: { controlle
           id: { type: 'string', description: 'Customer ID' }
         },
         required: ['id']
-      }
+      },
+      querystring: {
+        type: 'object',
+        properties: {
+          restaurantId: { type: 'string', description: 'Target restaurant identifier for super_admin override' },
+        },
+      },
     }
   }, opts.controller.getById.bind(opts.controller));
 
@@ -61,6 +73,7 @@ export async function customerRoutes(fastify: FastifyInstance, opts: { controlle
         type: 'object',
         required: ['name', 'phone'],
         properties: {
+          restaurantId: { type: 'string', description: 'Target restaurant identifier for super_admin override' },
           name: { type: 'string', example: 'Carlos Gómez' },
           phone: { type: 'string', example: '+57 300 123 4567' },
           address: { type: 'string', example: 'Calle 45 # 12-34' },
@@ -85,7 +98,13 @@ export async function customerRoutes(fastify: FastifyInstance, opts: { controlle
           id: { type: 'string', description: 'Customer ID' }
         },
         required: ['id']
-      }
+      },
+      querystring: {
+        type: 'object',
+        properties: {
+          restaurantId: { type: 'string', description: 'Target restaurant identifier for super_admin override' },
+        },
+      },
     }
   }, opts.controller.update.bind(opts.controller));
 
@@ -102,7 +121,13 @@ export async function customerRoutes(fastify: FastifyInstance, opts: { controlle
           id: { type: 'string', description: 'Customer ID' }
         },
         required: ['id']
-      }
+      },
+      querystring: {
+        type: 'object',
+        properties: {
+          restaurantId: { type: 'string', description: 'Target restaurant identifier for super_admin override' },
+        },
+      },
     }
   }, opts.controller.delete.bind(opts.controller));
 }

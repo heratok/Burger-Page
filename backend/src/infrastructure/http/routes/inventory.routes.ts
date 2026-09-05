@@ -10,6 +10,12 @@ export async function inventoryRoutes(fastify: FastifyInstance, opts: { controll
       tags: ['Inventory'],
       summary: 'List all inventory items',
       description: 'Get ingredients, packaging, and beverage inventory stock levels for the authenticated restaurant.',
+      querystring: {
+        type: 'object',
+        properties: {
+          restaurantId: { type: 'string', description: 'Target restaurant identifier for super_admin override' },
+        },
+      },
       response: {
         200: {
           type: 'array',
@@ -48,7 +54,13 @@ export async function inventoryRoutes(fastify: FastifyInstance, opts: { controll
           id: { type: 'string', description: 'Inventory Item ID' }
         },
         required: ['id']
-      }
+      },
+      querystring: {
+        type: 'object',
+        properties: {
+          restaurantId: { type: 'string', description: 'Target restaurant identifier for super_admin override' },
+        },
+      },
     }
   }, opts.controller.getById.bind(opts.controller));
 
@@ -63,6 +75,7 @@ export async function inventoryRoutes(fastify: FastifyInstance, opts: { controll
         type: 'object',
         required: ['name', 'category', 'unit'],
         properties: {
+          restaurantId: { type: 'string', description: 'Target restaurant identifier for super_admin override' },
           name: { type: 'string', example: 'Pan Brioche' },
           category: { type: 'string', enum: ['ingredients', 'beverages', 'packaging', 'cleaning', 'other'], example: 'ingredients' },
           quantity: { type: 'number', example: 50 },
@@ -88,7 +101,13 @@ export async function inventoryRoutes(fastify: FastifyInstance, opts: { controll
           id: { type: 'string', description: 'Inventory Item ID' }
         },
         required: ['id']
-      }
+      },
+      querystring: {
+        type: 'object',
+        properties: {
+          restaurantId: { type: 'string', description: 'Target restaurant identifier for super_admin override' },
+        },
+      },
     }
   }, opts.controller.update.bind(opts.controller));
 
@@ -105,6 +124,12 @@ export async function inventoryRoutes(fastify: FastifyInstance, opts: { controll
           id: { type: 'string', description: 'Inventory Item ID' }
         },
         required: ['id']
+      },
+      querystring: {
+        type: 'object',
+        properties: {
+          restaurantId: { type: 'string', description: 'Target restaurant identifier for super_admin override' },
+        },
       },
       body: {
         type: 'object',
@@ -141,7 +166,13 @@ export async function inventoryRoutes(fastify: FastifyInstance, opts: { controll
           id: { type: 'string', description: 'Inventory Item ID' }
         },
         required: ['id']
-      }
+      },
+      querystring: {
+        type: 'object',
+        properties: {
+          restaurantId: { type: 'string', description: 'Target restaurant identifier for super_admin override' },
+        },
+      },
     }
   }, opts.controller.delete.bind(opts.controller));
 }

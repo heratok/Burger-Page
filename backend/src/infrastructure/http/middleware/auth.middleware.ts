@@ -18,7 +18,14 @@ declare module 'fastify' {
 export function createAuthMiddlewares(jwt: JwtService = new JwtService()) {
   async function requireAuth(req: FastifyRequest, reply: FastifyReply) {
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    let token: string | undefined;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.slice(7).trim();
+    } else if ((req.query as any)?.token) {
+      token = (req.query as any).token;
+    }
+
+    if (!token) {
       return reply.status(401).send({
         type: 'https://example.com/probs/unauthorized',
         title: 'Unauthorized',
@@ -26,8 +33,6 @@ export function createAuthMiddlewares(jwt: JwtService = new JwtService()) {
         detail: 'Missing or invalid Authorization header. Expected Bearer token.',
       });
     }
-
-    const token = authHeader.slice(7).trim();
     try {
       const payload = jwt.verifyToken(token);
       req.authContext = {

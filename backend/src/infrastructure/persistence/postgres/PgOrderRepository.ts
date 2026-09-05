@@ -40,7 +40,7 @@ async function loadItemsWithAdditions(client: PoolClient, orderId: string): Prom
 }
 
 function mapOrderRow(row: any, items: OrderItem[]): Order {
-  return new Order(
+  const order = new Order(
     row.id,
     row.restaurant_id,
     row.customer_id || undefined,
@@ -55,13 +55,25 @@ function mapOrderRow(row: any, items: OrderItem[]): Order {
     row.comment || undefined,
     row.receipt_url || undefined
   );
+  if (row.customer_name) {
+    (order as any).customer = {
+      nombre: row.customer_name,
+      telefono: row.customer_phone || '',
+      direccion: row.customer_address || '',
+      barrio: row.customer_barrio || '',
+    };
+  }
+  return order;
 }
 
 export class PgOrderRepository implements OrderRepository {
   async findById(id: string, restaurantId: string): Promise<Order | null> {
     return withTenantContext({ restaurantId }, async (client) => {
       const { rows } = await client.query(
-        `SELECT * FROM public.orders WHERE id = $1 AND restaurant_id = $2`,
+        `SELECT o.*, c.name as customer_name, c.phone as customer_phone, c.address as customer_address, c.barrio as customer_barrio
+         FROM public.orders o
+         LEFT JOIN public.customers c ON o.customer_id = c.id
+         WHERE o.id = $1 AND o.restaurant_id = $2`,
         [id, restaurantId]
       );
       if (rows.length === 0) return null;
@@ -73,7 +85,10 @@ export class PgOrderRepository implements OrderRepository {
   async findByRestaurantId(restaurantId: string): Promise<Order[]> {
     return withTenantContext({ restaurantId }, async (client) => {
       const { rows } = await client.query(
-        `SELECT * FROM public.orders WHERE restaurant_id = $1 ORDER BY created_at DESC`,
+        `SELECT o.*, c.name as customer_name, c.phone as customer_phone, c.address as customer_address, c.barrio as customer_barrio
+         FROM public.orders o
+         LEFT JOIN public.customers c ON o.customer_id = c.id
+         WHERE o.restaurant_id = $1 ORDER BY o.created_at DESC`,
         [restaurantId]
       );
       const orders: Order[] = [];
