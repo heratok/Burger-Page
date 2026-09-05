@@ -25,7 +25,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   // Hydrate inventory from database
   React.useEffect(() => {
-    if (!activeRestaurant?.id) return
+    if (!activeRestaurant?.id || !apiClient.hasToken()) return
     apiClient
       .fetchInventory(activeRestaurant.id)
       .then((backendInventory) => {

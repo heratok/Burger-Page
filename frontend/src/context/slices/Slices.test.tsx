@@ -94,6 +94,26 @@ describe("InventoryContext Slice", () => {
     vi.clearAllMocks()
   })
 
+  it("does not fetch inventory when there is no auth token (guest placeholder tenant)", async () => {
+    const { TenantProvider } = await import("./TenantContext")
+    const { InventoryProvider, useInventory } = await import("./InventoryContext")
+    const { apiClient } = await import("@/core/api/apiClient")
+
+    vi.spyOn(apiClient, "hasToken").mockReturnValue(false)
+    const fetchSpy = vi.spyOn(apiClient, "fetchInventory").mockResolvedValue([] as any)
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>
+        <InventoryProvider>{children}</InventoryProvider>
+      </TenantProvider>
+    )
+
+    renderHook(() => useInventory(), { wrapper })
+
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
   it("manages inventory items and calculates stock value and alerts", async () => {
     const { TenantProvider } = await import("./TenantContext")
     const { InventoryProvider, useInventory } = await import("./InventoryContext")
@@ -388,6 +408,29 @@ describe("OrderContext Slice", () => {
     expect(updated?.status).toBe("cooking")
   })
 
+  it("does not fetch orders when there is no auth token (guest placeholder tenant)", async () => {
+    const { TenantProvider } = await import("./TenantContext")
+    const { OrderProvider, useOrders } = await import("./OrderContext")
+    const { UiProvider } = await import("./UiContext")
+    const { apiClient } = await import("@/core/api/apiClient")
+
+    vi.spyOn(apiClient, "hasToken").mockReturnValue(false)
+    const fetchSpy = vi.spyOn(apiClient, "fetchOrders").mockResolvedValue([] as any)
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>
+        <UiProvider>
+          <OrderProvider>{children}</OrderProvider>
+        </UiProvider>
+      </TenantProvider>
+    )
+
+    renderHook(() => useOrders(), { wrapper })
+
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
   it("subscribes to SSE order stream and updates matching order state on ORDER_STATUS_UPDATED event", async () => {
     const { TenantProvider } = await import("./TenantContext")
     const { OrderProvider, useOrders } = await import("./OrderContext")
@@ -396,6 +439,7 @@ describe("OrderContext Slice", () => {
     let streamHandler: ((event: any) => void) | null = null
     const unsubscribeSpy = vi.fn()
     vi.spyOn(apiClient, "createOrder").mockResolvedValue({} as any)
+    vi.spyOn(apiClient, "hasToken").mockReturnValue(true)
     vi.spyOn(apiClient, "subscribeToOrderStream").mockImplementation((onEvent) => {
       streamHandler = onEvent
       return unsubscribeSpy
@@ -463,6 +507,7 @@ describe("OrderContext Slice", () => {
     const { apiClient } = await import("@/core/api/apiClient")
 
     let streamHandler: ((event: any) => void) | null = null
+    vi.spyOn(apiClient, "hasToken").mockReturnValue(true)
     vi.spyOn(apiClient, "subscribeToOrderStream").mockImplementation((onEvent) => {
       streamHandler = onEvent
       return vi.fn()

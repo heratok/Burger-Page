@@ -79,6 +79,10 @@ export class ApiClient {
     }
   }
 
+  hasToken(): boolean {
+    return Boolean(this.token)
+  }
+
   private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
     const headers: Record<string, string> = {
       ...(options?.headers as Record<string, string>),

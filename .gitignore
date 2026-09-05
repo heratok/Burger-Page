@@ -60,3 +60,11 @@ capture*.mjs
 # Supabase CLI Local State
 supabase/.temp/
 supabase/.branches/
+
+# BrowserStack SDK (contains access key)
+browserstack.yml
+browserstack-local/
+browserstack-node-sdk/
+
+# Playwright HTML report (BrowserStack)
+playwright-report-bs/

@@ -104,14 +104,35 @@ describe('Restaurant API & Multi-Tenant Security (Integration)', () => {
     expect(response.statusCode).toBe(401);
   });
 
-  it('GET /api/restaurants with restaurant_admin token should return 403 Forbidden', async () => {
+  it('GET /api/restaurants with restaurant_admin token returns ONLY their own restaurant (tenant-scoped)', async () => {
+    // A tenant the restaurant admin does NOT own (created by super admin)
+    const createOther = await app.inject({
+      method: 'POST',
+      url: '/api/restaurants',
+      headers: { authorization: `Bearer ${tokenSuperAdmin}` },
+      payload: {
+        name: 'Scoped Tenant Ajeno',
+        slug: 'scoped-tenant-ajeno',
+        categories: ['General'],
+      },
+    });
+    expect(createOther.statusCode).toBe(201);
+
     const response = await app.inject({
       method: 'GET',
       url: '/api/restaurants',
       headers: { authorization: `Bearer ${tokenRestaurantAdmin}` },
     });
 
-    expect(response.statusCode).toBe(403);
+    expect(response.statusCode).toBe(200);
+    const body = response.json();
+    expect(Array.isArray(body)).toBe(true);
+    // Never exposes tenants the admin does not own
+    expect(body.some((r: any) => r.slug === 'scoped-tenant-ajeno')).toBe(false);
+    // Every returned tenant is the admin's own assigned restaurant
+    for (const r of body) {
+      expect(r.id).toBe('burger-craft');
+    }
   });
 
   it('GET /api/restaurants with super_admin token should return all registered restaurants', async () => {

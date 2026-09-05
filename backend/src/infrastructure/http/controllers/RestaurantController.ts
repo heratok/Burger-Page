@@ -16,7 +16,23 @@ export class RestaurantController {
     private updateCategoriesUseCase: UpdateRestaurantCategoriesUseCase
   ) {}
 
-  async list(_req: FastifyRequest, reply: FastifyReply) {
+  async list(req: FastifyRequest, reply: FastifyReply) {
+    const auth = req.authContext;
+
+    // restaurant_admin is strictly bound to their assigned restaurant (tenant-scoped)
+    if (auth?.role === 'restaurant_admin') {
+      if (!auth.restaurantId) {
+        return reply.status(403).send({
+          type: 'https://example.com/probs/forbidden',
+          title: 'Forbidden',
+          status: 403,
+          detail: 'Restaurant administrator has no assigned restaurant.',
+        });
+      }
+      const restaurant = await this.getRestaurantUseCase.execute(auth.restaurantId);
+      return reply.status(200).send(restaurant ? [restaurant] : []);
+    }
+
     const restaurants = await this.listRestaurantsUseCase.execute();
     return reply.status(200).send(restaurants);
   }

@@ -11,6 +11,22 @@ describe("TenantContext - Backend Multi-Tenant Integration", () => {
     vi.clearAllMocks()
   })
 
+it("does not call the protected restaurants list when there is no auth token (guest)", async () => {
+    vi.spyOn(apiClient, "hasToken").mockReturnValue(false)
+    const listSpy = vi.spyOn(apiClient, "listRestaurants").mockResolvedValue([] as any)
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>{children}</TenantProvider>
+    )
+
+    renderHook(() => useTenant(), { wrapper })
+
+    // Give the mount effect a chance to run; the protected endpoint must never be hit
+    await new Promise((resolve) => setTimeout(resolve, 100))
+
+    expect(listSpy).not.toHaveBeenCalled()
+  })
+
   it("syncs restaurants from backend API on mount", async () => {
     const mockBackendRestaurants: any[] = [
       {
@@ -24,6 +40,7 @@ describe("TenantContext - Backend Multi-Tenant Integration", () => {
       },
     ]
 
+    vi.spyOn(apiClient, "hasToken").mockReturnValue(true)
     vi.spyOn(apiClient, "listRestaurants").mockResolvedValue(mockBackendRestaurants as any)
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -38,6 +55,7 @@ describe("TenantContext - Backend Multi-Tenant Integration", () => {
   })
 
   it("persists newly created restaurant to backend API", async () => {
+    vi.spyOn(apiClient, "hasToken").mockReturnValue(true)
     vi.spyOn(apiClient, "listRestaurants").mockResolvedValue([])
     const createSpy = vi.spyOn(apiClient, "createRestaurant").mockResolvedValue({
       id: "rest-created-123",
@@ -73,6 +91,7 @@ describe("TenantContext - Backend Multi-Tenant Integration", () => {
   })
 
   it("calls backend delete endpoint when deleteRestaurant is called", async () => {
+    vi.spyOn(apiClient, "hasToken").mockReturnValue(true)
     vi.spyOn(apiClient, "listRestaurants").mockResolvedValue([])
     const deleteSpy = vi.spyOn(apiClient, "deleteRestaurant").mockResolvedValue({
       message: "Deleted",
@@ -129,6 +148,7 @@ describe("TenantContext - Backend Multi-Tenant Integration", () => {
       })
     )
 
+    vi.spyOn(apiClient, "hasToken").mockReturnValue(true)
     vi.spyOn(apiClient, "listRestaurants").mockResolvedValue([])
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
