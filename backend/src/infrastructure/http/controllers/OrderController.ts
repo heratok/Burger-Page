@@ -3,9 +3,10 @@ import { ListOrdersUseCase } from '../../../application/use-cases/ListOrdersUseC
 import { GetOrderByIdUseCase } from '../../../application/use-cases/GetOrderByIdUseCase.js';
 import { CreateOrderUseCase } from '../../../application/use-cases/CreateOrderUseCase.js';
 import { UpdateOrderStatusUseCase } from '../../../application/use-cases/UpdateOrderStatusUseCase.js';
-import { createOrderSchema, updateOrderStatusSchema } from '@burger-page/contracts';
+import { UpdateOrderReceiptUseCase } from '../../../application/use-cases/UpdateOrderReceiptUseCase.js';
+import { createOrderSchema, updateOrderStatusSchema, updateOrderReceiptSchema } from '@burger-page/contracts';
 import { UnauthorizedError, ValidationError } from '../../../domain/errors/DomainErrors.js';
-import { CreateOrderDTO, UpdateOrderStatusDTO } from '../../../application/dtos/index.js';
+import { CreateOrderDTO, UpdateOrderStatusDTO, UpdateOrderReceiptDTO } from '../../../application/dtos/index.js';
 import { globalOrderEventBus } from '../../events/OrderEventBus.js';
 
 export class OrderController {
@@ -13,7 +14,8 @@ export class OrderController {
     private listOrdersUseCase: ListOrdersUseCase,
     private getOrderByIdUseCase: GetOrderByIdUseCase,
     private createOrderUseCase: CreateOrderUseCase,
-    private updateOrderStatusUseCase: UpdateOrderStatusUseCase
+    private updateOrderStatusUseCase: UpdateOrderStatusUseCase,
+    private updateOrderReceiptUseCase?: UpdateOrderReceiptUseCase
   ) {}
 
   async list(req: FastifyRequest, reply: FastifyReply) {
@@ -61,6 +63,7 @@ export class OrderController {
         subtotal: order.subtotal,
         finalTotal: order.finalTotal,
         total: order.total,
+        receiptUrl: order.receiptUrl,
       },
     });
 
@@ -106,6 +109,47 @@ export class OrderController {
         subtotal: updatedOrder.subtotal,
         finalTotal: updatedOrder.finalTotal,
         total: updatedOrder.total,
+        receiptUrl: updatedOrder.receiptUrl,
+      },
+    });
+
+    return reply.status(200).send(updatedOrder);
+  }
+
+  async updateReceipt(req: FastifyRequest, reply: FastifyReply) {
+    const params = req.params as { id: string };
+    const restaurantId = req.authContext?.restaurantId;
+    if (!restaurantId) {
+      throw new UnauthorizedError('Restaurant context is required to update order receipt.');
+    }
+
+    if (!this.updateOrderReceiptUseCase) {
+      throw new Error('UpdateOrderReceiptUseCase is not configured.');
+    }
+
+    const parsed = updateOrderReceiptSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw new ValidationError(parsed.error.message);
+    }
+
+    const updatedOrder = await this.updateOrderReceiptUseCase.execute(
+      params.id,
+      parsed.data as UpdateOrderReceiptDTO,
+      restaurantId
+    );
+
+    // Publish SSE Real-time Event with tenant ID
+    globalOrderEventBus.publish({
+      eventType: 'ORDER_RECEIPT_UPDATED',
+      orderId: params.id,
+      orderNumber: updatedOrder.orderNumber,
+      status: updatedOrder.status,
+      timestamp: new Date().toISOString(),
+      payload: {
+        id: updatedOrder.id,
+        restaurantId: updatedOrder.restaurantId,
+        orderNumber: updatedOrder.orderNumber,
+        receiptUrl: updatedOrder.receiptUrl,
       },
     });
 

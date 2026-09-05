@@ -94,4 +94,57 @@ describe("OrderDetailModal", () => {
     fireEvent.click(deleteBtn)
     expect(onDeleteOrder).toHaveBeenCalledWith(mockOrder)
   })
+
+  it("renders transfer receipt and opens lightbox when receiptUrl is present", () => {
+    const transferOrderWithReceipt: Order = {
+      ...mockOrder,
+      id: "ord-transfer-1",
+      metodo: "Transferencia",
+      receiptUrl: "https://example.com/receipt-img.webp",
+    }
+
+    render(
+      <OrderDetailModal
+        order={transferOrderWithReceipt}
+        isOpen={true}
+        onClose={vi.fn()}
+        onUpdateStatus={vi.fn()}
+        onDeleteOrder={vi.fn()}
+        onWhatsApp={vi.fn()}
+      />
+    )
+
+    expect(screen.getByText("Soporte de Transferencia")).toBeDefined()
+    expect(screen.getByText("✓ Comprobante cargado")).toBeDefined()
+    expect(screen.getByText("Ver soporte")).toBeDefined()
+
+    // Click to open lightbox
+    const viewSupportBtn = screen.getByText("Ver soporte")
+    fireEvent.click(viewSupportBtn)
+    expect(screen.getByAltText("Comprobante Orden #101")).toBeDefined()
+  })
+
+  it("renders attach transfer receipt button when order is Transferencia and receipt is missing", () => {
+    const transferOrderWithoutReceipt: Order = {
+      ...mockOrder,
+      id: "ord-transfer-2",
+      metodo: "Transferencia",
+      receiptUrl: undefined,
+    }
+
+    render(
+      <OrderDetailModal
+        order={transferOrderWithoutReceipt}
+        isOpen={true}
+        onClose={vi.fn()}
+        onUpdateStatus={vi.fn()}
+        onDeleteOrder={vi.fn()}
+        onWhatsApp={vi.fn()}
+      />
+    )
+
+    expect(screen.getByText("Soporte de Transferencia")).toBeDefined()
+    expect(screen.getByText("! Sin soporte adjunto")).toBeDefined()
+    expect(screen.getByText("+ Adjuntar Soporte de Transferencia")).toBeDefined()
+  })
 })

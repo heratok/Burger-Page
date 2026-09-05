@@ -183,7 +183,8 @@ export class CreateOrderUseCase {
       paymentMethod,
       paymentAmount,
       changeAmount,
-      dto.comment
+      dto.comment,
+      dto.receiptUrl
     );
 
     // 8. Guardar de forma atómica en BD

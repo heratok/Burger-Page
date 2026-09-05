@@ -33,6 +33,14 @@ export class InMemoryOrderRepository implements OrderRepository {
     order.status = status;
   }
 
+  async updateReceipt(id: string, receiptUrl: string, restaurantId: string): Promise<void> {
+    const order = await this.findById(id, restaurantId);
+    if (!order) {
+      throw new Error(`Order ${id} not found for restaurant ${restaurantId}`);
+    }
+    order.receiptUrl = receiptUrl;
+  }
+
   clear(): void {
     this.orders.clear();
   }

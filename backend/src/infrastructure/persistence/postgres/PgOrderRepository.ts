@@ -52,7 +52,8 @@ function mapOrderRow(row: any, items: OrderItem[]): Order {
     row.payment_method || 'Efectivo',
     row.payment_amount !== null ? Number(row.payment_amount) : undefined,
     row.change_amount !== null ? Number(row.change_amount) : undefined,
-    row.comment || undefined
+    row.comment || undefined,
+    row.receipt_url || undefined
   );
 }
 
@@ -115,6 +116,12 @@ export class PgOrderRepository implements OrderRepository {
       if (created && created.order_number) {
         (order as any).orderNumber = created.order_number;
       }
+      if (order.receiptUrl) {
+        await client.query(
+          `UPDATE public.orders SET receipt_url = $1, updated_at = NOW() WHERE id = $2 AND restaurant_id = $3`,
+          [order.receiptUrl, order.id, order.restaurantId]
+        );
+      }
     });
   }
 
@@ -125,6 +132,18 @@ export class PgOrderRepository implements OrderRepository {
         [id, status, restaurantId, actorId || null]
       );
       if (rows[0]?.updated === false) {
+        throw new Error(`Order ${id} not found for restaurant ${restaurantId}`);
+      }
+    });
+  }
+
+  async updateReceipt(id: string, receiptUrl: string, restaurantId: string): Promise<void> {
+    await withTenantContext({ restaurantId }, async (client) => {
+      const { rowCount } = await client.query(
+        `UPDATE public.orders SET receipt_url = $1, updated_at = NOW() WHERE id = $2 AND restaurant_id = $3`,
+        [receiptUrl, id, restaurantId]
+      );
+      if (!rowCount) {
         throw new Error(`Order ${id} not found for restaurant ${restaurantId}`);
       }
     });

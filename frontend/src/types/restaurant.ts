@@ -87,6 +87,7 @@ export interface Order {
   pagoCon?: string
   cambio?: number
   comentario?: string
+  receiptUrl?: string
   status: OrderStatus
   createdAt: string
   updatedAt: string

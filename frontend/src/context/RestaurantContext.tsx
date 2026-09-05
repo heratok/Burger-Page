@@ -88,6 +88,7 @@ export interface RestaurantContextType {
   orders: Order[]
   addOrder: (orderData: Omit<Order, "id" | "orderNumber" | "createdAt" | "updatedAt">) => Order
   updateOrderStatus: (orderId: string, newStatus: OrderStatus) => void
+  updateOrderReceipt: (orderId: string, receiptUrl: string) => Promise<void>
   deleteOrder: (orderId: string) => void
 
   customers: Customer[]
@@ -235,6 +236,7 @@ export const useRestaurant = (): RestaurantContextType => {
     orders: orders.orders,
     addOrder: orders.addOrder,
     updateOrderStatus: orders.updateOrderStatus,
+    updateOrderReceipt: orders.updateOrderReceipt,
     deleteOrder: orders.deleteOrder,
 
     customers: orders.customers,

@@ -165,4 +165,54 @@ describe('Order API', () => {
 
     expect(updateRes.statusCode).toBe(400); // 400 Bad Request mapped from Domain Error
   });
+
+  it('POST /api/orders should accept receiptUrl when paying via Transferencia', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/orders',
+      payload: {
+        restaurantId: 'burger-craft',
+        customerId: 'customer-123',
+        items: [{ productId, quantity: 1, additions: [] }],
+        paymentMethod: 'Transferencia',
+        receiptUrl: 'https://example.com/receipt-123.webp',
+      },
+    });
+
+    expect(response.statusCode).toBe(201);
+    const body = response.json();
+    expect(body.paymentMethod).toBe('Transferencia');
+    expect(body.receiptUrl).toBe('https://example.com/receipt-123.webp');
+  });
+
+  it('PATCH /api/orders/:id/receipt should attach transfer receipt to existing order', async () => {
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/api/orders',
+      payload: {
+        restaurantId: 'burger-craft',
+        customerId: 'customer-123',
+        items: [{ productId, quantity: 1, additions: [] }],
+        paymentMethod: 'Transferencia',
+      },
+    });
+    const order = createRes.json();
+    expect(order.receiptUrl).toBeUndefined();
+
+    const updateRes = await app.inject({
+      method: 'PATCH',
+      url: `/api/orders/${order.id}/receipt`,
+      headers: {
+        authorization: `Bearer ${authToken}`,
+      },
+      payload: {
+        receiptUrl: 'https://example.com/post-sale-receipt.webp',
+      },
+    });
+
+    expect(updateRes.statusCode).toBe(200);
+    const updated = updateRes.json();
+    expect(updated.id).toBe(order.id);
+    expect(updated.receiptUrl).toBe('https://example.com/post-sale-receipt.webp');
+  });
 });

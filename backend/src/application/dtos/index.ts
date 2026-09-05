@@ -50,10 +50,15 @@ export interface CreateOrderDTO {
   paymentAmount?: number;
   changeAmount?: number;
   comment?: string;
+  receiptUrl?: string;
 }
 
 export interface UpdateOrderStatusDTO {
   status: 'pending' | 'cooking' | 'delivering' | 'delivered' | 'cancelled';
+}
+
+export interface UpdateOrderReceiptDTO {
+  receiptUrl: string;
 }
 
 export interface CreateCustomerDTO {

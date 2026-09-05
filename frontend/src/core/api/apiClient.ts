@@ -261,6 +261,13 @@ export class ApiClient {
     })
   }
 
+  async updateOrderReceipt(orderId: string, receiptUrl: string): Promise<Order> {
+    return this.request<Order>(`/orders/${orderId}/receipt`, {
+      method: 'PATCH',
+      body: JSON.stringify({ receiptUrl }),
+    })
+  }
+
   async fetchInventory(): Promise<InventoryItem[]> {
     return this.request<InventoryItem[]>('/inventory')
   }
@@ -295,6 +302,7 @@ export class ApiClient {
     eventSource.addEventListener('ORDER_CREATED', handleMessage as EventListener)
     eventSource.addEventListener('ORDER_STATUS_UPDATED', handleMessage as EventListener)
     eventSource.addEventListener('ORDER_CANCELLED', handleMessage as EventListener)
+    eventSource.addEventListener('ORDER_RECEIPT_UPDATED', handleMessage as EventListener)
 
     return () => {
       eventSource.close()
