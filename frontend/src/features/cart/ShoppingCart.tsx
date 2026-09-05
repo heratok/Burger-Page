@@ -4,6 +4,7 @@ import EmptyCart from "./EmptyCart"
 import type { CartItem } from "./cartEngine"
 import { useRestaurant } from "@/context/RestaurantContext"
 import { formatCurrency } from "@/lib/utils"
+import { resolveImageUrl } from "@/core/storage/supabaseStorage"
 
 export interface ShoppingCartProps {
   onClose: () => void
@@ -72,7 +73,7 @@ function ShoppingCart({
             className="relative flex gap-3 rounded-2xl border p-3 sm:gap-4 sm:p-4 shadow-xs"
           >
             <img
-              src={cartItem.src}
+              src={resolveImageUrl(cartItem.src)}
               alt={cartItem.name}
               loading="lazy"
               style={{ backgroundColor: "var(--color-bg-elevated-2)" }}

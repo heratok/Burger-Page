@@ -28,6 +28,14 @@ const HOST = process.env.HOST || '0.0.0.0';
 
 const app = buildApp();
 
+// Filter harmless Fastify v5 deprecation notices from console noise
+process.on('warning', (warning) => {
+  if (warning.name === 'FastifyDeprecation' && (warning as any).code === 'FSTDEP023') {
+    return;
+  }
+  console.warn(`[WARNING] ${warning.name}: ${warning.message}`);
+});
+
 // Global safety net for unhandled asynchronous errors
 process.on('unhandledRejection', (reason, promise) => {
   app.log.error({ reason, promise }, 'Unhandled Rejection caught at process level');

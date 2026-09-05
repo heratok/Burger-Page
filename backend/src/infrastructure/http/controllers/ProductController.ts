@@ -8,16 +8,30 @@ import { RestaurantRepository } from '../../../domain/ports/out/RestaurantReposi
 import { createProductSchema, updateProductSchema } from '@burger-page/contracts';
 import { ValidationError, UnauthorizedError, EntityNotFoundError } from '../../../domain/errors/DomainErrors.js';
 import { CreateProductDTO, UpdateProductDTO } from '../../../application/dtos/index.js';
+import { StorageUrlResolver, defaultStorageUrlResolver } from '../../storage/StorageUrlResolver.js';
 
 export class ProductController {
+  private storageResolver: StorageUrlResolver;
+
   constructor(
     private listProducts: ListProductsUseCase,
     private getProduct: GetProductByIdUseCase,
     private createProductUseCase: CreateProductUseCase,
     private updateProductUseCase: UpdateProductUseCase,
     private deleteProductUseCase: DeleteProductUseCase,
-    private restaurantRepo?: RestaurantRepository
-  ) {}
+    private restaurantRepo?: RestaurantRepository,
+    storageResolver?: StorageUrlResolver
+  ) {
+    this.storageResolver = storageResolver || defaultStorageUrlResolver;
+  }
+
+  private formatProduct(product: any): any {
+    if (!product) return product;
+    return {
+      ...product,
+      imageUrl: this.storageResolver.resolveImageUrl(product.imageUrl),
+    };
+  }
 
   private async resolveRestaurantId(query: { restaurantId?: string; slug?: string } = {}): Promise<string> {
     if (query.restaurantId) {
@@ -53,14 +67,14 @@ export class ProductController {
     if (authTenant) {
       // 1. Catálogo administrativo: devuelve todos los productos del tenant autenticado
       const products = await this.listProducts.execute(authTenant, false);
-      return reply.status(200).send(products);
+      return reply.status(200).send(products.map((p) => this.formatProduct(p)));
     }
 
     // 2. Catálogo público storefront: solo productos disponibles del restaurante solicitado
     const query = (req.query || {}) as { restaurantId?: string; slug?: string };
     const restaurantId = await this.resolveRestaurantId(query);
     const products = await this.listProducts.execute(restaurantId, true);
-    return reply.status(200).send(products);
+    return reply.status(200).send(products.map((p) => this.formatProduct(p)));
   }
 
   async getById(req: FastifyRequest, reply: FastifyReply) {
@@ -74,7 +88,7 @@ export class ProductController {
     }
 
     const product = await this.getProduct.execute(params.id, restaurantId);
-    return reply.status(200).send(product);
+    return reply.status(200).send(this.formatProduct(product));
   }
 
   async create(req: FastifyRequest, reply: FastifyReply) {
@@ -92,8 +106,13 @@ export class ProductController {
       throw new ValidationError(parsed.error.message);
     }
 
-    const product = await this.createProductUseCase.execute(parsed.data as CreateProductDTO, restaurantId);
-    return reply.status(201).send(product);
+    const dto = parsed.data as CreateProductDTO;
+    if (dto.imageUrl) {
+      dto.imageUrl = this.storageResolver.toRelativeStoragePath(dto.imageUrl);
+    }
+
+    const product = await this.createProductUseCase.execute(dto, restaurantId);
+    return reply.status(201).send(this.formatProduct(product));
   }
 
   async update(req: FastifyRequest, reply: FastifyReply) {
@@ -112,8 +131,13 @@ export class ProductController {
       throw new ValidationError(parsed.error.message);
     }
 
-    const updated = await this.updateProductUseCase.execute(params.id, parsed.data as UpdateProductDTO, restaurantId);
-    return reply.status(200).send(updated);
+    const dto = parsed.data as UpdateProductDTO;
+    if (dto.imageUrl !== undefined) {
+      dto.imageUrl = dto.imageUrl ? this.storageResolver.toRelativeStoragePath(dto.imageUrl) : dto.imageUrl;
+    }
+
+    const updated = await this.updateProductUseCase.execute(params.id, dto, restaurantId);
+    return reply.status(200).send(this.formatProduct(updated));
   }
 
   async delete(req: FastifyRequest, reply: FastifyReply) {

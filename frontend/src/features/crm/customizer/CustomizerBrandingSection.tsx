@@ -1,6 +1,6 @@
 import React, { useRef, useState } from "react"
 import type { StorefrontConfig } from "@/types/restaurant"
-import { Upload, Trash2, Store } from "lucide-react"
+import { Upload, Trash2, Store, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { LazyImage } from "@/components/ui/LazyImage"
@@ -25,6 +25,7 @@ export const CustomizerBrandingSection: React.FC<CustomizerBrandingSectionProps>
   const logoInputRef = useRef<HTMLInputElement>(null)
   const bannerInputRef = useRef<HTMLInputElement>(null)
   const [confirmDeleteMedia, setConfirmDeleteMedia] = useState<"logo" | "banner" | null>(null)
+  const [uploadingField, setUploadingField] = useState<"logoUrl" | "bannerUrl" | null>(null)
 
   const handleImageUpload = async (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -33,12 +34,21 @@ export const CustomizerBrandingSection: React.FC<CustomizerBrandingSectionProps>
     const file = e.target.files?.[0]
     if (!file) return
 
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/svg+xml", "image/avif"]
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Formato no compatible. Por favor sube una imagen JPG, PNG, WebP o SVG.")
+      e.target.value = ""
+      return
+    }
+
     if (file.size > 10 * 1024 * 1024) {
       toast.error("La imagen original debe ser menor a 10MB")
+      e.target.value = ""
       return
     }
 
     try {
+      setUploadingField(field)
       const isLogo = field === "logoUrl"
       const optimizedWebP = await optimizeImageToWebP(file, {
         maxWidth: isLogo ? 400 : 1200,
@@ -50,16 +60,17 @@ export const CustomizerBrandingSection: React.FC<CustomizerBrandingSectionProps>
         restaurantId: restaurantId || "default",
         folder: "branding",
         filename: isLogo ? "logo" : "banner",
-        bucketName: "image",
       })
 
-      setDraft((prev) => ({ ...prev, [field]: finalUrl }))
-      toast.success(isLogo ? "Logo optimizado y cargado en WebP" : "Foto de portada optimizada en WebP")
+      if (finalUrl) {
+        setDraft((prev) => ({ ...prev, [field]: finalUrl }))
+        toast.success(isLogo ? "Logo optimizado y cargado en WebP" : "Foto de portada optimizada en WebP")
+      }
     } catch (err: any) {
       console.error("Image optimization failed:", err)
       toast.error("No se pudo procesar la imagen seleccionada")
     } finally {
-      // Clear input value so same file can be re-selected if needed
+      setUploadingField(null)
       e.target.value = ""
     }
   }
@@ -109,20 +120,29 @@ export const CustomizerBrandingSection: React.FC<CustomizerBrandingSectionProps>
 
           <div className="flex items-center gap-3">
             {draft.logoUrl ? (
-              <div className="relative size-16 shrink-0">
+              <div className="relative size-16 shrink-0 overflow-hidden rounded-2xl ring-2 ring-indigo-500/40 shadow-xs">
                 <LazyImage
                   src={draft.logoUrl}
                   alt="Logo preview"
-                  containerClassName="size-full rounded-2xl ring-2 ring-indigo-500/40 shadow-xs"
+                  containerClassName="size-full"
                   className="size-full object-cover"
                 />
+                {uploadingField === "logoUrl" && (
+                  <div className="absolute inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center">
+                    <Loader2 className="size-5 text-white animate-spin" />
+                  </div>
+                )}
               </div>
             ) : (
               <div
                 style={{ backgroundColor: draft.primaryColor }}
-                className="flex size-16 items-center justify-center rounded-2xl text-white font-bold text-xl shrink-0 shadow-xs border border-white/20"
+                className="relative flex size-16 items-center justify-center rounded-2xl text-white font-bold text-xl shrink-0 shadow-xs border border-white/20 overflow-hidden"
               >
-                {draft.name.charAt(0) || <Store className="size-6" />}
+                {uploadingField === "logoUrl" ? (
+                  <Loader2 className="size-6 text-white animate-spin" />
+                ) : (
+                  draft.name.charAt(0) || <Store className="size-6" />
+                )}
               </div>
             )}
 
@@ -132,6 +152,7 @@ export const CustomizerBrandingSection: React.FC<CustomizerBrandingSectionProps>
                 type="file"
                 accept="image/png,image/jpeg,image/webp,image/svg+xml"
                 onChange={(e) => handleImageUpload(e, "logoUrl")}
+                disabled={uploadingField !== null}
                 className="hidden"
               />
               <div className="flex items-center gap-2">
@@ -139,17 +160,28 @@ export const CustomizerBrandingSection: React.FC<CustomizerBrandingSectionProps>
                   type="button"
                   variant="outline"
                   size="sm"
+                  disabled={uploadingField !== null}
                   onClick={() => logoInputRef.current?.click()}
                   className="flex-1 justify-center gap-1.5 text-xs font-semibold cursor-pointer"
                 >
-                  <Upload className="size-3.5 text-indigo-500" />
-                  <span>Subir Logo</span>
+                  {uploadingField === "logoUrl" ? (
+                    <>
+                      <Loader2 className="size-3.5 animate-spin text-indigo-500" />
+                      <span>Subiendo logo...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="size-3.5 text-indigo-500" />
+                      <span>Subir Logo</span>
+                    </>
+                  )}
                 </Button>
                 {draft.logoUrl && (
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
+                    disabled={uploadingField !== null}
                     onClick={() => setConfirmDeleteMedia("logo")}
                     className="px-2.5 text-rose-500 hover:bg-rose-500/10 hover:text-rose-600 border-rose-500/30 cursor-pointer"
                     title="Eliminar logo"
@@ -179,10 +211,16 @@ export const CustomizerBrandingSection: React.FC<CustomizerBrandingSectionProps>
                 containerClassName="size-full"
                 className="size-full object-cover"
               />
+              {uploadingField === "bannerUrl" && (
+                <div className="absolute inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center">
+                  <Loader2 className="size-6 text-white animate-spin" />
+                </div>
+              )}
               <button
                 type="button"
+                disabled={uploadingField !== null}
                 onClick={() => setConfirmDeleteMedia("banner")}
-                className="absolute top-2 right-2 z-10 rounded-lg bg-black/70 p-1.5 text-white hover:bg-rose-600 transition-colors cursor-pointer"
+                className="absolute top-2 right-2 z-10 rounded-lg bg-black/70 p-1.5 text-white hover:bg-rose-600 transition-colors cursor-pointer disabled:opacity-50"
                 title="Eliminar foto de portada"
               >
                 <Trash2 className="size-3.5" />
@@ -195,17 +233,28 @@ export const CustomizerBrandingSection: React.FC<CustomizerBrandingSectionProps>
             type="file"
             accept="image/png,image/jpeg,image/webp"
             onChange={(e) => handleImageUpload(e, "bannerUrl")}
+            disabled={uploadingField !== null}
             className="hidden"
           />
           <Button
             type="button"
             variant="outline"
             size="sm"
+            disabled={uploadingField !== null}
             onClick={() => bannerInputRef.current?.click()}
             className="w-full justify-center gap-1.5 text-xs font-semibold cursor-pointer"
           >
-            <Upload className="size-3.5 text-indigo-500" />
-            <span>Subir Foto de Portada</span>
+            {uploadingField === "bannerUrl" ? (
+              <>
+                <Loader2 className="size-3.5 animate-spin text-indigo-500" />
+                <span>Subiendo portada...</span>
+              </>
+            ) : (
+              <>
+                <Upload className="size-3.5 text-indigo-500" />
+                <span>Subir Foto de Portada</span>
+              </>
+            )}
           </Button>
           <p className="text-[10px] text-slate-400">
             Imagen panorámica que aparece en la parte superior de la carta digital.

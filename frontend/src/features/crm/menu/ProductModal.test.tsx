@@ -88,4 +88,50 @@ describe("ProductModal", () => {
       })
     )
   })
+
+  it("validates file size when uploading an image larger than 10MB", async () => {
+    const { container } = render(
+      <ProductModal
+        isOpen={true}
+        editingProduct={null}
+        categories={["Hamburguesas"]}
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+      />
+    )
+
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
+    expect(fileInput).not.toBeNull()
+
+    const oversizedBlob = new Blob(["a".repeat(1024 * 1024 * 11)], { type: "image/jpeg" })
+    const oversizedFile = new File([oversizedBlob], "huge.jpg", { type: "image/jpeg" })
+
+    fireEvent.change(fileInput, { target: { files: [oversizedFile] } })
+
+    expect(toast.error).toHaveBeenCalledWith("La imagen original debe ser menor a 10MB")
+  })
+
+  it("validates unsupported file formats", async () => {
+    const { container } = render(
+      <ProductModal
+        isOpen={true}
+        editingProduct={null}
+        categories={["Hamburguesas"]}
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+      />
+    )
+
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
+    expect(fileInput).not.toBeNull()
+
+    const pdfBlob = new Blob(["fake pdf"], { type: "application/pdf" })
+    const pdfFile = new File([pdfBlob], "document.pdf", { type: "application/pdf" })
+
+    fireEvent.change(fileInput, { target: { files: [pdfFile] } })
+
+    expect(toast.error).toHaveBeenCalledWith(
+      "Formato no compatible. Por favor sube una imagen JPG, PNG, WebP o AVIF."
+    )
+  })
 })

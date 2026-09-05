@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useMemo } from "react"
 import { cn } from "@/lib/utils"
 import { Skeleton } from "./skeleton"
 import { ImageIcon } from "lucide-react"
+import { resolveImageUrl } from "@/core/storage/supabaseStorage"
 
 export interface LazyImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   src: string
@@ -17,6 +18,7 @@ export interface LazyImageProps extends React.ImgHTMLAttributes<HTMLImageElement
  * - Displays a shimmer skeleton while the image is downloading and decoding.
  * - Smoothly transitions (fades in) once the image is ready, preventing jarring flashes.
  * - Gracefully renders a resilient fallback placeholder if the image fails or is empty.
+ * - Dynamically resolves storage URLs and relative paths across bucket configurations.
  */
 export const LazyImage: React.FC<LazyImageProps> = ({
   src,
@@ -28,16 +30,17 @@ export const LazyImage: React.FC<LazyImageProps> = ({
   showSkeleton = true,
   ...props
 }) => {
+  const resolvedSrc = useMemo(() => resolveImageUrl(src), [src])
   const [isLoading, setIsLoading] = useState(true)
   const [hasError, setHasError] = useState(false)
 
-  // Reset states if src changes
+  // Reset states if resolvedSrc changes
   useEffect(() => {
     setIsLoading(true)
     setHasError(false)
-  }, [src])
+  }, [resolvedSrc])
 
-  if (!src || hasError) {
+  if (!resolvedSrc || hasError) {
     return (
       <div
         data-testid="lazy-image-fallback"
@@ -58,7 +61,7 @@ export const LazyImage: React.FC<LazyImageProps> = ({
         <Skeleton className="absolute inset-0 size-full rounded-none" />
       )}
       <img
-        src={src}
+        src={resolvedSrc}
         alt={alt}
         loading="lazy"
         decoding="async"
