@@ -30,6 +30,7 @@ export async function orderRoutes(fastify: FastifyInstance, opts: { controller: 
               paymentAmount: { type: 'number' },
               changeAmount: { type: 'number' },
               comment: { type: 'string' },
+              receiptUrl: { type: 'string' },
               items: { type: 'array', items: { type: 'object', additionalProperties: true } },
               createdAt: { type: 'string' },
             }
@@ -110,6 +111,7 @@ export async function orderRoutes(fastify: FastifyInstance, opts: { controller: 
             deliveryFee: { type: 'number' },
             finalTotal: { type: 'number' },
             total: { type: 'number' },
+            receiptUrl: { type: 'string' },
             items: { type: 'array', items: { type: 'object', additionalProperties: true } }
           }
         },
@@ -141,6 +143,7 @@ export async function orderRoutes(fastify: FastifyInstance, opts: { controller: 
           paymentAmount: { type: 'number' },
           changeAmount: { type: 'number' },
           comment: { type: 'string' },
+          receiptUrl: { type: 'string' },
           items: {
             type: 'array',
             items: {
@@ -210,4 +213,48 @@ export async function orderRoutes(fastify: FastifyInstance, opts: { controller: 
       }
     }
   }, opts.controller.updateStatus.bind(opts.controller));
+
+  // 6. Update Order Receipt (Protected - Tenant Scoped)
+  fastify.patch('/:id/receipt', {
+    preHandler: [requireAuth],
+    schema: {
+      tags: ['Orders'],
+      summary: 'Update order transfer receipt',
+      description: 'Attach or update transfer payment receipt image URL for an order.',
+      params: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', description: 'Order ID' }
+        },
+        required: ['id']
+      },
+      body: {
+        type: 'object',
+        required: ['receiptUrl'],
+        properties: {
+          receiptUrl: { type: 'string' }
+        }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' },
+            restaurantId: { type: 'string' },
+            orderNumber: { type: 'number' },
+            status: { type: 'string' },
+            receiptUrl: { type: 'string' }
+          }
+        },
+        404: {
+          type: 'object',
+          properties: {
+            title: { type: 'string' },
+            status: { type: 'number' },
+            detail: { type: 'string' }
+          }
+        }
+      }
+    }
+  }, opts.controller.updateReceipt.bind(opts.controller));
 }

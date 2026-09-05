@@ -21,12 +21,16 @@ import {
   UtensilsCrossed,
   Bike,
   Check,
-  Sparkles,
   ArrowRight,
   ArrowLeft,
+  PlusCircle,
+  SlidersHorizontal,
+  Upload,
+  Image as ImageIcon,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
+import { uploadImageToStorage } from "@/core/storage/supabaseStorage"
 
 export interface ManualSaleModalProps {
   isOpen: boolean
@@ -54,6 +58,9 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
   // Payment State
   const [paymentMethod, setPaymentMethod] = useState<"Efectivo" | "Transferencia">("Efectivo")
   const [pagoCon, setPagoCon] = useState("")
+  const [receiptFile, setReceiptFile] = useState<File | null>(null)
+  const [receiptPreview, setReceiptPreview] = useState<string | null>(null)
+  const [isUploadingReceipt, setIsUploadingReceipt] = useState(false)
 
   // Cart & Catalog State
   const [selectedItems, setSelectedItems] = useState<CartItem[]>([])
@@ -62,6 +69,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
 
   // Additions customization sheet for a specific product
   const [customizingProduct, setCustomizingProduct] = useState<MenuItem | null>(null)
+  const [editingCartItemIndex, setEditingCartItemIndex] = useState<number | null>(null)
   const [customAdditions, setCustomAdditions] = useState<Record<string, number>>({})
   const [customItemNote, setCustomItemNote] = useState("")
 
@@ -105,6 +113,17 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
     return selectedItems.reduce((sum, item) => sum + item.cantidad, 0)
   }, [selectedItems])
 
+  const currentModalAdditionsTotal = useMemo(() => {
+    if (!customizingProduct) return 0
+    const availableAdditions = activeRestaurant.additions || []
+    return Object.entries(customAdditions).reduce((sum, [addId, qty]) => {
+      const found = availableAdditions.find((a) => a.id === addId)
+      return sum + (found ? found.price * qty : 0)
+    }, 0)
+  }, [customizingProduct, customAdditions, activeRestaurant.additions])
+
+  const currentModalItemTotal = (customizingProduct?.price || 0) + currentModalAdditionsTotal
+
   if (!isOpen) return null
 
   // Cart Handlers
@@ -136,8 +155,35 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
 
   const handleOpenCustomize = (product: MenuItem) => {
     setCustomizingProduct(product)
+    setEditingCartItemIndex(null)
     setCustomAdditions({})
     setCustomItemNote("")
+  }
+
+  const handleEditCartItem = (index: number) => {
+    const item = selectedItems[index]
+    if (!item) return
+    const product: MenuItem = catalogProducts.find((p) => p.id === item.menuItemId) || {
+      id: item.menuItemId || item.id || "temp-item",
+      name: item.name,
+      price: item.price,
+      category: "",
+      src: "",
+      description: "",
+      inStock: true,
+    }
+    const additionsMap: Record<string, number> = {}
+    const availableAdditions = activeRestaurant.additions || []
+    ;(item.adiciones || []).forEach((ad) => {
+      const found = availableAdditions.find((a) => a.id === ad.id || a.name === ad.name)
+      if (found) {
+        additionsMap[found.id] = ad.cantidad
+      }
+    })
+    setCustomizingProduct(product)
+    setEditingCartItemIndex(index)
+    setCustomAdditions(additionsMap)
+    setCustomItemNote(item.observacion || "")
   }
 
   const handleConfirmCustomizedItem = () => {
@@ -160,14 +206,35 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
       }
     })
 
-    const newItem = createCartItem({
-      product: customizingProduct,
-      adiciones: additionsList,
-      cantidad: 1,
-      observacion: customItemNote.trim() || undefined,
-    })
-    setSelectedItems((prev) => [...prev, newItem])
+    if (editingCartItemIndex !== null && editingCartItemIndex >= 0) {
+      setSelectedItems((prev) => {
+        const copy = [...prev]
+        const target = copy[editingCartItemIndex]
+        if (!target) return prev
+        copy[editingCartItemIndex] = {
+          ...target,
+          adiciones: additionsList,
+          observacion: customItemNote.trim() || undefined,
+          total: calculateLineItemTotal({
+            price: target.price,
+            cantidad: target.cantidad,
+            adiciones: additionsList,
+          }),
+        }
+        return copy
+      })
+    } else {
+      const newItem = createCartItem({
+        product: customizingProduct,
+        adiciones: additionsList,
+        cantidad: 1,
+        observacion: customItemNote.trim() || undefined,
+      })
+      setSelectedItems((prev) => [...prev, newItem])
+    }
+
     setCustomizingProduct(null)
+    setEditingCartItemIndex(null)
   }
 
   const handleUpdateItemQty = (index: number, delta: number) => {
@@ -195,6 +262,33 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
     setSelectedItems((prev) => prev.filter((_, i) => i !== index))
   }
 
+  const handleReceiptFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Por favor selecciona un archivo de imagen válido (JPG, PNG, WebP)")
+      return
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("La imagen no debe superar los 10MB")
+      return
+    }
+
+    setReceiptFile(file)
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setReceiptPreview(reader.result as string)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleRemoveReceipt = () => {
+    setReceiptFile(null)
+    setReceiptPreview(null)
+  }
+
   const handleResetForm = () => {
     setSelectedItems([])
     setServiceType("mostrador")
@@ -206,12 +300,15 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
     setOrderNotes("")
     setPaymentMethod("Efectivo")
     setPagoCon("")
+    setReceiptFile(null)
+    setReceiptPreview(null)
+    setIsUploadingReceipt(false)
     setSearchQuery("")
     setSelectedCategory("all")
     setMobileTab("catalog")
   }
 
-  const handleSubmitOrder = (e: React.FormEvent) => {
+  const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (selectedItems.length === 0) {
@@ -242,6 +339,23 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
       }
     }
 
+    let finalReceiptUrl: string | undefined = undefined
+    if (paymentMethod === "Transferencia" && (receiptFile || receiptPreview)) {
+      setIsUploadingReceipt(true)
+      try {
+        const uploaded = await uploadImageToStorage(receiptFile || receiptPreview!, {
+          restaurantId: activeRestaurant.id,
+          folder: "general",
+        })
+        finalReceiptUrl = uploaded || receiptPreview || undefined
+      } catch (err) {
+        console.warn("Could not upload receipt to remote storage, using local preview:", err)
+        finalReceiptUrl = receiptPreview || undefined
+      } finally {
+        setIsUploadingReceipt(false)
+      }
+    }
+
     const orderData = {
       customer: {
         nombre: finalCustomerName,
@@ -262,6 +376,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
       pagoCon: paymentMethod === "Efectivo" && pagoCon.trim() ? pagoCon.trim() : undefined,
       cambio: paymentMethod === "Efectivo" && cambio ? cambio : undefined,
       comentario: orderNotes.trim() || undefined,
+      receiptUrl: finalReceiptUrl,
       status: "pending" as const,
     }
 
@@ -497,10 +612,11 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                               <button
                                 type="button"
                                 onClick={() => handleOpenCustomize(product)}
-                                title="Personalizar adiciones y observaciones"
-                                className="flex size-7 items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-orange-500 hover:border-orange-500 transition-colors cursor-pointer"
+                                title="Personalizar adiciones y notas de cocina"
+                                className="inline-flex items-center gap-1 rounded-lg border border-orange-500/30 bg-orange-500/10 hover:bg-orange-500/20 text-orange-600 dark:text-orange-400 font-bold px-2 py-1 text-xs transition-all cursor-pointer shadow-2xs active:scale-95"
                               >
-                                <Sparkles className="size-3.5" />
+                                <PlusCircle className="size-3.5 text-orange-500" />
+                                <span>+ Extras</span>
                               </button>
                             )}
 
@@ -509,6 +625,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                               size="xs"
                               onClick={() => handleQuickAddProduct(product)}
                               className="rounded-lg bg-orange-500 px-2.5 py-1 text-xs font-bold text-white shadow-xs hover:bg-orange-600 active:scale-95 transition-all cursor-pointer"
+                              title="Agregar 1 unidad rápida sin modificadores"
                             >
                               <Plus className="size-3 mr-0.5" />
                               <span>Agregar</span>
@@ -687,9 +804,23 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                             </div>
                           )}
 
-                          <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                            {formatCOP(item.total)}
-                          </span>
+                          <div className="mt-1 flex items-center gap-2 flex-wrap">
+                            <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                              {formatCOP(item.total)}
+                            </span>
+
+                            {(activeRestaurant.additions || []).length > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => handleEditCartItem(index)}
+                                className="inline-flex items-center gap-1 text-[10px] font-semibold text-orange-600 dark:text-orange-400 hover:underline cursor-pointer"
+                                title="Modificar adiciones o notas de cocina"
+                              >
+                                <SlidersHorizontal className="size-2.5" />
+                                <span>{item.adiciones && item.adiciones.length > 0 ? "Modificar extras / nota" : "+ Extras / nota"}</span>
+                              </button>
+                            )}
+                          </div>
                         </div>
 
                         {/* Stepper + Delete */}
@@ -943,6 +1074,75 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                         )}
                       </div>
                     )}
+
+                    {paymentMethod === "Transferencia" && (
+                      <div className="space-y-2 rounded-xl border border-indigo-500/20 bg-indigo-50/40 dark:bg-indigo-950/20 p-2.5">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-1.5">
+                            <Upload className="size-3 text-indigo-500" />
+                            <span>Comprobante de Transferencia (Opcional)</span>
+                          </label>
+                          {receiptPreview && (
+                            <button
+                              type="button"
+                              onClick={handleRemoveReceipt}
+                              className="text-[10px] font-semibold text-rose-500 hover:underline cursor-pointer"
+                            >
+                              Quitar
+                            </button>
+                          )}
+                        </div>
+
+                        {receiptPreview ? (
+                          <div className="flex items-center gap-2.5 rounded-lg border border-indigo-200 dark:border-indigo-800/60 bg-white dark:bg-slate-900 p-2">
+                            <img
+                              src={receiptPreview}
+                              alt="Comprobante"
+                              className="size-12 rounded-md object-cover border border-slate-200 dark:border-slate-700"
+                            />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                                {receiptFile?.name || "Comprobante cargado"}
+                              </p>
+                              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                                ✓ Listo para adjuntar
+                              </span>
+                            </div>
+                            <label
+                              className="rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-2.5 py-1 text-[11px] font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer"
+                            >
+                              Cambiar
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleReceiptFileChange}
+                                className="hidden"
+                              />
+                            </label>
+                          </div>
+                        ) : (
+                          <label
+                            className={`flex flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-indigo-300 dark:border-indigo-800/80 p-2.5 hover:border-indigo-500 hover:bg-indigo-50/60 dark:hover:bg-indigo-950/40 cursor-pointer transition-colors ${
+                              isDark ? "bg-slate-950/50" : "bg-white/70"
+                            }`}
+                          >
+                            <div className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400">
+                              <ImageIcon className="size-4" />
+                              <span className="text-xs font-semibold">Cargar comprobante</span>
+                            </div>
+                            <span className="text-[10px] text-slate-400">
+                              Formatos JPG, PNG, WebP (máx. 10MB)
+                            </span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleReceiptFileChange}
+                              className="hidden"
+                            />
+                          </label>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Subtotal, Fee and Grand Total Breakdown */}
@@ -983,11 +1183,15 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
 
                 <button
                   type="submit"
-                  disabled={selectedItems.length === 0}
+                  disabled={selectedItems.length === 0 || isUploadingReceipt}
                   className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-5 py-2 text-xs font-bold text-white shadow-md shadow-orange-500/20 hover:from-orange-600 hover:to-amber-600 disabled:opacity-50 cursor-pointer"
                 >
                   <Check className="size-4" />
-                  <span>Registrar Venta ({formatCOP(finalTotal)})</span>
+                  <span>
+                    {isUploadingReceipt
+                      ? "Subiendo comprobante..."
+                      : `Registrar Venta (${formatCOP(finalTotal)})`}
+                  </span>
                 </button>
               </div>
             </form>
@@ -998,109 +1202,199 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
         {/* CUSTOMIZE ADDITIONS SUB-MODAL                            */}
         {/* ======================================================== */}
         {customizingProduct && (
-          <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/70 p-3 sm:p-4 backdrop-blur-xs">
+          <div className="fixed inset-0 z-60 flex items-end sm:items-center justify-center bg-black/75 p-0 sm:p-4 backdrop-blur-xs transition-all">
             <div
-              className={`w-full max-w-md rounded-2xl border p-5 shadow-2xl ${
+              className={`w-full max-w-lg rounded-t-2xl sm:rounded-2xl border p-4 sm:p-5 shadow-2xl flex flex-col max-h-[85vh] animate-in fade-in zoom-in-95 duration-150 ${
                 isDark ? "border-slate-800 bg-[#0E1322] text-slate-100" : "border-slate-200 bg-white text-slate-900"
               }`}
             >
-              <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+              {/* Modal Header */}
+              <div className="flex items-start justify-between pb-3 border-b border-slate-200 dark:border-slate-800 shrink-0">
                 <div>
-                  <h3 className="text-sm font-bold">{customizingProduct.name}</h3>
-                  <p className="text-xs text-orange-500 font-semibold">{formatCOP(customizingProduct.price)}</p>
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-md bg-orange-500/10 px-2 py-0.5 text-[10px] font-black uppercase text-orange-600 dark:text-orange-400">
+                      {editingCartItemIndex !== null ? "Modificar ítem" : "Personalizar plato"}
+                    </span>
+                    {customizingProduct.category && (
+                      <span className="text-[10px] font-medium text-slate-400 capitalize">
+                        {customizingProduct.category}
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="mt-1 text-sm sm:text-base font-bold text-slate-900 dark:text-white leading-tight">
+                    {customizingProduct.name}
+                  </h3>
+                  <p className="text-xs text-orange-600 dark:text-orange-400 font-bold">
+                    Precio base: {formatCOP(customizingProduct.price)}
+                  </p>
                 </div>
                 <button
                   type="button"
-                  onClick={() => setCustomizingProduct(null)}
-                  className="text-slate-400 hover:text-white cursor-pointer"
+                  onClick={() => {
+                    setCustomizingProduct(null)
+                    setEditingCartItemIndex(null)
+                  }}
+                  className="size-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"
                 >
                   <X className="size-4" />
                 </button>
               </div>
 
-              <div className="py-3 max-h-60 overflow-y-auto space-y-2">
-                <label className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                  Adiciones disponibles:
-                </label>
-                {(activeRestaurant.additions || []).map((addition) => {
-                  const qty = customAdditions[addition.id] || 0
-                  return (
-                    <div
-                      key={addition.id}
-                      className={`flex items-center justify-between rounded-xl border p-2 text-xs ${
-                        isDark ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-slate-50"
-                      }`}
-                    >
-                      <div>
-                        <span className="font-semibold text-slate-900 dark:text-white">{addition.name}</span>
-                        <span className="ml-1.5 text-slate-500 dark:text-slate-400">+{formatCOP(addition.price)}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setCustomAdditions((prev) => ({
-                              ...prev,
-                              [addition.id]: Math.max(0, (prev[addition.id] || 0) - 1),
-                            }))
-                          }
-                          className="size-6 rounded bg-slate-800 text-white flex items-center justify-center cursor-pointer"
-                        >
-                          <Minus className="size-3" />
-                        </button>
-                        <span className="w-4 text-center font-bold">{qty}</span>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setCustomAdditions((prev) => ({
-                              ...prev,
-                              [addition.id]: (prev[addition.id] || 0) + 1,
-                            }))
-                          }
-                          className="size-6 rounded bg-orange-500 text-white flex items-center justify-center cursor-pointer"
-                        >
-                          <Plus className="size-3" />
-                        </button>
-                      </div>
-                    </div>
-                  )
-                })}
+              {/* Modal Scrollable Body */}
+              <div className="flex-1 overflow-y-auto py-3 space-y-3 min-h-0 pr-1">
+                {/* Additions list */}
+                <div>
+                  <div className="flex items-baseline justify-between mb-1.5">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Adiciones / Modificadores disponibles:
+                    </label>
+                    <span className="text-[10px] text-slate-400">
+                      (Modifican este plato)
+                    </span>
+                  </div>
 
-                <div className="pt-2">
-                  <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
-                    Observación de cocina:
+                  {(activeRestaurant.additions || []).length === 0 ? (
+                    <p className="text-xs text-slate-400 italic py-2">
+                      No hay adiciones registradas para este local.
+                    </p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {(activeRestaurant.additions || []).map((addition) => {
+                        const qty = customAdditions[addition.id] || 0
+                        const isSelected = qty > 0
+
+                        return (
+                          <div
+                            key={addition.id}
+                            className={`flex items-center justify-between rounded-xl border p-2.5 transition-all ${
+                              isSelected
+                                ? "border-orange-500/50 bg-orange-500/10 dark:bg-orange-500/15"
+                                : isDark
+                                ? "border-slate-800/80 bg-slate-900/50 hover:bg-slate-900"
+                                : "border-slate-200 bg-slate-50/80 hover:bg-slate-100/60"
+                            }`}
+                          >
+                            <div className="min-w-0 flex-1 pr-2">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-bold text-xs text-slate-900 dark:text-white">
+                                  {addition.name}
+                                </span>
+                                {isSelected && (
+                                  <span className="size-1.5 rounded-full bg-orange-500" />
+                                )}
+                              </div>
+                              <span className="text-[11px] font-semibold text-orange-600 dark:text-orange-400">
+                                +{formatCOP(addition.price)} c/u
+                              </span>
+                            </div>
+
+                            {/* Stepper with comfortable touch targets */}
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setCustomAdditions((prev) => ({
+                                    ...prev,
+                                    [addition.id]: Math.max(0, (prev[addition.id] || 0) - 1),
+                                  }))
+                                }
+                                disabled={qty === 0}
+                                aria-label={`Quitar ${addition.name}`}
+                                className={`size-8 flex items-center justify-center rounded-lg border text-xs transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed ${
+                                  isDark
+                                    ? "border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700"
+                                    : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
+                                }`}
+                              >
+                                <Minus className="size-3.5" />
+                              </button>
+
+                              <span className="w-6 text-center text-xs font-black text-slate-900 dark:text-white">
+                                {qty}
+                              </span>
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setCustomAdditions((prev) => ({
+                                    ...prev,
+                                    [addition.id]: (prev[addition.id] || 0) + 1,
+                                  }))
+                                }
+                                aria-label={`Agregar ${addition.name}`}
+                                className="size-8 flex items-center justify-center rounded-lg bg-orange-500 text-white hover:bg-orange-600 active:scale-95 transition-all shadow-xs cursor-pointer"
+                              >
+                                <Plus className="size-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Kitchen Observation */}
+                <div className="pt-2 border-t border-slate-200 dark:border-slate-800/80">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                    <span>Nota / Observación para cocina</span>
+                    <span className="text-[10px] font-normal text-slate-400">Opcional</span>
                   </label>
                   <input
                     type="text"
                     maxLength={150}
-                    placeholder="Ej: Sin cebolla, término medio..."
+                    placeholder="Ej: Término medio, sin salsas, salsa aparte..."
                     value={customItemNote}
                     onChange={(e) => setCustomItemNote(e.target.value)}
-                    className={`mt-1 w-full rounded-lg border px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-orange-500 ${
-                      isDark ? "border-slate-700 bg-slate-950 text-white" : "border-slate-300 bg-white"
+                    className={`mt-1.5 w-full rounded-xl border px-3 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all ${
+                      isDark
+                        ? "border-slate-700 bg-slate-950 text-white placeholder-slate-500"
+                        : "border-slate-300 bg-white text-slate-900 placeholder-slate-400"
                     }`}
                   />
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCustomizingProduct(null)}
-                  className="rounded-xl text-xs cursor-pointer"
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={handleConfirmCustomizedItem}
-                  className="rounded-xl bg-orange-500 px-4 text-xs font-bold text-white hover:bg-orange-600 cursor-pointer"
-                >
-                  Agregar a la venta
-                </Button>
+              {/* Modal Footer with Live Price Calculation */}
+              <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 shrink-0">
+                <div className="flex items-baseline justify-between sm:justify-start sm:gap-2">
+                  <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                    Total del plato:
+                  </span>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-sm sm:text-base font-black text-orange-600 dark:text-orange-400">
+                      {formatCOP(currentModalItemTotal)}
+                    </span>
+                    {currentModalAdditionsTotal > 0 && (
+                      <span className="text-[10px] font-semibold text-slate-400">
+                        (incl. {formatCOP(currentModalAdditionsTotal)} extras)
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setCustomizingProduct(null)
+                      setEditingCartItemIndex(null)
+                    }}
+                    className="flex-1 sm:flex-none rounded-xl text-xs cursor-pointer"
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handleConfirmCustomizedItem}
+                    className="flex-1 sm:flex-none rounded-xl bg-orange-500 px-4 text-xs font-bold text-white hover:bg-orange-600 active:scale-95 shadow-md shadow-orange-500/20 cursor-pointer"
+                  >
+                    {editingCartItemIndex !== null ? "Guardar Cambios" : "Agregar a la Venta"}
+                  </Button>
+                </div>
               </div>
             </div>
           </div>

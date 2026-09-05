@@ -148,4 +148,91 @@ describe("ManualSaleModal - Point of Sale (POS) Component", () => {
       )
     })
   })
+
+  it("allows customizing additions and kitchen notes via '+ Extras' button", async () => {
+    render(
+      <RestaurantProvider repository={createTestRepo()}>
+        <ManualSaleModal isOpen={true} onClose={() => {}} />
+      </RestaurantProvider>
+    )
+
+    // Find the "+ Extras" button for the first product
+    const extrasButtons = screen.getAllByRole("button", { name: /\+ Extras/i })
+    expect(extrasButtons.length).toBeGreaterThan(0)
+    fireEvent.click(extrasButtons[0])
+
+    // Customization modal should be visible
+    expect(screen.getByText(/Personalizar plato/i)).toBeDefined()
+    expect(screen.getByText(/Adiciones \/ Modificadores disponibles/i)).toBeDefined()
+
+    // Add 1 Extra Queso
+    const addQuesoBtn = screen.getByRole("button", { name: /Agregar Extra Queso/i })
+    fireEvent.click(addQuesoBtn)
+
+    // Add note for kitchen
+    const noteInput = screen.getByPlaceholderText(/Término medio, sin salsas/i)
+    fireEvent.change(noteInput, { target: { value: "Término 3/4 bien asada" } })
+
+    // Confirm addition to sale
+    const confirmBtn = screen.getByRole("button", { name: /Agregar a la Venta/i })
+    fireEvent.click(confirmBtn)
+
+    // Customizer closes and item appears in cart comanda with extras and observation
+    expect(screen.queryByText(/Personalizar plato/i)).toBeNull()
+    expect(screen.getByText(/Extra Queso/i)).toBeDefined()
+    expect(screen.getByText(/Término 3\/4 bien asada/i)).toBeDefined()
+  })
+
+  it("allows modifying extras of an item already in the cart", async () => {
+    render(
+      <RestaurantProvider repository={createTestRepo()}>
+        <ManualSaleModal isOpen={true} onClose={() => {}} />
+      </RestaurantProvider>
+    )
+
+    // Quick add a product
+    const addButtons = screen.getAllByRole("button", { name: /^Agregar$/i })
+    fireEvent.click(addButtons[0])
+
+    // Click on "Extras / nota" on the cart item
+    const editExtrasBtn = screen.getByRole("button", { name: /\+ Extras \/ nota/i })
+    fireEvent.click(editExtrasBtn)
+
+    // Modal opens in edit mode
+    expect(screen.getByText(/Modificar ítem/i)).toBeDefined()
+
+    // Add Tocineta Extra
+    const addTocinetaBtn = screen.getByRole("button", { name: /Agregar Tocineta Extra/i })
+    fireEvent.click(addTocinetaBtn)
+
+    // Save changes
+    const saveChangesBtn = screen.getByRole("button", { name: /Guardar Cambios/i })
+    fireEvent.click(saveChangesBtn)
+
+    // Cart item now shows Tocineta Extra
+    expect(screen.queryByText(/Modificar ítem/i)).toBeNull()
+    expect(screen.getByText(/Tocineta Extra/i)).toBeDefined()
+  })
+
+  it("displays transfer receipt upload area when selecting Transferencia payment method", async () => {
+    render(
+      <RestaurantProvider repository={createTestRepo()}>
+        <ManualSaleModal isOpen={true} onClose={() => {}} />
+      </RestaurantProvider>
+    )
+
+    // Switch to Transferencia
+    const transferBtn = screen.getByRole("button", { name: /💳 Transferencia/i })
+    fireEvent.click(transferBtn)
+
+    // Receipt upload area should be visible
+    expect(screen.getByText(/Comprobante de Transferencia \(Opcional\)/i)).toBeDefined()
+    expect(screen.getByText(/Cargar comprobante/i)).toBeDefined()
+
+    // Simulate selecting an image file
+    const file = new File(["dummy image data"], "comprobante-nequi.png", { type: "image/png" })
+    const fileInput = screen.getByLabelText(/Cargar comprobante/i).querySelector("input") || screen.getAllByDisplayValue("")[0]
+    expect(fileInput).toBeDefined()
+    fireEvent.change(fileInput, { target: { files: [file] } })
+  })
 })

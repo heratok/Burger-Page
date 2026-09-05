@@ -163,6 +163,7 @@ export const createOrderSchema = z.object({
   paymentAmount: z.number().nonnegative().optional(),
   changeAmount: z.number().nonnegative().optional(),
   comment: z.string().optional(),
+  receiptUrl: z.string().optional(),
 });
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;
 
@@ -170,6 +171,11 @@ export const updateOrderStatusSchema = z.object({
   status: orderStatusEnum,
 });
 export type UpdateOrderStatusInput = z.infer<typeof updateOrderStatusSchema>;
+
+export const updateOrderReceiptSchema = z.object({
+  receiptUrl: z.string().min(1, 'Receipt URL is required'),
+});
+export type UpdateOrderReceiptInput = z.infer<typeof updateOrderReceiptSchema>;
 
 // ==========================================
 // INVENTORY CONTRACTS
@@ -185,10 +191,10 @@ export type UpdateInventoryStockInput = z.infer<typeof updateInventoryStockSchem
 // ==========================================
 
 export const orderEventSchema = z.object({
-  eventType: z.enum(['ORDER_CREATED', 'ORDER_STATUS_UPDATED', 'ORDER_CANCELLED']),
+  eventType: z.enum(['ORDER_CREATED', 'ORDER_STATUS_UPDATED', 'ORDER_CANCELLED', 'ORDER_RECEIPT_UPDATED']),
   orderId: z.string(),
   orderNumber: z.number().optional(),
-  status: orderStatusEnum,
+  status: orderStatusEnum.optional(),
   timestamp: z.string(),
   payload: z.record(z.string(), z.any()).optional(),
 });

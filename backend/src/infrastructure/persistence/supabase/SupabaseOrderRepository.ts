@@ -40,7 +40,8 @@ export class SupabaseOrderRepository implements OrderRepository {
       row.payment_method || 'Efectivo',
       row.payment_amount !== null ? Number(row.payment_amount) : undefined,
       row.change_amount !== null ? Number(row.change_amount) : undefined,
-      row.comment || undefined
+      row.comment || undefined,
+      row.receipt_url || undefined
     );
   }
 
@@ -104,6 +105,14 @@ export class SupabaseOrderRepository implements OrderRepository {
     if (data && data.order_number) {
       (order as any).orderNumber = data.order_number;
     }
+
+    if (order.receiptUrl) {
+      await this.client
+        .from('orders')
+        .update({ receipt_url: order.receiptUrl })
+        .eq('id', order.id)
+        .eq('restaurant_id', order.restaurantId);
+    }
   }
 
   async updateStatus(id: string, status: OrderStatus, restaurantId: string, actorId?: string): Promise<void> {
@@ -120,6 +129,18 @@ export class SupabaseOrderRepository implements OrderRepository {
 
     if (data === false) {
       throw new Error(`Order ${id} not found for restaurant ${restaurantId}`);
+    }
+  }
+
+  async updateReceipt(id: string, receiptUrl: string, restaurantId: string): Promise<void> {
+    const { error } = await this.client
+      .from('orders')
+      .update({ receipt_url: receiptUrl })
+      .eq('id', id)
+      .eq('restaurant_id', restaurantId);
+
+    if (error) {
+      throw new Error(`Failed to update order receipt: ${error.message}`);
     }
   }
 }

@@ -34,7 +34,8 @@ export class Order {
     public readonly paymentMethod: PaymentMethod = 'Efectivo',
     public readonly paymentAmount?: number,
     public readonly changeAmount?: number,
-    public readonly comment?: string
+    public readonly comment?: string,
+    public receiptUrl?: string
   ) {}
 
   public get subtotal(): number {
@@ -90,6 +91,7 @@ export class Order {
       paymentAmount: this.paymentAmount,
       changeAmount: this.changeAmount,
       comment: this.comment,
+      receiptUrl: this.receiptUrl,
     };
   }
 }

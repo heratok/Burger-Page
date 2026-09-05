@@ -12,6 +12,7 @@ export interface OrderContextType {
   orders: Order[]
   addOrder: (orderData: Omit<Order, "id" | "orderNumber" | "createdAt" | "updatedAt">) => Order
   updateOrderStatus: (orderId: string, newStatus: OrderStatus) => void
+  updateOrderReceipt: (orderId: string, receiptUrl: string) => Promise<void>
   deleteOrder: (orderId: string) => void
   customers: Customer[]
   updateCustomer: (id: string, updates: Partial<Customer>) => void
@@ -28,6 +29,23 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     const unsubscribe = apiClient.subscribeToOrderStream((event: OrderEvent) => {
       if (!event || !event.orderId) return
+
+      if (event.eventType === "ORDER_RECEIPT_UPDATED") {
+        const payloadReceipt = (event.payload as any)?.receiptUrl
+        updateActiveRestaurantRecord((current) => ({
+          ...current,
+          orders: current.orders.map((o) =>
+            o.id === event.orderId
+              ? {
+                  ...o,
+                  receiptUrl: payloadReceipt || o.receiptUrl,
+                  updatedAt: event.timestamp || new Date().toISOString(),
+                }
+              : o
+          ),
+        }))
+        return
+      }
 
       if (event.eventType === "ORDER_STATUS_UPDATED" || event.eventType === "ORDER_CREATED") {
         updateActiveRestaurantRecord((current) => {
@@ -61,6 +79,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                   pagoCon: p.pagoCon,
                   cambio: p.cambio,
                   comentario: p.comentario,
+                  receiptUrl: p.receiptUrl,
                   status: (event.status as OrderStatus) || p.status || "pending",
                   createdAt: event.timestamp || new Date().toISOString(),
                   updatedAt: event.timestamp || new Date().toISOString(),
@@ -82,6 +101,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                     ...o,
                     id: event.orderId || o.id,
                     status: (event.status as OrderStatus) || o.status,
+                    receiptUrl: (event.payload as any)?.receiptUrl || o.receiptUrl,
                     updatedAt: event.timestamp || new Date().toISOString(),
                   }
                 : o
@@ -185,6 +205,8 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             }
           }),
           deliveryFee: newOrder.deliveryFee,
+          paymentMethod: newOrder.metodo,
+          receiptUrl: newOrder.receiptUrl,
         }
 
         apiClient
@@ -236,6 +258,29 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     [updateActiveRestaurantRecord]
   )
 
+  const updateOrderReceipt = useCallback(
+    async (orderId: string, receiptUrl: string) => {
+      updateActiveRestaurantRecord((current) => ({
+        ...current,
+        orders: current.orders.map((o) =>
+          o.id === orderId
+            ? { ...o, receiptUrl, updatedAt: new Date().toISOString() }
+            : o
+        ),
+      }))
+      toast.success("Comprobante adjuntado correctamente")
+
+      try {
+        await apiClient.updateOrderReceipt(orderId, receiptUrl)
+      } catch (error) {
+        if (import.meta.env?.MODE !== 'test') {
+          console.warn(`Could not sync receipt update for order ${orderId} to backend API:`, error)
+        }
+      }
+    },
+    [updateActiveRestaurantRecord]
+  )
+
   const deleteOrder = useCallback(
     (orderId: string) => {
       updateActiveRestaurantRecord((current) => ({
@@ -268,6 +313,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     orders: activeRestaurant.orders,
     addOrder,
     updateOrderStatus,
+    updateOrderReceipt,
     deleteOrder,
     customers: activeRestaurant.customers,
     updateCustomer,

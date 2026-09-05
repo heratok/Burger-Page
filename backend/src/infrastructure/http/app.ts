@@ -65,6 +65,7 @@ import { ListOrdersUseCase } from '../../application/use-cases/ListOrdersUseCase
 import { GetOrderByIdUseCase } from '../../application/use-cases/GetOrderByIdUseCase.js';
 import { CreateOrderUseCase } from '../../application/use-cases/CreateOrderUseCase.js';
 import { UpdateOrderStatusUseCase } from '../../application/use-cases/UpdateOrderStatusUseCase.js';
+import { UpdateOrderReceiptUseCase } from '../../application/use-cases/UpdateOrderReceiptUseCase.js';
 import { ListCustomersUseCase } from '../../application/use-cases/ListCustomersUseCase.js';
 import { GetCustomerByIdUseCase } from '../../application/use-cases/GetCustomerByIdUseCase.js';
 import { CreateCustomerUseCase } from '../../application/use-cases/CreateCustomerUseCase.js';
@@ -206,6 +207,7 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
   const getOrderById = new GetOrderByIdUseCase(orderRepo);
   const createOrder = new CreateOrderUseCase(orderRepo, productRepo, restaurantRepo, additionRepo, customerRepo);
   const updateOrderStatus = new UpdateOrderStatusUseCase(orderRepo);
+  const updateOrderReceipt = new UpdateOrderReceiptUseCase(orderRepo);
 
   const listCustomers = new ListCustomersUseCase(customerRepo);
   const getCustomerById = new GetCustomerByIdUseCase(customerRepo);
@@ -248,7 +250,7 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
       deleteProduct,
       restaurantRepo
     ),
-    orderController: new OrderController(listOrders, getOrderById, createOrder, updateOrderStatus),
+    orderController: new OrderController(listOrders, getOrderById, createOrder, updateOrderStatus, updateOrderReceipt),
     customerController: new CustomerController(
       listCustomers,
       getCustomerById,

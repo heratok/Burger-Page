@@ -25,7 +25,7 @@ import { formatCurrency, formatWhatsAppPhone } from "@/lib/utils"
 import { KanbanOrderCard, LiveOrderCard, OrderDetailModal } from "./orders"
 
 export const OrdersKanban: React.FC = () => {
-  const { orders, updateOrderStatus, deleteOrder, adminTheme, storeConfig } =
+  const { orders, updateOrderStatus, updateOrderReceipt, deleteOrder, adminTheme, storeConfig } =
     useRestaurant()
 
   const [isManualSaleOpen, setIsManualSaleOpen] = useState(false)
@@ -437,10 +437,11 @@ export const OrdersKanban: React.FC = () => {
 
       <OrderDetailModal
         isOpen={!!selectedOrder}
-        order={selectedOrder}
+        order={selectedOrder ? (orders.find((o) => o.id === selectedOrder.id) || selectedOrder) : null}
         isDark={isDark}
         onClose={() => setSelectedOrder(null)}
         onUpdateStatus={updateOrderStatus}
+        onUpdateReceipt={updateOrderReceipt}
         onDeleteOrder={setOrderToDelete}
         onWhatsApp={openCustomerWhatsApp}
       />

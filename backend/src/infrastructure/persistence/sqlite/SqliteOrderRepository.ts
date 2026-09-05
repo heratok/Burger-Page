@@ -22,11 +22,18 @@ export class SqliteOrderRepository implements OrderRepository {
         payment_amount REAL,
         change_amount REAL,
         comment TEXT,
+        receipt_url TEXT,
         items TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       )
     `);
+    // Ensure column exists for existing SQLite tables
+    try {
+      this.db.exec(`ALTER TABLE orders ADD COLUMN receipt_url TEXT;`);
+    } catch {
+      // Column already exists
+    }
   }
 
   async findById(id: string, restaurantId: string): Promise<Order | null> {
@@ -44,9 +51,9 @@ export class SqliteOrderRepository implements OrderRepository {
     const stmt = this.db.prepare(`
       INSERT INTO orders (
         id, restaurant_id, order_number, customer_id, status, total, delivery_fee, final_total,
-        payment_method, payment_amount, change_amount, comment, items, created_at, updated_at
+        payment_method, payment_amount, change_amount, comment, receipt_url, items, created_at, updated_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         status = excluded.status,
         total = excluded.total,
@@ -56,6 +63,7 @@ export class SqliteOrderRepository implements OrderRepository {
         payment_amount = excluded.payment_amount,
         change_amount = excluded.change_amount,
         comment = excluded.comment,
+        receipt_url = excluded.receipt_url,
         items = excluded.items,
         updated_at = excluded.updated_at
     `);
@@ -73,6 +81,7 @@ export class SqliteOrderRepository implements OrderRepository {
       order.paymentAmount || null,
       order.changeAmount || null,
       order.comment || null,
+      order.receiptUrl || null,
       JSON.stringify(order.items),
       order.createdAt.toISOString(),
       now
@@ -82,6 +91,15 @@ export class SqliteOrderRepository implements OrderRepository {
   async updateStatus(id: string, status: OrderStatus, restaurantId: string, _actorId?: string): Promise<void> {
     const result = this.db.prepare('UPDATE orders SET status = ?, updated_at = ? WHERE id = ? AND restaurant_id = ?')
       .run(status, new Date().toISOString(), id, restaurantId);
+
+    if (result.changes === 0) {
+      throw new Error(`Order ${id} not found for restaurant ${restaurantId}`);
+    }
+  }
+
+  async updateReceipt(id: string, receiptUrl: string, restaurantId: string): Promise<void> {
+    const result = this.db.prepare('UPDATE orders SET receipt_url = ?, updated_at = ? WHERE id = ? AND restaurant_id = ?')
+      .run(receiptUrl, new Date().toISOString(), id, restaurantId);
 
     if (result.changes === 0) {
       throw new Error(`Order ${id} not found for restaurant ${restaurantId}`);
@@ -102,7 +120,8 @@ export class SqliteOrderRepository implements OrderRepository {
       row.payment_method || 'Efectivo',
       row.payment_amount !== null ? Number(row.payment_amount) : undefined,
       row.change_amount !== null ? Number(row.change_amount) : undefined,
-      row.comment || undefined
+      row.comment || undefined,
+      row.receipt_url || undefined
     );
   }
 }

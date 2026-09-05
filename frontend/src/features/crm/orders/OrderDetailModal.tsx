@@ -1,8 +1,10 @@
-import React from "react"
+import React, { useState } from "react"
 import type { Order, OrderStatus } from "@/types/restaurant"
-import { MapPin, MessageCircle, X, Trash2 } from "lucide-react"
+import { MapPin, MessageCircle, X, Trash2, Eye, Upload, FileText, ExternalLink } from "lucide-react"
 import { OrderStatusBadge } from "@/components/ui/status-badge"
 import { formatCurrency } from "@/lib/utils"
+import { uploadImageToStorage } from "@/core/storage/supabaseStorage"
+import { toast } from "sonner"
 
 export interface OrderDetailModalProps {
   order: Order | null
@@ -10,6 +12,7 @@ export interface OrderDetailModalProps {
   isDark?: boolean
   onClose: () => void
   onUpdateStatus: (orderId: string, status: OrderStatus) => void
+  onUpdateReceipt?: (orderId: string, receiptUrl: string) => void | Promise<void>
   onDeleteOrder: (order: Order) => void
   onWhatsApp: (order: Order) => void
 }
@@ -20,9 +23,60 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
   isDark = false,
   onClose,
   onUpdateStatus,
+  onUpdateReceipt,
   onDeleteOrder,
   onWhatsApp,
 }) => {
+  const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
+
+  const handleUploadReceipt = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !order) return
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Por favor selecciona un archivo de imagen válido")
+      return
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("La imagen no debe superar los 10MB")
+      return
+    }
+
+    setIsUploading(true)
+    try {
+      const reader = new FileReader()
+      const dataUrlPromise = new Promise<string>((resolve) => {
+        reader.onloadend = () => resolve(reader.result as string)
+        reader.readAsDataURL(file)
+      })
+      const dataUrl = await dataUrlPromise
+
+      let finalUrl = dataUrl
+      try {
+        const uploaded = await uploadImageToStorage(file, {
+          restaurantId: (order as any).restaurantId || "general",
+          folder: "general",
+        })
+        if (uploaded) {
+          finalUrl = uploaded
+        }
+      } catch (uploadErr) {
+        console.warn("Storage upload fallback to dataUrl:", uploadErr)
+      }
+
+      if (onUpdateReceipt) {
+        await onUpdateReceipt(order.id, finalUrl)
+      }
+      toast.success("Comprobante adjuntado con éxito")
+    } catch {
+      toast.error("No se pudo cargar el comprobante")
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
   if (!isOpen || !order) return null
 
   return (
@@ -48,6 +102,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
           <button
             type="button"
             onClick={onClose}
+            aria-label="Cerrar detalles"
             className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200 cursor-pointer"
           >
             <X className="size-5" />
@@ -142,6 +197,92 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
               </span>
             )}
           </div>
+
+          {/* Transfer Receipt Verification / Post-sale upload */}
+          {order.metodo === "Transferencia" && (
+            <div className="mt-2.5 rounded-xl border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/50 dark:bg-indigo-950/30 p-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5">
+                  <FileText className="size-3.5 text-indigo-500" />
+                  Soporte de Transferencia
+                </span>
+                {order.receiptUrl ? (
+                  <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                    ✓ Comprobante cargado
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                    ! Sin soporte adjunto
+                  </span>
+                )}
+              </div>
+
+              {order.receiptUrl ? (
+                <div className="mt-2.5 flex items-center gap-3">
+                  <div
+                    onClick={() => setIsReceiptModalOpen(true)}
+                    className="relative size-16 shrink-0 cursor-pointer overflow-hidden rounded-lg border border-indigo-200 dark:border-indigo-800 shadow-xs hover:opacity-90 transition-opacity group"
+                    title="Clic para ver comprobante ampliado"
+                  >
+                    <img
+                      src={order.receiptUrl}
+                      alt="Soporte de pago"
+                      className="size-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white">
+                      <Eye className="size-4" />
+                    </div>
+                  </div>
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <p className="text-xs text-slate-600 dark:text-slate-300">
+                      Comprobante disponible para verificación contable.
+                    </p>
+                    <div className="flex items-center gap-2.5 pt-0.5">
+                      <button
+                        type="button"
+                        onClick={() => setIsReceiptModalOpen(true)}
+                        className="text-xs font-bold text-indigo-600 hover:underline dark:text-indigo-400 cursor-pointer flex items-center gap-1"
+                      >
+                        <Eye className="size-3.5" />
+                        <span>Ver soporte</span>
+                      </button>
+                      <label className="text-xs font-semibold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 cursor-pointer">
+                        {isUploading ? "Subiendo..." : "Cambiar"}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          disabled={isUploading}
+                          onChange={handleUploadReceipt}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-2.5">
+                  <label
+                    className={`flex items-center justify-center gap-2 rounded-lg border border-dashed border-indigo-300 dark:border-indigo-700 bg-white/80 dark:bg-slate-900/80 px-3 py-2 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 cursor-pointer transition-colors ${
+                      isUploading ? "opacity-50 pointer-events-none" : ""
+                    }`}
+                  >
+                    <Upload className="size-4" />
+                    <span>{isUploading ? "Cargando comprobante..." : "+ Adjuntar Soporte de Transferencia"}</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      disabled={isUploading}
+                      onChange={handleUploadReceipt}
+                      className="hidden"
+                    />
+                  </label>
+                  <p className="mt-1 text-[10px] text-slate-400 text-center">
+                    Carga el comprobante post-venta para el registro contable
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Modal Status Advancer Controls */}
@@ -213,6 +354,46 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Lightbox Modal for Receipt Image */}
+      {isReceiptModalOpen && order.receiptUrl && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm">
+          <div className="relative max-h-[90vh] max-w-2xl w-full rounded-2xl overflow-hidden bg-slate-900 border border-slate-700 p-4 shadow-2xl flex flex-col">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800 text-white">
+              <div>
+                <h3 className="font-bold text-sm">Comprobante de Transferencia</h3>
+                <p className="text-xs text-slate-400">Orden #{order.orderNumber} • {order.customer.nombre}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href={order.receiptUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+                  title="Abrir imagen en nueva pestaña"
+                >
+                  <ExternalLink className="size-4" />
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setIsReceiptModalOpen(false)}
+                  aria-label="Cerrar comprobante"
+                  className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer"
+                >
+                  <X className="size-5" />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-auto py-4 flex items-center justify-center">
+              <img
+                src={order.receiptUrl}
+                alt={`Comprobante Orden #${order.orderNumber}`}
+                className="max-h-[70vh] w-auto max-w-full rounded-lg object-contain border border-slate-800"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

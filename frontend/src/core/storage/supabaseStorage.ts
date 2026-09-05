@@ -198,5 +198,17 @@ export async function uploadImageToStorage(
     }
   }
 
-  return typeof imageSource === 'string' ? imageSource : '';
+  if (typeof imageSource === 'string') {
+    return imageSource;
+  }
+
+  // Gracefully fallback to Data URL for Blobs/Files in offline or test environments
+  return new Promise<string>((resolve) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      resolve(typeof reader.result === 'string' ? reader.result : '');
+    };
+    reader.onerror = () => resolve('');
+    reader.readAsDataURL(blob);
+  });
 }
