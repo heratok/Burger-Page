@@ -65,6 +65,9 @@ export const TenantProvider: React.FC<{
   })
 
   const refreshRestaurants = useCallback(async () => {
+    // Guests have no auth token: the list endpoint is administrator-only and
+    // would return 401 (visible console noise). Skip silently.
+    if (!apiClient.hasToken()) return
     setIsSyncing(true)
     try {
       const backendRestaurants = await apiClient.listRestaurants()

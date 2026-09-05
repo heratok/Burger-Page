@@ -31,6 +31,7 @@ describe("TenantContext Optimistic Updates & Rollback", () => {
   })
 
   it("performs instantaneous optimistic deletion of restaurant in memory", async () => {
+    vi.spyOn(apiClient, "hasToken").mockReturnValue(true)
     vi.spyOn(apiClient, "listRestaurants").mockResolvedValue(mockInitialRestaurants as any)
     const deleteApiSpy = vi.spyOn(apiClient, "deleteRestaurant").mockResolvedValue({ message: "Deleted" })
 
@@ -56,6 +57,7 @@ describe("TenantContext Optimistic Updates & Rollback", () => {
   })
 
   it("rolls back state if backend deletion fails", async () => {
+    vi.spyOn(apiClient, "hasToken").mockReturnValue(true)
     vi.spyOn(apiClient, "listRestaurants").mockResolvedValue(mockInitialRestaurants as any)
     vi.spyOn(apiClient, "deleteRestaurant").mockRejectedValue(new Error("Server Failure"))
 
@@ -80,6 +82,7 @@ describe("TenantContext Optimistic Updates & Rollback", () => {
   })
 
   it("optimistically toggles active status instantly without reload", async () => {
+    vi.spyOn(apiClient, "hasToken").mockReturnValue(true)
     vi.spyOn(apiClient, "listRestaurants").mockResolvedValue(mockInitialRestaurants as any)
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -109,6 +112,7 @@ describe("CatalogContext Additions Optimistic Updates & Rollback", () => {
     localStorage.clear()
     sessionStorage.clear()
     vi.restoreAllMocks()
+    vi.spyOn(apiClient, "hasToken").mockReturnValue(true)
     vi.spyOn(apiClient, "listRestaurants").mockResolvedValue(mockInitialRestaurants as any)
   })
 

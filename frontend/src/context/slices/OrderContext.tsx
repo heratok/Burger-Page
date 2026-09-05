@@ -27,7 +27,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Hydrate orders from database
   useEffect(() => {
-    if (!activeRestaurant?.id) return
+    if (!activeRestaurant?.id || !apiClient.hasToken()) return
     apiClient
       .fetchOrders(activeRestaurant.id)
       .then((backendOrders) => {
@@ -105,6 +105,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Real-time SSE order stream subscription
   useEffect(() => {
+    if (!apiClient.hasToken()) return
     const unsubscribe = apiClient.subscribeToOrderStream((event: OrderEvent) => {
       if (!event || !event.orderId) return
 
