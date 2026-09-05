@@ -6,8 +6,11 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
+    "typecheck": "tsc --noEmit",
     "start": "node dist/index.js",
+    "create:admin": "tsx src/scripts/createAdmin.ts",
     "test": "vitest run",
+    "test:integration:postgres": "tsx scripts/run-postgres-tests.ts",
     "test:watch": "vitest"
   },
   "dependencies": {
@@ -15,16 +18,19 @@
     "@fastify/cors": "^10.0.2",
     "@fastify/swagger": "^9.8.1",
     "@scalar/fastify-api-reference": "^1.66.1",
+    "@supabase/supabase-js": "^2.49.1",
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^22.13.4",
+    "@types/pg": "^8.23.1",
     "better-sqlite3": "^11.8.1",
     "fastify": "^5.2.1",
+    "pg": "^8.23.0",
+    "typescript": "^5.7.3",
     "zod": "^3.24.2",
     "zod-to-json-schema": "^3.25.2"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.12",
-    "@types/node": "^22.13.4",
     "tsx": "^4.19.3",
-    "typescript": "^5.7.3",
     "vitest": "^3.0.6"
   }
 }

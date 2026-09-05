@@ -1,6 +1,7 @@
 import { ShoppingCart } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useRestaurant } from "@/context/RestaurantContext"
+import { formatCurrency } from "@/lib/utils"
 
 export interface MobileOrderBarProps {
   onOpenCart: () => void
@@ -14,7 +15,7 @@ export default function MobileOrderBar({
   total = 0,
 }: MobileOrderBarProps) {
   const { storeConfig } = useRestaurant()
-  const label = `Ver orden, ${itemCount} ${itemCount === 1 ? "producto" : "productos"}, total $${total.toLocaleString()}`
+  const label = `Ver orden, ${itemCount} ${itemCount === 1 ? "producto" : "productos"}, total ${formatCurrency(total)}`
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border-subtle bg-bg-surface px-4 pt-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] shadow-xl sm:hidden">
@@ -39,7 +40,7 @@ export default function MobileOrderBar({
             </span>
           )}
         </span>
-        <span className="font-extrabold text-white">${total.toLocaleString()}</span>
+        <span className="font-extrabold text-white">{formatCurrency(total)}</span>
       </Button>
     </div>
   )

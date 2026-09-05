@@ -415,67 +415,89 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {restaurants.map((restaurant) => (
-              <div
-                key={restaurant.id}
-                className="group relative flex flex-col justify-between rounded-3xl border border-slate-200 bg-slate-50/50 p-6 transition-all duration-200 hover:-translate-y-1 hover:border-orange-300 hover:bg-white hover:shadow-xl"
+          {restaurants.length === 0 ? (
+            <div className="mx-auto max-w-lg rounded-3xl border border-dashed border-slate-300 bg-slate-50/70 p-10 text-center">
+              <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-orange-500/10 text-orange-600 mb-4">
+                <Store className="size-7" />
+              </div>
+              <h3 className="text-base font-bold text-slate-900">
+                Tu plataforma está lista y limpia
+              </h3>
+              <p className="mt-2 text-xs text-slate-600 leading-relaxed">
+                Aún no hay restaurantes registrados. Accedé al Panel de Administración para crear tu primer restaurante y publicar tu menú online.
+              </p>
+              <Button
+                type="button"
+                onClick={() => navigateTo("/admin")}
+                className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-2.5 text-xs font-bold text-white shadow-md hover:from-orange-600 hover:to-amber-600 cursor-pointer"
               >
-                <div>
-                  {/* Restaurant Header */}
-                  <div className="flex items-center gap-3 mb-4">
-                    {restaurant.config.logoUrl ? (
-                      <img
-                        src={restaurant.config.logoUrl}
-                        alt={restaurant.config.name}
-                        className="size-12 rounded-2xl object-cover border border-slate-200 shadow-xs"
-                      />
-                    ) : (
-                      <div
-                        style={{ backgroundColor: restaurant.config.primaryColor }}
-                        className="flex size-12 items-center justify-center rounded-2xl text-white font-bold text-lg shadow-sm"
-                      >
-                        {restaurant.config.name.charAt(0)}
-                      </div>
-                    )}
+                <span>Crear Primer Restaurante</span>
+                <ArrowRight className="size-4" />
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {restaurants.map((restaurant) => (
+                <div
+                  key={restaurant.id}
+                  className="group relative flex flex-col justify-between rounded-3xl border border-slate-200 bg-slate-50/50 p-6 transition-all duration-200 hover:-translate-y-1 hover:border-orange-300 hover:bg-white hover:shadow-xl"
+                >
+                  <div>
+                    {/* Restaurant Header */}
+                    <div className="flex items-center gap-3 mb-4">
+                      {restaurant.config.logoUrl ? (
+                        <img
+                          src={restaurant.config.logoUrl}
+                          alt={restaurant.config.name}
+                          className="size-12 rounded-2xl object-cover border border-slate-200 shadow-xs"
+                        />
+                      ) : (
+                        <div
+                          style={{ backgroundColor: restaurant.config.primaryColor }}
+                          className="flex size-12 items-center justify-center rounded-2xl text-white font-bold text-lg shadow-sm"
+                        >
+                          {restaurant.config.name.charAt(0)}
+                        </div>
+                      )}
 
-                    <div className="truncate">
-                      <h3 className="font-bold text-base text-slate-900 group-hover:text-orange-600 transition-colors truncate">
-                        {restaurant.config.name}
-                      </h3>
-                      <span className="text-xs text-slate-500 font-mono">
-                        /{restaurant.slug}
+                      <div className="truncate">
+                        <h3 className="font-bold text-base text-slate-900 group-hover:text-orange-600 transition-colors truncate">
+                          {restaurant.config.name}
+                        </h3>
+                        <span className="text-xs text-slate-500 font-mono">
+                          /{restaurant.slug}
+                        </span>
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-slate-600 line-clamp-2 mb-4 leading-relaxed font-normal">
+                      {restaurant.config.tagline || "Menú digital para delivery y pedidos en línea."}
+                    </p>
+
+                    <div className="flex items-center gap-2.5 text-[11px] text-slate-500 mb-6">
+                      <span className="rounded-lg bg-white border border-slate-200 px-2.5 py-1 font-semibold text-slate-700 shadow-2xs">
+                        🍽️ {restaurant.products.length} platos
+                      </span>
+                      <span className="rounded-lg bg-white border border-slate-200 px-2.5 py-1 font-semibold text-slate-700 shadow-2xs">
+                        🛵 {restaurant.config.estimatedDeliveryTime || "30-45 min"}
                       </span>
                     </div>
                   </div>
 
-                  <p className="text-xs text-slate-600 line-clamp-2 mb-4 leading-relaxed font-normal">
-                    {restaurant.config.tagline || "Menú digital para delivery y pedidos en línea."}
-                  </p>
-
-                  <div className="flex items-center gap-2.5 text-[11px] text-slate-500 mb-6">
-                    <span className="rounded-lg bg-white border border-slate-200 px-2.5 py-1 font-semibold text-slate-700 shadow-2xs">
-                      🍽️ {restaurant.products.length} platos
-                    </span>
-                    <span className="rounded-lg bg-white border border-slate-200 px-2.5 py-1 font-semibold text-slate-700 shadow-2xs">
-                      🛵 {restaurant.config.estimatedDeliveryTime || "30-45 min"}
-                    </span>
-                  </div>
+                  {/* Open Storefront Button */}
+                  <Button
+                    type="button"
+                    onClick={() => navigateTo(`/${restaurant.slug}`)}
+                    className="w-full flex items-center justify-center gap-2 rounded-2xl py-3 text-xs font-bold text-white shadow-md transition-all hover:opacity-90 cursor-pointer"
+                    style={{ backgroundColor: restaurant.config.primaryColor || "#FF7A21" }}
+                  >
+                    <span>Ver Tienda /{restaurant.slug}</span>
+                    <ExternalLink className="size-3.5" />
+                  </Button>
                 </div>
-
-                {/* Open Storefront Button */}
-                <Button
-                  type="button"
-                  onClick={() => navigateTo(`/${restaurant.slug}`)}
-                  className="w-full flex items-center justify-center gap-2 rounded-2xl py-3 text-xs font-bold text-white shadow-md transition-all hover:opacity-90 cursor-pointer"
-                  style={{ backgroundColor: restaurant.config.primaryColor || "#FF7A21" }}
-                >
-                  <span>Ver Tienda /{restaurant.slug}</span>
-                  <ExternalLink className="size-3.5" />
-                </Button>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

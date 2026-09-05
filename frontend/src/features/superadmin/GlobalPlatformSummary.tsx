@@ -2,6 +2,7 @@ import React from "react"
 import { useRestaurant } from "@/context/RestaurantContext"
 import { DollarSign, ShoppingBag, Store, Users, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { formatCurrency } from "@/lib/utils"
 
 interface GlobalPlatformSummaryProps {
   onOpenCreateModal: () => void
@@ -14,7 +15,7 @@ export const GlobalPlatformSummary: React.FC<GlobalPlatformSummaryProps> = ({ on
   const cards = [
     {
       title: "Facturación Global Plataforma",
-      value: `$${globalStats.totalRevenue.toLocaleString()}`,
+      value: formatCurrency(globalStats.totalRevenue),
       sub: "Ventas acumuladas de todos los restaurantes",
       icon: <DollarSign className="size-5 text-emerald-500" />,
       badge: "+24.8% este mes",

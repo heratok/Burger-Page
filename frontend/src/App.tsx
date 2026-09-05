@@ -7,6 +7,7 @@ import {
   StorefrontLoadingFallback,
 } from "@/components/ui/LoadingFallbacks"
 import { Toaster } from "@/components/ui/sonner"
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary"
 
 // Code-split backoffice features from public storefront for minimal initial bundle size
 const Home = lazy(() => import("@/features/storefront/Home"))
@@ -59,6 +60,16 @@ const RestaurantsDirectory = lazy(() =>
     default: m.RestaurantsDirectory,
   }))
 )
+const UsersDirectory = lazy(() =>
+  import("@/features/superadmin/UsersDirectory").then((m) => ({
+    default: m.UsersDirectory,
+  }))
+)
+const GlobalAnalytics = lazy(() =>
+  import("@/features/superadmin/GlobalAnalytics").then((m) => ({
+    default: m.GlobalAnalytics,
+  }))
+)
 const AdminAuthModal = lazy(() =>
   import("@/features/superadmin/AdminAuthModal").then((m) => ({
     default: m.AdminAuthModal,
@@ -72,9 +83,11 @@ function MainRouter() {
   // 1. Not Found Route
   if (isNotFound && attemptedSlug) {
     return (
-      <Suspense fallback={<AdminLoadingFallback />}>
-        <RestaurantNotFound attemptedSlug={attemptedSlug} />
-      </Suspense>
+      <ErrorBoundary>
+        <Suspense fallback={<AdminLoadingFallback />}>
+          <RestaurantNotFound attemptedSlug={attemptedSlug} />
+        </Suspense>
+      </ErrorBoundary>
     )
   }
 
@@ -82,53 +95,65 @@ function MainRouter() {
   if (activeView === "admin") {
     if (session.role === "guest") {
       return (
-        <Suspense fallback={<AdminLoadingFallback />}>
-          <AdminAuthModal
-            isOpen={true}
-            onClose={() => navigateTo("/")}
-          />
-        </Suspense>
+        <ErrorBoundary>
+          <Suspense fallback={<AdminLoadingFallback />}>
+            <AdminAuthModal
+              isOpen={true}
+              onClose={() => navigateTo("/")}
+            />
+          </Suspense>
+        </ErrorBoundary>
       )
     }
 
     return (
-      <Suspense fallback={<AdminLoadingFallback />}>
-        <AdminLayout>
-          {adminTab === "restaurants" && <RestaurantsDirectory />}
-          {adminTab === "dashboard" && <DashboardOverview />}
-          {adminTab === "orders" && <OrdersKanban />}
-          {adminTab === "menu" && <MenuManager />}
-          {adminTab === "inventory" && <InventoryManager />}
-          {adminTab === "customers" && <CustomerCRM />}
-          {adminTab === "reports" && <ReportsManager />}
-          {adminTab === "customizer" && <StorefrontCustomizer />}
-        </AdminLayout>
-      </Suspense>
+      <ErrorBoundary>
+        <Suspense fallback={<AdminLoadingFallback />}>
+          <AdminLayout>
+            {adminTab === "restaurants" && <RestaurantsDirectory />}
+            {adminTab === "users" && <UsersDirectory />}
+            {adminTab === "metrics" && <GlobalAnalytics />}
+            {adminTab === "dashboard" && <DashboardOverview />}
+            {adminTab === "orders" && <OrdersKanban />}
+            {adminTab === "menu" && <MenuManager />}
+            {adminTab === "inventory" && <InventoryManager />}
+            {adminTab === "customers" && <CustomerCRM />}
+            {adminTab === "reports" && <ReportsManager />}
+            {adminTab === "customizer" && <StorefrontCustomizer />}
+          </AdminLayout>
+        </Suspense>
+      </ErrorBoundary>
     )
   }
 
   // 3. Platform Landing Page
   if (activeView === "landing") {
     return (
-      <Suspense fallback={<LandingLoadingFallback />}>
-        <LandingPage />
-      </Suspense>
+      <ErrorBoundary>
+        <Suspense fallback={<LandingLoadingFallback />}>
+          <LandingPage />
+        </Suspense>
+      </ErrorBoundary>
     )
   }
 
   // 4. Public Tenant Storefront Route
   return (
-    <Suspense fallback={<StorefrontLoadingFallback />}>
-      <Home />
-    </Suspense>
+    <ErrorBoundary>
+      <Suspense fallback={<StorefrontLoadingFallback />}>
+        <Home />
+      </Suspense>
+    </ErrorBoundary>
   )
 }
 
 export default function App() {
   return (
-    <RestaurantProvider>
-      <MainRouter />
-      <Toaster position="top-right" richColors closeButton />
-    </RestaurantProvider>
+    <ErrorBoundary>
+      <RestaurantProvider>
+        <MainRouter />
+        <Toaster position="top-right" richColors closeButton />
+      </RestaurantProvider>
+    </ErrorBoundary>
   )
 }

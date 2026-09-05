@@ -5,6 +5,7 @@ import {
   STORAGE_KEYS,
 } from "./TenantRepository"
 import { InMemoryStorageAdapter } from "./StorageAdapter"
+import { TEST_STORAGE_ENVELOPE } from "@/test/fixtures"
 
 describe("TenantRepository with InMemoryStorageAdapter", () => {
   let adapter: InMemoryStorageAdapter
@@ -18,21 +19,15 @@ describe("TenantRepository with InMemoryStorageAdapter", () => {
   it("returns DEFAULT_ENVELOPE when storage is empty", () => {
     const envelope = repo.loadEnvelope()
     expect(envelope.version).toBe(2)
-    expect(envelope.restaurants.length).toBeGreaterThanOrEqual(3)
+    expect(envelope.restaurants).toHaveLength(0)
   })
 
   it("persists and reloads modified envelope", () => {
-    const envelope = repo.loadEnvelope()
-    const modified = {
-      ...envelope,
-      restaurants: [envelope.restaurants[0]],
-    }
-
-    repo.saveEnvelope(modified)
+    repo.saveEnvelope(TEST_STORAGE_ENVELOPE)
 
     const reloaded = repo.loadEnvelope()
-    expect(reloaded.restaurants).toHaveLength(1)
-    expect(reloaded.restaurants[0].id).toBe(envelope.restaurants[0].id)
+    expect(reloaded.restaurants).toHaveLength(TEST_STORAGE_ENVELOPE.restaurants.length)
+    expect(reloaded.restaurants[0].id).toBe(TEST_STORAGE_ENVELOPE.restaurants[0].id)
   })
 
   it("persists and retrieves active restaurant ID", () => {
@@ -43,12 +38,11 @@ describe("TenantRepository with InMemoryStorageAdapter", () => {
   })
 
   it("finds a restaurant by ID or slug case-insensitively", () => {
-    const envelope = repo.loadEnvelope()
-    const foundBySlug = repo.findRestaurant(envelope, "BURGER-CRAFT")
+    const foundBySlug = repo.findRestaurant(TEST_STORAGE_ENVELOPE, "BURGER-CRAFT")
     expect(foundBySlug).toBeDefined()
     expect(foundBySlug?.slug).toBe("burger-craft")
 
-    const foundById = repo.findRestaurant(envelope, "rest-burger-craft")
+    const foundById = repo.findRestaurant(TEST_STORAGE_ENVELOPE, "rest-burger-craft")
     expect(foundById).toBeDefined()
   })
 

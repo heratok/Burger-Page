@@ -1,5 +1,6 @@
 import React from "react"
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react"
+import { Select } from "@/components/ui/select"
 
 export interface PaginationProps {
   currentPage: number
@@ -51,19 +52,20 @@ export const Pagination: React.FC<PaginationProps> = ({
 
         {onPageSizeChange && (
           <div className="flex items-center gap-1.5 ml-2 border-l pl-3 border-slate-200 dark:border-slate-700">
-            <span className="text-[11px]">Por página:</span>
-            <select
-              value={pageSize}
-              onChange={(e) => onPageSizeChange(Number(e.target.value))}
-              aria-label="Registros por página"
-              className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 cursor-pointer"
-            >
-              {pageSizeOptions.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
+            <span className="text-[11px] whitespace-nowrap">Por pág:</span>
+            <div className="w-20">
+              <Select
+                size="sm"
+                value={pageSize}
+                onChange={(e) => onPageSizeChange(Number(e.target.value))}
+                aria-label="Registros por página"
+                options={pageSizeOptions.map((opt) => ({
+                  value: opt,
+                  label: String(opt),
+                }))}
+                className="font-bold text-center pl-2 pr-6"
+              />
+            </div>
           </div>
         )}
       </div>

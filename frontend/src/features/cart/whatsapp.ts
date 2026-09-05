@@ -1,3 +1,4 @@
+import { formatCurrency, cleanPhoneNumber, formatWhatsAppPhone } from "@/lib/utils"
 import type { CartItem } from "./cartEngine"
 
 export type MetodoPago = "Efectivo" | "Transferencia"
@@ -20,8 +21,6 @@ export interface OrderPayload {
   deliveryFee?: number
 }
 
-export const WHATSAPP_NUMBER = "573022575805"
-
 /** Genera un número de orden de 6 dígitos (100000–999999). */
 export function generateOrderId(): number {
   return Math.floor(100000 + Math.random() * 900000)
@@ -29,7 +28,7 @@ export function generateOrderId(): number {
 
 /** Formato de moneda colombiano determinista ($27.000). */
 export function formatCOP(value: number): string {
-  return `$${value.toLocaleString("es-CO")}`
+  return formatCurrency(value, "$")
 }
 
 /**
@@ -38,7 +37,7 @@ export function formatCOP(value: number): string {
  */
 export function calculateChange(total: number, pagoCon?: string): number | null {
   if (!pagoCon) return null
-  const amount = Number(pagoCon.replace(/\D/g, ""))
+  const amount = Number(cleanPhoneNumber(pagoCon))
   if (!Number.isFinite(amount) || amount <= 0) return null
   const change = amount - total
   return change > 0 ? change : null
@@ -100,7 +99,7 @@ export function buildOrderMessage(payload: OrderPayload): string {
   if (metodo === "Efectivo") {
     const amount = pagoCon?.trim()
     if (amount) {
-      const amountNumber = Number(amount.replace(/\D/g, ""))
+      const amountNumber = Number(cleanPhoneNumber(amount))
       if (Number.isFinite(amountNumber) && amountNumber > 0) {
         pagoLines.push(`Paga con: ${formatCOP(amountNumber)}`)
         const change = calculateChange(total, amount)
@@ -132,5 +131,6 @@ export function buildOrderMessage(payload: OrderPayload): string {
 }
 
 export function buildWhatsAppUrl(phone: string, message: string): string {
-  return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
+  const cleanPhone = formatWhatsAppPhone(phone)
+  return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
 }

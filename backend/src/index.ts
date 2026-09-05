@@ -1,3 +1,26 @@
+import { existsSync } from 'node:fs';
+import path from 'node:path';
+
+// Automatically load .env file from backend/ or project root
+const envCandidates = [
+  path.resolve(process.cwd(), '.env'),
+  path.resolve(process.cwd(), 'backend', '.env'),
+  path.resolve(import.meta.dirname, '../.env'),
+  path.resolve(import.meta.dirname, '../../.env'),
+];
+
+for (const envPath of envCandidates) {
+  if (existsSync(envPath)) {
+    try {
+      if (typeof process.loadEnvFile === 'function') {
+        process.loadEnvFile(envPath);
+      }
+    } catch {
+      // Continue searching other candidates
+    }
+  }
+}
+
 import { buildApp } from './infrastructure/http/app.js';
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
@@ -33,7 +56,34 @@ process.on('SIGINT', () => shutdown('SIGINT'));
 const start = async () => {
   try {
     await app.listen({ port: PORT, host: HOST });
-    app.log.info(`🚀 Server running on http://${HOST}:${PORT}`);
+    console.log(`🚀 [SERVER] Servidor corriendo en http://${HOST}:${PORT}`);
+    console.log(`📚 [DOCS]   Documentación OpenAPI/Scalar en http://${HOST}:${PORT}/docs`);
+
+    const selectedDriver = (
+      process.env.STORAGE_DRIVER ||
+      (process.env.SUPABASE_URL ? 'supabase' : (process.env.DATABASE_URL ? 'postgres' : 'memory'))
+    ).toLowerCase();
+
+    if (selectedDriver === 'postgres' || (selectedDriver !== 'supabase' && selectedDriver !== 'sqlite' && process.env.DATABASE_URL)) {
+      try {
+        const { verifyPgConnection } = await import('./infrastructure/persistence/postgres/PgClient.js');
+        const dbStatus = await verifyPgConnection();
+        if (dbStatus.ok) {
+          console.log(`\n✅ [POSTGRES] Conexión a Base de Datos verificada exitosamente`);
+          console.log(`   ├─ Base de datos : ${dbStatus.database}`);
+          console.log(`   ├─ Usuario activo: ${dbStatus.user}`);
+          console.log(`   └─ Host          : ${dbStatus.host}\n`);
+        } else {
+          console.error(`\n❌ [POSTGRES] Error al conectar a la Base de Datos: ${dbStatus.error}\n`);
+        }
+      } catch (dbErr: any) {
+        console.error(`\n❌ [POSTGRES] Error al verificar la Base de Datos: ${dbErr?.message || dbErr}\n`);
+      }
+    } else if (selectedDriver === 'supabase') {
+      console.log(`\n✅ [SUPABASE] Cliente configurado para ${process.env.SUPABASE_URL}\n`);
+    } else if (selectedDriver === 'sqlite') {
+      console.log(`\n✅ [SQLITE] Base de datos local inicializada correctamente\n`);
+    }
   } catch (err) {
     app.log.error(err);
     process.exit(1);

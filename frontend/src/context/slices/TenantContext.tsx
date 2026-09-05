@@ -3,11 +3,12 @@ import type {
   RestaurantRecord,
   StorageEnvelopeV2,
 } from "@/types/restaurant"
-import { SEED_RESTAURANTS, DEFAULT_STORE_CONFIG } from "@/data/initialData"
+import { DEFAULT_STORE_CONFIG } from "@/constants/themePresets"
 import {
   TenantRepository,
   defaultTenantRepository,
 } from "@/core/storage/TenantRepository"
+import { apiClient } from "@/core/api/apiClient"
 import { toast } from "sonner"
 
 export interface GlobalPlatformStats {
@@ -24,6 +25,7 @@ export interface TenantContextType {
   activeRestaurantId: string
   activeRestaurantSlug: string
   superAdminPassword: string
+  isSyncing: boolean
   switchRestaurant: (idOrSlug: string) => void
   createRestaurant: (data: {
     name: string
@@ -34,9 +36,10 @@ export interface TenantContextType {
     primaryColor?: string
     templateType?: "burger" | "pizza" | "tacos" | "blank"
   }) => RestaurantRecord
-  updateRestaurant: (id: string, updates: Partial<RestaurantRecord>) => void
-  deleteRestaurant: (id: string) => void
+  updateRestaurant: (id: string, updates: Partial<RestaurantRecord>) => Promise<void>
+  deleteRestaurant: (id: string) => Promise<void>
   updateActiveRestaurantRecord: (updater: (current: RestaurantRecord) => RestaurantRecord) => void
+  refreshRestaurants: () => Promise<void>
   globalStats: GlobalPlatformStats
 }
 
@@ -49,6 +52,7 @@ export const TenantProvider: React.FC<{
   const [envelope, setEnvelope] = useState<StorageEnvelopeV2>(() =>
     repository.loadEnvelope()
   )
+  const [isSyncing, setIsSyncing] = useState<boolean>(false)
 
   const [activeRestaurantId, setActiveRestaurantId] = useState<string>(() => {
     const saved = repository.getActiveRestaurantId(
@@ -59,6 +63,72 @@ export const TenantProvider: React.FC<{
     }
     return envelope.restaurants[0]?.id || "rest-burger-craft"
   })
+
+  const refreshRestaurants = useCallback(async () => {
+    setIsSyncing(true)
+    try {
+      const backendRestaurants = await apiClient.listRestaurants()
+      if (Array.isArray(backendRestaurants)) {
+        setEnvelope((prev) => {
+          const diskEnvelope = repository.loadEnvelope()
+          const merged = backendRestaurants.map((br: any) => {
+            const local =
+              prev.restaurants.find((r) => r.id === br.id || r.slug === br.slug) ||
+              diskEnvelope.restaurants.find((r) => r.id === br.id || r.slug === br.slug)
+            return {
+              ...local,
+              id: br.id,
+              slug: br.slug,
+              adminPassword: br.adminPassword || local?.adminPassword || "admin123",
+              isActive: br.isActive !== undefined ? Boolean(br.isActive) : true,
+              createdAt: br.createdAt || local?.createdAt || new Date().toISOString(),
+              categories: br.categories && br.categories.length > 0 ? br.categories : local?.categories || ['General'],
+              config: {
+                ...DEFAULT_STORE_CONFIG,
+                ...(local?.config || {}),
+                ...(br.config || {}),
+                name: br.name || br.config?.name || local?.config?.name || DEFAULT_STORE_CONFIG.name,
+                tagline: br.tagline || br.config?.tagline || local?.config?.tagline || DEFAULT_STORE_CONFIG.tagline,
+              },
+              products: local?.products || [],
+              additions: local?.additions || [],
+              orders: local?.orders || [],
+              customers: local?.customers || [],
+              inventory: local?.inventory || [],
+              suppliers: local?.suppliers || [],
+            } as RestaurantRecord
+          })
+          return {
+            ...prev,
+            restaurants: merged,
+          }
+        })
+      }
+    } catch (err) {
+      if (import.meta.env?.MODE !== 'test') {
+        console.warn("Could not sync restaurants from backend API:", err)
+      }
+    } finally {
+      setIsSyncing(false)
+    }
+  }, [repository])
+
+  // Sync with Backend DB on mount
+  useEffect(() => {
+    refreshRestaurants()
+  }, [refreshRestaurants])
+
+  // Cross-tab synchronization via storage event
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "burger_page_platform_v2") {
+        const updated = repository.loadEnvelope()
+        setEnvelope(updated)
+      }
+    }
+    window.addEventListener("storage", handleStorageChange)
+    return () => window.removeEventListener("storage", handleStorageChange)
+  }, [repository])
 
   useEffect(() => {
     repository.saveEnvelope(envelope)
@@ -96,6 +166,43 @@ export const TenantProvider: React.FC<{
       )
       if (target) {
         setActiveRestaurantId(target.id)
+      } else {
+        apiClient
+          .fetchRestaurant(idOrSlug)
+          .then((fetched) => {
+            if (fetched && fetched.id) {
+              setEnvelope((prev) => {
+                if (prev.restaurants.some((r) => r.id === fetched.id || r.slug === fetched.slug)) {
+                  return prev
+                }
+                const formatted: RestaurantRecord = {
+                  id: fetched.id,
+                  slug: fetched.slug,
+                  adminPassword: (fetched as any).adminPassword || "admin123",
+                  isActive: fetched.isActive !== undefined ? Boolean(fetched.isActive) : true,
+                  createdAt: (fetched as any).createdAt || new Date().toISOString(),
+                  categories: fetched.categories && fetched.categories.length > 0 ? fetched.categories : ['Hamburguesas', 'Bebidas', 'Acompañamientos'],
+                  config: {
+                    ...DEFAULT_STORE_CONFIG,
+                    ...(fetched.config || {}),
+                    name: (fetched as any).name || (fetched.config as any)?.name || DEFAULT_STORE_CONFIG.name,
+                  },
+                  products: (fetched as any).products || [],
+                  additions: (fetched as any).additions || [],
+                  orders: (fetched as any).orders || [],
+                  customers: (fetched as any).customers || [],
+                  inventory: (fetched as any).inventory || [],
+                  suppliers: (fetched as any).suppliers || [],
+                }
+                return {
+                  ...prev,
+                  restaurants: [formatted, ...prev.restaurants],
+                }
+              })
+              setActiveRestaurantId(fetched.id)
+            }
+          })
+          .catch(() => {})
       }
     },
     [envelope.restaurants]
@@ -103,14 +210,38 @@ export const TenantProvider: React.FC<{
 
   const updateActiveRestaurantRecord = useCallback(
     (updater: (current: RestaurantRecord) => RestaurantRecord) => {
-      setEnvelope((prev) => ({
-        ...prev,
-        restaurants: prev.restaurants.map((r) =>
-          r.id === activeRestaurant.id ? updater(r) : r
-        ),
-      }))
+      setEnvelope((prev) => {
+        const targetId = activeRestaurantId || prev.restaurants[0]?.id || "rest-burger-craft"
+        const target =
+          prev.restaurants.find((r) => r.id === targetId || r.slug === targetId) ||
+          prev.restaurants[0] || {
+            id: targetId,
+            slug: targetId.replace(/^rest-/, ""),
+            isActive: true,
+            createdAt: new Date().toISOString(),
+            config: DEFAULT_STORE_CONFIG,
+            categories: ["Platos Principales"],
+            products: [],
+            additions: [],
+            orders: [],
+            customers: [],
+            inventory: [],
+            suppliers: [],
+          }
+
+        const updated = updater(target)
+        const exists = prev.restaurants.some((r) => r.id === target.id || r.slug === target.slug)
+        return {
+          ...prev,
+          restaurants: exists
+            ? prev.restaurants.map((r) =>
+                r.id === target.id || r.slug === target.slug ? updated : r
+              )
+            : [updated, ...prev.restaurants],
+        }
+      })
     },
-    [activeRestaurant.id]
+    [activeRestaurantId]
   )
 
   const createRestaurant = useCallback(
@@ -129,13 +260,6 @@ export const TenantProvider: React.FC<{
         .replace(/[^a-z0-9-]/g, "-")
         .replace(/-+/g, "-")
 
-      const templateRest =
-        data.templateType === "pizza"
-          ? SEED_RESTAURANTS[1]
-          : data.templateType === "tacos"
-          ? SEED_RESTAURANTS[2]
-          : SEED_RESTAURANTS[0]
-
       const newRecord: RestaurantRecord = {
         id: `rest-${Date.now()}`,
         slug: cleanSlug || `rest-${Date.now().toString(36)}`,
@@ -143,14 +267,15 @@ export const TenantProvider: React.FC<{
         isActive: true,
         createdAt: new Date().toISOString(),
         config: {
-          ...templateRest.config,
+          ...DEFAULT_STORE_CONFIG,
           name: data.name,
-          tagline: data.tagline,
+          tagline: data.tagline || DEFAULT_STORE_CONFIG.tagline,
           whatsappNumber: data.whatsappNumber,
-          primaryColor: data.primaryColor || templateRest.config.primaryColor,
+          primaryColor: data.primaryColor || DEFAULT_STORE_CONFIG.primaryColor,
         },
-        products: data.templateType === "blank" ? [] : templateRest.products,
-        additions: data.templateType === "blank" ? [] : templateRest.additions,
+        categories: ["General"],
+        products: [],
+        additions: [],
         orders: [],
         customers: [],
       }
@@ -161,6 +286,35 @@ export const TenantProvider: React.FC<{
       }))
 
       setActiveRestaurantId(newRecord.id)
+
+      apiClient
+        .createRestaurant({
+          id: newRecord.id,
+          name: data.name,
+          slug: newRecord.slug,
+          tagline: data.tagline,
+          whatsappNumber: data.whatsappNumber,
+          primaryColor: data.primaryColor,
+          templateType: data.templateType,
+          categories: ["General"],
+          config: newRecord.config,
+        })
+        .then((created) => {
+          if (created && created.id) {
+            setEnvelope((prev) => ({
+              ...prev,
+              restaurants: prev.restaurants.map((r) =>
+                r.id === newRecord.id ? { ...r, id: created.id } : r
+              ),
+            }))
+          }
+        })
+        .catch((err) => {
+          if (import.meta.env?.MODE !== 'test') {
+            console.warn("Could not persist restaurant to backend API:", err)
+          }
+        })
+
       toast.success(`Restaurante "${data.name}" creado exitosamente`)
       return newRecord
     },
@@ -168,36 +322,49 @@ export const TenantProvider: React.FC<{
   )
 
   const updateRestaurant = useCallback(
-    (id: string, updates: Partial<RestaurantRecord>) => {
+    async (id: string, updates: Partial<RestaurantRecord>) => {
       setEnvelope((prev) => ({
         ...prev,
         restaurants: prev.restaurants.map((r) =>
           r.id === id ? { ...r, ...updates } : r
         ),
       }))
+
+      if (updates.isActive !== undefined) {
+        toast.success(
+          updates.isActive ? "Restaurante activado" : "Restaurante pausado temporalmente"
+        )
+      } else {
+        toast.success("Restaurante actualizado correctamente")
+      }
     },
     []
   )
 
   const deleteRestaurant = useCallback(
-    (id: string) => {
-      if (envelope.restaurants.length <= 1) {
-        toast.error("Debe existir al menos un restaurante en la plataforma.")
-        return
-      }
-      setEnvelope((prev) => {
-        const remaining = prev.restaurants.filter((r) => r.id !== id)
-        if (activeRestaurantId === id && remaining[0]) {
-          setActiveRestaurantId(remaining[0].id)
-        }
-        return {
-          ...prev,
-          restaurants: remaining,
-        }
-      })
+    async (id: string) => {
+      const snapshot = envelope
+      setEnvelope((prev) => ({
+        ...prev,
+        restaurants: prev.restaurants.map((r) =>
+          (r.id === id || r.slug === id) ? { ...r, isActive: false } : r
+        ),
+      }))
+
       toast.success("Restaurante eliminado correctamente")
+
+      try {
+        await apiClient.deleteRestaurant(id)
+      } catch (err) {
+        if (import.meta.env?.MODE !== 'test') {
+          console.warn("Could not soft delete restaurant from backend API, rolling back:", err)
+        }
+        // Rollback state on backend rejection
+        setEnvelope(snapshot)
+        toast.error("No se pudo desactivar el restaurante en el servidor. Cambios revertidos.")
+      }
     },
-    [envelope.restaurants.length, activeRestaurantId]
+    [envelope]
   )
 
   const globalStats = useMemo<GlobalPlatformStats>(() => {
@@ -206,11 +373,13 @@ export const TenantProvider: React.FC<{
     let totalCustomers = 0
 
     envelope.restaurants.forEach((r) => {
-      totalRevenue += r.orders
+      const orders = r.orders || []
+      const customers = r.customers || []
+      totalRevenue += orders
         .filter((o) => o.status !== "cancelled")
-        .reduce((sum, o) => sum + o.finalTotal, 0)
-      totalOrders += r.orders.length
-      totalCustomers += r.customers.length
+        .reduce((sum, o) => sum + (o.finalTotal || 0), 0)
+      totalOrders += orders.length
+      totalCustomers += customers.length
     })
 
     return {
@@ -228,11 +397,13 @@ export const TenantProvider: React.FC<{
     activeRestaurantId: activeRestaurant.id,
     activeRestaurantSlug: activeRestaurant.slug,
     superAdminPassword: envelope.superAdminPassword,
+    isSyncing,
     switchRestaurant,
     createRestaurant,
     updateRestaurant,
     deleteRestaurant,
     updateActiveRestaurantRecord,
+    refreshRestaurants,
     globalStats,
   }
 

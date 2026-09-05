@@ -2,6 +2,15 @@ import { describe, it, expect, beforeEach } from "vitest"
 import { renderHook, act } from "@testing-library/react"
 import React from "react"
 import { RestaurantProvider, useRestaurant } from "./RestaurantContext"
+import { InMemoryStorageAdapter } from "@/core/storage/StorageAdapter"
+import { TenantRepository, STORAGE_KEYS } from "@/core/storage/TenantRepository"
+import { TEST_STORAGE_ENVELOPE } from "@/test/fixtures"
+
+const createTestRepo = () => {
+  const adapter = new InMemoryStorageAdapter()
+  adapter.setItem(STORAGE_KEYS.ENVELOPE, JSON.stringify(TEST_STORAGE_ENVELOPE))
+  return new TenantRepository(adapter)
+}
 
 describe("RestaurantContext (Multi-Tenant & Super Admin)", () => {
   beforeEach(() => {
@@ -10,7 +19,7 @@ describe("RestaurantContext (Multi-Tenant & Super Admin)", () => {
   })
 
   const wrapper = ({ children }: { children: React.ReactNode }) => (
-    <RestaurantProvider>{children}</RestaurantProvider>
+    <RestaurantProvider repository={createTestRepo()}>{children}</RestaurantProvider>
   )
 
   it("initializes with 3 demo restaurants with distinct slugs and catalogs", () => {

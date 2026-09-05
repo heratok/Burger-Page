@@ -32,15 +32,15 @@ export default function ProductSearch({ onChangeText, total = 0 }: ProductSearch
 
   return (
     <div className="w-full max-w-2xl">
-      <label htmlFor="burger-search" className="sr-only">
-        Buscar platos en la carta
+      <label htmlFor="product-search" className="sr-only">
+        Buscar productos en el menú
       </label>
       <InputGroup className="h-11 rounded-full border-border-subtle bg-bg-input px-1 focus-within:border-accent focus-within:ring-2 focus-within:ring-accent">
         <InputGroupAddon align="inline-start" className="pl-3 [&>svg]:size-5">
           <Search className="text-text-muted" />
         </InputGroupAddon>
         <InputGroupInput
-          id="burger-search"
+          id="product-search"
           type="search"
           value={value}
           onChange={handleInputChange}

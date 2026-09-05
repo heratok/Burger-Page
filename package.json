@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "type": "module",
   "engines": {
-    "node": ">=20.19.0"
+    "node": ">=22.0.0"
   },
   "workspaces": [
     "frontend",
@@ -19,13 +19,17 @@
     "build:contracts": "npm --prefix packages/contracts run build",
     "build:frontend": "npm --prefix frontend run build",
     "build:backend": "npm --prefix backend run build",
+    "create:admin": "npm --prefix backend run create:admin",
     "test": "npm --prefix packages/contracts run test && npm --prefix frontend run test && npm --prefix backend run test",
     "test:contracts": "npm --prefix packages/contracts run test",
     "test:frontend": "npm --prefix frontend run test",
     "test:backend": "npm --prefix backend run test",
-    "test:e2e": "npm --prefix frontend run test:e2e",
-    "typecheck": "npm --prefix packages/contracts run build && npm --prefix frontend run typecheck && npm --prefix backend run build",
+    "test:integration:postgres": "npx tsx backend/scripts/run-postgres-tests.ts",
+    "typecheck": "npm --prefix packages/contracts run build && npm --prefix backend run typecheck && npm --prefix frontend run typecheck",
+    "typecheck:frontend": "npm --prefix frontend run typecheck",
+    "typecheck:backend": "npm --prefix backend run typecheck",
     "lint": "npm --prefix frontend run lint",
+    "prepare": "git config core.hooksPath .githooks 2>nul || git config core.hooksPath .githooks || true",
     "preview": "npm --prefix frontend run preview"
   }
 }

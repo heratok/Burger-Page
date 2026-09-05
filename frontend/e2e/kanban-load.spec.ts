@@ -125,6 +125,10 @@ test.describe('Kanban Board - High Load & Responsiveness Suite', () => {
     await page.goto('/admin/orders');
 
     // 1. Authenticate with tenant password
+    const userInput = page.getByPlaceholder(/Tu nombre de usuario/i);
+    await expect(userInput).toBeVisible();
+    await userInput.fill('admin_craft');
+
     const passwordInput = page.locator('input[type="password"]');
     await expect(passwordInput).toBeVisible();
     await passwordInput.fill('craft');
@@ -171,7 +175,7 @@ test.describe('Kanban Board - High Load & Responsiveness Suite', () => {
     await expect(pendingHeaderBadge).toHaveText('11');
 
     // 7. Test Order Detail Modal
-    const viewDetailBtn = page.locator('button[title="Ver detalle completo"]').first();
+    const viewDetailBtn = page.locator('button[title="Ver detalles completos del pedido"]').first();
     await viewDetailBtn.click();
     await expect(page.getByText(/Detalle del Pedido/i)).toBeVisible();
     await expect(page.getByRole('button', { name: /WhatsApp:/i })).toBeVisible();
@@ -180,11 +184,15 @@ test.describe('Kanban Board - High Load & Responsiveness Suite', () => {
     await page.keyboard.press('Escape');
   });
 
-  test('Simulating Rapid Influx: Adding multiple continuous live orders', async ({ page }) => {
+  test('Point of Sale (POS): Registering a direct in-person sale updates Kanban immediately', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/admin/orders');
 
     // Authenticate
+    const userInput = page.getByPlaceholder(/Tu nombre de usuario/i);
+    await expect(userInput).toBeVisible();
+    await userInput.fill('admin_craft');
+
     const passwordInput = page.locator('input[type="password"]');
     await passwordInput.fill('craft');
     await page.getByRole('button', { name: /Acceder al Panel/i }).click();
@@ -193,14 +201,23 @@ test.describe('Kanban Board - High Load & Responsiveness Suite', () => {
     const pendingHeaderBadge = pendingColumn.locator('span.rounded-full').first();
     await expect(pendingHeaderBadge).toHaveText('12');
 
-    // Click "Simular Pedido Entrante" 3 times rapidly
-    const simulateBtn = page.getByRole('button', { name: /Simular Pedido Entrante/i });
-    await simulateBtn.click();
-    await simulateBtn.click();
-    await simulateBtn.click();
+    // Open Nueva Venta POS modal
+    const nuevaVentaBtn = page.getByRole('button', { name: /Nueva Venta/i }).first();
+    await nuevaVentaBtn.click();
 
-    // Counter in pending must have increased to 15
-    await expect(pendingHeaderBadge).toHaveText('15');
+    // Verify modal is open
+    await expect(page.getByText(/Punto de Venta — Nueva Venta/i)).toBeVisible();
+
+    // Add a product to order
+    const addProductBtn = page.getByRole('button', { name: /Agregar/i }).first();
+    await addProductBtn.click();
+
+    // Submit sale
+    const submitBtn = page.getByRole('button', { name: /Registrar Venta/i });
+    await submitBtn.click();
+
+    // Counter in pending must have increased to 13
+    await expect(pendingHeaderBadge).toHaveText('13');
   });
 
   test('Mobile Viewport (375x667): Kanban columns are horizontally scrollable without overflow breaking', async ({ page }) => {
@@ -208,6 +225,10 @@ test.describe('Kanban Board - High Load & Responsiveness Suite', () => {
     await page.goto('/admin/orders');
 
     // Authenticate
+    const userInput = page.getByPlaceholder(/Tu nombre de usuario/i);
+    await expect(userInput).toBeVisible();
+    await userInput.fill('admin_craft');
+
     const passwordInput = page.locator('input[type="password"]');
     await passwordInput.fill('craft');
     await page.getByRole('button', { name: /Acceder al Panel/i }).click();
@@ -225,7 +246,7 @@ test.describe('Kanban Board - High Load & Responsiveness Suite', () => {
     await expect(page.getByRole('button', { name: /Menú & Carta/i })).toBeVisible();
 
     // Close sidebar
-    await page.locator('aside button').first().click();
+    await page.getByRole('button', { name: /Cerrar menú/i }).click();
   });
 
   test('Tablet Viewport (768x1024): Kanban renders cards with high density', async ({ page }) => {
@@ -233,6 +254,10 @@ test.describe('Kanban Board - High Load & Responsiveness Suite', () => {
     await page.goto('/admin/orders');
 
     // Authenticate
+    const userInput = page.getByPlaceholder(/Tu nombre de usuario/i);
+    await expect(userInput).toBeVisible();
+    await userInput.fill('admin_craft');
+
     const passwordInput = page.locator('input[type="password"]');
     await passwordInput.fill('craft');
     await page.getByRole('button', { name: /Acceder al Panel/i }).click();

@@ -10,7 +10,9 @@ export class GetRestaurantUseCase {
     if (!restaurant) {
       restaurant = await this.restaurantRepo.findById(identifier);
     }
-    if (!restaurant) throw new EntityNotFoundError('Restaurant not found');
+    if (!restaurant || restaurant.isActive === false) {
+      throw new EntityNotFoundError('Restaurant not found');
+    }
     return restaurant;
   }
 }

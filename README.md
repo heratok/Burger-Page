@@ -67,21 +67,33 @@ npm install
 | `npm run test:contracts` | Runs shared contracts unit tests |
 | `npm run test:frontend` | Runs frontend unit and component tests |
 | `npm run test:backend` | Runs backend unit, integration, and SQLite tests |
+| `npm run test:integration:postgres` | Runs PostgreSQL integration suite against real Docker container |
 | `npm run test:e2e` | Runs Playwright full-stack End-to-End tests |
 | `npm run build` | Compiles contracts, frontend, and backend for production |
 | `npm run lint` | Runs ESLint validation on frontend code |
 
 ---
 
-## 🐳 Docker Deployment
+## 🐘 PostgreSQL Real Instance Integration Testing (Docker)
 
-### Run with Docker Compose (1-click local production stack):
+To verify database constraints, composite `ON CONFLICT` isolation, RPCs, and migrations against a **real PostgreSQL instance**:
+
 ```bash
-docker compose up --build
+# Automated 1-step test (starts container, runs tests, tears down):
+npm run test:integration:postgres
 ```
-- **Frontend UI:** `http://localhost:8080`
-- **Backend API:** `http://localhost:3001`
-- **Scalar Docs:** `http://localhost:3001/docs`
+
+Or run manually with Docker Compose:
+```bash
+# 1. Start test Postgres instance (auto-mounts supabase/schema.sql)
+docker compose up -d --wait postgres-test
+
+# 2. Run the integration suite
+npm --prefix backend run test tests/integration/postgres
+
+# 3. Clean up container and test volume
+docker compose down -v
+```
 
 ---
 

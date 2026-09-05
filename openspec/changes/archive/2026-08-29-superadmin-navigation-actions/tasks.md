@@ -1,0 +1,22 @@
+# Tasks: Super Admin Multi-Tenant Navigation & Quick Actions
+
+- [x] **Task 1: Red Phase - Write Tests for Super Admin Navigation & Actions**
+  - [x] Create `frontend/src/features/crm/AdminLayout.test.tsx` covering:
+    - Super Admin in Global Mode (`/admin/restaurants`): Shows SaaS Directory item, quick creation action buttons (+ Nuevo Restaurante, + Nuevo Usuario), and no return banner.
+    - Super Admin in Tenant Mode (`/admin/dashboard`): Shows all restaurant operational tabs (Dashboard, Pedidos, Menú, Stock, Clientes, Reportes, Personalizador), displays contextual impersonation banner and "← Volver al Panel Super Admin" button.
+    - Clicking "← Volver al Panel Super Admin" triggers navigation to `/admin/restaurants`.
+    - Local Restaurant Admin (`session.role === "restaurant"`): Only shows restaurant tabs without Super Admin banners or return buttons.
+- [x] **Task 2: Green Phase - Implement Dual-Mode Navigation & Quick Actions in `AdminLayout.tsx`**
+  - [x] Update mode detection (`isSuper`, `isSuperGlobalMode`, `isSuperTenantMode`).
+  - [x] Implement conditional `navItems` list based on mode.
+  - [x] Add header contextual impersonation banner with one-click return button for Super Admin.
+  - [x] Integrate `AdminSwitcher` consistently.
+  - [x] Add sidebar quick actions for creating restaurants and users.
+  - [x] Connect modals (`CreateRestaurantModal`, `CreateUserModal`) to sidebar quick actions.
+- [x] **Task 3: Green Phase - Enhance `AdminSwitcher.tsx` for Super Admin**
+  - [x] Ensure selection synchronization with current view (`DIRECTORY` vs restaurant ID).
+  - [x] Allow fast switching between tenants or jumping to directory.
+- [x] **Task 4: Refactor & Verification**
+  - [x] Run full test suite (`npm test -- --run`) and verify 100% tests pass (153/153 tests).
+  - [x] Verify Light/Dark theme contrast and mobile drawer compatibility.
+  - [x] Verify production build (`npm run build`).

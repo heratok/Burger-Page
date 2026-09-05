@@ -5,13 +5,13 @@ import { toast } from "sonner"
 import {
   ArrowLeft,
   Banknote,
+  Check,
   ChevronDown,
   CircleAlert,
   CreditCard,
   Home,
   MapPin,
   Phone,
-  Send,
   User,
   Wallet,
 } from "lucide-react"
@@ -31,14 +31,10 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/in
 import { Textarea } from "@/components/ui/textarea"
 import CharacterCounter from "@/components/CharacterCounter"
 import { formSchema, LIMITS, type FormValues } from "@/lib/validation"
-import {
-  buildOrderMessage,
-  buildWhatsAppUrl,
-  calculateChange,
-  generateOrderId,
-} from "./whatsapp"
+import { calculateChange } from "./whatsapp"
 import { cartItemToOrderItem, type CartItem } from "./cartEngine"
 import { useRestaurant } from "@/context/RestaurantContext"
+import { formatCurrency } from "@/lib/utils"
 
 const METODOS = [
   { value: "Efectivo", Icon: Banknote },
@@ -75,8 +71,6 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
   const metodo = watch("metodo")
   const pagoCon = watch("pagoCon")
 
-  const [orderId] = useState(generateOrderId)
-
   const total = cartItems.reduce(
     (acc, item) => acc + item.total,
     0
@@ -104,26 +98,10 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
       status: "pending",
     })
 
-    // 2. Build WhatsApp message
-    const message = buildOrderMessage({
-      orderId,
-      customer: {
-        nombre: values.nombre,
-        telefono: values.telefono,
-        direccion: values.dir,
-        barrio: values.barrio,
-      },
-      items: cartItems,
-      metodo: values.metodo,
-      pagoCon: values.pagoCon,
-      comentario: values.mensaje,
-      restaurantName: storeConfig.name,
-      deliveryFee: storeConfig.deliveryFee,
+    // 2. Direct sale confirmation feedback
+    toast.success("¡Venta registrada con éxito!", {
+      description: `${values.nombre} • Total: ${formatCurrency(total + storeConfig.deliveryFee)}`,
     })
-
-    const targetPhone = storeConfig.whatsappNumber.replace(/\D/g, "")
-    window.open(buildWhatsAppUrl(targetPhone, message), "_blank", "noreferrer")
-    toast.success("¡Pedido enviado con éxito a la cocina!")
     onClose()
   }
 
@@ -311,7 +289,7 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
                 <FieldDescription className="text-text-secondary">
                   Tu cambio:{" "}
                   <span className="font-bold text-accent">
-                    ${cambio.toLocaleString()}
+                    {formatCurrency(cambio)}
                   </span>
                 </FieldDescription>
               )}
@@ -340,8 +318,8 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
             style={{ backgroundColor: storeConfig.primaryColor, color: "#FFFFFF" }}
             className="h-12 flex-1 text-base text-white font-bold shadow-md cursor-pointer hover:opacity-90"
           >
-            <Send data-icon="inline-start" />
-            Enviar pedido por WhatsApp
+            <Check data-icon="inline-start" />
+            Registrar venta
           </Button>
           <Button
             type="button"
@@ -395,7 +373,7 @@ function FormSummary({ cartItems, total }: FormSummaryProps) {
             style={{ color: storeConfig.primaryColor }}
             className="text-base font-black"
           >
-            ${total.toLocaleString()}
+            {formatCurrency(total)}
           </span>
           <ChevronDown
             style={{ color: "var(--color-text-muted)" }}
@@ -406,20 +384,20 @@ function FormSummary({ cartItems, total }: FormSummaryProps) {
       </button>
       {open && (
         <ul id="order-summary" className="space-y-2 px-4 pt-1 pb-4 border-t border-slate-100 dark:border-slate-800/40">
-          {cartItems.map((burger, i) => (
+          {cartItems.map((item, i) => (
             <li
-              key={burger.id || i}
+              key={item.id || i}
               style={{ color: "var(--color-text-secondary)" }}
               className="flex items-center justify-between text-sm"
             >
               <span className="truncate">
-                {burger.cantidad}× {burger.name}
+                {item.cantidad}× {item.name}
               </span>
               <span
                 style={{ color: "var(--color-text-primary)" }}
                 className="ml-3 shrink-0 font-bold"
               >
-                ${burger.total.toLocaleString()}
+                {formatCurrency(item.total)}
               </span>
             </li>
           ))}

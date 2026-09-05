@@ -17,10 +17,10 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "typescript": "^5.7.3",
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "typescript": "^5.7.3",
     "vitest": "^3.0.6"
   }
 }

@@ -1,5 +1,5 @@
 import { OrderRepository } from '../../domain/ports/out/OrderRepository.js';
-import { Order } from '../../domain/models/Order.js';
+import { Order, OrderStatus } from '../../domain/models/Order.js';
 import { initialOrders } from './seedData.js';
 
 export class InMemoryOrderRepository implements OrderRepository {
@@ -11,15 +11,29 @@ export class InMemoryOrderRepository implements OrderRepository {
     }
   }
 
-  async findById(id: string): Promise<Order | null> {
-    return this.orders.get(id) || null;
+  async findById(id: string, restaurantId: string): Promise<Order | null> {
+    const order = this.orders.get(id);
+    if (!order || order.restaurantId !== restaurantId) return null;
+    return order;
   }
 
-  async findAll(): Promise<Order[]> {
-    return Array.from(this.orders.values());
+  async findByRestaurantId(restaurantId: string): Promise<Order[]> {
+    return Array.from(this.orders.values()).filter((o) => o.restaurantId === restaurantId);
   }
 
   async save(order: Order): Promise<void> {
     this.orders.set(order.id, order);
+  }
+
+  async updateStatus(id: string, status: OrderStatus, restaurantId: string, _actorId?: string): Promise<void> {
+    const order = await this.findById(id, restaurantId);
+    if (!order) {
+      throw new Error(`Order ${id} not found for restaurant ${restaurantId}`);
+    }
+    order.status = status;
+  }
+
+  clear(): void {
+    this.orders.clear();
   }
 }

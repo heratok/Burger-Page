@@ -25,13 +25,23 @@ export class SqliteRestaurantRepository implements RestaurantRepository {
       }
     }
 
+    let categories: string[] = [];
+    if (row.categories) {
+      try {
+        categories = JSON.parse(row.categories);
+      } catch {
+        categories = [];
+      }
+    }
+
     return {
       id: row.id,
       slug: row.slug,
       name: row.name,
       theme,
       openingHours,
-      isActive: true
+      isActive: true,
+      categories,
     };
   }
 
@@ -47,6 +57,11 @@ export class SqliteRestaurantRepository implements RestaurantRepository {
     return this.mapRow(row);
   }
 
+  async findAll(): Promise<Restaurant[]> {
+    const rows = this.db.prepare('SELECT * FROM restaurants ORDER BY created_at ASC').all() as any[];
+    return rows.map((row) => this.mapRow(row));
+  }
+
   async save(restaurant: Restaurant): Promise<void> {
     const slug =
       restaurant.slug?.trim() ||
@@ -54,23 +69,43 @@ export class SqliteRestaurantRepository implements RestaurantRepository {
       restaurant.id;
 
     const stmt = this.db.prepare(`
-      INSERT INTO restaurants (id, slug, name, tagline, config, opening_hours, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO restaurants (id, slug, name, tagline, config, opening_hours, categories, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         slug = excluded.slug,
         name = excluded.name,
         config = excluded.config,
-        opening_hours = excluded.opening_hours
+        opening_hours = excluded.opening_hours,
+        categories = excluded.categories
     `);
 
     stmt.run(
       restaurant.id,
       slug,
       restaurant.name,
-      'Hamburguesas artesanales',
-      JSON.stringify({ bgTheme: restaurant.theme, theme: restaurant.theme }),
+      restaurant.tagline || 'Cocina artesanal',
+      JSON.stringify(restaurant.config || { bgTheme: restaurant.theme, theme: restaurant.theme }),
       JSON.stringify(restaurant.openingHours),
-      new Date().toISOString()
+      JSON.stringify(restaurant.categories || []),
+      restaurant.createdAt || new Date().toISOString()
     );
+  }
+
+  async delete(id: string): Promise<void> {
+    const row = this.db.prepare('SELECT * FROM restaurants WHERE id = ?').get(id) as any;
+    if (row) {
+      let config: any = {};
+      try {
+        config = JSON.parse(row.config || '{}');
+      } catch {
+        config = {};
+      }
+      config.isActive = false;
+      this.db.prepare('UPDATE restaurants SET config = ? WHERE id = ?').run(JSON.stringify(config), id);
+    }
+  }
+
+  async hardDelete(id: string): Promise<void> {
+    this.db.prepare('DELETE FROM restaurants WHERE id = ?').run(id);
   }
 }

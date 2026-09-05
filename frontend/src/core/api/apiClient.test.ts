@@ -32,18 +32,31 @@ describe('ApiClient', () => {
     const data = await client.fetchRestaurant()
     expect(data).toEqual(mockData)
     expect(globalThis.fetch).toHaveBeenCalledWith('http://localhost:3001/api/restaurant', {
-      headers: { 'Content-Type': 'application/json' },
+      headers: {},
     })
   })
 
   it('should fetch products', async () => {
-    const mockData = [{ id: 'p1', name: 'Burger' }]
-    mockResponse(mockData)
+    const mockRawData = [{ id: 'p1', name: 'Burger', price: 15000, category: 'Burgers', imageUrl: 'img.png', isAvailable: true }]
+    mockResponse(mockRawData)
 
     const data = await client.fetchProducts()
-    expect(data).toEqual(mockData)
+    expect(data).toEqual([
+      {
+        id: 'p1',
+        name: 'Burger',
+        price: 15000,
+        category: 'Burgers',
+        src: 'img.png',
+        description: '',
+        inStock: true,
+        isPopular: false,
+        isNew: false,
+        preparationTimeMinutes: undefined,
+      },
+    ])
     expect(globalThis.fetch).toHaveBeenCalledWith('http://localhost:3001/api/products', {
-      headers: { 'Content-Type': 'application/json' },
+      headers: {},
     })
   })
 
@@ -54,7 +67,7 @@ describe('ApiClient', () => {
     const data = await client.fetchOrders()
     expect(data).toEqual(mockData)
     expect(globalThis.fetch).toHaveBeenCalledWith('http://localhost:3001/api/orders', {
-      headers: { 'Content-Type': 'application/json' },
+      headers: {},
     })
   })
 
@@ -65,7 +78,7 @@ describe('ApiClient', () => {
     const data = await client.fetchInventory()
     expect(data).toEqual(mockData)
     expect(globalThis.fetch).toHaveBeenCalledWith('http://localhost:3001/api/inventory', {
-      headers: { 'Content-Type': 'application/json' },
+      headers: {},
     })
   })
 
@@ -74,6 +87,7 @@ describe('ApiClient', () => {
     mockResponse(mockData)
 
     const newOrder: CreateOrderInput = {
+      restaurantId: 'rest-1',
       customerId: 'c1',
       items: [{ productId: 'p1', quantity: 2, additions: ['cheese'] }],
       deliveryFee: 4500,
@@ -118,9 +132,93 @@ describe('ApiClient', () => {
     await expect(client.fetchRestaurant()).rejects.toThrow('API Error: 404 Not Found')
   })
 
+  it('should list restaurants', async () => {
+    const mockData = [{ id: 'r1', name: 'Burger Craft', slug: 'burger-craft' }]
+    mockResponse(mockData)
+
+    const data = await client.listRestaurants()
+    expect(data).toEqual(mockData)
+    expect(globalThis.fetch).toHaveBeenCalledWith('http://localhost:3001/api/restaurants', {
+      headers: {},
+    })
+  })
+
+  it('should create restaurant', async () => {
+    const mockData = { id: 'r2', name: 'Pizza Hub', slug: 'pizza-hub' }
+    mockResponse(mockData)
+
+    const data = await client.createRestaurant({ name: 'Pizza Hub', slug: 'pizza-hub' })
+    expect(data).toEqual(mockData)
+    expect(globalThis.fetch).toHaveBeenCalledWith('http://localhost:3001/api/restaurants', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'Pizza Hub', slug: 'pizza-hub' }),
+    })
+  })
+
+  it('should delete restaurant', async () => {
+    const mockData = { message: 'Restaurant deleted successfully' }
+    mockResponse(mockData)
+
+    const data = await client.deleteRestaurant('r2')
+    expect(data).toEqual(mockData)
+    expect(globalThis.fetch).toHaveBeenCalledWith('http://localhost:3001/api/restaurants/r2', {
+      method: 'DELETE',
+      headers: {},
+    })
+  })
+
   it('should support subscribeToOrderStream gracefully when EventSource is unavailable', () => {
     const unsub = client.subscribeToOrderStream(() => {})
     expect(typeof unsub).toBe('function')
     expect(() => unsub()).not.toThrow()
   })
+
+  it('should fetch additions with query params', async () => {
+    const mockData = [{ id: 'add-1', name: 'Queso', price: 2500, isAvailable: true }]
+    mockResponse(mockData)
+
+    const data = await client.fetchAdditions('burger-craft')
+    expect(data).toEqual([{ id: 'add-1', name: 'Queso', price: 2500, available: true }])
+    expect(globalThis.fetch).toHaveBeenCalledWith('http://localhost:3001/api/additions?slug=burger-craft', {
+      headers: {},
+    })
+  })
+
+  it('should create addition', async () => {
+    const mockData = { id: 'add-2', name: 'Tocineta', price: 3500, isAvailable: true }
+    mockResponse(mockData)
+
+    const data = await client.createAddition({ name: 'Tocineta', price: 3500 })
+    expect(data).toEqual({ id: 'add-2', name: 'Tocineta', price: 3500, available: true })
+    expect(globalThis.fetch).toHaveBeenCalledWith('http://localhost:3001/api/additions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'Tocineta', price: 3500 }),
+    })
+  })
+
+  it('should update addition', async () => {
+    const mockData = { id: 'add-2', name: 'Tocineta Ahumada', price: 4000, isAvailable: true }
+    mockResponse(mockData)
+
+    const data = await client.updateAddition('add-2', { name: 'Tocineta Ahumada', price: 4000, isAvailable: true })
+    expect(data).toEqual({ id: 'add-2', name: 'Tocineta Ahumada', price: 4000, available: true })
+    expect(globalThis.fetch).toHaveBeenCalledWith('http://localhost:3001/api/additions/add-2', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'Tocineta Ahumada', price: 4000, isAvailable: true }),
+    })
+  })
+
+  it('should delete addition', async () => {
+    mockResponse(undefined)
+
+    await client.deleteAddition('add-2')
+    expect(globalThis.fetch).toHaveBeenCalledWith('http://localhost:3001/api/additions/add-2', {
+      method: 'DELETE',
+      headers: {},
+    })
+  })
 })
+

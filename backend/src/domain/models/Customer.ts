@@ -1,21 +1,14 @@
 export class Customer {
   constructor(
     public readonly id: string,
+    public readonly restaurantId: string,
     public name: string,
-    public email: string,
     public phone: string,
-    public totalSpend: number = 0,
-    public totalOrders: number = 0
+    public address: string = '',
+    public barrio: string = '',
+    public notes: string = '',
+    public email: string = '',
+    public createdAt?: string,
+    public updatedAt?: string
   ) {}
-
-  public get loyaltyTier(): string {
-    if (this.totalSpend > 500) return 'Gold';
-    if (this.totalSpend > 200) return 'Silver';
-    return 'Bronze';
-  }
-
-  public addOrderSpend(amount: number): void {
-    this.totalSpend += amount;
-    this.totalOrders += 1;
-  }
 }

@@ -13,8 +13,10 @@ import {
   ShoppingBag,
   Users,
   KeyRound,
+  User,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { apiClient } from "@/core/api/apiClient"
 
 interface AdminAuthModalProps {
   isOpen: boolean
@@ -22,9 +24,10 @@ interface AdminAuthModalProps {
 }
 
 export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose }) => {
-  const { login } = useRestaurant()
+  const { setSession, switchRestaurant, refreshRestaurants } = useRestaurant()
   const { navigateTo } = useAppRouter()
 
+  const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [errorMsg, setErrorMsg] = useState("")
@@ -37,24 +40,50 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
     navigateTo("/")
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setErrorMsg("")
     setIsLoading(true)
 
-    const result = login(password)
+    try {
+      const result = await apiClient.login(username.trim(), password.trim())
 
-    if (!result.success) {
-      setErrorMsg(result.error || "Contraseña incorrecta. Verifica tu clave de acceso.")
-      setIsLoading(false)
-    } else {
-      setPassword("")
-      setIsLoading(false)
-      if (window.location.pathname.startsWith("/admin")) {
-        navigateTo(window.location.pathname)
-      } else {
-        navigateTo("/admin")
+      if (result.success && result.user) {
+        const isSuper = result.user.role === "super_admin"
+        const role = isSuper ? ("super" as const) : ("restaurant" as const)
+        setSession({
+          role,
+          restaurantId: result.user.restaurantId,
+          authenticatedAt: new Date().toISOString(),
+        })
+        if (result.user.restaurantId) {
+          switchRestaurant(result.user.restaurantId)
+        }
+        await refreshRestaurants()
+        setUsername("")
+        setPassword("")
+        if (isSuper) {
+          if (window.location.pathname.startsWith("/admin/") && window.location.pathname !== "/admin") {
+            navigateTo(window.location.pathname)
+          } else {
+            navigateTo("/admin/restaurants")
+          }
+        } else {
+          if (window.location.pathname.startsWith("/admin/") && window.location.pathname !== "/admin") {
+            navigateTo(window.location.pathname)
+          } else {
+            navigateTo("/admin/dashboard")
+          }
+        }
+        setIsLoading(false)
+        return
       }
+
+      setErrorMsg(result.error || "Credenciales incorrectas")
+    } catch {
+      setErrorMsg("Error de conexión al servidor de autenticación")
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -165,12 +194,33 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
                 Iniciar Sesión
               </h2>
               <p className="text-xs text-slate-400 mt-1 max-w-xs">
-                Ingresá tu contraseña para acceder a tu panel de administración
+                Ingresá tus credenciales para acceder al panel de administración
               </p>
             </div>
 
-            {/* Zero-Knowledge Universal Form */}
+            {/* Login Form */}
             <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold mb-1.5 text-slate-300">
+                  Usuario
+                </label>
+                <div className="relative">
+                  <User className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    required
+                    autoFocus
+                    maxLength={50}
+                    value={username}
+                    onChange={(e) => {
+                      setUsername(e.target.value)
+                      setErrorMsg("")
+                    }}
+                    placeholder="Tu nombre de usuario"
+                    className="w-full rounded-2xl border border-slate-700/80 bg-slate-800/90 py-3 pl-10 pr-4 text-xs text-white placeholder-slate-500 transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 font-medium"
+                  />
+                </div>
+              </div>
               <div>
                 <label className="block text-xs font-bold mb-1.5 text-slate-300">
                   Contraseña de Acceso
@@ -180,7 +230,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
                   <input
                     type={showPassword ? "text" : "password"}
                     required
-                    autoFocus
+                    maxLength={100}
                     value={password}
                     onChange={(e) => {
                       setPassword(e.target.value)

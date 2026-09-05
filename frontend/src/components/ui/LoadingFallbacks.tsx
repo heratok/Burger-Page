@@ -71,3 +71,39 @@ export const StorefrontLoadingFallback: React.FC = () => {
     </div>
   )
 }
+
+/**
+ * Scoped content loader for individual tabs inside AdminLayout.
+ * Keeps the sidebar and header mounted and intact, avoiding layout shifts and full-screen flashes.
+ */
+export const AdminContentFallback: React.FC<{ isDark?: boolean }> = ({ isDark }) => {
+  return (
+    <div className="space-y-6 animate-pulse w-full">
+      <div className="flex items-center justify-between">
+        <div className="space-y-2">
+          <div className={`h-7 w-48 rounded-lg ${isDark ? "bg-slate-800" : "bg-slate-200"}`} />
+          <div className={`h-4 w-72 rounded-md ${isDark ? "bg-slate-800/60" : "bg-slate-200/60"}`} />
+        </div>
+        <div className={`h-9 w-28 rounded-xl ${isDark ? "bg-slate-800" : "bg-slate-200"}`} />
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div
+            key={i}
+            className={`h-28 rounded-2xl border p-4 ${
+              isDark ? "border-slate-800 bg-slate-900/50" : "border-slate-200 bg-white"
+            }`}
+          >
+            <div className={`h-4 w-24 rounded ${isDark ? "bg-slate-800" : "bg-slate-200"}`} />
+            <div className={`mt-4 h-7 w-16 rounded ${isDark ? "bg-slate-800" : "bg-slate-200"}`} />
+          </div>
+        ))}
+      </div>
+      <div
+        className={`h-64 rounded-2xl border p-6 ${
+          isDark ? "border-slate-800 bg-slate-900/50" : "border-slate-200 bg-white"
+        }`}
+      />
+    </div>
+  )
+}

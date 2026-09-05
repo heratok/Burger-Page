@@ -1,32 +1,60 @@
 import React from "react"
 import { useRestaurant } from "@/context/RestaurantContext"
-import { Store, ChevronDown, Crown, Shield } from "lucide-react"
+import { Store, Crown, Shield } from "lucide-react"
 import { useAppRouter } from "@/core/router/useAppRouter"
+import { Select } from "@/components/ui/select"
 
-export const AdminSwitcher: React.FC = () => {
+export interface AdminSwitcherProps {
+  collapsed?: boolean
+  onSelect?: () => void
+}
+
+export const AdminSwitcher: React.FC<AdminSwitcherProps> = ({ collapsed = false, onSelect }) => {
   const {
     restaurants,
     activeRestaurant,
     switchRestaurant,
     session,
     adminTab,
-    adminTheme,
   } = useRestaurant()
 
   const { navigateTo } = useAppRouter()
-
-  const isDark = adminTheme === "dark"
   const isSuper = session.role === "super"
 
   if (!isSuper) {
+    if (collapsed) {
+      return (
+        <div
+          title={`${activeRestaurant.config.name} (Admin Local)`}
+          className="flex size-10 items-center justify-center mx-auto rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60 shadow-xs"
+        >
+          {activeRestaurant.config.logoUrl ? (
+            <img
+              src={activeRestaurant.config.logoUrl}
+              alt={activeRestaurant.config.name}
+              className="size-7 rounded-lg object-cover ring-1 ring-slate-200 dark:ring-slate-700"
+            />
+          ) : (
+            <Store className="size-5 text-indigo-500" />
+          )}
+        </div>
+      )
+    }
+
     return (
-      <div className="rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-900/60 p-2.5">
+      <div className="rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-900/60 p-2.5 shadow-xs">
         <div className="flex items-center gap-2">
-          <img
-            src={activeRestaurant.config.logoUrl}
-            alt={activeRestaurant.config.name}
-            className="size-7 rounded-lg object-cover ring-1 ring-slate-200 dark:ring-slate-700"
-          />
+          {activeRestaurant.config.logoUrl ? (
+            <img
+              src={activeRestaurant.config.logoUrl}
+              alt={activeRestaurant.config.name}
+              className="size-7 rounded-lg object-cover ring-1 ring-slate-200 dark:ring-slate-700 shadow-xs"
+            />
+          ) : (
+            <div className="flex size-7 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-500">
+              <Store className="size-4" />
+            </div>
+          )}
           <div className="flex-1 min-w-0">
             <h4 className="text-xs font-bold truncate text-slate-900 dark:text-white">
               {activeRestaurant.config.name}
@@ -35,6 +63,60 @@ export const AdminSwitcher: React.FC = () => {
               <Shield className="size-2.5 text-indigo-500" />
               <span>Admin Local</span>
             </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const switcherOptions = [
+    {
+      label: "🏢 Plataforma SaaS",
+      options: [
+        { value: "DIRECTORY", label: "🌐 Directorio Global SaaS" },
+      ],
+    },
+    {
+      label: "🍔 Restaurantes Registrados",
+      options: restaurants.map((r) => ({
+        value: r.id,
+        label: `${r.config.name} (/${r.slug})`,
+      })),
+    },
+  ]
+
+  if (collapsed) {
+    return (
+      <div className="flex justify-center" title="Cambiar restaurante / Directorio SaaS">
+        <div className="relative group size-10">
+          <select
+            aria-label="Selector de restaurante"
+            value={adminTab === "restaurants" ? "DIRECTORY" : activeRestaurant.id}
+            onChange={(e) => {
+              const val = e.target.value
+              if (val === "DIRECTORY") {
+                navigateTo("/admin/restaurants")
+              } else {
+                switchRestaurant(val)
+                navigateTo("/admin/dashboard")
+              }
+              onSelect?.()
+            }}
+            className="absolute inset-0 size-full opacity-0 cursor-pointer z-10"
+          >
+            <optgroup label="🏢 Plataforma SaaS">
+              <option value="DIRECTORY">🌐 Directorio Global SaaS</option>
+            </optgroup>
+            <optgroup label="🍔 Restaurantes Registrados">
+              {restaurants.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.config.name} (/{r.slug})
+                </option>
+              ))}
+            </optgroup>
+          </select>
+          <div className="flex size-10 items-center justify-center rounded-xl border border-indigo-500/30 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 group-hover:bg-indigo-500/20 group-hover:border-indigo-500/50 transition-all shadow-xs">
+            <Store className="size-5" />
           </div>
         </div>
       </div>
@@ -53,39 +135,24 @@ export const AdminSwitcher: React.FC = () => {
         </span>
       </div>
 
-      <div className="relative group">
-        <select
-          value={adminTab === "restaurants" ? "DIRECTORY" : activeRestaurant.id}
-          onChange={(e) => {
-            const val = e.target.value
-            if (val === "DIRECTORY") {
-              navigateTo("/admin/restaurants")
-            } else {
-              switchRestaurant(val)
-              navigateTo("/admin/dashboard")
-            }
-          }}
-          className={`w-full appearance-none rounded-xl border py-2 pl-8 pr-7 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer ${
-            isDark
-              ? "border-indigo-500/30 bg-slate-900 text-slate-100 hover:border-indigo-500/60"
-              : "border-indigo-200 bg-indigo-50/50 text-slate-900 hover:border-indigo-300"
-          }`}
-        >
-          <optgroup label="🏢 Plataforma SaaS">
-            <option value="DIRECTORY">🌐 Directorio Global de Restaurantes</option>
-          </optgroup>
-          <optgroup label="🍔 Restaurantes Registrados">
-            {restaurants.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.config.name} ({r.slug})
-              </option>
-            ))}
-          </optgroup>
-        </select>
-
-        <Store className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-indigo-500 pointer-events-none" />
-        <ChevronDown className="absolute right-2.5 top-1/2 size-3.5 -translate-y-1/2 text-slate-400 pointer-events-none" />
-      </div>
+      <Select
+        aria-label="Selector de restaurante"
+        size="sm"
+        leftIcon={<Store className="size-3.5 text-indigo-500" />}
+        value={adminTab === "restaurants" ? "DIRECTORY" : activeRestaurant.id}
+        onChange={(e) => {
+          const val = e.target.value
+          if (val === "DIRECTORY") {
+            navigateTo("/admin/restaurants")
+          } else {
+            switchRestaurant(val)
+            navigateTo("/admin/dashboard")
+          }
+          onSelect?.()
+        }}
+        options={switcherOptions}
+        className="text-xs font-semibold"
+      />
     </div>
   )
 }

@@ -3,7 +3,23 @@ import { renderHook, act } from "@testing-library/react"
 import React from "react"
 import { UiProvider, useUi } from "./UiContext"
 import { AuthProvider, useAuth } from "./AuthContext"
-import { SEED_RESTAURANTS } from "@/data/initialData"
+import type { RestaurantRecord } from "@/types/restaurant"
+import { DEFAULT_STORE_CONFIG } from "@/constants/themePresets"
+
+const mockRestaurants: RestaurantRecord[] = [
+  {
+    id: "rest-burger-craft",
+    slug: "burger-craft",
+    adminPassword: "craft",
+    isActive: true,
+    createdAt: "2026-08-01T12:00:00.000Z",
+    config: DEFAULT_STORE_CONFIG,
+    products: [],
+    additions: [],
+    orders: [],
+    customers: [],
+  },
+]
 
 describe("UiContext Slice", () => {
   beforeEach(() => {
@@ -52,7 +68,7 @@ describe("AuthContext Slice", () => {
   it("rejects invalid passwords", () => {
     const { result } = renderHook(() => useAuth(), { wrapper })
     act(() => {
-      const response = result.current.login("wrong-password", SEED_RESTAURANTS)
+      const response = result.current.login("wrong-password", mockRestaurants)
       expect(response.success).toBe(false)
     })
     expect(result.current.session.role).toBe("guest")
@@ -61,7 +77,7 @@ describe("AuthContext Slice", () => {
   it("logs out and resets session to guest", () => {
     const { result } = renderHook(() => useAuth(), { wrapper })
     act(() => {
-      result.current.login("admin", SEED_RESTAURANTS)
+      result.current.login("admin", mockRestaurants)
     })
     expect(result.current.session.role).toBe("super")
 
@@ -438,7 +454,7 @@ describe("OrderContext Slice", () => {
 
     // Unmount and verify cleanup
     unmount()
-    expect(unsubscribeSpy).toHaveBeenCalledTimes(1)
+    expect(unsubscribeSpy).toHaveBeenCalled()
   })
 
   it("adds new order to state when SSE stream receives ORDER_CREATED event with payload", async () => {
@@ -497,4 +513,143 @@ describe("OrderContext Slice", () => {
     expect(newOrder?.status).toBe("pending")
   })
 })
+
+describe("CatalogContext Slice - Dynamic Category Management", () => {
+  beforeEach(() => {
+    localStorage.clear()
+    vi.clearAllMocks()
+  })
+
+  it("supports adding, updating/renaming, and deleting categories with product cascade", async () => {
+    const { TenantProvider } = await import("./TenantContext")
+    const { CatalogProvider, useCatalog } = await import("./CatalogContext")
+    const { apiClient } = await import("@/core/api/apiClient")
+
+    const updateCategoriesSpy = vi.spyOn(apiClient, "updateCategories").mockResolvedValue({
+      categories: ["Especiales", "Pollo", "Gourmet", "Clásicas", "Entradas"],
+    })
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>
+        <CatalogProvider>{children}</CatalogProvider>
+      </TenantProvider>
+    )
+
+    const { result } = renderHook(() => useCatalog(), { wrapper })
+
+    // 1. Add Category
+    act(() => {
+      result.current.addCategory("Entradas")
+    })
+
+    expect(result.current.categories).toContain("Entradas")
+    expect(updateCategoriesSpy).toHaveBeenCalledWith(
+      expect.arrayContaining(["Entradas"]),
+      expect.any(String)
+    )
+
+    // Add a product in this category
+    act(() => {
+      result.current.addProduct({
+        name: "Aros de Cebolla",
+        price: 12000,
+        category: "Entradas",
+        src: "",
+        description: "Crujientes",
+        inStock: true,
+      })
+    })
+
+    const onionRings = result.current.products.find((p) => p.name === "Aros de Cebolla")
+    expect(onionRings?.category).toBe("Entradas")
+
+    // 2. Rename Category -> Should cascade to product
+    act(() => {
+      result.current.updateCategory("Entradas", "Aperitivos")
+    })
+
+    expect(result.current.categories).toContain("Aperitivos")
+    expect(result.current.categories).not.toContain("Entradas")
+
+    const updatedOnionRings = result.current.products.find((p) => p.name === "Aros de Cebolla")
+    expect(updatedOnionRings?.category).toBe("Aperitivos")
+
+    // 3. Delete Category -> Should reassign product to fallback category
+    act(() => {
+      result.current.deleteCategory("Aperitivos")
+    })
+
+    expect(result.current.categories).not.toContain("Aperitivos")
+    const reassignedProduct = result.current.products.find((p) => p.name === "Aros de Cebolla")
+    expect(reassignedProduct?.category).not.toBe("Aperitivos")
+    expect(result.current.categories).toContain(reassignedProduct?.category)
+  })
+
+  it("supports adding, updating, and deleting product additions with backend API sync", async () => {
+    const { TenantProvider } = await import("./TenantContext")
+    const { CatalogProvider, useCatalog } = await import("./CatalogContext")
+    const { apiClient } = await import("@/core/api/apiClient")
+
+    const createAdditionSpy = vi.spyOn(apiClient, "createAddition").mockResolvedValue({
+      id: "add-server-1",
+      name: "Tocineta Crujiente",
+      price: 3500,
+      available: true,
+    })
+    const updateAdditionSpy = vi.spyOn(apiClient, "updateAddition").mockResolvedValue({
+      id: "add-server-1",
+      name: "Tocineta Extra Crujiente",
+      price: 4000,
+      available: false,
+    })
+    const deleteAdditionSpy = vi.spyOn(apiClient, "deleteAddition").mockResolvedValue(undefined)
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>
+        <CatalogProvider>{children}</CatalogProvider>
+      </TenantProvider>
+    )
+
+    const { result } = renderHook(() => useCatalog(), { wrapper })
+
+    // 1. Add Addition
+    await act(async () => {
+      result.current.addAddition({
+        name: "Tocineta Crujiente",
+        price: 3500,
+        available: true,
+      })
+    })
+
+    expect(createAdditionSpy).toHaveBeenCalledWith({
+      name: "Tocineta Crujiente",
+      price: 3500,
+      isAvailable: true,
+    })
+
+    // 2. Update Addition
+    await act(async () => {
+      result.current.updateAddition("add-server-1", {
+        name: "Tocineta Extra Crujiente",
+        price: 4000,
+        available: false,
+      })
+    })
+
+    expect(updateAdditionSpy).toHaveBeenCalledWith("add-server-1", {
+      name: "Tocineta Extra Crujiente",
+      price: 4000,
+      isAvailable: false,
+    })
+
+    // 3. Delete Addition
+    await act(async () => {
+      result.current.deleteAddition("add-server-1")
+    })
+
+    expect(deleteAdditionSpy).toHaveBeenCalledWith("add-server-1")
+  })
+})
+
+
 

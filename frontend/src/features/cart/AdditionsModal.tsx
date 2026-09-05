@@ -15,6 +15,7 @@ import { createCartItem, type CartAddition, type CartItem } from "./cartEngine"
 import CharacterCounter from "@/components/CharacterCounter"
 import { LIMITS } from "@/lib/validation"
 import { useRestaurant } from "@/context/RestaurantContext"
+import { formatCurrency } from "@/lib/utils"
 
 export interface AdditionsModalProps {
   onClose: () => void
@@ -37,12 +38,13 @@ export default function AdditionsModal({
 
   const availableAdditions = storeAdditions && storeAdditions.length > 0
     ? storeAdditions.filter((a) => a.available)
-    : [
-        { id: "add-1", name: "Papas Fritas", price: 5000, available: true },
-        { id: "add-2", name: "Cebolla Caramelizada", price: 1500, available: true },
-        { id: "add-3", name: "Extra Queso", price: 2700, available: true },
-        { id: "add-4", name: "Tocineta", price: 2500, available: true },
-      ]
+    : (product as any)?.additions && Array.isArray((product as any).additions) && (product as any).additions.length > 0
+    ? ((product as any).additions as any[]).map((item: any, idx: number) =>
+        typeof item === "string"
+          ? { id: `legacy-${idx}`, name: item, price: 0, available: true }
+          : { id: item.id || `legacy-${idx}`, name: item.name, price: Number(item.price || 0), available: true }
+      )
+    : []
 
   const [adiciones, setAdiciones] = useState<CartAddition[]>(() =>
     availableAdditions.map((ad) => {
@@ -78,8 +80,8 @@ export default function AdditionsModal({
     onClose()
   }
 
-  const aumentarBurger = () => setCantidad((c) => c + 1)
-  const disminuirBurger = () => {
+  const aumentarCantidad = () => setCantidad((c) => c + 1)
+  const disminuirCantidad = () => {
     if (cantidad > 1) setCantidad((c) => c - 1)
   }
 
@@ -120,7 +122,7 @@ export default function AdditionsModal({
               {product.description}
             </DialogDescription>
             <p className="mt-1.5 text-sm font-bold text-accent">
-              ${product.price.toLocaleString()}
+              {formatCurrency(product.price)}
             </p>
           </div>
           <Button
@@ -136,62 +138,64 @@ export default function AdditionsModal({
         </header>
 
         <div className="scroll-add min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain px-5 py-4">
-          <section>
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold tracking-wide text-text-primary uppercase">
-                Adiciones
-              </h3>
-              <Badge variant="outline" className="bg-accent-soft text-accent">
-                Opcional
-              </Badge>
-            </div>
-            <ul className="flex flex-col gap-2">
-              {adiciones.map((adicion, i) => (
-                <li
-                  key={adicion.name}
-                  className="flex items-center gap-3 rounded-lg border border-border-subtle bg-bg-elevated p-3"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-text-primary">
-                      {adicion.name}
-                    </p>
-                    <p className="text-xs text-text-muted">
-                      +${adicion.price.toLocaleString()}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="icon-sm"
-                      onClick={() => modificarCantidadAdicion(i, "decrementar")}
-                      aria-label={`Quitar ${adicion.name}`}
-                      disabled={adicion.cantidad === 0}
-                      className="size-11 rounded-full bg-bg-elevated-2 hover:bg-accent disabled:opacity-40"
-                    >
-                      <Minus />
-                    </Button>
-                    <span
-                      aria-live="polite"
-                      className="w-6 text-center text-sm font-semibold text-text-primary"
-                    >
-                      {adicion.cantidad}
-                    </span>
-                    <Button
-                      type="button"
-                      variant="default"
-                      size="icon-sm"
-                      onClick={() => modificarCantidadAdicion(i, "incrementar")}
-                      aria-label={`Agregar ${adicion.name}`}
-                      className="size-11 rounded-full bg-accent hover:bg-accent-hover"
-                    >
-                      <Plus />
-                    </Button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </section>
+          {adiciones.length > 0 && (
+            <section>
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-sm font-semibold tracking-wide text-text-primary uppercase">
+                  Adiciones
+                </h3>
+                <Badge variant="outline" className="bg-accent-soft text-accent">
+                  Opcional
+                </Badge>
+              </div>
+              <ul className="flex flex-col gap-2">
+                {adiciones.map((adicion, i) => (
+                  <li
+                    key={adicion.name}
+                    className="flex items-center gap-3 rounded-lg border border-border-subtle bg-bg-elevated p-3"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-text-primary">
+                        {adicion.name}
+                      </p>
+                      <p className="text-xs text-text-muted">
+                        +{formatCurrency(adicion.price)}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="icon-sm"
+                        onClick={() => modificarCantidadAdicion(i, "decrementar")}
+                        aria-label={`Quitar ${adicion.name}`}
+                        disabled={adicion.cantidad === 0}
+                        className="size-11 rounded-full bg-bg-elevated-2 hover:bg-accent disabled:opacity-40"
+                      >
+                        <Minus />
+                      </Button>
+                      <span
+                        aria-live="polite"
+                        className="w-6 text-center text-sm font-semibold text-text-primary"
+                      >
+                        {adicion.cantidad}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="default"
+                        size="icon-sm"
+                        onClick={() => modificarCantidadAdicion(i, "incrementar")}
+                        aria-label={`Agregar ${adicion.name}`}
+                        className="size-11 rounded-full bg-accent hover:bg-accent-hover"
+                      >
+                        <Plus />
+                      </Button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
 
           <Field>
             <div className="mb-2 flex items-center justify-between">
@@ -229,7 +233,7 @@ export default function AdditionsModal({
                   type="button"
                   variant="secondary"
                   size="icon-sm"
-                  onClick={disminuirBurger}
+                  onClick={disminuirCantidad}
                   aria-label="Disminuir cantidad"
                   disabled={cantidad === 1}
                   className="size-11 rounded-full bg-bg-elevated-2 hover:bg-accent disabled:opacity-40"
@@ -246,7 +250,7 @@ export default function AdditionsModal({
                   type="button"
                   variant="default"
                   size="icon-sm"
-                  onClick={aumentarBurger}
+                  onClick={aumentarCantidad}
                   aria-label="Aumentar cantidad"
                   className="size-11 rounded-full bg-accent hover:bg-accent-hover"
                 >
@@ -264,7 +268,7 @@ export default function AdditionsModal({
               className="h-12 w-full rounded-xl text-base text-white font-bold shadow-md cursor-pointer hover:opacity-90 min-[420px]:w-auto min-[420px]:flex-1 sm:min-w-[200px] sm:flex-none"
             >
               <Plus data-icon="inline-start" strokeWidth={2.5} />
-              {editing ? "Guardar cambios" : "Agregar"} · ${calcularTotal().toLocaleString()}
+              {editing ? "Guardar cambios" : "Agregar"} · {formatCurrency(calcularTotal())}
             </Button>
           </div>
         </footer>

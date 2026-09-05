@@ -1,5 +1,4 @@
 import type { RestaurantRecord, StorageEnvelopeV2 } from "@/types/restaurant"
-import { SEED_RESTAURANTS } from "@/data/initialData"
 import { type StorageAdapter, LocalStorageAdapter } from "./StorageAdapter"
 
 export const STORAGE_KEYS = {
@@ -10,7 +9,7 @@ export const STORAGE_KEYS = {
 export const DEFAULT_ENVELOPE: StorageEnvelopeV2 = {
   version: 2,
   superAdminPassword: "admin",
-  restaurants: SEED_RESTAURANTS,
+  restaurants: [],
 }
 
 export class TenantRepository {
@@ -30,7 +29,20 @@ export class TenantRepository {
           Array.isArray(parsed.restaurants) &&
           parsed.restaurants.length > 0
         ) {
-          return parsed
+          const migratedRestaurants = parsed.restaurants.map((r) => {
+            if (!r.categories || r.categories.length === 0) {
+              const fromProducts = Array.from(new Set((r.products || []).map((p) => p.category).filter(Boolean)))
+              return {
+                ...r,
+                categories: fromProducts.length > 0 ? fromProducts : ["Platos Principales"],
+              }
+            }
+            return r
+          })
+          return {
+            ...parsed,
+            restaurants: migratedRestaurants,
+          }
         }
       }
       return DEFAULT_ENVELOPE
@@ -40,7 +52,11 @@ export class TenantRepository {
   }
 
   saveEnvelope(envelope: StorageEnvelopeV2): void {
-    this.adapter.setItem(STORAGE_KEYS.ENVELOPE, JSON.stringify(envelope))
+    try {
+      this.adapter.setItem(STORAGE_KEYS.ENVELOPE, JSON.stringify(envelope))
+    } catch (err) {
+      console.error("Failed to save storage envelope to localStorage (quota exceeded or storage blocked):", err)
+    }
   }
 
   getActiveRestaurantId(defaultId = "rest-burger-craft"): string {

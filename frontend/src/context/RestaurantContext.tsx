@@ -19,6 +19,7 @@ import { CatalogProvider, useCatalog } from "./slices/CatalogContext"
 import { OrderProvider, useOrders } from "./slices/OrderContext"
 import { InventoryProvider, useInventory } from "./slices/InventoryContext"
 import type { InventoryItem, Supplier } from "@/types/restaurant"
+import type { TenantRepository } from "@/core/storage/TenantRepository"
 
 // Export individual slice hooks for fine-grained subscriptions
 export { useUi } from "./slices/UiContext"
@@ -34,6 +35,7 @@ export interface RestaurantContextType {
   activeRestaurant: RestaurantRecord
   activeRestaurantId: string
   activeRestaurantSlug: string
+  isSyncing: boolean
   switchRestaurant: (idOrSlug: string) => void
 
   // Super Admin Directory Actions
@@ -46,12 +48,14 @@ export interface RestaurantContextType {
     primaryColor?: string
     templateType?: "burger" | "pizza" | "tacos" | "blank"
   }) => RestaurantRecord
-  updateRestaurant: (id: string, updates: Partial<RestaurantRecord>) => void
-  deleteRestaurant: (id: string) => void
+  updateRestaurant: (id: string, updates: Partial<RestaurantRecord>) => Promise<void>
+  deleteRestaurant: (id: string) => Promise<void>
+  refreshRestaurants: () => Promise<void>
   globalStats: GlobalPlatformStats
 
   // Auth & Session
   session: AdminSession
+  setSession: React.Dispatch<React.SetStateAction<AdminSession>>
   login: (password: string, targetRestaurantIdOrSlug?: string) => {
     success: boolean
     role: "super" | "restaurant" | null
@@ -64,6 +68,11 @@ export interface RestaurantContextType {
   storeConfig: StorefrontConfig
   updateStoreConfig: (newConfig: Partial<StorefrontConfig>) => void
   resetStoreConfig: () => void
+
+  categories: string[]
+  addCategory: (categoryName: string) => void
+  updateCategory: (oldName: string, newName: string) => void
+  deleteCategory: (categoryName: string) => void
 
   products: MenuItem[]
   addProduct: (item: Omit<MenuItem, "id">) => void
@@ -80,7 +89,6 @@ export interface RestaurantContextType {
   addOrder: (orderData: Omit<Order, "id" | "orderNumber" | "createdAt" | "updatedAt">) => Order
   updateOrderStatus: (orderId: string, newStatus: OrderStatus) => void
   deleteOrder: (orderId: string) => void
-  simulateIncomingOrder: () => void
 
   customers: Customer[]
   updateCustomer: (id: string, updates: Partial<Customer>) => void
@@ -118,12 +126,13 @@ export interface RestaurantContextType {
 /**
  * Composed Provider wrapping all domain slices.
  */
-export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => {
+export const RestaurantProvider: React.FC<{
+  children: React.ReactNode
+  repository?: TenantRepository
+}> = ({ children, repository }) => {
   return (
     <UiProvider>
-      <TenantProvider>
+      <TenantProvider repository={repository}>
         <AuthProvider>
           <CatalogProvider>
             <InventoryProvider>
@@ -153,14 +162,17 @@ export const useRestaurant = (): RestaurantContextType => {
     activeRestaurant: tenant.activeRestaurant,
     activeRestaurantId: tenant.activeRestaurantId,
     activeRestaurantSlug: tenant.activeRestaurantSlug,
+    isSyncing: tenant.isSyncing,
     switchRestaurant: tenant.switchRestaurant,
 
     createRestaurant: tenant.createRestaurant,
     updateRestaurant: tenant.updateRestaurant,
     deleteRestaurant: tenant.deleteRestaurant,
+    refreshRestaurants: tenant.refreshRestaurants,
     globalStats: tenant.globalStats,
 
     session: auth.session,
+    setSession: auth.setSession,
     login: (password: string, targetRestaurantIdOrSlug?: string) => {
       const res = auth.login(
         password,
@@ -171,10 +183,13 @@ export const useRestaurant = (): RestaurantContextType => {
       )
       if (res.success) {
         if (res.role === "super") {
-          ui.setAdminTab("restaurants")
+          const isDeepRoute = window.location.pathname.toLowerCase().startsWith("/admin/") && window.location.pathname.toLowerCase() !== "/admin"
+          if (!isDeepRoute) {
+            ui.setAdminTab("restaurants")
+          }
         } else if (res.role === "restaurant" && res.restaurantId) {
           tenant.switchRestaurant(res.restaurantId)
-          const isDeepRoute = window.location.pathname.toLowerCase().startsWith("/admin/")
+          const isDeepRoute = window.location.pathname.toLowerCase().startsWith("/admin/") && window.location.pathname.toLowerCase() !== "/admin"
           if (!isDeepRoute) {
             ui.setAdminTab("dashboard")
           }
@@ -188,6 +203,11 @@ export const useRestaurant = (): RestaurantContextType => {
     storeConfig: catalog.storeConfig,
     updateStoreConfig: catalog.updateStoreConfig,
     resetStoreConfig: catalog.resetStoreConfig,
+
+    categories: catalog.categories,
+    addCategory: catalog.addCategory,
+    updateCategory: catalog.updateCategory,
+    deleteCategory: catalog.deleteCategory,
 
     products: catalog.products,
     addProduct: catalog.addProduct,
@@ -216,7 +236,6 @@ export const useRestaurant = (): RestaurantContextType => {
     addOrder: orders.addOrder,
     updateOrderStatus: orders.updateOrderStatus,
     deleteOrder: orders.deleteOrder,
-    simulateIncomingOrder: orders.simulateIncomingOrder,
 
     customers: orders.customers,
     updateCustomer: orders.updateCustomer,

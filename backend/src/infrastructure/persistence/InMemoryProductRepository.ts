@@ -11,19 +11,31 @@ export class InMemoryProductRepository implements ProductRepository {
     }
   }
 
-  async findById(id: string): Promise<Product | null> {
-    return this.products.get(id) || null;
+  async findById(id: string, restaurantId: string): Promise<Product | null> {
+    const product = this.products.get(id);
+    if (!product) return null;
+    if (product.restaurantId !== restaurantId) return null;
+    return { ...product };
   }
 
-  async findAll(): Promise<Product[]> {
-    return Array.from(this.products.values());
+  async findByRestaurantId(restaurantId: string): Promise<Product[]> {
+    return Array.from(this.products.values())
+      .filter((p) => p.restaurantId === restaurantId)
+      .map((p) => ({ ...p }));
   }
 
   async save(product: Product): Promise<void> {
     this.products.set(product.id, { ...product });
   }
 
-  async delete(id: string): Promise<void> {
-    this.products.delete(id);
+  async delete(id: string, restaurantId: string): Promise<void> {
+    const product = this.products.get(id);
+    if (product && product.restaurantId === restaurantId) {
+      this.products.delete(id);
+    }
+  }
+
+  clear(): void {
+    this.products.clear();
   }
 }

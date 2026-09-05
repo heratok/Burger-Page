@@ -32,17 +32,64 @@ export const storefrontConfigSchema = z.object({
 
 export type StorefrontConfigDTO = z.infer<typeof storefrontConfigSchema>;
 
+export const createRestaurantSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().min(1, 'Restaurant name is required'),
+  slug: z.string().min(1, 'Restaurant slug is required'),
+  tagline: z.string().optional(),
+  whatsappNumber: z.string().optional(),
+  adminPassword: z.string().optional(),
+  primaryColor: z.string().optional(),
+  templateType: z.enum(['burger', 'pizza', 'tacos', 'blank']).optional(),
+  categories: z.array(z.string()).optional(),
+  theme: z.string().optional(),
+  config: storefrontConfigSchema.partial().optional(),
+});
+
+export type CreateRestaurantInput = z.infer<typeof createRestaurantSchema>;
+
+export const updateRestaurantSchema = createRestaurantSchema.partial();
+export type UpdateRestaurantInput = z.infer<typeof updateRestaurantSchema>;
+
+export const restaurantDTOSchema = z.object({
+  id: z.string(),
+  slug: z.string(),
+  name: z.string(),
+  tagline: z.string().optional(),
+  theme: z.string().optional(),
+  adminPassword: z.string().optional(),
+  isActive: z.boolean().default(true),
+  createdAt: z.string().optional(),
+  categories: z.array(z.string()).default([]),
+  config: storefrontConfigSchema.partial().optional(),
+  openingHours: z.object({ open: z.string(), close: z.string() }).optional(),
+});
+
+export type RestaurantDTO = z.infer<typeof restaurantDTOSchema>;
+
+export const updateRestaurantCategoriesSchema = z.object({
+  categories: z.array(z.string().min(1, 'Category name cannot be empty')).min(1, 'At least one category is required'),
+});
+export type UpdateRestaurantCategoriesInput = z.infer<typeof updateRestaurantCategoriesSchema>;
+
 // ==========================================
 // PRODUCT / MENU CONTRACTS
 // ==========================================
 
 export const createProductSchema = z.object({
+  restaurantId: z.string().optional(), // Injected from JWT on backend
   name: z.string().min(1, 'Product name is required'),
-  description: z.string(),
-  price: z.number().positive('Price must be greater than 0'),
-  category: z.string().min(1, 'Category is required'),
+  description: z.string().default(''),
+  price: z.number().nonnegative('Price must be greater than or equal to 0'),
+  categoryId: z.string().optional(),
+  category: z.string().optional(), // Optional label; backend resolves canonical category name from categoryId
+  imageUrl: z.string().optional(),
   isAvailable: z.boolean().default(true),
-  additions: z.array(z.string()).default([]),
+  isPopular: z.boolean().optional(),
+  isNew: z.boolean().optional(),
+  preparationTimeMinutes: z.number().nonnegative().optional(),
+  displayOrder: z.number().optional(),
+  additions: z.array(z.string()).optional(),
 });
 
 export type CreateProductInput = z.infer<typeof createProductSchema>;
@@ -52,8 +99,33 @@ export type UpdateProductInput = z.infer<typeof updateProductSchema>;
 
 export const productDTOSchema = createProductSchema.extend({
   id: z.string(),
+  restaurantId: z.string(),
 });
 export type ProductDTO = z.infer<typeof productDTOSchema>;
+
+// ==========================================
+// PRODUCT ADDITION CONTRACTS
+// ==========================================
+
+export const createProductAdditionSchema = z.object({
+  restaurantId: z.string().optional(), // Injected from JWT on backend
+  productId: z.string().optional(), // NULL/optional = global addition for restaurant
+  name: z.string().min(1, 'Addition name is required'),
+  price: z.number().nonnegative('Price must be greater than or equal to 0').default(0),
+  isAvailable: z.boolean().default(true),
+  displayOrder: z.number().optional().default(0),
+});
+export type CreateProductAdditionInput = z.infer<typeof createProductAdditionSchema>;
+
+export const updateProductAdditionSchema = createProductAdditionSchema.partial();
+export type UpdateProductAdditionInput = z.infer<typeof updateProductAdditionSchema>;
+
+export const productAdditionDTOSchema = createProductAdditionSchema.extend({
+  id: z.string(),
+  restaurantId: z.string(),
+});
+export type ProductAdditionDTO = z.infer<typeof productAdditionDTOSchema>;
+
 
 // ==========================================
 // ORDER CONTRACTS
@@ -68,17 +140,29 @@ export const orderStatusEnum = z.enum([
 ]);
 export type OrderStatusType = z.infer<typeof orderStatusEnum>;
 
+export const orderItemAdditionInputSchema = z.object({
+  additionId: z.string().min(1, 'Addition ID is required'),
+  quantity: z.number().int().positive().optional().default(1),
+});
+export type OrderItemAdditionInput = z.infer<typeof orderItemAdditionInputSchema>;
+
 export const orderItemInputSchema = z.object({
   productId: z.string().min(1, 'Product ID is required'),
   quantity: z.number().int().positive('Quantity must be at least 1'),
-  additions: z.array(z.string()).default([]),
+  observation: z.string().optional(),
+  additions: z.array(z.union([z.string(), orderItemAdditionInputSchema])).default([]),
 });
 export type OrderItemInput = z.infer<typeof orderItemInputSchema>;
 
 export const createOrderSchema = z.object({
-  customerId: z.string().min(1, 'Customer ID is required'),
+  restaurantId: z.string().min(1, 'Restaurant ID is required'),
+  customerId: z.string().optional(),
   items: z.array(orderItemInputSchema).min(1, 'Order must have at least one item'),
   deliveryFee: z.number().nonnegative().optional(),
+  paymentMethod: z.enum(['Efectivo', 'Transferencia']).optional(),
+  paymentAmount: z.number().nonnegative().optional(),
+  changeAmount: z.number().nonnegative().optional(),
+  comment: z.string().optional(),
 });
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;
 

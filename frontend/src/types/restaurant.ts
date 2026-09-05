@@ -145,6 +145,7 @@ export interface RestaurantRecord {
   slug: string
   adminPassword?: string
   config: StorefrontConfig
+  categories?: string[]
   products: MenuItem[]
   additions: AdditionItem[]
   inventory?: InventoryItem[]
@@ -160,6 +161,7 @@ export type UserRole = "super" | "restaurant" | "guest"
 export interface AdminSession {
   role: UserRole
   restaurantId?: string
+  username?: string
   authenticatedAt?: string
 }
 
@@ -169,6 +171,16 @@ export interface StorageEnvelopeV2 {
   restaurants: RestaurantRecord[]
 }
 
-export type AdminTab = "dashboard" | "orders" | "menu" | "inventory" | "customers" | "reports" | "customizer" | "restaurants"
+export type AdminTab =
+  | "dashboard"
+  | "orders"
+  | "menu"
+  | "inventory"
+  | "customers"
+  | "reports"
+  | "customizer"
+  | "restaurants"
+  | "users"
+  | "metrics"
 export type AdminTheme = "light" | "dark"
 export type AppView = "landing" | "store" | "admin" | "not-found"

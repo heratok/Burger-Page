@@ -10,7 +10,9 @@ import {
 import { LoyaltyBadge } from "@/components/ui/status-badge"
 import { Button } from "@/components/ui/button"
 import { Pagination } from "@/components/ui/pagination"
+import { Select } from "@/components/ui/select"
 import { buildWhatsAppUrl } from "@/features/cart"
+import { formatCurrency, cleanPhoneNumber, formatWhatsAppPhone } from "@/lib/utils"
 
 export const CustomerCRM: React.FC = () => {
   const { customers, orders, updateCustomer, storeConfig, adminTheme } = useRestaurant()
@@ -56,12 +58,11 @@ export const CustomerCRM: React.FC = () => {
   }, [customers])
 
   const openWhatsAppMarketing = (cust: Customer) => {
-    const phone = cust.telefono.replace(/\D/g, "")
-    const fullPhone = phone.startsWith("57") ? phone : `57${phone}`
+    const fullPhone = formatWhatsAppPhone(cust.telefono)
     const greeting =
       cust.loyaltyTier === "vip"
-        ? `¡Hola ${cust.nombre}! 👑 Como cliente VIP de *${storeConfig.name}*, queremos regalarte un cupón especial del 15% OFF en tu próximo pedido usando el código *VIPBURGER*. ¿Te gustaría pedir hoy?`
-        : `¡Hola ${cust.nombre}! Te saludamos de *${storeConfig.name}*. Tenemos novedades en nuestra carta que seguro te encantarán. ¡Visita nuestra tienda para ver lo nuevo!`
+        ? `¡Hola ${cust.nombre}! 👑 Como cliente VIP de *${storeConfig.name}*, queremos regalarte un cupón especial del 15% OFF en tu próximo pedido usando el código *VIP15*. ¿Te gustaría pedir hoy?`
+        : `¡Hola ${cust.nombre}! Te saludamos de *${storeConfig.name}*. Tenemos novedades en nuestro menú que seguro te encantarán. ¡Visita nuestra tienda para ver lo nuevo!`
 
     window.open(buildWhatsAppUrl(fullPhone, greeting), "_blank", "noreferrer")
   }
@@ -80,10 +81,9 @@ export const CustomerCRM: React.FC = () => {
 
   const customerOrders = useMemo(() => {
     if (!selectedCustomer) return []
+    const selectedPhone = cleanPhoneNumber(selectedCustomer.telefono)
     return orders.filter(
-      (o) =>
-        o.customer.telefono.replace(/\D/g, "") ===
-        selectedCustomer.telefono.replace(/\D/g, "")
+      (o) => cleanPhoneNumber(o.customer.telefono) === selectedPhone
     )
   }, [orders, selectedCustomer])
 
@@ -131,7 +131,7 @@ export const CustomerCRM: React.FC = () => {
           </span>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
-              ${stats.totalSpentAll.toLocaleString()}
+              {formatCurrency(stats.totalSpentAll)}
             </span>
           </div>
         </div>
@@ -163,6 +163,7 @@ export const CustomerCRM: React.FC = () => {
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
+            maxLength={60}
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value)
@@ -177,26 +178,23 @@ export const CustomerCRM: React.FC = () => {
           />
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Nivel:</span>
-          <select
+        <div className="w-44">
+          <Select
+            size="md"
             value={tierFilter}
             onChange={(e) => {
               setTierFilter(e.target.value)
               setCurrentPage(1)
             }}
-            className={`rounded-xl border px-3 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-              isDark
-                ? "border-slate-700 bg-slate-800 text-slate-100"
-                : "border-slate-200 bg-slate-50 text-slate-700"
-            }`}
-          >
-            <option value="ALL">Todos los niveles</option>
-            <option value="vip">👑 VIP</option>
-            <option value="gold">🥇 Oro</option>
-            <option value="silver">🥈 Plata</option>
-            <option value="bronze">🥉 Bronce</option>
-          </select>
+            aria-label="Filtrar por nivel de fidelidad"
+            options={[
+              { value: "ALL", label: "Todos los niveles" },
+              { value: "vip", label: "👑 VIP" },
+              { value: "gold", label: "🥇 Oro" },
+              { value: "silver", label: "🥈 Plata" },
+              { value: "bronze", label: "🥉 Bronce" },
+            ]}
+          />
         </div>
       </div>
 
@@ -253,7 +251,7 @@ export const CustomerCRM: React.FC = () => {
                     {cust.totalOrders}
                   </td>
                   <td className="py-3 px-4 font-bold text-emerald-600 dark:text-emerald-400">
-                    ${cust.totalSpent.toLocaleString()}
+                    {formatCurrency(cust.totalSpent)}
                   </td>
                   <td className="py-3 px-4">
                     <LoyaltyBadge tier={cust.loyaltyTier} />
@@ -342,7 +340,7 @@ export const CustomerCRM: React.FC = () => {
               <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-800 border dark:border-slate-700">
                 <span className="text-slate-500 dark:text-slate-400 font-medium">Inversión Total</span>
                 <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">
-                  ${selectedCustomer.totalSpent.toLocaleString()}
+                  {formatCurrency(selectedCustomer.totalSpent)}
                 </p>
               </div>
             </div>
@@ -355,6 +353,7 @@ export const CustomerCRM: React.FC = () => {
               </label>
               <textarea
                 rows={3}
+                maxLength={300}
                 value={notesEdit}
                 onChange={(e) => setNotesEdit(e.target.value)}
                 placeholder="Ej. Prefiere la carne bien cocida. Dejar con portería si no contesta..."
@@ -387,7 +386,7 @@ export const CustomerCRM: React.FC = () => {
                       </span>
                     </div>
                     <span className="font-bold text-slate-900 dark:text-white">
-                      ${ord.finalTotal.toLocaleString()}
+                      {formatCurrency(ord.finalTotal)}
                     </span>
                   </div>
                 ))}

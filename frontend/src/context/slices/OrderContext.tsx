@@ -6,13 +6,13 @@ import { useTenant } from "./TenantContext"
 import { useUi } from "./UiContext"
 import { playNotificationChime } from "@/core/audio/soundEffects"
 import { toast } from "sonner"
+import { formatCurrency, cleanPhoneNumber } from "@/lib/utils"
 
 export interface OrderContextType {
   orders: Order[]
   addOrder: (orderData: Omit<Order, "id" | "orderNumber" | "createdAt" | "updatedAt">) => Order
   updateOrderStatus: (orderId: string, newStatus: OrderStatus) => void
   deleteOrder: (orderId: string) => void
-  simulateIncomingOrder: () => void
   customers: Customer[]
   updateCustomer: (id: string, updates: Partial<Customer>) => void
   pendingOrdersCount: number
@@ -109,10 +109,10 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       updateActiveRestaurantRecord((current) => {
         // Record or update customer
-        const phone = newOrder.customer.telefono.replace(/\D/g, "")
+        const phone = cleanPhoneNumber(newOrder.customer.telefono)
         const nextCustomers = [...current.customers]
         const existingIdx = nextCustomers.findIndex(
-          (c) => c.telefono.replace(/\D/g, "") === phone
+          (c) => cleanPhoneNumber(c.telefono) === phone
         )
 
         if (existingIdx >= 0) {
@@ -160,27 +160,28 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
 
       toast.success(`Orden #${newOrder.orderNumber} registrada`, {
-        description: `${newOrder.customer.nombre} - $${newOrder.finalTotal.toLocaleString()}`,
+        description: `${newOrder.customer.nombre} - ${formatCurrency(newOrder.finalTotal)}`,
       })
 
       // Backend API Integration with graceful offline fallback
       try {
-        const phone = newOrder.customer.telefono.replace(/\D/g, "")
+        const phone = cleanPhoneNumber(newOrder.customer.telefono)
         const existingCustomer = activeRestaurant.customers?.find(
-          (c) => c.telefono.replace(/\D/g, "") === phone
+          (c) => cleanPhoneNumber(c.telefono) === phone
         )
         const customerId = existingCustomer ? existingCustomer.id : `cust-${Date.now()}`
 
         const orderInput: CreateOrderInput = {
+          restaurantId: activeRestaurant.id,
           customerId,
           items: newOrder.items.map((item) => {
             const matchedProduct = activeRestaurant.products?.find(
               (p) => p.name.toLowerCase() === item.name.toLowerCase() || p.id === item.id
             )
             return {
-              productId: item.id || matchedProduct?.id || item.name,
+              productId: matchedProduct?.id || item.id || item.name,
               quantity: item.cantidad,
-              additions: (item.adiciones || []).map((a) => a.name),
+              additions: (item.adiciones || []).map((a) => (a as any).id || a.name),
             }
           }),
           deliveryFee: newOrder.deliveryFee,
@@ -199,10 +200,14 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             }
           })
           .catch((error) => {
-            console.warn("Could not sync order to backend API, falling back to local state:", error)
+            if (import.meta.env?.MODE !== 'test') {
+              console.warn("Could not sync order to backend API, falling back to local state:", error)
+            }
           })
       } catch (err) {
-        console.warn("Error preparing order input for backend API:", err)
+        if (import.meta.env?.MODE !== 'test') {
+          console.warn("Error preparing order input for backend API:", err)
+        }
       }
 
       return newOrder
@@ -223,7 +228,9 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       toast.info(`Orden actualizada a: ${newStatus.toUpperCase()}`)
 
       apiClient.updateOrderStatus(orderId, newStatus).catch((error) => {
-        console.warn(`Could not sync status update for order ${orderId} to backend API:`, error)
+        if (import.meta.env?.MODE !== 'test') {
+          console.warn(`Could not sync status update for order ${orderId} to backend API:`, error)
+        }
       })
     },
     [updateActiveRestaurantRecord]
@@ -239,59 +246,6 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     },
     [updateActiveRestaurantRecord]
   )
-
-  const simulateIncomingOrder = useCallback(() => {
-    const randomNames = [
-      "Santiago Cruz",
-      "Camila Restrepo",
-      "Mateo Valencia",
-      "Daniela Ospina",
-      "Lucas Ramírez",
-    ]
-    const randomBarrios = [
-      "Cedritos",
-      "Rosales",
-      "Chicó Reservado",
-      "Modelia",
-      "Teusaquillo",
-    ]
-    const randomName =
-      randomNames[Math.floor(Math.random() * randomNames.length)]
-    const randomBarrio =
-      randomBarrios[Math.floor(Math.random() * randomBarrios.length)]
-
-    const availableProducts = activeRestaurant.products.filter((p) => p.inStock)
-    const product1 =
-      availableProducts[Math.floor(Math.random() * availableProducts.length)] ||
-      activeRestaurant.products[0]
-    if (!product1) return
-
-    const qty = Math.floor(Math.random() * 2) + 1
-    const itemTotal = product1.price * qty
-
-    addOrder({
-      customer: {
-        nombre: randomName,
-        telefono: `3${Math.floor(100000000 + Math.random() * 900000000)}`,
-        direccion: `Calle ${Math.floor(20 + Math.random() * 120)} # ${Math.floor(10 + Math.random() * 90)}-${Math.floor(10 + Math.random() * 90)}`,
-        barrio: randomBarrio,
-      },
-      items: [
-        {
-          name: product1.name,
-          price: product1.price,
-          cantidad: qty,
-          total: itemTotal,
-          observacion: "Por favor enviar salsa extra de la casa.",
-        },
-      ],
-      total: itemTotal,
-      deliveryFee: activeRestaurant.config.deliveryFee,
-      finalTotal: itemTotal + activeRestaurant.config.deliveryFee,
-      metodo: Math.random() > 0.5 ? "Transferencia" : "Efectivo",
-      status: "pending",
-    })
-  }, [activeRestaurant, addOrder])
 
   const updateCustomer = useCallback(
     (id: string, updates: Partial<Customer>) => {
@@ -315,7 +269,6 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     addOrder,
     updateOrderStatus,
     deleteOrder,
-    simulateIncomingOrder,
     customers: activeRestaurant.customers,
     updateCustomer,
     pendingOrdersCount,

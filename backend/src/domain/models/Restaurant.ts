@@ -7,7 +7,16 @@ export interface Restaurant {
   id: string;
   slug?: string;
   name: string;
+  tagline?: string;
+  whatsappNumber?: string;
+  adminPassword?: string;
+  primaryColor?: string;
   theme: string;
+  deliveryFee?: number;
+  minOrderAmount?: number;
+  config?: any;
   openingHours: OpeningHours;
   isActive: boolean;
+  categories?: string[];
+  createdAt?: string;
 }

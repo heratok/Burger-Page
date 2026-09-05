@@ -1,18 +1,20 @@
-import React, { useMemo } from "react"
+import React, { useState, useMemo } from "react"
 import { useRestaurant } from "@/context/RestaurantContext"
 import {
   DollarSign,
   ShoppingBag,
   TrendingUp,
   Users,
-  Sparkles,
-  ArrowUpRight,
   ChevronRight,
   Flame,
+  Plus,
 } from "lucide-react"
 import { OrderStatusBadge } from "@/components/ui/status-badge"
+import { StatCard } from "@/components/ui/stat-card"
 import { Button } from "@/components/ui/button"
 import { useAppRouter } from "@/core/router/useAppRouter"
+import { ManualSaleModal } from "./ManualSaleModal"
+import { formatCurrency } from "@/lib/utils"
 
 export const DashboardOverview: React.FC = () => {
   const {
@@ -21,11 +23,11 @@ export const DashboardOverview: React.FC = () => {
     customers,
     storeConfig,
     adminTheme,
-    simulateIncomingOrder,
     updateOrderStatus,
   } = useRestaurant()
 
   const { navigateTo } = useAppRouter()
+  const [isManualSaleOpen, setIsManualSaleOpen] = useState(false)
 
   // Calculate Metrics
   const metrics = useMemo(() => {
@@ -37,13 +39,25 @@ export const DashboardOverview: React.FC = () => {
     const avgTicket = validOrders.length > 0 ? Math.round(totalSales / validOrders.length) : 0
     const vipCount = customers.filter((c) => c.loyaltyTier === "vip" || c.loyaltyTier === "gold").length
 
+    const ordersLast24h = orders.filter((o) => {
+      if (!o.createdAt) return false
+      const d = new Date(o.createdAt).getTime()
+      return !isNaN(d) && Date.now() - d <= 24 * 60 * 60 * 1000
+    }).length
+
+    const repeatCustomers = customers.filter((c) => c.totalOrders > 1).length
+    const repeatRate = customers.length > 0 ? Math.round((repeatCustomers / customers.length) * 100) : 0
+
     return {
       totalSales,
+      validOrdersCount: validOrders.length,
       totalOrdersCount: orders.length,
       activeOrdersCount: activeOrders.length,
+      ordersLast24h,
       avgTicket,
       totalCustomers: customers.length,
       vipCount,
+      repeatRate,
     }
   }, [orders, customers])
 
@@ -74,16 +88,51 @@ export const DashboardOverview: React.FC = () => {
 
   const maxProductCount = topProducts.length > 0 ? Math.max(...topProducts.map((p) => p.count), 1) : 1
 
-  // 7-day Sales Bar simulation
-  const chartDays = [
-    { day: "Lun", amount: 145000, height: 45 },
-    { day: "Mar", amount: 189000, height: 58 },
-    { day: "Mié", amount: 220000, height: 68 },
-    { day: "Jue", amount: 265000, height: 80 },
-    { day: "Vie", amount: 380000, height: 98 },
-    { day: "Sáb", amount: 410000, height: 100 },
-    { day: "Hoy", amount: metrics.totalSales > 0 ? metrics.totalSales : 290000, height: 85 },
-  ]
+  // 7-day Sales Bar dynamic calculation
+  const chartDays = useMemo(() => {
+    const dayNames = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"]
+    const now = new Date()
+    const daysWindow: { dateKey: string; day: string; amount: number }[] = []
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i)
+      const year = d.getFullYear()
+      const month = String(d.getMonth() + 1).padStart(2, "0")
+      const day = String(d.getDate()).padStart(2, "0")
+      const dateKey = `${year}-${month}-${day}`
+      const dayLabel = i === 0 ? "Hoy" : dayNames[d.getDay()]
+      daysWindow.push({ dateKey, day: dayLabel, amount: 0 })
+    }
+
+    orders
+      .filter((o) => o.status !== "cancelled")
+      .forEach((ord) => {
+        if (!ord.createdAt) return
+        const ordDate = new Date(ord.createdAt)
+        if (isNaN(ordDate.getTime())) return
+        const year = ordDate.getFullYear()
+        const month = String(ordDate.getMonth() + 1).padStart(2, "0")
+        const day = String(ordDate.getDate()).padStart(2, "0")
+        const ordDateKey = `${year}-${month}-${day}`
+
+        const match = daysWindow.find((dw) => dw.dateKey === ordDateKey)
+        if (match) {
+          match.amount += ord.finalTotal
+        }
+      })
+
+    const maxAmount = Math.max(...daysWindow.map((d) => d.amount), 0)
+    const hasData = maxAmount > 0
+
+    return {
+      hasData,
+      items: daysWindow.map((d) => ({
+        day: d.day,
+        amount: d.amount,
+        height: hasData ? Math.max(Math.round((d.amount / maxAmount) * 100), 4) : 0,
+      })),
+    }
+  }, [orders])
 
   const isDark = adminTheme === "dark"
 
@@ -118,11 +167,11 @@ export const DashboardOverview: React.FC = () => {
           <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
-              onClick={simulateIncomingOrder}
-              className="gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 font-semibold text-white shadow-md shadow-amber-500/20 hover:from-amber-600 hover:to-orange-600"
+              onClick={() => setIsManualSaleOpen(true)}
+              className="gap-1.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 font-bold text-white shadow-md shadow-orange-500/20 hover:from-orange-600 hover:to-amber-600 cursor-pointer"
             >
-              <Sparkles className="size-4" />
-              <span>Simular Pedido de Prueba</span>
+              <Plus className="size-4" />
+              <span>Nueva Venta</span>
             </Button>
             <Button
               type="button"
@@ -144,116 +193,79 @@ export const DashboardOverview: React.FC = () => {
       {/* Metric Cards Grid */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* Total Sales */}
-        <div
-          className={`rounded-2xl border p-5 shadow-xs transition-all ${
-            isDark ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-white"
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <span className={`text-xs font-semibold uppercase tracking-wider ${isDark ? "text-slate-400" : "text-slate-500"}`}>
-              Ventas Totales
-            </span>
-            <span className="flex size-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500 dark:bg-emerald-500/20 dark:text-emerald-400">
-              <DollarSign className="size-5" />
-            </span>
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-black tracking-tight sm:text-3xl text-slate-900 dark:text-white">
-              ${metrics.totalSales.toLocaleString()}
-            </span>
-          </div>
-          <div className="mt-2 flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
-            <ArrowUpRight className="size-3.5" />
-            <span className="font-semibold">+18.4%</span>
-            <span className={isDark ? "text-slate-400" : "text-slate-500"}>vs semana pasada</span>
-          </div>
-        </div>
+        <StatCard
+          title="Ventas Totales"
+          value={formatCurrency(metrics.totalSales)}
+          variant="success"
+          icon={<DollarSign className="size-5" />}
+          isDark={isDark}
+          description={
+            metrics.validOrdersCount > 0 ? (
+              <>
+                <span className="font-semibold">{metrics.validOrdersCount}</span>
+                <span className={isDark ? "text-slate-400" : "text-slate-500"}>órdenes completadas</span>
+              </>
+            ) : (
+              <span className={isDark ? "text-slate-400" : "text-slate-500"}>Sin órdenes completadas aún</span>
+            )
+          }
+        />
 
         {/* Active & Total Orders */}
-        <div
-          className={`rounded-2xl border p-5 shadow-xs transition-all ${
-            isDark ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-white"
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <span className={`text-xs font-semibold uppercase tracking-wider ${isDark ? "text-slate-400" : "text-slate-500"}`}>
-              Pedidos Totales
-            </span>
-            <span className="flex size-9 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-500 dark:bg-indigo-500/20 dark:text-indigo-400">
-              <ShoppingBag className="size-5" />
-            </span>
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-black tracking-tight sm:text-3xl text-slate-900 dark:text-white">
-              {metrics.totalOrdersCount}
-            </span>
-            {metrics.activeOrdersCount > 0 && (
+        <StatCard
+          title="Pedidos Totales"
+          value={metrics.totalOrdersCount}
+          variant="indigo"
+          icon={<ShoppingBag className="size-5" />}
+          isDark={isDark}
+          badge={
+            metrics.activeOrdersCount > 0 ? (
               <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-bold text-amber-600 dark:text-amber-400">
                 {metrics.activeOrdersCount} activos
               </span>
-            )}
-          </div>
-          <div className="mt-2 flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400">
-            <ArrowUpRight className="size-3.5" />
-            <span className="font-semibold">+12 pedidos</span>
-            <span className={isDark ? "text-slate-400" : "text-slate-500"}>en últimas 24h</span>
-          </div>
-        </div>
+            ) : undefined
+          }
+          description={
+            <>
+              <span className="font-semibold">{metrics.ordersLast24h} pedidos</span>
+              <span className={isDark ? "text-slate-400" : "text-slate-500"}>en últimas 24h</span>
+            </>
+          }
+        />
 
         {/* Average Ticket */}
-        <div
-          className={`rounded-2xl border p-5 shadow-xs transition-all ${
-            isDark ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-white"
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <span className={`text-xs font-semibold uppercase tracking-wider ${isDark ? "text-slate-400" : "text-slate-500"}`}>
-              Ticket Promedio
+        <StatCard
+          title="Ticket Promedio"
+          value={formatCurrency(metrics.avgTicket)}
+          variant="info"
+          icon={<TrendingUp className="size-5" />}
+          isDark={isDark}
+          description={
+            <span className={isDark ? "text-slate-400" : "text-slate-500"}>
+              {metrics.validOrdersCount > 0 ? "Promedio por orden cobrada" : "Sin órdenes cobradas"}
             </span>
-            <span className="flex size-9 items-center justify-center rounded-xl bg-violet-500/10 text-violet-500 dark:bg-violet-500/20 dark:text-violet-400">
-              <TrendingUp className="size-5" />
-            </span>
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-black tracking-tight sm:text-3xl text-slate-900 dark:text-white">
-              ${metrics.avgTicket.toLocaleString()}
-            </span>
-          </div>
-          <div className="mt-2 flex items-center gap-1.5 text-xs text-violet-600 dark:text-violet-400">
-            <ArrowUpRight className="size-3.5" />
-            <span className="font-semibold">+5.8%</span>
-            <span className={isDark ? "text-slate-400" : "text-slate-500"}>por orden</span>
-          </div>
-        </div>
+          }
+        />
 
         {/* Customer Base */}
-        <div
-          className={`rounded-2xl border p-5 shadow-xs transition-all ${
-            isDark ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-white"
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <span className={`text-xs font-semibold uppercase tracking-wider ${isDark ? "text-slate-400" : "text-slate-500"}`}>
-              Clientes CRM
-            </span>
-            <span className="flex size-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500 dark:bg-amber-500/20 dark:text-amber-400">
-              <Users className="size-5" />
-            </span>
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-black tracking-tight sm:text-3xl text-slate-900 dark:text-white">
-              {metrics.totalCustomers}
-            </span>
+        <StatCard
+          title="Clientes CRM"
+          value={metrics.totalCustomers}
+          variant="warning"
+          icon={<Users className="size-5" />}
+          isDark={isDark}
+          badge={
             <span className="rounded-full bg-purple-500/15 px-2 py-0.5 text-xs font-bold text-purple-600 dark:text-purple-300">
               {metrics.vipCount} VIP/Oro
             </span>
-          </div>
-          <div className="mt-2 flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
-            <ArrowUpRight className="size-3.5" />
-            <span className="font-semibold">94%</span>
-            <span className={isDark ? "text-slate-400" : "text-slate-500"}>tasa de recompra</span>
-          </div>
-        </div>
+          }
+          description={
+            <>
+              <span className="font-semibold">{metrics.repeatRate}%</span>
+              <span className={isDark ? "text-slate-400" : "text-slate-500"}>tasa de recompra</span>
+            </>
+          }
+        />
       </div>
 
       {/* Main Charts & Rankings Row */}
@@ -274,35 +286,46 @@ export const DashboardOverview: React.FC = () => {
               </p>
             </div>
             <span className="rounded-lg bg-indigo-500/10 px-2.5 py-1 text-xs font-semibold text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300">
-              Semana Actual
+              Últimos 7 días
             </span>
           </div>
 
           {/* Bar Chart Visualizer */}
-          <div className="mt-6 flex h-48 items-end justify-between gap-2 sm:gap-4 pt-4">
-            {chartDays.map((item, idx) => (
-              <div key={idx} className="group relative flex flex-1 flex-col items-center gap-2">
-                {/* Tooltip on hover */}
-                <div className="pointer-events-none absolute -top-8 hidden rounded-md bg-slate-900 px-2 py-1 text-[11px] font-bold text-white shadow-md group-hover:block dark:bg-slate-800 border dark:border-slate-700">
-                  ${item.amount.toLocaleString()}
-                </div>
-                {/* Bar */}
-                <div className="w-full max-w-[44px] rounded-t-lg bg-slate-100 dark:bg-slate-800 overflow-hidden h-36 flex items-end">
-                  <div
-                    style={{ height: `${item.height}%` }}
-                    className={`w-full rounded-t-lg transition-all duration-500 group-hover:opacity-80 ${
-                      idx === chartDays.length - 1
-                        ? "bg-gradient-to-t from-orange-500 to-amber-400"
-                        : "bg-gradient-to-t from-indigo-600 to-violet-400"
-                    }`}
-                  />
-                </div>
-                <span className={`text-xs font-medium ${isDark ? "text-slate-400" : "text-slate-500"}`}>
-                  {item.day}
-                </span>
+          {!chartDays.hasData ? (
+            <div className="mt-6 flex h-48 flex-col items-center justify-center gap-2 pt-4 text-center">
+              <div className="flex size-10 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400">
+                <TrendingUp className="size-5" />
               </div>
-            ))}
-          </div>
+              <p className="text-xs font-medium text-slate-400">
+                No hay ventas registradas en los últimos 7 días.
+              </p>
+            </div>
+          ) : (
+            <div className="mt-6 flex h-48 items-end justify-between gap-2 sm:gap-4 pt-4">
+              {chartDays.items.map((item, idx) => (
+                <div key={idx} className="group relative flex flex-1 flex-col items-center gap-2">
+                  {/* Tooltip on hover */}
+                  <div className="pointer-events-none absolute -top-8 hidden rounded-md bg-slate-900 px-2 py-1 text-[11px] font-bold text-white shadow-md group-hover:block dark:bg-slate-800 border dark:border-slate-700">
+                    {formatCurrency(item.amount)}
+                  </div>
+                  {/* Bar */}
+                  <div className="w-full max-w-[44px] rounded-t-lg bg-slate-100 dark:bg-slate-800 overflow-hidden h-36 flex items-end">
+                    <div
+                      style={{ height: `${item.height}%` }}
+                      className={`w-full rounded-t-lg transition-all duration-500 group-hover:opacity-80 ${
+                        idx === chartDays.items.length - 1
+                          ? "bg-gradient-to-t from-orange-500 to-amber-400"
+                          : "bg-gradient-to-t from-indigo-600 to-violet-400"
+                      }`}
+                    />
+                  </div>
+                  <span className={`text-xs font-medium ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                    {item.day}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Top Products */}
@@ -364,7 +387,7 @@ export const DashboardOverview: React.FC = () => {
               onClick={() => navigateTo("/admin/menu")}
               className="flex w-full items-center justify-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 cursor-pointer"
             >
-              <span>Gestionar Carta Completa ({products.length} platos)</span>
+              <span>Gestionar Catálogo Completo ({products.length} productos)</span>
               <ChevronRight className="size-3.5" />
             </button>
           </div>
@@ -411,72 +434,85 @@ export const DashboardOverview: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {orders.slice(0, 5).map((ord) => (
-                <tr
-                  key={ord.id}
-                  className={`transition-colors ${
-                    isDark ? "hover:bg-slate-800/60" : "hover:bg-slate-50"
-                  }`}
-                >
-                  <td className="py-3 px-3 font-bold text-indigo-600 dark:text-indigo-400">
-                    #{ord.orderNumber}
-                  </td>
-                  <td className="py-3 px-3">
-                    <div className="font-semibold text-slate-900 dark:text-slate-100">{ord.customer.nombre}</div>
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400">{ord.customer.barrio}</div>
-                  </td>
-                  <td className="py-3 px-3 max-w-[200px] truncate text-slate-700 dark:text-slate-300">
-                    {ord.items.map((i) => `${i.cantidad}× ${i.name}`).join(", ")}
-                  </td>
-                  <td className="py-3 px-3 font-bold text-slate-900 dark:text-slate-100">
-                    ${ord.finalTotal.toLocaleString()}
-                  </td>
-                  <td className="py-3 px-3">
-                    <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300 border dark:border-slate-700">
-                      {ord.metodo}
-                    </span>
-                  </td>
-                  <td className="py-3 px-3">
-                    <OrderStatusBadge status={ord.status} pulse />
-                  </td>
-                  <td className="py-3 px-3 text-right">
-                    {ord.status === "pending" && (
-                      <button
-                        type="button"
-                        onClick={() => updateOrderStatus(ord.id, "cooking")}
-                        className="rounded-lg bg-orange-500/10 px-2.5 py-1 text-[11px] font-semibold text-orange-600 hover:bg-orange-500/20 dark:bg-orange-500/20 dark:text-orange-300"
-                      >
-                        Pasar a Cocina
-                      </button>
-                    )}
-                    {ord.status === "cooking" && (
-                      <button
-                        type="button"
-                        onClick={() => updateOrderStatus(ord.id, "delivering")}
-                        className="rounded-lg bg-blue-500/10 px-2.5 py-1 text-[11px] font-semibold text-blue-600 hover:bg-blue-500/20 dark:bg-blue-500/20 dark:text-blue-300"
-                      >
-                        Enviar en Reparto
-                      </button>
-                    )}
-                    {ord.status === "delivering" && (
-                      <button
-                        type="button"
-                        onClick={() => updateOrderStatus(ord.id, "delivered")}
-                        className="rounded-lg bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-600 hover:bg-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-300"
-                      >
-                        Completar Entrega
-                      </button>
-                    )}
-                    {ord.status === "delivered" && (
-                      <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Finalizado</span>
-                    )}
+              {orders.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-8 text-center text-slate-400">
+                    No hay pedidos registrados en el sistema.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                orders.slice(0, 5).map((ord) => (
+                  <tr
+                    key={ord.id}
+                    className={`transition-colors ${
+                      isDark ? "hover:bg-slate-800/60" : "hover:bg-slate-50"
+                    }`}
+                  >
+                    <td className="py-3 px-3 font-bold text-indigo-600 dark:text-indigo-400">
+                      #{ord.orderNumber}
+                    </td>
+                    <td className="py-3 px-3">
+                      <div className="font-semibold text-slate-900 dark:text-slate-100">{ord.customer.nombre}</div>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400">{ord.customer.barrio}</div>
+                    </td>
+                    <td className="py-3 px-3 max-w-[200px] truncate text-slate-700 dark:text-slate-300">
+                      {ord.items.map((i) => `${i.cantidad}× ${i.name}`).join(", ")}
+                    </td>
+                    <td className="py-3 px-3 font-bold text-slate-900 dark:text-slate-100">
+                      {formatCurrency(ord.finalTotal)}
+                    </td>
+                    <td className="py-3 px-3">
+                      <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300 border dark:border-slate-700">
+                        {ord.metodo}
+                      </span>
+                    </td>
+                    <td className="py-3 px-3">
+                      <OrderStatusBadge status={ord.status} pulse />
+                    </td>
+                    <td className="py-3 px-3 text-right">
+                      {ord.status === "pending" && (
+                        <button
+                          type="button"
+                          onClick={() => updateOrderStatus(ord.id, "cooking")}
+                          className="rounded-lg bg-orange-500/10 px-2.5 py-1 text-[11px] font-semibold text-orange-600 hover:bg-orange-500/20 dark:bg-orange-500/20 dark:text-orange-300"
+                        >
+                          Pasar a Cocina
+                        </button>
+                      )}
+                      {ord.status === "cooking" && (
+                        <button
+                          type="button"
+                          onClick={() => updateOrderStatus(ord.id, "delivering")}
+                          className="rounded-lg bg-blue-500/10 px-2.5 py-1 text-[11px] font-semibold text-blue-600 hover:bg-blue-500/20 dark:bg-blue-500/20 dark:text-blue-300"
+                        >
+                          Enviar en Reparto
+                        </button>
+                      )}
+                      {ord.status === "delivering" && (
+                        <button
+                          type="button"
+                          onClick={() => updateOrderStatus(ord.id, "delivered")}
+                          className="rounded-lg bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-600 hover:bg-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-300"
+                        >
+                          Completar Entrega
+                        </button>
+                      )}
+                      {ord.status === "delivered" && (
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Finalizado</span>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
       </div>
+
+      <ManualSaleModal
+        isOpen={isManualSaleOpen}
+        onClose={() => setIsManualSaleOpen(false)}
+      />
     </div>
   )
 }
