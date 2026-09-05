@@ -173,7 +173,7 @@ describe("InventoryContext Slice", () => {
       }
     })
 
-    expect(updateStockSpy).toHaveBeenCalledWith(added?.id, -5)
+    expect(updateStockSpy).toHaveBeenCalledWith(added?.id, -5, "rest-burger-craft")
     const updated = result.current.inventory.find((i) => i.name === "Pan Brioche")
     expect(updated?.currentStock).toBe(45)
   })
@@ -383,7 +383,7 @@ describe("OrderContext Slice", () => {
       result.current.updateOrderStatus(orderId, "cooking")
     })
 
-    expect(updateStatusSpy).toHaveBeenCalledWith(orderId, "cooking")
+    expect(updateStatusSpy).toHaveBeenCalledWith(orderId, "cooking", "rest-burger-craft")
     const updated = result.current.orders.find((o) => o.id === orderId)
     expect(updated?.status).toBe("cooking")
   })

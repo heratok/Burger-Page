@@ -191,11 +191,11 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
   }
 
   // Use Cases
-  const getRestaurant = new GetRestaurantUseCase(restaurantRepo);
+  const getRestaurant = new GetRestaurantUseCase(restaurantRepo, categoryRepo);
   const listRestaurants = new ListRestaurantsUseCase(restaurantRepo);
-  const createRestaurant = new CreateRestaurantUseCase(restaurantRepo);
+  const createRestaurant = new CreateRestaurantUseCase(restaurantRepo, categoryRepo);
   const deleteRestaurant = new DeleteRestaurantUseCase(restaurantRepo);
-  const updateRestaurantCategories = new UpdateRestaurantCategoriesUseCase(restaurantRepo);
+  const updateRestaurantCategories = new UpdateRestaurantCategoriesUseCase(restaurantRepo, categoryRepo);
 
   const listProducts = new ListProductsUseCase(productRepo);
   const getProductById = new GetProductByIdUseCase(productRepo);
@@ -250,13 +250,14 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
       deleteProduct,
       restaurantRepo
     ),
-    orderController: new OrderController(listOrders, getOrderById, createOrder, updateOrderStatus, updateOrderReceipt),
+    orderController: new OrderController(listOrders, getOrderById, createOrder, updateOrderStatus, updateOrderReceipt, restaurantRepo),
     customerController: new CustomerController(
       listCustomers,
       getCustomerById,
       createCustomer,
       updateCustomer,
-      deleteCustomer
+      deleteCustomer,
+      restaurantRepo
     ),
     inventoryController: new InventoryController(
       listInventory,
@@ -264,7 +265,8 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
       getInventoryItemById,
       createInventoryItem,
       updateInventoryItem,
-      deleteInventoryItem
+      deleteInventoryItem,
+      restaurantRepo
     ),
     userController: new UserController(createUser, authenticateUser, listUsersUC),
     additionController: new ProductAdditionController(

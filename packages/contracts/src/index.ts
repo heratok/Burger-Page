@@ -154,9 +154,19 @@ export const orderItemInputSchema = z.object({
 });
 export type OrderItemInput = z.infer<typeof orderItemInputSchema>;
 
+export const orderCustomerInputSchema = z.object({
+  name: z.string().optional(),
+  phone: z.string().optional(),
+  address: z.string().optional(),
+  barrio: z.string().optional(),
+  email: z.string().optional(),
+});
+export type OrderCustomerInput = z.infer<typeof orderCustomerInputSchema>;
+
 export const createOrderSchema = z.object({
   restaurantId: z.string().min(1, 'Restaurant ID is required'),
   customerId: z.string().optional(),
+  customer: orderCustomerInputSchema.optional(),
   items: z.array(orderItemInputSchema).min(1, 'Order must have at least one item'),
   deliveryFee: z.number().nonnegative().optional(),
   paymentMethod: z.enum(['Efectivo', 'Transferencia']).optional(),

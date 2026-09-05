@@ -45,6 +45,12 @@ export async function additionRoutes(fastify: FastifyInstance, opts: { controlle
       tags: ['Additions'],
       summary: 'Create product addition',
       description: 'Create a new modifier / extra for the authenticated restaurant.',
+      querystring: {
+        type: 'object',
+        properties: {
+          restaurantId: { type: 'string' },
+        },
+      },
     },
   }, opts.controller.create.bind(opts.controller));
 
@@ -62,6 +68,12 @@ export async function additionRoutes(fastify: FastifyInstance, opts: { controlle
         },
         required: ['id'],
       },
+      querystring: {
+        type: 'object',
+        properties: {
+          restaurantId: { type: 'string' },
+        },
+      },
     },
   }, opts.controller.update.bind(opts.controller));
 
@@ -78,6 +90,12 @@ export async function additionRoutes(fastify: FastifyInstance, opts: { controlle
           id: { type: 'string', description: 'Product Addition ID' },
         },
         required: ['id'],
+      },
+      querystring: {
+        type: 'object',
+        properties: {
+          restaurantId: { type: 'string' },
+        },
       },
     },
   }, opts.controller.delete.bind(opts.controller));

@@ -1,10 +1,15 @@
+import { randomUUID } from 'node:crypto';
 import { RestaurantRepository } from '../../domain/ports/out/RestaurantRepository.js';
+import { CategoryRepository } from '../../domain/ports/out/CategoryRepository.js';
 import { Restaurant } from '../../domain/models/Restaurant.js';
 import { CreateRestaurantInput } from '@burger-page/contracts';
 import { ValidationError } from '../../domain/errors/DomainErrors.js';
 
 export class CreateRestaurantUseCase {
-  constructor(private restaurantRepo: RestaurantRepository) {}
+  constructor(
+    private restaurantRepo: RestaurantRepository,
+    private categoryRepo?: CategoryRepository
+  ) {}
 
   async execute(input: CreateRestaurantInput): Promise<Restaurant> {
     const cleanSlug = input.slug
@@ -46,6 +51,23 @@ export class CreateRestaurantUseCase {
     };
 
     await this.restaurantRepo.save(newRestaurant);
+
+    if (this.categoryRepo && newRestaurant.categories) {
+      try {
+        for (let i = 0; i < newRestaurant.categories.length; i++) {
+          await this.categoryRepo.save({
+            id: `cat_${randomUUID()}`,
+            restaurantId,
+            name: newRestaurant.categories[i],
+            displayOrder: i,
+            isActive: true,
+          });
+        }
+      } catch (err) {
+        console.warn('Could not sync initial categories to CategoryRepository:', err);
+      }
+    }
+
     return newRestaurant;
   }
 }

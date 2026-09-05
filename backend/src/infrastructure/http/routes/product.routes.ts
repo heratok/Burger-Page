@@ -61,6 +61,12 @@ export async function productRoutes(fastify: FastifyInstance, opts: { controller
         },
         required: ['id'],
       },
+      querystring: {
+        type: 'object',
+        properties: {
+          restaurantId: { type: 'string', description: 'Target restaurant identifier for super_admin override' },
+        },
+      },
     },
   }, opts.controller.update.bind(opts.controller));
 
@@ -77,6 +83,12 @@ export async function productRoutes(fastify: FastifyInstance, opts: { controller
           id: { type: 'string', description: 'Product ID' },
         },
         required: ['id'],
+      },
+      querystring: {
+        type: 'object',
+        properties: {
+          restaurantId: { type: 'string', description: 'Target restaurant identifier for super_admin override' },
+        },
       },
     },
   }, opts.controller.delete.bind(opts.controller));

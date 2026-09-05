@@ -29,7 +29,7 @@ const CatalogContext = createContext<CatalogContextType | undefined>(undefined)
 export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { activeRestaurant, updateActiveRestaurantRecord } = useTenant()
 
-  // Sync products from database for active tenant
+  // Sync products and additions from database for active tenant
   useEffect(() => {
     const restId = activeRestaurant?.id
     const restSlug = activeRestaurant?.slug
@@ -51,6 +51,27 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
       })
       .catch(() => {})
+
+    apiClient
+      .fetchAdditions({ restaurantId: restId, slug: restSlug })
+      .then((backendAdditions) => {
+        if (Array.isArray(backendAdditions)) {
+          updateActiveRestaurantRecord((current) => {
+            if (current.id !== restId && current.slug !== restSlug) {
+              return current
+            }
+            return {
+              ...current,
+              additions: backendAdditions,
+            }
+          })
+        }
+      })
+      .catch((err) => {
+        if (import.meta.env?.MODE !== 'test') {
+          console.warn("Could not fetch additions from backend API:", err)
+        }
+      })
   }, [activeRestaurant?.id, activeRestaurant?.slug, updateActiveRestaurantRecord])
 
   const updateStoreConfig = useCallback(
@@ -146,7 +167,7 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (updates.isNew !== undefined) payload.isNew = updates.isNew
       if (updates.preparationTimeMinutes !== undefined) payload.preparationTimeMinutes = updates.preparationTimeMinutes
 
-      apiClient.updateProduct(id, payload).catch((err) => {
+      apiClient.updateProduct(id, payload, activeRestaurant.id).catch((err) => {
         if (import.meta.env?.MODE !== 'test') {
           console.warn("Could not update product in backend API:", err)
         }
@@ -158,7 +179,7 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
         toast.error("Error al actualizar producto en el servidor")
       })
     },
-    [updateActiveRestaurantRecord]
+    [activeRestaurant.id, updateActiveRestaurantRecord]
   )
 
   const deleteProduct = useCallback(

@@ -23,6 +23,26 @@ const InventoryContext = createContext<InventoryContextType | undefined>(undefin
 export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { activeRestaurant, updateActiveRestaurantRecord } = useTenant()
 
+  // Hydrate inventory from database
+  React.useEffect(() => {
+    if (!activeRestaurant?.id) return
+    apiClient
+      .fetchInventory(activeRestaurant.id)
+      .then((backendInventory) => {
+        if (Array.isArray(backendInventory) && backendInventory.length > 0) {
+          updateActiveRestaurantRecord((current) => ({
+            ...current,
+            inventory: backendInventory,
+          }))
+        }
+      })
+      .catch((err) => {
+        if (import.meta.env?.MODE !== 'test') {
+          console.warn("Could not fetch inventory from backend API:", err)
+        }
+      })
+  }, [activeRestaurant?.id, updateActiveRestaurantRecord])
+
   const inventory: InventoryItem[] = useMemo(() => {
     return activeRestaurant.inventory || []
   }, [activeRestaurant.inventory])
@@ -33,18 +53,55 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const addInventoryItem = useCallback(
     (item: Omit<InventoryItem, "id">) => {
+      const tempId = `inv-${Date.now()}`
       const newItem: InventoryItem = {
         ...item,
-        id: `inv-${Date.now()}`,
+        id: tempId,
         lastRestockedAt: new Date().toISOString(),
       }
-      updateActiveRestaurantRecord((current) => ({
-        ...current,
-        inventory: [newItem, ...(current.inventory || [])],
-      }))
+      let previousInventory: InventoryItem[] = []
+      updateActiveRestaurantRecord((current) => {
+        previousInventory = current.inventory || []
+        return {
+          ...current,
+          inventory: [newItem, ...previousInventory],
+        }
+      })
       toast.success(`Insumo "${item.name}" agregado al inventario`)
+
+      apiClient
+        .createInventoryItem({
+          restaurantId: activeRestaurant.id,
+          name: item.name,
+          category: item.category,
+          quantity: item.currentStock,
+          unit: item.unit,
+          minStockAlert: item.minStockAlert,
+          alertThreshold: item.minStockAlert,
+          costPerUnit: item.costPerUnit,
+        })
+        .then((created) => {
+          if (created && created.id) {
+            updateActiveRestaurantRecord((current) => ({
+              ...current,
+              inventory: (current.inventory || []).map((i) =>
+                i.id === tempId ? created : i
+              ),
+            }))
+          }
+        })
+        .catch((err) => {
+          if (import.meta.env?.MODE !== 'test') {
+            console.warn("Could not persist inventory item to backend API:", err)
+          }
+          updateActiveRestaurantRecord((current) => ({
+            ...current,
+            inventory: previousInventory,
+          }))
+          toast.error("Error al guardar insumo en el servidor")
+        })
     },
-    [updateActiveRestaurantRecord]
+    [activeRestaurant.id, updateActiveRestaurantRecord]
   )
 
   const updateInventoryItem = useCallback(
@@ -54,7 +111,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         if (currentItem) {
           const delta = updates.currentStock - currentItem.currentStock
           if (delta !== 0) {
-            apiClient.updateInventoryStock(id, delta).catch((error) => {
+            apiClient.updateInventoryStock(id, delta, activeRestaurant.id).catch((error) => {
               if (import.meta.env?.MODE !== 'test') {
                 console.warn(`Could not sync stock update for inventory item ${id} to backend:`, error)
               }
@@ -62,6 +119,12 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           }
         }
       }
+
+      apiClient.updateInventoryItem(id, updates, activeRestaurant.id).catch((error) => {
+        if (import.meta.env?.MODE !== 'test') {
+          console.warn(`Could not sync inventory item ${id} updates to backend:`, error)
+        }
+      })
 
       updateActiveRestaurantRecord((current) => ({
         ...current,
@@ -71,7 +134,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       }))
       toast.success("Insumo actualizado")
     },
-    [activeRestaurant.inventory, updateActiveRestaurantRecord]
+    [activeRestaurant.id, activeRestaurant.inventory, updateActiveRestaurantRecord]
   )
 
   const deleteInventoryItem = useCallback(
@@ -81,12 +144,24 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         inventory: (current.inventory || []).filter((item) => item.id !== id),
       }))
       toast.success("Insumo eliminado del inventario")
+
+      apiClient.deleteInventoryItem(id, activeRestaurant.id).catch((error) => {
+        if (import.meta.env?.MODE !== 'test') {
+          console.warn(`Could not delete inventory item ${id} from backend:`, error)
+        }
+      })
     },
-    [updateActiveRestaurantRecord]
+    [activeRestaurant.id, updateActiveRestaurantRecord]
   )
 
   const adjustStock = useCallback(
     (id: string, deltaQuantity: number) => {
+      apiClient.updateInventoryStock(id, deltaQuantity, activeRestaurant.id).catch((error) => {
+        if (import.meta.env?.MODE !== 'test') {
+          console.warn(`Could not sync adjust stock for ${id} to backend:`, error)
+        }
+      })
+
       updateActiveRestaurantRecord((current) => {
         let updatedName = ""
         let newStock = 0
@@ -112,15 +187,8 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           inventory: updatedList,
         }
       })
-
-      // Backend API Integration with graceful offline fallback
-      apiClient.updateInventoryStock(id, deltaQuantity).catch((error) => {
-        if (import.meta.env?.MODE !== 'test') {
-          console.warn(`Could not sync stock adjustment for inventory item ${id} to backend API:`, error)
-        }
-      })
     },
-    [updateActiveRestaurantRecord]
+    [activeRestaurant.id, updateActiveRestaurantRecord]
   )
 
   const addSupplier = useCallback(

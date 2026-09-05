@@ -61,6 +61,26 @@ export class ProductController {
     throw new ValidationError('Restaurant ID or slug is required to view menu products.');
   }
 
+  private async resolveTenantForMutation(req: FastifyRequest): Promise<string> {
+    let restaurantId = req.authContext?.restaurantId;
+    if (!restaurantId && req.authContext?.role === 'super_admin') {
+      const body = req.body as any;
+      const query = req.query as any;
+      const headers = req.headers as any;
+      restaurantId =
+        body?.restaurantId ||
+        query?.restaurantId ||
+        headers?.['x-restaurant-id'];
+
+      if (!restaurantId && this.restaurantRepo) {
+        const all = await this.restaurantRepo.findAll();
+        const active = all.find((r) => r.isActive);
+        if (active) restaurantId = active.id;
+      }
+    }
+    return restaurantId || '';
+  }
+
   async list(req: FastifyRequest, reply: FastifyReply) {
     const authTenant = req.authContext?.restaurantId;
 
@@ -70,18 +90,21 @@ export class ProductController {
       return reply.status(200).send(products.map((p) => this.formatProduct(p)));
     }
 
-    // 2. Catálogo público storefront: solo productos disponibles del restaurante solicitado
+    // 2. Super admin o catálogo público storefront
     const query = (req.query || {}) as { restaurantId?: string; slug?: string };
-    const restaurantId = await this.resolveRestaurantId(query);
-    const products = await this.listProducts.execute(restaurantId, true);
+    let restaurantId = await this.resolveTenantForMutation(req);
+    if (!restaurantId) {
+      restaurantId = await this.resolveRestaurantId(query);
+    }
+    const isAvailableOnly = req.authContext?.role === 'super_admin' ? false : true;
+    const products = await this.listProducts.execute(restaurantId, isAvailableOnly);
     return reply.status(200).send(products.map((p) => this.formatProduct(p)));
   }
 
   async getById(req: FastifyRequest, reply: FastifyReply) {
     const params = req.params as { id: string };
     const query = (req.query || {}) as { restaurantId?: string; slug?: string };
-    const authTenant = req.authContext?.restaurantId;
-    let restaurantId = authTenant;
+    let restaurantId = await this.resolveTenantForMutation(req);
 
     if (!restaurantId) {
       restaurantId = await this.resolveRestaurantId(query);
@@ -92,11 +115,7 @@ export class ProductController {
   }
 
   async create(req: FastifyRequest, reply: FastifyReply) {
-    let restaurantId = req.authContext?.restaurantId;
-    if (!restaurantId && req.authContext?.role === 'super_admin') {
-      const body = req.body as any;
-      restaurantId = body?.restaurantId || (req.query as any)?.restaurantId;
-    }
+    const restaurantId = await this.resolveTenantForMutation(req);
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to create a product.');
     }
@@ -117,11 +136,7 @@ export class ProductController {
 
   async update(req: FastifyRequest, reply: FastifyReply) {
     const params = req.params as { id: string };
-    let restaurantId = req.authContext?.restaurantId;
-    if (!restaurantId && req.authContext?.role === 'super_admin') {
-      const body = req.body as any;
-      restaurantId = body?.restaurantId || (req.query as any)?.restaurantId;
-    }
+    const restaurantId = await this.resolveTenantForMutation(req);
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to update a product.');
     }
@@ -142,10 +157,7 @@ export class ProductController {
 
   async delete(req: FastifyRequest, reply: FastifyReply) {
     const params = req.params as { id: string };
-    let restaurantId = req.authContext?.restaurantId;
-    if (!restaurantId && req.authContext?.role === 'super_admin') {
-      restaurantId = (req.query as any)?.restaurantId || (req.body as any)?.restaurantId;
-    }
+    const restaurantId = await this.resolveTenantForMutation(req);
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to delete a product.');
     }

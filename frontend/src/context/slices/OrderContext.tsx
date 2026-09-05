@@ -25,6 +25,84 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const { activeRestaurant, updateActiveRestaurantRecord } = useTenant()
   const { soundEnabled } = useUi()
 
+  // Hydrate orders from database
+  useEffect(() => {
+    if (!activeRestaurant?.id) return
+    apiClient
+      .fetchOrders(activeRestaurant.id)
+      .then((backendOrders) => {
+        if (Array.isArray(backendOrders) && backendOrders.length > 0) {
+          updateActiveRestaurantRecord((current) => {
+            const map = new Map<string, Order>()
+            current.orders.forEach((o) => map.set(o.id, o))
+            backendOrders.forEach((bo: any) => {
+              if (bo && bo.id) {
+                const existing = map.get(bo.id)
+                const matchedCustomer = current.customers.find((c) => c.id === bo.customerId)
+                const customer =
+                  existing?.customer ||
+                  bo.customer ||
+                  (matchedCustomer
+                    ? {
+                        nombre: matchedCustomer.nombre,
+                        telefono: matchedCustomer.telefono,
+                        direccion: matchedCustomer.direccion,
+                        barrio: matchedCustomer.barrio,
+                      }
+                    : {
+                        nombre: 'Cliente',
+                        telefono: '',
+                        direccion: '',
+                        barrio: '',
+                      })
+                const mappedOrder: Order = {
+                  id: bo.id,
+                  orderNumber: bo.orderNumber || existing?.orderNumber || 0,
+                  customer,
+                  items: (bo.items || existing?.items || []).map((item: any) => ({
+                    id: item.id,
+                    name: item.productName || item.name || 'Producto',
+                    price: Number(item.unitPrice ?? item.price ?? 0),
+                    cantidad: Number(item.quantity ?? item.cantidad ?? 1),
+                    total: Number(item.unitPrice ?? item.price ?? 0) * Number(item.quantity ?? item.cantidad ?? 1),
+                    observacion: item.observation || item.observacion,
+                    adiciones: (item.additions || item.adiciones || []).map((a: any) => ({
+                      name: a.additionName || a.name || 'Adición',
+                      price: Number(a.unitPrice ?? a.price ?? 0),
+                      cantidad: Number(a.quantity ?? 1),
+                    })),
+                  })),
+                  total: Number(bo.subtotal ?? bo.total ?? existing?.total ?? 0),
+                  deliveryFee: Number(bo.deliveryFee ?? existing?.deliveryFee ?? 0),
+                  finalTotal: Number(bo.finalTotal ?? bo.total ?? existing?.finalTotal ?? 0),
+                  metodo: (bo.paymentMethod || bo.metodo || 'Efectivo') as any,
+                  pagoCon: bo.paymentAmount ? String(bo.paymentAmount) : bo.pagoCon,
+                  cambio: bo.changeAmount !== undefined ? Number(bo.changeAmount) : bo.cambio,
+                  comentario: bo.comment || bo.comentario,
+                  receiptUrl: bo.receiptUrl || existing?.receiptUrl,
+                  status: (bo.status as OrderStatus) || existing?.status || 'pending',
+                  createdAt: bo.createdAt || existing?.createdAt || new Date().toISOString(),
+                  updatedAt: bo.updatedAt || existing?.updatedAt || new Date().toISOString(),
+                }
+                map.set(bo.id, mappedOrder)
+              }
+            })
+            return {
+              ...current,
+              orders: Array.from(map.values()).sort(
+                (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+              ),
+            }
+          })
+        }
+      })
+      .catch((err) => {
+        if (import.meta.env?.MODE !== 'test') {
+          console.warn("Could not fetch orders from backend API:", err)
+        }
+      })
+  }, [activeRestaurant?.id, updateActiveRestaurantRecord])
+
   // Real-time SSE order stream subscription
   useEffect(() => {
     const unsubscribe = apiClient.subscribeToOrderStream((event: OrderEvent) => {
@@ -62,32 +140,48 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               event.payload &&
               typeof event.payload === "object"
             ) {
-              const p = event.payload as Partial<Order>
-              if (p.customer && p.items) {
-                const newOrder: Order = {
-                  id: event.orderId,
-                  orderNumber:
-                    event.orderNumber ||
-                    p.orderNumber ||
-                    Math.floor(10000 + Math.random() * 90000),
-                  customer: p.customer,
-                  items: p.items,
-                  total: p.total || 0,
-                  deliveryFee: p.deliveryFee || 0,
-                  finalTotal: p.finalTotal || 0,
-                  metodo: p.metodo || "Efectivo",
-                  pagoCon: p.pagoCon,
-                  cambio: p.cambio,
-                  comentario: p.comentario,
-                  receiptUrl: p.receiptUrl,
-                  status: (event.status as OrderStatus) || p.status || "pending",
-                  createdAt: event.timestamp || new Date().toISOString(),
-                  updatedAt: event.timestamp || new Date().toISOString(),
-                }
-                return {
-                  ...current,
-                  orders: [newOrder, ...current.orders],
-                }
+              const p = event.payload as any
+              const customer = p.customer || {
+                nombre: 'Cliente',
+                telefono: '',
+                direccion: '',
+                barrio: '',
+              }
+              const newOrder: Order = {
+                id: event.orderId,
+                orderNumber:
+                  event.orderNumber ||
+                  p.orderNumber ||
+                  Math.floor(10000 + Math.random() * 90000),
+                customer,
+                items: (p.items || []).map((item: any) => ({
+                  id: item.id,
+                  name: item.productName || item.name || 'Producto',
+                  price: Number(item.unitPrice ?? item.price ?? 0),
+                  cantidad: Number(item.quantity ?? item.cantidad ?? 1),
+                  total: Number(item.unitPrice ?? item.price ?? 0) * Number(item.quantity ?? item.cantidad ?? 1),
+                  observacion: item.observation || item.observacion,
+                  adiciones: (item.additions || item.adiciones || []).map((a: any) => ({
+                    name: a.additionName || a.name || 'Adición',
+                    price: Number(a.unitPrice ?? a.price ?? 0),
+                    cantidad: Number(a.quantity ?? 1),
+                  })),
+                })),
+                total: Number(p.subtotal ?? p.total ?? 0),
+                deliveryFee: Number(p.deliveryFee ?? 0),
+                finalTotal: Number(p.finalTotal ?? p.total ?? 0),
+                metodo: p.paymentMethod || p.metodo || "Efectivo",
+                pagoCon: p.paymentAmount ? String(p.paymentAmount) : p.pagoCon,
+                cambio: p.changeAmount !== undefined ? Number(p.changeAmount) : p.cambio,
+                comentario: p.comment || p.comentario,
+                receiptUrl: p.receiptUrl,
+                status: (event.status as OrderStatus) || p.status || "pending",
+                createdAt: event.timestamp || new Date().toISOString(),
+                updatedAt: event.timestamp || new Date().toISOString(),
+              }
+              return {
+                ...current,
+                orders: [newOrder, ...current.orders],
               }
             }
             return current
@@ -109,12 +203,12 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           }
         })
       }
-    })
+    }, activeRestaurant?.id)
 
     return () => {
       unsubscribe()
     }
-  }, [updateActiveRestaurantRecord])
+  }, [activeRestaurant?.id, updateActiveRestaurantRecord])
 
   const addOrder = useCallback(
     (orderData: Omit<Order, "id" | "orderNumber" | "createdAt" | "updatedAt">) => {
@@ -189,11 +283,19 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const existingCustomer = activeRestaurant.customers?.find(
           (c) => cleanPhoneNumber(c.telefono) === phone
         )
-        const customerId = existingCustomer ? existingCustomer.id : `cust-${Date.now()}`
+        const customerId = existingCustomer && !existingCustomer.id.startsWith('cust-')
+          ? existingCustomer.id
+          : undefined
 
         const orderInput: CreateOrderInput = {
           restaurantId: activeRestaurant.id,
           customerId,
+          customer: {
+            name: newOrder.customer.nombre,
+            phone: newOrder.customer.telefono,
+            address: newOrder.customer.direccion,
+            barrio: newOrder.customer.barrio,
+          },
           items: newOrder.items.map((item) => {
             const matchedProduct = activeRestaurant.products?.find(
               (p) => p.name.toLowerCase() === item.name.toLowerCase() || p.id === item.id
@@ -207,6 +309,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           deliveryFee: newOrder.deliveryFee,
           paymentMethod: newOrder.metodo,
           receiptUrl: newOrder.receiptUrl,
+          comment: newOrder.comentario,
         }
 
         apiClient
@@ -249,13 +352,13 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }))
       toast.info(`Orden actualizada a: ${newStatus.toUpperCase()}`)
 
-      apiClient.updateOrderStatus(orderId, newStatus).catch((error) => {
+      apiClient.updateOrderStatus(orderId, newStatus, activeRestaurant.id).catch((error) => {
         if (import.meta.env?.MODE !== 'test') {
           console.warn(`Could not sync status update for order ${orderId} to backend API:`, error)
         }
       })
     },
-    [updateActiveRestaurantRecord]
+    [activeRestaurant.id, updateActiveRestaurantRecord]
   )
 
   const updateOrderReceipt = useCallback(
@@ -271,14 +374,14 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       toast.success("Comprobante adjuntado correctamente")
 
       try {
-        await apiClient.updateOrderReceipt(orderId, receiptUrl)
+        await apiClient.updateOrderReceipt(orderId, receiptUrl, activeRestaurant.id)
       } catch (error) {
         if (import.meta.env?.MODE !== 'test') {
           console.warn(`Could not sync receipt update for order ${orderId} to backend API:`, error)
         }
       }
     },
-    [updateActiveRestaurantRecord]
+    [activeRestaurant.id, updateActiveRestaurantRecord]
   )
 
   const deleteOrder = useCallback(

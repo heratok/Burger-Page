@@ -4,6 +4,7 @@ import { GetCustomerByIdUseCase } from '../../../application/use-cases/GetCustom
 import { CreateCustomerUseCase } from '../../../application/use-cases/CreateCustomerUseCase.js';
 import { UpdateCustomerUseCase } from '../../../application/use-cases/UpdateCustomerUseCase.js';
 import { DeleteCustomerUseCase } from '../../../application/use-cases/DeleteCustomerUseCase.js';
+import { RestaurantRepository } from '../../../domain/ports/out/RestaurantRepository.js';
 import { UnauthorizedError, ValidationError } from '../../../domain/errors/DomainErrors.js';
 import { CreateCustomerDTO, UpdateCustomerDTO } from '../../../application/dtos/index.js';
 
@@ -13,11 +14,32 @@ export class CustomerController {
     private getCustomerByIdUseCase?: GetCustomerByIdUseCase,
     private createCustomerUseCase?: CreateCustomerUseCase,
     private updateCustomerUseCase?: UpdateCustomerUseCase,
-    private deleteCustomerUseCase?: DeleteCustomerUseCase
+    private deleteCustomerUseCase?: DeleteCustomerUseCase,
+    private restaurantRepo?: RestaurantRepository
   ) {}
 
+  private async resolveRestaurantId(req: FastifyRequest): Promise<string> {
+    let restaurantId = req.authContext?.restaurantId;
+    if (!restaurantId && req.authContext?.role === 'super_admin') {
+      const query = (req.query || {}) as any;
+      const body = (req.body || {}) as any;
+      const headers = (req.headers || {}) as any;
+      restaurantId =
+        query?.restaurantId ||
+        body?.restaurantId ||
+        headers?.['x-restaurant-id'];
+
+      if (!restaurantId && this.restaurantRepo) {
+        const all = await this.restaurantRepo.findAll();
+        const active = all.find((r) => r.isActive);
+        if (active) restaurantId = active.id;
+      }
+    }
+    return restaurantId || '';
+  }
+
   async list(req: FastifyRequest, reply: FastifyReply) {
-    const restaurantId = req.authContext?.restaurantId;
+    const restaurantId = await this.resolveRestaurantId(req);
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to list customers.');
     }
@@ -26,7 +48,7 @@ export class CustomerController {
   }
 
   async getById(req: FastifyRequest, reply: FastifyReply) {
-    const restaurantId = req.authContext?.restaurantId;
+    const restaurantId = await this.resolveRestaurantId(req);
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to view customer details.');
     }
@@ -39,7 +61,7 @@ export class CustomerController {
   }
 
   async create(req: FastifyRequest, reply: FastifyReply) {
-    const restaurantId = req.authContext?.restaurantId;
+    const restaurantId = await this.resolveRestaurantId(req);
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to create a customer.');
     }
@@ -52,7 +74,7 @@ export class CustomerController {
   }
 
   async update(req: FastifyRequest, reply: FastifyReply) {
-    const restaurantId = req.authContext?.restaurantId;
+    const restaurantId = await this.resolveRestaurantId(req);
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to update a customer.');
     }
@@ -66,7 +88,7 @@ export class CustomerController {
   }
 
   async delete(req: FastifyRequest, reply: FastifyReply) {
-    const restaurantId = req.authContext?.restaurantId;
+    const restaurantId = await this.resolveRestaurantId(req);
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to delete a customer.');
     }

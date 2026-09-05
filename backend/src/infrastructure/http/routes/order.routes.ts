@@ -11,6 +11,12 @@ export async function orderRoutes(fastify: FastifyInstance, opts: { controller: 
       tags: ['Orders'],
       summary: 'List restaurant orders',
       description: 'Fetch all orders belonging to the authenticated restaurant.',
+      querystring: {
+        type: 'object',
+        properties: {
+          restaurantId: { type: 'string', description: 'Target restaurant identifier for super_admin override' },
+        },
+      },
       response: {
         200: {
           type: 'array',
@@ -47,10 +53,20 @@ export async function orderRoutes(fastify: FastifyInstance, opts: { controller: 
       tags: ['Orders'],
       summary: 'Real-time SSE stream for tenant orders',
       description: 'Streams live order status updates and creations strictly filtered by the authenticated restaurant.',
+      querystring: {
+        type: 'object',
+        properties: {
+          restaurantId: { type: 'string', description: 'Target restaurant identifier for super_admin filter' },
+          token: { type: 'string', description: 'Bearer token for EventSource authentication' },
+        },
+      },
     }
   }, (req: FastifyRequest, reply: FastifyReply) => {
-    const tenantId = req.authContext?.restaurantId;
-    if (!tenantId) {
+    let tenantId = req.authContext?.restaurantId;
+    if (!tenantId && req.authContext?.role === 'super_admin') {
+      tenantId = (req.query as any)?.restaurantId;
+    }
+    if (!tenantId && req.authContext?.role !== 'super_admin') {
       return reply.status(401).send({ title: 'Unauthorized', detail: 'Missing restaurant context in token.' });
     }
 
@@ -61,7 +77,7 @@ export async function orderRoutes(fastify: FastifyInstance, opts: { controller: 
     reply.raw.setHeader('Connection', 'keep-alive');
     reply.raw.flushHeaders?.();
 
-    reply.raw.write(`event: connected\ndata: ${JSON.stringify({ message: 'Connected to live orders stream', restaurantId: tenantId })}\n\n`);
+    reply.raw.write(`event: connected\ndata: ${JSON.stringify({ message: 'Connected to live orders stream', restaurantId: tenantId || 'all' })}\n\n`);
 
     const pingInterval = setInterval(() => {
       try {
@@ -73,7 +89,7 @@ export async function orderRoutes(fastify: FastifyInstance, opts: { controller: 
 
     const unsubscribe = globalOrderEventBus.subscribe((event: any) => {
       const eventRestaurantId = event.payload?.restaurantId || event.restaurantId;
-      if (eventRestaurantId === tenantId) {
+      if (!tenantId || eventRestaurantId === tenantId) {
         reply.raw.write(`event: ${event.eventType}\ndata: ${JSON.stringify(event)}\n\n`);
       }
     });
@@ -97,6 +113,12 @@ export async function orderRoutes(fastify: FastifyInstance, opts: { controller: 
           id: { type: 'string', description: 'Order ID' }
         },
         required: ['id']
+      },
+      querystring: {
+        type: 'object',
+        properties: {
+          restaurantId: { type: 'string', description: 'Target restaurant identifier for super_admin override' },
+        },
       },
       response: {
         200: {
@@ -185,6 +207,12 @@ export async function orderRoutes(fastify: FastifyInstance, opts: { controller: 
         },
         required: ['id']
       },
+      querystring: {
+        type: 'object',
+        properties: {
+          restaurantId: { type: 'string', description: 'Target restaurant identifier for super_admin override' },
+        },
+      },
       body: {
         type: 'object',
         required: ['status'],
@@ -227,6 +255,12 @@ export async function orderRoutes(fastify: FastifyInstance, opts: { controller: 
           id: { type: 'string', description: 'Order ID' }
         },
         required: ['id']
+      },
+      querystring: {
+        type: 'object',
+        properties: {
+          restaurantId: { type: 'string', description: 'Target restaurant identifier for super_admin override' },
+        },
       },
       body: {
         type: 'object',

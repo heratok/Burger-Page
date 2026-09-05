@@ -20,6 +20,7 @@ export class InMemoryCategoryRepository implements CategoryRepository {
   async findByRestaurantId(restaurantId: string): Promise<Category[]> {
     return Array.from(this.categories.values())
       .filter((c) => c.restaurantId === restaurantId)
+      .sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0))
       .map((c) => ({ ...c }));
   }
 
