@@ -16,6 +16,7 @@ import CharacterCounter from "@/components/CharacterCounter"
 import { LIMITS } from "@/lib/validation"
 import { useRestaurant } from "@/context/RestaurantContext"
 import { formatCurrency } from "@/lib/utils"
+import { resolveImageUrl } from "@/core/storage/supabaseStorage"
 
 export interface AdditionsModalProps {
   onClose: () => void
@@ -110,7 +111,7 @@ export default function AdditionsModal({
       >
         <header className="flex items-center gap-3 border-b border-border-subtle p-5 pb-4">
           <img
-            src={product.src}
+            src={resolveImageUrl(product.src)}
             alt={product.name}
             className="size-16 shrink-0 rounded-full bg-bg-elevated-2 object-cover"
           />

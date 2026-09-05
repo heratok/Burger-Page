@@ -104,7 +104,7 @@ export const AdditionModal: React.FC<AdditionModalProps> = ({
               required
               min={0}
               max={10000000}
-              step={500}
+              step="any"
               value={additionForm.price}
               onChange={(e) => setAdditionForm({ ...additionForm, price: Number(e.target.value) })}
               className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"

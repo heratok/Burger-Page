@@ -25,13 +25,13 @@ export class UserController {
     reply: FastifyReply
   ) {
     const { username, password } = (request.body || {}) as { username: string; password: string };
-    request.log.info(`🔑 [AUTH] Intento de login para usuario: "${username}"`);
+    request.log.info(`[AUTH] Intento de login para usuario: "${username}"`);
     try {
       const result = await this.authenticate.execute(username, password);
-      request.log.info(`✅ [AUTH] Login exitoso para usuario: "${username}" (Rol: ${result.user?.role})`);
+      request.log.info(`[AUTH] Login exitoso para usuario: "${username}" (Rol: ${result.user?.role})`);
       return reply.send(result);
     } catch (err: any) {
-      request.log.warn(`❌ [AUTH] Login fallido para usuario: "${username}" -> Razón: ${err.message}`);
+      request.log.warn(`[AUTH] Login fallido para usuario: "${username}" -> Razón: ${err.message}`);
       throw err;
     }
   }

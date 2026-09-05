@@ -344,6 +344,23 @@ export class ApiClient {
     const query = restaurantId ? `?restaurantId=${restaurantId}` : ''
     return this.request(`/users${query}`)
   }
+
+  async getPresignedUploadUrl(params: {
+    restaurantId?: string
+    folder?: 'products' | 'branding' | 'general'
+    filename?: string
+  }): Promise<{
+    mode: 'signed_url' | 'local_fallback'
+    uploadUrl?: string
+    token?: string
+    path: string
+    publicUrl?: string
+  }> {
+    return this.request('/storage/upload-url', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    })
+  }
 }
 
 export const apiClient = new ApiClient()

@@ -1,12 +1,13 @@
 import React, { useState, useRef, useEffect } from "react"
 import type { MenuItem } from "@/types/restaurant"
-import { X, Sparkles, Upload } from "lucide-react"
+import { X, Sparkles, Upload, Loader2, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Select } from "@/components/ui/select"
 import { LazyImage } from "@/components/ui/LazyImage"
 import { toast } from "sonner"
 import { optimizeImageToWebP } from "@/lib/imageOptimizer"
 import { uploadImageToStorage } from "@/core/storage/supabaseStorage"
+import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
 
 export interface ProductModalProps {
   isOpen: boolean
@@ -41,7 +42,9 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   })
 
   const productFileInputRef = useRef<HTMLInputElement>(null)
-  const [isOptimizingImage, setIsOptimizingImage] = useState(false)
+  const [imageUploadStatus, setImageUploadStatus] = useState<"idle" | "optimizing" | "uploading" | "success">("idle")
+  const isImageBusy = imageUploadStatus !== "idle"
+  const [isConfirmingRemovePhoto, setIsConfirmingRemovePhoto] = useState(false)
   const [previewFitMode, setPreviewFitMode] = useState<"cover" | "contain">("cover")
 
   useEffect(() => {
@@ -82,25 +85,50 @@ export const ProductModal: React.FC<ProductModalProps> = ({
     const file = e.target.files?.[0]
     if (!file) return
 
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/avif"]
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Formato no compatible. Por favor sube una imagen JPG, PNG, WebP o AVIF.")
+      e.target.value = ""
+      return
+    }
+
     if (file.size > 10 * 1024 * 1024) {
       toast.error("La imagen original debe ser menor a 10MB")
+      e.target.value = ""
       return
     }
 
     try {
-      setIsOptimizingImage(true)
+      setImageUploadStatus("optimizing")
+
+      // 1. Local WebP conversion
       const optimizedWebP = await optimizeImageToWebP(file, {
         maxWidth: 800,
         maxHeight: 600,
         quality: 0.82,
       })
+
+      // Immediate local preview so the user sees their photo right away
       setProductForm((prev) => ({ ...prev, src: optimizedWebP }))
-      toast.success("Foto optimizada y cargada en formato WebP")
+      setImageUploadStatus("uploading")
+
+      // 2. Direct upload to Storage via backend Presigned URL
+      const uploadedUrl = await uploadImageToStorage(optimizedWebP, {
+        restaurantId: restaurantId || "default",
+        folder: "products",
+      })
+
+      if (uploadedUrl) {
+        setProductForm((prev) => ({ ...prev, src: uploadedUrl }))
+        setImageUploadStatus("success")
+        toast.success("Foto optimizada y guardada exitosamente")
+        await new Promise((resolve) => setTimeout(resolve, 850))
+      }
     } catch (err: any) {
-      console.error("Failed to optimize product image:", err)
+      console.error("Failed to optimize or upload product image:", err)
       toast.error("No se pudo procesar la imagen seleccionada")
     } finally {
-      setIsOptimizingImage(false)
+      setImageUploadStatus("idle")
       e.target.value = ""
     }
   }
@@ -124,13 +152,15 @@ export const ProductModal: React.FC<ProductModalProps> = ({
     let finalSrc = productForm.src
     if (finalSrc && finalSrc.startsWith("data:")) {
       try {
+        setImageUploadStatus("uploading")
         finalSrc = await uploadImageToStorage(finalSrc, {
           restaurantId: restaurantId || "default",
           folder: "products",
-          bucketName: "image",
         })
       } catch (err) {
         console.warn("Storage upload fallback:", err)
+      } finally {
+        setImageUploadStatus("idle")
       }
     }
 
@@ -181,9 +211,9 @@ export const ProductModal: React.FC<ProductModalProps> = ({
               <input
                 type="number"
                 required
-                min={100}
+                min={0}
                 max={50000000}
-                step={500}
+                step="any"
                 value={productForm.price}
                 onChange={(e) => setProductForm({ ...productForm, price: Number(e.target.value) })}
                 className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
@@ -311,9 +341,64 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                       previewFitMode === "cover" ? "object-cover" : "object-contain p-2"
                     }`}
                   />
+                  {isImageBusy && (
+                    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-slate-950/80 backdrop-blur-md p-6 text-center transition-all animate-in fade-in duration-200">
+                      <div className="relative flex items-center justify-center">
+                        {imageUploadStatus === "success" ? (
+                          <div className="flex size-14 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-400 ring-2 ring-emerald-500/40 shadow-lg shadow-emerald-500/20 animate-in zoom-in-75 duration-200">
+                            <CheckCircle2 className="size-7" />
+                          </div>
+                        ) : (
+                          <>
+                            <div className="absolute size-16 rounded-2xl bg-gradient-to-tr from-indigo-500/40 via-purple-500/30 to-pink-500/30 blur-lg animate-pulse" />
+                            <div className="relative flex size-14 items-center justify-center rounded-2xl bg-slate-900/90 border border-white/15 text-indigo-400 shadow-2xl">
+                              <Loader2 className="size-7 animate-spin text-indigo-400" />
+                            </div>
+                          </>
+                        )}
+                      </div>
+
+                      <div className="space-y-1">
+                        <span className="text-sm font-bold text-white tracking-wide block">
+                          {imageUploadStatus === "success"
+                            ? "¡Foto lista!"
+                            : imageUploadStatus === "optimizing"
+                            ? "Optimizando foto..."
+                            : "Guardando foto..."}
+                        </span>
+                        <p className="text-[11px] text-slate-300">
+                          {imageUploadStatus === "success"
+                            ? "Formato WebP de alta calidad aplicado"
+                            : imageUploadStatus === "optimizing"
+                            ? "Comprimiendo y ajustando resolución..."
+                            : "Sincronizando imagen con el servidor..."}
+                        </p>
+                      </div>
+
+                      {imageUploadStatus !== "success" && (
+                        <div className="h-1.5 w-48 overflow-hidden rounded-full bg-slate-800 border border-white/10">
+                          <div className="h-full w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 rounded-full animate-pulse" />
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1.5 rounded-lg bg-black/80 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur-md border border-white/10">
-                    <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
-                    <span>Formato WebP Optimizado</span>
+                    {imageUploadStatus === "success" ? (
+                      <>
+                        <CheckCircle2 className="size-3 text-emerald-400" />
+                        <span>Foto guardada</span>
+                      </>
+                    ) : isImageBusy ? (
+                      <>
+                        <span className="size-2 rounded-full bg-amber-400 animate-ping" />
+                        <span>Procesando foto...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
+                        <span>Formato WebP Optimizado</span>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -323,17 +408,22 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                     type="button"
                     variant="outline"
                     size="sm"
-                    disabled={isOptimizingImage}
+                    disabled={isImageBusy}
                     onClick={() => productFileInputRef.current?.click()}
                     className="gap-1.5 text-xs font-semibold cursor-pointer"
                   >
-                    <Upload className="size-3.5 text-indigo-500" />
-                    <span>{isOptimizingImage ? "Optimizando..." : "Cambiar Foto"}</span>
+                    {isImageBusy ? (
+                      <Loader2 className="size-3.5 text-indigo-500 animate-spin" />
+                    ) : (
+                      <Upload className="size-3.5 text-indigo-500" />
+                    )}
+                    <span>{isImageBusy ? "Procesando..." : "Cambiar Foto"}</span>
                   </Button>
                   <button
                     type="button"
-                    onClick={() => setProductForm({ ...productForm, src: "" })}
-                    className="text-xs text-rose-500 hover:text-rose-600 font-semibold px-2 py-1 cursor-pointer"
+                    disabled={isImageBusy}
+                    onClick={() => setIsConfirmingRemovePhoto(true)}
+                    className="text-xs text-rose-500 hover:text-rose-600 font-semibold px-2 py-1 cursor-pointer disabled:opacity-40"
                   >
                     Quitar Foto
                   </button>
@@ -341,36 +431,80 @@ export const ProductModal: React.FC<ProductModalProps> = ({
               </div>
             ) : (
               <div className="space-y-2">
-                <div
-                  onClick={() => !isOptimizingImage && productFileInputRef.current?.click()}
-                  className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40 p-5 text-center hover:border-indigo-500 dark:hover:border-indigo-400 cursor-pointer transition-all"
-                >
-                  <div className="rounded-full bg-indigo-50 dark:bg-indigo-950/60 p-2 text-indigo-600 dark:text-indigo-400">
-                    <Upload className="size-4" />
-                  </div>
-                  <div>
-                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                      {isOptimizingImage ? "Optimizando a WebP..." : "Subir foto desde tu teléfono o PC"}
-                    </span>
-                    <p className="text-[10px] text-slate-400 mt-0.5">
-                      Se comprime automáticamente a formato WebP ultraliviano
-                    </p>
-                  </div>
-                </div>
+                {isImageBusy ? (
+                  <div className="relative h-52 w-full overflow-hidden rounded-xl bg-slate-950 border border-slate-700/80 flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-200">
+                    <div className="relative mb-3 flex items-center justify-center">
+                      {imageUploadStatus === "success" ? (
+                        <div className="flex size-14 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-400 ring-2 ring-emerald-500/40 shadow-lg shadow-emerald-500/20 animate-in zoom-in-75 duration-200">
+                          <CheckCircle2 className="size-7" />
+                        </div>
+                      ) : (
+                        <>
+                          <div className="absolute size-16 rounded-2xl bg-gradient-to-tr from-indigo-500/40 via-purple-500/30 to-pink-500/30 blur-lg animate-pulse" />
+                          <div className="relative flex size-14 items-center justify-center rounded-2xl bg-slate-900/90 border border-white/15 text-indigo-400 shadow-2xl">
+                            <Loader2 className="size-7 animate-spin text-indigo-400" />
+                          </div>
+                        </>
+                      )}
+                    </div>
 
-                <div className="flex items-center gap-2 pt-1">
-                  <div className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
-                  <span className="text-[10px] uppercase font-bold text-slate-400">o ingresa una URL</span>
-                  <div className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
-                </div>
+                    <div className="space-y-1">
+                      <span className="text-sm font-bold text-white tracking-wide block">
+                        {imageUploadStatus === "success"
+                          ? "¡Foto lista!"
+                          : imageUploadStatus === "optimizing"
+                          ? "Optimizando foto..."
+                          : "Guardando foto..."}
+                      </span>
+                      <p className="text-[11px] text-slate-300">
+                        {imageUploadStatus === "success"
+                          ? "Formato WebP de alta calidad aplicado"
+                          : imageUploadStatus === "optimizing"
+                          ? "Comprimiendo y ajustando resolución..."
+                          : "Sincronizando imagen con el servidor..."}
+                      </p>
+                    </div>
 
-                <input
-                  type="url"
-                  value={productForm.src}
-                  onChange={(e) => setProductForm({ ...productForm, src: e.target.value })}
-                  placeholder="https://images.unsplash.com/..."
-                  className="w-full rounded-xl border border-slate-300 bg-white p-2 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white text-xs"
-                />
+                    {imageUploadStatus !== "success" && (
+                      <div className="mt-3.5 h-1.5 w-48 overflow-hidden rounded-full bg-slate-800 border border-white/10">
+                        <div className="h-full w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 rounded-full animate-pulse" />
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <div
+                      onClick={() => productFileInputRef.current?.click()}
+                      className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40 p-5 text-center hover:border-indigo-500 dark:hover:border-indigo-400 cursor-pointer transition-all"
+                    >
+                      <div className="rounded-full bg-indigo-50 dark:bg-indigo-950/60 p-2 text-indigo-600 dark:text-indigo-400">
+                        <Upload className="size-4" />
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                          Subir foto desde tu teléfono o PC
+                        </span>
+                        <p className="text-[10px] text-slate-400 mt-0.5">
+                          Se comprime automáticamente a formato WebP ultraliviano
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-1">
+                      <div className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
+                      <span className="text-[10px] uppercase font-bold text-slate-400">o ingresa una URL</span>
+                      <div className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
+                    </div>
+
+                    <input
+                      type="url"
+                      value={productForm.src}
+                      onChange={(e) => setProductForm({ ...productForm, src: e.target.value })}
+                      placeholder="https://images.unsplash.com/..."
+                      className="w-full rounded-xl border border-slate-300 bg-white p-2 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white text-xs"
+                    />
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -415,18 +549,43 @@ export const ProductModal: React.FC<ProductModalProps> = ({
               type="button"
               variant="outline"
               onClick={onClose}
+              disabled={isImageBusy}
             >
               Cancelar
             </Button>
             <button
               type="submit"
-              className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-indigo-700 cursor-pointer"
+              disabled={isImageBusy}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
-              {editingProduct ? "Actualizar Producto" : "Guardar en Menú"}
+              {isImageBusy ? (
+                <>
+                  <Loader2 className="size-3.5 animate-spin" />
+                  <span>Procesando foto...</span>
+                </>
+              ) : editingProduct ? (
+                "Actualizar Producto"
+              ) : (
+                "Guardar en Menú"
+              )}
             </button>
           </div>
         </form>
       </div>
+
+      <ConfirmDeleteModal
+        isOpen={isConfirmingRemovePhoto}
+        onClose={() => setIsConfirmingRemovePhoto(false)}
+        onConfirm={() => {
+          setProductForm((prev) => ({ ...prev, src: "" }))
+          setIsConfirmingRemovePhoto(false)
+          toast.info("Foto removida del producto")
+        }}
+        title="¿Quitar foto del producto?"
+        targetName={productForm.name || "Foto del producto"}
+        description="¿Estás seguro de que deseas quitar la foto de este producto? Podrás subir una nueva foto o asignar una por URL cuando lo desees."
+        confirmText="Sí, quitar foto"
+      />
     </div>
   )
 }

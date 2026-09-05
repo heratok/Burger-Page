@@ -103,6 +103,7 @@ import { customerRoutes } from './routes/customer.routes.js';
 import { inventoryRoutes } from './routes/inventory.routes.js';
 import { userRoutes } from './routes/user.routes.js';
 import { additionRoutes } from './routes/addition.routes.js';
+import { storageRoutes } from './routes/storage.routes.js';
 
 export interface AppDependencies {
   restaurantController: RestaurantController;
@@ -279,8 +280,28 @@ export function buildApp(
   dependencies?: Partial<AppDependencies>,
   options?: { dbPath?: string; driver?: StorageDriver }
 ): FastifyInstance {
+  const isProduction = process.env.NODE_ENV === 'production';
+  const isTest = process.env.NODE_ENV === 'test' || Boolean(process.env.VITEST);
+
+  const loggerConfig = isTest
+    ? false
+    : isProduction
+      ? true
+      : {
+          transport: {
+            target: 'pino-pretty',
+            options: {
+              colorize: true,
+              translateTime: 'HH:MM:ss',
+              ignore: 'pid,hostname,reqId',
+              singleLine: true,
+            },
+          },
+        };
+
   const app = fastify({
-    logger: true,
+    logger: loggerConfig,
+    ...((!isProduction && !isTest) ? { disableRequestLogging: true } : {}),
     ajv: {
       customOptions: {
         strict: false,
@@ -288,6 +309,14 @@ export function buildApp(
       }
     }
   });
+
+  if (!isProduction && !isTest) {
+    app.addHook('onResponse', (request, reply, done) => {
+      const ms = Math.round(reply.elapsedTime);
+      request.log.info(`${request.method} ${request.url} ${reply.statusCode} - ${ms}ms`);
+      done();
+    });
+  }
 
   const deps = { ...buildDependencies(options?.dbPath, options?.driver), ...dependencies };
 
@@ -354,6 +383,7 @@ export function buildApp(
     api.register(customerRoutes, { prefix: '/customers', controller: deps.customerController });
     api.register(inventoryRoutes, { prefix: '/inventory', controller: deps.inventoryController });
     api.register(userRoutes, { prefix: '/users', controller: deps.userController });
+    api.register(storageRoutes, { prefix: '/storage' });
   }, { prefix: '/api' });
 
   return app;
