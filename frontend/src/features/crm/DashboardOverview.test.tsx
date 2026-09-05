@@ -32,9 +32,11 @@ describe("DashboardOverview - Real Data & Empty State", () => {
     localStorage.clear()
     sessionStorage.clear()
     vi.clearAllMocks()
+    vi.setSystemTime(new Date("2026-08-29T12:00:00.000Z"))
   })
 
   afterEach(() => {
+    vi.useRealTimers()
     cleanup()
   })
 
