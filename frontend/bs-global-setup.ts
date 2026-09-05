@@ -26,7 +26,6 @@ export default async function globalSetup(): Promise<void> {
       (err?: Error) => (err ? reject(err) : resolve())
     );
   });
-  // eslint-disable-next-line no-console
   console.log(`BrowserStack Local running: ${local.isRunning()}`);
 }
 

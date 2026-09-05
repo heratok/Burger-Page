@@ -348,7 +348,6 @@ test('Key pages load without JS errors or unexpected console errors', async ({ p
       !/Failed to load resource.*(401|404)/i.test(e) &&
       !/vite|websocket|sendeerror|@vite\/client/i.test(e)
   );
-  // eslint-disable-next-line no-console
   console.log('API failures captured:', JSON.stringify(apiFailures, null, 2));
 
   expect(pageErrors, `page errors: ${pageErrors.join(' | ')}`).toEqual([]);
