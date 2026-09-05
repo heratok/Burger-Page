@@ -65,6 +65,21 @@ export function createAuthMiddlewares(jwt: JwtService = new JwtService()) {
     }
   }
 
+  async function requireAnyAdmin(req: FastifyRequest, reply: FastifyReply) {
+    await requireAuth(req, reply);
+    if (reply.sent) return;
+
+    const role = req.authContext?.role;
+    if (role !== 'super_admin' && role !== 'restaurant_admin') {
+      return reply.status(403).send({
+        type: 'https://example.com/probs/forbidden',
+        title: 'Forbidden',
+        status: 403,
+        detail: 'Administrator privileges required to access this resource.',
+      });
+    }
+  }
+
   async function tryAuth(req: FastifyRequest, _reply: FastifyReply) {
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith('Bearer ')) {
@@ -83,10 +98,11 @@ export function createAuthMiddlewares(jwt: JwtService = new JwtService()) {
     }
   }
 
-  return { requireAuth, requireSuperAdmin, tryAuth };
+  return { requireAuth, requireSuperAdmin, requireAnyAdmin, tryAuth };
 }
 
 const defaultMiddlewares = createAuthMiddlewares();
 export const requireAuth = defaultMiddlewares.requireAuth;
 export const requireSuperAdmin = defaultMiddlewares.requireSuperAdmin;
+export const requireAnyAdmin = defaultMiddlewares.requireAnyAdmin;
 export const tryAuth = defaultMiddlewares.tryAuth;

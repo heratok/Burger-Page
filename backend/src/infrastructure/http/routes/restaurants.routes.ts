@@ -1,14 +1,14 @@
 import { FastifyInstance } from 'fastify';
 import { RestaurantController } from '../controllers/RestaurantController.js';
-import { requireSuperAdmin } from '../middleware/auth.middleware.js';
+import { requireSuperAdmin, requireAnyAdmin } from '../middleware/auth.middleware.js';
 
 export async function restaurantsRoutes(fastify: FastifyInstance, opts: { controller: RestaurantController }) {
   fastify.get('/', {
-    preHandler: [requireSuperAdmin],
+    preHandler: [requireAnyAdmin],
     schema: {
       tags: ['Restaurant'],
-      summary: 'List all restaurants',
-      description: 'Returns all registered restaurant tenants on the platform.',
+      summary: 'List restaurants',
+      description: 'Super admins list all tenants; restaurant admins only see their own tenant.',
       response: {
         200: {
           type: 'array',
