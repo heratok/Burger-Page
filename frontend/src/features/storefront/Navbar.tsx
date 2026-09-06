@@ -1,6 +1,6 @@
 import { ShoppingCart } from "lucide-react"
 import { useRestaurant } from "@/context/RestaurantContext"
-import { formatCurrency, formatWhatsAppPhone } from "@/lib/utils"
+import { formatCurrency, formatWhatsAppPhone, getContrastForeground } from "@/lib/utils"
 
 interface NavbarProps {
   cantidad: number
@@ -10,6 +10,7 @@ interface NavbarProps {
 
 export default function Navbar({ cantidad, total, onOpenCart }: NavbarProps) {
   const { storeConfig } = useRestaurant()
+  const primaryForeground = getContrastForeground(storeConfig.primaryColor)
 
   const cartLabel = `Ver orden, ${cantidad} ${cantidad === 1 ? "producto" : "productos"}, total ${formatCurrency(total)}`
 
@@ -24,8 +25,11 @@ export default function Navbar({ cantidad, total, onOpenCart }: NavbarProps) {
       {/* Optional Top Promotional Announcement Bar */}
       {storeConfig.showAnnouncement && storeConfig.announcementText && (
         <div
-          style={{ backgroundColor: storeConfig.primaryColor }}
-          className="px-4 py-1.5 text-center text-xs font-bold text-white tracking-wide shadow-xs"
+          style={{
+            backgroundColor: storeConfig.primaryColor,
+            color: primaryForeground,
+          }}
+          className="px-4 py-1.5 text-center text-xs font-bold tracking-wide shadow-xs"
         >
           {storeConfig.announcementText}
         </div>
@@ -34,8 +38,11 @@ export default function Navbar({ cantidad, total, onOpenCart }: NavbarProps) {
       <div className="mx-auto flex h-16 max-w-(--container) items-center justify-between px-4 md:px-6 lg:px-8">
         <a
           href="#main"
-          className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 rounded-md px-4 py-2 font-medium text-white focus:outline-none focus:ring-2"
-          style={{ backgroundColor: storeConfig.primaryColor }}
+          className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 rounded-md px-4 py-2 font-medium focus:outline-none focus:ring-2"
+          style={{
+            backgroundColor: storeConfig.primaryColor,
+            color: primaryForeground,
+          }}
         >
           Saltar al contenido
         </a>
@@ -55,8 +62,11 @@ export default function Navbar({ cantidad, total, onOpenCart }: NavbarProps) {
             />
           ) : (
             <div
-              style={{ backgroundColor: storeConfig.primaryColor }}
-              className="flex size-10 items-center justify-center rounded-full text-white font-bold text-base shadow-xs"
+              style={{
+                backgroundColor: storeConfig.primaryColor,
+                color: primaryForeground,
+              }}
+              className="flex size-10 items-center justify-center rounded-full font-bold text-base shadow-xs"
             >
               {storeConfig.name.charAt(0)}
             </div>
@@ -95,8 +105,11 @@ export default function Navbar({ cantidad, total, onOpenCart }: NavbarProps) {
             {cantidad > 0 && (
               <span
                 aria-hidden="true"
-                style={{ backgroundColor: storeConfig.primaryColor }}
-                className="absolute -top-1 -right-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full px-1 text-xs leading-none font-bold text-white shadow-xs"
+                style={{
+                  backgroundColor: storeConfig.primaryColor,
+                  color: primaryForeground,
+                }}
+                className="absolute -top-1 -right-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full px-1 text-xs leading-none font-bold shadow-xs"
               >
                 {cantidad}
               </span>

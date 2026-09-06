@@ -1,7 +1,7 @@
 import { ShoppingCart } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useRestaurant } from "@/context/RestaurantContext"
-import { formatCurrency } from "@/lib/utils"
+import { formatCurrency, getContrastForeground } from "@/lib/utils"
 
 export interface MobileOrderBarProps {
   onOpenCart: () => void
@@ -15,6 +15,7 @@ export default function MobileOrderBar({
   total = 0,
 }: MobileOrderBarProps) {
   const { storeConfig } = useRestaurant()
+  const primaryForeground = getContrastForeground(storeConfig.primaryColor)
   const label = `Ver orden, ${itemCount} ${itemCount === 1 ? "producto" : "productos"}, total ${formatCurrency(total)}`
 
   return (
@@ -25,22 +26,26 @@ export default function MobileOrderBar({
         aria-label={label}
         variant="default"
         size="lg"
-        style={{ backgroundColor: storeConfig.primaryColor, color: "#FFFFFF" }}
-        className="h-12 w-full justify-between rounded-2xl text-base text-white font-bold shadow-md cursor-pointer hover:opacity-90"
+        style={{ backgroundColor: storeConfig.primaryColor, color: primaryForeground }}
+        className="h-12 w-full justify-between rounded-2xl text-base font-bold shadow-md cursor-pointer hover:opacity-90"
       >
         <span className="inline-flex items-center gap-2">
-          <ShoppingCart className="size-5 text-white" data-icon="inline-start" />
-          <span className="font-bold text-white">Ver orden</span>
+          <ShoppingCart className="size-5" style={{ color: primaryForeground }} data-icon="inline-start" />
+          <span className="font-bold" style={{ color: primaryForeground }}>Ver orden</span>
           {itemCount > 0 && (
             <span
               aria-hidden="true"
-              className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-white/30 px-1.5 text-xs leading-none font-extrabold text-white"
+              style={{
+                backgroundColor: primaryForeground === "#FFFFFF" ? "rgba(255, 255, 255, 0.3)" : "rgba(0, 0, 0, 0.15)",
+                color: primaryForeground,
+              }}
+              className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-xs leading-none font-extrabold"
             >
               {itemCount}
             </span>
           )}
         </span>
-        <span className="font-extrabold text-white">{formatCurrency(total)}</span>
+        <span className="font-extrabold" style={{ color: primaryForeground }}>{formatCurrency(total)}</span>
       </Button>
     </div>
   )

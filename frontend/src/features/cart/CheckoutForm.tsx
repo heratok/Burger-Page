@@ -34,7 +34,7 @@ import { formSchema, LIMITS, type FormValues } from "@/lib/validation"
 import { calculateChange } from "./whatsapp"
 import { cartItemToOrderItem, type CartItem } from "./cartEngine"
 import { useRestaurant } from "@/context/RestaurantContext"
-import { formatCurrency } from "@/lib/utils"
+import { formatCurrency, getContrastForeground } from "@/lib/utils"
 
 const METODOS = [
   { value: "Efectivo", Icon: Banknote },
@@ -49,6 +49,7 @@ export interface CheckoutFormProps {
 
 export default function CheckoutForm({ onClose, onBackToCart, cartItems }: CheckoutFormProps) {
   const { storeConfig, addOrder } = useRestaurant()
+  const primaryForeground = getContrastForeground(storeConfig.primaryColor)
   const {
     register,
     handleSubmit,
@@ -249,9 +250,9 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
                     <RadioGroupItem value={value} id={`metodo-${value}`} className="sr-only" />
                     <span
                       aria-hidden="true"
-                      style={active ? { backgroundColor: storeConfig.primaryColor, color: "#FFFFFF" } : undefined}
+                      style={active ? { backgroundColor: storeConfig.primaryColor, color: primaryForeground } : undefined}
                       className={`inline-flex size-9 items-center justify-center rounded-full ${
-                        active ? "text-white shadow-xs" : "bg-bg-elevated-2 text-text-muted"
+                        active ? "shadow-xs" : "bg-bg-elevated-2 text-text-muted"
                       }`}
                     >
                       <Icon className="size-4" />
@@ -315,8 +316,8 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
             type="submit"
             variant="default"
             size="lg"
-            style={{ backgroundColor: storeConfig.primaryColor, color: "#FFFFFF" }}
-            className="h-12 flex-1 text-base text-white font-bold shadow-md cursor-pointer hover:opacity-90"
+            style={{ backgroundColor: storeConfig.primaryColor, color: primaryForeground }}
+            className="h-12 flex-1 text-base font-bold shadow-md cursor-pointer hover:opacity-90"
           >
             <Check data-icon="inline-start" />
             Registrar venta

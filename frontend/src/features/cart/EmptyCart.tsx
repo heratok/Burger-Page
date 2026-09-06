@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/empty"
 import { Button } from "@/components/ui/button"
 import { useRestaurant } from "@/context/RestaurantContext"
+import { getContrastForeground } from "@/lib/utils"
 
 interface EmptyCartProps {
   onBackToMenu: () => void
@@ -14,6 +15,7 @@ interface EmptyCartProps {
 
 export default function EmptyCart({ onBackToMenu }: EmptyCartProps) {
   const { storeConfig } = useRestaurant()
+  const primaryForeground = getContrastForeground(storeConfig.primaryColor)
 
   return (
     <Empty
@@ -49,8 +51,8 @@ export default function EmptyCart({ onBackToMenu }: EmptyCartProps) {
         variant="default"
         size="lg"
         onClick={onBackToMenu}
-        style={{ backgroundColor: storeConfig.primaryColor, color: "#FFFFFF" }}
-        className="mt-6 h-12 px-6 font-bold text-white shadow-md cursor-pointer hover:opacity-90"
+        style={{ backgroundColor: storeConfig.primaryColor, color: primaryForeground }}
+        className="mt-6 h-12 px-6 font-bold shadow-md cursor-pointer hover:opacity-90"
       >
         Explorar menú
       </Button>

@@ -3,7 +3,7 @@ import type { StorefrontConfig, MenuItem } from "@/types/restaurant"
 import { Monitor, Smartphone, Eye, ShoppingCart, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { LazyImage } from "@/components/ui/LazyImage"
-import { formatCurrency } from "@/lib/utils"
+import { formatCurrency, getContrastForeground } from "@/lib/utils"
 import {
   getRadiusClass,
   getCardStyleClasses,
@@ -29,6 +29,7 @@ export const CustomizerLivePreview: React.FC<CustomizerLivePreviewProps> = ({
   onViewRealStore,
 }) => {
   const currentBgStyle = getBgStyle(draft.bgTheme)
+  const primaryForeground = getContrastForeground(draft.primaryColor)
 
   return (
     <>
@@ -107,8 +108,11 @@ export const CustomizerLivePreview: React.FC<CustomizerLivePreviewProps> = ({
           {/* Promotional Announcement Strip */}
           {draft.showAnnouncement && (
             <div
-              style={{ backgroundColor: draft.primaryColor }}
-              className="py-1.5 px-3 text-center text-[10px] font-bold text-white tracking-wide truncate"
+              style={{
+                backgroundColor: draft.primaryColor,
+                color: primaryForeground,
+              }}
+              className="py-1.5 px-3 text-center text-[10px] font-bold tracking-wide truncate"
             >
               {draft.announcementText}
             </div>
@@ -130,8 +134,11 @@ export const CustomizerLivePreview: React.FC<CustomizerLivePreviewProps> = ({
                 />
               ) : (
                 <div
-                  style={{ backgroundColor: draft.primaryColor }}
-                  className="flex size-8 items-center justify-center rounded-full text-white font-bold text-xs"
+                  style={{
+                    backgroundColor: draft.primaryColor,
+                    color: primaryForeground,
+                  }}
+                  className="flex size-8 items-center justify-center rounded-full font-bold text-xs"
                 >
                   {draft.name.charAt(0)}
                 </div>
@@ -151,8 +158,11 @@ export const CustomizerLivePreview: React.FC<CustomizerLivePreviewProps> = ({
               >
                 <ShoppingCart className="size-3.5" />
                 <span
-                  style={{ backgroundColor: draft.primaryColor }}
-                  className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full text-[9px] font-bold text-white"
+                  style={{
+                    backgroundColor: draft.primaryColor,
+                    color: primaryForeground,
+                  }}
+                  className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full text-[9px] font-bold"
                 >
                   2
                 </span>
@@ -211,8 +221,11 @@ export const CustomizerLivePreview: React.FC<CustomizerLivePreviewProps> = ({
                       />
                       {draft.showBadges && p.isPopular && (
                         <span
-                          style={{ backgroundColor: draft.primaryColor }}
-                          className="absolute top-1.5 left-1.5 rounded px-1.5 py-0.5 text-[9px] font-bold text-white shadow-xs z-10"
+                          style={{
+                            backgroundColor: draft.primaryColor,
+                            color: primaryForeground,
+                          }}
+                          className="absolute top-1.5 left-1.5 rounded px-1.5 py-0.5 text-[9px] font-bold shadow-xs z-10"
                         >
                           Popular
                         </span>
@@ -240,8 +253,11 @@ export const CustomizerLivePreview: React.FC<CustomizerLivePreviewProps> = ({
                           {formatCurrency(p.price)}
                         </span>
                         <span
-                          style={{ backgroundColor: draft.primaryColor }}
-                          className="flex size-6 items-center justify-center rounded-full text-white shadow-xs"
+                          style={{
+                            backgroundColor: draft.primaryColor,
+                            color: primaryForeground,
+                          }}
+                          className="flex size-6 items-center justify-center rounded-full shadow-xs"
                         >
                           <Plus className="size-3.5 stroke-[3]" />
                         </span>
@@ -266,8 +282,11 @@ export const CustomizerLivePreview: React.FC<CustomizerLivePreviewProps> = ({
             </div>
             <button
               type="button"
-              style={{ backgroundColor: draft.primaryColor }}
-              className="rounded-xl px-3 py-1.5 text-[11px] font-bold text-white shadow-xs"
+              style={{
+                backgroundColor: draft.primaryColor,
+                color: primaryForeground,
+              }}
+              className="rounded-xl px-3 py-1.5 text-[11px] font-bold shadow-xs"
             >
               Ver Mi Pedido (2)
             </button>

@@ -15,7 +15,7 @@ import { createCartItem, type CartAddition, type CartItem } from "./cartEngine"
 import CharacterCounter from "@/components/CharacterCounter"
 import { LIMITS } from "@/lib/validation"
 import { useRestaurant } from "@/context/RestaurantContext"
-import { formatCurrency } from "@/lib/utils"
+import { formatCurrency, getContrastForeground } from "@/lib/utils"
 import { resolveImageUrl } from "@/core/storage/supabaseStorage"
 
 export interface AdditionsModalProps {
@@ -265,8 +265,11 @@ export default function AdditionsModal({
               size="lg"
               onClick={handleAdd}
               disabled={!product}
-              style={{ backgroundColor: storeConfig.primaryColor, color: "#FFFFFF" }}
-              className="h-12 w-full rounded-xl text-base text-white font-bold shadow-md cursor-pointer hover:opacity-90 min-[420px]:w-auto min-[420px]:flex-1 sm:min-w-[200px] sm:flex-none"
+              style={{
+                backgroundColor: storeConfig.primaryColor,
+                color: getContrastForeground(storeConfig.primaryColor),
+              }}
+              className="h-12 w-full rounded-xl text-base font-bold shadow-md cursor-pointer hover:opacity-90 min-[420px]:w-auto min-[420px]:flex-1 sm:min-w-[200px] sm:flex-none"
             >
               <Plus data-icon="inline-start" strokeWidth={2.5} />
               {editing ? "Guardar cambios" : "Agregar"} · {formatCurrency(calcularTotal())}

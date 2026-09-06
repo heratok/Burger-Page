@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button"
 import EmptyCart from "./EmptyCart"
 import type { CartItem } from "./cartEngine"
 import { useRestaurant } from "@/context/RestaurantContext"
-import { formatCurrency } from "@/lib/utils"
+import { formatCurrency, getContrastForeground } from "@/lib/utils"
 import { resolveImageUrl } from "@/core/storage/supabaseStorage"
 
 export interface ShoppingCartProps {
@@ -180,8 +180,11 @@ function ShoppingCart({
               variant="default"
               size="lg"
               onClick={handleCheckout}
-              style={{ backgroundColor: storeConfig.primaryColor, color: "#FFFFFF" }}
-              className="h-12 flex-1 sm:flex-none text-white font-bold shadow-md cursor-pointer hover:opacity-90"
+              style={{
+                backgroundColor: storeConfig.primaryColor,
+                color: getContrastForeground(storeConfig.primaryColor),
+              }}
+              className="h-12 flex-1 sm:flex-none font-bold shadow-md cursor-pointer hover:opacity-90"
             >
               Confirmar orden
             </Button>
