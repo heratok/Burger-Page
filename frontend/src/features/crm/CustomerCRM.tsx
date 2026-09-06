@@ -11,11 +11,12 @@ import { LoyaltyBadge } from "@/components/ui/status-badge"
 import { Button } from "@/components/ui/button"
 import { Pagination } from "@/components/ui/pagination"
 import { Select } from "@/components/ui/select"
+import { TableSkeleton } from "@/components/ui/Skeletons"
 import { buildWhatsAppUrl } from "@/features/cart"
 import { formatCurrency, cleanPhoneNumber, formatWhatsAppPhone } from "@/lib/utils"
 
 export const CustomerCRM: React.FC = () => {
-  const { customers, orders, updateCustomer, storeConfig, adminTheme } = useRestaurant()
+  const { customers, orders, updateCustomer, storeConfig, adminTheme, isLoadingOrders } = useRestaurant()
 
   const [searchTerm, setSearchTerm] = useState("")
   const [tierFilter, setTierFilter] = useState<string>("ALL")
@@ -199,11 +200,14 @@ export const CustomerCRM: React.FC = () => {
       </div>
 
       {/* Customers Table */}
-      <div
-        className={`overflow-hidden rounded-2xl border shadow-xs ${
-          isDark ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-white"
-        }`}
-      >
+      {isLoadingOrders && customers.length === 0 ? (
+        <TableSkeleton isDark={isDark} rows={5} columns={7} />
+      ) : (
+        <div
+          className={`overflow-hidden rounded-2xl border shadow-xs ${
+            isDark ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-white"
+          }`}
+        >
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
@@ -299,6 +303,7 @@ export const CustomerCRM: React.FC = () => {
           </div>
         )}
       </div>
+      )}
 
       {/* Customer Profile & Notes Modal */}
       {selectedCustomer && (

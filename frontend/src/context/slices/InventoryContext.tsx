@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useCallback, useMemo } from "react"
+import React, { createContext, useContext, useCallback, useMemo, useState } from "react"
 import type { InventoryItem, Supplier } from "@/types/restaurant"
 import { apiClient } from "@/core/api/apiClient"
 import { useTenant } from "./TenantContext"
@@ -17,6 +17,7 @@ export interface InventoryContextType {
   deleteSupplier: (id: string) => void
   lowStockCount: number
   totalInventoryValue: number
+  isLoadingInventory: boolean
 }
 
 const InventoryContext = createContext<InventoryContextType | undefined>(undefined)
@@ -25,11 +26,23 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const { activeRestaurant, updateActiveRestaurantRecord } = useTenant()
   const { session } = useAuth()
 
+  const [isLoadingInventory, setIsLoadingInventory] = useState<boolean>(() => {
+    return Boolean(
+      apiClient.hasToken() &&
+        activeRestaurant?.id &&
+        (!activeRestaurant.inventory || activeRestaurant.inventory.length === 0)
+    )
+  })
+
   // Hydrate inventory from database
   React.useEffect(() => {
     const targetRestId = activeRestaurant?.id
-    if (!targetRestId || !apiClient.hasToken()) return
+    if (!targetRestId || !apiClient.hasToken()) {
+      setIsLoadingInventory(false)
+      return
+    }
     let isCancelled = false
+    setIsLoadingInventory(true)
 
     apiClient
       .fetchInventory(targetRestId)
@@ -48,6 +61,11 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       .catch((err) => {
         if (import.meta.env?.MODE !== 'test') {
           console.warn("Could not fetch inventory from backend API:", err)
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setIsLoadingInventory(false)
         }
       })
 
@@ -263,6 +281,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     deleteSupplier,
     lowStockCount,
     totalInventoryValue,
+    isLoadingInventory,
   }
 
   return <InventoryContext.Provider value={value}>{children}</InventoryContext.Provider>

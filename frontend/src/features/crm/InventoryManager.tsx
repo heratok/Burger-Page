@@ -3,6 +3,7 @@ import { useRestaurant } from "@/context/RestaurantContext"
 import type { InventoryItem, Supplier } from "@/types/restaurant"
 import { Boxes, Plus, Truck } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { TableSkeleton } from "@/components/ui/Skeletons"
 import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
 import { buildWhatsAppUrl } from "@/features/cart"
 import { InventoryStats, InventoryTable, SuppliersList, InventoryItemModal, SupplierModal, CATEGORY_LABELS, type InventoryItemFormData, type SupplierFormData } from "./inventory"
@@ -11,7 +12,7 @@ export const InventoryManager: React.FC = () => {
   const {
     inventory, suppliers, addInventoryItem, updateInventoryItem, deleteInventoryItem,
     adjustStock, addSupplier, updateSupplier, deleteSupplier, lowStockCount,
-    totalInventoryValue, adminTheme, storeConfig,
+    totalInventoryValue, adminTheme, storeConfig, isLoadingInventory,
   } = useRestaurant()
 
   const isDark = adminTheme === "dark"
@@ -116,16 +117,20 @@ export const InventoryManager: React.FC = () => {
       </div>
 
       {activeTab === "inventory" ? (
-        <InventoryTable
-          items={paginatedInventory} totalItems={filteredInventory.length} suppliers={suppliers}
-          searchTerm={searchTerm} onSearchChange={(t) => { setSearchTerm(t); setCurrentPage(1) }}
-          selectedCategory={selectedCategory} onCategoryChange={(c) => { setSelectedCategory(c); setCurrentPage(1) }}
-          onlyLowStock={onlyLowStock} onToggleOnlyLowStock={() => { setOnlyLowStock(!onlyLowStock); setCurrentPage(1) }}
-          currentPage={currentPage} pageSize={pageSize}
-          onPageChange={setCurrentPage} onPageSizeChange={(s) => { setPageSize(s); setCurrentPage(1) }}
-          isDark={isDark} onAdjustStock={adjustStock} onSendSupplierWhatsApp={handleSendSupplierWhatsApp}
-          onEditItem={(item) => { setEditingItem(item); setIsItemModalOpen(true) }} onDeleteItem={setItemToDelete}
-        />
+        isLoadingInventory && inventory.length === 0 ? (
+          <TableSkeleton isDark={isDark} rows={5} columns={6} />
+        ) : (
+          <InventoryTable
+            items={paginatedInventory} totalItems={filteredInventory.length} suppliers={suppliers}
+            searchTerm={searchTerm} onSearchChange={(t) => { setSearchTerm(t); setCurrentPage(1) }}
+            selectedCategory={selectedCategory} onCategoryChange={(c) => { setSelectedCategory(c); setCurrentPage(1) }}
+            onlyLowStock={onlyLowStock} onToggleOnlyLowStock={() => { setOnlyLowStock(!onlyLowStock); setCurrentPage(1) }}
+            currentPage={currentPage} pageSize={pageSize}
+            onPageChange={setCurrentPage} onPageSizeChange={(s) => { setPageSize(s); setCurrentPage(1) }}
+            isDark={isDark} onAdjustStock={adjustStock} onSendSupplierWhatsApp={handleSendSupplierWhatsApp}
+            onEditItem={(item) => { setEditingItem(item); setIsItemModalOpen(true) }} onDeleteItem={setItemToDelete}
+          />
+        )
       ) : (
         <SuppliersList
           suppliers={filteredSuppliers} inventory={inventory}

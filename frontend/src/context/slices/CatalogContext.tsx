@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useCallback, useMemo, useEffect } from "react"
+import React, { createContext, useContext, useCallback, useMemo, useEffect, useState } from "react"
 import type { StorefrontConfig, MenuItem, AdditionItem } from "@/types/restaurant"
 import { DEFAULT_STORE_CONFIG } from "@/constants/themePresets"
 import { useTenant } from "./TenantContext"
@@ -22,6 +22,7 @@ export interface CatalogContextType {
   addAddition: (item: Omit<AdditionItem, "id">) => void
   updateAddition: (id: string, updates: Partial<AdditionItem>) => void
   deleteAddition: (id: string) => void
+  isLoadingCatalog: boolean
 }
 
 const CatalogContext = createContext<CatalogContextType | undefined>(undefined)
@@ -29,49 +30,72 @@ const CatalogContext = createContext<CatalogContextType | undefined>(undefined)
 export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { activeRestaurant, updateActiveRestaurantRecord } = useTenant()
 
+  const [isLoadingCatalog, setIsLoadingCatalog] = useState<boolean>(() => {
+    return Boolean(
+      activeRestaurant?.id &&
+        activeRestaurant.id !== "rest-default" &&
+        (!activeRestaurant.products || activeRestaurant.products.length === 0)
+    )
+  })
+
   // Sync products and additions from database for active tenant
   useEffect(() => {
     const restId = activeRestaurant?.id
     const restSlug = activeRestaurant?.slug
-    if (!restId || restId === "rest-default") return
+    if (!restId || restId === "rest-default") {
+      setIsLoadingCatalog(false)
+      return
+    }
+    let isCancelled = false
+    setIsLoadingCatalog(true)
 
-    apiClient
-      .fetchProducts({ restaurantId: restId, slug: restSlug })
-      .then((backendProducts) => {
-        if (Array.isArray(backendProducts) && backendProducts.length > 0) {
-          updateActiveRestaurantRecord((current) => {
-            if (current.id !== restId && current.slug !== restSlug) {
-              return current
-            }
-            return {
-              ...current,
-              products: backendProducts,
-            }
-          })
-        }
-      })
-      .catch(() => {})
+    Promise.allSettled([
+      apiClient
+        .fetchProducts({ restaurantId: restId, slug: restSlug })
+        .then((backendProducts) => {
+          if (isCancelled) return
+          if (Array.isArray(backendProducts) && backendProducts.length > 0) {
+            updateActiveRestaurantRecord((current) => {
+              if (current.id !== restId && current.slug !== restSlug) {
+                return current
+              }
+              return {
+                ...current,
+                products: backendProducts,
+              }
+            })
+          }
+        }),
+      apiClient
+        .fetchAdditions({ restaurantId: restId, slug: restSlug })
+        .then((backendAdditions) => {
+          if (isCancelled) return
+          if (Array.isArray(backendAdditions)) {
+            updateActiveRestaurantRecord((current) => {
+              if (current.id !== restId && current.slug !== restSlug) {
+                return current
+              }
+              return {
+                ...current,
+                additions: backendAdditions,
+              }
+            })
+          }
+        })
+        .catch((err) => {
+          if (import.meta.env?.MODE !== "test") {
+            console.warn("Could not fetch additions from backend API:", err)
+          }
+        }),
+    ]).finally(() => {
+      if (!isCancelled) {
+        setIsLoadingCatalog(false)
+      }
+    })
 
-    apiClient
-      .fetchAdditions({ restaurantId: restId, slug: restSlug })
-      .then((backendAdditions) => {
-        if (Array.isArray(backendAdditions)) {
-          updateActiveRestaurantRecord((current) => {
-            if (current.id !== restId && current.slug !== restSlug) {
-              return current
-            }
-            return {
-              ...current,
-              additions: backendAdditions,
-            }
-          })
-        }
-      })
-      .catch((err) => {
-        if (import.meta.env?.MODE !== 'test') {
-          console.warn("Could not fetch additions from backend API:", err)
-        }
-      })
+    return () => {
+      isCancelled = true
+    }
   }, [activeRestaurant?.id, activeRestaurant?.slug, updateActiveRestaurantRecord])
 
   const updateStoreConfig = useCallback(
@@ -471,6 +495,7 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
     addAddition,
     updateAddition,
     deleteAddition,
+    isLoadingCatalog,
   }
 
   return <CatalogContext.Provider value={value}>{children}</CatalogContext.Provider>

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useMemo, useCallback, useEffect } from "react"
+import React, { createContext, useContext, useMemo, useCallback, useEffect, useState } from "react"
 import type { Order, OrderStatus, Customer } from "@/types/restaurant"
 import type { CreateOrderInput, OrderEvent } from "@burger-page/contracts"
 import { apiClient } from "@/core/api/apiClient"
@@ -18,6 +18,7 @@ export interface OrderContextType {
   customers: Customer[]
   updateCustomer: (id: string, updates: Partial<Customer>) => void
   pendingOrdersCount: number
+  isLoadingOrders: boolean
 }
 
 const OrderContext = createContext<OrderContextType | undefined>(undefined)
@@ -27,11 +28,23 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const { session } = useAuth()
   const { soundEnabled } = useUi()
 
+  const [isLoadingOrders, setIsLoadingOrders] = useState<boolean>(() => {
+    return Boolean(
+      apiClient.hasToken() &&
+        activeRestaurant?.id &&
+        (!activeRestaurant.orders || activeRestaurant.orders.length === 0)
+    )
+  })
+
   // Hydrate orders from database
   useEffect(() => {
     const targetRestId = activeRestaurant?.id
-    if (!targetRestId || !apiClient.hasToken()) return
+    if (!targetRestId || !apiClient.hasToken()) {
+      setIsLoadingOrders(false)
+      return
+    }
     let isCancelled = false
+    setIsLoadingOrders(true)
 
     apiClient
       .fetchOrders(targetRestId)
@@ -106,6 +119,11 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       .catch((err) => {
         if (import.meta.env?.MODE !== 'test') {
           console.warn("Could not fetch orders from backend API:", err)
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setIsLoadingOrders(false)
         }
       })
 
@@ -434,6 +452,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     customers: activeRestaurant.customers,
     updateCustomer,
     pendingOrdersCount,
+    isLoadingOrders,
   }
 
   return <OrderContext.Provider value={value}>{children}</OrderContext.Provider>
