@@ -68,3 +68,5 @@ browserstack-node-sdk/
 
 # Playwright HTML report (BrowserStack)
 playwright-report-bs/
+# TestSprite runner artifacts and ephemeral test scripts
+testsprite_tests/

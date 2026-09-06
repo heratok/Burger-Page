@@ -11,7 +11,7 @@ describe("TenantContext - Backend Multi-Tenant Integration", () => {
     vi.clearAllMocks()
   })
 
-it("does not call the protected restaurants list when there is no auth token (guest)", async () => {
+  it("calls public restaurants list when there is no auth token (guest)", async () => {
     vi.spyOn(apiClient, "hasToken").mockReturnValue(false)
     const listSpy = vi.spyOn(apiClient, "listRestaurants").mockResolvedValue([] as any)
 
@@ -21,10 +21,9 @@ it("does not call the protected restaurants list when there is no auth token (gu
 
     renderHook(() => useTenant(), { wrapper })
 
-    // Give the mount effect a chance to run; the protected endpoint must never be hit
-    await new Promise((resolve) => setTimeout(resolve, 100))
-
-    expect(listSpy).not.toHaveBeenCalled()
+    await waitFor(() => {
+      expect(listSpy).toHaveBeenCalled()
+    })
   })
 
   it("syncs restaurants from backend API on mount", async () => {

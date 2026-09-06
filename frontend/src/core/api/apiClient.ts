@@ -6,7 +6,7 @@ import {
   InventoryItem,
   AdditionItem,
 } from '@/types/restaurant'
-import type { OrderEvent, CreateOrderInput, CreateRestaurantInput } from '@burger-page/contracts'
+import type { OrderEvent, CreateOrderInput, CreateRestaurantInput, UpdateRestaurantInput } from '@burger-page/contracts'
 
 export interface ApiClientConfig {
   baseUrl: string
@@ -122,6 +122,13 @@ export class ApiClient {
   async createRestaurant(data: CreateRestaurantInput): Promise<RestaurantRecord> {
     return this.request<RestaurantRecord>('/restaurants', {
       method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async updateRestaurant(id: string, data: UpdateRestaurantInput): Promise<RestaurantRecord> {
+    return this.request<RestaurantRecord>(`/restaurants/${id}`, {
+      method: 'PUT',
       body: JSON.stringify(data),
     })
   }

@@ -4,7 +4,8 @@ import { ListRestaurantsUseCase } from '../../../application/use-cases/ListResta
 import { CreateRestaurantUseCase } from '../../../application/use-cases/CreateRestaurantUseCase.js';
 import { DeleteRestaurantUseCase } from '../../../application/use-cases/DeleteRestaurantUseCase.js';
 import { UpdateRestaurantCategoriesUseCase } from '../../../application/use-cases/UpdateRestaurantCategoriesUseCase.js';
-import { createRestaurantSchema, updateRestaurantCategoriesSchema } from '@burger-page/contracts';
+import { UpdateRestaurantUseCase } from '../../../application/use-cases/UpdateRestaurantUseCase.js';
+import { createRestaurantSchema, updateRestaurantCategoriesSchema, updateRestaurantSchema } from '@burger-page/contracts';
 import { ValidationError } from '../../../domain/errors/DomainErrors.js';
 
 export class RestaurantController {
@@ -13,7 +14,8 @@ export class RestaurantController {
     private listRestaurantsUseCase: ListRestaurantsUseCase,
     private createRestaurantUseCase: CreateRestaurantUseCase,
     private deleteRestaurantUseCase: DeleteRestaurantUseCase,
-    private updateCategoriesUseCase: UpdateRestaurantCategoriesUseCase
+    private updateCategoriesUseCase: UpdateRestaurantCategoriesUseCase,
+    private updateRestaurantUseCase?: UpdateRestaurantUseCase
   ) {}
 
   async list(req: FastifyRequest, reply: FastifyReply) {
@@ -84,5 +86,18 @@ export class RestaurantController {
       message: 'Restaurant categories updated successfully',
       categories: updated.categories || [],
     });
+  }
+
+  async update(req: FastifyRequest, reply: FastifyReply) {
+    if (!this.updateRestaurantUseCase) {
+      throw new Error('UpdateRestaurantUseCase is not configured.');
+    }
+    const params = (req.params || {}) as { id: string };
+    const parsed = updateRestaurantSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw new ValidationError(parsed.error.message);
+    }
+    const updated = await this.updateRestaurantUseCase.execute(params.id, parsed.data);
+    return reply.status(200).send(updated);
   }
 }

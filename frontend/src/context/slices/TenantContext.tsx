@@ -66,9 +66,6 @@ export const TenantProvider: React.FC<{
   })
 
   const refreshRestaurants = useCallback(async () => {
-    // Guests have no auth token: the list endpoint is administrator-only and
-    // would return 401 (visible console noise). Skip silently.
-    if (!apiClient.hasToken()) return
     setIsSyncing(true)
     try {
       const backendRestaurants = await apiClient.listRestaurants()
@@ -329,10 +326,14 @@ export const TenantProvider: React.FC<{
 
   const updateRestaurant = useCallback(
     async (id: string, updates: Partial<RestaurantRecord>) => {
+      const snapshot = envelope
+      const target = envelope.restaurants.find((r) => r.id === id || r.slug === id)
+      const targetId = target?.id || id
+
       setEnvelope((prev) => ({
         ...prev,
         restaurants: prev.restaurants.map((r) =>
-          r.id === id ? { ...r, ...updates } : r
+          r.id === id || r.slug === id ? { ...r, ...updates } : r
         ),
       }))
 
@@ -343,8 +344,28 @@ export const TenantProvider: React.FC<{
       } else {
         toast.success("Restaurante actualizado correctamente")
       }
+
+      try {
+        await apiClient.updateRestaurant(targetId, {
+          name: updates.config?.name || target?.config?.name,
+          slug: updates.slug || target?.slug,
+          tagline: updates.config?.tagline || target?.config?.tagline,
+          whatsappNumber: updates.config?.whatsappNumber || target?.config?.whatsappNumber,
+          primaryColor: updates.config?.primaryColor || target?.config?.primaryColor,
+          theme: updates.config?.bgTheme || target?.config?.bgTheme,
+          isActive: updates.isActive,
+          config: updates.config || target?.config,
+          categories: updates.categories || target?.categories,
+        })
+      } catch (err) {
+        if (import.meta.env?.MODE !== 'test') {
+          console.warn("Could not update restaurant on backend API, rolling back:", err)
+        }
+        setEnvelope(snapshot)
+        toast.error("No se pudo actualizar el restaurante en el servidor. Cambios revertidos.")
+      }
     },
-    []
+    [envelope]
   )
 
   const deleteRestaurant = useCallback(

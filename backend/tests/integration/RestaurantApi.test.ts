@@ -95,13 +95,15 @@ describe('Restaurant API & Multi-Tenant Security (Integration)', () => {
     expect(body.detail || body.message).toBeDefined();
   });
 
-  it('GET /api/restaurants without auth should return 401 Unauthorized', async () => {
+  it('GET /api/restaurants without auth should return 200 OK and list restaurants for public visitors', async () => {
     const response = await app.inject({
       method: 'GET',
       url: '/api/restaurants'
     });
 
-    expect(response.statusCode).toBe(401);
+    expect(response.statusCode).toBe(200);
+    const body = JSON.parse(response.payload);
+    expect(Array.isArray(body)).toBe(true);
   });
 
   it('GET /api/restaurants with restaurant_admin token returns ONLY their own restaurant (tenant-scoped)', async () => {

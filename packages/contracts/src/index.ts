@@ -43,6 +43,7 @@ export const createRestaurantSchema = z.object({
   templateType: z.enum(['burger', 'pizza', 'tacos', 'blank']).optional(),
   categories: z.array(z.string()).optional(),
   theme: z.string().optional(),
+  isActive: z.boolean().optional(),
   config: storefrontConfigSchema.partial().optional(),
 });
 
