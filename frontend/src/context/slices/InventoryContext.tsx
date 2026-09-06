@@ -2,6 +2,7 @@ import React, { createContext, useContext, useCallback, useMemo } from "react"
 import type { InventoryItem, Supplier } from "@/types/restaurant"
 import { apiClient } from "@/core/api/apiClient"
 import { useTenant } from "./TenantContext"
+import { useAuth } from "./AuthContext"
 import { toast } from "sonner"
 
 export interface InventoryContextType {
@@ -22,18 +23,26 @@ const InventoryContext = createContext<InventoryContextType | undefined>(undefin
 
 export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { activeRestaurant, updateActiveRestaurantRecord } = useTenant()
+  const { session } = useAuth()
 
   // Hydrate inventory from database
   React.useEffect(() => {
-    if (!activeRestaurant?.id || !apiClient.hasToken()) return
+    const targetRestId = activeRestaurant?.id
+    if (!targetRestId || !apiClient.hasToken()) return
+    let isCancelled = false
+
     apiClient
-      .fetchInventory(activeRestaurant.id)
+      .fetchInventory(targetRestId)
       .then((backendInventory) => {
-        if (Array.isArray(backendInventory) && backendInventory.length > 0) {
-          updateActiveRestaurantRecord((current) => ({
-            ...current,
-            inventory: backendInventory,
-          }))
+        if (isCancelled) return
+        if (Array.isArray(backendInventory)) {
+          updateActiveRestaurantRecord((current) => {
+            if (current.id !== targetRestId) return current
+            return {
+              ...current,
+              inventory: backendInventory,
+            }
+          })
         }
       })
       .catch((err) => {
@@ -41,7 +50,11 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           console.warn("Could not fetch inventory from backend API:", err)
         }
       })
-  }, [activeRestaurant?.id, updateActiveRestaurantRecord])
+
+    return () => {
+      isCancelled = true
+    }
+  }, [activeRestaurant?.id, session, updateActiveRestaurantRecord])
 
   const inventory: InventoryItem[] = useMemo(() => {
     return activeRestaurant.inventory || []

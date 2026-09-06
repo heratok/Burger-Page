@@ -3,6 +3,7 @@ import type { Order, OrderStatus, Customer } from "@/types/restaurant"
 import type { CreateOrderInput, OrderEvent } from "@burger-page/contracts"
 import { apiClient } from "@/core/api/apiClient"
 import { useTenant } from "./TenantContext"
+import { useAuth } from "./AuthContext"
 import { useUi } from "./UiContext"
 import { playNotificationChime } from "@/core/audio/soundEffects"
 import { toast } from "sonner"
@@ -23,16 +24,22 @@ const OrderContext = createContext<OrderContextType | undefined>(undefined)
 
 export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { activeRestaurant, updateActiveRestaurantRecord } = useTenant()
+  const { session } = useAuth()
   const { soundEnabled } = useUi()
 
   // Hydrate orders from database
   useEffect(() => {
-    if (!activeRestaurant?.id || !apiClient.hasToken()) return
+    const targetRestId = activeRestaurant?.id
+    if (!targetRestId || !apiClient.hasToken()) return
+    let isCancelled = false
+
     apiClient
-      .fetchOrders(activeRestaurant.id)
+      .fetchOrders(targetRestId)
       .then((backendOrders) => {
-        if (Array.isArray(backendOrders) && backendOrders.length > 0) {
+        if (isCancelled) return
+        if (Array.isArray(backendOrders)) {
           updateActiveRestaurantRecord((current) => {
+            if (current.id !== targetRestId) return current
             const map = new Map<string, Order>()
             current.orders.forEach((o) => map.set(o.id, o))
             backendOrders.forEach((bo: any) => {
@@ -101,11 +108,16 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           console.warn("Could not fetch orders from backend API:", err)
         }
       })
-  }, [activeRestaurant?.id, updateActiveRestaurantRecord])
+
+    return () => {
+      isCancelled = true
+    }
+  }, [activeRestaurant?.id, session, updateActiveRestaurantRecord])
 
   // Real-time SSE order stream subscription
   useEffect(() => {
-    if (!apiClient.hasToken()) return
+    const targetRestId = activeRestaurant?.id
+    if (!targetRestId || !apiClient.hasToken()) return
     const unsubscribe = apiClient.subscribeToOrderStream((event: OrderEvent) => {
       if (!event || !event.orderId) return
 
@@ -204,12 +216,12 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           }
         })
       }
-    }, activeRestaurant?.id)
+    }, targetRestId)
 
     return () => {
       unsubscribe()
     }
-  }, [activeRestaurant?.id, updateActiveRestaurantRecord])
+  }, [activeRestaurant?.id, session, updateActiveRestaurantRecord])
 
   const addOrder = useCallback(
     (orderData: Omit<Order, "id" | "orderNumber" | "createdAt" | "updatedAt">) => {

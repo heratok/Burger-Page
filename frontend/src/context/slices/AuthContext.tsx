@@ -64,6 +64,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           authenticatedAt: new Date().toISOString(),
         }
         setSession(newSession)
+        if (!apiClient.hasToken()) {
+          apiClient.setToken(`local-super-${Date.now()}`)
+        }
         toast.success("Acceso concedido como Super Administrador")
         return { success: true, role: "super" as const }
       }
@@ -88,6 +91,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           authenticatedAt: new Date().toISOString(),
         }
         setSession(newSession)
+        if (!apiClient.hasToken()) {
+          apiClient.setToken(`local-restaurant-${candidateRest.id}-${Date.now()}`)
+        }
         toast.success(`Bienvenido al panel de ${candidateRest.config.name}`)
         return {
           success: true,
@@ -107,6 +113,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           authenticatedAt: new Date().toISOString(),
         }
         setSession(newSession)
+        if (!apiClient.hasToken()) {
+          apiClient.setToken(`local-restaurant-${matched.id}-${Date.now()}`)
+        }
         toast.success(`Bienvenido al panel de ${matched.config.name}`)
         return {
           success: true,
@@ -137,10 +146,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
+const DEFAULT_GUEST_SESSION: AdminSession = Object.freeze({ role: "guest" })
+
+const DEFAULT_AUTH_CONTEXT: AuthContextType = Object.freeze({
+  session: DEFAULT_GUEST_SESSION,
+  login: () => ({ success: false, role: null }),
+  logout: () => {},
+  setSession: () => {},
+})
+
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext)
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider")
-  }
-  return context
+  return context || DEFAULT_AUTH_CONTEXT
 }

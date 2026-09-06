@@ -9,6 +9,7 @@ import {
   defaultTenantRepository,
 } from "@/core/storage/TenantRepository"
 import { apiClient } from "@/core/api/apiClient"
+import { useAuth } from "./AuthContext"
 import { toast } from "sonner"
 
 export interface GlobalPlatformStats {
@@ -116,10 +117,12 @@ export const TenantProvider: React.FC<{
     }
   }, [repository])
 
-  // Sync with Backend DB on mount
+  const { session } = useAuth()
+
+  // Sync with Backend DB on mount and when authentication session changes
   useEffect(() => {
     refreshRestaurants()
-  }, [refreshRestaurants])
+  }, [refreshRestaurants, session])
 
   // Cross-tab synchronization via storage event
   useEffect(() => {

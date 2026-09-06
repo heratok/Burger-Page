@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react"
+import React, { useState, useMemo, useCallback } from "react"
 import { useRestaurant } from "@/context/RestaurantContext"
 import type { Order, OrderStatus } from "@/types/restaurant"
 import {
@@ -17,6 +17,7 @@ import {
   UtensilsCrossed,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Pagination } from "@/components/ui/pagination"
 import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
 import { buildWhatsAppUrl } from "@/features/cart"
 import { ManualSaleModal } from "./ManualSaleModal"
@@ -45,6 +46,11 @@ export const OrdersKanban: React.FC = () => {
 
   // In feed mode: active commands vs completed history
   const [feedTab, setFeedTab] = useState<"active" | "history">("active")
+  const [activeStatusFilter, setActiveStatusFilter] = useState<"ALL" | "pending" | "cooking" | "delivering">("ALL")
+  const [activePage, setActivePage] = useState(1)
+  const [activePageSize, setActivePageSize] = useState(12)
+  const [historyPage, setHistoryPage] = useState(1)
+  const [historyPageSize, setHistoryPageSize] = useState(12)
 
   const handleViewModeChange = (mode: "feed" | "kanban") => {
     setViewMode(mode)
@@ -58,12 +64,14 @@ export const OrdersKanban: React.FC = () => {
   const isDark = adminTheme === "dark"
 
   const filteredOrders = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase()
     return orders.filter((ord) => {
       const matchSearch =
-        ord.orderNumber.toString().includes(searchTerm) ||
-        ord.customer.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        ord.customer.direccion.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        ord.customer.barrio.toLowerCase().includes(searchTerm.toLowerCase())
+        !term ||
+        (ord.orderNumber != null && ord.orderNumber.toString().includes(term)) ||
+        Boolean(ord.customer?.nombre?.toLowerCase().includes(term)) ||
+        Boolean(ord.customer?.direccion?.toLowerCase().includes(term)) ||
+        Boolean(ord.customer?.barrio?.toLowerCase().includes(term))
 
       const matchMethod = methodFilter === "ALL" || ord.metodo === methodFilter
 
@@ -77,11 +85,32 @@ export const OrdersKanban: React.FC = () => {
     )
   }, [filteredOrders])
 
+  const displayedActiveOrders = useMemo(() => {
+    if (activeStatusFilter === "ALL") return activeOrders
+    return activeOrders.filter((o) => o.status === activeStatusFilter)
+  }, [activeOrders, activeStatusFilter])
+
+  const totalActivePages = Math.max(1, Math.ceil(displayedActiveOrders.length / activePageSize))
+  const safeActivePage = Math.min(activePage, totalActivePages)
+
+  const paginatedActiveOrders = useMemo(() => {
+    const start = (safeActivePage - 1) * activePageSize
+    return displayedActiveOrders.slice(start, start + activePageSize)
+  }, [displayedActiveOrders, safeActivePage, activePageSize])
+
   const historyOrders = useMemo(() => {
     return filteredOrders.filter(
       (o) => o.status === "delivered" || o.status === "cancelled"
     )
   }, [filteredOrders])
+
+  const totalHistoryPages = Math.max(1, Math.ceil(historyOrders.length / historyPageSize))
+  const safeHistoryPage = Math.min(historyPage, totalHistoryPages)
+
+  const paginatedHistoryOrders = useMemo(() => {
+    const start = (safeHistoryPage - 1) * historyPageSize
+    return historyOrders.slice(start, start + historyPageSize)
+  }, [historyOrders, safeHistoryPage, historyPageSize])
 
   const columns: Array<{
     id: OrderStatus
@@ -115,25 +144,28 @@ export const OrdersKanban: React.FC = () => {
     },
   ]
 
-  const openCustomerWhatsApp = (order: Order, customText?: string) => {
-    const fullPhone = formatWhatsAppPhone(order.customer.telefono)
-    const defaultMsg =
-      customText ||
-      `¡Hola ${order.customer.nombre}! Te escribimos de *${storeConfig.name}* sobre tu pedido #${order.orderNumber}.`
-    window.open(buildWhatsAppUrl(fullPhone, defaultMsg), "_blank", "noreferrer")
-  }
+  const openCustomerWhatsApp = useCallback(
+    (order: Order, customText?: string) => {
+      const fullPhone = formatWhatsAppPhone(order.customer?.telefono || "")
+      const defaultMsg =
+        customText ||
+        `¡Hola ${order.customer?.nombre || "Cliente"}! Te escribimos de *${storeConfig.name}* sobre tu pedido #${order.orderNumber}.`
+      window.open(buildWhatsAppUrl(fullPhone, defaultMsg), "_blank", "noreferrer")
+    },
+    [storeConfig.name]
+  )
 
   return (
     <div className="space-y-5">
       {/* Search, Filter & Actions Toolbar */}
       <div
-        className={`flex flex-col gap-3 rounded-2xl border p-4 shadow-xs lg:flex-row lg:items-center lg:justify-between ${
+        className={`flex flex-col gap-3 rounded-2xl border p-3.5 sm:p-4 shadow-xs lg:flex-row lg:items-center lg:justify-between ${
           isDark ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-white"
         }`}
       >
         <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
           {/* Search Box */}
-          <div className="relative flex-1 max-w-md">
+          <div className="relative flex-1 w-full max-w-none lg:max-w-md">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
@@ -158,7 +190,7 @@ export const OrdersKanban: React.FC = () => {
           </div>
 
           {/* Payment filter */}
-          <div className="w-44">
+          <div className="w-full sm:w-44">
             <Select
               size="md"
               leftIcon={<Filter className="size-3.5 text-slate-400" />}
@@ -175,16 +207,16 @@ export const OrdersKanban: React.FC = () => {
         </div>
 
         {/* View Mode Toggle & New Sale Button */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between sm:justify-end gap-2 w-full lg:w-auto pt-1 sm:pt-0">
           <div
-            className={`flex items-center rounded-xl border p-1 ${
+            className={`flex items-center rounded-xl border p-1 shrink-0 ${
               isDark ? "border-slate-800 bg-slate-800/80" : "border-slate-200 bg-slate-100"
             }`}
           >
             <button
               type="button"
               onClick={() => handleViewModeChange("feed")}
-              className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 rounded-lg px-2 sm:px-2.5 py-1.5 text-xs font-bold transition-all cursor-pointer ${
                 viewMode === "feed"
                   ? isDark
                     ? "bg-slate-700 text-white shadow-xs"
@@ -193,13 +225,13 @@ export const OrdersKanban: React.FC = () => {
               }`}
               title="Feed directo de comandas"
             >
-              <LayoutGrid className="size-3.5" />
+              <LayoutGrid className="size-3.5 shrink-0" />
               <span>Comandas</span>
             </button>
             <button
               type="button"
               onClick={() => handleViewModeChange("kanban")}
-              className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 rounded-lg px-2 sm:px-2.5 py-1.5 text-xs font-bold transition-all cursor-pointer ${
                 viewMode === "kanban"
                   ? isDark
                     ? "bg-slate-700 text-white shadow-xs"
@@ -208,7 +240,7 @@ export const OrdersKanban: React.FC = () => {
               }`}
               title="Tablero Kanban de 5 columnas"
             >
-              <Columns3 className="size-3.5" />
+              <Columns3 className="size-3.5 shrink-0" />
               <span>Kanban</span>
             </button>
           </div>
@@ -216,10 +248,11 @@ export const OrdersKanban: React.FC = () => {
           <Button
             type="button"
             onClick={() => setIsManualSaleOpen(true)}
-            className="gap-1.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 font-bold text-white shadow-md shadow-orange-500/20 hover:from-orange-600 hover:to-amber-600 cursor-pointer"
+            className="gap-1.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-xs font-bold text-white shadow-md shadow-orange-500/20 hover:from-orange-600 hover:to-amber-600 cursor-pointer shrink-0"
           >
-            <Plus className="size-4" />
-            <span>Nueva Venta</span>
+            <Plus className="size-4 shrink-0" />
+            <span className="hidden sm:inline">Nueva Venta</span>
+            <span className="sm:hidden">Venta</span>
           </Button>
         </div>
       </div>
@@ -229,7 +262,7 @@ export const OrdersKanban: React.FC = () => {
         <div className="space-y-4">
           {/* Feed Subtabs: Active vs History */}
           <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
               <button
                 type="button"
                 onClick={() => setFeedTab("active")}
@@ -284,7 +317,69 @@ export const OrdersKanban: React.FC = () => {
 
           {/* Tab Content: Active Commands */}
           {feedTab === "active" && (
-            <div>
+            <div className="space-y-3">
+              {/* Sub-status filter chips */}
+              {activeOrders.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 pb-1">
+                  {[
+                    { id: "ALL", label: "Todas", count: activeOrders.length, icon: null },
+                    {
+                      id: "pending",
+                      label: "Por Preparar",
+                      count: activeOrders.filter((o) => o.status === "pending").length,
+                      icon: <Clock className="size-3 text-amber-500" />,
+                    },
+                    {
+                      id: "cooking",
+                      label: "En Cocina",
+                      count: activeOrders.filter((o) => o.status === "cooking").length,
+                      icon: <ChefHat className="size-3 text-orange-500" />,
+                    },
+                    {
+                      id: "delivering",
+                      label: "En Reparto",
+                      count: activeOrders.filter((o) => o.status === "delivering").length,
+                      icon: <Bike className="size-3 text-blue-500" />,
+                    },
+                  ].map((chip) => {
+                    const isSelected = activeStatusFilter === chip.id
+                    return (
+                      <button
+                        key={chip.id}
+                        type="button"
+                        onClick={() => {
+                          setActiveStatusFilter(chip.id as "ALL" | "pending" | "cooking" | "delivering")
+                          setActivePage(1)
+                        }}
+                        className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
+                          isSelected
+                            ? isDark
+                              ? "bg-indigo-600 text-white shadow-xs"
+                              : "bg-indigo-600 text-white shadow-xs"
+                            : isDark
+                            ? "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                        }`}
+                      >
+                        {chip.icon}
+                        <span>{chip.label}</span>
+                        <span
+                          className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
+                            isSelected
+                              ? "bg-white/20 text-white"
+                              : isDark
+                              ? "bg-slate-700 text-slate-300"
+                              : "bg-slate-200 text-slate-700"
+                          }`}
+                        >
+                          {chip.count}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+
               {activeOrders.length === 0 ? (
                 <div
                   className={`flex flex-col items-center justify-center rounded-2xl border border-dashed p-12 text-center ${
@@ -309,26 +404,59 @@ export const OrdersKanban: React.FC = () => {
                     <span>Cargar Venta Manual</span>
                   </Button>
                 </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                  {activeOrders.map((ord) => (
-                    <LiveOrderCard
-                      key={ord.id}
-                      order={ord}
-                      isDark={isDark}
-                      onViewDetails={setSelectedOrder}
-                      onUpdateStatus={updateOrderStatus}
-                      onWhatsApp={openCustomerWhatsApp}
-                    />
-                  ))}
+              ) : displayedActiveOrders.length === 0 ? (
+                <div
+                  className={`flex flex-col items-center justify-center rounded-2xl border border-dashed p-10 text-center text-xs text-slate-400 ${
+                    isDark ? "border-slate-800" : "border-slate-200"
+                  }`}
+                >
+                  <span>No hay pedidos con el estado seleccionado.</span>
+                  <button
+                    type="button"
+                    onClick={() => setActiveStatusFilter("ALL")}
+                    className="mt-2 text-indigo-500 hover:underline font-semibold"
+                  >
+                    Ver todas las comandas activas ({activeOrders.length})
+                  </button>
                 </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {paginatedActiveOrders.map((ord) => (
+                      <LiveOrderCard
+                        key={ord.id}
+                        order={ord}
+                        isDark={isDark}
+                        onViewDetails={setSelectedOrder}
+                        onUpdateStatus={updateOrderStatus}
+                        onWhatsApp={openCustomerWhatsApp}
+                      />
+                    ))}
+                  </div>
+
+                  {displayedActiveOrders.length > activePageSize && (
+                    <div className="pt-2">
+                      <Pagination
+                        currentPage={safeActivePage}
+                        totalItems={displayedActiveOrders.length}
+                        pageSize={activePageSize}
+                        onPageChange={setActivePage}
+                        onPageSizeChange={(size) => {
+                          setActivePageSize(size)
+                          setActivePage(1)
+                        }}
+                        pageSizeOptions={[12, 24, 48]}
+                      />
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}
 
           {/* Tab Content: History */}
           {feedTab === "history" && (
-            <div>
+            <div className="space-y-3">
               {historyOrders.length === 0 ? (
                 <div
                   className={`flex flex-col items-center justify-center rounded-2xl border border-dashed p-10 text-center text-xs text-slate-400 ${
@@ -338,18 +466,36 @@ export const OrdersKanban: React.FC = () => {
                   <span>No hay pedidos en el historial todavía.</span>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                  {historyOrders.slice(0, 30).map((ord) => (
-                    <LiveOrderCard
-                      key={ord.id}
-                      order={ord}
-                      isDark={isDark}
-                      onViewDetails={setSelectedOrder}
-                      onUpdateStatus={updateOrderStatus}
-                      onWhatsApp={openCustomerWhatsApp}
-                    />
-                  ))}
-                </div>
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {paginatedHistoryOrders.map((ord) => (
+                      <LiveOrderCard
+                        key={ord.id}
+                        order={ord}
+                        isDark={isDark}
+                        onViewDetails={setSelectedOrder}
+                        onUpdateStatus={updateOrderStatus}
+                        onWhatsApp={openCustomerWhatsApp}
+                      />
+                    ))}
+                  </div>
+
+                  {historyOrders.length > historyPageSize && (
+                    <div className="pt-2">
+                      <Pagination
+                        currentPage={safeHistoryPage}
+                        totalItems={historyOrders.length}
+                        pageSize={historyPageSize}
+                        onPageChange={setHistoryPage}
+                        onPageSizeChange={(size) => {
+                          setHistoryPageSize(size)
+                          setHistoryPage(1)
+                        }}
+                        pageSizeOptions={[12, 24, 48]}
+                      />
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}
@@ -457,7 +603,7 @@ export const OrdersKanban: React.FC = () => {
           }
         }}
         title="¿Eliminar orden permanentemente?"
-        targetName={orderToDelete ? `Pedido #${orderToDelete.orderNumber} — ${orderToDelete.customer.nombre}` : undefined}
+        targetName={orderToDelete ? `Pedido #${orderToDelete.orderNumber} — ${orderToDelete.customer?.nombre || "Cliente"}` : undefined}
         description={
           orderToDelete
             ? `¿Estás seguro de que deseas eliminar permanentemente el Pedido #${orderToDelete.orderNumber} (${formatCurrency(orderToDelete.finalTotal)})? Esta acción no se puede deshacer.`

@@ -133,15 +133,15 @@ export const RestaurantProvider: React.FC<{
 }> = ({ children, repository }) => {
   return (
     <UiProvider>
-      <TenantProvider repository={repository}>
-        <AuthProvider>
+      <AuthProvider>
+        <TenantProvider repository={repository}>
           <CatalogProvider>
             <InventoryProvider>
               <OrderProvider>{children}</OrderProvider>
             </InventoryProvider>
           </CatalogProvider>
-        </AuthProvider>
-      </TenantProvider>
+        </TenantProvider>
+      </AuthProvider>
     </UiProvider>
   )
 }
