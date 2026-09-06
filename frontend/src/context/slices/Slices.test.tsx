@@ -238,6 +238,81 @@ describe("InventoryContext Slice", () => {
     const updated = result.current.inventory.find((i) => i.name === "Carne Angus 150g")
     expect(updated?.currentStock).toBe(30)
   })
+
+  it("produces distinct ids for two addInventoryItem calls in the same tick (collision regression)", async () => {
+    const { TenantProvider } = await import("./TenantContext")
+    const { InventoryProvider, useInventory } = await import("./InventoryContext")
+    const { apiClient } = await import("@/core/api/apiClient")
+
+    let resolveA!: (value: any) => void
+    let resolveB!: (value: any) => void
+    vi.spyOn(apiClient, "createInventoryItem")
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveA = resolve
+          })
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveB = resolve
+          })
+      )
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>
+        <InventoryProvider>{children}</InventoryProvider>
+      </TenantProvider>
+    )
+
+    const { result } = renderHook(() => useInventory(), { wrapper })
+
+    vi.useFakeTimers()
+    try {
+      await act(async () => {
+        result.current.addInventoryItem({
+          name: "Item Same-tick A",
+          category: "ingredients",
+          currentStock: 1,
+          minStockAlert: 0,
+          unit: "kg",
+          costPerUnit: 100,
+        })
+        result.current.addInventoryItem({
+          name: "Item Same-tick B",
+          category: "ingredients",
+          currentStock: 1,
+          minStockAlert: 0,
+          unit: "kg",
+          costPerUnit: 200,
+        })
+      })
+    } finally {
+      vi.useRealTimers()
+    }
+
+    const itemA = result.current.inventory.find((i) => i.name === "Item Same-tick A")
+    const itemB = result.current.inventory.find((i) => i.name === "Item Same-tick B")
+    expect(itemA).toBeDefined()
+    expect(itemB).toBeDefined()
+    // Distinct ids even though both calls happened in the same fake-tick
+    expect(itemA!.id).not.toBe(itemB!.id)
+    expect(result.current.inventory.length).toBeGreaterThanOrEqual(2)
+
+    // Now resolve backend with distinct ids — each local entry must swap to its OWN id
+    await act(async () => {
+      resolveA({ id: "server-IA", name: "Item Same-tick A" })
+      resolveB({ id: "server-IB", name: "Item Same-tick B" })
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    const swappedA = result.current.inventory.find((i) => i.name === "Item Same-tick A")
+    const swappedB = result.current.inventory.find((i) => i.name === "Item Same-tick B")
+    expect(swappedA?.id).toBe("server-IA")
+    expect(swappedB?.id).toBe("server-IB")
+  })
 })
 
 describe("OrderContext Slice", () => {
@@ -557,6 +632,114 @@ describe("OrderContext Slice", () => {
     expect(newOrder?.customer.nombre).toBe("Mariana Pajón")
     expect(newOrder?.status).toBe("pending")
   })
+
+  it("assigns distinct temp ids when two addOrder calls happen in the same tick (same-tick collision regression)", async () => {
+    const { TenantProvider } = await import("./TenantContext")
+    const { OrderProvider, useOrders } = await import("./OrderContext")
+    const { apiClient } = await import("@/core/api/apiClient")
+
+    // Defer backend responses so we can observe the optimistic state before swap
+    let resolveA!: (value: any) => void
+    let resolveB!: (value: any) => void
+    vi.spyOn(apiClient, "createOrder")
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveA = resolve
+          })
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveB = resolve
+          })
+      )
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>
+        <UiProvider>
+          <OrderProvider>{children}</OrderProvider>
+        </UiProvider>
+      </TenantProvider>
+    )
+
+    const { result } = renderHook(() => useOrders(), { wrapper })
+
+    let firstRefId = ""
+    let secondRefId = ""
+
+    // Force same-tick creation: lock the timer so Date.now() returns identical values
+    vi.useFakeTimers()
+    try {
+      await act(async () => {
+        const a = result.current.addOrder({
+          customer: {
+            nombre: "Cliente A",
+            telefono: "3111111111",
+            direccion: "Calle A",
+            barrio: "Norte",
+          },
+          items: [{ name: "Burger", price: 10000, cantidad: 1, total: 10000 }],
+          total: 10000,
+          deliveryFee: 0,
+          finalTotal: 10000,
+          metodo: "Transferencia",
+          status: "pending",
+        })
+        firstRefId = a.id
+        const b = result.current.addOrder({
+          customer: {
+            nombre: "Cliente B",
+            telefono: "3222222222",
+            direccion: "Calle B",
+            barrio: "Sur",
+          },
+          items: [{ name: "Burger", price: 10000, cantidad: 1, total: 10000 }],
+          total: 10000,
+          deliveryFee: 0,
+          finalTotal: 10000,
+          metodo: "Efectivo",
+          status: "pending",
+        })
+        secondRefId = b.id
+      })
+    } finally {
+      vi.useRealTimers()
+    }
+
+    // Two distinct addOrder calls must produce two distinct optimistic ids
+    expect(firstRefId).not.toBe(secondRefId)
+    expect(result.current.orders.length).toBe(2)
+
+    const firstEntry = result.current.orders.find((o) => o.id === firstRefId)
+    const secondEntry = result.current.orders.find((o) => o.id === secondRefId)
+    expect(firstEntry).toBeDefined()
+    expect(secondEntry).toBeDefined()
+    expect(firstEntry?.customer.nombre).toBe("Cliente A")
+    expect(secondEntry?.customer.nombre).toBe("Cliente B")
+
+    // Now resolve backend with distinct ids — each local entry must swap to its OWN backend id
+    await act(async () => {
+      resolveA({ id: "server-A", orderNumber: 10180 })
+      resolveB({ id: "server-B", orderNumber: 25 })
+      // Let pending microtasks settle
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    // Each entry swapped to its OWN backend id (reference-based swap, not id-based)
+    const swappedA = result.current.orders.find(
+      (o) => o.customer.nombre === "Cliente A"
+    )
+    const swappedB = result.current.orders.find(
+      (o) => o.customer.nombre === "Cliente B"
+    )
+    expect(swappedA?.id).toBe("server-A")
+    expect(swappedB?.id).toBe("server-B")
+    // orderNumber propagated from backend response
+    expect(swappedA?.orderNumber).toBe(10180)
+    expect(swappedB?.orderNumber).toBe(25)
+  })
 })
 
 describe("CatalogContext Slice - Dynamic Category Management", () => {
@@ -693,6 +876,162 @@ describe("CatalogContext Slice - Dynamic Category Management", () => {
     })
 
     expect(deleteAdditionSpy).toHaveBeenCalledWith("add-server-1")
+  })
+
+  it("produces distinct ids for two addProduct calls in the same tick (collision regression)", async () => {
+    const { TenantProvider } = await import("./TenantContext")
+    const { CatalogProvider, useCatalog } = await import("./CatalogContext")
+    const { apiClient } = await import("@/core/api/apiClient")
+
+    let resolveA!: (value: any) => void
+    let resolveB!: (value: any) => void
+    vi.spyOn(apiClient, "createProduct")
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveA = resolve
+          })
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveB = resolve
+          })
+      )
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>
+        <CatalogProvider>{children}</CatalogProvider>
+      </TenantProvider>
+    )
+
+    const { result } = renderHook(() => useCatalog(), { wrapper })
+
+    vi.useFakeTimers()
+    try {
+      await act(async () => {
+        result.current.addProduct({
+          name: "Product Same-tick A",
+          price: 100,
+          category: "Test",
+          src: "",
+          description: "",
+          inStock: true,
+        })
+        result.current.addProduct({
+          name: "Product Same-tick B",
+          price: 200,
+          category: "Test",
+          src: "",
+          description: "",
+          inStock: true,
+        })
+      })
+    } finally {
+      vi.useRealTimers()
+    }
+
+    const prodA = result.current.products.find((p) => p.name === "Product Same-tick A")
+    const prodB = result.current.products.find((p) => p.name === "Product Same-tick B")
+    expect(prodA).toBeDefined()
+    expect(prodB).toBeDefined()
+    expect(prodA!.id).not.toBe(prodB!.id)
+
+    await act(async () => {
+      resolveA({ id: "server-PA", name: "Product Same-tick A" })
+      resolveB({ id: "server-PB", name: "Product Same-tick B" })
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    const swappedA = result.current.products.find(
+      (p) => p.name === "Product Same-tick A"
+    )
+    const swappedB = result.current.products.find(
+      (p) => p.name === "Product Same-tick B"
+    )
+    expect(swappedA?.id).toBe("server-PA")
+    expect(swappedB?.id).toBe("server-PB")
+  })
+})
+
+describe("TenantContext Slice - Same-Tick Restaurant Creation", () => {
+  beforeEach(() => {
+    localStorage.clear()
+    vi.clearAllMocks()
+  })
+
+  it("produces distinct ids for two createRestaurant calls in the same tick (collision regression)", async () => {
+    const { TenantProvider, useTenant } = await import("./TenantContext")
+    const { apiClient } = await import("@/core/api/apiClient")
+
+    let resolveA!: (value: any) => void
+    let resolveB!: (value: any) => void
+    vi.spyOn(apiClient, "createRestaurant")
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveA = resolve
+          })
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveB = resolve
+          })
+      )
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>{children}</TenantProvider>
+    )
+
+    const { result } = renderHook(() => useTenant(), { wrapper })
+
+    vi.useFakeTimers()
+    try {
+      await act(async () => {
+        result.current.createRestaurant({
+          name: "Rest Same-tick A",
+          slug: "rest-same-tick-a",
+          tagline: "A",
+          whatsappNumber: "3000000001",
+        })
+        result.current.createRestaurant({
+          name: "Rest Same-tick B",
+          slug: "rest-same-tick-b",
+          tagline: "B",
+          whatsappNumber: "3000000002",
+        })
+      })
+    } finally {
+      vi.useRealTimers()
+    }
+
+    const restA = result.current.restaurants.find(
+      (r) => r.config.name === "Rest Same-tick A"
+    )
+    const restB = result.current.restaurants.find(
+      (r) => r.config.name === "Rest Same-tick B"
+    )
+    expect(restA).toBeDefined()
+    expect(restB).toBeDefined()
+    expect(restA!.id).not.toBe(restB!.id)
+
+    await act(async () => {
+      resolveA({ id: "server-RA", slug: "rest-same-tick-a" })
+      resolveB({ id: "server-RB", slug: "rest-same-tick-b" })
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    const swappedA = result.current.restaurants.find(
+      (r) => r.config.name === "Rest Same-tick A"
+    )
+    const swappedB = result.current.restaurants.find(
+      (r) => r.config.name === "Rest Same-tick B"
+    )
+    expect(swappedA?.id).toBe("server-RA")
+    expect(swappedB?.id).toBe("server-RB")
   })
 })
 

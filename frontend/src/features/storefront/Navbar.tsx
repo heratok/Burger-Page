@@ -14,7 +14,13 @@ export default function Navbar({ cantidad, total, onOpenCart }: NavbarProps) {
   const cartLabel = `Ver orden, ${cantidad} ${cantidad === 1 ? "producto" : "productos"}, total ${formatCurrency(total)}`
 
   return (
-    <header className="sticky top-0 z-30 border-b border-border-subtle bg-bg-base/85 backdrop-blur-md transition-colors">
+    <header
+      style={{
+        backgroundColor: "color-mix(in srgb, var(--color-bg-base) 90%, transparent)",
+        borderColor: "var(--color-border-subtle)",
+      }}
+      className="sticky top-0 z-30 border-b backdrop-blur-md transition-colors"
+    >
       {/* Optional Top Promotional Announcement Bar */}
       {storeConfig.showAnnouncement && storeConfig.announcementText && (
         <div
@@ -64,7 +70,7 @@ export default function Navbar({ cantidad, total, onOpenCart }: NavbarProps) {
               {storeConfig.name}
             </span>
             <span
-              style={{ color: "var(--color-text-muted)" }}
+              style={{ color: "var(--color-text-secondary)" }}
               className="text-xs line-clamp-1 font-medium"
             >
               {storeConfig.tagline}
