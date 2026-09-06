@@ -1,0 +1,953 @@
+[
+  {
+    "id": "TC001",
+    "title": "Place an order from the cart",
+    "description": "This verifies a customer can complete checkout by providing delivery details, selecting a payment method, and submitting the order successfully.",
+    "category": "Order Placement",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /rosto"
+      },
+      {
+        "type": "action",
+        "description": "Add a product to the cart"
+      },
+      {
+        "type": "action",
+        "description": "Open the cart"
+      },
+      {
+        "type": "action",
+        "description": "Proceed to checkout"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the customer name field with a valid name"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the phone field with a valid phone number"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the delivery address field with a valid address"
+      },
+      {
+        "type": "action",
+        "description": "Select a payment method"
+      },
+      {
+        "type": "action",
+        "description": "Submit the order"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an order confirmation is visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC002",
+    "title": "Browse the storefront catalog",
+    "description": "This verifies a customer can open the public storefront and see the restaurant catalog loaded.",
+    "category": "Public Storefront Catalog and Cart",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /rosto"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the storefront catalog is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify restaurant menu products are visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC003",
+    "title": "Log in as restaurant administrator",
+    "description": "This verifies a restaurant administrator can sign in through the admin gateway and reach the restaurant backoffice dashboard.",
+    "category": "User Authentication",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /admin"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with rosto"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with rosto0502"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the restaurant admin dashboard is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC004",
+    "title": "Advance an order through preparation statuses",
+    "description": "This verifies a restaurant administrator can view incoming orders and update an order through preparation stages in the order board.",
+    "category": "Order Placement",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /admin"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Open the orders board"
+      },
+      {
+        "type": "action",
+        "description": "Advance an order to the next preparation status"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the order appears in the updated status column"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC005",
+    "title": "Advance an order through preparation stages",
+    "description": "This verifies that a restaurant administrator can move an order across statuses in the order board and see it remain in the active workflow until completion.",
+    "category": "Orders Kanban Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /admin"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_USER}} into the username field"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the authentication form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to view orders"
+      },
+      {
+        "type": "action",
+        "description": "Move an order to the next preparation stage"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the order is shown in the updated status column"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the order remains visible in the active workflow"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC006",
+    "title": "Log in as super administrator",
+    "description": "This verifies a super administrator can sign in through the admin gateway and reach the restaurant registry area.",
+    "category": "User Authentication",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /admin"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with admin"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with Test0502*"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the restaurant registry is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC007",
+    "title": "Customize a burger and add it to the cart",
+    "description": "This verifies a customer can open a product, choose available additions, and add the customized item to the cart.",
+    "category": "Public Storefront Catalog and Cart",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /rosto"
+      },
+      {
+        "type": "action",
+        "description": "Select a burger from the catalog"
+      },
+      {
+        "type": "action",
+        "description": "Choose available additions for the burger"
+      },
+      {
+        "type": "action",
+        "description": "Add the customized burger to the cart"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the cart shows the added item"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the selected additions are reflected in the cart"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC008",
+    "title": "Create a menu product and see it in the catalog",
+    "description": "This verifies that a restaurant administrator can add a new menu product and have it appear in the storefront catalog.",
+    "category": "Menu and Product Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /admin"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_USER}} into the username field"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the authentication form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open menu management"
+      },
+      {
+        "type": "action",
+        "description": "Start adding a new product"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the product name field with a unique product name"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the product price field with a valid price"
+      },
+      {
+        "type": "action",
+        "description": "Select a category for the product"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the product description field with a product description"
+      },
+      {
+        "type": "action",
+        "description": "Set the product to available"
+      },
+      {
+        "type": "action",
+        "description": "Save the product"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new product appears in the menu list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the product is available in the storefront catalog"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC009",
+    "title": "Review cart contents from the storefront",
+    "description": "This verifies a customer can open the cart and review the selected items before checkout.",
+    "category": "Public Storefront Catalog and Cart",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /rosto"
+      },
+      {
+        "type": "action",
+        "description": "Add a product to the cart"
+      },
+      {
+        "type": "action",
+        "description": "Open the cart"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the cart contents are displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the selected item is present in the cart"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC010",
+    "title": "Cancel an active order",
+    "description": "This verifies that a restaurant administrator can cancel an order from the order board and see it removed from active processing.",
+    "category": "Orders Kanban Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /admin"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_USER}} into the username field"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the authentication form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to view orders"
+      },
+      {
+        "type": "action",
+        "description": "Cancel an order from the board"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the cancelled order is removed from the active workflow"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the order board still displays other active orders"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC011",
+    "title": "Create a tenant restaurant",
+    "description": "This verifies that a super administrator can add a new restaurant to the tenant registry and see it appear in the list.",
+    "category": "Superadmin Restaurant Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation entry for the restaurant registry"
+      },
+      {
+        "type": "action",
+        "description": "Create a new restaurant"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the restaurant name field with a unique restaurant name"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the restaurant slug field with a unique restaurant slug"
+      },
+      {
+        "type": "action",
+        "description": "Save the restaurant"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new restaurant appears in the registry"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the restaurant is shown as active or inactive in the registry"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC012",
+    "title": "Manage menu products and verify storefront visibility",
+    "description": "This verifies a restaurant administrator can create or edit a menu product and then see it reflected in the public storefront catalog.",
+    "category": "Public Storefront Catalog and Cart",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /admin"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Open the menu manager"
+      },
+      {
+        "type": "action",
+        "description": "Create or edit a product in the menu manager"
+      },
+      {
+        "type": "action",
+        "description": "Save the menu changes"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /rosto"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the updated product is displayed in the storefront catalog"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC013",
+    "title": "Log in to the correct admin area by role",
+    "description": "This verifies that signing in through the admin gateway routes a restaurant administrator to the dashboard and a super administrator to the restaurant registry.",
+    "category": "Role-Based Routing",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /admin"
+      },
+      {
+        "type": "action",
+        "description": "Fill in rosto into the username field"
+      },
+      {
+        "type": "action",
+        "description": "Fill in rosto0502 into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the authentication form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the restaurant administrator dashboard is displayed"
+      },
+      {
+        "type": "action",
+        "description": "Log out of the admin area"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /admin"
+      },
+      {
+        "type": "action",
+        "description": "Fill in admin into the username field"
+      },
+      {
+        "type": "action",
+        "description": "Fill in Test0502* into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the authentication form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the restaurant registry page is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC014",
+    "title": "Add stock in inventory and see it saved",
+    "description": "This verifies a restaurant administrator can review inventory, adjust stock, and see the saved inventory update on return.",
+    "category": "Inventory Review and Adjustments",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /admin"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Open the inventory manager"
+      },
+      {
+        "type": "action",
+        "description": "Adjust the stock for an inventory item"
+      },
+      {
+        "type": "action",
+        "description": "Save the inventory changes"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the updated inventory value is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC015",
+    "title": "Update an existing menu product",
+    "description": "This verifies that a restaurant administrator can edit a menu product and see the updated details preserved in the menu.",
+    "category": "Menu and Product Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /admin"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_USER}} into the username field"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the authentication form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open menu management"
+      },
+      {
+        "type": "action",
+        "description": "Select an existing product"
+      },
+      {
+        "type": "action",
+        "description": "Update the product name or description"
+      },
+      {
+        "type": "action",
+        "description": "Save the changes"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the updated product details appear in the menu list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the product remains available in the catalog"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC016",
+    "title": "Add a new inventory item",
+    "description": "This verifies that a restaurant administrator can create an inventory item and see it saved in the stock list.",
+    "category": "Inventory Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /admin"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_USER}} into the username field"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the authentication form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open inventory management"
+      },
+      {
+        "type": "action",
+        "description": "Start adding a new inventory item"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the inventory item name field with a unique item name"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the quantity field with a valid stock amount"
+      },
+      {
+        "type": "action",
+        "description": "Select a unit for the item"
+      },
+      {
+        "type": "action",
+        "description": "Save the inventory item"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new inventory item appears in the inventory list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the saved quantity is displayed for the item"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC017",
+    "title": "Toggle a restaurant's active status",
+    "description": "This verifies that a super administrator can change a restaurant's active state from the registry and see the updated status reflected in the list.",
+    "category": "Superadmin Restaurant Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation entry for the restaurant registry"
+      },
+      {
+        "type": "action",
+        "description": "Select a restaurant from the registry"
+      },
+      {
+        "type": "action",
+        "description": "Toggle the restaurant active status"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the restaurant status is updated in the registry"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC018",
+    "title": "Adjust an inventory item's stock level",
+    "description": "This verifies that a restaurant administrator can update inventory quantities and see the revised stock level reflected.",
+    "category": "Inventory Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /admin"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_USER}} into the username field"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the authentication form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open inventory management"
+      },
+      {
+        "type": "action",
+        "description": "Select an existing inventory item"
+      },
+      {
+        "type": "action",
+        "description": "Adjust the stock quantity"
+      },
+      {
+        "type": "action",
+        "description": "Save the change"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the updated stock quantity is shown for the item"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the inventory list reflects the saved adjustment"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC019",
+    "title": "Filter the storefront by category",
+    "description": "This verifies a customer can narrow the catalog by category and see the product list update accordingly.",
+    "category": "Public Storefront Catalog and Cart",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /rosto"
+      },
+      {
+        "type": "action",
+        "description": "Browse the menu catalog"
+      },
+      {
+        "type": "action",
+        "description": "Select a category filter"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the catalog is filtered to matching products"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC020",
+    "title": "Create a restaurant and toggle its active status",
+    "description": "This verifies that a super administrator can add a tenant restaurant and change whether it is active in the registry.",
+    "category": "Superadmin Restaurant Registry Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /admin"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a super administrator username into the username field"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a super administrator password into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the authentication form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the restaurant registry"
+      },
+      {
+        "type": "action",
+        "description": "Start adding a new restaurant"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the restaurant name field with a unique restaurant name"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the restaurant details field with valid information"
+      },
+      {
+        "type": "action",
+        "description": "Save the restaurant"
+      },
+      {
+        "type": "action",
+        "description": "Toggle the restaurant active status"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new restaurant appears in the registry"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the restaurant status is shown as updated"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC021",
+    "title": "Remove a menu product",
+    "description": "This verifies that a restaurant administrator can delete a menu product and see it removed from the list.",
+    "category": "Menu and Product Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /admin"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_USER}} into the username field"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the authentication form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open menu management"
+      },
+      {
+        "type": "action",
+        "description": "Select an existing product"
+      },
+      {
+        "type": "action",
+        "description": "Delete the product"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the deleted product is removed from the menu list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the catalog no longer shows the deleted product"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC022",
+    "title": "Keep the restaurant list visible for registry review",
+    "description": "This verifies that a super administrator can open the restaurant registry and view the existing tenant list.",
+    "category": "Superadmin Restaurant Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation entry for the restaurant registry"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the tenant restaurant list is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC023",
+    "title": "Reject invalid admin credentials",
+    "description": "This verifies the admin gateway shows an error notification when invalid credentials are submitted.",
+    "category": "User Authentication",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /admin"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with invalid credentials"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with invalid credentials"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an error notification is visible"
+      }
+    ],
+    "priority": "Low"
+  }
+]

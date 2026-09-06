@@ -56,6 +56,7 @@ import { ListRestaurantsUseCase } from '../../application/use-cases/ListRestaura
 import { CreateRestaurantUseCase } from '../../application/use-cases/CreateRestaurantUseCase.js';
 import { DeleteRestaurantUseCase } from '../../application/use-cases/DeleteRestaurantUseCase.js';
 import { UpdateRestaurantCategoriesUseCase } from '../../application/use-cases/UpdateRestaurantCategoriesUseCase.js';
+import { UpdateRestaurantUseCase } from '../../application/use-cases/UpdateRestaurantUseCase.js';
 import { ListProductsUseCase } from '../../application/use-cases/ListProductsUseCase.js';
 import { GetProductByIdUseCase } from '../../application/use-cases/GetProductByIdUseCase.js';
 import { CreateProductUseCase } from '../../application/use-cases/CreateProductUseCase.js';
@@ -196,6 +197,7 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
   const createRestaurant = new CreateRestaurantUseCase(restaurantRepo, categoryRepo);
   const deleteRestaurant = new DeleteRestaurantUseCase(restaurantRepo);
   const updateRestaurantCategories = new UpdateRestaurantCategoriesUseCase(restaurantRepo, categoryRepo);
+  const updateRestaurant = new UpdateRestaurantUseCase(restaurantRepo);
 
   const listProducts = new ListProductsUseCase(productRepo);
   const getProductById = new GetProductByIdUseCase(productRepo);
@@ -240,7 +242,8 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
       listRestaurants,
       createRestaurant,
       deleteRestaurant,
-      updateRestaurantCategories
+      updateRestaurantCategories,
+      updateRestaurant
     ),
     productController: new ProductController(
       listProducts,

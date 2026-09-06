@@ -1,10 +1,10 @@
 import { FastifyInstance } from 'fastify';
 import { RestaurantController } from '../controllers/RestaurantController.js';
-import { requireSuperAdmin, requireAnyAdmin } from '../middleware/auth.middleware.js';
+import { requireSuperAdmin, tryAuth } from '../middleware/auth.middleware.js';
 
 export async function restaurantsRoutes(fastify: FastifyInstance, opts: { controller: RestaurantController }) {
   fastify.get('/', {
-    preHandler: [requireAnyAdmin],
+    preHandler: [tryAuth],
     schema: {
       tags: ['Restaurant'],
       summary: 'List restaurants',
@@ -88,6 +88,36 @@ export async function restaurantsRoutes(fastify: FastifyInstance, opts: { contro
       }
     }
   }, opts.controller.get.bind(opts.controller));
+
+  fastify.put('/:id', {
+    preHandler: [requireSuperAdmin],
+    schema: {
+      tags: ['Restaurant'],
+      summary: 'Update restaurant tenant',
+      params: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' }
+        },
+        required: ['id']
+      }
+    }
+  }, opts.controller.update.bind(opts.controller));
+
+  fastify.patch('/:id', {
+    preHandler: [requireSuperAdmin],
+    schema: {
+      tags: ['Restaurant'],
+      summary: 'Partially update restaurant tenant',
+      params: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' }
+        },
+        required: ['id']
+      }
+    }
+  }, opts.controller.update.bind(opts.controller));
 
   fastify.delete('/:id', {
     preHandler: [requireSuperAdmin],

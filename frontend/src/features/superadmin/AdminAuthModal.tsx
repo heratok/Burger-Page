@@ -17,6 +17,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { apiClient } from "@/core/api/apiClient"
+import { toast } from "sonner"
 
 interface AdminAuthModalProps {
   isOpen: boolean
@@ -79,9 +80,13 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
         return
       }
 
-      setErrorMsg(result.error || "Credenciales incorrectas")
+      const errorDetail = result.error || "Credenciales incorrectas"
+      setErrorMsg(errorDetail)
+      toast.error(errorDetail)
     } catch {
-      setErrorMsg("Error de conexión al servidor de autenticación")
+      const connError = "Error de conexión al servidor de autenticación"
+      setErrorMsg(connError)
+      toast.error(connError)
     } finally {
       setIsLoading(false)
     }
@@ -250,7 +255,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
                 </div>
 
                 {errorMsg && (
-                  <div className="mt-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs font-medium text-rose-400 flex items-center gap-2 animate-in fade-in">
+                  <div role="alert" aria-live="assertive" className="mt-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs font-medium text-rose-400 flex items-center gap-2 animate-in fade-in">
                     <span>⚠️ {errorMsg}</span>
                   </div>
                 )}

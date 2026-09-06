@@ -96,10 +96,43 @@ describe("Router Engine - resolveRoute", () => {
     expect(res.attemptedSlug).toBe("unknown-restaurant-123")
   })
 
-  it("marks invalid admin subroute as not found", () => {
-    const res = resolveRoute("/admin/invalid-tab", mockRestaurants)
-    expect(res.view).toBe("not-found")
-    expect(res.isNotFound).toBe(true)
-    expect(res.attemptedSlug).toBe("admin/invalid-tab")
+  it("resolves '/admin/login', '/admin/signin', '/admin/auth' as admin view", () => {
+    expect(resolveRoute("/admin/login", mockRestaurants)).toEqual({
+      view: "admin",
+      isNotFound: false,
+    })
+    expect(resolveRoute("/admin/signin", mockRestaurants)).toEqual({
+      view: "admin",
+      isNotFound: false,
+    })
+    expect(resolveRoute("/admin/auth", mockRestaurants)).toEqual({
+      view: "admin",
+      isNotFound: false,
+    })
+  })
+
+  it("resolves '/admin/tenants', '/admin/tenants/new', '/admin/restaurants/new' to adminTab 'restaurants'", () => {
+    expect(resolveRoute("/admin/tenants", mockRestaurants)).toEqual({
+      view: "admin",
+      adminTab: "restaurants",
+      isNotFound: false,
+    })
+    expect(resolveRoute("/admin/tenants/new", mockRestaurants)).toEqual({
+      view: "admin",
+      adminTab: "restaurants",
+      isNotFound: false,
+    })
+    expect(resolveRoute("/admin/restaurants/new", mockRestaurants)).toEqual({
+      view: "admin",
+      adminTab: "restaurants",
+      isNotFound: false,
+    })
+  })
+
+  it("falls back unknown admin subroute to admin dashboard instead of restaurant 404", () => {
+    const res = resolveRoute("/admin/unknown-page", mockRestaurants)
+    expect(res.view).toBe("admin")
+    expect(res.adminTab).toBe("dashboard")
+    expect(res.isNotFound).toBe(false)
   })
 })

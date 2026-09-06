@@ -41,23 +41,48 @@ export function resolveRoute(
     }
   }
 
-  // Exact /admin root backoffice path
-  if (lowerPath === "admin") {
+  // Exact /admin, /login, /signin root backoffice path
+  if (["admin", "login", "signin", "auth"].includes(lowerPath)) {
     return {
       view: "admin",
       isNotFound: false,
     }
   }
 
-  // Sub-routes for admin backoffice (e.g. /admin/orders, /admin/menu, /admin/dashboard)
+  // Sub-routes for admin backoffice (e.g. /admin/orders, /admin/menu, /admin/dashboard, /admin/login, /admin/tenants/new)
   if (lowerPath.startsWith("admin/")) {
-    const subTab = lowerPath.slice("admin/".length)
-    if (VALID_ADMIN_TABS.includes(subTab as AdminTab)) {
+    const subRoute = lowerPath.slice("admin/".length)
+
+    // Auth aliases (e.g. /admin/login, /admin/signin, /admin/auth)
+    if (["login", "signin", "auth"].includes(subRoute)) {
       return {
         view: "admin",
-        adminTab: subTab as AdminTab,
         isNotFound: false,
       }
+    }
+
+    // Tenant/restaurant registry aliases (e.g. /admin/tenants, /admin/tenants/new, /admin/restaurants/new)
+    if (["tenants", "tenants/new", "restaurants/new"].includes(subRoute)) {
+      return {
+        view: "admin",
+        adminTab: "restaurants",
+        isNotFound: false,
+      }
+    }
+
+    if (VALID_ADMIN_TABS.includes(subRoute as AdminTab)) {
+      return {
+        view: "admin",
+        adminTab: subRoute as AdminTab,
+        isNotFound: false,
+      }
+    }
+
+    // Any other /admin/* sub-route belongs to admin backoffice rather than 404 store
+    return {
+      view: "admin",
+      adminTab: "dashboard",
+      isNotFound: false,
     }
   }
 

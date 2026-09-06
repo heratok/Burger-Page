@@ -84,6 +84,7 @@ describe("TenantContext Optimistic Updates & Rollback", () => {
   it("optimistically toggles active status instantly without reload", async () => {
     vi.spyOn(apiClient, "hasToken").mockReturnValue(true)
     vi.spyOn(apiClient, "listRestaurants").mockResolvedValue(mockInitialRestaurants as any)
+    vi.spyOn(apiClient, "updateRestaurant").mockResolvedValue({} as any)
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <TenantProvider>{children}</TenantProvider>
