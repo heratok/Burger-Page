@@ -8,6 +8,7 @@ import { useUi } from "./UiContext"
 import { playNotificationChime } from "@/core/audio/soundEffects"
 import { toast } from "sonner"
 import { formatCurrency, cleanPhoneNumber } from "@/lib/utils"
+import { nextTempId } from "@/lib/ids"
 
 export interface OrderContextType {
   orders: Order[]
@@ -246,7 +247,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const now = new Date().toISOString()
       const newOrder: Order = {
         ...orderData,
-        id: `ord-${Date.now()}`,
+        id: nextTempId("ord"),
         orderNumber: Math.floor(10000 + Math.random() * 90000),
         createdAt: now,
         updatedAt: now,
@@ -350,7 +351,9 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               updateActiveRestaurantRecord((current) => ({
                 ...current,
                 orders: current.orders.map((o) =>
-                  o.id === newOrder.id ? { ...o, id: createdOrder.id } : o
+                  o === newOrder
+                    ? { ...o, id: createdOrder.id, orderNumber: createdOrder.orderNumber ?? o.orderNumber }
+                    : o
                 ),
               }))
             }

@@ -4,6 +4,7 @@ import {
   formatCurrency,
   cleanPhoneNumber,
   formatWhatsAppPhone,
+  getContrastForeground,
 } from "./utils"
 
 describe("lib/utils utilities", () => {
@@ -90,6 +91,31 @@ describe("lib/utils utilities", () => {
       expect(formatWhatsAppPhone("")).toBe("")
       expect(formatWhatsAppPhone(null)).toBe("")
       expect(formatWhatsAppPhone(undefined)).toBe("")
+    })
+  })
+
+  describe("getContrastForeground", () => {
+    it("returns dark text for light or high-luminance colors (yellow, lime, cyan, white)", () => {
+      expect(getContrastForeground("#FACC15")).toBe("#0F172A") // Bright yellow
+      expect(getContrastForeground("#A3E635")).toBe("#0F172A") // Bright lime
+      expect(getContrastForeground("#FFFFFF")).toBe("#0F172A") // Pure white
+      expect(getContrastForeground("#38BDF8")).toBe("#0F172A") // Light cyan
+      expect(getContrastForeground("#FFF")).toBe("#0F172A")    // 3-digit shorthand
+    })
+
+    it("returns white text for dark or low-luminance colors (red, purple, black, navy)", () => {
+      expect(getContrastForeground("#E63946")).toBe("#FFFFFF") // Red gourmet
+      expect(getContrastForeground("#8B5CF6")).toBe("#FFFFFF") // Purple premium
+      expect(getContrastForeground("#000000")).toBe("#FFFFFF") // Pure black
+      expect(getContrastForeground("#1E293B")).toBe("#FFFFFF") // Dark navy
+      expect(getContrastForeground("#000")).toBe("#FFFFFF")    // 3-digit shorthand
+    })
+
+    it("handles null, undefined, and malformed inputs gracefully", () => {
+      expect(getContrastForeground(null)).toBe("#FFFFFF")
+      expect(getContrastForeground(undefined)).toBe("#FFFFFF")
+      expect(getContrastForeground("")).toBe("#FFFFFF")
+      expect(getContrastForeground("not-a-color")).toBe("#FFFFFF")
     })
   })
 })

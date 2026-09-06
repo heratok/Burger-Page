@@ -4,6 +4,7 @@ import { apiClient } from "@/core/api/apiClient"
 import { useTenant } from "./TenantContext"
 import { useAuth } from "./AuthContext"
 import { toast } from "sonner"
+import { nextTempId } from "@/lib/ids"
 
 export interface InventoryContextType {
   inventory: InventoryItem[]
@@ -84,7 +85,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const addInventoryItem = useCallback(
     (item: Omit<InventoryItem, "id">) => {
-      const tempId = `inv-${Date.now()}`
+      const tempId = nextTempId("inv")
       const newItem: InventoryItem = {
         ...item,
         id: tempId,
@@ -226,7 +227,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     (supplier: Omit<Supplier, "id">) => {
       const newSup: Supplier = {
         ...supplier,
-        id: `sup-${Date.now()}`,
+        id: nextTempId("sup"),
       }
       updateActiveRestaurantRecord((current) => ({
         ...current,

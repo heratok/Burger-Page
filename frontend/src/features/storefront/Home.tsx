@@ -15,6 +15,7 @@ import {
 } from "@/features/cart"
 import { useRestaurant } from "@/context/RestaurantContext"
 import { getFontFamilyClass } from "@/features/crm/utils/customizerStyles"
+import { getContrastForeground } from "@/lib/utils"
 
 export default function Home() {
   const { products, storeConfig, categories: contextCategories } = useRestaurant()
@@ -111,6 +112,8 @@ export default function Home() {
   const showFullScreen = isCartOpen || isCheckoutOpen
   const showMobileBar = cartItems.length > 0 && !showFullScreen
 
+  const primaryForeground = getContrastForeground(storeConfig.primaryColor)
+
   const getThemeStyle = (theme: typeof storeConfig.bgTheme): React.CSSProperties => {
     switch (theme) {
       case "clean-white":
@@ -138,7 +141,9 @@ export default function Home() {
           "--color-secondary": "#F1F5F9",
           "--color-secondary-foreground": "#0F172A",
           "--color-accent": storeConfig.primaryColor,
+          "--color-accent-foreground": primaryForeground,
           "--color-primary": storeConfig.primaryColor,
+          "--color-primary-foreground": primaryForeground,
           "--color-ring": storeConfig.primaryColor,
           backgroundColor: "#FFFFFF",
           color: "#0F172A",
@@ -168,7 +173,9 @@ export default function Home() {
           "--color-secondary": "#ECE2D0",
           "--color-secondary-foreground": "#2A231C",
           "--color-accent": storeConfig.primaryColor,
+          "--color-accent-foreground": primaryForeground,
           "--color-primary": storeConfig.primaryColor,
+          "--color-primary-foreground": primaryForeground,
           "--color-ring": storeConfig.primaryColor,
           backgroundColor: "#FAF6EF",
           color: "#2A231C",
@@ -198,7 +205,9 @@ export default function Home() {
           "--color-secondary": "#222630",
           "--color-secondary-foreground": "#FFFFFF",
           "--color-accent": storeConfig.primaryColor,
+          "--color-accent-foreground": primaryForeground,
           "--color-primary": storeConfig.primaryColor,
+          "--color-primary-foreground": primaryForeground,
           "--color-ring": storeConfig.primaryColor,
           backgroundColor: "#050607",
           color: "#FFFFFF",
@@ -229,7 +238,9 @@ export default function Home() {
           "--color-secondary": "#2A2F35",
           "--color-secondary-foreground": "#F5F5F7",
           "--color-accent": storeConfig.primaryColor,
+          "--color-accent-foreground": primaryForeground,
           "--color-primary": storeConfig.primaryColor,
+          "--color-primary-foreground": primaryForeground,
           "--color-ring": storeConfig.primaryColor,
           backgroundColor: "#0F1112",
           color: "#F5F5F7",
@@ -262,8 +273,11 @@ export default function Home() {
           <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent flex items-end">
             <div className="mx-auto max-w-(--container) w-full px-4 pb-6 md:px-6 lg:px-8">
               <span
-                style={{ backgroundColor: storeConfig.primaryColor }}
-                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-black text-white shadow-md uppercase tracking-wider mb-2"
+                style={{
+                  backgroundColor: storeConfig.primaryColor,
+                  color: primaryForeground,
+                }}
+                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-black shadow-md uppercase tracking-wider mb-2"
               >
                 <Flame className="size-3.5" />
                 Cocina Artesanal
@@ -336,12 +350,12 @@ export default function Home() {
                     onClick={() => setSelectedCategory("ALL")}
                     style={
                       selectedCategory === "ALL"
-                        ? { backgroundColor: storeConfig.primaryColor, color: "#FFFFFF", borderColor: storeConfig.primaryColor }
+                        ? { backgroundColor: storeConfig.primaryColor, color: primaryForeground, borderColor: storeConfig.primaryColor }
                         : undefined
                     }
                     className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-all ${
                       selectedCategory === "ALL"
-                        ? "shadow-sm text-white"
+                        ? "shadow-sm"
                         : "border border-border-subtle bg-bg-elevated text-text-primary hover:bg-bg-elevated-2 hover:border-border-strong"
                     }`}
                   >
@@ -354,12 +368,12 @@ export default function Home() {
                       onClick={() => setSelectedCategory(cat)}
                       style={
                         selectedCategory === cat
-                          ? { backgroundColor: storeConfig.primaryColor, color: "#FFFFFF", borderColor: storeConfig.primaryColor }
+                          ? { backgroundColor: storeConfig.primaryColor, color: primaryForeground, borderColor: storeConfig.primaryColor }
                           : undefined
                       }
                       className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-all ${
                         selectedCategory === cat
-                          ? "shadow-sm text-white"
+                          ? "shadow-sm"
                           : "border border-border-subtle bg-bg-elevated text-text-primary hover:bg-bg-elevated-2 hover:border-border-strong"
                       }`}
                     >

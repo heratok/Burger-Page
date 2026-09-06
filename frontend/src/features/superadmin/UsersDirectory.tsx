@@ -240,7 +240,7 @@ export const UsersDirectory: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
-          <div className="w-40">
+          <div className="w-full sm:w-48">
             <Select
               size="md"
               leftIcon={<Filter className="size-3.5 text-slate-400" />}
@@ -257,7 +257,7 @@ export const UsersDirectory: React.FC = () => {
             />
           </div>
 
-          <div className="w-48">
+          <div className="w-full sm:w-60">
             <Select
               size="md"
               leftIcon={<Store className="size-3.5 text-slate-400" />}

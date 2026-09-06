@@ -796,6 +796,12 @@ textarea::placeholder {
   .bg-bg-base {
     background-color: var(--color-bg-base) !important;
   }
+  .bg-bg-base\/85 {
+    background-color: color-mix(in srgb, var(--color-bg-base) 85%, transparent) !important;
+  }
+  .bg-bg-base\/90 {
+    background-color: color-mix(in srgb, var(--color-bg-base) 90%, transparent) !important;
+  }
   .bg-bg-surface {
     background-color: var(--color-bg-surface) !important;
   }

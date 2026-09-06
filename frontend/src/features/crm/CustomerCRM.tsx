@@ -179,7 +179,7 @@ export const CustomerCRM: React.FC = () => {
           />
         </div>
 
-        <div className="w-44">
+        <div className="w-full sm:w-48">
           <Select
             size="md"
             value={tierFilter}

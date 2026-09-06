@@ -4,7 +4,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import type { MenuItem } from "@/types/restaurant"
 import { useRestaurant } from "@/context/RestaurantContext"
 import { LazyImage } from "@/components/ui/LazyImage"
-import { formatCurrency } from "@/lib/utils"
+import { formatCurrency, getContrastForeground } from "@/lib/utils"
 
 export interface ProductCardProps {
   product: MenuItem
@@ -13,6 +13,7 @@ export interface ProductCardProps {
 
 export default function ProductCard({ product, onSelectProduct }: ProductCardProps) {
   const { storeConfig } = useRestaurant()
+  const primaryForeground = getContrastForeground(storeConfig.primaryColor)
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Enter" || e.key === " ") {
@@ -83,8 +84,11 @@ export default function ProductCard({ product, onSelectProduct }: ProductCardPro
           <div className="absolute top-2.5 left-2.5 flex flex-wrap gap-1.5 z-10">
             {product.isPopular && (
               <span
-                style={{ backgroundColor: storeConfig.primaryColor }}
-                className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold text-white shadow-xs"
+                style={{
+                  backgroundColor: storeConfig.primaryColor,
+                  color: primaryForeground,
+                }}
+                className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold shadow-xs"
               >
                 <Flame className="size-3" />
                 Popular
@@ -134,8 +138,11 @@ export default function ProductCard({ product, onSelectProduct }: ProductCardPro
         </span>
         <span
           aria-hidden="true"
-          style={{ backgroundColor: storeConfig.primaryColor }}
-          className="inline-flex size-10 shrink-0 items-center justify-center rounded-full text-white shadow-md transition duration-150 ease-out group-hover:scale-110 group-active:scale-95"
+          style={{
+            backgroundColor: storeConfig.primaryColor,
+            color: primaryForeground,
+          }}
+          className="inline-flex size-10 shrink-0 items-center justify-center rounded-full shadow-md transition duration-150 ease-out group-hover:scale-110 group-active:scale-95"
         >
           <Plus className="size-5 stroke-[3]" />
         </span>

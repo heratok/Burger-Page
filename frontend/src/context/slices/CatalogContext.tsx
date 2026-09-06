@@ -4,6 +4,7 @@ import { DEFAULT_STORE_CONFIG } from "@/constants/themePresets"
 import { useTenant } from "./TenantContext"
 import { apiClient } from "@/core/api/apiClient"
 import { toast } from "sonner"
+import { nextTempId } from "@/lib/ids"
 
 export interface CatalogContextType {
   storeConfig: StorefrontConfig
@@ -119,7 +120,7 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const addProduct = useCallback(
     (item: Omit<MenuItem, "id">) => {
-      const tempId = `prod-${Date.now()}`
+      const tempId = nextTempId("prod")
       const newItem: MenuItem = { ...item, id: tempId }
       let previousProducts: MenuItem[] = []
 
@@ -271,7 +272,7 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const addAddition = useCallback(
     (item: Omit<AdditionItem, "id">) => {
-      const tempId = `add-${Date.now()}`
+      const tempId = nextTempId("add")
       const newItem: AdditionItem = { ...item, id: tempId }
       let previousAdditions: AdditionItem[] = []
 

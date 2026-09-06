@@ -82,7 +82,7 @@ export const GlobalAnalytics: React.FC = () => {
           </p>
         </div>
 
-        <div className="w-44 self-start sm:self-auto">
+        <div className="w-full sm:w-52 self-start sm:self-auto">
           <Select
             size="md"
             value={period}

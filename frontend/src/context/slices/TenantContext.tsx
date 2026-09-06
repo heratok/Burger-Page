@@ -11,6 +11,7 @@ import {
 import { apiClient } from "@/core/api/apiClient"
 import { useAuth } from "./AuthContext"
 import { toast } from "sonner"
+import { nextTempId } from "@/lib/ids"
 
 export interface GlobalPlatformStats {
   totalRevenue: number
@@ -264,7 +265,7 @@ export const TenantProvider: React.FC<{
         .replace(/-+/g, "-")
 
       const newRecord: RestaurantRecord = {
-        id: `rest-${Date.now()}`,
+        id: nextTempId("rest"),
         slug: cleanSlug || `rest-${Date.now().toString(36)}`,
         adminPassword: data.adminPassword || "admin123",
         isActive: true,

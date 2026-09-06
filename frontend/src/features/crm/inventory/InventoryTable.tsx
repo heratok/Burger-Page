@@ -80,7 +80,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
         </div>
 
         {/* Category Filter */}
-        <div className="w-48 sm:w-56">
+        <div className="w-full sm:w-60">
           <Select
             size="md"
             value={selectedCategory}
