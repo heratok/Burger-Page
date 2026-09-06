@@ -11,6 +11,7 @@ import {
 } from "lucide-react"
 import { OrderStatusBadge } from "@/components/ui/status-badge"
 import { StatCard } from "@/components/ui/stat-card"
+import { MetricCardsSkeleton } from "@/components/ui/Skeletons"
 import { Button } from "@/components/ui/button"
 import { useAppRouter } from "@/core/router/useAppRouter"
 import { ManualSaleModal } from "./ManualSaleModal"
@@ -23,6 +24,7 @@ export const DashboardOverview: React.FC = () => {
     customers,
     storeConfig,
     adminTheme,
+    isLoadingOrders,
     updateOrderStatus,
   } = useRestaurant()
 
@@ -191,10 +193,13 @@ export const DashboardOverview: React.FC = () => {
       </div>
 
       {/* Metric Cards Grid */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Total Sales */}
-        <StatCard
-          title="Ventas Totales"
+      {isLoadingOrders && orders.length === 0 ? (
+        <MetricCardsSkeleton count={4} isDark={isDark} />
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Total Sales */}
+          <StatCard
+            title="Ventas Totales"
           value={formatCurrency(metrics.totalSales)}
           variant="success"
           icon={<DollarSign className="size-5" />}
@@ -267,6 +272,7 @@ export const DashboardOverview: React.FC = () => {
           }
         />
       </div>
+    )}
 
       {/* Main Charts & Rankings Row */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">

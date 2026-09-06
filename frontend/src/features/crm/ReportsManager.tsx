@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { OrderStatusBadge } from "@/components/ui/status-badge"
 import { Pagination } from "@/components/ui/pagination"
+import { MetricCardsSkeleton, TableSkeleton } from "@/components/ui/Skeletons"
 import { toast } from "sonner"
 import { formatCurrency } from "@/lib/utils"
 import {
@@ -48,7 +49,7 @@ const toIsoDateString = (d: Date): string => {
 }
 
 export const ReportsManager: React.FC = () => {
-  const { orders, customers, inventory, suppliers, storeConfig, activeRestaurant, adminTheme } =
+  const { orders, customers, inventory, suppliers, storeConfig, activeRestaurant, adminTheme, isLoadingOrders } =
     useRestaurant()
 
   const todayStr = useMemo(() => toIsoDateString(new Date()), [])
@@ -334,9 +335,12 @@ export const ReportsManager: React.FC = () => {
       </div>
 
       {/* KPI Financial Overview Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Total Sales */}
-        <div
+      {isLoadingOrders && orders.length === 0 ? (
+        <MetricCardsSkeleton count={4} isDark={isDark} />
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Total Sales */}
+          <div
           className={`rounded-2xl border p-5 shadow-xs transition-all ${
             isDark ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-white"
           }`}
@@ -435,6 +439,7 @@ export const ReportsManager: React.FC = () => {
           </div>
         </div>
       </div>
+    )}
 
       {/* Main Grid: Cash Closeout Slip & Export Actions */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -702,7 +707,11 @@ export const ReportsManager: React.FC = () => {
               </div>
             </div>
 
-            {filteredOrders.length === 0 ? (
+            {isLoadingOrders && orders.length === 0 ? (
+              <div className="mt-4">
+                <TableSkeleton isDark={isDark} rows={5} columns={6} />
+              </div>
+            ) : filteredOrders.length === 0 ? (
               <div className="py-8 text-center text-xs text-slate-400">
                 No hay transacciones registradas en este rango de fechas.
               </div>

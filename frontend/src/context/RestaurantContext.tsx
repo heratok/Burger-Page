@@ -120,6 +120,11 @@ export interface RestaurantContextType {
   soundEnabled: boolean
   setSoundEnabled: (enabled: boolean) => void
 
+  // Loading & Sync States
+  isLoadingOrders: boolean
+  isLoadingInventory: boolean
+  isLoadingCatalog: boolean
+
   // Summary Metrics
   pendingOrdersCount: number
 }
@@ -252,6 +257,10 @@ export const useRestaurant = (): RestaurantContextType => {
 
     soundEnabled: ui.soundEnabled,
     setSoundEnabled: ui.setSoundEnabled,
+
+    isLoadingOrders: orders.isLoadingOrders,
+    isLoadingInventory: inventorySlice.isLoadingInventory,
+    isLoadingCatalog: catalog.isLoadingCatalog,
 
     pendingOrdersCount: orders.pendingOrdersCount,
   }

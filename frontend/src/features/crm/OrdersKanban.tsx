@@ -18,6 +18,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Pagination } from "@/components/ui/pagination"
+import { KanbanBoardSkeleton } from "@/components/ui/Skeletons"
 import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
 import { buildWhatsAppUrl } from "@/features/cart"
 import { ManualSaleModal } from "./ManualSaleModal"
@@ -26,8 +27,15 @@ import { formatCurrency, formatWhatsAppPhone } from "@/lib/utils"
 import { KanbanOrderCard, LiveOrderCard, OrderDetailModal } from "./orders"
 
 export const OrdersKanban: React.FC = () => {
-  const { orders, updateOrderStatus, updateOrderReceipt, deleteOrder, adminTheme, storeConfig } =
-    useRestaurant()
+  const {
+    orders,
+    isLoadingOrders,
+    updateOrderStatus,
+    updateOrderReceipt,
+    deleteOrder,
+    adminTheme,
+    storeConfig,
+  } = useRestaurant()
 
   const [isManualSaleOpen, setIsManualSaleOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
@@ -318,8 +326,12 @@ export const OrdersKanban: React.FC = () => {
           {/* Tab Content: Active Commands */}
           {feedTab === "active" && (
             <div className="space-y-3">
-              {/* Sub-status filter chips */}
-              {activeOrders.length > 0 && (
+              {isLoadingOrders && orders.length === 0 ? (
+                <KanbanBoardSkeleton isDark={isDark} columns={3} />
+              ) : (
+                <>
+                  {/* Sub-status filter chips */}
+                  {activeOrders.length > 0 && (
                 <div className="flex flex-wrap items-center gap-1.5 pb-1">
                   {[
                     { id: "ALL", label: "Todas", count: activeOrders.length, icon: null },
@@ -451,13 +463,17 @@ export const OrdersKanban: React.FC = () => {
                   )}
                 </>
               )}
+                </>
+              )}
             </div>
           )}
 
           {/* Tab Content: History */}
           {feedTab === "history" && (
             <div className="space-y-3">
-              {historyOrders.length === 0 ? (
+              {isLoadingOrders && orders.length === 0 ? (
+                <KanbanBoardSkeleton isDark={isDark} columns={3} />
+              ) : historyOrders.length === 0 ? (
                 <div
                   className={`flex flex-col items-center justify-center rounded-2xl border border-dashed p-10 text-center text-xs text-slate-400 ${
                     isDark ? "border-slate-800" : "border-slate-200"
@@ -504,8 +520,11 @@ export const OrdersKanban: React.FC = () => {
 
       {/* VIEW MODE: CLASSIC KANBAN BOARD */}
       {viewMode === "kanban" && (
-        <div className="flex gap-4 overflow-x-auto pb-4 items-start xl:grid xl:grid-cols-5 min-w-full">
-          {columns.map((col) => {
+        isLoadingOrders && orders.length === 0 ? (
+          <KanbanBoardSkeleton isDark={isDark} columns={5} />
+        ) : (
+          <div className="flex gap-4 overflow-x-auto pb-4 items-start xl:grid xl:grid-cols-5 min-w-full">
+            {columns.map((col) => {
             const colOrders = filteredOrders.filter((o) => o.status === col.id)
             const isTerminalCol = col.id === "delivered" || col.id === "cancelled"
             const maxVisible = 25
@@ -579,7 +598,7 @@ export const OrdersKanban: React.FC = () => {
             )
           })}
         </div>
-      )}
+      ))}
 
       <OrderDetailModal
         isOpen={!!selectedOrder}

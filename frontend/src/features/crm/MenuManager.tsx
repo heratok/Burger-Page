@@ -4,6 +4,7 @@ import { useMenuFilter } from "./hooks/useMenuFilter"
 import type { MenuItem, AdditionItem } from "@/types/restaurant"
 import { Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { MenuGridSkeleton, TableSkeleton } from "@/components/ui/Skeletons"
 import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
 import { Pagination } from "@/components/ui/pagination"
 import { formatCurrency } from "@/lib/utils"
@@ -34,6 +35,7 @@ export const MenuManager: React.FC = () => {
     updateCategory,
     deleteCategory,
     adminTheme,
+    isLoadingCatalog,
   } = useRestaurant()
 
   const [activeSubTab, setActiveSubTab] = useState<"dishes" | "additions">("dishes")
@@ -112,7 +114,13 @@ export const MenuManager: React.FC = () => {
         <>
           <MenuFilterBar categories={categories} selectedCategory={selectedCategory} totalProductsCount={products.length} searchTerm={searchTerm} viewMode={viewMode} isDark={isDark} onSelectCategory={(cat) => { setSelectedCategory(cat); setCurrentPage(1) }} onSearchChange={(term) => { setSearchTerm(term); setCurrentPage(1) }} onViewModeChange={setViewMode} onOpenCategoryModal={() => setIsCategoryModalOpen(true)} />
 
-          {viewMode === "grid" ? (
+          {isLoadingCatalog && products.length === 0 ? (
+            viewMode === "grid" ? (
+              <MenuGridSkeleton count={8} isDark={isDark} />
+            ) : (
+              <TableSkeleton rows={5} columns={5} isDark={isDark} />
+            )
+          ) : viewMode === "grid" ? (
             <ProductGrid products={paginatedProducts} deletingProductIds={deletingProductIds} isDark={isDark} onToggleStock={toggleProductStock} onEditProduct={(p) => { setEditingProduct(p); setIsProductModalOpen(true) }} onDeleteProduct={setProductToDelete} />
           ) : (
             <ProductTable products={paginatedProducts} isDark={isDark} onToggleStock={toggleProductStock} onEditProduct={(p) => { setEditingProduct(p); setIsProductModalOpen(true) }} onDeleteProduct={setProductToDelete} />
