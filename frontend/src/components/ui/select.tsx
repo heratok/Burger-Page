@@ -106,7 +106,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
             ref={ref}
             disabled={disabled}
             className={cn(
-              "w-full appearance-none font-medium outline-none transition-all duration-150 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50",
+              "w-full appearance-none font-medium outline-none transition-all duration-150 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 truncate",
               sizeClasses[size],
               variantClasses[variant],
               leftIcon && leftPaddingWhenIcon[size],
@@ -125,6 +125,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
                             key={String(opt.value)}
                             value={opt.value}
                             disabled={opt.disabled}
+                            title={opt.label}
                           >
                             {opt.label}
                           </option>
@@ -137,6 +138,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
                       key={String(item.value)}
                       value={item.value}
                       disabled={item.disabled}
+                      title={item.label}
                     >
                       {item.label}
                     </option>

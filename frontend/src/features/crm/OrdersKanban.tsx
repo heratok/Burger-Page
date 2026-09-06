@@ -24,6 +24,7 @@ import { buildWhatsAppUrl } from "@/features/cart"
 import { ManualSaleModal } from "./ManualSaleModal"
 import { Select } from "@/components/ui/select"
 import { formatCurrency, formatWhatsAppPhone } from "@/lib/utils"
+import { resolveModalOrder } from "@/lib/orderMatching"
 import { KanbanOrderCard, LiveOrderCard, OrderDetailModal } from "./orders"
 
 export const OrdersKanban: React.FC = () => {
@@ -198,7 +199,7 @@ export const OrdersKanban: React.FC = () => {
           </div>
 
           {/* Payment filter */}
-          <div className="w-full sm:w-44">
+          <div className="w-full sm:w-52">
             <Select
               size="md"
               leftIcon={<Filter className="size-3.5 text-slate-400" />}
@@ -602,7 +603,7 @@ export const OrdersKanban: React.FC = () => {
 
       <OrderDetailModal
         isOpen={!!selectedOrder}
-        order={selectedOrder ? (orders.find((o) => o.id === selectedOrder.id) || selectedOrder) : null}
+        order={resolveModalOrder(orders, selectedOrder)}
         isDark={isDark}
         onClose={() => setSelectedOrder(null)}
         onUpdateStatus={updateOrderStatus}

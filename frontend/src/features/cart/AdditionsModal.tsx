@@ -171,7 +171,7 @@ export default function AdditionsModal({
                         onClick={() => modificarCantidadAdicion(i, "decrementar")}
                         aria-label={`Quitar ${adicion.name}`}
                         disabled={adicion.cantidad === 0}
-                        className="size-11 rounded-full bg-bg-elevated-2 hover:bg-accent disabled:opacity-40"
+                        className="size-11 rounded-full border border-border-subtle bg-bg-elevated-2 text-text-primary hover:bg-accent hover:text-white disabled:opacity-30"
                       >
                         <Minus />
                       </Button>
@@ -237,7 +237,7 @@ export default function AdditionsModal({
                   onClick={disminuirCantidad}
                   aria-label="Disminuir cantidad"
                   disabled={cantidad === 1}
-                  className="size-11 rounded-full bg-bg-elevated-2 hover:bg-accent disabled:opacity-40"
+                  className="size-11 rounded-full border border-border-subtle bg-bg-elevated-2 text-text-primary hover:bg-accent hover:text-white disabled:opacity-30"
                 >
                   <Minus />
                 </Button>
