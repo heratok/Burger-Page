@@ -138,25 +138,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const updateInventoryItem = useCallback(
     (id: string, updates: Partial<InventoryItem>) => {
-      if (updates.currentStock !== undefined) {
-        const currentItem = (activeRestaurant.inventory || []).find((item) => item.id === id)
-        if (currentItem) {
-          const delta = updates.currentStock - currentItem.currentStock
-          if (delta !== 0) {
-            apiClient.updateInventoryStock(id, delta, activeRestaurant.id).catch((error) => {
-              if (import.meta.env?.MODE !== 'test') {
-                console.warn(`Could not sync stock update for inventory item ${id} to backend:`, error)
-              }
-            })
-          }
-        }
-      }
-
-      apiClient.updateInventoryItem(id, updates, activeRestaurant.id).catch((error) => {
-        if (import.meta.env?.MODE !== 'test') {
-          console.warn(`Could not sync inventory item ${id} updates to backend:`, error)
-        }
-      })
+      const previousInventory = activeRestaurant?.inventory || []
 
       updateActiveRestaurantRecord((current) => ({
         ...current,
@@ -165,34 +147,58 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         ),
       }))
       toast.success("Insumo actualizado")
+
+      const payload: Record<string, unknown> = { ...updates }
+      if (updates.currentStock !== undefined) {
+        payload.quantity = updates.currentStock
+        delete payload.currentStock
+      }
+
+      apiClient
+        .updateInventoryItem(id, payload as any, activeRestaurant.id)
+        .catch((error) => {
+          if (import.meta.env?.MODE !== 'test') {
+            console.warn(`Could not sync inventory item ${id} updates to backend:`, error)
+          }
+          updateActiveRestaurantRecord((current) => ({
+            ...current,
+            inventory: previousInventory,
+          }))
+          toast.error("Error al actualizar insumo en el servidor")
+        })
     },
     [activeRestaurant.id, activeRestaurant.inventory, updateActiveRestaurantRecord]
   )
 
   const deleteInventoryItem = useCallback(
     (id: string) => {
+      const previousInventory = activeRestaurant?.inventory || []
+
       updateActiveRestaurantRecord((current) => ({
         ...current,
         inventory: (current.inventory || []).filter((item) => item.id !== id),
       }))
       toast.success("Insumo eliminado del inventario")
 
-      apiClient.deleteInventoryItem(id, activeRestaurant.id).catch((error) => {
-        if (import.meta.env?.MODE !== 'test') {
-          console.warn(`Could not delete inventory item ${id} from backend:`, error)
-        }
-      })
+      apiClient
+        .deleteInventoryItem(id, activeRestaurant.id)
+        .catch((error) => {
+          if (import.meta.env?.MODE !== 'test') {
+            console.warn(`Could not delete inventory item ${id} from backend:`, error)
+          }
+          updateActiveRestaurantRecord((current) => ({
+            ...current,
+            inventory: previousInventory,
+          }))
+          toast.error("Error al eliminar insumo del servidor")
+        })
     },
-    [activeRestaurant.id, updateActiveRestaurantRecord]
+    [activeRestaurant.id, activeRestaurant.inventory, updateActiveRestaurantRecord]
   )
 
   const adjustStock = useCallback(
     (id: string, deltaQuantity: number) => {
-      apiClient.updateInventoryStock(id, deltaQuantity, activeRestaurant.id).catch((error) => {
-        if (import.meta.env?.MODE !== 'test') {
-          console.warn(`Could not sync adjust stock for ${id} to backend:`, error)
-        }
-      })
+      const previousInventory = activeRestaurant?.inventory || []
 
       updateActiveRestaurantRecord((current) => {
         let updatedName = ""
@@ -219,8 +225,21 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           inventory: updatedList,
         }
       })
+
+      apiClient
+        .updateInventoryStock(id, deltaQuantity, activeRestaurant.id)
+        .catch((error) => {
+          if (import.meta.env?.MODE !== 'test') {
+            console.warn(`Could not sync adjust stock for ${id} to backend:`, error)
+          }
+          updateActiveRestaurantRecord((current) => ({
+            ...current,
+            inventory: previousInventory,
+          }))
+          toast.error("Error al sincronizar el inventario con el servidor")
+        })
     },
-    [activeRestaurant.id, updateActiveRestaurantRecord]
+    [activeRestaurant.id, activeRestaurant.inventory, updateActiveRestaurantRecord]
   )
 
   const addSupplier = useCallback(

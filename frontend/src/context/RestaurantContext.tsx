@@ -93,7 +93,7 @@ export interface RestaurantContextType {
   deleteOrder: (orderId: string) => void
 
   customers: Customer[]
-  updateCustomer: (id: string, updates: Partial<Customer>) => void
+  updateCustomer: (id: string, updates: Partial<Customer>) => Promise<void> | void
 
   // Inventory & Suppliers
   inventory: InventoryItem[]

@@ -22,6 +22,7 @@ export const CustomerCRM: React.FC = () => {
   const [tierFilter, setTierFilter] = useState<string>("ALL")
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
   const [notesEdit, setNotesEdit] = useState("")
+  const [isSavingNotes, setIsSavingNotes] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
 
@@ -73,12 +74,18 @@ export const CustomerCRM: React.FC = () => {
     setNotesEdit(cust.notes || "")
   }
 
-  const handleSaveNotes = () => {
+  const handleSaveNotes = async () => {
     if (selectedCustomer) {
-      updateCustomer(selectedCustomer.id, { notes: notesEdit })
-      setSelectedCustomer((prev) => (prev ? { ...prev, notes: notesEdit } : null))
+      setIsSavingNotes(true)
+      try {
+        await updateCustomer(selectedCustomer.id, { notes: notesEdit })
+        setSelectedCustomer((prev) => (prev ? { ...prev, notes: notesEdit } : null))
+      } finally {
+        setIsSavingNotes(false)
+      }
     }
   }
+
 
   const customerOrders = useMemo(() => {
     if (!selectedCustomer) return []
@@ -328,6 +335,7 @@ export const CustomerCRM: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setSelectedCustomer(null)}
+                aria-label="Cerrar modal"
                 className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 <X className="size-5" />
@@ -365,10 +373,11 @@ export const CustomerCRM: React.FC = () => {
                 className="w-full rounded-xl border p-2.5 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white"
               />
               <div className="flex justify-end">
-                <Button size="sm" onClick={handleSaveNotes} className="bg-indigo-600 text-white font-semibold">
-                  Guardar Notas
+                <Button size="sm" onClick={handleSaveNotes} disabled={isSavingNotes} className="bg-indigo-600 text-white font-semibold">
+                  {isSavingNotes ? "Guardando..." : "Guardar Notas"}
                 </Button>
               </div>
+
             </div>
 
             {/* Orders History in Modal */}

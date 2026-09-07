@@ -101,22 +101,60 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const updateStoreConfig = useCallback(
     (newConfig: Partial<StorefrontConfig>) => {
+      const previousConfig = activeRestaurant?.config
+
       updateActiveRestaurantRecord((current) => ({
         ...current,
         config: { ...current.config, ...newConfig },
       }))
       toast.success("Diseño y configuración actualizados")
+
+      if (activeRestaurant?.id) {
+        apiClient
+          .updateRestaurant(activeRestaurant.id, { config: newConfig })
+          .catch((err) => {
+            if (import.meta.env?.MODE !== 'test') {
+              console.warn("Could not persist store config to backend API:", err)
+            }
+            if (previousConfig) {
+              updateActiveRestaurantRecord((current) => ({
+                ...current,
+                config: previousConfig,
+              }))
+            }
+            toast.error("Error al guardar la configuración en el servidor")
+          })
+      }
     },
-    [updateActiveRestaurantRecord]
+    [activeRestaurant?.id, activeRestaurant?.config, updateActiveRestaurantRecord]
   )
 
   const resetStoreConfig = useCallback(() => {
+    const previousConfig = activeRestaurant?.config
+
     updateActiveRestaurantRecord((current) => ({
       ...current,
       config: DEFAULT_STORE_CONFIG,
     }))
     toast.info("Diseño restablecido a los valores por defecto")
-  }, [updateActiveRestaurantRecord])
+
+    if (activeRestaurant?.id) {
+      apiClient
+        .updateRestaurant(activeRestaurant.id, { config: DEFAULT_STORE_CONFIG })
+        .catch((err) => {
+          if (import.meta.env?.MODE !== 'test') {
+            console.warn("Could not persist reset store config to backend API:", err)
+          }
+          if (previousConfig) {
+            updateActiveRestaurantRecord((current) => ({
+              ...current,
+              config: previousConfig,
+            }))
+          }
+          toast.error("Error al restablecer la configuración en el servidor")
+        })
+    }
+  }, [activeRestaurant?.id, activeRestaurant?.config, updateActiveRestaurantRecord])
 
   const addProduct = useCallback(
     (item: Omit<MenuItem, "id">) => {
@@ -390,28 +428,33 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
         toast.error("El nombre de la categoría no puede estar vacío")
         return
       }
-      updateActiveRestaurantRecord((current) => {
-        const existing = current.categories && current.categories.length > 0
-          ? current.categories
-          : Array.from(new Set(current.products.map((p) => p.category).filter(Boolean)))
-        if (existing.some((c) => c.toLowerCase() === trimmed.toLowerCase())) {
-          toast.warning(`La categoría "${trimmed}" ya existe`)
-          return current
-        }
-        const nextCategories = [...existing, trimmed]
-        apiClient.updateCategories(nextCategories, current.slug).catch((err) => {
+      if (categories.some((c) => c.toLowerCase() === trimmed.toLowerCase())) {
+        toast.warning(`La categoría "${trimmed}" ya existe`)
+        return
+      }
+      const previousCategories = categories
+      const nextCategories = [...categories, trimmed]
+
+      updateActiveRestaurantRecord((current) => ({
+        ...current,
+        categories: nextCategories,
+      }))
+      toast.success(`Categoría "${trimmed}" creada`)
+
+      apiClient
+        .updateCategories(nextCategories, activeRestaurant.slug)
+        .catch((err) => {
           if (import.meta.env?.MODE !== 'test') {
             console.warn("Could not sync categories to backend API:", err)
           }
+          updateActiveRestaurantRecord((current) => ({
+            ...current,
+            categories: previousCategories,
+          }))
+          toast.error("Error al guardar categoría en el servidor")
         })
-        toast.success(`Categoría "${trimmed}" creada`)
-        return {
-          ...current,
-          categories: nextCategories,
-        }
-      })
     },
-    [updateActiveRestaurantRecord]
+    [categories, activeRestaurant.slug, updateActiveRestaurantRecord]
   )
 
   const updateCategory = useCallback(
@@ -424,59 +467,79 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (oldName.toLowerCase() === trimmedNew.toLowerCase()) {
         return
       }
-      updateActiveRestaurantRecord((current) => {
-        const existing = current.categories && current.categories.length > 0
-          ? current.categories
-          : Array.from(new Set(current.products.map((p) => p.category).filter(Boolean)))
-        if (existing.some((c) => c.toLowerCase() === trimmedNew.toLowerCase() && c.toLowerCase() !== oldName.toLowerCase())) {
-          toast.warning(`Ya existe una categoría llamada "${trimmedNew}"`)
-          return current
-        }
-        const nextCategories = existing.map((c) => (c.toLowerCase() === oldName.toLowerCase() ? trimmedNew : c))
-        const nextProducts = current.products.map((p) => (p.category?.toLowerCase() === oldName.toLowerCase() ? { ...p, category: trimmedNew } : p))
-        apiClient.updateCategories(nextCategories, current.slug).catch((err) => {
+      if (categories.some((c) => c.toLowerCase() === trimmedNew.toLowerCase() && c.toLowerCase() !== oldName.toLowerCase())) {
+        toast.warning(`Ya existe una categoría llamada "${trimmedNew}"`)
+        return
+      }
+      const previousCategories = categories
+      const previousProducts = activeRestaurant.products || []
+
+      const nextCategories = categories.map((c) => (c.toLowerCase() === oldName.toLowerCase() ? trimmedNew : c))
+      const nextProducts = previousProducts.map((p) =>
+        p.category?.toLowerCase() === oldName.toLowerCase() ? { ...p, category: trimmedNew } : p
+      )
+
+      updateActiveRestaurantRecord((current) => ({
+        ...current,
+        categories: nextCategories,
+        products: nextProducts,
+      }))
+      toast.success(`Categoría renombrada a "${trimmedNew}"`)
+
+      apiClient
+        .updateCategories(nextCategories, activeRestaurant.slug)
+        .catch((err) => {
           if (import.meta.env?.MODE !== 'test') {
             console.warn("Could not sync categories to backend API:", err)
           }
+          updateActiveRestaurantRecord((current) => ({
+            ...current,
+            categories: previousCategories,
+            products: previousProducts,
+          }))
+          toast.error("Error al renombrar categoría en el servidor")
         })
-        toast.success(`Categoría renombrada a "${trimmedNew}"`)
-        return {
-          ...current,
-          categories: nextCategories,
-          products: nextProducts,
-        }
-      })
     },
-    [updateActiveRestaurantRecord]
+    [categories, activeRestaurant.products, activeRestaurant.slug, updateActiveRestaurantRecord]
   )
 
   const deleteCategory = useCallback(
     (categoryName: string) => {
-      updateActiveRestaurantRecord((current) => {
-        const existing = current.categories && current.categories.length > 0
-          ? current.categories
-          : Array.from(new Set(current.products.map((p) => p.category).filter(Boolean)))
-        if (existing.length <= 1) {
-          toast.error("El restaurante debe tener al menos una categoría")
-          return current
-        }
-        const nextCategories = existing.filter((c) => c !== categoryName)
-        const fallback = nextCategories[0] || "General"
-        const nextProducts = current.products.map((p) => (p.category === categoryName ? { ...p, category: fallback } : p))
-        apiClient.updateCategories(nextCategories, current.slug).catch((err) => {
+      if (categories.length <= 1) {
+        toast.error("El restaurante debe tener al menos una categoría")
+        return
+      }
+      const previousCategories = categories
+      const previousProducts = activeRestaurant.products || []
+
+      const nextCategories = categories.filter((c) => c !== categoryName)
+      const fallback = nextCategories[0] || "General"
+      const nextProducts = previousProducts.map((p) =>
+        p.category === categoryName ? { ...p, category: fallback } : p
+      )
+
+      updateActiveRestaurantRecord((current) => ({
+        ...current,
+        categories: nextCategories,
+        products: nextProducts,
+      }))
+      toast.success(`Categoría "${categoryName}" eliminada`)
+
+      apiClient
+        .updateCategories(nextCategories, activeRestaurant.slug)
+        .catch((err) => {
           if (import.meta.env?.MODE !== 'test') {
             console.warn("Could not sync categories to backend API:", err)
           }
+          updateActiveRestaurantRecord((current) => ({
+            ...current,
+            categories: previousCategories,
+            products: previousProducts,
+          }))
+          toast.error("Error al eliminar categoría del servidor")
         })
-        toast.success(`Categoría "${categoryName}" eliminada`)
-        return {
-          ...current,
-          categories: nextCategories,
-          products: nextProducts,
-        }
-      })
     },
-    [updateActiveRestaurantRecord]
+    [categories, activeRestaurant.products, activeRestaurant.slug, updateActiveRestaurantRecord]
   )
 
   const value: CatalogContextType = {

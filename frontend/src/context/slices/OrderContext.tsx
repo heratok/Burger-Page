@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useMemo, useCallback, useEffect, useState } from "react"
 import type { Order, OrderStatus, Customer } from "@/types/restaurant"
-import type { CreateOrderInput, UpdateOrderInput, OrderEvent } from "@burger-page/contracts"
+import type { CreateOrderInput, UpdateOrderInput, OrderEvent, UpdateCustomerInput } from "@burger-page/contracts"
 import { apiClient } from "@/core/api/apiClient"
 import { useTenant } from "./TenantContext"
 import { useAuth } from "./AuthContext"
@@ -18,10 +18,11 @@ export interface OrderContextType {
   updateOrderReceipt: (orderId: string, receiptUrl: string) => Promise<void>
   deleteOrder: (orderId: string) => Promise<void> | void
   customers: Customer[]
-  updateCustomer: (id: string, updates: Partial<Customer>) => void
+  updateCustomer: (id: string, updates: Partial<Customer>) => Promise<void> | void
   pendingOrdersCount: number
   isLoadingOrders: boolean
 }
+
 
 const OrderContext = createContext<OrderContextType | undefined>(undefined)
 
@@ -98,41 +99,105 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     )
   })
 
-  // Synchronize orders with backend if token & restaurant context exist
+  // Synchronize orders & customers with backend if token & restaurant context exist
   useEffect(() => {
     if (!apiClient.hasToken() || !activeRestaurant?.id) return
 
     let isCancelled = false
     const targetRestId = activeRestaurant.id
 
-    apiClient
-      .fetchOrders(targetRestId)
-      .then((backendOrders) => {
+    Promise.all([
+      apiClient.fetchOrders(targetRestId),
+      apiClient.fetchCustomers(targetRestId).catch((err) => {
+        if (import.meta.env?.MODE !== 'test') {
+          console.warn("Could not fetch customers from backend API:", err)
+        }
+        return []
+      }),
+    ])
+      .then(([backendOrders, backendCustomers]) => {
         if (isCancelled) return
-        if (Array.isArray(backendOrders)) {
-          updateActiveRestaurantRecord((current) => {
-            if (current.id !== targetRestId) return current
-            const map = new Map<string, Order>()
-            current.orders.forEach((o) => map.set(o.id, o))
+        updateActiveRestaurantRecord((current) => {
+          if (current.id !== targetRestId) return current
+
+          // 1. Sync orders
+          const ordersMap = new Map<string, Order>()
+          current.orders.forEach((o) => ordersMap.set(o.id, o))
+          if (Array.isArray(backendOrders)) {
             backendOrders.forEach((bo: any) => {
               if (bo && bo.id) {
-                const existing = map.get(bo.id)
+                const existing = ordersMap.get(bo.id)
                 const matchedCustomer = current.customers.find((c) => c.id === bo.customerId)
-                map.set(bo.id, mapBackendOrderToDomain(bo, existing, matchedCustomer))
+                ordersMap.set(bo.id, mapBackendOrderToDomain(bo, existing, matchedCustomer))
               }
             })
-            return {
-              ...current,
-              orders: Array.from(map.values()).sort(
-                (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-              ),
-            }
-          })
-        }
+          }
+          const nextOrders = Array.from(ordersMap.values()).sort(
+            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          )
+
+          // 2. Sync customers
+          const customersMap = new Map<string, Customer>()
+          current.customers.forEach((c) => customersMap.set(c.id, c))
+
+          if (Array.isArray(backendCustomers) && backendCustomers.length > 0) {
+            backendCustomers.forEach((bc: any) => {
+              if (bc && bc.id) {
+                const cleanPhone = cleanPhoneNumber(bc.phone || '')
+                const existing =
+                  customersMap.get(bc.id) ||
+                  Array.from(customersMap.values()).find(
+                    (c) => cleanPhoneNumber(c.telefono) === cleanPhone
+                  )
+
+                if (existing) {
+                  customersMap.delete(existing.id)
+                  customersMap.set(bc.id, {
+                    ...existing,
+                    id: bc.id,
+                    nombre: bc.name || existing.nombre,
+                    telefono: bc.phone || existing.telefono,
+                    direccion: bc.address !== undefined ? bc.address : existing.direccion,
+                    barrio: bc.barrio !== undefined ? bc.barrio : existing.barrio,
+                    notes: bc.notes !== undefined ? bc.notes : existing.notes,
+                  })
+                } else {
+                  const custOrders = nextOrders.filter(
+                    (o) => cleanPhoneNumber(o.customer.telefono) === cleanPhone
+                  )
+                  const totalSpent = custOrders.reduce((sum, o) => sum + (o.finalTotal || o.total || 0), 0)
+                  const totalOrders = custOrders.length
+                  const lastOrderDate = custOrders[0]?.createdAt || bc.createdAt || new Date().toISOString()
+                  const loyaltyTier =
+                    totalOrders >= 15 ? "vip" : totalOrders >= 8 ? "gold" : totalOrders >= 3 ? "silver" : "bronze"
+
+                  customersMap.set(bc.id, {
+                    id: bc.id,
+                    nombre: bc.name || "Cliente",
+                    telefono: bc.phone || "",
+                    direccion: bc.address || "",
+                    barrio: bc.barrio || "",
+                    totalOrders,
+                    totalSpent,
+                    lastOrderDate,
+                    loyaltyTier,
+                    notes: bc.notes || "",
+                  })
+                }
+              }
+            })
+          }
+
+          return {
+            ...current,
+            orders: nextOrders,
+            customers: Array.from(customersMap.values()),
+          }
+        })
       })
       .catch((err) => {
         if (import.meta.env?.MODE !== 'test') {
-          console.warn("Could not fetch orders from backend API:", err)
+          console.warn("Could not fetch orders/customers from backend API:", err)
         }
       })
       .finally(() => {
@@ -145,6 +210,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       isCancelled = true
     }
   }, [activeRestaurant?.id, session, updateActiveRestaurantRecord])
+
 
   // Real-time SSE order stream subscription
   useEffect(() => {
@@ -367,7 +433,18 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             return {
               productId: matchedProduct?.id || item.id || item.name,
               quantity: item.cantidad,
-              additions: (item.adiciones || []).map((a) => (a as any).id || a.name),
+              additions: (item.adiciones || []).map((a) => {
+                const matchedAddition = activeRestaurant.additions?.find(
+                  (add) =>
+                    add.name.toLowerCase() === a.name?.toLowerCase() ||
+                    add.id === (a as any).id ||
+                    add.id === (a as any).additionId
+                )
+                return {
+                  additionId: matchedAddition?.id || (a as any).additionId || (a as any).id || a.name,
+                  quantity: typeof a.cantidad === 'number' && a.cantidad > 0 ? a.cantidad : 1,
+                }
+              }),
             }
           }),
           deliveryFee: newOrder.deliveryFee,
@@ -565,17 +642,67 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   )
 
   const updateCustomer = useCallback(
-    (id: string, updates: Partial<Customer>) => {
-      updateActiveRestaurantRecord((current) => ({
-        ...current,
-        customers: current.customers.map((c) =>
-          c.id === id ? { ...c, ...updates } : c
-        ),
-      }))
+    async (id: string, updates: Partial<Customer>) => {
+      const targetRestId = activeRestaurant?.id
+      let previousCustomers: Customer[] = []
+
+      // 1. Optimistic local update
+      updateActiveRestaurantRecord((current) => {
+        previousCustomers = current.customers
+        return {
+          ...current,
+          customers: current.customers.map((c) =>
+            c.id === id ? { ...c, ...updates } : c
+          ),
+        }
+      })
       toast.success("Ficha del cliente actualizada")
+
+      // 2. Persist to backend if token and restaurant context exist
+      if (apiClient.hasToken() && targetRestId) {
+        try {
+          const updateInput: UpdateCustomerInput = {}
+          if (updates.nombre !== undefined) updateInput.name = updates.nombre
+          if (updates.telefono !== undefined) updateInput.phone = updates.telefono
+          if (updates.direccion !== undefined) updateInput.address = updates.direccion
+          if (updates.barrio !== undefined) updateInput.barrio = updates.barrio
+          if (updates.notes !== undefined) updateInput.notes = updates.notes
+
+          const updatedCustomer = await apiClient.updateCustomer(id, updateInput, targetRestId)
+          if (updatedCustomer) {
+            updateActiveRestaurantRecord((current) => ({
+              ...current,
+              customers: current.customers.map((c) =>
+                c.id === id
+                  ? {
+                      ...c,
+                      id: updatedCustomer.id || c.id,
+                      nombre: updatedCustomer.name ?? c.nombre,
+                      telefono: updatedCustomer.phone ?? c.telefono,
+                      direccion: updatedCustomer.address !== undefined ? updatedCustomer.address : c.direccion,
+                      barrio: updatedCustomer.barrio !== undefined ? updatedCustomer.barrio : c.barrio,
+                      notes: updatedCustomer.notes !== undefined ? updatedCustomer.notes : c.notes,
+                    }
+                  : c
+              ),
+            }))
+          }
+        } catch (err) {
+          if (import.meta.env?.MODE !== 'test') {
+            console.error("Error al actualizar cliente en el servidor:", err)
+          }
+          toast.error("No se pudo sincronizar el cliente con el servidor")
+          // Rollback to pre-optimistic snapshot
+          updateActiveRestaurantRecord((current) => ({
+            ...current,
+            customers: previousCustomers,
+          }))
+        }
+      }
     },
-    [updateActiveRestaurantRecord]
+    [activeRestaurant?.id, updateActiveRestaurantRecord]
   )
+
 
   const pendingOrdersCount = useMemo(() => {
     return activeRestaurant.orders.filter((o) => o.status === "pending").length
