@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest"
-import { renderHook, act } from "@testing-library/react"
+import { renderHook, act, waitFor } from "@testing-library/react"
 import React from "react"
 import { UiProvider, useUi } from "./UiContext"
 import { AuthProvider, useAuth } from "./AuthContext"
@@ -89,9 +89,11 @@ describe("AuthContext Slice", () => {
 })
 
 describe("InventoryContext Slice", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     localStorage.clear()
     vi.clearAllMocks()
+    const { apiClient } = await import("@/core/api/apiClient")
+    vi.spyOn(apiClient, "createInventoryItem").mockResolvedValue({} as any)
   })
 
   it("does not fetch inventory when there is no auth token (guest placeholder tenant)", async () => {
@@ -235,8 +237,146 @@ describe("InventoryContext Slice", () => {
       })
     }).not.toThrow()
 
-    const updated = result.current.inventory.find((i) => i.name === "Carne Angus 150g")
-    expect(updated?.currentStock).toBe(30)
+    await waitFor(() => {
+      const updated = result.current.inventory.find((i) => i.name === "Carne Angus 150g")
+      expect(updated?.currentStock).toBe(20)
+    })
+  })
+
+  it("maps currentStock to quantity in updateInventoryItem and updates backend without duplicate stock call", async () => {
+    const { TenantProvider } = await import("./TenantContext")
+    const { InventoryProvider, useInventory } = await import("./InventoryContext")
+    const { apiClient } = await import("@/core/api/apiClient")
+
+    const updateItemSpy = vi.spyOn(apiClient, "updateInventoryItem").mockResolvedValue({} as any)
+    const updateStockSpy = vi.spyOn(apiClient, "updateInventoryStock").mockResolvedValue({} as any)
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>
+        <InventoryProvider>{children}</InventoryProvider>
+      </TenantProvider>
+    )
+
+    const { result } = renderHook(() => useInventory(), { wrapper })
+
+    act(() => {
+      result.current.addInventoryItem({
+        name: "Cebolla Morada",
+        category: "ingredients",
+        currentStock: 15,
+        minStockAlert: 2,
+        unit: "kg",
+        costPerUnit: 2500,
+      })
+    })
+
+    const added = result.current.inventory.find((i) => i.name === "Cebolla Morada")
+    expect(added).toBeDefined()
+
+    act(() => {
+      result.current.updateInventoryItem(added!.id, {
+        name: "Cebolla Morada Seleccionada",
+        currentStock: 25,
+      })
+    })
+
+    expect(updateItemSpy).toHaveBeenCalledWith(
+      added!.id,
+      expect.objectContaining({
+        name: "Cebolla Morada Seleccionada",
+        quantity: 25,
+      }),
+      expect.any(String)
+    )
+    // Coordinated stock calls: should not make a redundant/conflicting updateInventoryStock call
+    expect(updateStockSpy).not.toHaveBeenCalled()
+
+    const updated = result.current.inventory.find((i) => i.id === added!.id)
+    expect(updated?.name).toBe("Cebolla Morada Seleccionada")
+    expect(updated?.currentStock).toBe(25)
+  })
+
+  it("rolls back inventory item updates when apiClient.updateInventoryItem fails", async () => {
+    const { TenantProvider } = await import("./TenantContext")
+    const { InventoryProvider, useInventory } = await import("./InventoryContext")
+    const { apiClient } = await import("@/core/api/apiClient")
+
+    vi.spyOn(apiClient, "updateInventoryItem").mockRejectedValue(new Error("API Error 500"))
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>
+        <InventoryProvider>{children}</InventoryProvider>
+      </TenantProvider>
+    )
+
+    const { result } = renderHook(() => useInventory(), { wrapper })
+
+    act(() => {
+      result.current.addInventoryItem({
+        name: "Tomate Chonto",
+        category: "ingredients",
+        currentStock: 10,
+        minStockAlert: 3,
+        unit: "kg",
+        costPerUnit: 3000,
+      })
+    })
+
+    const added = result.current.inventory.find((i) => i.name === "Tomate Chonto")
+    expect(added).toBeDefined()
+
+    await act(async () => {
+      result.current.updateInventoryItem(added!.id, {
+        name: "Tomate Fallido",
+        currentStock: 50,
+      })
+    })
+
+    await waitFor(() => {
+      const item = result.current.inventory.find((i) => i.id === added!.id)
+      expect(item?.name).toBe("Tomate Chonto")
+      expect(item?.currentStock).toBe(10)
+    })
+  })
+
+  it("rolls back inventory deletion when apiClient.deleteInventoryItem fails", async () => {
+    const { TenantProvider } = await import("./TenantContext")
+    const { InventoryProvider, useInventory } = await import("./InventoryContext")
+    const { apiClient } = await import("@/core/api/apiClient")
+
+    vi.spyOn(apiClient, "deleteInventoryItem").mockRejectedValue(new Error("API Error 500"))
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>
+        <InventoryProvider>{children}</InventoryProvider>
+      </TenantProvider>
+    )
+
+    const { result } = renderHook(() => useInventory(), { wrapper })
+
+    act(() => {
+      result.current.addInventoryItem({
+        name: "Lechuga Romana",
+        category: "ingredients",
+        currentStock: 8,
+        minStockAlert: 2,
+        unit: "kg",
+        costPerUnit: 4000,
+      })
+    })
+
+    const added = result.current.inventory.find((i) => i.name === "Lechuga Romana")
+    expect(added).toBeDefined()
+
+    await act(async () => {
+      result.current.deleteInventoryItem(added!.id)
+    })
+
+    await waitFor(() => {
+      const item = result.current.inventory.find((i) => i.id === added!.id)
+      expect(item).toBeDefined()
+      expect(item?.name).toBe("Lechuga Romana")
+    })
   })
 
   it("produces distinct ids for two addInventoryItem calls in the same tick (collision regression)", async () => {
@@ -373,13 +513,75 @@ describe("OrderContext Slice", () => {
           {
             productId: "prod-1",
             quantity: 2,
-            additions: ["Tocineta"],
+            additions: [{ additionId: "Tocineta", quantity: 1 }],
           },
         ],
         deliveryFee: 4000,
       })
     )
     expect(result.current.orders.length).toBeGreaterThan(0)
+  })
+
+  it("maps order item additions to array of { additionId, quantity } objects", async () => {
+    const { TenantProvider } = await import("./TenantContext")
+    const { OrderProvider, useOrders } = await import("./OrderContext")
+    const { apiClient } = await import("@/core/api/apiClient")
+
+    const createOrderSpy = vi.spyOn(apiClient, "createOrder").mockResolvedValue({ id: "order-add-test" } as any)
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>
+        <UiProvider>
+          <OrderProvider>{children}</OrderProvider>
+        </UiProvider>
+      </TenantProvider>
+    )
+
+    const { result } = renderHook(() => useOrders(), { wrapper })
+
+    act(() => {
+      result.current.addOrder({
+        customer: {
+          nombre: "Mateo Gomez",
+          telefono: "3120001122",
+          direccion: "Calle 50",
+          barrio: "Chapinero",
+        },
+        items: [
+          {
+            id: "prod-2",
+            name: "Doble Carne",
+            price: 32000,
+            cantidad: 1,
+            total: 36000,
+            adiciones: [
+              { name: "Queso Cheddar", price: 2000, cantidad: 2 },
+              { name: "Tocineta", price: 2000, cantidad: 1 },
+            ],
+          },
+        ],
+        total: 36000,
+        deliveryFee: 3000,
+        finalTotal: 39000,
+        metodo: "Efectivo",
+        status: "pending",
+      })
+    })
+
+    expect(createOrderSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        items: [
+          expect.objectContaining({
+            productId: "prod-2",
+            quantity: 1,
+            additions: [
+              { additionId: "Queso Cheddar", quantity: 2 },
+              { additionId: "Tocineta", quantity: 1 },
+            ],
+          }),
+        ],
+      })
+    )
   })
 
   it("handles apiClient.createOrder network errors gracefully without crashing", async () => {
@@ -740,12 +942,302 @@ describe("OrderContext Slice", () => {
     expect(swappedA?.orderNumber).toBe(10180)
     expect(swappedB?.orderNumber).toBe(25)
   })
+
+  it("calls apiClient.updateCustomer and synchronizes customer details when updateCustomer is called", async () => {
+    const { TenantProvider } = await import("./TenantContext")
+    const { OrderProvider, useOrders } = await import("./OrderContext")
+    const { apiClient } = await import("@/core/api/apiClient")
+
+    vi.spyOn(apiClient, "hasToken").mockReturnValue(true)
+    const updateCustomerSpy = vi.spyOn(apiClient, "updateCustomer").mockResolvedValue({
+      id: "cust-1",
+      name: "Juan Perez",
+      phone: "3001234567",
+      address: "Calle 100 # 20-30",
+      barrio: "Norte",
+      notes: "Alergico al mani",
+    })
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>
+        <UiProvider>
+          <OrderProvider>{children}</OrderProvider>
+        </UiProvider>
+      </TenantProvider>
+    )
+
+    const { result } = renderHook(() => useOrders(), { wrapper })
+
+    act(() => {
+      result.current.addOrder({
+        customer: {
+          nombre: "Juan Perez",
+          telefono: "3001234567",
+          direccion: "Calle 100",
+          barrio: "Norte",
+        },
+        items: [{ name: "Burger", price: 10000, cantidad: 1, total: 10000 }],
+        total: 10000,
+        deliveryFee: 0,
+        finalTotal: 10000,
+        metodo: "Efectivo",
+        status: "pending",
+      })
+    })
+
+    const customer = result.current.customers[0]
+    expect(customer).toBeDefined()
+
+    await act(async () => {
+      await result.current.updateCustomer(customer.id, { notes: "Alergico al mani" })
+    })
+
+    expect(updateCustomerSpy).toHaveBeenCalledWith(
+      customer.id,
+      expect.objectContaining({ notes: "Alergico al mani" }),
+      "rest-burger-craft"
+    )
+
+    const updated = result.current.customers.find((c) => c.id === "cust-1" || c.id === customer.id)
+    expect(updated?.notes).toBe("Alergico al mani")
+  })
+
+
+  it("rolls back customer state when apiClient.updateCustomer fails", async () => {
+    const { TenantProvider } = await import("./TenantContext")
+    const { OrderProvider, useOrders } = await import("./OrderContext")
+    const { apiClient } = await import("@/core/api/apiClient")
+
+    vi.spyOn(apiClient, "hasToken").mockReturnValue(true)
+    vi.spyOn(apiClient, "updateCustomer").mockRejectedValue(new Error("Network Error 500"))
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>
+        <UiProvider>
+          <OrderProvider>{children}</OrderProvider>
+        </UiProvider>
+      </TenantProvider>
+    )
+
+    const { result } = renderHook(() => useOrders(), { wrapper })
+
+    act(() => {
+      result.current.addOrder({
+        customer: {
+          nombre: "Maria Gomez",
+          telefono: "3009876543",
+          direccion: "Carrera 7",
+          barrio: "Centro",
+        },
+        items: [{ name: "Burger", price: 10000, cantidad: 1, total: 10000 }],
+        total: 10000,
+        deliveryFee: 0,
+        finalTotal: 10000,
+        metodo: "Efectivo",
+        status: "pending",
+      })
+    })
+
+    const customer = result.current.customers[0]
+    expect(customer.notes).toBeUndefined()
+
+    await act(async () => {
+      await result.current.updateCustomer(customer.id, { notes: "Intento fallido" })
+    })
+
+    const rolledBack = result.current.customers.find((c) => c.id === customer.id)
+    expect(rolledBack?.notes).toBeUndefined()
+  })
+
+  it("fetches and syncs customers from backend when auth token exists on mount", async () => {
+    const { TenantProvider } = await import("./TenantContext")
+    const { OrderProvider, useOrders } = await import("./OrderContext")
+    const { apiClient } = await import("@/core/api/apiClient")
+
+    vi.spyOn(apiClient, "hasToken").mockReturnValue(true)
+    vi.spyOn(apiClient, "fetchOrders").mockResolvedValue([])
+    const fetchCustomersSpy = vi.spyOn(apiClient, "fetchCustomers").mockResolvedValue([
+      {
+        id: "c-backend-10",
+        name: "Laura Restrepo",
+        phone: "3201234567",
+        address: "Diagonal 45",
+        barrio: "Rosales",
+        notes: "Cliente frecuente",
+      }
+    ])
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>
+        <UiProvider>
+          <OrderProvider>{children}</OrderProvider>
+        </UiProvider>
+      </TenantProvider>
+    )
+
+    const { result } = renderHook(() => useOrders(), { wrapper })
+
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(fetchCustomersSpy).toHaveBeenCalledWith("rest-burger-craft")
+    const synced = result.current.customers.find((c) => c.id === "c-backend-10")
+    expect(synced).toBeDefined()
+    expect(synced?.nombre).toBe("Laura Restrepo")
+    expect(synced?.notes).toBe("Cliente frecuente")
+  })
 })
 
-describe("CatalogContext Slice - Dynamic Category Management", () => {
+
+
+describe("CatalogContext Slice - Storefront Configuration Persistence & Rollback", () => {
   beforeEach(() => {
     localStorage.clear()
     vi.clearAllMocks()
+  })
+
+  it("syncs updateStoreConfig with apiClient.updateRestaurant and updates state optimistically", async () => {
+    const { TenantProvider } = await import("./TenantContext")
+    const { CatalogProvider, useCatalog } = await import("./CatalogContext")
+    const { apiClient } = await import("@/core/api/apiClient")
+
+    const updateRestaurantSpy = vi.spyOn(apiClient, "updateRestaurant").mockResolvedValue({} as any)
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>
+        <CatalogProvider>{children}</CatalogProvider>
+      </TenantProvider>
+    )
+
+    const { result } = renderHook(() => useCatalog(), { wrapper })
+
+    act(() => {
+      result.current.updateStoreConfig({
+        tagline: "Las mejores hamburguesas de la ciudad",
+        primaryColor: "#FF5733",
+      })
+    })
+
+    expect(result.current.storeConfig.tagline).toBe("Las mejores hamburguesas de la ciudad")
+    expect(result.current.storeConfig.primaryColor).toBe("#FF5733")
+    expect(updateRestaurantSpy).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        config: {
+          tagline: "Las mejores hamburguesas de la ciudad",
+          primaryColor: "#FF5733",
+        },
+      })
+    )
+  })
+
+  it("rolls back storeConfig when apiClient.updateRestaurant fails on updateStoreConfig", async () => {
+    const { TenantProvider } = await import("./TenantContext")
+    const { CatalogProvider, useCatalog } = await import("./CatalogContext")
+    const { apiClient } = await import("@/core/api/apiClient")
+
+    vi.spyOn(apiClient, "updateRestaurant").mockRejectedValue(new Error("Network Error 500"))
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>
+        <CatalogProvider>{children}</CatalogProvider>
+      </TenantProvider>
+    )
+
+    const { result } = renderHook(() => useCatalog(), { wrapper })
+    const initialTagline = result.current.storeConfig.tagline
+
+    await act(async () => {
+      result.current.updateStoreConfig({ tagline: "Tagline que fallará" })
+    })
+
+    await waitFor(() => {
+      expect(result.current.storeConfig.tagline).toBe(initialTagline)
+    })
+  })
+
+  it("syncs resetStoreConfig with apiClient.updateRestaurant and restores DEFAULT_STORE_CONFIG", async () => {
+    const { TenantProvider } = await import("./TenantContext")
+    const { CatalogProvider, useCatalog } = await import("./CatalogContext")
+    const { apiClient } = await import("@/core/api/apiClient")
+
+    const updateRestaurantSpy = vi.spyOn(apiClient, "updateRestaurant").mockResolvedValue({} as any)
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>
+        <CatalogProvider>{children}</CatalogProvider>
+      </TenantProvider>
+    )
+
+    const { result } = renderHook(() => useCatalog(), { wrapper })
+
+    act(() => {
+      result.current.updateStoreConfig({ tagline: "Modificado temporal" })
+    })
+    expect(result.current.storeConfig.tagline).toBe("Modificado temporal")
+
+    act(() => {
+      result.current.resetStoreConfig()
+    })
+
+    expect(result.current.storeConfig.tagline).toBe(DEFAULT_STORE_CONFIG.tagline)
+    expect(updateRestaurantSpy).toHaveBeenLastCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        config: DEFAULT_STORE_CONFIG,
+      })
+    )
+  })
+
+  it("rolls back storeConfig when apiClient.updateRestaurant fails on resetStoreConfig", async () => {
+    const { TenantProvider } = await import("./TenantContext")
+    const { CatalogProvider, useCatalog } = await import("./CatalogContext")
+    const { apiClient } = await import("@/core/api/apiClient")
+
+    const updateRestaurantSpy = vi.spyOn(apiClient, "updateRestaurant").mockResolvedValue({} as any)
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>
+        <CatalogProvider>{children}</CatalogProvider>
+      </TenantProvider>
+    )
+
+    const { result } = renderHook(() => useCatalog(), { wrapper })
+
+    act(() => {
+      result.current.updateStoreConfig({ tagline: "Modificado antes de reset fallido" })
+    })
+    expect(result.current.storeConfig.tagline).toBe("Modificado antes de reset fallido")
+
+    // Next call fails
+    updateRestaurantSpy.mockRejectedValueOnce(new Error("Server Reset Failed"))
+
+    await act(async () => {
+      result.current.resetStoreConfig()
+    })
+
+    await waitFor(() => {
+      expect(result.current.storeConfig.tagline).toBe("Modificado antes de reset fallido")
+    })
+  })
+})
+
+describe("CatalogContext Slice - Dynamic Category Management", () => {
+  beforeEach(async () => {
+    localStorage.clear()
+    vi.clearAllMocks()
+    const { apiClient } = await import("@/core/api/apiClient")
+    vi.spyOn(apiClient, "createProduct").mockImplementation(async (data: any) => ({
+      id: data.id || "prod-mock-" + Math.random().toString(36).slice(2, 7),
+      name: data.name,
+      price: data.price,
+      category: data.category,
+      src: data.imageUrl || "",
+      description: data.description || "",
+      inStock: data.isAvailable ?? true,
+    }))
   })
 
   it("supports adding, updating/renaming, and deleting categories with product cascade", async () => {
@@ -811,6 +1303,123 @@ describe("CatalogContext Slice - Dynamic Category Management", () => {
     const reassignedProduct = result.current.products.find((p) => p.name === "Aros de Cebolla")
     expect(reassignedProduct?.category).not.toBe("Aperitivos")
     expect(result.current.categories).toContain(reassignedProduct?.category)
+  })
+
+  it("rolls back category addition when apiClient.updateCategories fails on addCategory", async () => {
+    const { TenantProvider } = await import("./TenantContext")
+    const { CatalogProvider, useCatalog } = await import("./CatalogContext")
+    const { apiClient } = await import("@/core/api/apiClient")
+
+    vi.spyOn(apiClient, "updateCategories").mockRejectedValue(new Error("API Error 500"))
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>
+        <CatalogProvider>{children}</CatalogProvider>
+      </TenantProvider>
+    )
+
+    const { result } = renderHook(() => useCatalog(), { wrapper })
+
+    await act(async () => {
+      result.current.addCategory("Postres Extremos")
+    })
+
+    await waitFor(() => {
+      expect(result.current.categories).not.toContain("Postres Extremos")
+    })
+  })
+
+  it("rolls back category and products when apiClient.updateCategories fails on updateCategory", async () => {
+    const { TenantProvider } = await import("./TenantContext")
+    const { CatalogProvider, useCatalog } = await import("./CatalogContext")
+    const { apiClient } = await import("@/core/api/apiClient")
+
+    const updateCategoriesSpy = vi.spyOn(apiClient, "updateCategories").mockResolvedValue({ categories: [] })
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>
+        <CatalogProvider>{children}</CatalogProvider>
+      </TenantProvider>
+    )
+
+    const { result } = renderHook(() => useCatalog(), { wrapper })
+
+    // Add category and product successfully
+    act(() => {
+      result.current.addCategory("Bebidas Frias")
+    })
+    act(() => {
+      result.current.addProduct({
+        name: "Limonada Natural",
+        price: 7000,
+        category: "Bebidas Frias",
+        src: "",
+        description: "Fresca",
+        inStock: true,
+      })
+    })
+
+    expect(result.current.categories).toContain("Bebidas Frias")
+
+    // Now fail updateCategory
+    updateCategoriesSpy.mockRejectedValueOnce(new Error("Rename Failed"))
+
+    await act(async () => {
+      result.current.updateCategory("Bebidas Frias", "Refrescos")
+    })
+
+    await waitFor(() => {
+      expect(result.current.categories).toContain("Bebidas Frias")
+      expect(result.current.categories).not.toContain("Refrescos")
+      const product = result.current.products.find((p) => p.name === "Limonada Natural")
+      expect(product?.category).toBe("Bebidas Frias")
+    })
+  })
+
+  it("rolls back category and products when apiClient.updateCategories fails on deleteCategory", async () => {
+    const { TenantProvider } = await import("./TenantContext")
+    const { CatalogProvider, useCatalog } = await import("./CatalogContext")
+    const { apiClient } = await import("@/core/api/apiClient")
+
+    const updateCategoriesSpy = vi.spyOn(apiClient, "updateCategories").mockResolvedValue({ categories: [] })
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>
+        <CatalogProvider>{children}</CatalogProvider>
+      </TenantProvider>
+    )
+
+    const { result } = renderHook(() => useCatalog(), { wrapper })
+
+    // Add category and product successfully
+    act(() => {
+      result.current.addCategory("Salsas Especiales")
+    })
+    act(() => {
+      result.current.addProduct({
+        name: "Salsa Picante Habanero",
+        price: 2000,
+        category: "Salsas Especiales",
+        src: "",
+        description: "Picante",
+        inStock: true,
+      })
+    })
+
+    expect(result.current.categories).toContain("Salsas Especiales")
+
+    // Now fail deleteCategory
+    updateCategoriesSpy.mockRejectedValueOnce(new Error("Delete Failed"))
+
+    await act(async () => {
+      result.current.deleteCategory("Salsas Especiales")
+    })
+
+    await waitFor(() => {
+      expect(result.current.categories).toContain("Salsas Especiales")
+      const product = result.current.products.find((p) => p.name === "Salsa Picante Habanero")
+      expect(product?.category).toBe("Salsas Especiales")
+    })
   })
 
   it("supports adding, updating, and deleting product additions with backend API sync", async () => {

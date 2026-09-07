@@ -6,7 +6,7 @@ import {
   InventoryItem,
   AdditionItem,
 } from '@/types/restaurant'
-import type { OrderEvent, CreateOrderInput, UpdateOrderInput, CreateRestaurantInput, UpdateRestaurantInput } from '@burger-page/contracts'
+import type { OrderEvent, CreateOrderInput, UpdateOrderInput, CreateRestaurantInput, UpdateRestaurantInput, CreateCustomerInput, UpdateCustomerInput } from '@burger-page/contracts'
 
 export interface ApiClientConfig {
   baseUrl: string
@@ -374,7 +374,40 @@ export class ApiClient {
     })
   }
 
+  async fetchCustomers(restaurantId?: string): Promise<any[]> {
+    const qs = restaurantId ? `?restaurantId=${encodeURIComponent(restaurantId)}` : ''
+    const raw = await this.request<any[]>(`/customers${qs}`)
+    return Array.isArray(raw) ? raw : []
+  }
+
+  async updateCustomer(
+    id: string,
+    data: UpdateCustomerInput,
+    restaurantId?: string
+  ): Promise<any> {
+    const targetRest = restaurantId || data.restaurantId
+    const qs = targetRest ? `?restaurantId=${encodeURIComponent(targetRest)}` : ''
+    const payload = targetRest && !data.restaurantId ? { ...data, restaurantId: targetRest } : data
+    return this.request<any>(`/customers/${id}${qs}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    })
+  }
+
+  async createCustomer(
+    data: CreateCustomerInput,
+    restaurantId?: string
+  ): Promise<any> {
+    const targetRest = restaurantId || data.restaurantId
+    const payload = targetRest && !data.restaurantId ? { ...data, restaurantId: targetRest } : data
+    return this.request<any>('/customers', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  }
+
   /**
+
    * Subscribes to real-time Server-Sent Events (SSE) for live order updates.
    * Returns an unsubscribe function.
    */

@@ -220,5 +220,37 @@ describe('ApiClient', () => {
       headers: {},
     })
   })
+
+  it('should fetch customers', async () => {
+    const mockCustomers = [
+      { id: 'c1', name: 'John Doe', phone: '+57 300 123 4567', address: 'Calle 10', barrio: 'Poblado', notes: 'Sin cebolla' }
+    ]
+    mockResponse(mockCustomers)
+
+    const data = await client.fetchCustomers('rest-1')
+    expect(data).toEqual(mockCustomers)
+    expect(globalThis.fetch).toHaveBeenCalledWith('http://localhost:3001/api/customers?restaurantId=rest-1', {
+      headers: {},
+    })
+  })
+
+  it('should update customer with PUT and payload', async () => {
+    const updatedCustomer = {
+      id: 'c1',
+      name: 'John Doe Editado',
+      phone: '+57 300 999 8888',
+      notes: 'Nota importante',
+    }
+    mockResponse(updatedCustomer)
+
+    const data = await client.updateCustomer('c1', { name: 'John Doe Editado', notes: 'Nota importante' }, 'rest-1')
+    expect(data).toEqual(updatedCustomer)
+    expect(globalThis.fetch).toHaveBeenCalledWith('http://localhost:3001/api/customers/c1?restaurantId=rest-1', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'John Doe Editado', notes: 'Nota importante', restaurantId: 'rest-1' }),
+    })
+  })
 })
+
 

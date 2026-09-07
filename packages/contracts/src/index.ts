@@ -223,3 +223,31 @@ export const orderEventSchema = z.object({
 });
 export type OrderEvent = z.infer<typeof orderEventSchema>;
 
+// ==========================================
+// CUSTOMER CONTRACTS
+// ==========================================
+
+export const createCustomerSchema = z.object({
+  name: z.string().min(1, 'Customer name is required'),
+  phone: z.string().min(1, 'Customer phone is required'),
+  address: z.string().optional(),
+  barrio: z.string().optional(),
+  notes: z.string().optional(),
+  email: z.string().optional(),
+  restaurantId: z.string().optional(),
+});
+export type CreateCustomerInput = z.infer<typeof createCustomerSchema>;
+
+export const updateCustomerSchema = z.object({
+  name: z.string().optional(),
+  phone: z.string().optional(),
+  address: z.string().optional(),
+  barrio: z.string().optional(),
+  notes: z.string().optional(),
+  email: z.string().optional(),
+  restaurantId: z.string().optional(),
+});
+export type UpdateCustomerInput = z.infer<typeof updateCustomerSchema>;
+
+
+

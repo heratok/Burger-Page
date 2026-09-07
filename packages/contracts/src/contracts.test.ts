@@ -4,9 +4,22 @@ import {
   createOrderSchema,
   updateOrderStatusSchema,
   orderEventSchema,
+  updateCustomerSchema,
 } from './index.js';
 
 describe('@burger-page/contracts', () => {
+  it('should validate valid updateCustomer payload', () => {
+    const valid = {
+      name: 'Carlos Mendoza',
+      phone: '+57 301 555 1234',
+      address: 'Calle 80 # 11-25',
+      barrio: 'Antiguo Country',
+      notes: 'Timbre 301',
+    };
+    const result = updateCustomerSchema.safeParse(valid);
+    expect(result.success).toBe(true);
+  });
+
   it('should validate valid createProduct payload', () => {
     const valid = {
       name: 'Classic Cheeseburger',
