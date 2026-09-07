@@ -233,7 +233,7 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
             <RadioGroup
               value={metodo}
               onValueChange={(value) => setValue("metodo", value as FormValues["metodo"])}
-              className="grid grid-cols-2 gap-3"
+              className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3"
             >
               {METODOS.map(({ value, Icon }) => {
                 const active = metodo === value
@@ -241,7 +241,7 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
                   <Label
                     key={value}
                     data-slot="field-label"
-                    className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3.5 transition duration-150 ease-out focus-within:ring-2 focus-within:ring-accent ${
+                    className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 sm:p-3.5 transition duration-150 ease-out focus-within:ring-2 focus-within:ring-accent ${
                       active
                         ? "border-accent bg-accent-soft text-text-primary font-bold"
                         : "border-border-subtle bg-bg-elevated text-text-primary hover:border-border-strong"
@@ -251,13 +251,13 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
                     <span
                       aria-hidden="true"
                       style={active ? { backgroundColor: storeConfig.primaryColor, color: primaryForeground } : undefined}
-                      className={`inline-flex size-9 items-center justify-center rounded-full ${
+                      className={`inline-flex size-9 shrink-0 items-center justify-center rounded-full ${
                         active ? "shadow-xs" : "bg-bg-elevated-2 text-text-muted"
                       }`}
                     >
                       <Icon className="size-4" />
                     </span>
-                    <span className="text-sm font-semibold text-text-primary">{value}</span>
+                    <span className="text-sm font-semibold text-text-primary truncate">{value}</span>
                   </Label>
                 )
               })}
