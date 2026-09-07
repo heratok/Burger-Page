@@ -327,7 +327,12 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
             variant="outline"
             size="lg"
             onClick={onBackToCart}
-            className="h-12 flex-1 text-base font-bold cursor-pointer"
+            style={{
+              backgroundColor: "var(--color-bg-elevated)",
+              borderColor: "var(--color-border-subtle)",
+              color: "var(--color-text-primary)",
+            }}
+            className="h-12 flex-1 text-base font-bold cursor-pointer hover:bg-bg-elevated-2"
           >
             <ArrowLeft data-icon="inline-start" />
             Volver
@@ -384,7 +389,7 @@ function FormSummary({ cartItems, total }: FormSummaryProps) {
         </span>
       </button>
       {open && (
-        <ul id="order-summary" className="space-y-2 px-4 pt-1 pb-4 border-t border-slate-100 dark:border-slate-800/40">
+        <ul id="order-summary" className="space-y-2 px-4 pt-1 pb-4 border-t border-border-subtle">
           {cartItems.map((item, i) => (
             <li
               key={item.id || i}

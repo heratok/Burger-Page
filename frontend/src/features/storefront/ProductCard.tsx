@@ -66,11 +66,11 @@ export default function ProductCard({ product, onSelectProduct }: ProductCardPro
         backgroundColor: "var(--color-bg-elevated)",
         borderColor: "var(--color-border-subtle)",
       }}
-      className={`group relative cursor-pointer gap-0 overflow-hidden py-0 transition duration-200 ease-out hover:-translate-y-1 focus:outline-none focus-visible:focus-ring active:translate-y-0 ${radiusClass} ${styleClass}`}
+      className={`group relative flex h-full w-full flex-col cursor-pointer gap-0 overflow-hidden py-0 transition duration-200 ease-out hover:-translate-y-1 focus:outline-none focus-visible:focus-ring active:translate-y-0 ${radiusClass} ${styleClass}`}
     >
       <div
         style={{ backgroundColor: "var(--color-bg-elevated-2)" }}
-        className="relative aspect-video overflow-hidden"
+        className="relative aspect-video w-full shrink-0 overflow-hidden"
       >
         <LazyImage
           src={product.src}
@@ -112,24 +112,30 @@ export default function ProductCard({ product, onSelectProduct }: ProductCardPro
         )}
       </div>
 
-      <CardContent className="flex flex-1 flex-col gap-1.5 px-4 pt-4">
-        <div className="flex items-start justify-between gap-2">
+      <CardContent className="flex flex-1 flex-col justify-between gap-2 p-4">
+        <div className="space-y-1">
           <h2
             style={{ color: "var(--color-text-primary)" }}
-            className="text-base font-bold leading-tight tracking-tight group-hover:opacity-85"
+            className="text-base font-bold leading-snug tracking-tight group-hover:opacity-85 line-clamp-2"
           >
             {product.name}
           </h2>
+          {product.description ? (
+            <p
+              style={{ color: "var(--color-text-secondary)" }}
+              className="line-clamp-2 text-xs leading-relaxed font-normal"
+            >
+              {product.description}
+            </p>
+          ) : (
+            <p className="invisible text-xs leading-relaxed font-normal select-none" aria-hidden="true">
+              &nbsp;
+            </p>
+          )}
         </div>
-        <p
-          style={{ color: "var(--color-text-secondary)" }}
-          className="line-clamp-2 text-xs leading-relaxed font-normal"
-        >
-          {product.description}
-        </p>
       </CardContent>
 
-      <CardFooter className="mt-auto justify-between border-t-0 bg-transparent px-4 pb-4 pt-2">
+      <CardFooter className="mt-auto justify-between border-t-0 bg-transparent px-4 pb-4 pt-1">
         <span
           style={{ color: storeConfig.primaryColor }}
           className="text-lg font-black tracking-tight"
