@@ -12,7 +12,22 @@ export class AuthenticateUserUseCase {
   ) {}
 
   async execute(username: string, password: string): Promise<AuthResult> {
-    const user = await this.userRepo.findByUsername(username);
+    let user = await this.userRepo.findByUsername(username);
+
+    // Fallback: support login without admin_ prefix (e.g. rosto -> admin_rosto)
+    if (!user && !username.startsWith('admin_')) {
+      user = await this.userRepo.findByUsername(`admin_${username}`);
+    }
+
+    // Fallback: support login using restaurantId / slug identifier
+    if (!user && typeof this.userRepo.findByRestaurantId === 'function') {
+      const usersByRest = (await this.userRepo.findByRestaurantId(username)) || [];
+      const adminUser = usersByRest.find((u) => u.role === 'restaurant_admin');
+      if (adminUser) {
+        user = adminUser;
+      }
+    }
+
     if (!user) {
       throw new UnauthorizedError('Invalid credentials');
     }

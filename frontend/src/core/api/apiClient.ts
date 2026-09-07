@@ -100,7 +100,10 @@ export class ApiClient {
     })
 
     if (!response.ok) {
-      throw new Error(`API Error: ${response.status} ${response.statusText}`)
+      const error: any = new Error(`API Error: ${response.status} ${response.statusText}`)
+      error.status = response.status
+      error.statusText = response.statusText
+      throw error
     }
 
     if (response.status === 204 || response.status === 205) {

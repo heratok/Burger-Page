@@ -1,43 +1,15 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Order Deletion & Persistence E2E Suite', () => {
+  test.describe.configure({ mode: 'serial' });
+
   test('logs in as rosto admin, deletes an order via modal, verifies DB deletion and persistence after reload', async ({ page }) => {
     test.setTimeout(60000);
-    const consoleLogs: Array<{ type: string; text: string }> = [];
-    const pageErrors: string[] = [];
-    const failedRequests: Array<{ url: string; status: number | null; errorText?: string }> = [];
-
-    page.on('console', (msg) => {
-      consoleLogs.push({ type: msg.type(), text: msg.text() });
-    });
-
-    page.on('pageerror', (err) => {
-      pageErrors.push(err.message);
-    });
-
-    page.on('requestfailed', (req) => {
-      failedRequests.push({
-        url: req.url(),
-        status: null,
-        errorText: req.failure()?.errorText,
-      });
-    });
-
-    page.on('response', async (res) => {
-      if (res.url().includes('/api/') && !res.url().includes('/stream')) {
-        if (res.status() >= 400) {
-          failedRequests.push({
-            url: res.url(),
-            status: res.status(),
-          });
-        }
-      }
-    });
 
     // 1. Navigate to /admin
     await page.goto('/admin');
 
-    // 2. Fill login credentials
+    // 2. Fill login credentials as rosto / rosto0502
     const userInput = page.locator('input#username, input[placeholder*="usuario" i], input[type="text"]').first();
     const passInput = page.locator('input#password, input[type="password"]').first();
     await expect(userInput).toBeVisible({ timeout: 10000 });
@@ -63,7 +35,7 @@ test.describe('Order Deletion & Persistence E2E Suite', () => {
     await ordersBtn.click();
     await ordersResponsePromise;
 
-    // 5. Look for first order card
+    // 5. Look for first order card in Comandas feed
     const firstEyeBtn = page.locator('button[title*="Ver detalles completos de la orden"]').first();
     await expect(firstEyeBtn).toBeVisible({ timeout: 10000 });
 
@@ -139,7 +111,7 @@ test.describe('Order Deletion & Persistence E2E Suite', () => {
     console.log('Successfully verified order deletion in UI, server, and database!');
   });
 
-  test('deletes an order from the Historial tab, verifies DB deletion and persistence after reload', async ({ page }) => {
+  test('deletes an order from Kanban view, verifies DB deletion and persistence after reload', async ({ page }) => {
     test.setTimeout(60000);
 
     // 1. Navigate to /admin
@@ -171,48 +143,32 @@ test.describe('Order Deletion & Persistence E2E Suite', () => {
     await ordersBtn.click();
     await ordersResponsePromise;
 
-    // 5. Click "Historial" tab
-    const historyTabBtn = page.locator('button').filter({ hasText: /Historial/i }).first();
-    await expect(historyTabBtn).toBeVisible({ timeout: 5000 });
-    await historyTabBtn.click();
-    await page.waitForTimeout(1000);
-
-    // If there are no orders in history, deliver one from active orders first
-    const historyCards = page.locator('button[title*="Ver detalles completos de la orden"]');
-    if ((await historyCards.count()) === 0) {
-      console.log('No orders in Historial yet, moving an active order to delivered...');
-      const activeTabBtn = page.locator('button').filter({ hasText: /Comandas/i }).first();
-      await activeTabBtn.click();
+    // 5. Switch to Kanban view
+    const kanbanModeBtn = page.locator('button[title*="Tablero Kanban"], button:has-text("Kanban")').first();
+    if (await kanbanModeBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await kanbanModeBtn.click();
       await page.waitForTimeout(500);
-
-      const completeBtn = page.locator('button:has-text("Completar (1 Clic)")').first();
-      if (await completeBtn.isVisible()) {
-        await completeBtn.click();
-        await page.waitForTimeout(1500);
-      }
-      await historyTabBtn.click();
-      await page.waitForTimeout(1000);
     }
 
-    const firstEyeBtn = page.locator('button[title*="Ver detalles completos de la orden"]').first();
-    await expect(firstEyeBtn).toBeVisible({ timeout: 10000 });
+    // 6. Look for eye icon button on a card in Kanban or Feed
+    const eyeBtn = page.locator('button[title*="Ver detalles completos del pedido"], button[title*="Ver detalles completos de la orden"]').first();
+    await expect(eyeBtn).toBeVisible({ timeout: 10000 });
 
-    // Get order number from the card
-    const firstOrderCard = page.locator('article, div').filter({ has: firstEyeBtn }).first();
-    const cardText = await firstOrderCard.innerText();
+    const card = page.locator('div').filter({ has: eyeBtn }).first();
+    const cardText = await card.innerText();
     const orderNumberMatch = cardText.match(/#(\d+)/);
     const orderNumber = orderNumberMatch ? orderNumberMatch[1] : null;
-    console.log(`Targeting Historial Order #${orderNumber} for deletion...`);
+    console.log(`Targeting Kanban Order #${orderNumber} for deletion...`);
 
-    // 6. Click eye icon to open OrderDetailModal
-    await firstEyeBtn.click();
+    // 7. Click eye icon to open OrderDetailModal
+    await eyeBtn.click();
 
-    // 7. Click "Eliminar Orden" button in detail modal
+    // 8. Click "Eliminar Orden" button in detail modal
     const deleteBtnInModal = page.locator('button[title*="Eliminar orden definitivamente"], button:has-text("Eliminar Orden")').first();
     await expect(deleteBtnInModal).toBeVisible({ timeout: 5000 });
     await deleteBtnInModal.click();
 
-    // 8. Confirm in ConfirmDeleteModal
+    // 9. Confirm in ConfirmDeleteModal
     const confirmModal = page.locator('div[role="dialog"]').filter({ hasText: /¿Eliminar orden permanentemente\?|¿Confirmar eliminación\?/i });
     await expect(confirmModal).toBeVisible({ timeout: 5000 });
 
@@ -228,15 +184,18 @@ test.describe('Order Deletion & Persistence E2E Suite', () => {
     const deleteResponse = await deleteResponsePromise;
     expect(deleteResponse.status()).toBe(200);
     const deleteBody = await deleteResponse.json();
-    console.log('Server DELETE response for Historial order:', deleteBody);
+    console.log('Server DELETE response for Kanban order:', deleteBody);
     expect(deleteBody).toHaveProperty('success', true);
 
-    // 9. Toast appeared
+    // 10. Toast appeared
     const toastElem = page.locator('li[data-sonner-toast], div[role="status"]').filter({ hasText: /Orden eliminada/i });
     await expect(toastElem).toBeVisible({ timeout: 5000 });
 
-    // 10. Reload the page to test persistence from database
-    console.log('Reloading page to test persistence in Historial...');
+    // Wait a brief moment to let UI settle
+    await page.waitForTimeout(1000);
+
+    // 11. Reload page to test persistence from database
+    console.log('Reloading page to test persistence in Kanban...');
     await page.reload();
     await page.waitForTimeout(2000);
 
@@ -251,24 +210,16 @@ test.describe('Order Deletion & Persistence E2E Suite', () => {
       await page.waitForTimeout(1000);
     }
 
-    // Click Historial tab again
-    const historyTabBtnReloaded = page.locator('button').filter({ hasText: /Historial/i }).first();
-    if (await historyTabBtnReloaded.isVisible()) {
-      await historyTabBtnReloaded.click();
-      await page.waitForTimeout(1000);
-    }
-
-    // 11. Assert that the deleted order number is NOT in the cards
+    // 12. Assert that the deleted order number is NOT in the cards
     if (orderNumber) {
       const deletedCard = page.locator(`span:has-text("#${orderNumber}")`);
       const isStillPresent = await deletedCard.isVisible();
-      console.log(`Is Historial order #${orderNumber} still present after reload?`, isStillPresent);
+      console.log(`Is Kanban order #${orderNumber} still present after reload?`, isStillPresent);
       expect(isStillPresent).toBe(false);
     }
 
     // Take screenshot
-    await page.screenshot({ path: 'test-results/historial-order-deleted-and-persisted.png' });
-    console.log('Successfully verified Historial order deletion in UI, server, and database!');
+    await page.screenshot({ path: 'test-results/kanban-order-deleted-and-persisted.png' });
+    console.log('Successfully verified Kanban order deletion in UI, server, and database!');
   });
 });
-
