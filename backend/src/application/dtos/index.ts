@@ -70,6 +70,18 @@ export interface UpdateOrderReceiptDTO {
   receiptUrl: string;
 }
 
+export interface UpdateOrderDTO {
+  customer?: CreateOrderCustomerDTO;
+  items?: OrderItemDTO[];
+  deliveryFee?: number;
+  paymentMethod?: 'Efectivo' | 'Transferencia';
+  paymentAmount?: number;
+  changeAmount?: number;
+  comment?: string;
+  receiptUrl?: string;
+  status?: 'pending' | 'cooking' | 'delivering' | 'delivered' | 'cancelled';
+}
+
 export interface CreateCustomerDTO {
   restaurantId?: string;
   name: string;

@@ -11,6 +11,7 @@ import {
   ShoppingCart,
   AdditionsModal,
   CheckoutForm,
+  useCart,
   type CartItem,
 } from "@/features/cart"
 import { useRestaurant } from "@/context/RestaurantContext"
@@ -18,12 +19,23 @@ import { getFontFamilyClass, getStoreThemeStyles } from "@/features/crm/utils/cu
 import { getContrastForeground } from "@/lib/utils"
 
 export default function Home() {
-  const { products, storeConfig, categories: contextCategories } = useRestaurant()
+  const { products, storeConfig, categories: contextCategories, activeRestaurant } = useRestaurant()
+  const {
+    cartItems,
+    totalCart,
+    addToCart,
+    updateCartItem,
+    setCartItems,
+    clearCart,
+  } = useCart({
+    restaurantId: activeRestaurant?.id || activeRestaurant?.slug,
+    products,
+  })
+
   const [isAdditionsModalOpen, setIsAdditionsModalOpen] = useState(false)
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<MenuItem>(products[0])
-  const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [searchText, setSearchText] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL")
   const [loading, setLoading] = useState(true)
@@ -88,14 +100,12 @@ export default function Home() {
 
   const handleAddToCart = (cartItem: CartItem) => {
     if (editingIndex !== null) {
-      setCartItems((prev) =>
-        prev.map((item, i) => (i === editingIndex ? cartItem : item))
-      )
+      updateCartItem(editingIndex, cartItem)
       setEditingIndex(null)
       toast.success("Cambios guardados")
       return
     }
-    setCartItems((prev) => [...prev, cartItem])
+    addToCart(cartItem)
     toast.success(`${cartItem.name} agregada al carrito`)
   }
 
@@ -134,17 +144,12 @@ export default function Home() {
   const handleCloseCheckout = () => {
     setIsCheckoutOpen(false)
     setIsCartOpen(false)
-    setCartItems([])
+    clearCart()
   }
   const handleCloseModal = () => {
     setIsAdditionsModalOpen(false)
     setEditingIndex(null)
   }
-
-  const totalCart = useMemo(
-    () => cartItems.reduce((acc, item) => acc + item.total, 0),
-    [cartItems]
-  )
 
   const filteredProducts = useMemo(() => {
     const query = searchText.toLowerCase().trim()

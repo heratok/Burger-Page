@@ -67,6 +67,8 @@ import { GetOrderByIdUseCase } from '../../application/use-cases/GetOrderByIdUse
 import { CreateOrderUseCase } from '../../application/use-cases/CreateOrderUseCase.js';
 import { UpdateOrderStatusUseCase } from '../../application/use-cases/UpdateOrderStatusUseCase.js';
 import { UpdateOrderReceiptUseCase } from '../../application/use-cases/UpdateOrderReceiptUseCase.js';
+import { DeleteOrderUseCase } from '../../application/use-cases/DeleteOrderUseCase.js';
+import { UpdateOrderUseCase } from '../../application/use-cases/UpdateOrderUseCase.js';
 import { ListCustomersUseCase } from '../../application/use-cases/ListCustomersUseCase.js';
 import { GetCustomerByIdUseCase } from '../../application/use-cases/GetCustomerByIdUseCase.js';
 import { CreateCustomerUseCase } from '../../application/use-cases/CreateCustomerUseCase.js';
@@ -210,6 +212,8 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
   const createOrder = new CreateOrderUseCase(orderRepo, productRepo, restaurantRepo, additionRepo, customerRepo);
   const updateOrderStatus = new UpdateOrderStatusUseCase(orderRepo);
   const updateOrderReceipt = new UpdateOrderReceiptUseCase(orderRepo);
+  const deleteOrder = new DeleteOrderUseCase(orderRepo);
+  const updateOrder = new UpdateOrderUseCase(orderRepo, productRepo, additionRepo, customerRepo);
 
   const listCustomers = new ListCustomersUseCase(customerRepo);
   const getCustomerById = new GetCustomerByIdUseCase(customerRepo);
@@ -253,7 +257,16 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
       deleteProduct,
       restaurantRepo
     ),
-    orderController: new OrderController(listOrders, getOrderById, createOrder, updateOrderStatus, updateOrderReceipt, restaurantRepo),
+    orderController: new OrderController(
+      listOrders,
+      getOrderById,
+      createOrder,
+      updateOrderStatus,
+      updateOrderReceipt,
+      restaurantRepo,
+      deleteOrder,
+      updateOrder
+    ),
     customerController: new CustomerController(
       listCustomers,
       getCustomerById,

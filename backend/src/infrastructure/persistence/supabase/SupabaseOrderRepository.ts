@@ -143,4 +143,130 @@ export class SupabaseOrderRepository implements OrderRepository {
       throw new Error(`Failed to update order receipt: ${error.message}`);
     }
   }
+
+  async delete(id: string, restaurantId: string): Promise<void> {
+    const existing = await this.findById(id, restaurantId);
+    if (!existing) {
+      throw new Error(`Order ${id} not found for restaurant ${restaurantId}`);
+    }
+
+    const { data: itemRows } = await this.client
+      .from('order_items')
+      .select('id')
+      .eq('order_id', id);
+
+    const itemIds = (itemRows || []).map((i: any) => i.id);
+    if (itemIds.length > 0) {
+      await this.client.from('order_item_additions').delete().in('order_item_id', itemIds);
+    }
+    await this.client.from('order_items').delete().eq('order_id', id);
+
+    const { error } = await this.client
+      .from('orders')
+      .delete()
+      .eq('id', id)
+      .eq('restaurant_id', restaurantId);
+
+    if (error) {
+      throw new Error(`Failed to delete order: ${error.message}`);
+    }
+  }
+
+  async update(order: Order, restaurantId: string): Promise<Order> {
+    const existing = await this.findById(order.id, restaurantId);
+    if (!existing) {
+      throw new Error(`Order ${order.id} not found for restaurant ${restaurantId}`);
+    }
+
+    // Update orders table
+    const { error: orderError } = await this.client
+      .from('orders')
+      .update({
+        delivery_fee: order.deliveryFee,
+        subtotal: order.subtotal,
+        final_total: order.finalTotal,
+        payment_method: order.paymentMethod,
+        payment_amount: order.paymentAmount !== undefined ? order.paymentAmount : null,
+        change_amount: order.changeAmount !== undefined ? order.changeAmount : null,
+        comment: order.comment !== undefined ? order.comment : null,
+        status: order.status,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', order.id)
+      .eq('restaurant_id', restaurantId);
+
+    if (orderError) {
+      throw new Error(`Failed to update order: ${orderError.message}`);
+    }
+
+    // Update customer if provided
+    const cust = (order as any).customer;
+    const customerId = order.customerId || existing.customerId;
+    if (customerId && cust) {
+      const custName = cust.name || cust.nombre;
+      const custPhone = cust.phone || cust.telefono;
+      const custAddress = cust.address || cust.direccion;
+      const custBarrio = cust.barrio;
+
+      await this.client
+        .from('customers')
+        .update({
+          ...(custName ? { name: custName } : {}),
+          ...(custPhone ? { phone: custPhone } : {}),
+          ...(custAddress ? { address: custAddress } : {}),
+          ...(custBarrio ? { barrio: custBarrio } : {}),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', customerId)
+        .eq('restaurant_id', restaurantId);
+    }
+
+    // Delete existing additions and items
+    const { data: itemRows } = await this.client
+      .from('order_items')
+      .select('id')
+      .eq('order_id', order.id);
+
+    const itemIds = (itemRows || []).map((i: any) => i.id);
+    if (itemIds.length > 0) {
+      await this.client.from('order_item_additions').delete().in('order_item_id', itemIds);
+    }
+    await this.client.from('order_items').delete().eq('order_id', order.id);
+
+    // Re-insert items and additions
+    for (const item of order.items) {
+      const itemId = item.id || `ord_item_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+      const { error: itemErr } = await this.client.from('order_items').insert({
+        id: itemId,
+        order_id: order.id,
+        restaurant_id: restaurantId,
+        product_id: item.productId,
+        product_name: item.productName,
+        unit_price: item.unitPrice,
+        quantity: item.quantity,
+        observation: item.observation || null,
+      });
+      if (itemErr) {
+        throw new Error(`Failed to insert order item: ${itemErr.message}`);
+      }
+
+      for (const add of item.additions || []) {
+        const addId = add.id || `ord_add_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+        const { error: addErr } = await this.client.from('order_item_additions').insert({
+          id: addId,
+          order_item_id: itemId,
+          restaurant_id: restaurantId,
+          addition_id: add.additionId,
+          addition_name: add.additionName,
+          unit_price: add.unitPrice,
+          quantity: add.quantity || 1,
+        });
+        if (addErr) {
+          throw new Error(`Failed to insert order item addition: ${addErr.message}`);
+        }
+      }
+    }
+
+    return (await this.findById(order.id, restaurantId)) || order;
+  }
 }

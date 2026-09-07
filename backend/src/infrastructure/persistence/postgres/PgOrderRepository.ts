@@ -163,4 +163,191 @@ export class PgOrderRepository implements OrderRepository {
       }
     });
   }
+
+  async delete(id: string, restaurantId: string): Promise<void> {
+    await withTenantContext({ restaurantId }, async (client) => {
+      const { rows: itemRows } = await client.query(
+        `SELECT id FROM public.order_items WHERE order_id = $1`,
+        [id]
+      );
+      const itemIds = itemRows.map((i) => i.id);
+      if (itemIds.length > 0) {
+        await client.query(
+          `DELETE FROM public.order_item_additions WHERE order_item_id = ANY($1::text[])`,
+          [itemIds]
+        );
+      }
+      await client.query(`DELETE FROM public.order_items WHERE order_id = $1`, [id]);
+      const { rowCount } = await client.query(
+        `DELETE FROM public.orders WHERE id = $1 AND restaurant_id = $2`,
+        [id, restaurantId]
+      );
+      if (!rowCount) {
+        throw new Error(`Order ${id} not found for restaurant ${restaurantId}`);
+      }
+    });
+  }
+
+  async update(order: Order, restaurantId: string): Promise<Order> {
+    return withTenantContext({ restaurantId }, async (client) => {
+      const { rows: existingRows } = await client.query(
+        `SELECT * FROM public.orders WHERE id = $1 AND restaurant_id = $2`,
+        [order.id, restaurantId]
+      );
+      if (existingRows.length === 0) {
+        throw new Error(`Order ${order.id} not found for restaurant ${restaurantId}`);
+      }
+
+      // Extract customer details if present
+      const cust = (order as any).customer;
+      const custName = cust?.name || cust?.nombre || null;
+      const custPhone = cust?.phone || cust?.telefono || null;
+      const custAddress = cust?.address || cust?.direccion || null;
+      const custBarrio = cust?.barrio || null;
+
+      // Check if orders table has customer_name column
+      const { rows: colRows } = await client.query(
+        `SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'orders' AND column_name = 'customer_name'`
+      );
+
+      if (colRows.length > 0) {
+        await client.query(
+          `UPDATE public.orders SET
+             customer_name = COALESCE($1, customer_name),
+             customer_phone = COALESCE($2, customer_phone),
+             customer_address = COALESCE($3, customer_address),
+             customer_barrio = COALESCE($4, customer_barrio),
+             subtotal = $5,
+             delivery_fee = $6,
+             final_total = $7,
+             payment_method = $8,
+             payment_amount = $9,
+             change_amount = $10,
+             comment = $11,
+             updated_at = NOW()
+           WHERE id = $12 AND restaurant_id = $13`,
+          [
+            custName,
+            custPhone,
+            custAddress,
+            custBarrio,
+            order.subtotal,
+            order.deliveryFee,
+            order.finalTotal,
+            order.paymentMethod,
+            order.paymentAmount !== undefined ? order.paymentAmount : null,
+            order.changeAmount !== undefined ? order.changeAmount : null,
+            order.comment !== undefined ? order.comment : null,
+            order.id,
+            restaurantId,
+          ]
+        );
+      } else {
+        await client.query(
+          `UPDATE public.orders SET
+             subtotal = $1,
+             delivery_fee = $2,
+             final_total = $3,
+             payment_method = $4,
+             payment_amount = $5,
+             change_amount = $6,
+             comment = $7,
+             updated_at = NOW()
+           WHERE id = $8 AND restaurant_id = $9`,
+          [
+            order.subtotal,
+            order.deliveryFee,
+            order.finalTotal,
+            order.paymentMethod,
+            order.paymentAmount !== undefined ? order.paymentAmount : null,
+            order.changeAmount !== undefined ? order.changeAmount : null,
+            order.comment !== undefined ? order.comment : null,
+            order.id,
+            restaurantId,
+          ]
+        );
+      }
+
+      // Also update public.customers if order is linked to a customer
+      const customerId = order.customerId || existingRows[0].customer_id;
+      if (customerId && (custName || custPhone || custAddress || custBarrio)) {
+        await client.query(
+          `UPDATE public.customers SET
+             name = COALESCE($1, name),
+             phone = COALESCE($2, phone),
+             address = COALESCE($3, address),
+             barrio = COALESCE($4, barrio),
+             updated_at = NOW()
+           WHERE id = $5 AND restaurant_id = $6`,
+          [custName, custPhone, custAddress, custBarrio, customerId, restaurantId]
+        );
+      }
+
+      // Delete existing order_item_additions & order_items for this order
+      const { rows: itemRows } = await client.query(
+        `SELECT id FROM public.order_items WHERE order_id = $1`,
+        [order.id]
+      );
+      const itemIds = itemRows.map((i) => i.id);
+      if (itemIds.length > 0) {
+        await client.query(
+          `DELETE FROM public.order_item_additions WHERE order_item_id = ANY($1::text[])`,
+          [itemIds]
+        );
+      }
+      await client.query(`DELETE FROM public.order_items WHERE order_id = $1`, [order.id]);
+
+      // Re-insert the updated items and their additions
+      for (const item of order.items) {
+        const itemId = item.id || `ord_item_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+        await client.query(
+          `INSERT INTO public.order_items (id, order_id, restaurant_id, product_id, product_name, unit_price, quantity, observation)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [
+            itemId,
+            order.id,
+            restaurantId,
+            item.productId,
+            item.productName,
+            item.unitPrice,
+            item.quantity,
+            item.observation || null,
+          ]
+        );
+
+        if (item.additions && item.additions.length > 0) {
+          for (const add of item.additions) {
+            const addId = add.id || `ord_add_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+            await client.query(
+              `INSERT INTO public.order_item_additions (id, order_item_id, restaurant_id, addition_id, addition_name, unit_price, quantity)
+               VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+              [
+                addId,
+                itemId,
+                restaurantId,
+                add.additionId,
+                add.additionName,
+                add.unitPrice,
+                add.quantity || 1,
+              ]
+            );
+          }
+        }
+      }
+
+      // Return the reloaded and updated Order domain model
+      const { rows: updatedRows } = await client.query(
+        `SELECT o.*, c.name as customer_name, c.phone as customer_phone, c.address as customer_address, c.barrio as customer_barrio
+         FROM public.orders o
+         LEFT JOIN public.customers c ON o.customer_id = c.id
+         WHERE o.id = $1 AND o.restaurant_id = $2`,
+        [order.id, restaurantId]
+      );
+      if (updatedRows.length === 0) {
+        throw new Error(`Order ${order.id} not found for restaurant ${restaurantId}`);
+      }
+      const loadedItems = await loadItemsWithAdditions(client, order.id);
+      return mapOrderRow(updatedRows[0], loadedItems);
+    });
+  }
 }

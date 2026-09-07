@@ -38,7 +38,7 @@ export const AdditionsManager: React.FC<AdditionsManagerProps> = ({
           <div
             key={add.id}
             className={`flex items-center justify-between rounded-xl border p-3.5 transition-all ${
-              isDark ? "border-slate-800 bg-slate-850" : "border-slate-200 bg-slate-50/50"
+              isDark ? "border-slate-800 bg-slate-800/60" : "border-slate-200 bg-slate-50/50"
             }`}
           >
             <div>

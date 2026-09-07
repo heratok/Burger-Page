@@ -82,7 +82,12 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
   if (!isOpen || !order) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-2 sm:p-4 backdrop-blur-xs overflow-y-auto">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Detalles de la Orden #${order.orderNumber}`}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-2 sm:p-4 backdrop-blur-xs overflow-y-auto"
+    >
       <div
         className={`w-full max-w-lg rounded-2xl border p-4 sm:p-6 shadow-2xl transition-all my-auto max-h-[96vh] overflow-y-auto ${
           isDark ? "border-slate-800 bg-slate-900 text-slate-100" : "border-slate-200 bg-white text-slate-900"
@@ -169,10 +174,10 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
             >
               <div className="flex justify-between font-bold text-slate-900 dark:text-white">
                 <span>
-                  {item.cantidad || (item as any).quantity || 1}× {item.name}
+                  {item.cantidad || (item as any).quantity || 1}× {item.name || (item as any).productName || "Producto"}
                 </span>
                 <span className="text-indigo-600 dark:text-indigo-400 font-extrabold">
-                  {formatCurrency(item.total ?? item.price * (item.cantidad || (item as any).quantity || 1))}
+                  {formatCurrency(item.total ?? ((item.price || (item as any).unitPrice || 0) * (item.cantidad || (item as any).quantity || 1)))}
                 </span>
               </div>
               {item.adiciones && item.adiciones.length > 0 && (

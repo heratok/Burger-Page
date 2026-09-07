@@ -169,20 +169,21 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 backdrop-blur-xs">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-3 sm:p-4 backdrop-blur-xs">
       <div
-        className={`w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border p-6 shadow-2xl transition-all ${
+        className={`w-full max-w-lg max-h-[92vh] sm:max-h-[90vh] overflow-y-auto rounded-2xl border p-4 sm:p-6 shadow-2xl transition-all ${
           isDark ? "border-slate-800 bg-slate-900 text-slate-100" : "border-slate-200 bg-white text-slate-900"
         }`}
       >
-        <div className="flex items-center justify-between border-b pb-4 border-slate-100 dark:border-slate-800">
-          <h3 className="text-base font-bold text-slate-900 dark:text-white">
+        <div className="flex items-center justify-between border-b pb-3.5 sm:pb-4 border-slate-100 dark:border-slate-800">
+          <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate pr-2">
             {editingProduct ? `Editar "${editingProduct.name}"` : "Nuevo Producto"}
           </h3>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+            aria-label="Cerrar modal"
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 cursor-pointer shrink-0 transition-colors"
           >
             <X className="size-5" />
           </button>
@@ -216,7 +217,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                 step="any"
                 value={productForm.price}
                 onChange={(e) => setProductForm({ ...productForm, price: Number(e.target.value) })}
-                className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500"
               />
             </div>
           </div>
@@ -244,18 +245,18 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                   value={productForm.category}
                   onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}
                   placeholder="Ej. Entradas, Postres, Bebidas"
-                  className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500"
                 />
               ) : (
                 <Select
-                  size="md"
                   value={productForm.category}
                   onChange={(e) => {
-                    if (e.target.value === "__NEW__") {
+                    const val = e.target.value
+                    if (val === "__NEW__") {
                       setIsCustomCategoryInput(true)
                       setProductForm({ ...productForm, category: "" })
                     } else {
-                      setProductForm({ ...productForm, category: e.target.value })
+                      setProductForm({ ...productForm, category: val })
                     }
                   }}
                   options={[
@@ -277,13 +278,13 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                 onChange={(e) =>
                   setProductForm({ ...productForm, preparationTimeMinutes: Number(e.target.value) })
                 }
-                className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500"
               />
             </div>
           </div>
 
           <div>
-            <label className="font-semibold block mb-1 text-slate-800 dark:text-slate-200">
+            <label className="font-semibold block mb-1.5 text-slate-800 dark:text-slate-200">
               Foto del Producto
             </label>
 
@@ -296,20 +297,20 @@ export const ProductModal: React.FC<ProductModalProps> = ({
             />
 
             {productForm.src ? (
-              <div className="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-850 p-3 space-y-3">
+              <div className="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700/80 bg-slate-50/90 dark:bg-slate-800/60 p-3 space-y-3 transition-colors">
                 {/* Viewport Header with Fit Controls */}
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-200">
-                    <Sparkles className="size-3.5 text-emerald-500" />
-                    <span>Previsualización del Plato</span>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 min-w-0">
+                    <Sparkles className="size-3.5 text-emerald-500 shrink-0" />
+                    <span className="truncate">Previsualización del Plato</span>
                   </div>
-                  <div className="flex items-center gap-1 rounded-lg bg-slate-200/80 p-0.5 dark:bg-slate-800 text-[11px] font-semibold">
+                  <div className="grid grid-cols-2 sm:flex items-center rounded-lg bg-slate-200/80 p-0.5 dark:bg-slate-900/90 border border-slate-200/50 dark:border-slate-700/60 text-[11px] font-semibold w-full sm:w-auto shrink-0">
                     <button
                       type="button"
                       onClick={() => setPreviewFitMode("cover")}
-                      className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${
+                      className={`px-2.5 py-1 text-center rounded-md transition-all cursor-pointer whitespace-nowrap ${
                         previewFitMode === "cover"
-                          ? "bg-white text-indigo-600 shadow-xs dark:bg-slate-700 dark:text-white"
+                          ? "bg-white text-indigo-600 shadow-xs dark:bg-slate-800 dark:text-white"
                           : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
                       }`}
                       title="Ver cómo se recortará en la tarjeta del menú"
@@ -319,9 +320,9 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setPreviewFitMode("contain")}
-                      className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${
+                      className={`px-2.5 py-1 text-center rounded-md transition-all cursor-pointer whitespace-nowrap ${
                         previewFitMode === "contain"
-                          ? "bg-white text-indigo-600 shadow-xs dark:bg-slate-700 dark:text-white"
+                          ? "bg-white text-indigo-600 shadow-xs dark:bg-slate-800 dark:text-white"
                           : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
                       }`}
                       title="Ver la imagen completa sin recortes"
@@ -332,7 +333,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                 </div>
 
                 {/* Generous Preview Canvas */}
-                <div className="relative h-56 sm:h-64 w-full overflow-hidden rounded-xl bg-slate-950 border border-slate-200/60 dark:border-slate-700/80 flex items-center justify-center">
+                <div className="relative h-48 sm:h-56 md:h-60 w-full overflow-hidden rounded-xl bg-slate-950 border border-slate-200/60 dark:border-slate-700/80 flex items-center justify-center shadow-inner">
                   <LazyImage
                     src={productForm.src}
                     alt="Vista previa del producto"
@@ -376,46 +377,46 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                       </div>
 
                       {imageUploadStatus !== "success" && (
-                        <div className="h-1.5 w-48 overflow-hidden rounded-full bg-slate-800 border border-white/10">
+                        <div className="h-1.5 w-48 max-w-full overflow-hidden rounded-full bg-slate-800 border border-white/10">
                           <div className="h-full w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 rounded-full animate-pulse" />
                         </div>
                       )}
                     </div>
                   )}
-                  <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1.5 rounded-lg bg-black/80 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur-md border border-white/10">
+                  <div className="absolute bottom-2.5 left-2.5 max-w-[calc(100%-1.25rem)] flex items-center gap-1.5 rounded-lg bg-black/80 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur-md border border-white/10 truncate">
                     {imageUploadStatus === "success" ? (
                       <>
-                        <CheckCircle2 className="size-3 text-emerald-400" />
-                        <span>Foto guardada</span>
+                        <CheckCircle2 className="size-3 text-emerald-400 shrink-0" />
+                        <span className="truncate">Foto guardada</span>
                       </>
                     ) : isImageBusy ? (
                       <>
-                        <span className="size-2 rounded-full bg-amber-400 animate-ping" />
-                        <span>Procesando foto...</span>
+                        <span className="size-2 rounded-full bg-amber-400 animate-ping shrink-0" />
+                        <span className="truncate">Procesando foto...</span>
                       </>
                     ) : (
                       <>
-                        <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
-                        <span>Formato WebP Optimizado</span>
+                        <span className="size-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                        <span className="truncate">Formato WebP Optimizado</span>
                       </>
                     )}
                   </div>
                 </div>
 
                 {/* Action controls */}
-                <div className="flex items-center justify-between gap-2 pt-1">
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
                     disabled={isImageBusy}
                     onClick={() => productFileInputRef.current?.click()}
-                    className="gap-1.5 text-xs font-semibold cursor-pointer"
+                    className="gap-1.5 text-xs font-semibold cursor-pointer dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                   >
                     {isImageBusy ? (
                       <Loader2 className="size-3.5 text-indigo-500 animate-spin" />
                     ) : (
-                      <Upload className="size-3.5 text-indigo-500" />
+                      <Upload className="size-3.5 text-indigo-500 dark:text-indigo-400" />
                     )}
                     <span>{isImageBusy ? "Procesando..." : "Cambiar Foto"}</span>
                   </Button>
@@ -423,7 +424,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                     type="button"
                     disabled={isImageBusy}
                     onClick={() => setIsConfirmingRemovePhoto(true)}
-                    className="text-xs text-rose-500 hover:text-rose-600 font-semibold px-2 py-1 cursor-pointer disabled:opacity-40"
+                    className="text-xs text-rose-500 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300 font-semibold px-2 py-1 cursor-pointer disabled:opacity-40 transition-colors"
                   >
                     Quitar Foto
                   </button>
@@ -432,7 +433,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
             ) : (
               <div className="space-y-2">
                 {isImageBusy ? (
-                  <div className="relative h-52 w-full overflow-hidden rounded-xl bg-slate-950 border border-slate-700/80 flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-200">
+                  <div className="relative h-48 sm:h-52 w-full overflow-hidden rounded-xl bg-slate-950 border border-slate-700/80 flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-200">
                     <div className="relative mb-3 flex items-center justify-center">
                       {imageUploadStatus === "success" ? (
                         <div className="flex size-14 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-400 ring-2 ring-emerald-500/40 shadow-lg shadow-emerald-500/20 animate-in zoom-in-75 duration-200">
@@ -466,7 +467,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                     </div>
 
                     {imageUploadStatus !== "success" && (
-                      <div className="mt-3.5 h-1.5 w-48 overflow-hidden rounded-full bg-slate-800 border border-white/10">
+                      <div className="mt-3.5 h-1.5 w-48 max-w-full overflow-hidden rounded-full bg-slate-800 border border-white/10">
                         <div className="h-full w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 rounded-full animate-pulse" />
                       </div>
                     )}
@@ -475,16 +476,16 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                   <>
                     <div
                       onClick={() => productFileInputRef.current?.click()}
-                      className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40 p-5 text-center hover:border-indigo-500 dark:hover:border-indigo-400 cursor-pointer transition-all"
+                      className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/40 p-4 sm:p-5 text-center hover:border-indigo-500 dark:hover:border-indigo-400 cursor-pointer transition-all"
                     >
                       <div className="rounded-full bg-indigo-50 dark:bg-indigo-950/60 p-2 text-indigo-600 dark:text-indigo-400">
                         <Upload className="size-4" />
                       </div>
                       <div>
-                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
                           Subir foto desde tu teléfono o PC
                         </span>
-                        <p className="text-[10px] text-slate-400 mt-0.5">
+                        <p className="text-[10px] text-slate-400 dark:text-slate-400 mt-0.5">
                           Se comprime automáticamente a formato WebP ultraliviano
                         </p>
                       </div>
@@ -501,7 +502,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                       value={productForm.src}
                       onChange={(e) => setProductForm({ ...productForm, src: e.target.value })}
                       placeholder="https://images.unsplash.com/..."
-                      className="w-full rounded-xl border border-slate-300 bg-white p-2 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white text-xs"
+                      className="w-full rounded-xl border border-slate-300 bg-white p-2 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500 text-xs"
                     />
                   </>
                 )}
@@ -519,7 +520,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
               value={productForm.description}
               onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
               placeholder="Describe los ingredientes, preparación y acompañamientos..."
-              className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+              className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500"
             />
           </div>
 
@@ -529,7 +530,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                 type="checkbox"
                 checked={productForm.isPopular}
                 onChange={(e) => setProductForm({ ...productForm, isPopular: e.target.checked })}
-                className="rounded text-indigo-600"
+                className="rounded text-indigo-600 focus:ring-indigo-500 dark:bg-slate-800 dark:border-slate-700"
               />
               <span>Destacar como &quot;Popular 🔥&quot;</span>
             </label>
@@ -538,25 +539,26 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                 type="checkbox"
                 checked={productForm.isNew}
                 onChange={(e) => setProductForm({ ...productForm, isNew: e.target.checked })}
-                className="rounded text-indigo-600"
+                className="rounded text-indigo-600 focus:ring-indigo-500 dark:bg-slate-800 dark:border-slate-700"
               />
               <span>Marcar como &quot;Nuevo ✨&quot;</span>
             </label>
           </div>
 
-          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
             <Button
               type="button"
               variant="outline"
               onClick={onClose}
               disabled={isImageBusy}
+              className="w-full sm:w-auto justify-center cursor-pointer"
             >
               Cancelar
             </Button>
             <button
               type="submit"
               disabled={isImageBusy}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 sm:py-2 text-xs font-semibold text-white shadow-xs hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer w-full sm:w-auto transition-colors"
             >
               {isImageBusy ? (
                 <>

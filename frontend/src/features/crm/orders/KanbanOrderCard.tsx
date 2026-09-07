@@ -81,7 +81,7 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
           {order.items.map((item, idx) => (
             <div key={idx} className="flex justify-between truncate">
               <span className="truncate">
-                {item.cantidad}× {item.name}
+                {item.cantidad || (item as any).quantity || 1}× {item.name || (item as any).productName || "Producto"}
               </span>
             </div>
           ))}

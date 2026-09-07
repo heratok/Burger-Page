@@ -6,7 +6,7 @@ import {
   InventoryItem,
   AdditionItem,
 } from '@/types/restaurant'
-import type { OrderEvent, CreateOrderInput, CreateRestaurantInput, UpdateRestaurantInput } from '@burger-page/contracts'
+import type { OrderEvent, CreateOrderInput, UpdateOrderInput, CreateRestaurantInput, UpdateRestaurantInput } from '@burger-page/contracts'
 
 export interface ApiClientConfig {
   baseUrl: string
@@ -300,6 +300,21 @@ export class ApiClient {
     })
   }
 
+  async deleteOrder(orderId: string, restaurantId?: string): Promise<{ success: boolean; id: string; message: string }> {
+    const qs = restaurantId ? `?restaurantId=${encodeURIComponent(restaurantId)}` : ''
+    return this.request<{ success: boolean; id: string; message: string }>(`/orders/${orderId}${qs}`, {
+      method: 'DELETE',
+    })
+  }
+
+  async updateOrder(orderId: string, data: UpdateOrderInput, restaurantId?: string): Promise<Order> {
+    const qs = restaurantId ? `?restaurantId=${encodeURIComponent(restaurantId)}` : ''
+    return this.request<Order>(`/orders/${orderId}${qs}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+  }
+
   async fetchInventory(restaurantId?: string): Promise<InventoryItem[]> {
     const qs = restaurantId ? `?restaurantId=${encodeURIComponent(restaurantId)}` : ''
     return this.request<InventoryItem[]>(`/inventory${qs}`)
@@ -388,6 +403,8 @@ export class ApiClient {
     eventSource.addEventListener('ORDER_STATUS_UPDATED', handleMessage as EventListener)
     eventSource.addEventListener('ORDER_CANCELLED', handleMessage as EventListener)
     eventSource.addEventListener('ORDER_RECEIPT_UPDATED', handleMessage as EventListener)
+    eventSource.addEventListener('ORDER_DELETED', handleMessage as EventListener)
+    eventSource.addEventListener('ORDER_UPDATED', handleMessage as EventListener)
 
     return () => {
       eventSource.close()

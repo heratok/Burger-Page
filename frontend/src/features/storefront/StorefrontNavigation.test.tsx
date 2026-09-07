@@ -15,6 +15,7 @@ function createTestRepo() {
 
 describe("Storefront Navigation & Cart / Checkout Flow", () => {
   beforeEach(() => {
+    localStorage.clear()
     vi.clearAllMocks()
   })
 

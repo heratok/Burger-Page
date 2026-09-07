@@ -38,6 +38,17 @@ export class Order {
     public receiptUrl?: string
   ) {}
 
+  public customer?: {
+    nombre?: string;
+    telefono?: string;
+    direccion?: string;
+    barrio?: string;
+    name?: string;
+    phone?: string;
+    address?: string;
+    email?: string;
+  } | any;
+
   public get subtotal(): number {
     return this.items.reduce((acc, item) => {
       const itemPrice = item.unitPrice ?? (item as any).price ?? 0;
@@ -79,6 +90,7 @@ export class Order {
       id: this.id,
       restaurantId: this.restaurantId,
       customerId: this.customerId,
+      customer: this.customer,
       items: this.items,
       status: this.status,
       createdAt: this.createdAt instanceof Date ? this.createdAt.toISOString() : this.createdAt,
