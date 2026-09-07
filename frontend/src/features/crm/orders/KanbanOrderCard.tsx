@@ -7,6 +7,7 @@ import {
   MapPin,
   Eye,
   MessageCircle,
+  Pencil,
 } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
 
@@ -16,6 +17,7 @@ export interface KanbanOrderCardProps {
   onViewDetails: (order: Order) => void
   onUpdateStatus: (orderId: string, status: OrderStatus) => void
   onWhatsApp: (order: Order) => void
+  onEditOrder?: (order: Order) => void
 }
 
 const formatElapsed = (isoString: string) => {
@@ -32,6 +34,7 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
   onViewDetails,
   onUpdateStatus,
   onWhatsApp,
+  onEditOrder,
 }) => {
   return (
     <div
@@ -84,7 +87,7 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
           ))}
         </div>
         {order.comentario && (
-          <p className="mt-1.5 border-t border-slate-200/40 dark:border-slate-700/60 pt-1 text-[10px] italic text-amber-600 dark:text-amber-300 line-clamp-2">
+          <p className="mt-1.5 border-t border-slate-200/40 dark:border-slate-700/60 pt-1 text-[10px] italic text-amber-600 dark:text-amber-300 line-clamp-2 break-words [overflow-wrap:anywhere]">
             &quot;{order.comentario}&quot;
           </p>
         )}
@@ -129,6 +132,17 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
         >
           <Eye className="size-3.5" />
         </button>
+
+        {onEditOrder && (
+          <button
+            type="button"
+            onClick={() => onEditOrder(order)}
+            className="rounded-lg border border-indigo-200 dark:border-indigo-800 p-1.5 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700 dark:text-indigo-400 dark:hover:bg-indigo-950/50 cursor-pointer transition-colors"
+            title="Editar venta"
+          >
+            <Pencil className="size-3.5" />
+          </button>
+        )}
 
         {order.status === "pending" && (
           <button

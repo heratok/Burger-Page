@@ -1,11 +1,12 @@
-import React, { useState, useMemo } from "react"
+import React, { useState, useMemo, useEffect, useCallback } from "react"
 import { useRestaurant } from "@/context/RestaurantContext"
-import type { MenuItem } from "@/types/restaurant"
+import type { MenuItem, Order } from "@/types/restaurant"
 import {
   CartItem,
   createCartItem,
   calculateLineItemTotal,
   cartItemToOrderItem,
+  orderItemToCartItem,
   type CartAddition,
 } from "@/features/cart/cartEngine"
 import { formatCOP, calculateChange } from "@/features/cart/whatsapp"
@@ -35,12 +36,13 @@ import { uploadImageToStorage } from "@/core/storage/supabaseStorage"
 export interface ManualSaleModalProps {
   isOpen: boolean
   onClose: () => void
+  orderToEdit?: Order | null
 }
 
 type ServiceType = "mostrador" | "mesa" | "domicilio"
 
-export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClose }) => {
-  const { activeRestaurant, storeConfig, adminTheme, addOrder } = useRestaurant()
+export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClose, orderToEdit }) => {
+  const { activeRestaurant, storeConfig, adminTheme, addOrder, updateOrder } = useRestaurant()
   const isDark = adminTheme === "dark"
 
   // Mobile Tab State
@@ -123,8 +125,6 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
   }, [customizingProduct, customAdditions, activeRestaurant.additions])
 
   const currentModalItemTotal = (customizingProduct?.price || 0) + currentModalAdditionsTotal
-
-  if (!isOpen) return null
 
   // Cart Handlers
   const handleQuickAddProduct = (product: MenuItem) => {
@@ -289,7 +289,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
     setReceiptPreview(null)
   }
 
-  const handleResetForm = () => {
+  const handleResetForm = useCallback(() => {
     setSelectedItems([])
     setServiceType("mostrador")
     setTableNumber("")
@@ -306,7 +306,71 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
     setSearchQuery("")
     setSelectedCategory("all")
     setMobileTab("catalog")
-  }
+  }, [])
+
+  useEffect(() => {
+    if (!isOpen) return
+
+    if (orderToEdit) {
+      const items = (orderToEdit.items || []).map(orderItemToCartItem)
+      setSelectedItems(items)
+
+      const dir = orderToEdit.customer?.direccion || ""
+      const isMesa =
+        dir.toLowerCase().includes("mesa") ||
+        dir.toLowerCase().includes("salón") ||
+        dir.toLowerCase().includes("salon") ||
+        (orderToEdit.customer?.nombre && orderToEdit.customer.nombre.toLowerCase().startsWith("mesa"))
+      const isMostrador =
+        dir.toLowerCase().includes("mostrador") ||
+        dir.toLowerCase().includes("llevar")
+
+      if (isMesa) {
+        setServiceType("mesa")
+        const mesaMatch =
+          dir.match(/mesa\s*(\d+)/i) ||
+          (orderToEdit.customer?.nombre || "").match(/mesa\s*(\d+)/i)
+        setTableNumber(mesaMatch ? mesaMatch[1] : "")
+      } else if (isMostrador) {
+        setServiceType("mostrador")
+        setTableNumber("")
+      } else {
+        setServiceType("domicilio")
+        setTableNumber("")
+      }
+
+      const custName = orderToEdit.customer?.nombre || ""
+      const isGenericName =
+        custName.startsWith("Mesa ") ||
+        custName === "Cliente Mostrador" ||
+        custName === "Cliente Domicilio" ||
+        custName === "Mesa Salón"
+
+      setCustomerName(isGenericName ? "" : custName)
+      setCustomerPhone(
+        !orderToEdit.customer?.telefono || orderToEdit.customer.telefono === "N/A"
+          ? ""
+          : orderToEdit.customer.telefono
+      )
+      setCustomerAddress(
+        isMesa || isMostrador ? "" : orderToEdit.customer?.direccion || ""
+      )
+      setCustomerBarrio(
+        isMesa || isMostrador || orderToEdit.customer?.barrio === "Local"
+          ? ""
+          : orderToEdit.customer?.barrio || ""
+      )
+      setOrderNotes(orderToEdit.comentario || "")
+      setPaymentMethod(orderToEdit.metodo === "Transferencia" ? "Transferencia" : "Efectivo")
+      setPagoCon(orderToEdit.pagoCon || "")
+      setReceiptFile(null)
+      setReceiptPreview(orderToEdit.receiptUrl || null)
+      setIsUploadingReceipt(false)
+      setMobileTab("cart")
+    } else {
+      handleResetForm()
+    }
+  }, [isOpen, orderToEdit, handleResetForm])
 
   const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -380,6 +444,35 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
       status: "pending" as const,
     }
 
+    if (orderToEdit) {
+      updateOrder(orderToEdit.id, {
+        customer: {
+          nombre: finalCustomerName,
+          telefono: customerPhone.trim() || "N/A",
+          direccion:
+            serviceType === "domicilio"
+              ? customerAddress.trim()
+              : serviceType === "mesa"
+              ? `Salón - ${tableNumber.trim() ? `Mesa ${tableNumber.trim()}` : "Mesa general"}`
+              : "Mostrador / Para llevar",
+          barrio: serviceType === "domicilio" ? customerBarrio.trim() : "Local",
+        },
+        items: selectedItems.map(cartItemToOrderItem),
+        total: subtotal,
+        deliveryFee,
+        finalTotal,
+        metodo: paymentMethod,
+        pagoCon: paymentMethod === "Efectivo" && pagoCon.trim() ? pagoCon.trim() : undefined,
+        cambio: paymentMethod === "Efectivo" && cambio ? cambio : undefined,
+        comentario: orderNotes.trim() || undefined,
+        receiptUrl: finalReceiptUrl,
+      })
+
+      handleResetForm()
+      onClose()
+      return
+    }
+
     addOrder(orderData)
     toast.success("¡Venta manual registrada en el sistema!", {
       description: `${finalCustomerName} • Total: ${formatCOP(finalTotal)}`,
@@ -393,6 +486,8 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
     handleResetForm()
     onClose()
   }
+
+  if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-0 sm:p-4 backdrop-blur-md">
@@ -417,14 +512,16 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
               <div>
                 <div className="flex items-center gap-1.5 sm:gap-2">
                   <h2 className="text-sm sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white">
-                    Punto de Venta — Nueva Venta
+                    {orderToEdit ? `Editar Venta #${orderToEdit.orderNumber}` : "Punto de Venta — Nueva Venta"}
                   </h2>
                   <span className="hidden sm:inline-flex items-center rounded-full bg-orange-500/10 px-2.5 py-0.5 text-xs font-semibold text-orange-600 dark:text-orange-400">
                     {storeConfig.name}
                   </span>
                 </div>
                 <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 line-clamp-1">
-                  Registrá ventas en mesa, mostrador o pedidos telefónicos
+                  {orderToEdit
+                    ? "Modificá los productos, cliente, notas o método de pago de la orden"
+                    : "Registrá ventas en mesa, mostrador o pedidos telefónicos"}
                 </p>
               </div>
             </div>
@@ -1190,6 +1287,8 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                   <span>
                     {isUploadingReceipt
                       ? "Subiendo comprobante..."
+                      : orderToEdit
+                      ? `Guardar cambios (${formatCOP(finalTotal)})`
                       : `Registrar Venta (${formatCOP(finalTotal)})`}
                   </span>
                 </button>

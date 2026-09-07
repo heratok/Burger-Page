@@ -13,6 +13,7 @@ import { nextTempId } from "@/lib/ids"
 export interface OrderContextType {
   orders: Order[]
   addOrder: (orderData: Omit<Order, "id" | "orderNumber" | "createdAt" | "updatedAt">) => Order
+  updateOrder: (orderId: string, updates: Partial<Order>) => void
   updateOrderStatus: (orderId: string, newStatus: OrderStatus) => void
   updateOrderReceipt: (orderId: string, receiptUrl: string) => Promise<void>
   deleteOrder: (orderId: string) => void
@@ -374,6 +375,26 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     [activeRestaurant, updateActiveRestaurantRecord, soundEnabled]
   )
 
+  const updateOrder = useCallback(
+    (orderId: string, updates: Partial<Order>) => {
+      const now = new Date().toISOString()
+      updateActiveRestaurantRecord((current) => ({
+        ...current,
+        orders: current.orders.map((o) =>
+          o.id === orderId
+            ? {
+                ...o,
+                ...updates,
+                updatedAt: now,
+              }
+            : o
+        ),
+      }))
+      toast.success("Venta actualizada correctamente")
+    },
+    [updateActiveRestaurantRecord]
+  )
+
   const updateOrderStatus = useCallback(
     (orderId: string, newStatus: OrderStatus) => {
       updateActiveRestaurantRecord((current) => ({
@@ -449,6 +470,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const value: OrderContextType = {
     orders: activeRestaurant.orders,
     addOrder,
+    updateOrder,
     updateOrderStatus,
     updateOrderReceipt,
     deleteOrder,

@@ -11,6 +11,7 @@ import {
   AlertCircle,
   Check,
   RotateCcw,
+  Pencil,
 } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
 
@@ -20,6 +21,7 @@ export interface LiveOrderCardProps {
   onViewDetails: (order: Order) => void
   onUpdateStatus: (orderId: string, status: OrderStatus) => void
   onWhatsApp: (order: Order) => void
+  onEditOrder?: (order: Order) => void
 }
 
 const formatElapsed = (isoString: string) => {
@@ -36,6 +38,7 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
   onViewDetails,
   onUpdateStatus,
   onWhatsApp,
+  onEditOrder,
 }) => {
   const elapsed = formatElapsed(order.createdAt)
   const isDelayed =
@@ -166,7 +169,7 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
           </div>
 
           {order.comentario && (
-            <div className="rounded-lg border border-amber-300/40 bg-amber-50/50 dark:border-amber-500/30 dark:bg-amber-950/30 p-2 text-[11px] text-amber-800 dark:text-amber-200">
+            <div className="rounded-lg border border-amber-300/40 bg-amber-50/50 dark:border-amber-500/30 dark:bg-amber-950/30 p-2 text-[11px] text-amber-800 dark:text-amber-200 break-words [overflow-wrap:anywhere]">
               <span className="font-bold">Nota: </span>
               &quot;{order.comentario}&quot;
             </div>
@@ -226,6 +229,17 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
         >
           <Eye className="size-4" />
         </button>
+
+        {onEditOrder && order.status !== "delivered" && order.status !== "cancelled" && (
+          <button
+            type="button"
+            onClick={() => onEditOrder(order)}
+            className="rounded-xl border border-indigo-200 dark:border-indigo-800 p-2 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700 dark:text-indigo-400 dark:hover:bg-indigo-950/50 cursor-pointer transition-colors"
+            title="Editar venta"
+          >
+            <Pencil className="size-4" />
+          </button>
+        )}
 
         {order.status !== "delivered" && order.status !== "cancelled" ? (
           <>

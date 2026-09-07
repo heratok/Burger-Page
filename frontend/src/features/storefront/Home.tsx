@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
-import { Utensils, Flame } from "lucide-react"
+import { Utensils, Flame, ChevronDown } from "lucide-react"
 import ProductCard from "./ProductCard"
 import type { MenuItem } from "@/types/restaurant"
 import Navbar from "./Navbar"
@@ -28,19 +28,46 @@ export default function Home() {
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL")
   const [loading, setLoading] = useState(true)
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set())
 
   const pillContainerRef = useRef<HTMLDivElement>(null)
   const pillRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
 
+  const toggleCategoryCollapse = (cat: string) => {
+    setCollapsedCategories((prev) => {
+      const next = new Set(prev)
+      if (next.has(cat)) {
+        next.delete(cat)
+      } else {
+        next.add(cat)
+      }
+      return next
+    })
+  }
+
   const handleCategoryClick = (cat: string) => {
     setSelectedCategory(cat)
+    if (cat !== "ALL") {
+      // Auto-expand the category if it was collapsed
+      setCollapsedCategories((prev) => {
+        if (prev.has(cat)) {
+          const next = new Set(prev)
+          next.delete(cat)
+          return next
+        }
+        return prev
+      })
+    }
     const activeBtn = pillRefs.current.get(cat)
-    if (activeBtn) {
+    if (activeBtn && typeof activeBtn.scrollIntoView === "function") {
       activeBtn.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" })
     }
-    const catalogEl = document.getElementById("storefront-catalog")
-    if (catalogEl) {
-      catalogEl.scrollIntoView({ behavior: "smooth", block: "start" })
+    const targetSection =
+      cat === "ALL"
+        ? document.getElementById("storefront-catalog")
+        : document.getElementById(`category-section-${encodeURIComponent(cat)}`)
+    if (targetSection && typeof targetSection.scrollIntoView === "function") {
+      targetSection.scrollIntoView({ behavior: "smooth", block: "start" })
     }
   }
 
@@ -350,53 +377,85 @@ export default function Home() {
               <EmptyResults />
             ) : (
               <div id="storefront-catalog" className="space-y-8 sm:space-y-10">
-                {sections.map(({ category, items }) => (
-                  <section
-                    key={category}
-                    id={`category-section-${encodeURIComponent(category)}`}
-                    className="scroll-mt-32 sm:scroll-mt-36 space-y-3 sm:space-y-4"
-                  >
-                    <div className="flex items-center justify-between border-b border-border-subtle pb-2">
-                      <div className="flex items-center gap-2">
-                        <h2
-                          style={{ color: "var(--color-text-primary)" }}
-                          className="text-lg font-black tracking-tight sm:text-xl"
-                        >
-                          {category}
-                        </h2>
-                        <span
-                          style={{
-                            backgroundColor: "var(--color-bg-elevated-2)",
-                            color: "var(--color-text-muted)",
-                            borderColor: "var(--color-border-subtle)",
-                          }}
-                          className="rounded-full border px-2 py-0.5 text-xs font-semibold"
-                        >
-                          {items.length}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div
-                      className={`grid gap-4 md:gap-6 ${
-                        storeConfig.compactGrid
-                          ? "grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
-                          : "grid-cols-1 min-[480px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4"
-                      }`}
-                      role="list"
-                      aria-label={`Productos de ${category}`}
+                {sections.map(({ category, items }) => {
+                  const isCollapsed = collapsedCategories.has(category)
+                  const sectionContentId = `category-content-${encodeURIComponent(category)}`
+                  return (
+                    <section
+                      key={category}
+                      id={`category-section-${encodeURIComponent(category)}`}
+                      className="scroll-mt-32 sm:scroll-mt-36 space-y-3 sm:space-y-4"
                     >
-                      {items.map((product) => (
-                        <div role="listitem" key={product.id || product.name} className="h-full w-full flex flex-col">
-                          <ProductCard
-                            product={product}
-                            onSelectProduct={() => handleProductClick(product)}
-                          />
+                      <button
+                        type="button"
+                        onClick={() => toggleCategoryCollapse(category)}
+                        aria-expanded={!isCollapsed}
+                        aria-controls={sectionContentId}
+                        className="group/header flex w-full cursor-pointer items-center justify-between border-b border-border-subtle pb-2 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 rounded-lg"
+                      >
+                        <div className="flex items-center gap-2">
+                          <h2
+                            style={{ color: "var(--color-text-primary)" }}
+                            className="text-lg font-black tracking-tight sm:text-xl group-hover/header:opacity-85 transition-opacity"
+                          >
+                            {category}
+                          </h2>
+                          <span
+                            style={{
+                              backgroundColor: "var(--color-bg-elevated-2)",
+                              color: "var(--color-text-muted)",
+                              borderColor: "var(--color-border-subtle)",
+                            }}
+                            className="rounded-full border px-2 py-0.5 text-xs font-semibold"
+                          >
+                            {items.length}
+                          </span>
                         </div>
-                      ))}
-                    </div>
-                  </section>
-                ))}
+                        <div className="flex items-center gap-1.5 text-xs text-text-muted">
+                          <span className="hidden sm:inline font-medium text-[11px] opacity-75">
+                            {isCollapsed ? "Mostrar" : "Minimizar"}
+                          </span>
+                          <span
+                            style={{
+                              backgroundColor: "var(--color-bg-elevated)",
+                              borderColor: "var(--color-border-subtle)",
+                            }}
+                            className="inline-flex size-7 items-center justify-center rounded-full border shadow-2xs transition-transform duration-200"
+                          >
+                            <ChevronDown
+                              className={`size-4 text-text-secondary transition-transform duration-200 ${
+                                isCollapsed ? "-rotate-90" : "rotate-0"
+                              }`}
+                              aria-hidden="true"
+                            />
+                          </span>
+                        </div>
+                      </button>
+
+                      {!isCollapsed && (
+                        <div
+                          id={sectionContentId}
+                          className={`grid gap-4 md:gap-6 ${
+                            storeConfig.compactGrid
+                              ? "grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+                              : "grid-cols-1 min-[480px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4"
+                          }`}
+                          role="list"
+                          aria-label={`Productos de ${category}`}
+                        >
+                          {items.map((product) => (
+                            <div role="listitem" key={product.id || product.name} className="h-full w-full flex flex-col">
+                              <ProductCard
+                                product={product}
+                                onSelectProduct={() => handleProductClick(product)}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </section>
+                  )
+                })}
               </div>
             )}
           </div>

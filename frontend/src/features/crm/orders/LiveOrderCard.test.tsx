@@ -137,4 +137,47 @@ describe("LiveOrderCard", () => {
     fireEvent.click(whatsappBtn)
     expect(onWhatsApp).toHaveBeenCalledWith(mockOrder)
   })
+
+  it("shows edit button only for active orders and hides it for delivered/cancelled", () => {
+    const onEditOrder = vi.fn()
+
+    const { rerender } = render(
+      <LiveOrderCard
+        order={mockOrder}
+        onViewDetails={vi.fn()}
+        onUpdateStatus={vi.fn()}
+        onWhatsApp={vi.fn()}
+        onEditOrder={onEditOrder}
+      />
+    )
+
+    const editBtn = screen.getByTitle("Editar venta")
+    expect(editBtn).toBeDefined()
+    fireEvent.click(editBtn)
+    expect(onEditOrder).toHaveBeenCalledWith(mockOrder)
+
+    // Delivered order hides edit button
+    rerender(
+      <LiveOrderCard
+        order={{ ...mockOrder, status: "delivered" }}
+        onViewDetails={vi.fn()}
+        onUpdateStatus={vi.fn()}
+        onWhatsApp={vi.fn()}
+        onEditOrder={onEditOrder}
+      />
+    )
+    expect(screen.queryByTitle("Editar venta")).toBeNull()
+
+    // Cancelled order hides edit button
+    rerender(
+      <LiveOrderCard
+        order={{ ...mockOrder, status: "cancelled" }}
+        onViewDetails={vi.fn()}
+        onUpdateStatus={vi.fn()}
+        onWhatsApp={vi.fn()}
+        onEditOrder={onEditOrder}
+      />
+    )
+    expect(screen.queryByTitle("Editar venta")).toBeNull()
+  })
 })

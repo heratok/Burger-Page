@@ -39,10 +39,22 @@ export const OrdersKanban: React.FC = () => {
   } = useRestaurant()
 
   const [isManualSaleOpen, setIsManualSaleOpen] = useState(false)
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [methodFilter, setMethodFilter] = useState<string>("ALL")
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null)
+
+  const handleOpenNewSale = useCallback(() => {
+    setEditingOrder(null)
+    setIsManualSaleOpen(true)
+  }, [])
+
+  const handleEditOrder = useCallback((order: Order) => {
+    setSelectedOrder(null)
+    setEditingOrder(order)
+    setIsManualSaleOpen(true)
+  }, [])
 
   // View mode: streamlined "feed" (default) or classic 5-column "kanban"
   const [viewMode, setViewMode] = useState<"feed" | "kanban">(() => {
@@ -256,7 +268,8 @@ export const OrdersKanban: React.FC = () => {
 
           <Button
             type="button"
-            onClick={() => setIsManualSaleOpen(true)}
+            aria-label="Nueva Venta"
+            onClick={handleOpenNewSale}
             className="gap-1.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-xs font-bold text-white shadow-md shadow-orange-500/20 hover:from-orange-600 hover:to-amber-600 cursor-pointer shrink-0"
           >
             <Plus className="size-4 shrink-0" />
@@ -410,7 +423,7 @@ export const OrdersKanban: React.FC = () => {
                   </p>
                   <Button
                     type="button"
-                    onClick={() => setIsManualSaleOpen(true)}
+                    onClick={handleOpenNewSale}
                     className="mt-4 gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-indigo-700 cursor-pointer"
                   >
                     <Plus className="size-3.5" />
@@ -443,6 +456,7 @@ export const OrdersKanban: React.FC = () => {
                         onViewDetails={setSelectedOrder}
                         onUpdateStatus={updateOrderStatus}
                         onWhatsApp={openCustomerWhatsApp}
+                        onEditOrder={handleEditOrder}
                       />
                     ))}
                   </div>
@@ -585,6 +599,7 @@ export const OrdersKanban: React.FC = () => {
                           onViewDetails={setSelectedOrder}
                           onUpdateStatus={updateOrderStatus}
                           onWhatsApp={openCustomerWhatsApp}
+                          onEditOrder={handleEditOrder}
                         />
                       ))}
                       {isTerminalCol && colOrders.length > maxVisible && (
@@ -610,6 +625,7 @@ export const OrdersKanban: React.FC = () => {
         onUpdateReceipt={updateOrderReceipt}
         onDeleteOrder={setOrderToDelete}
         onWhatsApp={openCustomerWhatsApp}
+        onEditOrder={handleEditOrder}
       />
 
       {/* Delete Order Confirmation Modal */}
@@ -634,7 +650,11 @@ export const OrdersKanban: React.FC = () => {
 
       <ManualSaleModal
         isOpen={isManualSaleOpen}
-        onClose={() => setIsManualSaleOpen(false)}
+        orderToEdit={editingOrder}
+        onClose={() => {
+          setIsManualSaleOpen(false)
+          setEditingOrder(null)
+        }}
       />
     </div>
   )
