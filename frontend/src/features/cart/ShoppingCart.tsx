@@ -193,7 +193,12 @@ function ShoppingCart({
               variant="outline"
               size="lg"
               onClick={handleBackToMenu}
-              className="h-12 flex-1 sm:flex-none font-bold cursor-pointer"
+              style={{
+                backgroundColor: "var(--color-bg-elevated)",
+                borderColor: "var(--color-border-subtle)",
+                color: "var(--color-text-primary)",
+              }}
+              className="h-12 flex-1 sm:flex-none font-bold cursor-pointer hover:bg-bg-elevated-2"
             >
               <ArrowLeft data-icon="inline-start" />
               Seguir comprando

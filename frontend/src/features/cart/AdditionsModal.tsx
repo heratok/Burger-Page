@@ -17,6 +17,7 @@ import { LIMITS } from "@/lib/validation"
 import { useRestaurant } from "@/context/RestaurantContext"
 import { formatCurrency, getContrastForeground } from "@/lib/utils"
 import { resolveImageUrl } from "@/core/storage/supabaseStorage"
+import { getFontFamilyClass, getStoreThemeStyles } from "@/features/crm/utils/customizerStyles"
 
 export interface AdditionsModalProps {
   onClose: () => void
@@ -34,6 +35,9 @@ export default function AdditionsModal({
   initial,
 }: AdditionsModalProps) {
   const { additions: storeAdditions, storeConfig } = useRestaurant()
+  const themeStyles = getStoreThemeStyles(storeConfig.bgTheme, storeConfig.primaryColor)
+  const fontClass = getFontFamilyClass(storeConfig.fontFamily)
+  const primaryForeground = getContrastForeground(storeConfig.primaryColor)
   const [cantidad, setCantidad] = useState(initial?.cantidad ?? 1)
   const [observaciones, setObservaciones] = useState(initial?.observacion ?? "")
 
@@ -107,13 +111,14 @@ export default function AdditionsModal({
     >
       <DialogContent
         showCloseButton={false}
-        className="top-auto bottom-0 left-0 flex max-h-[92dvh] w-full max-w-none flex-col overflow-hidden translate-x-0 translate-y-0 gap-0 rounded-t-lg rounded-b-none border-border-subtle bg-bg-surface p-0 sm:top-1/2 sm:bottom-auto sm:left-1/2 sm:max-h-[90dvh] sm:w-[calc(100%-2rem)] sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-lg data-[side=bottom]:data-ending-style:translate-y-0 data-[side=bottom]:data-starting-style:translate-y-0"
+        style={themeStyles}
+        className={`top-auto bottom-0 left-0 flex max-h-[92dvh] w-full max-w-none flex-col overflow-hidden translate-x-0 translate-y-0 gap-0 rounded-t-2xl rounded-b-none border border-border-subtle bg-bg-surface text-text-primary p-0 sm:top-1/2 sm:bottom-auto sm:left-1/2 sm:max-h-[90dvh] sm:w-[calc(100%-2rem)] sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl data-[side=bottom]:data-ending-style:translate-y-0 data-[side=bottom]:data-starting-style:translate-y-0 shadow-2xl ${fontClass}`}
       >
         <header className="flex items-center gap-3 border-b border-border-subtle p-5 pb-4">
           <img
             src={resolveImageUrl(product.src)}
             alt={product.name}
-            className="size-16 shrink-0 rounded-full bg-bg-elevated-2 object-cover"
+            className="size-16 shrink-0 rounded-full bg-bg-elevated-2 object-cover border border-border-subtle"
           />
           <div className="min-w-0 flex-1 pr-2">
             <DialogTitle className="text-lg font-semibold tracking-tight text-text-primary">
@@ -122,7 +127,7 @@ export default function AdditionsModal({
             <DialogDescription className="mt-1 line-clamp-2 text-sm text-text-secondary">
               {product.description}
             </DialogDescription>
-            <p className="mt-1.5 text-sm font-bold text-accent">
+            <p style={{ color: storeConfig.primaryColor }} className="mt-1.5 text-sm font-bold">
               {formatCurrency(product.price)}
             </p>
           </div>
@@ -145,7 +150,7 @@ export default function AdditionsModal({
                 <h3 className="text-sm font-semibold tracking-wide text-text-primary uppercase">
                   Adiciones
                 </h3>
-                <Badge variant="outline" className="bg-accent-soft text-accent">
+                <Badge variant="outline" className="border-border-strong bg-bg-elevated text-text-secondary">
                   Opcional
                 </Badge>
               </div>
@@ -171,7 +176,7 @@ export default function AdditionsModal({
                         onClick={() => modificarCantidadAdicion(i, "decrementar")}
                         aria-label={`Quitar ${adicion.name}`}
                         disabled={adicion.cantidad === 0}
-                        className="size-11 rounded-full border border-border-subtle bg-bg-elevated-2 text-text-primary hover:bg-accent hover:text-white disabled:opacity-30"
+                        className="size-11 rounded-full border border-border-subtle bg-bg-elevated-2 text-text-primary hover:opacity-80 disabled:opacity-30"
                       >
                         <Minus />
                       </Button>
@@ -183,11 +188,14 @@ export default function AdditionsModal({
                       </span>
                       <Button
                         type="button"
-                        variant="default"
                         size="icon-sm"
                         onClick={() => modificarCantidadAdicion(i, "incrementar")}
                         aria-label={`Agregar ${adicion.name}`}
-                        className="size-11 rounded-full bg-accent hover:bg-accent-hover"
+                        style={{
+                          backgroundColor: storeConfig.primaryColor,
+                          color: primaryForeground,
+                        }}
+                        className="size-11 rounded-full shadow-xs hover:opacity-90 transition-opacity"
                       >
                         <Plus />
                       </Button>
@@ -206,7 +214,7 @@ export default function AdditionsModal({
               >
                 Observaciones
               </FieldLabel>
-              <Badge variant="outline" className="bg-accent-soft text-accent">
+              <Badge variant="outline" className="border-border-strong bg-bg-elevated text-text-secondary">
                 Opcional
               </Badge>
             </div>
@@ -217,6 +225,7 @@ export default function AdditionsModal({
               onChange={(e) => setObservaciones(e.target.value)}
               placeholder="Ej. sin cebolla, término medio, sin picante..."
               maxLength={LIMITS.observaciones.max}
+              className="border-border-subtle bg-bg-input text-text-primary placeholder:text-text-muted focus-visible:ring-accent"
             />
             <CharacterCounter value={observaciones} max={LIMITS.observaciones.max} />
             <FieldDescription className="text-xs text-text-muted">
@@ -229,7 +238,7 @@ export default function AdditionsModal({
           <div className="flex flex-col gap-3 min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between">
             <div>
               <p className="text-xs text-text-muted">Cantidad</p>
-              <div className="mt-1 inline-flex items-center gap-2 rounded-full bg-bg-elevated px-2 py-1">
+              <div className="mt-1 inline-flex items-center gap-2 rounded-full bg-bg-elevated px-2 py-1 border border-border-subtle">
                 <Button
                   type="button"
                   variant="secondary"
@@ -237,7 +246,7 @@ export default function AdditionsModal({
                   onClick={disminuirCantidad}
                   aria-label="Disminuir cantidad"
                   disabled={cantidad === 1}
-                  className="size-11 rounded-full border border-border-subtle bg-bg-elevated-2 text-text-primary hover:bg-accent hover:text-white disabled:opacity-30"
+                  className="size-11 rounded-full border border-border-subtle bg-bg-elevated-2 text-text-primary hover:opacity-80 disabled:opacity-30"
                 >
                   <Minus />
                 </Button>
@@ -249,11 +258,14 @@ export default function AdditionsModal({
                 </span>
                 <Button
                   type="button"
-                  variant="default"
                   size="icon-sm"
                   onClick={aumentarCantidad}
                   aria-label="Aumentar cantidad"
-                  className="size-11 rounded-full bg-accent hover:bg-accent-hover"
+                  style={{
+                    backgroundColor: storeConfig.primaryColor,
+                    color: primaryForeground,
+                  }}
+                  className="size-11 rounded-full shadow-xs hover:opacity-90 transition-opacity"
                 >
                   <Plus />
                 </Button>
@@ -267,7 +279,7 @@ export default function AdditionsModal({
               disabled={!product}
               style={{
                 backgroundColor: storeConfig.primaryColor,
-                color: getContrastForeground(storeConfig.primaryColor),
+                color: primaryForeground,
               }}
               className="h-12 w-full rounded-xl text-base font-bold shadow-md cursor-pointer hover:opacity-90 min-[420px]:w-auto min-[420px]:flex-1 sm:min-w-[200px] sm:flex-none"
             >

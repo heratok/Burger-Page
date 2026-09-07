@@ -6,9 +6,10 @@ interface NavbarProps {
   cantidad: number
   total: number
   onOpenCart: () => void
+  onGoToMenu?: () => void
 }
 
-export default function Navbar({ cantidad, total, onOpenCart }: NavbarProps) {
+export default function Navbar({ cantidad, total, onOpenCart, onGoToMenu }: NavbarProps) {
   const { storeConfig } = useRestaurant()
   const primaryForeground = getContrastForeground(storeConfig.primaryColor)
 
@@ -48,7 +49,12 @@ export default function Navbar({ cantidad, total, onOpenCart }: NavbarProps) {
         </a>
 
         {/* Logo & Brand Name */}
-        <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={onGoToMenu}
+          className="flex items-center gap-3 text-left cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 rounded-lg p-1 -m-1"
+          aria-label="Ir al inicio del menú"
+        >
           {storeConfig.logoUrl ? (
             <img
               src={storeConfig.logoUrl}
@@ -86,7 +92,7 @@ export default function Navbar({ cantidad, total, onOpenCart }: NavbarProps) {
               {storeConfig.tagline}
             </span>
           </div>
-        </div>
+        </button>
 
         {/* Action icons */}
         <div className="flex items-center gap-2">
