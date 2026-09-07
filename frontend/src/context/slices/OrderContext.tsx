@@ -628,6 +628,16 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         try {
           await apiClient.deleteOrder(orderId, targetRestId)
         } catch (err: any) {
+          const isNotFound =
+            err?.status === 404 ||
+            (typeof err?.message === "string" &&
+              (err.message.includes("404") || err.message.toLowerCase().includes("not found")))
+
+          if (isNotFound) {
+            // Already deleted or never existed in server DB: keep client deletion without rollback
+            return
+          }
+
           console.error("Error al eliminar orden del servidor:", err)
           toast.error("No se pudo eliminar la orden del servidor")
           // Rollback on server error

@@ -216,6 +216,34 @@ describe('User Use Cases', () => {
         useCase.execute('admin_rosto', 'wrongPassword')
       ).rejects.toThrow(UnauthorizedError);
     });
+
+    it('should authenticate with restaurant alias without admin_ prefix (e.g. rosto -> admin_rosto)', async () => {
+      const useCase = new AuthenticateUserUseCase(mockUserRepo, mockHasher);
+      vi.mocked(mockUserRepo.findByUsername).mockImplementation(async (u) => {
+        if (u === 'admin_rosto') return storedUser;
+        return null;
+      });
+      vi.mocked(mockHasher.verify).mockResolvedValue(true);
+
+      const result = await useCase.execute('rosto', 'securePass123');
+
+      expect(result.success).toBe(true);
+      expect(result.user?.username).toBe('admin_rosto');
+      expect(result.user?.restaurantId).toBe('rosto');
+    });
+
+    it('should authenticate with restaurantId fallback when username matches restaurantId', async () => {
+      const useCase = new AuthenticateUserUseCase(mockUserRepo, mockHasher);
+      vi.mocked(mockUserRepo.findByUsername).mockResolvedValue(null);
+      vi.mocked(mockUserRepo.findByRestaurantId).mockResolvedValue([storedUser]);
+      vi.mocked(mockHasher.verify).mockResolvedValue(true);
+
+      const result = await useCase.execute('rosto', 'securePass123');
+
+      expect(result.success).toBe(true);
+      expect(result.user?.username).toBe('admin_rosto');
+      expect(result.user?.restaurantId).toBe('rosto');
+    });
   });
 
   // ─────────────────────────────────────────────────────────

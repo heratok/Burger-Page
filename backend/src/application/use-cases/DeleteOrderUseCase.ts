@@ -10,12 +10,25 @@ export class DeleteOrderUseCase {
       throw new ValidationError('Restaurant context is required to delete an order.');
     }
 
-    const order = await this.orderRepo.findById(id, restaurantId);
+    let order = await this.orderRepo.findById(id, restaurantId);
+    let resolvedRestId = restaurantId;
+
+    if (!order) {
+      const altRestId = restaurantId.startsWith('rest-')
+        ? restaurantId.replace(/^rest-/, '')
+        : `rest-${restaurantId}`;
+      const altOrder = await this.orderRepo.findById(id, altRestId);
+      if (altOrder) {
+        order = altOrder;
+        resolvedRestId = altRestId;
+      }
+    }
+
     if (!order) {
       throw new EntityNotFoundError(`Order '${id}' not found for restaurant '${restaurantId}'.`);
     }
 
-    await this.orderRepo.delete(id, restaurantId);
+    await this.orderRepo.delete(id, resolvedRestId);
     return order;
   }
 }
