@@ -542,6 +542,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 <Button
                   type="button"
                   size="sm"
+                  aria-label="Nueva Venta"
                   onClick={() => setIsManualSaleOpen(true)}
                   className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-xs font-bold text-white shadow-md shadow-orange-500/20 hover:from-orange-600 hover:to-amber-600 cursor-pointer"
                 >

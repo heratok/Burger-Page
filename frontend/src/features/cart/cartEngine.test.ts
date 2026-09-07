@@ -4,6 +4,7 @@ import {
   calculateCartSummary,
   createCartItem,
   cartItemToOrderItem,
+  orderItemToCartItem,
   type CartItem,
 } from "./cartEngine"
 import type { MenuItem } from "@/types/restaurant"
@@ -126,4 +127,30 @@ describe("Cart Engine - createCartItem and cartItemToOrderItem", () => {
       { name: "Extra Bacon", price: 4000, cantidad: 1 },
     ])
   })
+
+  it("converts OrderItem back into CartItem", () => {
+    const orderItem = {
+      id: "ord-item-1",
+      name: "Classic Cheeseburger",
+      price: 25000,
+      cantidad: 2,
+      total: 56000,
+      src: "https://example.com/burger.jpg",
+      observacion: "Sin tomate",
+      adiciones: [{ name: "Extra Queso", price: 3000, cantidad: 2 }],
+    }
+
+    const cartItem = orderItemToCartItem(orderItem)
+    expect(cartItem.id).toBe("ord-item-1")
+    expect(cartItem.name).toBe("Classic Cheeseburger")
+    expect(cartItem.price).toBe(25000)
+    expect(cartItem.cantidad).toBe(2)
+    expect(cartItem.total).toBe(56000)
+    expect(cartItem.src).toBe("https://example.com/burger.jpg")
+    expect(cartItem.observacion).toBe("Sin tomate")
+    expect(cartItem.adiciones).toEqual([
+      { id: "add_0", name: "Extra Queso", price: 3000, cantidad: 2 },
+    ])
+  })
 })
+

@@ -111,23 +111,29 @@ export default function AdditionsModal({
     >
       <DialogContent
         showCloseButton={false}
-        style={themeStyles}
-        className={`top-auto bottom-0 left-0 flex max-h-[92dvh] w-full max-w-none flex-col overflow-hidden translate-x-0 translate-y-0 gap-0 rounded-t-2xl rounded-b-none border border-border-subtle bg-bg-surface text-text-primary p-0 sm:top-1/2 sm:bottom-auto sm:left-1/2 sm:max-h-[90dvh] sm:w-[calc(100%-2rem)] sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl data-[side=bottom]:data-ending-style:translate-y-0 data-[side=bottom]:data-starting-style:translate-y-0 shadow-2xl ${fontClass}`}
+        style={{
+          ...themeStyles,
+          backgroundColor: (themeStyles as any)["--color-bg-base"] || "#FAF6EF",
+        }}
+        className={`top-auto bottom-0 left-0 flex max-h-[92dvh] w-full max-w-none flex-col overflow-hidden translate-x-0 translate-y-0 gap-0 rounded-t-2xl rounded-b-none border border-border-subtle text-text-primary p-0 sm:top-1/2 sm:bottom-auto sm:left-1/2 sm:max-h-[90dvh] sm:w-[calc(100%-2rem)] sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl data-[side=bottom]:data-ending-style:translate-y-0 data-[side=bottom]:data-starting-style:translate-y-0 shadow-2xl ${fontClass}`}
       >
-        <header className="flex items-center gap-3 border-b border-border-subtle p-5 pb-4">
+        <header
+          style={{ backgroundColor: (themeStyles as any)["--color-bg-surface"] || "var(--color-bg-surface, #F4ECE1)" }}
+          className="flex items-center gap-2.5 sm:gap-3 border-b border-border-subtle p-3.5 sm:p-5 pb-3 sm:pb-4"
+        >
           <img
             src={resolveImageUrl(product.src)}
             alt={product.name}
-            className="size-16 shrink-0 rounded-full bg-bg-elevated-2 object-cover border border-border-subtle"
+            className="size-12 sm:size-16 shrink-0 rounded-full bg-bg-elevated-2 object-cover border border-border-subtle"
           />
-          <div className="min-w-0 flex-1 pr-2">
-            <DialogTitle className="text-lg font-semibold tracking-tight text-text-primary">
+          <div className="min-w-0 flex-1 pr-1.5 sm:pr-2">
+            <DialogTitle className="text-base sm:text-lg font-semibold tracking-tight text-text-primary">
               {editing ? `Editar ${product.name}` : product.name}
             </DialogTitle>
-            <DialogDescription className="mt-1 line-clamp-2 text-sm text-text-secondary">
+            <DialogDescription className="mt-0.5 line-clamp-2 text-xs sm:text-sm text-text-secondary">
               {product.description}
             </DialogDescription>
-            <p style={{ color: storeConfig.primaryColor }} className="mt-1.5 text-sm font-bold">
+            <p style={{ color: storeConfig.primaryColor }} className="mt-1 text-xs sm:text-sm font-bold">
               {formatCurrency(product.price)}
             </p>
           </div>
@@ -137,13 +143,16 @@ export default function AdditionsModal({
             size="icon-sm"
             onClick={onClose}
             aria-label="Cerrar"
-            className="size-11 shrink-0 rounded-full text-text-muted hover:bg-bg-elevated-2 hover:text-text-primary"
+            className="size-9 sm:size-11 shrink-0 rounded-full text-text-muted hover:bg-bg-elevated-2 hover:text-text-primary"
           >
             <X />
           </Button>
         </header>
 
-        <div className="scroll-add min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain px-5 py-4">
+        <div
+          style={{ backgroundColor: (themeStyles as any)["--color-bg-base"] || "var(--color-bg-base, #FAF6EF)" }}
+          className="scroll-add min-h-0 flex-1 space-y-4 sm:space-y-6 overflow-y-auto overscroll-contain px-3.5 sm:px-5 py-3 sm:py-4"
+        >
           {adiciones.length > 0 && (
             <section>
               <div className="mb-3 flex items-center justify-between">
@@ -225,7 +234,7 @@ export default function AdditionsModal({
               onChange={(e) => setObservaciones(e.target.value)}
               placeholder="Ej. sin cebolla, término medio, sin picante..."
               maxLength={LIMITS.observaciones.max}
-              className="border-border-subtle bg-bg-input text-text-primary placeholder:text-text-muted focus-visible:ring-accent"
+              className="border-border-subtle bg-bg-input text-text-primary placeholder:text-text-muted focus-visible:ring-accent break-words [overflow-wrap:anywhere]"
             />
             <CharacterCounter value={observaciones} max={LIMITS.observaciones.max} />
             <FieldDescription className="text-xs text-text-muted">
@@ -234,7 +243,10 @@ export default function AdditionsModal({
           </Field>
         </div>
 
-        <footer className="border-t border-border-subtle bg-bg-surface p-4 sm:p-5">
+        <footer
+          style={{ backgroundColor: (themeStyles as any)["--color-bg-surface"] || "var(--color-bg-surface, #F4ECE1)" }}
+          className="border-t border-border-subtle p-3.5 sm:p-5"
+        >
           <div className="flex flex-col gap-3 min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between">
             <div>
               <p className="text-xs text-text-muted">Cantidad</p>
@@ -246,7 +258,7 @@ export default function AdditionsModal({
                   onClick={disminuirCantidad}
                   aria-label="Disminuir cantidad"
                   disabled={cantidad === 1}
-                  className="size-11 rounded-full border border-border-subtle bg-bg-elevated-2 text-text-primary hover:opacity-80 disabled:opacity-30"
+                  className="size-10 sm:size-11 rounded-full border border-border-subtle bg-bg-elevated-2 text-text-primary hover:opacity-80 disabled:opacity-30"
                 >
                   <Minus />
                 </Button>
@@ -265,7 +277,7 @@ export default function AdditionsModal({
                     backgroundColor: storeConfig.primaryColor,
                     color: primaryForeground,
                   }}
-                  className="size-11 rounded-full shadow-xs hover:opacity-90 transition-opacity"
+                  className="size-10 sm:size-11 rounded-full shadow-xs hover:opacity-90 transition-opacity"
                 >
                   <Plus />
                 </Button>
@@ -281,7 +293,7 @@ export default function AdditionsModal({
                 backgroundColor: storeConfig.primaryColor,
                 color: primaryForeground,
               }}
-              className="h-12 w-full rounded-xl text-base font-bold shadow-md cursor-pointer hover:opacity-90 min-[420px]:w-auto min-[420px]:flex-1 sm:min-w-[200px] sm:flex-none"
+              className="h-11 sm:h-12 w-full rounded-xl text-sm sm:text-base font-bold shadow-md cursor-pointer hover:opacity-90 min-[420px]:w-auto min-[420px]:flex-1 sm:min-w-[200px] sm:flex-none"
             >
               <Plus data-icon="inline-start" strokeWidth={2.5} />
               {editing ? "Guardar cambios" : "Agregar"} · {formatCurrency(calcularTotal())}

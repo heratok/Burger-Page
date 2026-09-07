@@ -70,7 +70,7 @@ function ShoppingCart({
               backgroundColor: "var(--color-bg-elevated)",
               borderColor: "var(--color-border-subtle)",
             }}
-            className="relative flex gap-3 rounded-2xl border p-3 sm:gap-4 sm:p-4 shadow-xs"
+            className="relative flex gap-3 rounded-2xl border p-3 sm:gap-4 sm:p-4 shadow-xs overflow-hidden"
           >
             <img
               src={resolveImageUrl(cartItem.src)}
@@ -124,7 +124,7 @@ function ShoppingCart({
               {cartItem.adiciones && cartItem.adiciones.length > 0 && (
                 <p
                   style={{ color: "var(--color-text-secondary)" }}
-                  className="mt-2 text-xs leading-relaxed"
+                  className="mt-2 text-xs leading-relaxed break-words [overflow-wrap:anywhere]"
                 >
                   <span style={{ color: "var(--color-text-muted)" }}>Adiciones: </span>
                   {cartItem.adiciones
@@ -135,7 +135,7 @@ function ShoppingCart({
               {cartItem.observacion && (
                 <p
                   style={{ color: "var(--color-text-secondary)" }}
-                  className="mt-1 text-xs leading-relaxed"
+                  className="mt-1 text-xs leading-relaxed break-words [overflow-wrap:anywhere]"
                 >
                   <span style={{ color: "var(--color-text-muted)" }}>Nota: </span>
                   {cartItem.observacion}

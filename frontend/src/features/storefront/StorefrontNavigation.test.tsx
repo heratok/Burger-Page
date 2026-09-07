@@ -126,4 +126,50 @@ describe("Storefront Navigation & Cart / Checkout Flow", () => {
       expect(screen.getByPlaceholderText("Buscar en el menú...")).toBeDefined()
     })
   })
+
+  it("allows collapsing and expanding category sections, and auto-expands on category pill click", async () => {
+    const repo = createTestRepo()
+    render(
+      <RestaurantProvider repository={repo}>
+        <Home />
+      </RestaurantProvider>
+    )
+
+    await screen.findByPlaceholderText("Buscar en el menú...")
+
+    // In TEST_RESTAURANTS (Burger Craft), category is "Clásicas" with product "Burger Doble Queso"
+    expect(screen.getByText("Burger Doble Queso")).toBeDefined()
+
+    // Find the category header button for "Clásicas" (which has aria-controls)
+    const allClasicasBtns = screen.getAllByRole("button", { name: /Clásicas/i })
+    const clasicasHeaderBtn = allClasicasBtns.find((b) => b.hasAttribute("aria-controls"))!
+    expect(clasicasHeaderBtn).toBeDefined()
+    expect(clasicasHeaderBtn.getAttribute("aria-expanded")).toBe("true")
+
+    // Click header button to collapse
+    fireEvent.click(clasicasHeaderBtn)
+    expect(clasicasHeaderBtn.getAttribute("aria-expanded")).toBe("false")
+    // Product should now be hidden
+    expect(screen.queryByText("Burger Doble Queso")).toBeNull()
+
+    // Click header button again to re-expand
+    fireEvent.click(clasicasHeaderBtn)
+    expect(clasicasHeaderBtn.getAttribute("aria-expanded")).toBe("true")
+    expect(screen.getByText("Burger Doble Queso")).toBeDefined()
+
+    // Collapse again
+    fireEvent.click(clasicasHeaderBtn)
+    expect(screen.queryByText("Burger Doble Queso")).toBeNull()
+
+    // Click the "Clásicas" pill in the sticky pill slider
+    const pills = screen.getAllByRole("button", { name: /^Clásicas/i })
+    // The pill button is the one with id or inside the pills container
+    const categoryPill = pills.find((p) => p !== clasicasHeaderBtn)
+    expect(categoryPill).toBeDefined()
+    fireEvent.click(categoryPill!)
+
+    // Category MUST auto-expand!
+    expect(clasicasHeaderBtn.getAttribute("aria-expanded")).toBe("true")
+    expect(screen.getByText("Burger Doble Queso")).toBeDefined()
+  })
 })

@@ -118,3 +118,26 @@ export function cartItemToOrderItem(cartItem: CartItem): OrderItem {
     })),
   }
 }
+
+/**
+ * Converts an OrderItem back into the CartItem format used by POS and Cart components.
+ */
+export function orderItemToCartItem(orderItem: OrderItem): CartItem {
+  return {
+    id: orderItem.id || `cart_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    menuItemId: orderItem.id,
+    name: orderItem.name,
+    price: orderItem.price,
+    cantidad: orderItem.cantidad || 1,
+    total: orderItem.total || orderItem.price * (orderItem.cantidad || 1),
+    src: orderItem.src || "",
+    observacion: orderItem.observacion || "",
+    adiciones: (orderItem.adiciones || []).map((a, idx) => ({
+      id: (a as any).id || `add_${idx}`,
+      name: a.name,
+      price: a.price,
+      cantidad: a.cantidad,
+    })),
+  }
+}
+

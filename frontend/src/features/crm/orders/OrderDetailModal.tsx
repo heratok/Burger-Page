@@ -1,6 +1,6 @@
 import React, { useState } from "react"
 import type { Order, OrderStatus } from "@/types/restaurant"
-import { MapPin, MessageCircle, X, Trash2, Eye, Upload, FileText, ExternalLink } from "lucide-react"
+import { MapPin, MessageCircle, X, Trash2, Eye, Upload, FileText, ExternalLink, Pencil } from "lucide-react"
 import { OrderStatusBadge } from "@/components/ui/status-badge"
 import { formatCurrency } from "@/lib/utils"
 import { uploadImageToStorage } from "@/core/storage/supabaseStorage"
@@ -15,6 +15,7 @@ export interface OrderDetailModalProps {
   onUpdateReceipt?: (orderId: string, receiptUrl: string) => void | Promise<void>
   onDeleteOrder: (order: Order) => void
   onWhatsApp: (order: Order) => void
+  onEditOrder?: (order: Order) => void
 }
 
 export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
@@ -26,6 +27,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
   onUpdateReceipt,
   onDeleteOrder,
   onWhatsApp,
+  onEditOrder,
 }) => {
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
@@ -80,33 +82,50 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
   if (!isOpen || !order) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 backdrop-blur-xs">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-2 sm:p-4 backdrop-blur-xs overflow-y-auto">
       <div
-        className={`w-full max-w-lg rounded-2xl border p-6 shadow-2xl transition-all ${
+        className={`w-full max-w-lg rounded-2xl border p-4 sm:p-6 shadow-2xl transition-all my-auto max-h-[96vh] overflow-y-auto ${
           isDark ? "border-slate-800 bg-slate-900 text-slate-100" : "border-slate-200 bg-white text-slate-900"
         }`}
       >
         {/* Modal Header */}
-        <div className="flex items-start justify-between border-b pb-4 border-slate-100 dark:border-slate-800">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-lg font-black text-indigo-600 dark:text-indigo-400">
+        <div className="flex items-start justify-between gap-2 border-b pb-3.5 border-slate-100 dark:border-slate-800">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+              <span className="text-base sm:text-lg font-black text-indigo-600 dark:text-indigo-400">
                 Orden #{order.orderNumber}
               </span>
               <OrderStatusBadge status={order.status} />
             </div>
-            <span className="text-xs text-slate-500 dark:text-slate-400">
+            <span className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 block truncate">
               Registrada el {new Date(order.createdAt).toLocaleString("es-CO")}
             </span>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Cerrar detalles"
-            className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200 cursor-pointer"
-          >
-            <X className="size-5" />
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {onEditOrder && order.status !== "delivered" && order.status !== "cancelled" && (
+              <button
+                type="button"
+                onClick={() => {
+                  onEditOrder(order)
+                  onClose()
+                }}
+                className="flex items-center gap-1 rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/50 px-2 sm:px-2.5 py-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 cursor-pointer transition-colors"
+                title="Editar venta"
+              >
+                <Pencil className="size-3.5" />
+                <span className="hidden sm:inline">Editar venta</span>
+                <span className="sm:hidden">Editar</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Cerrar detalles"
+              className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200 cursor-pointer"
+            >
+              <X className="size-5" />
+            </button>
+          </div>
         </div>
 
         {/* Customer Information */}
@@ -130,6 +149,12 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
               {order.customer.direccion}, Barrio {order.customer.barrio}
             </span>
           </div>
+          {order.comentario && (
+            <div className="mt-2 rounded-lg border border-amber-300/40 bg-amber-50/50 dark:border-amber-500/30 dark:bg-amber-950/30 p-2.5 text-xs text-amber-800 dark:text-amber-200 break-words [overflow-wrap:anywhere]">
+              <span className="font-bold">Nota del cliente: </span>
+              &quot;{order.comentario}&quot;
+            </div>
+          )}
         </div>
 
         {/* Items Breakdown */}
@@ -160,7 +185,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                 </div>
               )}
               {item.observacion && (
-                <p className="text-[11px] text-amber-600 dark:text-amber-300 italic pt-0.5">
+                <p className="text-[11px] text-amber-600 dark:text-amber-300 italic pt-0.5 break-words [overflow-wrap:anywhere]">
                   Nota: {item.observacion}
                 </p>
               )}

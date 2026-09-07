@@ -235,4 +235,66 @@ describe("ManualSaleModal - Point of Sale (POS) Component", () => {
     expect(fileInput).toBeDefined()
     fireEvent.change(fileInput, { target: { files: [file] } })
   })
+
+  it("prepopulates fields when orderToEdit is provided and saves changes", async () => {
+    const mockOrderToEdit = {
+      id: "ord-test-edit-1",
+      orderNumber: 54321,
+      customer: {
+        nombre: "Mariana Restrepo",
+        telefono: "3109876543",
+        direccion: "Calle 45 # 12-34",
+        barrio: "Laureles",
+      },
+      items: [
+        {
+          id: "item-edit-1",
+          name: "Hamburguesa Clásica",
+          price: 20000,
+          cantidad: 1,
+          total: 20000,
+          observacion: "Sin mayonesa",
+          adiciones: [],
+        },
+      ],
+      total: 20000,
+      deliveryFee: 5000,
+      finalTotal: 25000,
+      metodo: "Efectivo" as const,
+      pagoCon: "30000",
+      status: "pending" as const,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }
+
+    const onClose = vi.fn()
+
+    render(
+      <RestaurantProvider repository={createTestRepo()}>
+        <ManualSaleModal isOpen={true} onClose={onClose} orderToEdit={mockOrderToEdit} />
+      </RestaurantProvider>
+    )
+
+    // Should render edit header
+    expect(screen.getByText(/Editar Venta #54321/i)).toBeDefined()
+    expect(screen.getByText(/Modificá los productos, cliente, notas/i)).toBeDefined()
+
+    // Prepopulated customer data
+    const nameInput = screen.getByDisplayValue("Mariana Restrepo")
+    expect(nameInput).toBeDefined()
+
+    const phoneInput = screen.getByDisplayValue("3109876543")
+    expect(phoneInput).toBeDefined()
+
+    // Save changes
+    const saveBtn = screen.getByRole("button", { name: /Guardar cambios/i })
+    expect(saveBtn).toBeDefined()
+    fireEvent.click(saveBtn)
+
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledWith("Venta actualizada correctamente")
+      expect(onClose).toHaveBeenCalled()
+    })
+  })
 })
+

@@ -147,4 +147,61 @@ describe("OrderDetailModal", () => {
     expect(screen.getByText("! Sin soporte adjunto")).toBeDefined()
     expect(screen.getByText("+ Adjuntar Soporte de Transferencia")).toBeDefined()
   })
+
+  it("calls onEditOrder and closes modal when clicking Editar venta", () => {
+    const onEditOrder = vi.fn()
+    const onClose = vi.fn()
+
+    render(
+      <OrderDetailModal
+        order={mockOrder}
+        isOpen={true}
+        onClose={onClose}
+        onUpdateStatus={vi.fn()}
+        onDeleteOrder={vi.fn()}
+        onWhatsApp={vi.fn()}
+        onEditOrder={onEditOrder}
+      />
+    )
+
+    const editBtn = screen.getByRole("button", { name: /Editar venta/i })
+    expect(editBtn).toBeDefined()
+    fireEvent.click(editBtn)
+
+    expect(onEditOrder).toHaveBeenCalledWith(mockOrder)
+    expect(onClose).toHaveBeenCalled()
+  })
+
+  it("hides Editar venta button when order is delivered or cancelled", () => {
+    const onEditOrder = vi.fn()
+
+    const { rerender } = render(
+      <OrderDetailModal
+        order={{ ...mockOrder, status: "delivered" }}
+        isOpen={true}
+        onClose={vi.fn()}
+        onUpdateStatus={vi.fn()}
+        onDeleteOrder={vi.fn()}
+        onWhatsApp={vi.fn()}
+        onEditOrder={onEditOrder}
+      />
+    )
+
+    expect(screen.queryByRole("button", { name: /Editar venta/i })).toBeNull()
+
+    rerender(
+      <OrderDetailModal
+        order={{ ...mockOrder, status: "cancelled" }}
+        isOpen={true}
+        onClose={vi.fn()}
+        onUpdateStatus={vi.fn()}
+        onDeleteOrder={vi.fn()}
+        onWhatsApp={vi.fn()}
+        onEditOrder={onEditOrder}
+      />
+    )
+
+    expect(screen.queryByRole("button", { name: /Editar venta/i })).toBeNull()
+  })
 })
+
