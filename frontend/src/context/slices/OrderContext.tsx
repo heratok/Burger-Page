@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useMemo, useCallback, useEffect, useState } from "react"
 import type { Order, OrderStatus, Customer } from "@/types/restaurant"
-import type { CreateOrderInput, OrderEvent } from "@burger-page/contracts"
+import type { CreateOrderInput, UpdateOrderInput, OrderEvent } from "@burger-page/contracts"
 import { apiClient } from "@/core/api/apiClient"
 import { useTenant } from "./TenantContext"
 import { useAuth } from "./AuthContext"
@@ -16,7 +16,7 @@ export interface OrderContextType {
   updateOrder: (orderId: string, updates: Partial<Order>) => void
   updateOrderStatus: (orderId: string, newStatus: OrderStatus) => void
   updateOrderReceipt: (orderId: string, receiptUrl: string) => Promise<void>
-  deleteOrder: (orderId: string) => void
+  deleteOrder: (orderId: string) => Promise<void> | void
   customers: Customer[]
   updateCustomer: (id: string, updates: Partial<Customer>) => void
   pendingOrdersCount: number
@@ -24,6 +24,66 @@ export interface OrderContextType {
 }
 
 const OrderContext = createContext<OrderContextType | undefined>(undefined)
+
+function mapBackendOrderToDomain(bo: any, existing?: Order, matchedCustomer?: any): Order {
+  const customer = bo.customer
+    ? {
+        nombre: bo.customer.nombre || bo.customer.name || existing?.customer?.nombre || 'Cliente',
+        telefono: bo.customer.telefono || bo.customer.phone || existing?.customer?.telefono || '',
+        direccion: bo.customer.direccion || bo.customer.address || existing?.customer?.direccion || '',
+        barrio: bo.customer.barrio || existing?.customer?.barrio || '',
+      }
+    : matchedCustomer
+      ? {
+          nombre: matchedCustomer.nombre,
+          telefono: matchedCustomer.telefono,
+          direccion: matchedCustomer.direccion,
+          barrio: matchedCustomer.barrio,
+        }
+      : existing?.customer || {
+          nombre: 'Cliente',
+          telefono: '',
+          direccion: '',
+          barrio: '',
+        }
+
+  const items = (bo.items && bo.items.length > 0 ? bo.items : existing?.items || []).map((item: any) => {
+    const unitPrice = Number(item.unitPrice ?? item.price ?? 0)
+    const quantity = Number(item.quantity ?? item.cantidad ?? 1)
+    return {
+      id: item.id,
+      name: item.productName || item.name || 'Producto',
+      price: unitPrice,
+      cantidad: quantity,
+      total: Number(item.total ?? (unitPrice * quantity)),
+      observacion: item.observation || item.observacion,
+      src: item.src,
+      adiciones: (item.additions || item.adiciones || []).map((a: any) => ({
+        name: a.additionName || a.name || 'Adición',
+        price: Number(a.unitPrice ?? a.price ?? 0),
+        cantidad: Number(a.quantity ?? 1),
+      })),
+    }
+  })
+
+  return {
+    id: bo.id,
+    orderNumber: bo.orderNumber || existing?.orderNumber || 0,
+    customer,
+    items,
+    total: Number(bo.subtotal ?? bo.total ?? existing?.total ?? 0),
+    deliveryFee: Number(bo.deliveryFee ?? existing?.deliveryFee ?? 0),
+    finalTotal: Number(bo.finalTotal ?? bo.total ?? existing?.finalTotal ?? 0),
+    metodo: (bo.paymentMethod || bo.metodo || existing?.metodo || 'Efectivo') as any,
+    pagoCon: bo.paymentAmount !== undefined ? String(bo.paymentAmount) : (bo.pagoCon || existing?.pagoCon),
+    cambio: bo.changeAmount !== undefined ? Number(bo.changeAmount) : (bo.cambio || existing?.cambio),
+    comentario: bo.comment || bo.comentario || existing?.comentario,
+    receiptUrl: bo.receiptUrl || existing?.receiptUrl,
+    status: (bo.status as OrderStatus) || existing?.status || 'pending',
+    createdAt: bo.createdAt || existing?.createdAt || new Date().toISOString(),
+    updatedAt: bo.updatedAt || existing?.updatedAt || new Date().toISOString(),
+  }
+}
 
 export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { activeRestaurant, updateActiveRestaurantRecord } = useTenant()
@@ -38,15 +98,12 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     )
   })
 
-  // Hydrate orders from database
+  // Synchronize orders with backend if token & restaurant context exist
   useEffect(() => {
-    const targetRestId = activeRestaurant?.id
-    if (!targetRestId || !apiClient.hasToken()) {
-      setIsLoadingOrders(false)
-      return
-    }
+    if (!apiClient.hasToken() || !activeRestaurant?.id) return
+
     let isCancelled = false
-    setIsLoadingOrders(true)
+    const targetRestId = activeRestaurant.id
 
     apiClient
       .fetchOrders(targetRestId)
@@ -61,52 +118,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               if (bo && bo.id) {
                 const existing = map.get(bo.id)
                 const matchedCustomer = current.customers.find((c) => c.id === bo.customerId)
-                const customer =
-                  existing?.customer ||
-                  bo.customer ||
-                  (matchedCustomer
-                    ? {
-                        nombre: matchedCustomer.nombre,
-                        telefono: matchedCustomer.telefono,
-                        direccion: matchedCustomer.direccion,
-                        barrio: matchedCustomer.barrio,
-                      }
-                    : {
-                        nombre: 'Cliente',
-                        telefono: '',
-                        direccion: '',
-                        barrio: '',
-                      })
-                const mappedOrder: Order = {
-                  id: bo.id,
-                  orderNumber: bo.orderNumber || existing?.orderNumber || 0,
-                  customer,
-                  items: (bo.items || existing?.items || []).map((item: any) => ({
-                    id: item.id,
-                    name: item.productName || item.name || 'Producto',
-                    price: Number(item.unitPrice ?? item.price ?? 0),
-                    cantidad: Number(item.quantity ?? item.cantidad ?? 1),
-                    total: Number(item.unitPrice ?? item.price ?? 0) * Number(item.quantity ?? item.cantidad ?? 1),
-                    observacion: item.observation || item.observacion,
-                    adiciones: (item.additions || item.adiciones || []).map((a: any) => ({
-                      name: a.additionName || a.name || 'Adición',
-                      price: Number(a.unitPrice ?? a.price ?? 0),
-                      cantidad: Number(a.quantity ?? 1),
-                    })),
-                  })),
-                  total: Number(bo.subtotal ?? bo.total ?? existing?.total ?? 0),
-                  deliveryFee: Number(bo.deliveryFee ?? existing?.deliveryFee ?? 0),
-                  finalTotal: Number(bo.finalTotal ?? bo.total ?? existing?.finalTotal ?? 0),
-                  metodo: (bo.paymentMethod || bo.metodo || 'Efectivo') as any,
-                  pagoCon: bo.paymentAmount ? String(bo.paymentAmount) : bo.pagoCon,
-                  cambio: bo.changeAmount !== undefined ? Number(bo.changeAmount) : bo.cambio,
-                  comentario: bo.comment || bo.comentario,
-                  receiptUrl: bo.receiptUrl || existing?.receiptUrl,
-                  status: (bo.status as OrderStatus) || existing?.status || 'pending',
-                  createdAt: bo.createdAt || existing?.createdAt || new Date().toISOString(),
-                  updatedAt: bo.updatedAt || existing?.updatedAt || new Date().toISOString(),
-                }
-                map.set(bo.id, mappedOrder)
+                map.set(bo.id, mapBackendOrderToDomain(bo, existing, matchedCustomer))
               }
             })
             return {
@@ -140,6 +152,14 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (!targetRestId || !apiClient.hasToken()) return
     const unsubscribe = apiClient.subscribeToOrderStream((event: OrderEvent) => {
       if (!event || !event.orderId) return
+
+      if (event.eventType === "ORDER_DELETED") {
+        updateActiveRestaurantRecord((current) => ({
+          ...current,
+          orders: current.orders.filter((o) => o.id !== event.orderId),
+        }))
+        return
+      }
 
       if (event.eventType === "ORDER_RECEIPT_UPDATED") {
         const payloadReceipt = (event.payload as any)?.receiptUrl
@@ -220,19 +240,30 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             return current
           }
 
+          const payload = (event.payload as any) || {}
           return {
             ...current,
-            orders: current.orders.map((o, idx) =>
-              idx === matchIndex
-                ? {
-                    ...o,
+            orders: current.orders.map((o, idx) => {
+              if (idx !== matchIndex) return o
+              if (event.eventType === "ORDER_UPDATED" && payload) {
+                return mapBackendOrderToDomain(
+                  {
+                    ...payload,
                     id: event.orderId || o.id,
-                    status: (event.status as OrderStatus) || o.status,
-                    receiptUrl: (event.payload as any)?.receiptUrl || o.receiptUrl,
+                    status: event.status || payload.status || o.status,
                     updatedAt: event.timestamp || new Date().toISOString(),
-                  }
-                : o
-            ),
+                  },
+                  o
+                )
+              }
+              return {
+                ...o,
+                id: event.orderId || o.id,
+                status: (event.status as OrderStatus) || (payload.status as OrderStatus) || o.status,
+                receiptUrl: payload.receiptUrl || o.receiptUrl,
+                updatedAt: event.timestamp || new Date().toISOString(),
+              }
+            }),
           }
         })
       }
@@ -376,23 +407,85 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   )
 
   const updateOrder = useCallback(
-    (orderId: string, updates: Partial<Order>) => {
+    async (orderId: string, updates: Partial<Order>) => {
       const now = new Date().toISOString()
-      updateActiveRestaurantRecord((current) => ({
-        ...current,
-        orders: current.orders.map((o) =>
-          o.id === orderId
-            ? {
-                ...o,
-                ...updates,
-                updatedAt: now,
-              }
-            : o
-        ),
-      }))
+      const targetRestId = activeRestaurant?.id
+      let previousOrders: Order[] = []
+
+      // Optimistic local update
+      updateActiveRestaurantRecord((current) => {
+        previousOrders = current.orders
+        return {
+          ...current,
+          orders: current.orders.map((o) =>
+            o.id === orderId
+              ? {
+                  ...o,
+                  ...updates,
+                  updatedAt: now,
+                }
+              : o
+          ),
+        }
+      })
       toast.success("Venta actualizada correctamente")
+
+      // Backend sync
+      if (apiClient.hasToken() && targetRestId) {
+        try {
+          const updateInput: UpdateOrderInput = {}
+          if (updates.customer) {
+            updateInput.customer = {
+              name: updates.customer.nombre,
+              phone: updates.customer.telefono,
+              address: updates.customer.direccion,
+              barrio: updates.customer.barrio,
+            }
+          }
+          if (updates.items) {
+            updateInput.items = updates.items.map((item) => {
+              const matchedProduct = activeRestaurant.products?.find(
+                (p) => p.name.toLowerCase() === item.name.toLowerCase() || p.id === item.id
+              )
+              return {
+                productId: matchedProduct?.id || item.id || item.name,
+                quantity: item.cantidad,
+                observation: item.observacion || (item as any).instrucciones,
+                additions: (item.adiciones || []).map((a) => {
+                  if (typeof a === 'string') return a
+                  return { additionId: (a as any).id || (a as any).name, quantity: 1 }
+                }),
+              }
+            })
+          }
+          if (updates.deliveryFee !== undefined) updateInput.deliveryFee = updates.deliveryFee
+          if (updates.metodo !== undefined) updateInput.paymentMethod = updates.metodo
+          if (updates.pagoCon !== undefined) updateInput.paymentAmount = Number(updates.pagoCon) || undefined
+          if (updates.cambio !== undefined) updateInput.changeAmount = updates.cambio
+          if (updates.comentario !== undefined) updateInput.comment = updates.comentario
+          if (updates.status !== undefined) updateInput.status = updates.status
+
+          const updatedOrder = await apiClient.updateOrder(orderId, updateInput, targetRestId)
+          if (updatedOrder) {
+            updateActiveRestaurantRecord((current) => ({
+              ...current,
+              orders: current.orders.map((o) => (o.id === orderId ? mapBackendOrderToDomain(updatedOrder, o) : o)),
+            }))
+          }
+        } catch (err) {
+          if (import.meta.env?.MODE !== 'test') {
+            console.error("Error al actualizar orden en el servidor:", err)
+          }
+          toast.error("No se pudo sincronizar la actualización con el servidor")
+          // Rollback to pre-optimistic snapshot
+          updateActiveRestaurantRecord((current) => ({
+            ...current,
+            orders: previousOrders,
+          }))
+        }
+      }
     },
-    [updateActiveRestaurantRecord]
+    [activeRestaurant, updateActiveRestaurantRecord]
   )
 
   const updateOrderStatus = useCallback(
@@ -440,14 +533,35 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   )
 
   const deleteOrder = useCallback(
-    (orderId: string) => {
-      updateActiveRestaurantRecord((current) => ({
-        ...current,
-        orders: current.orders.filter((o) => o.id !== orderId),
-      }))
+    async (orderId: string) => {
+      const targetRestId = activeRestaurant?.id
+      let previousOrders: Order[] = []
+
+      // Optimistic update
+      updateActiveRestaurantRecord((current) => {
+        previousOrders = current.orders
+        return {
+          ...current,
+          orders: current.orders.filter((o) => o.id !== orderId),
+        }
+      })
       toast.success("Orden eliminada")
+
+      if (apiClient.hasToken() && targetRestId) {
+        try {
+          await apiClient.deleteOrder(orderId, targetRestId)
+        } catch (err: any) {
+          console.error("Error al eliminar orden del servidor:", err)
+          toast.error("No se pudo eliminar la orden del servidor")
+          // Rollback on server error
+          updateActiveRestaurantRecord((current) => ({
+            ...current,
+            orders: previousOrders,
+          }))
+        }
+      }
     },
-    [updateActiveRestaurantRecord]
+    [activeRestaurant?.id, updateActiveRestaurantRecord]
   )
 
   const updateCustomer = useCallback(

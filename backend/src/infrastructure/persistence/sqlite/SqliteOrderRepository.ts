@@ -28,9 +28,14 @@ export class SqliteOrderRepository implements OrderRepository {
         updated_at TEXT NOT NULL
       )
     `);
-    // Ensure column exists for existing SQLite tables
+    // Ensure columns exist for existing SQLite tables
     try {
       this.db.exec(`ALTER TABLE orders ADD COLUMN receipt_url TEXT;`);
+    } catch {
+      // Column already exists
+    }
+    try {
+      this.db.exec(`ALTER TABLE orders ADD COLUMN customer TEXT;`);
     } catch {
       // Column already exists
     }
@@ -106,9 +111,67 @@ export class SqliteOrderRepository implements OrderRepository {
     }
   }
 
+  async delete(id: string, restaurantId: string): Promise<void> {
+    const result = this.db.prepare('DELETE FROM orders WHERE id = ? AND restaurant_id = ?')
+      .run(id, restaurantId);
+
+    if (result.changes === 0) {
+      throw new Error(`Order ${id} not found for restaurant ${restaurantId}`);
+    }
+  }
+
+  async update(order: Order, restaurantId: string): Promise<Order> {
+    const existing = await this.findById(order.id, restaurantId);
+    if (!existing) {
+      throw new Error(`Order ${order.id} not found for restaurant ${restaurantId}`);
+    }
+
+    const stmt = this.db.prepare(`
+      UPDATE orders SET
+        customer_id = ?,
+        status = ?,
+        total = ?,
+        delivery_fee = ?,
+        final_total = ?,
+        payment_method = ?,
+        payment_amount = ?,
+        change_amount = ?,
+        comment = ?,
+        receipt_url = ?,
+        items = ?,
+        customer = ?,
+        updated_at = ?
+      WHERE id = ? AND restaurant_id = ?
+    `);
+    const now = new Date().toISOString();
+    const customerPayload = order.customer
+      ? JSON.stringify(order.customer)
+      : (existing.customer ? JSON.stringify(existing.customer) : null);
+
+    stmt.run(
+      order.customerId || existing.customerId || null,
+      order.status,
+      order.subtotal,
+      order.deliveryFee,
+      order.finalTotal,
+      order.paymentMethod,
+      order.paymentAmount !== undefined ? order.paymentAmount : null,
+      order.changeAmount !== undefined ? order.changeAmount : null,
+      order.comment !== undefined ? order.comment : null,
+      order.receiptUrl !== undefined ? order.receiptUrl : null,
+      JSON.stringify(order.items),
+      customerPayload,
+      now,
+      order.id,
+      restaurantId
+    );
+
+    return (await this.findById(order.id, restaurantId)) || order;
+  }
+
   private mapToDomain(row: any): Order {
     const items: OrderItem[] = JSON.parse(row.items || '[]');
-    return new Order(
+    const order = new Order(
       row.id,
       row.restaurant_id,
       row.customer_id || undefined,
@@ -123,5 +186,13 @@ export class SqliteOrderRepository implements OrderRepository {
       row.comment || undefined,
       row.receipt_url || undefined
     );
+    if (row.customer) {
+      try {
+        order.customer = JSON.parse(row.customer);
+      } catch {
+        order.customer = row.customer;
+      }
+    }
+    return order;
   }
 }

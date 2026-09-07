@@ -41,6 +41,23 @@ export class InMemoryOrderRepository implements OrderRepository {
     order.receiptUrl = receiptUrl;
   }
 
+  async delete(id: string, restaurantId: string): Promise<void> {
+    const order = await this.findById(id, restaurantId);
+    if (!order) {
+      throw new Error(`Order ${id} not found for restaurant ${restaurantId}`);
+    }
+    this.orders.delete(id);
+  }
+
+  async update(order: Order, restaurantId: string): Promise<Order> {
+    const existing = await this.findById(order.id, restaurantId);
+    if (!existing) {
+      throw new Error(`Order ${order.id} not found for restaurant ${restaurantId}`);
+    }
+    this.orders.set(order.id, order);
+    return order;
+  }
+
   clear(): void {
     this.orders.clear();
   }

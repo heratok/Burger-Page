@@ -4,10 +4,12 @@ import { GetOrderByIdUseCase } from '../../../application/use-cases/GetOrderById
 import { CreateOrderUseCase } from '../../../application/use-cases/CreateOrderUseCase.js';
 import { UpdateOrderStatusUseCase } from '../../../application/use-cases/UpdateOrderStatusUseCase.js';
 import { UpdateOrderReceiptUseCase } from '../../../application/use-cases/UpdateOrderReceiptUseCase.js';
-import { createOrderSchema, updateOrderStatusSchema, updateOrderReceiptSchema } from '@burger-page/contracts';
+import { DeleteOrderUseCase } from '../../../application/use-cases/DeleteOrderUseCase.js';
+import { UpdateOrderUseCase } from '../../../application/use-cases/UpdateOrderUseCase.js';
+import { createOrderSchema, updateOrderStatusSchema, updateOrderReceiptSchema, updateOrderSchema } from '@burger-page/contracts';
 import { RestaurantRepository } from '../../../domain/ports/out/RestaurantRepository.js';
 import { UnauthorizedError, ValidationError } from '../../../domain/errors/DomainErrors.js';
-import { CreateOrderDTO, UpdateOrderStatusDTO, UpdateOrderReceiptDTO } from '../../../application/dtos/index.js';
+import { CreateOrderDTO, UpdateOrderStatusDTO, UpdateOrderReceiptDTO, UpdateOrderDTO } from '../../../application/dtos/index.js';
 import { globalOrderEventBus } from '../../events/OrderEventBus.js';
 
 export class OrderController {
@@ -17,7 +19,9 @@ export class OrderController {
     private createOrderUseCase: CreateOrderUseCase,
     private updateOrderStatusUseCase: UpdateOrderStatusUseCase,
     private updateOrderReceiptUseCase?: UpdateOrderReceiptUseCase,
-    private restaurantRepo?: RestaurantRepository
+    private restaurantRepo?: RestaurantRepository,
+    private deleteOrderUseCase?: DeleteOrderUseCase,
+    private updateOrderUseCase?: UpdateOrderUseCase
   ) {}
 
   private async resolveRestaurantId(req: FastifyRequest): Promise<string> {
@@ -172,6 +176,93 @@ export class OrderController {
         id: updatedOrder.id,
         restaurantId: updatedOrder.restaurantId,
         orderNumber: updatedOrder.orderNumber,
+        receiptUrl: updatedOrder.receiptUrl,
+      },
+    });
+
+    return reply.status(200).send(updatedOrder);
+  }
+
+  async delete(req: FastifyRequest, reply: FastifyReply) {
+    const params = req.params as { id: string };
+    const restaurantId = await this.resolveRestaurantId(req);
+    if (!restaurantId) {
+      throw new UnauthorizedError('Restaurant context is required to delete an order.');
+    }
+
+    if (!this.deleteOrderUseCase) {
+      throw new Error('DeleteOrderUseCase is not configured.');
+    }
+
+    const deletedOrder = await this.deleteOrderUseCase.execute(params.id, restaurantId);
+
+    // Publish SSE Real-time Event with tenant ID
+    globalOrderEventBus.publish({
+      eventType: 'ORDER_DELETED',
+      orderId: params.id,
+      orderNumber: deletedOrder.orderNumber,
+      status: deletedOrder.status,
+      timestamp: new Date().toISOString(),
+      payload: {
+        id: deletedOrder.id,
+        restaurantId: deletedOrder.restaurantId,
+        orderNumber: deletedOrder.orderNumber,
+      },
+    });
+
+    return reply.status(200).send({
+      success: true,
+      id: params.id,
+      message: 'Orden eliminada correctamente',
+    });
+  }
+
+  async update(req: FastifyRequest, reply: FastifyReply) {
+    const params = req.params as { id: string };
+    const restaurantId = await this.resolveRestaurantId(req);
+    if (!restaurantId) {
+      throw new UnauthorizedError('Restaurant context is required to update an order.');
+    }
+
+    if (!this.updateOrderUseCase) {
+      throw new Error('UpdateOrderUseCase is not configured.');
+    }
+
+    const parsed = updateOrderSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw new ValidationError(parsed.error.message);
+    }
+
+    const updatedOrder = await this.updateOrderUseCase.execute(
+      params.id,
+      parsed.data as UpdateOrderDTO,
+      restaurantId
+    );
+
+    // Publish SSE Real-time Event with tenant ID
+    globalOrderEventBus.publish({
+      eventType: 'ORDER_UPDATED',
+      orderId: updatedOrder.id,
+      orderNumber: updatedOrder.orderNumber,
+      status: updatedOrder.status,
+      timestamp: new Date().toISOString(),
+      payload: {
+        id: updatedOrder.id,
+        restaurantId: updatedOrder.restaurantId,
+        orderNumber: updatedOrder.orderNumber,
+        customerId: updatedOrder.customerId,
+        customer: (updatedOrder as any).customer,
+        items: updatedOrder.items,
+        status: updatedOrder.status,
+        createdAt: updatedOrder.createdAt,
+        deliveryFee: updatedOrder.deliveryFee,
+        subtotal: updatedOrder.subtotal,
+        finalTotal: updatedOrder.finalTotal,
+        total: updatedOrder.total,
+        paymentMethod: updatedOrder.paymentMethod,
+        paymentAmount: updatedOrder.paymentAmount,
+        changeAmount: updatedOrder.changeAmount,
+        comment: updatedOrder.comment,
         receiptUrl: updatedOrder.receiptUrl,
       },
     });

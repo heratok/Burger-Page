@@ -133,9 +133,15 @@ export async function orderRoutes(fastify: FastifyInstance, opts: { controller: 
             deliveryFee: { type: 'number' },
             finalTotal: { type: 'number' },
             total: { type: 'number' },
+            paymentMethod: { type: 'string' },
+            paymentAmount: { type: 'number' },
+            changeAmount: { type: 'number' },
+            comment: { type: 'string' },
             receiptUrl: { type: 'string' },
+            customer: { type: 'object', additionalProperties: true },
             items: { type: 'array', items: { type: 'object', additionalProperties: true } }
-          }
+          },
+          additionalProperties: true
         },
         404: {
           type: 'object',
@@ -291,4 +297,124 @@ export async function orderRoutes(fastify: FastifyInstance, opts: { controller: 
       }
     }
   }, opts.controller.updateReceipt.bind(opts.controller));
+
+  // 7. Delete Order (Protected - Tenant Scoped)
+  fastify.delete('/:id', {
+    preHandler: [requireAuth],
+    schema: {
+      tags: ['Orders'],
+      summary: 'Delete order permanently',
+      description: 'Deletes an order and its associated items. Strictly scoped to the authenticated tenant.',
+      params: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', description: 'Order ID' },
+        },
+        required: ['id'],
+      },
+      querystring: {
+        type: 'object',
+        properties: {
+          restaurantId: { type: 'string', description: 'Target restaurant identifier for super_admin override' },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            id: { type: 'string' },
+            message: { type: 'string' },
+          },
+        },
+        404: {
+          type: 'object',
+          properties: {
+            title: { type: 'string' },
+            status: { type: 'number' },
+            detail: { type: 'string' },
+          },
+        },
+      },
+    },
+  }, opts.controller.delete.bind(opts.controller));
+
+  // 8. Update Order (Protected - Tenant Scoped)
+  fastify.put('/:id', {
+    preHandler: [requireAuth],
+    schema: {
+      tags: ['Orders'],
+      summary: 'Update order details',
+      description: 'Update customer info, comment, paymentMethod, deliveryFee, and items with additions.',
+      params: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', description: 'Order ID' },
+        },
+        required: ['id'],
+      },
+      querystring: {
+        type: 'object',
+        properties: {
+          restaurantId: { type: 'string', description: 'Target restaurant identifier for super_admin override' },
+        },
+      },
+      body: {
+        type: 'object',
+        properties: {
+          customer: {
+            type: 'object',
+            properties: {
+              name: { type: 'string' },
+              phone: { type: 'string' },
+              address: { type: 'string' },
+              barrio: { type: 'string' },
+              email: { type: 'string' },
+            },
+          },
+          items: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                productId: { type: 'string' },
+                quantity: { type: 'number' },
+                observation: { type: 'string' },
+                additions: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      additionId: { type: 'string' },
+                      quantity: { type: 'number' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          deliveryFee: { type: 'number' },
+          paymentMethod: { type: 'string', enum: ['Efectivo', 'Transferencia'] },
+          paymentAmount: { type: 'number' },
+          changeAmount: { type: 'number' },
+          comment: { type: 'string' },
+          status: { type: 'string', enum: ['pending', 'cooking', 'delivering', 'delivered', 'cancelled'] },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          additionalProperties: true,
+        },
+        404: {
+          type: 'object',
+          properties: {
+            title: { type: 'string' },
+            status: { type: 'number' },
+            detail: { type: 'string' },
+          },
+        },
+      },
+    },
+  }, opts.controller.update.bind(opts.controller));
 }

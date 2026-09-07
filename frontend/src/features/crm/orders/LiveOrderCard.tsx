@@ -157,7 +157,7 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
             {order.items.map((item, idx) => (
               <div key={idx} className="flex items-baseline justify-between gap-2">
                 <span className="font-semibold text-slate-900 dark:text-white truncate">
-                  {item.cantidad}× {item.name}
+                  {item.cantidad || (item as any).quantity || 1}× {item.name || (item as any).productName || "Producto"}
                 </span>
                 {item.adiciones && item.adiciones.length > 0 && (
                   <span className="text-[10px] text-slate-500 dark:text-slate-400">

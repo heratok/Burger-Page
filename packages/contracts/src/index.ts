@@ -188,6 +188,18 @@ export const updateOrderReceiptSchema = z.object({
 });
 export type UpdateOrderReceiptInput = z.infer<typeof updateOrderReceiptSchema>;
 
+export const updateOrderSchema = z.object({
+  customer: orderCustomerInputSchema.optional(),
+  items: z.array(orderItemInputSchema).optional(),
+  deliveryFee: z.number().nonnegative().optional(),
+  paymentMethod: z.enum(['Efectivo', 'Transferencia']).optional(),
+  paymentAmount: z.number().nonnegative().optional(),
+  changeAmount: z.number().nonnegative().optional(),
+  comment: z.string().optional(),
+  status: orderStatusEnum.optional(),
+});
+export type UpdateOrderInput = z.infer<typeof updateOrderSchema>;
+
 // ==========================================
 // INVENTORY CONTRACTS
 // ==========================================
@@ -202,7 +214,7 @@ export type UpdateInventoryStockInput = z.infer<typeof updateInventoryStockSchem
 // ==========================================
 
 export const orderEventSchema = z.object({
-  eventType: z.enum(['ORDER_CREATED', 'ORDER_STATUS_UPDATED', 'ORDER_CANCELLED', 'ORDER_RECEIPT_UPDATED']),
+  eventType: z.enum(['ORDER_CREATED', 'ORDER_STATUS_UPDATED', 'ORDER_CANCELLED', 'ORDER_RECEIPT_UPDATED', 'ORDER_DELETED', 'ORDER_UPDATED']),
   orderId: z.string(),
   orderNumber: z.number().optional(),
   status: orderStatusEnum.optional(),
@@ -210,3 +222,4 @@ export const orderEventSchema = z.object({
   payload: z.record(z.string(), z.any()).optional(),
 });
 export type OrderEvent = z.infer<typeof orderEventSchema>;
+
