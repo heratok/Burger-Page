@@ -35,27 +35,46 @@ function generateSecureOrderNumber(): number {
   return 10000 + (Date.now() % 90000)
 }
 
+function resolveOrderCustomer(boCustomer: any, existing?: Order, matchedCustomer?: any) {
+  if (boCustomer) {
+    return {
+      nombre: boCustomer.nombre || boCustomer.name || existing?.customer?.nombre || 'Cliente',
+      telefono: boCustomer.telefono || boCustomer.phone || existing?.customer?.telefono || '',
+      direccion: boCustomer.direccion || boCustomer.address || existing?.customer?.direccion || '',
+      barrio: boCustomer.barrio || existing?.customer?.barrio || '',
+    }
+  }
+  if (matchedCustomer) {
+    return {
+      nombre: matchedCustomer.nombre,
+      telefono: matchedCustomer.telefono,
+      direccion: matchedCustomer.direccion,
+      barrio: matchedCustomer.barrio,
+    }
+  }
+  return existing?.customer ?? {
+    nombre: 'Cliente',
+    telefono: '',
+    direccion: '',
+    barrio: '',
+  }
+}
+
+function computeLoyaltyTier(totalOrders: number, totalSpent?: number): Customer["loyaltyTier"] {
+  if (totalSpent !== undefined) {
+    if (totalSpent >= 400000 || totalOrders >= 10) return "vip"
+    if (totalSpent >= 250000 || totalOrders >= 6) return "gold"
+    if (totalSpent >= 100000 || totalOrders >= 3) return "silver"
+    return "bronze"
+  }
+  if (totalOrders >= 15) return "vip"
+  if (totalOrders >= 8) return "gold"
+  if (totalOrders >= 3) return "silver"
+  return "bronze"
+}
+
 function mapBackendOrderToDomain(bo: any, existing?: Order, matchedCustomer?: any): Order {
-  const customer = bo.customer
-    ? {
-        nombre: bo.customer.nombre || bo.customer.name || existing?.customer?.nombre || 'Cliente',
-        telefono: bo.customer.telefono || bo.customer.phone || existing?.customer?.telefono || '',
-        direccion: bo.customer.direccion || bo.customer.address || existing?.customer?.direccion || '',
-        barrio: bo.customer.barrio || existing?.customer?.barrio || '',
-      }
-    : matchedCustomer
-      ? {
-          nombre: matchedCustomer.nombre,
-          telefono: matchedCustomer.telefono,
-          direccion: matchedCustomer.direccion,
-          barrio: matchedCustomer.barrio,
-        }
-      : existing?.customer || {
-          nombre: 'Cliente',
-          telefono: '',
-          direccion: '',
-          barrio: '',
-        }
+  const customer = resolveOrderCustomer(bo.customer, existing, matchedCustomer)
 
   const items = (bo.items && bo.items.length > 0 ? bo.items : existing?.items || []).map((item: any) => {
     const unitPrice = Number(item.unitPrice ?? item.price ?? 0)
@@ -88,8 +107,8 @@ function mapBackendOrderToDomain(bo: any, existing?: Order, matchedCustomer?: an
     deliveryFee: Number(bo.deliveryFee ?? existing?.deliveryFee ?? 0),
     finalTotal: Number(bo.finalTotal ?? bo.total ?? existing?.finalTotal ?? 0),
     metodo: (bo.paymentMethod || bo.metodo || existing?.metodo || 'Efectivo') as any,
-    pagoCon: bo.paymentAmount !== undefined ? String(bo.paymentAmount) : (bo.pagoCon || existing?.pagoCon),
-    cambio: bo.changeAmount !== undefined ? Number(bo.changeAmount) : (bo.cambio || existing?.cambio),
+    pagoCon: bo.paymentAmount !== undefined ? String(bo.paymentAmount) : (bo.pagoCon ?? existing?.pagoCon),
+    cambio: bo.changeAmount !== undefined ? Number(bo.changeAmount) : (bo.cambio ?? existing?.cambio),
     comentario: bo.comment || bo.comentario || existing?.comentario,
     receiptUrl: bo.receiptUrl || existing?.receiptUrl,
     status: (bo.status as OrderStatus) || existing?.status || 'pending',
@@ -169,9 +188,9 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                     id: bc.id,
                     nombre: bc.name || existing.nombre,
                     telefono: bc.phone || existing.telefono,
-                    direccion: bc.address !== undefined ? bc.address : existing.direccion,
-                    barrio: bc.barrio !== undefined ? bc.barrio : existing.barrio,
-                    notes: bc.notes !== undefined ? bc.notes : existing.notes,
+                    direccion: bc.address ?? existing.direccion,
+                    barrio: bc.barrio ?? existing.barrio,
+                    notes: bc.notes ?? existing.notes,
                   })
                 } else {
                   const custOrders = nextOrders.filter(
@@ -180,8 +199,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                   const totalSpent = custOrders.reduce((sum, o) => sum + (o.finalTotal || o.total || 0), 0)
                   const totalOrders = custOrders.length
                   const lastOrderDate = custOrders[0]?.createdAt || bc.createdAt || new Date().toISOString()
-                  const loyaltyTier =
-                    totalOrders >= 15 ? "vip" : totalOrders >= 8 ? "gold" : totalOrders >= 3 ? "silver" : "bronze"
+                  const loyaltyTier = computeLoyaltyTier(totalOrders)
 
                   customersMap.set(bc.id, {
                     id: bc.id,
@@ -375,10 +393,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           const c = nextCustomers[existingIdx]
           const newTotalOrders = c.totalOrders + 1
           const newTotalSpent = c.totalSpent + newOrder.finalTotal
-          let tier: Customer["loyaltyTier"] = "bronze"
-          if (newTotalSpent >= 400000 || newTotalOrders >= 10) tier = "vip"
-          else if (newTotalSpent >= 250000 || newTotalOrders >= 6) tier = "gold"
-          else if (newTotalSpent >= 100000 || newTotalOrders >= 3) tier = "silver"
+          const tier = computeLoyaltyTier(newTotalOrders, newTotalSpent)
 
           nextCustomers[existingIdx] = {
             ...c,
@@ -699,9 +714,9 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                       id: updatedCustomer.id || c.id,
                       nombre: updatedCustomer.name ?? c.nombre,
                       telefono: updatedCustomer.phone ?? c.telefono,
-                      direccion: updatedCustomer.address !== undefined ? updatedCustomer.address : c.direccion,
-                      barrio: updatedCustomer.barrio !== undefined ? updatedCustomer.barrio : c.barrio,
-                      notes: updatedCustomer.notes !== undefined ? updatedCustomer.notes : c.notes,
+                      direccion: updatedCustomer.address ?? c.direccion,
+                      barrio: updatedCustomer.barrio ?? c.barrio,
+                      notes: updatedCustomer.notes ?? c.notes,
                     }
                   : c
               ),

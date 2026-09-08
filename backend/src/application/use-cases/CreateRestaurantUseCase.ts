@@ -7,8 +7,8 @@ import { ValidationError } from '../../domain/errors/DomainErrors.js';
 
 export class CreateRestaurantUseCase {
   constructor(
-    private restaurantRepo: RestaurantRepository,
-    private categoryRepo?: CategoryRepository
+    private readonly restaurantRepo: RestaurantRepository,
+    private readonly categoryRepo?: CategoryRepository
   ) {}
 
   async execute(input: CreateRestaurantInput): Promise<Restaurant> {

@@ -3,7 +3,7 @@ import { EntityNotFoundError, ValidationError } from '../../domain/errors/Domain
 import { Order } from '../../domain/models/Order.js';
 
 export class DeleteOrderUseCase {
-  constructor(private orderRepo: OrderRepository) {}
+  constructor(private readonly orderRepo: OrderRepository) {}
 
   async execute(id: string, restaurantId: string): Promise<Order> {
     if (!restaurantId) {

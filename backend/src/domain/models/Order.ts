@@ -47,7 +47,7 @@ export class Order {
     phone?: string;
     address?: string;
     email?: string;
-  } | any;
+  };
 
   public get subtotal(): number {
     return this.items.reduce((acc, item) => {

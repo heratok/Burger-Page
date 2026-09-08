@@ -59,7 +59,7 @@ export const OrdersKanban: React.FC = () => {
   // View mode: streamlined "feed" (default) or classic 5-column "kanban"
   const [viewMode, setViewMode] = useState<"feed" | "kanban">(() => {
     try {
-      return (localStorage.getItem("burger_page_orders_view_mode") as "feed" | "kanban") || "feed"
+      return (localStorage.getItem("burger_page_orders_view_mode") as "feed" | "kanban") ?? "feed"
     } catch {
       return "feed"
     }
@@ -167,14 +167,69 @@ export const OrdersKanban: React.FC = () => {
 
   const openCustomerWhatsApp = useCallback(
     (order: Order, customText?: string) => {
-      const fullPhone = formatWhatsAppPhone(order.customer?.telefono || "")
+      const fullPhone = formatWhatsAppPhone(order.customer?.telefono ?? "")
       const defaultMsg =
-        customText ||
-        `¡Hola ${order.customer?.nombre || "Cliente"}! Te escribimos de *${storeConfig.name}* sobre tu pedido #${order.orderNumber}.`
+        customText ??
+        `¡Hola ${order.customer?.nombre ?? "Cliente"}! Te escribimos de *${storeConfig.name}* sobre tu pedido #${order.orderNumber}.`
       window.open(buildWhatsAppUrl(fullPhone, defaultMsg), "_blank", "noreferrer")
     },
     [storeConfig.name]
   )
+
+  const getViewModeBtnClass = (mode: "feed" | "kanban") => {
+    if (viewMode !== mode) {
+      return "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+    }
+    return isDark ? "bg-slate-700 text-white shadow-xs" : "bg-white text-slate-900 shadow-xs"
+  }
+
+  const getFeedTabClass = (tab: "active" | "history") => {
+    if (feedTab !== tab) {
+      return "text-slate-500 hover:text-slate-800 dark:hover:text-slate-300"
+    }
+    if (tab === "active") {
+      return isDark
+        ? "bg-indigo-600/20 text-indigo-400 border border-indigo-500/30"
+        : "bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-xs"
+    }
+    return isDark
+      ? "bg-slate-800 text-slate-200 border border-slate-700"
+      : "bg-slate-100 text-slate-800 border border-slate-300 shadow-xs"
+  }
+
+  const getActiveOrdersBadgeClass = () => {
+    if (activeOrders.length === 0) {
+      return "bg-slate-200 dark:bg-slate-800 text-slate-500"
+    }
+    return isDark
+      ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+      : "bg-amber-100 text-amber-800 border border-amber-300"
+  }
+
+  const getFilterChipClass = (isSelected: boolean) => {
+    if (isSelected) {
+      return "bg-indigo-600 text-white shadow-xs"
+    }
+    return isDark
+      ? "bg-slate-800 text-slate-300 hover:bg-slate-700"
+      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+  }
+
+  const getFilterChipCountClass = (isSelected: boolean) => {
+    if (isSelected) {
+      return "bg-white/20 text-white"
+    }
+    return isDark ? "bg-slate-700 text-slate-300" : "bg-slate-200 text-slate-700"
+  }
+
+  const getColumnBadgeClass = (count: number) => {
+    if (count === 0) {
+      return "text-slate-400"
+    }
+    return isDark
+      ? "bg-slate-800 text-slate-100 border border-slate-700"
+      : "bg-white text-slate-800 shadow-xs"
+  }
 
   return (
     <div className="space-y-5">
@@ -237,13 +292,7 @@ export const OrdersKanban: React.FC = () => {
             <button
               type="button"
               onClick={() => handleViewModeChange("feed")}
-              className={`flex items-center gap-1.5 rounded-lg px-2 sm:px-2.5 py-1.5 text-xs font-bold transition-all cursor-pointer ${
-                viewMode === "feed"
-                  ? isDark
-                    ? "bg-slate-700 text-white shadow-xs"
-                    : "bg-white text-slate-900 shadow-xs"
-                  : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-              }`}
+              className={`flex items-center gap-1.5 rounded-lg px-2 sm:px-2.5 py-1.5 text-xs font-bold transition-all cursor-pointer ${getViewModeBtnClass("feed")}`}
               title="Feed directo de comandas"
             >
               <LayoutGrid className="size-3.5 shrink-0" />
@@ -252,13 +301,7 @@ export const OrdersKanban: React.FC = () => {
             <button
               type="button"
               onClick={() => handleViewModeChange("kanban")}
-              className={`flex items-center gap-1.5 rounded-lg px-2 sm:px-2.5 py-1.5 text-xs font-bold transition-all cursor-pointer ${
-                viewMode === "kanban"
-                  ? isDark
-                    ? "bg-slate-700 text-white shadow-xs"
-                    : "bg-white text-slate-900 shadow-xs"
-                  : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-              }`}
+              className={`flex items-center gap-1.5 rounded-lg px-2 sm:px-2.5 py-1.5 text-xs font-bold transition-all cursor-pointer ${getViewModeBtnClass("kanban")}`}
               title="Tablero Kanban de 5 columnas"
             >
               <Columns3 className="size-3.5 shrink-0" />
@@ -288,25 +331,11 @@ export const OrdersKanban: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setFeedTab("active")}
-                className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all cursor-pointer ${
-                  feedTab === "active"
-                    ? isDark
-                      ? "bg-indigo-600/20 text-indigo-400 border border-indigo-500/30"
-                      : "bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-xs"
-                    : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-300"
-                }`}
+                className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all cursor-pointer ${getFeedTabClass("active")}`}
               >
                 <UtensilsCrossed className="size-3.5" />
                 <span>Comandas Activas</span>
-                <span
-                  className={`rounded-full px-2 py-0.5 text-[11px] font-black ${
-                    activeOrders.length > 0
-                      ? isDark
-                        ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
-                        : "bg-amber-100 text-amber-800 border border-amber-300"
-                      : "bg-slate-200 dark:bg-slate-800 text-slate-500"
-                  }`}
-                >
+                <span className={`rounded-full px-2 py-0.5 text-[11px] font-black ${getActiveOrdersBadgeClass()}`}>
                   {activeOrders.length}
                 </span>
               </button>
@@ -314,13 +343,7 @@ export const OrdersKanban: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setFeedTab("history")}
-                className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all cursor-pointer ${
-                  feedTab === "history"
-                    ? isDark
-                      ? "bg-slate-800 text-slate-200 border border-slate-700"
-                      : "bg-slate-100 text-slate-800 border border-slate-300 shadow-xs"
-                    : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-300"
-                }`}
+                className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all cursor-pointer ${getFeedTabClass("history")}`}
               >
                 <Archive className="size-3.5" />
                 <span>Historial</span>
@@ -377,25 +400,11 @@ export const OrdersKanban: React.FC = () => {
                           setActiveStatusFilter(chip.id as "ALL" | "pending" | "cooking" | "delivering")
                           setActivePage(1)
                         }}
-                        className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
-                          isSelected
-                            ? "bg-indigo-600 text-white shadow-xs"
-                            : isDark
-                            ? "bg-slate-800 text-slate-300 hover:bg-slate-700"
-                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                        }`}
+                        className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${getFilterChipClass(isSelected)}`}
                       >
                         {chip.icon}
                         <span>{chip.label}</span>
-                        <span
-                          className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
-                            isSelected
-                              ? "bg-white/20 text-white"
-                              : isDark
-                              ? "bg-slate-700 text-slate-300"
-                              : "bg-slate-200 text-slate-700"
-                          }`}
-                        >
+                        <span className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${getFilterChipCountClass(isSelected)}`}>
                           {chip.count}
                         </span>
                       </button>
@@ -562,15 +571,7 @@ export const OrdersKanban: React.FC = () => {
                       {col.title}
                     </h3>
                   </div>
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-xs font-bold ${
-                      colOrders.length > 0
-                        ? isDark
-                          ? "bg-slate-800 text-slate-100 border border-slate-700"
-                          : "bg-white text-slate-800 shadow-xs"
-                        : "text-slate-400"
-                    }`}
-                  >
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${getColumnBadgeClass(colOrders.length)}`}>
                     {colOrders.length}
                   </span>
                 </div>
@@ -637,7 +638,7 @@ export const OrdersKanban: React.FC = () => {
           }
         }}
         title="¿Eliminar orden permanentemente?"
-        targetName={orderToDelete ? `Pedido #${orderToDelete.orderNumber} — ${orderToDelete.customer?.nombre || "Cliente"}` : undefined}
+        targetName={orderToDelete ? `Pedido #${orderToDelete.orderNumber} — ${orderToDelete.customer?.nombre ?? "Cliente"}` : undefined}
         description={
           orderToDelete
             ? `¿Estás seguro de que deseas eliminar permanentemente el Pedido #${orderToDelete.orderNumber} (${formatCurrency(orderToDelete.finalTotal)})? Esta acción no se puede deshacer.`

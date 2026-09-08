@@ -11,11 +11,11 @@ import { EntityNotFoundError, ValidationError } from '../../domain/errors/Domain
 
 export class CreateOrderUseCase {
   constructor(
-    private orderRepo: OrderRepository,
-    private productRepo: ProductRepository,
-    private restaurantRepo: RestaurantRepository,
-    private additionRepo: ProductAdditionRepository,
-    private customerRepo?: CustomerRepository
+    private readonly orderRepo: OrderRepository,
+    private readonly productRepo: ProductRepository,
+    private readonly restaurantRepo: RestaurantRepository,
+    private readonly additionRepo: ProductAdditionRepository,
+    private readonly customerRepo?: CustomerRepository
   ) {}
 
   async execute(dto: CreateOrderDTO): Promise<Order> {
@@ -61,7 +61,7 @@ export class CreateOrderUseCase {
     }
 
     // Auto-link or create customer in DB if customer details are provided
-    if (!validatedCustomerId && dto.customer && dto.customer.phone && dto.customer.name && this.customerRepo) {
+    if (!validatedCustomerId && dto.customer?.phone && dto.customer?.name && this.customerRepo) {
       try {
         const phone = dto.customer.phone.trim();
         let customer = await this.customerRepo.findByPhone(phone, restaurant.id);

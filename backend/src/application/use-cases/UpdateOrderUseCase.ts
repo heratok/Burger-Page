@@ -9,10 +9,10 @@ import { EntityNotFoundError, ValidationError } from '../../domain/errors/Domain
 
 export class UpdateOrderUseCase {
   constructor(
-    private orderRepo: OrderRepository,
-    private productRepo?: ProductRepository,
-    private additionRepo?: ProductAdditionRepository,
-    private customerRepo?: CustomerRepository
+    private readonly orderRepo: OrderRepository,
+    private readonly productRepo?: ProductRepository,
+    private readonly additionRepo?: ProductAdditionRepository,
+    private readonly customerRepo?: CustomerRepository
   ) {}
 
   async execute(id: string, dto: UpdateOrderDTO, restaurantId: string): Promise<Order> {
@@ -134,8 +134,8 @@ export class UpdateOrderUseCase {
               (p) =>
                 p.id === itemDto.productId ||
                 p.name.toLowerCase() === itemDto.productId.toLowerCase() ||
-                ((itemDto as any).productName && p.name.toLowerCase() === (itemDto as any).productName.toLowerCase()) ||
-                ((itemDto as any).name && p.name.toLowerCase() === (itemDto as any).name.toLowerCase())
+                p.name.toLowerCase() === (itemDto as any).productName?.toLowerCase() ||
+                p.name.toLowerCase() === (itemDto as any).name?.toLowerCase()
             ) || null;
         }
 
@@ -146,10 +146,10 @@ export class UpdateOrderUseCase {
             (i) =>
               i.id === itemDto.productId ||
               i.id === (itemDto as any).id ||
-              (i.productName && (itemDto as any).productName && i.productName.toLowerCase() === (itemDto as any).productName.toLowerCase()) ||
-              (i.productName && (itemDto as any).name && i.productName.toLowerCase() === (itemDto as any).name.toLowerCase())
+              i.productName?.toLowerCase() === (itemDto as any).productName?.toLowerCase() ||
+              i.productName?.toLowerCase() === (itemDto as any).name?.toLowerCase()
           );
-          if (existingItem && existingItem.productId) {
+          if (existingItem?.productId) {
             resolvedProductId = existingItem.productId;
             if (this.productRepo) {
               product = await this.productRepo.findById(existingItem.productId, resolvedRestId);
@@ -176,16 +176,19 @@ export class UpdateOrderUseCase {
               addition = allAdditions.find((a) => a.id === additionId || a.name.toLowerCase() === additionId.toLowerCase()) || null;
             }
 
-            const additionPrice = addition
-              ? Number(addition.price)
-              : typeof rawAdd !== 'string' && (rawAdd as any).unitPrice !== undefined
-                ? Number((rawAdd as any).unitPrice)
-                : 0;
-            const additionName = addition
-              ? addition.name
-              : typeof rawAdd !== 'string' && (rawAdd as any).additionName
-                ? (rawAdd as any).additionName
-                : additionId;
+            let additionPrice = 0;
+            if (addition) {
+              additionPrice = Number(addition.price);
+            } else if (typeof rawAdd !== 'string' && (rawAdd as any).unitPrice !== undefined) {
+              additionPrice = Number((rawAdd as any).unitPrice);
+            }
+
+            let additionName = additionId;
+            if (addition) {
+              additionName = addition.name;
+            } else if (typeof rawAdd !== 'string' && (rawAdd as any).additionName) {
+              additionName = (rawAdd as any).additionName;
+            }
 
             validatedAdditions.push({
               id: (rawAdd as any).id || `ord_add_${randomUUID()}`,
@@ -213,7 +216,7 @@ export class UpdateOrderUseCase {
 
     // 6. Recalculate payment & change if cash
     if (order.paymentMethod === 'Efectivo') {
-      const paymentAmount = dto.paymentAmount !== undefined ? dto.paymentAmount : order.paymentAmount;
+      const paymentAmount = dto.paymentAmount ?? order.paymentAmount;
       (order as any).paymentAmount = paymentAmount;
       if (paymentAmount !== undefined) {
         (order as any).changeAmount = Math.max(0, paymentAmount - order.finalTotal);

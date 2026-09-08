@@ -10,12 +10,12 @@ import { ValidationError } from '../../../domain/errors/DomainErrors.js';
 
 export class RestaurantController {
   constructor(
-    private getRestaurantUseCase: GetRestaurantUseCase,
-    private listRestaurantsUseCase: ListRestaurantsUseCase,
-    private createRestaurantUseCase: CreateRestaurantUseCase,
-    private deleteRestaurantUseCase: DeleteRestaurantUseCase,
-    private updateCategoriesUseCase: UpdateRestaurantCategoriesUseCase,
-    private updateRestaurantUseCase?: UpdateRestaurantUseCase
+    private readonly getRestaurantUseCase: GetRestaurantUseCase,
+    private readonly listRestaurantsUseCase: ListRestaurantsUseCase,
+    private readonly createRestaurantUseCase: CreateRestaurantUseCase,
+    private readonly deleteRestaurantUseCase: DeleteRestaurantUseCase,
+    private readonly updateCategoriesUseCase: UpdateRestaurantCategoriesUseCase,
+    private readonly updateRestaurantUseCase?: UpdateRestaurantUseCase
   ) {}
 
   async list(req: FastifyRequest, reply: FastifyReply) {

@@ -93,8 +93,8 @@ export class SupabaseOrderRepository implements OrderRepository {
       p_restaurant_id: order.restaurantId,
       p_customer_id: order.customerId || null,
       p_payment_method: order.paymentMethod,
-      p_payment_amount: order.paymentAmount !== undefined ? order.paymentAmount : null,
-      p_change_amount: order.changeAmount !== undefined ? order.changeAmount : null,
+      p_payment_amount: order.paymentAmount ?? null,
+      p_change_amount: order.changeAmount ?? null,
       p_comment: order.comment || null,
       p_items: itemsPayload,
     });
@@ -187,9 +187,9 @@ export class SupabaseOrderRepository implements OrderRepository {
         subtotal: order.subtotal,
         final_total: order.finalTotal,
         payment_method: order.paymentMethod,
-        payment_amount: order.paymentAmount !== undefined ? order.paymentAmount : null,
-        change_amount: order.changeAmount !== undefined ? order.changeAmount : null,
-        comment: order.comment !== undefined ? order.comment : null,
+        payment_amount: order.paymentAmount ?? null,
+        change_amount: order.changeAmount ?? null,
+        comment: order.comment ?? null,
         status: order.status,
         updated_at: new Date().toISOString(),
       })

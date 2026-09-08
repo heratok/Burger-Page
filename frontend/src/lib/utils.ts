@@ -13,13 +13,7 @@ export function formatCurrency(
   amount?: number | null,
   currencySymbol = "$"
 ): string {
-  if (
-    amount === undefined ||
-    amount === null ||
-    typeof amount !== "number" ||
-    Number.isNaN(amount) ||
-    !Number.isFinite(amount)
-  ) {
+  if (typeof amount !== "number" || !Number.isFinite(amount)) {
     return `${currencySymbol}0`
   }
   return `${currencySymbol}${Math.round(amount).toLocaleString("es-CO")}`
@@ -29,8 +23,7 @@ export function formatCurrency(
  * Extracts only digits from a phone string.
  */
 export function cleanPhoneNumber(phone?: string | null): string {
-  if (!phone) return ""
-  return phone.replace(/\D/g, "")
+  return phone?.replace(/\D/g, "") ?? ""
 }
 
 /**
@@ -42,10 +35,9 @@ export function formatWhatsAppPhone(
 ): string {
   const cleaned = cleanPhoneNumber(phone)
   if (!cleaned) return ""
-  if (cleaned.startsWith(defaultCountryCode)) {
-    return cleaned
-  }
-  return `${defaultCountryCode}${cleaned}`
+  return cleaned.startsWith(defaultCountryCode)
+    ? cleaned
+    : `${defaultCountryCode}${cleaned}`
 }
 
 /**
@@ -63,10 +55,10 @@ export function getContrastForeground(hexColor?: string | null): string {
   const r = parseInt(full.substring(0, 2), 16)
   const g = parseInt(full.substring(2, 4), 16)
   const b = parseInt(full.substring(4, 6), 16)
-  if (Number.isNaN(r) || Number.isNaN(g) || Number.isNaN(b)) return "#FFFFFF"
+  if ([r, g, b].some(Number.isNaN)) return "#FFFFFF"
   const [rs, gs, bs] = [r, g, b].map((c) => {
     const s = c / 255
-    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4)
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4
   })
   const lum = 0.2126 * rs + 0.7152 * gs + 0.0722 * bs
 
