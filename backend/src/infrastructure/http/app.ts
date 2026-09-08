@@ -340,7 +340,34 @@ export function buildApp(
 
   const deps = { ...buildDependencies(options?.dbPath, options?.driver), ...dependencies };
 
-  app.register(cors, { origin: '*' });
+  const allowedOrigins = process.env.CORS_ORIGIN
+    ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim())
+    : [
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+        'http://localhost:3001',
+        'http://127.0.0.1:3001',
+      ];
+
+  app.register(cors, {
+    origin: (origin, cb) => {
+      if (!origin) return cb(null, true);
+      if (allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
+        return cb(null, true);
+      }
+      return cb(new Error('Not allowed by CORS'), false);
+    },
+    credentials: true,
+  });
+
+  // Global Security Headers Hook
+  app.addHook('onSend', async (_request, reply) => {
+    reply.header('X-Content-Type-Options', 'nosniff');
+    reply.header('X-Frame-Options', 'DENY');
+    reply.header('Referrer-Policy', 'strict-origin-when-cross-origin');
+  });
 
   app.setErrorHandler(errorHandler);
 
@@ -363,18 +390,9 @@ export function buildApp(
         { name: 'Inventory', description: 'Stock levels, suppliers, and ingredients' },
         { name: 'Customers', description: 'Customer profiles and loyalty tiers' },
         { name: 'Users', description: 'User management and authentication' },
+        { name: 'Storage', description: 'Storage and media presigned URLs' },
         { name: 'Health', description: 'Server health status' },
       ]
-    }
-  });
-
-  // 2. Interactive Documentation with Scalar
-  app.register(scalar, {
-    routePrefix: '/docs',
-    configuration: {
-      theme: 'kepler',
-      darkMode: true,
-      pageTitle: 'Burger Craft API Reference',
     }
   });
 
@@ -393,6 +411,16 @@ export function buildApp(
       }
     }
   }, async () => ({ status: 'ok' }));
+
+  // 2. Interactive Documentation with Scalar
+  app.register(scalar, {
+    routePrefix: '/docs',
+    configuration: {
+      theme: 'kepler',
+      darkMode: true,
+      pageTitle: 'Burger Craft API Reference',
+    }
+  });
 
   app.register(async (api: FastifyInstance) => {
     api.register(restaurantRoutes, { prefix: '/restaurant', controller: deps.restaurantController });
