@@ -93,6 +93,31 @@ export class RestaurantController {
       throw new Error('UpdateRestaurantUseCase is not configured.');
     }
     const params = (req.params || {}) as { id: string };
+    const auth = req.authContext;
+
+    if (auth?.role !== 'super_admin') {
+      if (!auth?.restaurantId) {
+        return reply.status(403).send({
+          type: 'https://example.com/probs/forbidden',
+          title: 'Forbidden',
+          status: 403,
+          detail: 'Restaurant administrator has no assigned restaurant.',
+        });
+      }
+
+      if (auth.restaurantId !== params.id) {
+        const assignedRest = await this.getRestaurantUseCase.execute(auth.restaurantId);
+        if (!assignedRest || (assignedRest.id !== params.id && assignedRest.slug !== params.id)) {
+          return reply.status(403).send({
+            type: 'https://example.com/probs/forbidden',
+            title: 'Forbidden',
+            status: 403,
+            detail: 'You are only authorized to update your own restaurant.',
+          });
+        }
+      }
+    }
+
     const parsed = updateRestaurantSchema.safeParse(req.body);
     if (!parsed.success) {
       throw new ValidationError(parsed.error.message);

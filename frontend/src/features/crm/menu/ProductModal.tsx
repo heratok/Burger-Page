@@ -291,6 +291,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
             <input
               ref={productFileInputRef}
               type="file"
+              data-testid="product-image-file-input"
               accept="image/png,image/jpeg,image/webp,image/avif"
               onChange={handleProductImageFile}
               className="hidden"

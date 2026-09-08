@@ -150,6 +150,7 @@ export const CustomizerBrandingSection: React.FC<CustomizerBrandingSectionProps>
               <input
                 ref={logoInputRef}
                 type="file"
+                data-testid="logo-file-input"
                 accept="image/png,image/jpeg,image/webp,image/svg+xml"
                 onChange={(e) => handleImageUpload(e, "logoUrl")}
                 disabled={uploadingField !== null}
@@ -231,7 +232,8 @@ export const CustomizerBrandingSection: React.FC<CustomizerBrandingSectionProps>
           <input
             ref={bannerInputRef}
             type="file"
-            accept="image/png,image/jpeg,image/webp"
+            data-testid="banner-file-input"
+            accept="image/png,image/jpeg,image/webp,image/svg+xml,image/avif"
             onChange={(e) => handleImageUpload(e, "bannerUrl")}
             disabled={uploadingField !== null}
             className="hidden"

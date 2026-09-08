@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { RestaurantController } from '../controllers/RestaurantController.js';
-import { requireSuperAdmin, tryAuth } from '../middleware/auth.middleware.js';
+import { requireSuperAdmin, tryAuth, requireAnyAdmin } from '../middleware/auth.middleware.js';
 
 export async function restaurantsRoutes(fastify: FastifyInstance, opts: { controller: RestaurantController }) {
   fastify.get('/', {
@@ -90,7 +90,7 @@ export async function restaurantsRoutes(fastify: FastifyInstance, opts: { contro
   }, opts.controller.get.bind(opts.controller));
 
   fastify.put('/:id', {
-    preHandler: [requireSuperAdmin],
+    preHandler: [requireAnyAdmin],
     schema: {
       tags: ['Restaurant'],
       summary: 'Update restaurant tenant',
