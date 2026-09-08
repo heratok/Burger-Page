@@ -18,7 +18,8 @@ export const Switch: React.FC<SwitchProps> = ({
   id,
   ...props
 }) => {
-  const switchId = id || `switch-${Math.random().toString(36).slice(2, 9)}`
+  const generatedId = React.useId()
+  const switchId = id || generatedId
 
   return (
     <div className={cn("inline-flex items-center gap-3", className)}>

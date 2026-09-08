@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Order, OrderStatus, OrderItem, OrderItemAddition } from '../../../domain/models/Order.js';
 import { OrderRepository } from '../../../domain/ports/out/OrderRepository.js';
@@ -76,12 +77,12 @@ export class SupabaseOrderRepository implements OrderRepository {
   async save(order: Order): Promise<void> {
     // 1. Preparar payload para la función RPC atómica (SIN enviar precios ni subtotales)
     const itemsPayload = order.items.map((item) => ({
-      id: item.id || `item_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      id: item.id || `item_${Date.now()}_${randomBytes(4).toString('hex')}`,
       product_id: item.productId,
       quantity: item.quantity,
       observation: item.observation || null,
       additions: (item.additions || []).map((add) => ({
-        id: add.id || `add_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        id: add.id || `add_${Date.now()}_${randomBytes(4).toString('hex')}`,
         addition_id: add.additionId,
         quantity: add.quantity || 1,
       })),
@@ -235,7 +236,7 @@ export class SupabaseOrderRepository implements OrderRepository {
 
     // Re-insert items and additions
     for (const item of order.items) {
-      const itemId = item.id || `ord_item_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+      const itemId = item.id || `ord_item_${Date.now()}_${randomBytes(4).toString('hex')}`;
       const { error: itemErr } = await this.client.from('order_items').insert({
         id: itemId,
         order_id: order.id,
@@ -251,7 +252,7 @@ export class SupabaseOrderRepository implements OrderRepository {
       }
 
       for (const add of item.additions || []) {
-        const addId = add.id || `ord_add_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+        const addId = add.id || `ord_add_${Date.now()}_${randomBytes(4).toString('hex')}`;
         const { error: addErr } = await this.client.from('order_item_additions').insert({
           id: addId,
           order_item_id: itemId,

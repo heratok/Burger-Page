@@ -379,9 +379,7 @@ export const OrdersKanban: React.FC = () => {
                         }}
                         className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
                           isSelected
-                            ? isDark
-                              ? "bg-indigo-600 text-white shadow-xs"
-                              : "bg-indigo-600 text-white shadow-xs"
+                            ? "bg-indigo-600 text-white shadow-xs"
                             : isDark
                             ? "bg-slate-800 text-slate-300 hover:bg-slate-700"
                             : "bg-slate-100 text-slate-600 hover:bg-slate-200"

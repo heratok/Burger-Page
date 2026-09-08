@@ -143,7 +143,10 @@ export async function uploadImageToStorage(
 
   const folder = options.folder || 'general';
   const cleanRestId = options.restaurantId.replace(/[^a-z0-9-_]/gi, '-');
-  const uniqueId = options.filename || `${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+  const randomSuffix = typeof globalThis.crypto?.randomUUID === 'function'
+    ? globalThis.crypto.randomUUID().slice(0, 8)
+    : Date.now().toString(36);
+  const uniqueId = options.filename || `${Date.now()}-${randomSuffix}`;
   const objectPath = `${cleanRestId}/${folder}/${uniqueId}.webp`;
 
   let blob: Blob;

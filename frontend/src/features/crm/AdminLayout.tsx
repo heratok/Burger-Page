@@ -178,8 +178,10 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     >
       {/* Mobile Drawer Overlay */}
       {isMobileSidebarOpen && (
-        <div
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs lg:hidden"
+        <button
+          type="button"
+          aria-label="Cerrar barra lateral"
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs lg:hidden border-none p-0 cursor-default"
           onClick={() => setIsMobileSidebarOpen(false)}
         />
       )}

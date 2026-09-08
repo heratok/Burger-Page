@@ -66,6 +66,13 @@ export function calculateCartSummary(
 /**
  * Factory helper to construct a CartItem from a MenuItem and selected additions.
  */
+function generateCartId(): string {
+  if (typeof globalThis.crypto?.randomUUID === 'function') {
+    return `cart_${Date.now()}_${globalThis.crypto.randomUUID().slice(0, 8)}`;
+  }
+  return `cart_${Date.now()}`;
+}
+
 export function createCartItem({
   product,
   cantidad = 1,
@@ -87,7 +94,7 @@ export function createCartItem({
   })
 
   return {
-    id: customId || `cart_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    id: customId || generateCartId(),
     menuItemId: product.id,
     name: product.name,
     price: product.price,
@@ -124,7 +131,7 @@ export function cartItemToOrderItem(cartItem: CartItem): OrderItem {
  */
 export function orderItemToCartItem(orderItem: OrderItem): CartItem {
   return {
-    id: orderItem.id || `cart_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    id: orderItem.id || generateCartId(),
     menuItemId: orderItem.id,
     name: orderItem.name,
     price: orderItem.price,

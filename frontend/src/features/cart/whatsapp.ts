@@ -23,7 +23,12 @@ export interface OrderPayload {
 
 /** Genera un número de orden de 6 dígitos (100000–999999). */
 export function generateOrderId(): number {
-  return Math.floor(100000 + Math.random() * 900000)
+  if (typeof globalThis.crypto?.getRandomValues === 'function') {
+    const array = new Uint32Array(1)
+    globalThis.crypto.getRandomValues(array)
+    return 100000 + (array[0] % 900000)
+  }
+  return 100000 + (Date.now() % 900000)
 }
 
 /** Formato de moneda colombiano determinista ($27.000). */
@@ -92,7 +97,7 @@ export function buildOrderMessage(payload: OrderPayload): string {
 
   if (items.length > 0) {
     sections.push("*PEDIDO*")
-    sections.push(items.map(formatItem).join("\n"))
+    sections.push(items.map((item, index) => formatItem(item, index)).join("\n"))
   }
 
   const pagoLines = [`Método: ${metodo}`]

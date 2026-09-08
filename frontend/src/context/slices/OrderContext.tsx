@@ -26,6 +26,15 @@ export interface OrderContextType {
 
 const OrderContext = createContext<OrderContextType | undefined>(undefined)
 
+function generateSecureOrderNumber(): number {
+  if (typeof globalThis.crypto?.getRandomValues === 'function') {
+    const array = new Uint32Array(1)
+    globalThis.crypto.getRandomValues(array)
+    return 10000 + (array[0] % 90000)
+  }
+  return 10000 + (Date.now() % 90000)
+}
+
 function mapBackendOrderToDomain(bo: any, existing?: Order, matchedCustomer?: any): Order {
   const customer = bo.customer
     ? {
@@ -274,7 +283,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 orderNumber:
                   event.orderNumber ||
                   p.orderNumber ||
-                  Math.floor(10000 + Math.random() * 90000),
+                  generateSecureOrderNumber(),
                 customer,
                 items: (p.items || []).map((item: any) => ({
                   id: item.id,
@@ -349,7 +358,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const newOrder: Order = {
         ...orderData,
         id: nextTempId("ord"),
-        orderNumber: Math.floor(10000 + Math.random() * 90000),
+        orderNumber: generateSecureOrderNumber(),
         createdAt: now,
         updatedAt: now,
       }
