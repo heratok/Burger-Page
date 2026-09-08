@@ -227,9 +227,10 @@ export class UpdateOrderUseCase {
   }
 
   private findExistingOrderItem(existingItems: OrderItem[], itemDto: any): OrderItem | undefined {
-    const idMatch = (i: OrderItem) => i.id === itemDto.productId || i.id === itemDto.id;
+    const rawId = itemDto.productId || itemDto.id;
+    const idMatch = (i: OrderItem) => i.id === rawId || i.productId === rawId;
     const nameMatch = (i: OrderItem) => {
-      const name = itemDto.productName || itemDto.name;
+      const name = itemDto.productName || itemDto.name || itemDto.productId;
       return name ? i.productName?.toLowerCase() === name.toLowerCase() : false;
     };
     return existingItems.find((i) => idMatch(i) || nameMatch(i));
