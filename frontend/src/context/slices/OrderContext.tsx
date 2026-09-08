@@ -334,7 +334,7 @@ export function syncBackendCustomers(
         const totalSpent = custOrders.reduce((sum, o) => sum + (o.finalTotal || o.total || 0), 0)
         const totalOrders = custOrders.length
         const lastOrderDate = custOrders[0]?.createdAt || bc.createdAt || new Date().toISOString()
-        const loyaltyTier = computeLoyaltyTier(totalOrders)
+        const loyaltyTier = computeLoyaltyTier(totalOrders, totalSpent)
 
         customersMap.set(bc.id, {
           id: bc.id,

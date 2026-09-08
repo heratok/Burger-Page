@@ -298,5 +298,79 @@ describe("OrderContext Pure Reducers & Updaters (TDD Tests)", () => {
       const synced = syncBackendCustomers([], [null, {}, { id: "" }], [])
       expect(synced).toHaveLength(0)
     })
+
+    it("computes loyalty tiers based on order history in nextOrders", () => {
+      const mockOrders: Order[] = [
+        {
+          ...createMockOrder("ord-vip", 901),
+          customer: { nombre: "VIP User", telefono: "3000000001", direccion: "", barrio: "" },
+          finalTotal: 450000,
+        },
+        {
+          ...createMockOrder("ord-gold", 902),
+          customer: { nombre: "Gold User", telefono: "3000000002", direccion: "", barrio: "" },
+          finalTotal: 260000,
+        },
+        {
+          ...createMockOrder("ord-silver", 903),
+          customer: { nombre: "Silver User", telefono: "3000000003", direccion: "", barrio: "" },
+          finalTotal: 120000,
+        },
+      ]
+
+      const backendCustomers = [
+        { id: "bc-vip", name: "VIP User", phone: "3000000001" },
+        { id: "bc-gold", name: "Gold User", phone: "3000000002" },
+        { id: "bc-silver", name: "Silver User", phone: "3000000003" },
+      ]
+
+      const synced = syncBackendCustomers([], backendCustomers, mockOrders)
+      expect(synced.find((c) => c.id === "bc-vip")?.loyaltyTier).toBe("vip")
+      expect(synced.find((c) => c.id === "bc-gold")?.loyaltyTier).toBe("gold")
+      expect(synced.find((c) => c.id === "bc-silver")?.loyaltyTier).toBe("silver")
+    })
+
+    it("matches order customer with existing customer record in syncBackendOrders", () => {
+      const currentCustomers: Customer[] = [
+        {
+          id: "cust-target",
+          nombre: "Target Customer",
+          telefono: "3005554433",
+          direccion: "Av 10",
+          barrio: "Chapinero",
+          totalOrders: 1,
+          totalSpent: 20000,
+          lastOrderDate: "2026-08-01T12:00:00.000Z",
+          loyaltyTier: "bronze",
+        },
+      ]
+
+      const backendOrders = [
+        {
+          id: "ord-matched",
+          orderNumber: 505,
+          customerId: "cust-target",
+          subtotal: 20000,
+          deliveryFee: 0,
+          finalTotal: 20000,
+          status: "pending",
+          createdAt: "2026-08-01T12:00:00.000Z",
+        },
+      ]
+
+      const synced = syncBackendOrders([], backendOrders, currentCustomers)
+      expect(synced[0].customer.nombre).toBe("Target Customer")
+      expect(synced[0].customer.direccion).toBe("Av 10")
+    })
+
+    it("returns current state when order is not found for status update event", () => {
+      const initial = createMockRestaurant([])
+      const res = updateRestaurantOrderState(initial, {
+        eventType: "ORDER_STATUS_UPDATED",
+        orderId: "non-existent-order",
+        timestamp: "2026-08-01T12:00:00.000Z",
+      })
+      expect(res).toBe(initial)
+    })
   })
 })

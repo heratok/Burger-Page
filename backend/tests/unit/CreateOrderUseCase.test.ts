@@ -205,4 +205,54 @@ describe('CreateOrderUseCase', () => {
     expect(order.subtotal).toBe(16);
     expect(order.finalTotal).toBe(21); // 16 + 5
   });
+
+  it('throws ValidationError when restaurantId is missing', async () => {
+    await expect(
+      useCase.execute({
+        restaurantId: '',
+        items: [{ productId: 'p1', quantity: 1, additions: [] }],
+      })
+    ).rejects.toThrow(ValidationError);
+  });
+
+  it('throws EntityNotFoundError when restaurant does not exist', async () => {
+    vi.mocked(mockRestaurantRepo.findById).mockResolvedValue(null);
+    vi.mocked(mockRestaurantRepo.findBySlug).mockResolvedValue(null);
+
+    await expect(
+      useCase.execute({
+        restaurantId: 'non-existent-rest',
+        items: [{ productId: 'p1', quantity: 1, additions: [] }],
+      })
+    ).rejects.toThrow(EntityNotFoundError);
+  });
+
+  it('throws ValidationError when restaurant is inactive', async () => {
+    vi.mocked(mockRestaurantRepo.findById).mockResolvedValue({
+      ...mockRestaurant,
+      isActive: false,
+    });
+
+    await expect(
+      useCase.execute({
+        restaurantId: 'burger-craft',
+        items: [{ productId: 'p1', quantity: 1, additions: [] }],
+      })
+    ).rejects.toThrow(ValidationError);
+  });
+
+  it('calculates cash changeAmount when paymentAmount is provided', async () => {
+    const mockProduct = { id: 'p1', name: 'Burger', price: 20, isAvailable: true, additions: [], category: 'Food', description: 'Desc', restaurantId: 'burger-craft' };
+    vi.mocked(mockProductRepo.findById).mockResolvedValue(mockProduct as any);
+
+    const order = await useCase.execute({
+      restaurantId: 'burger-craft',
+      items: [{ productId: 'p1', quantity: 1, additions: [] }],
+      paymentMethod: 'Efectivo',
+      paymentAmount: 50,
+    });
+
+    expect(order.paymentAmount).toBe(50);
+    expect(order.changeAmount).toBe(25); // 50 - 25
+  });
 });
