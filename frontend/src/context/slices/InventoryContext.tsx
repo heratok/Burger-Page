@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useCallback, useMemo, useState } from "react"
 import type { InventoryItem, Supplier } from "@/types/restaurant"
-import { apiClient } from "@/core/api/apiClient"
+import { apiClient, isNotFoundError } from "@/core/api/apiClient"
 import { useTenant } from "./TenantContext"
 import { useAuth } from "./AuthContext"
 import { toast } from "sonner"
@@ -183,6 +183,10 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       apiClient
         .deleteInventoryItem(id, activeRestaurant.id)
         .catch((error) => {
+          if (isNotFoundError(error)) {
+            // Resource already absent on server: preserve client deletion without rollback
+            return
+          }
           if (import.meta.env?.MODE !== 'test') {
             console.warn(`Could not delete inventory item ${id} from backend:`, error)
           }

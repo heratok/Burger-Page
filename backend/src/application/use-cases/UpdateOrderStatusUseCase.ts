@@ -11,7 +11,20 @@ export class UpdateOrderStatusUseCase {
       throw new ValidationError('Restaurant ID is required to update order status.');
     }
 
-    const order = await this.orderRepo.findById(id, restaurantId);
+    let order = await this.orderRepo.findById(id, restaurantId);
+    let resolvedRestId = restaurantId;
+
+    if (!order) {
+      const altRestId = restaurantId.startsWith('rest-')
+        ? restaurantId.replace(/^rest-/, '')
+        : `rest-${restaurantId}`;
+      const altOrder = await this.orderRepo.findById(id, altRestId);
+      if (altOrder) {
+        order = altOrder;
+        resolvedRestId = altRestId;
+      }
+    }
+
     if (!order) {
       throw new EntityNotFoundError(`Order ${id} not found for restaurant ${restaurantId}`);
     }
@@ -20,7 +33,7 @@ export class UpdateOrderStatusUseCase {
     order.transitionTo(dto.status);
 
     // 2. Persistir cambio de estado con aislamiento y actor
-    await this.orderRepo.updateStatus(id, dto.status, restaurantId, actorId);
+    await this.orderRepo.updateStatus(id, dto.status, resolvedRestId, actorId);
 
     return order;
   }

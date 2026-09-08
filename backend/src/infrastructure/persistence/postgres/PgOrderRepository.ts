@@ -1,4 +1,5 @@
 import { Order, OrderStatus, OrderItem, OrderItemAddition } from '../../../domain/models/Order.js';
+import { EntityNotFoundError } from '../../../domain/errors/DomainErrors.js';
 import { OrderRepository } from '../../../domain/ports/out/OrderRepository.js';
 import { withTenantContext } from './PgClient.js';
 import type { PoolClient } from 'pg';
@@ -147,7 +148,7 @@ export class PgOrderRepository implements OrderRepository {
         [id, status, restaurantId, actorId || null]
       );
       if (rows[0]?.updated === false) {
-        throw new Error(`Order ${id} not found for restaurant ${restaurantId}`);
+        throw new EntityNotFoundError(`Order ${id} not found for restaurant ${restaurantId}`);
       }
     });
   }
@@ -159,7 +160,7 @@ export class PgOrderRepository implements OrderRepository {
         [receiptUrl, id, restaurantId]
       );
       if (!rowCount) {
-        throw new Error(`Order ${id} not found for restaurant ${restaurantId}`);
+        throw new EntityNotFoundError(`Order ${id} not found for restaurant ${restaurantId}`);
       }
     });
   }
@@ -183,7 +184,7 @@ export class PgOrderRepository implements OrderRepository {
         [id, restaurantId]
       );
       if (!rowCount) {
-        throw new Error(`Order ${id} not found for restaurant ${restaurantId}`);
+        throw new EntityNotFoundError(`Order ${id} not found for restaurant ${restaurantId}`);
       }
     });
   }
@@ -195,7 +196,7 @@ export class PgOrderRepository implements OrderRepository {
         [order.id, restaurantId]
       );
       if (existingRows.length === 0) {
-        throw new Error(`Order ${order.id} not found for restaurant ${restaurantId}`);
+        throw new EntityNotFoundError(`Order ${order.id} not found for restaurant ${restaurantId}`);
       }
 
       // Extract customer details if present
@@ -271,16 +272,33 @@ export class PgOrderRepository implements OrderRepository {
       // Also update public.customers if order is linked to a customer
       const customerId = order.customerId || existingRows[0].customer_id;
       if (customerId && (custName || custPhone || custAddress || custBarrio)) {
-        await client.query(
-          `UPDATE public.customers SET
-             name = COALESCE($1, name),
-             phone = COALESCE($2, phone),
-             address = COALESCE($3, address),
-             barrio = COALESCE($4, barrio),
-             updated_at = NOW()
-           WHERE id = $5 AND restaurant_id = $6`,
-          [custName, custPhone, custAddress, custBarrio, customerId, restaurantId]
-        );
+        try {
+          await client.query(
+            `UPDATE public.customers SET
+               name = COALESCE($1, name),
+               phone = COALESCE($2, phone),
+               address = COALESCE($3, address),
+               barrio = COALESCE($4, barrio),
+               updated_at = NOW()
+             WHERE id = $5 AND restaurant_id = $6`,
+            [custName, custPhone, custAddress, custBarrio, customerId, restaurantId]
+          );
+        } catch {
+          // If updating phone violates unique constraint, update without modifying phone
+          try {
+            await client.query(
+              `UPDATE public.customers SET
+                 name = COALESCE($1, name),
+                 address = COALESCE($2, address),
+                 barrio = COALESCE($3, barrio),
+                 updated_at = NOW()
+               WHERE id = $4 AND restaurant_id = $5`,
+              [custName, custAddress, custBarrio, customerId, restaurantId]
+            );
+          } catch {
+            // Gracefully continue without failing order transaction
+          }
+        }
       }
 
       // Delete existing order_item_additions & order_items for this order
@@ -300,6 +318,19 @@ export class PgOrderRepository implements OrderRepository {
       // Re-insert the updated items and their additions
       for (const item of order.items) {
         const itemId = item.id || `ord_item_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+
+        // Verify product_id foreign key or resolve by name
+        let validProductId: string | null = null;
+        if (item.productId) {
+          const { rows: prodRows } = await client.query(
+            `SELECT id FROM public.products WHERE (id = $1 OR LOWER(name) = LOWER($2)) AND restaurant_id = $3 LIMIT 1`,
+            [item.productId, item.productName || item.productId, restaurantId]
+          );
+          if (prodRows.length > 0) {
+            validProductId = prodRows[0].id;
+          }
+        }
+
         await client.query(
           `INSERT INTO public.order_items (id, order_id, restaurant_id, product_id, product_name, unit_price, quantity, observation)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
@@ -307,7 +338,7 @@ export class PgOrderRepository implements OrderRepository {
             itemId,
             order.id,
             restaurantId,
-            item.productId,
+            validProductId,
             item.productName,
             item.unitPrice,
             item.quantity,
@@ -318,6 +349,19 @@ export class PgOrderRepository implements OrderRepository {
         if (item.additions && item.additions.length > 0) {
           for (const add of item.additions) {
             const addId = add.id || `ord_add_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+
+            // Verify addition_id foreign key or resolve by name
+            let validAdditionId: string | null = null;
+            if (add.additionId) {
+              const { rows: addRows } = await client.query(
+                `SELECT id FROM public.product_additions WHERE (id = $1 OR LOWER(name) = LOWER($2)) AND restaurant_id = $3 LIMIT 1`,
+                [add.additionId, add.additionName || add.additionId, restaurantId]
+              );
+              if (addRows.length > 0) {
+                validAdditionId = addRows[0].id;
+              }
+            }
+
             await client.query(
               `INSERT INTO public.order_item_additions (id, order_item_id, restaurant_id, addition_id, addition_name, unit_price, quantity)
                VALUES ($1, $2, $3, $4, $5, $6, $7)`,
@@ -325,7 +369,7 @@ export class PgOrderRepository implements OrderRepository {
                 addId,
                 itemId,
                 restaurantId,
-                add.additionId,
+                validAdditionId,
                 add.additionName,
                 add.unitPrice,
                 add.quantity || 1,
@@ -344,7 +388,7 @@ export class PgOrderRepository implements OrderRepository {
         [order.id, restaurantId]
       );
       if (updatedRows.length === 0) {
-        throw new Error(`Order ${order.id} not found for restaurant ${restaurantId}`);
+        throw new EntityNotFoundError(`Order ${order.id} not found for restaurant ${restaurantId}`);
       }
       const loadedItems = await loadItemsWithAdditions(client, order.id);
       return mapOrderRow(updatedRows[0], loadedItems);

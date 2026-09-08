@@ -510,3 +510,13 @@ export class ApiClient {
 }
 
 export const apiClient = new ApiClient()
+
+export function isNotFoundError(err: unknown): boolean {
+  if (!err) return false
+  const anyErr = err as any
+  return (
+    anyErr.status === 404 ||
+    (typeof anyErr.message === "string" &&
+      (anyErr.message.includes("404") || anyErr.message.toLowerCase().includes("not found")))
+  )
+}

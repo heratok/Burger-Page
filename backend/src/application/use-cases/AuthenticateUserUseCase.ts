@@ -19,12 +19,20 @@ export class AuthenticateUserUseCase {
       user = await this.userRepo.findByUsername(`admin_${username}`);
     }
 
-    // Fallback: support login using restaurantId / slug identifier
+    // Fallback: support login using restaurantId / slug identifier (with or without rest- prefix)
     if (!user && typeof this.userRepo.findByRestaurantId === 'function') {
-      const usersByRest = (await this.userRepo.findByRestaurantId(username)) || [];
-      const adminUser = usersByRest.find((u) => u.role === 'restaurant_admin');
-      if (adminUser) {
-        user = adminUser;
+      const candidates = [
+        username,
+        username.replace(/^rest-/, ''),
+        `rest-${username}`,
+      ];
+      for (const candidate of candidates) {
+        const usersByRest = (await this.userRepo.findByRestaurantId(candidate)) || [];
+        const adminUser = usersByRest.find((u) => u.role === 'restaurant_admin');
+        if (adminUser) {
+          user = adminUser;
+          break;
+        }
       }
     }
 

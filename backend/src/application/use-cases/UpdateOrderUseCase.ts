@@ -20,8 +20,21 @@ export class UpdateOrderUseCase {
       throw new ValidationError('Restaurant context is required to update an order.');
     }
 
-    // 1. Validate order exists for restaurantId
-    const order = await this.orderRepo.findById(id, restaurantId);
+    // 1. Validate order exists for restaurantId (with altRestId fallback for rest- prefix variations)
+    let order = await this.orderRepo.findById(id, restaurantId);
+    let resolvedRestId = restaurantId;
+
+    if (!order) {
+      const altRestId = restaurantId.startsWith('rest-')
+        ? restaurantId.replace(/^rest-/, '')
+        : `rest-${restaurantId}`;
+      const altOrder = await this.orderRepo.findById(id, altRestId);
+      if (altOrder) {
+        order = altOrder;
+        resolvedRestId = altRestId;
+      }
+    }
+
     if (!order) {
       throw new EntityNotFoundError(`Order '${id}' not found for restaurant '${restaurantId}'.`);
     }
@@ -39,17 +52,42 @@ export class UpdateOrderUseCase {
         email: dto.customer.email ?? order.customer?.email ?? '',
       };
 
-      if (this.customerRepo && order.customerId) {
+      if (this.customerRepo) {
         try {
-          const customer = await this.customerRepo.findById(order.customerId, restaurantId);
-          if (customer) {
-            if (dto.customer.name) customer.name = dto.customer.name;
-            if (dto.customer.phone) customer.phone = dto.customer.phone;
-            if (dto.customer.address) customer.address = dto.customer.address;
-            if (dto.customer.barrio) customer.barrio = dto.customer.barrio;
-            if (dto.customer.email) customer.email = dto.customer.email;
-            customer.updatedAt = new Date().toISOString();
-            await this.customerRepo.save(customer);
+          const rawPhone = dto.customer.phone?.trim();
+          if (rawPhone) {
+            const existingWithPhone = await this.customerRepo.findByPhone(rawPhone, resolvedRestId);
+            if (existingWithPhone) {
+              // Re-link order to the customer that already owns this phone number
+              (order as any).customerId = existingWithPhone.id;
+              if (dto.customer.name) existingWithPhone.name = dto.customer.name;
+              if (dto.customer.address) existingWithPhone.address = dto.customer.address;
+              if (dto.customer.barrio) existingWithPhone.barrio = dto.customer.barrio;
+              if (dto.customer.email) existingWithPhone.email = dto.customer.email;
+              existingWithPhone.updatedAt = new Date().toISOString();
+              await this.customerRepo.save(existingWithPhone);
+            } else if (order.customerId) {
+              const currentCust = await this.customerRepo.findById(order.customerId, resolvedRestId);
+              if (currentCust) {
+                if (dto.customer.name) currentCust.name = dto.customer.name;
+                currentCust.phone = rawPhone;
+                if (dto.customer.address) currentCust.address = dto.customer.address;
+                if (dto.customer.barrio) currentCust.barrio = dto.customer.barrio;
+                if (dto.customer.email) currentCust.email = dto.customer.email;
+                currentCust.updatedAt = new Date().toISOString();
+                await this.customerRepo.save(currentCust);
+              }
+            }
+          } else if (order.customerId) {
+            const currentCust = await this.customerRepo.findById(order.customerId, resolvedRestId);
+            if (currentCust) {
+              if (dto.customer.name) currentCust.name = dto.customer.name;
+              if (dto.customer.address) currentCust.address = dto.customer.address;
+              if (dto.customer.barrio) currentCust.barrio = dto.customer.barrio;
+              if (dto.customer.email) currentCust.email = dto.customer.email;
+              currentCust.updatedAt = new Date().toISOString();
+              await this.customerRepo.save(currentCust);
+            }
           }
         } catch {
           // Gracefully continue without failing order update
@@ -88,14 +126,43 @@ export class UpdateOrderUseCase {
           throw new ValidationError(`Invalid quantity for product ${itemDto.productId}`);
         }
 
-        let product = this.productRepo ? await this.productRepo.findById(itemDto.productId, restaurantId) : null;
+        let product = this.productRepo ? await this.productRepo.findById(itemDto.productId, resolvedRestId) : null;
         if (!product && this.productRepo && typeof this.productRepo.findByRestaurantId === 'function') {
-          const allProducts = await this.productRepo.findByRestaurantId(restaurantId);
-          product = allProducts.find((p) => p.id === itemDto.productId || p.name.toLowerCase() === itemDto.productId.toLowerCase()) || null;
+          const allProducts = await this.productRepo.findByRestaurantId(resolvedRestId);
+          product =
+            allProducts.find(
+              (p) =>
+                p.id === itemDto.productId ||
+                p.name.toLowerCase() === itemDto.productId.toLowerCase() ||
+                ((itemDto as any).productName && p.name.toLowerCase() === (itemDto as any).productName.toLowerCase()) ||
+                ((itemDto as any).name && p.name.toLowerCase() === (itemDto as any).name.toLowerCase())
+            ) || null;
         }
 
-        const unitPrice = product ? Number(product.price) : ((itemDto as any).unitPrice ?? (itemDto as any).price ?? 0);
-        const productName = product ? product.name : ((itemDto as any).productName ?? 'Product');
+        // If product was not directly found in catalog, check if existing order already had this item
+        let resolvedProductId = product ? product.id : itemDto.productId;
+        if (!product) {
+          const existingItem = order.items.find(
+            (i) =>
+              i.id === itemDto.productId ||
+              i.id === (itemDto as any).id ||
+              (i.productName && (itemDto as any).productName && i.productName.toLowerCase() === (itemDto as any).productName.toLowerCase()) ||
+              (i.productName && (itemDto as any).name && i.productName.toLowerCase() === (itemDto as any).name.toLowerCase())
+          );
+          if (existingItem && existingItem.productId) {
+            resolvedProductId = existingItem.productId;
+            if (this.productRepo) {
+              product = await this.productRepo.findById(existingItem.productId, resolvedRestId);
+            }
+          }
+        }
+
+        const unitPrice = product
+          ? Number(product.price)
+          : ((itemDto as any).unitPrice ?? (itemDto as any).price ?? 0);
+        const productName = product
+          ? product.name
+          : ((itemDto as any).productName ?? (itemDto as any).name ?? 'Product');
 
         const validatedAdditions: OrderItemAddition[] = [];
         if (itemDto.additions && itemDto.additions.length > 0) {
@@ -103,9 +170,9 @@ export class UpdateOrderUseCase {
             const additionId = typeof rawAdd === 'string' ? rawAdd : rawAdd.additionId;
             const addQuantity = typeof rawAdd === 'string' ? 1 : (rawAdd.quantity || 1);
 
-            let addition = this.additionRepo ? await this.additionRepo.findById(additionId, restaurantId) : null;
+            let addition = this.additionRepo ? await this.additionRepo.findById(additionId, resolvedRestId) : null;
             if (!addition && this.additionRepo && typeof this.additionRepo.findByRestaurantId === 'function') {
-              const allAdditions = await this.additionRepo.findByRestaurantId(restaurantId);
+              const allAdditions = await this.additionRepo.findByRestaurantId(resolvedRestId);
               addition = allAdditions.find((a) => a.id === additionId || a.name.toLowerCase() === additionId.toLowerCase()) || null;
             }
 
@@ -132,7 +199,7 @@ export class UpdateOrderUseCase {
 
         validatedItems.push({
           id: (itemDto as any).id || `ord_item_${randomUUID()}`,
-          productId: itemDto.productId,
+          productId: resolvedProductId,
           productName,
           unitPrice,
           quantity: itemDto.quantity,
@@ -156,8 +223,8 @@ export class UpdateOrderUseCase {
       (order as any).changeAmount = undefined;
     }
 
-    // 7. Save via orderRepository.update(updatedOrder, restaurantId)
-    const updated = await this.orderRepo.update(order, restaurantId);
+    // 7. Save via orderRepository.update(updatedOrder, resolvedRestId)
+    const updated = await this.orderRepo.update(order, resolvedRestId);
 
     // Return updated Order
     return updated || order;

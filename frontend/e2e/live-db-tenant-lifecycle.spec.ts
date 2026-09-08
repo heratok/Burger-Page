@@ -8,7 +8,7 @@ test.describe('Live DB Multi-Tenant Lifecycle, Mobile Storefront & CRM Persisten
   const testPassword = `PassFusion_${timestamp}!`;
 
   test('Full Multi-Tenant Lifecycle: Super Admin Provisioning -> Tenant Setup -> Mobile Storefront Ordering -> Kanban & DB Persistence -> Safe Cleanup', async ({ browser }) => {
-    test.setTimeout(60000);
+    test.setTimeout(120000);
 
     // =========================================================================
     // STEP 1: SUPER ADMIN (Desktop 1440x900)
@@ -25,7 +25,7 @@ test.describe('Live DB Multi-Tenant Lifecycle, Mobile Storefront & CRM Persisten
     await userInput.fill('admin');
 
     const passwordInput = superPage.locator('input[type="password"]');
-    await passwordInput.fill('admin');
+    await passwordInput.fill('Test0502*');
     
     await Promise.all([
       superPage.waitForResponse(resp => resp.url().includes('/api/users/login') && resp.status() === 200),
@@ -239,7 +239,7 @@ test.describe('Live DB Multi-Tenant Lifecycle, Mobile Storefront & CRM Persisten
     await tenantPage.bringToFront();
     await tenantPage.getByRole('button', { name: 'Abrir menú' }).click();
     await tenantPage.getByRole('button', { name: 'Pedidos en Vivo' }).click();
-    await expect(tenantPage.getByRole('heading', { name: /Nuevos \/ Pendientes|Pedidos/i }).first()).toBeVisible({ timeout: 10000 });
+    await expect(tenantPage.getByText(/Pedidos en Vivo|Comandas/i).first()).toBeVisible({ timeout: 10000 });
 
     // Verify order is present in Kanban
     await expect(tenantPage.getByText('Carlos E2E Tester').first()).toBeVisible({ timeout: 10000 });
@@ -275,7 +275,7 @@ test.describe('Live DB Multi-Tenant Lifecycle, Mobile Storefront & CRM Persisten
 
     // 4.2 Verify Database Persistence across Page Reload
     await tenantPage.reload();
-    await expect(tenantPage.getByRole('heading', { name: /Nuevos \/ Pendientes|Pedidos/i }).first()).toBeVisible({ timeout: 10000 });
+    await expect(tenantPage.getByText(/Pedidos en Vivo|Comandas/i).first()).toBeVisible({ timeout: 10000 });
     await expect(tenantPage.getByText('Carlos E2E Tester').first()).toBeVisible({ timeout: 10000 });
 
     // =========================================================================

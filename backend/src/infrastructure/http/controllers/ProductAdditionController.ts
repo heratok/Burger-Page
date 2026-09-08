@@ -84,19 +84,40 @@ export class ProductAdditionController {
     return reply.status(200).send(addition);
   }
 
-  async create(req: FastifyRequest, reply: FastifyReply) {
+  private async resolveTenantForMutation(req: FastifyRequest): Promise<string> {
     let restaurantId = req.authContext?.restaurantId;
     if (!restaurantId && req.authContext?.role === 'super_admin') {
-      const body = req.body as any;
-      restaurantId = body?.restaurantId || (req.query as any)?.restaurantId || (req.headers['x-restaurant-id'] as string);
+      const body = (req.body || {}) as any;
+      const query = (req.query || {}) as any;
+      const headers = (req.headers || {}) as any;
+      restaurantId =
+        body?.restaurantId ||
+        query?.restaurantId ||
+        headers?.['x-restaurant-id'];
+
       if (!restaurantId && this.restaurantRepo) {
         const all = await this.restaurantRepo.findAll();
-        const active = all.filter((r) => r.isActive);
-        if (active.length === 1) {
-          restaurantId = active[0].id;
-        }
+        const active = all.find((r) => r.isActive);
+        if (active) restaurantId = active.id;
       }
     }
+
+    if (restaurantId && this.restaurantRepo) {
+      const rest =
+        (await this.restaurantRepo.findById(restaurantId)) ||
+        (await this.restaurantRepo.findBySlug(restaurantId)) ||
+        (await this.restaurantRepo.findBySlug(restaurantId.replace(/^rest-/, ''))) ||
+        (await this.restaurantRepo.findById(restaurantId.replace(/^rest-/, '')));
+      if (rest) {
+        return rest.id;
+      }
+    }
+
+    return restaurantId || '';
+  }
+
+  async create(req: FastifyRequest, reply: FastifyReply) {
+    const restaurantId = await this.resolveTenantForMutation(req);
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to create a product addition.');
     }
@@ -112,21 +133,19 @@ export class ProductAdditionController {
 
   async update(req: FastifyRequest, reply: FastifyReply) {
     const params = req.params as { id: string };
-    let restaurantId = req.authContext?.restaurantId;
-    if (!restaurantId && req.authContext?.role === 'super_admin') {
-      const body = req.body as any;
-      restaurantId = body?.restaurantId || (req.query as any)?.restaurantId || (req.headers['x-restaurant-id'] as string);
-      if (!restaurantId && this.restaurantRepo) {
-        const all = await this.restaurantRepo.findAll();
-        for (const r of all) {
-          const found = await this.getAdditionByIdUseCase.execute(params.id, r.id).catch(() => null);
-          if (found) {
-            restaurantId = r.id;
-            break;
-          }
+    let restaurantId = await this.resolveTenantForMutation(req);
+
+    if (!restaurantId && this.restaurantRepo) {
+      const all = await this.restaurantRepo.findAll();
+      for (const r of all) {
+        const found = await this.getAdditionByIdUseCase.execute(params.id, r.id).catch(() => null);
+        if (found) {
+          restaurantId = r.id;
+          break;
         }
       }
     }
+
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to update a product addition.');
     }
@@ -142,20 +161,19 @@ export class ProductAdditionController {
 
   async delete(req: FastifyRequest, reply: FastifyReply) {
     const params = req.params as { id: string };
-    let restaurantId = req.authContext?.restaurantId;
-    if (!restaurantId && req.authContext?.role === 'super_admin') {
-      restaurantId = (req.query as any)?.restaurantId || (req.body as any)?.restaurantId || (req.headers['x-restaurant-id'] as string);
-      if (!restaurantId && this.restaurantRepo) {
-        const all = await this.restaurantRepo.findAll();
-        for (const r of all) {
-          const found = await this.getAdditionByIdUseCase.execute(params.id, r.id).catch(() => null);
-          if (found) {
-            restaurantId = r.id;
-            break;
-          }
+    let restaurantId = await this.resolveTenantForMutation(req);
+
+    if (!restaurantId && this.restaurantRepo) {
+      const all = await this.restaurantRepo.findAll();
+      for (const r of all) {
+        const found = await this.getAdditionByIdUseCase.execute(params.id, r.id).catch(() => null);
+        if (found) {
+          restaurantId = r.id;
+          break;
         }
       }
     }
+
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to delete a product addition.');
     }

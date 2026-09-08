@@ -1,6 +1,7 @@
 import { Database } from 'better-sqlite3';
 import { Order, OrderStatus, OrderItem } from '../../../domain/models/Order.js';
 import { OrderRepository } from '../../../domain/ports/out/OrderRepository.js';
+import { EntityNotFoundError } from '../../../domain/errors/DomainErrors.js';
 
 export class SqliteOrderRepository implements OrderRepository {
   constructor(private db: Database) {
@@ -98,7 +99,7 @@ export class SqliteOrderRepository implements OrderRepository {
       .run(status, new Date().toISOString(), id, restaurantId);
 
     if (result.changes === 0) {
-      throw new Error(`Order ${id} not found for restaurant ${restaurantId}`);
+      throw new EntityNotFoundError(`Order ${id} not found for restaurant ${restaurantId}`);
     }
   }
 
@@ -107,7 +108,7 @@ export class SqliteOrderRepository implements OrderRepository {
       .run(receiptUrl, new Date().toISOString(), id, restaurantId);
 
     if (result.changes === 0) {
-      throw new Error(`Order ${id} not found for restaurant ${restaurantId}`);
+      throw new EntityNotFoundError(`Order ${id} not found for restaurant ${restaurantId}`);
     }
   }
 
@@ -116,14 +117,14 @@ export class SqliteOrderRepository implements OrderRepository {
       .run(id, restaurantId);
 
     if (result.changes === 0) {
-      throw new Error(`Order ${id} not found for restaurant ${restaurantId}`);
+      throw new EntityNotFoundError(`Order ${id} not found for restaurant ${restaurantId}`);
     }
   }
 
   async update(order: Order, restaurantId: string): Promise<Order> {
     const existing = await this.findById(order.id, restaurantId);
     if (!existing) {
-      throw new Error(`Order ${order.id} not found for restaurant ${restaurantId}`);
+      throw new EntityNotFoundError(`Order ${order.id} not found for restaurant ${restaurantId}`);
     }
 
     const stmt = this.db.prepare(`

@@ -4,6 +4,8 @@ test.describe('Menu & Categories Full CRUD & Customization E2E Suite', () => {
   test.beforeEach(async ({ page }) => {
     // Setup initial multi-tenant store with categories and products
     await page.addInitScript(() => {
+      sessionStorage.clear();
+      localStorage.clear();
       const envelope = {
         version: 2,
         superAdminPassword: "admin",
@@ -82,6 +84,84 @@ test.describe('Menu & Categories Full CRUD & Customization E2E Suite', () => {
       };
       localStorage.setItem('burger_page_platform_v2', JSON.stringify(envelope));
       localStorage.setItem('burger_page_active_rest_v2', 'rest-burger-craft');
+    });
+
+    await page.route('**/api/users/login', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          token: 'mock-token-cat',
+          user: {
+            id: 'usr-admin-craft',
+            username: 'admin_craft',
+            role: 'restaurant_admin',
+            restaurantId: 'rest-burger-craft',
+          },
+        }),
+      });
+    });
+
+    await page.route('**/api/restaurants**', async (route) => {
+      if (route.request().method() === 'GET') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify([
+            {
+              id: 'rest-burger-craft',
+              slug: 'burger-craft',
+              name: 'Burger Craft',
+              isActive: true,
+              config: {
+                name: 'Burger Craft',
+                tagline: 'Cocina artesanal de autor',
+                deliveryFee: 5000,
+              },
+            },
+          ]),
+        });
+      } else {
+        await route.continue();
+      }
+    });
+
+    await page.route('**/api/restaurant/**/categories', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ success: true }),
+      });
+    });
+
+    await page.route('**/api/products**', async (route) => {
+      if (route.request().method() === 'POST') {
+        const body = route.request().postDataJSON();
+        await route.fulfill({
+          status: 201,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            id: 'prod-new-e2e',
+            name: body?.name || 'Volcán de Chocolate y Arequipe',
+            price: body?.price || 16000,
+            category: body?.category || 'Postres Artesanales',
+            description: body?.description || '',
+            imageUrl: body?.imageUrl || '',
+            isAvailable: true,
+            isPopular: false,
+            isNew: false,
+          }),
+        });
+      } else if (route.request().method() === 'GET') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify([]),
+        });
+      } else {
+        await route.continue();
+      }
     });
   });
 

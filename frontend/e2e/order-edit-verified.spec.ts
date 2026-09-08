@@ -69,9 +69,10 @@ test.describe('Order Editing & Persistence E2E Suite', () => {
     await expect(nameInput).toBeVisible({ timeout: 5000 });
     await nameInput.fill(editedName);
 
+    const editedPhone = `300${Date.now().toString().slice(-7)}`;
     const phoneInput = modal.locator('input[placeholder="300 123 4567"], input[placeholder="Para fidelización"]').first();
     if (await phoneInput.isVisible()) {
-      await phoneInput.fill('3009876543');
+      await phoneInput.fill(editedPhone);
     }
 
     const addressInput = modal.locator('input[placeholder="Calle 10 # 4-20"]').first();

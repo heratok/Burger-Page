@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useMemo, useCallback, useEffect, useState } from "react"
 import type { Order, OrderStatus, Customer } from "@/types/restaurant"
 import type { CreateOrderInput, UpdateOrderInput, OrderEvent, UpdateCustomerInput } from "@burger-page/contracts"
-import { apiClient } from "@/core/api/apiClient"
+import { apiClient, isNotFoundError } from "@/core/api/apiClient"
 import { useTenant } from "./TenantContext"
 import { useAuth } from "./AuthContext"
 import { useUi } from "./UiContext"
@@ -53,6 +53,7 @@ function mapBackendOrderToDomain(bo: any, existing?: Order, matchedCustomer?: an
     const quantity = Number(item.quantity ?? item.cantidad ?? 1)
     return {
       id: item.id,
+      productId: item.productId || item.product_id,
       name: item.productName || item.name || 'Producto',
       price: unitPrice,
       cantidad: quantity,
@@ -60,6 +61,8 @@ function mapBackendOrderToDomain(bo: any, existing?: Order, matchedCustomer?: an
       observacion: item.observation || item.observacion,
       src: item.src,
       adiciones: (item.additions || item.adiciones || []).map((a: any) => ({
+        id: a.id,
+        additionId: a.additionId || a.addition_id,
         name: a.additionName || a.name || 'Adición',
         price: Number(a.unitPrice ?? a.price ?? 0),
         cantidad: Number(a.quantity ?? 1),
@@ -522,15 +525,18 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           if (updates.items) {
             updateInput.items = updates.items.map((item) => {
               const matchedProduct = activeRestaurant.products?.find(
-                (p) => p.name.toLowerCase() === item.name.toLowerCase() || p.id === item.id
+                (p) => p.name.toLowerCase() === item.name.toLowerCase() || p.id === (item as any).productId || p.id === item.id
               )
               return {
-                productId: matchedProduct?.id || item.id || item.name,
+                id: item.id,
+                productId: matchedProduct?.id || (item as any).productId || item.id || item.name,
+                productName: item.name,
+                unitPrice: item.price,
                 quantity: item.cantidad,
                 observation: item.observacion || (item as any).instrucciones,
                 additions: (item.adiciones || []).map((a) => {
                   if (typeof a === 'string') return a
-                  return { additionId: (a as any).id || (a as any).name, quantity: 1 }
+                  return { additionId: (a as any).additionId || (a as any).id || (a as any).name, quantity: 1 }
                 }),
               }
             })
@@ -628,12 +634,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         try {
           await apiClient.deleteOrder(orderId, targetRestId)
         } catch (err: any) {
-          const isNotFound =
-            err?.status === 404 ||
-            (typeof err?.message === "string" &&
-              (err.message.includes("404") || err.message.toLowerCase().includes("not found")))
-
-          if (isNotFound) {
+          if (isNotFoundError(err)) {
             // Already deleted or never existed in server DB: keep client deletion without rollback
             return
           }

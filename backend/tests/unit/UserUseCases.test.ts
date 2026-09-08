@@ -244,6 +244,22 @@ describe('User Use Cases', () => {
       expect(result.user?.username).toBe('admin_rosto');
       expect(result.user?.restaurantId).toBe('rosto');
     });
+
+    it('should authenticate with restaurantId fallback when username has rest- prefix (e.g. rest-rosto)', async () => {
+      const useCase = new AuthenticateUserUseCase(mockUserRepo, mockHasher);
+      vi.mocked(mockUserRepo.findByUsername).mockResolvedValue(null);
+      vi.mocked(mockUserRepo.findByRestaurantId).mockImplementation(async (rId) => {
+        if (rId === 'rosto') return [storedUser];
+        return [];
+      });
+      vi.mocked(mockHasher.verify).mockResolvedValue(true);
+
+      const result = await useCase.execute('rest-rosto', 'securePass123');
+
+      expect(result.success).toBe(true);
+      expect(result.user?.username).toBe('admin_rosto');
+      expect(result.user?.restaurantId).toBe('rosto');
+    });
   });
 
   // ─────────────────────────────────────────────────────────
