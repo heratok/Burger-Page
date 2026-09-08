@@ -47,9 +47,401 @@ function getOrderAddress(serviceType: ServiceType, customerAddress: string, tabl
   }
   if (serviceType === "mesa") {
     const table = tableNumber.trim()
-    return `Salón - ${table ? `Mesa ${table}` : "Mesa general"}`
+    const tableLabel = table ? `Mesa ${table}` : "Mesa general"
+    return `Salón - ${tableLabel}`
   }
   return "Mostrador / Para llevar"
+}
+
+function resolveCustomerDisplayName(serviceType: ServiceType, customerName: string, tableNumber: string): string {
+  const trimmed = customerName.trim()
+  if (trimmed) return trimmed
+  if (serviceType === "mesa") {
+    return tableNumber.trim() ? `Mesa ${tableNumber.trim()}` : "Mesa Salón"
+  }
+  if (serviceType === "mostrador") {
+    return "Cliente Mostrador"
+  }
+  return "Cliente Domicilio"
+}
+
+interface ParsedOrderToEdit {
+  serviceType: ServiceType
+  tableNumber: string
+  customerName: string
+  customerPhone: string
+  customerAddress: string
+  customerBarrio: string
+  orderNotes: string
+  paymentMethod: "Efectivo" | "Transferencia"
+  pagoCon: string
+  receiptPreview: string | null
+}
+
+function parseOrderToEdit(order: Order): ParsedOrderToEdit {
+  const dir = order.customer?.direccion ?? ""
+  const lowerDir = dir.toLowerCase()
+  const custName = order.customer?.nombre ?? ""
+  const isMesa =
+    lowerDir.includes("mesa") ||
+    lowerDir.includes("salón") ||
+    lowerDir.includes("salon") ||
+    custName.toLowerCase().startsWith("mesa")
+  const isMostrador =
+    lowerDir.includes("mostrador") ||
+    lowerDir.includes("llevar")
+
+  let parsedServiceType: ServiceType = "domicilio"
+  let parsedTableNumber = ""
+
+  if (isMesa) {
+    parsedServiceType = "mesa"
+    const mesaRegex = /mesa\s*(\d+)/i
+    const mesaMatch = mesaRegex.exec(dir) || mesaRegex.exec(custName)
+    parsedTableNumber = mesaMatch ? mesaMatch[1] : ""
+  } else if (isMostrador) {
+    parsedServiceType = "mostrador"
+  }
+
+  const isGenericName =
+    custName.startsWith("Mesa ") ||
+    custName === "Cliente Mostrador" ||
+    custName === "Cliente Domicilio" ||
+    custName === "Mesa Salón"
+
+  const finalCustName = isGenericName ? "" : custName
+  const customerPhone = order.customer?.telefono
+  const phone = !customerPhone || customerPhone === "N/A" ? "" : customerPhone
+  const address = isMesa || isMostrador ? "" : (order.customer?.direccion ?? "")
+  const barrio = isMesa || isMostrador || order.customer?.barrio === "Local" ? "" : (order.customer?.barrio ?? "")
+
+  return {
+    serviceType: parsedServiceType,
+    tableNumber: parsedTableNumber,
+    customerName: finalCustName,
+    customerPhone: phone,
+    customerAddress: address,
+    customerBarrio: barrio,
+    orderNotes: order.comentario ?? "",
+    paymentMethod: order.metodo === "Transferencia" ? "Transferencia" : "Efectivo",
+    pagoCon: order.pagoCon ?? "",
+    receiptPreview: order.receiptUrl ?? null,
+  }
+}
+
+function buildSelectedAdditionsList(
+  customAdditions: Record<string, number>,
+  availableAdditions: Array<{ id: string; name: string; price: number }>
+): CartAddition[] {
+  const list: CartAddition[] = []
+  for (const [additionId, qty] of Object.entries(customAdditions)) {
+    if (qty > 0) {
+      const found = availableAdditions.find((a) => a.id === additionId)
+      if (found) {
+        list.push({
+          id: found.id,
+          name: found.name,
+          price: found.price,
+          cantidad: qty,
+        })
+      }
+    }
+  }
+  return list
+}
+
+function buildCartItemAdditionsMap(
+  item: CartItem,
+  availableAdditions: Array<{ id: string; name: string }>
+): Record<string, number> {
+  const additionsMap: Record<string, number> = {}
+  ;(item.adiciones || []).forEach((ad) => {
+    const found = availableAdditions.find((a) => a.id === ad.id || a.name === ad.name)
+    if (found) {
+      additionsMap[found.id] = ad.cantidad
+    }
+  })
+  return additionsMap
+}
+
+function buildOrderPayload(params: {
+  customerName: string
+  customerPhone: string
+  customerAddress: string
+  customerBarrio: string
+  serviceType: ServiceType
+  tableNumber: string
+  selectedItems: CartItem[]
+  subtotal: number
+  deliveryFee: number
+  finalTotal: number
+  paymentMethod: "Efectivo" | "Transferencia"
+  pagoCon: string
+  cambio: number | null
+  orderNotes: string
+  receiptUrl?: string
+}) {
+  const finalCustomerName = resolveCustomerDisplayName(params.serviceType, params.customerName, params.tableNumber)
+  return {
+    customer: {
+      nombre: finalCustomerName,
+      telefono: params.customerPhone.trim() || "N/A",
+      direccion: getOrderAddress(params.serviceType, params.customerAddress, params.tableNumber),
+      barrio: params.serviceType === "domicilio" ? params.customerBarrio.trim() : "Local",
+    },
+    items: params.selectedItems.map(cartItemToOrderItem),
+    total: params.subtotal,
+    deliveryFee: params.deliveryFee,
+    finalTotal: params.finalTotal,
+    metodo: params.paymentMethod,
+    pagoCon: params.paymentMethod === "Efectivo" && params.pagoCon.trim() ? params.pagoCon.trim() : undefined,
+    cambio: params.paymentMethod === "Efectivo" && params.cambio ? params.cambio : undefined,
+    comentario: params.orderNotes.trim() || undefined,
+    receiptUrl: params.receiptUrl,
+  }
+}
+
+function getFieldInputClass(isDark: boolean): string {
+  return `mt-1 w-full rounded-lg border px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-orange-500 ${
+    isDark ? "border-slate-700 bg-slate-950 text-white" : "border-slate-300 bg-white"
+  }`
+}
+
+interface MesaInputsProps {
+  readonly isDark: boolean
+  readonly tableNumber: string
+  readonly setTableNumber: (val: string) => void
+  readonly customerName: string
+  readonly setCustomerName: (val: string) => void
+}
+
+function MesaInputs({
+  isDark,
+  tableNumber,
+  setTableNumber,
+  customerName,
+  setCustomerName,
+}: Readonly<MesaInputsProps>) {
+  const inputClass = getFieldInputClass(isDark)
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      <div>
+        <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+          Número de Mesa
+        </label>
+        <input
+          type="text"
+          maxLength={25}
+          placeholder="Ej: 3, Terraza 1"
+          value={tableNumber}
+          onChange={(e) => setTableNumber(e.target.value)}
+          className={inputClass}
+        />
+      </div>
+      <div>
+        <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+          Nombre Cliente (Opcional)
+        </label>
+        <input
+          type="text"
+          maxLength={80}
+          placeholder="Nombre o apodo"
+          value={customerName}
+          onChange={(e) => setCustomerName(e.target.value)}
+          className={inputClass}
+        />
+      </div>
+    </div>
+  )
+}
+
+interface DomicilioInputsProps {
+  readonly isDark: boolean
+  readonly customerName: string
+  readonly setCustomerName: (val: string) => void
+  readonly customerPhone: string
+  readonly setCustomerPhone: (val: string) => void
+  readonly customerAddress: string
+  readonly setCustomerAddress: (val: string) => void
+  readonly customerBarrio: string
+  readonly setCustomerBarrio: (val: string) => void
+}
+
+function DomicilioInputs({
+  isDark,
+  customerName,
+  setCustomerName,
+  customerPhone,
+  setCustomerPhone,
+  customerAddress,
+  setCustomerAddress,
+  customerBarrio,
+  setCustomerBarrio,
+}: Readonly<DomicilioInputsProps>) {
+  const inputClass = getFieldInputClass(isDark)
+  return (
+    <div className="space-y-2">
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+            Nombre Cliente *
+          </label>
+          <input
+            type="text"
+            maxLength={80}
+            placeholder="Nombre completo"
+            value={customerName}
+            onChange={(e) => setCustomerName(e.target.value)}
+            className={inputClass}
+          />
+        </div>
+        <div>
+          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+            Teléfono
+          </label>
+          <input
+            type="text"
+            maxLength={20}
+            placeholder="300 123 4567"
+            value={customerPhone}
+            onChange={(e) => setCustomerPhone(e.target.value)}
+            className={inputClass}
+          />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+            Dirección de Entrega *
+          </label>
+          <input
+            type="text"
+            maxLength={150}
+            placeholder="Calle 10 # 4-20"
+            value={customerAddress}
+            onChange={(e) => setCustomerAddress(e.target.value)}
+            className={inputClass}
+          />
+        </div>
+        <div>
+          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+            Barrio *
+          </label>
+          <input
+            type="text"
+            maxLength={80}
+            placeholder="Barrio o sector"
+            value={customerBarrio}
+            onChange={(e) => setCustomerBarrio(e.target.value)}
+            className={inputClass}
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+interface MostradorInputsProps {
+  readonly isDark: boolean
+  readonly customerName: string
+  readonly setCustomerName: (val: string) => void
+  readonly customerPhone: string
+  readonly setCustomerPhone: (val: string) => void
+}
+
+function MostradorInputs({
+  isDark,
+  customerName,
+  setCustomerName,
+  customerPhone,
+  setCustomerPhone,
+}: Readonly<MostradorInputsProps>) {
+  const inputClass = getFieldInputClass(isDark)
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      <div>
+        <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+          Nombre Cliente (Opcional)
+        </label>
+        <input
+          type="text"
+          maxLength={80}
+          placeholder="Cliente Mostrador"
+          value={customerName}
+          onChange={(e) => setCustomerName(e.target.value)}
+          className={inputClass}
+        />
+      </div>
+      <div>
+        <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+          Teléfono (Opcional)
+        </label>
+        <input
+          type="text"
+          maxLength={20}
+          placeholder="Para fidelización"
+          value={customerPhone}
+          onChange={(e) => setCustomerPhone(e.target.value)}
+          className={inputClass}
+        />
+      </div>
+    </div>
+  )
+}
+
+interface CustomerInputsProps {
+  readonly serviceType: ServiceType
+  readonly isDark: boolean
+  readonly tableNumber: string
+  readonly setTableNumber: (val: string) => void
+  readonly customerName: string
+  readonly setCustomerName: (val: string) => void
+  readonly customerPhone: string
+  readonly setCustomerPhone: (val: string) => void
+  readonly customerAddress: string
+  readonly setCustomerAddress: (val: string) => void
+  readonly customerBarrio: string
+  readonly setCustomerBarrio: (val: string) => void
+}
+
+function CustomerInputs(props: Readonly<CustomerInputsProps>) {
+  if (props.serviceType === "mesa") {
+    return (
+      <MesaInputs
+        isDark={props.isDark}
+        tableNumber={props.tableNumber}
+        setTableNumber={props.setTableNumber}
+        customerName={props.customerName}
+        setCustomerName={props.setCustomerName}
+      />
+    )
+  }
+
+  if (props.serviceType === "domicilio") {
+    return (
+      <DomicilioInputs
+        isDark={props.isDark}
+        customerName={props.customerName}
+        setCustomerName={props.setCustomerName}
+        customerPhone={props.customerPhone}
+        setCustomerPhone={props.setCustomerPhone}
+        customerAddress={props.customerAddress}
+        setCustomerAddress={props.setCustomerAddress}
+        customerBarrio={props.customerBarrio}
+        setCustomerBarrio={props.setCustomerBarrio}
+      />
+    )
+  }
+
+  return (
+    <MostradorInputs
+      isDark={props.isDark}
+      customerName={props.customerName}
+      setCustomerName={props.setCustomerName}
+      customerPhone={props.customerPhone}
+      setCustomerPhone={props.setCustomerPhone}
+    />
+  )
 }
 
 export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClose, orderToEdit }) => {
@@ -173,151 +565,6 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
       : "bg-slate-100 text-slate-700 hover:bg-slate-200"
   }
 
-  const renderCustomerInputs = () => {
-    if (serviceType === "mesa") {
-      return (
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-              Número de Mesa
-            </label>
-            <input
-              type="text"
-              maxLength={25}
-              placeholder="Ej: 3, Terraza 1"
-              value={tableNumber}
-              onChange={(e) => setTableNumber(e.target.value)}
-              className={`mt-1 w-full rounded-lg border px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-orange-500 ${
-                isDark ? "border-slate-700 bg-slate-950 text-white" : "border-slate-300 bg-white"
-              }`}
-            />
-          </div>
-          <div>
-            <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-              Nombre Cliente (Opcional)
-            </label>
-            <input
-              type="text"
-              maxLength={80}
-              placeholder="Nombre o apodo"
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-              className={`mt-1 w-full rounded-lg border px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-orange-500 ${
-                isDark ? "border-slate-700 bg-slate-950 text-white" : "border-slate-300 bg-white"
-              }`}
-            />
-          </div>
-        </div>
-      )
-    }
-
-    if (serviceType === "domicilio") {
-      return (
-        <div className="space-y-2">
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                Nombre Cliente *
-              </label>
-              <input
-                type="text"
-                maxLength={80}
-                placeholder="Nombre completo"
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                className={`mt-1 w-full rounded-lg border px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-orange-500 ${
-                  isDark ? "border-slate-700 bg-slate-950 text-white" : "border-slate-300 bg-white"
-                }`}
-              />
-            </div>
-            <div>
-              <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                Teléfono
-              </label>
-              <input
-                type="text"
-                maxLength={20}
-                placeholder="300 123 4567"
-                value={customerPhone}
-                onChange={(e) => setCustomerPhone(e.target.value)}
-                className={`mt-1 w-full rounded-lg border px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-orange-500 ${
-                  isDark ? "border-slate-700 bg-slate-950 text-white" : "border-slate-300 bg-white"
-                }`}
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                Dirección de Entrega *
-              </label>
-              <input
-                type="text"
-                maxLength={150}
-                placeholder="Calle 10 # 4-20"
-                value={customerAddress}
-                onChange={(e) => setCustomerAddress(e.target.value)}
-                className={`mt-1 w-full rounded-lg border px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-orange-500 ${
-                  isDark ? "border-slate-700 bg-slate-950 text-white" : "border-slate-300 bg-white"
-                }`}
-              />
-            </div>
-            <div>
-              <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                Barrio *
-              </label>
-              <input
-                type="text"
-                maxLength={80}
-                placeholder="Barrio o sector"
-                value={customerBarrio}
-                onChange={(e) => setCustomerBarrio(e.target.value)}
-                className={`mt-1 w-full rounded-lg border px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-orange-500 ${
-                  isDark ? "border-slate-700 bg-slate-950 text-white" : "border-slate-300 bg-white"
-                }`}
-              />
-            </div>
-          </div>
-        </div>
-      )
-    }
-
-    return (
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-            Nombre Cliente (Opcional)
-          </label>
-          <input
-            type="text"
-            maxLength={80}
-            placeholder="Cliente Mostrador"
-            value={customerName}
-            onChange={(e) => setCustomerName(e.target.value)}
-            className={`mt-1 w-full rounded-lg border px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-orange-500 ${
-              isDark ? "border-slate-700 bg-slate-950 text-white" : "border-slate-300 bg-white"
-            }`}
-          />
-        </div>
-        <div>
-          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-            Teléfono (Opcional)
-          </label>
-          <input
-            type="text"
-            maxLength={20}
-            placeholder="Para fidelización"
-            value={customerPhone}
-            onChange={(e) => setCustomerPhone(e.target.value)}
-            className={`mt-1 w-full rounded-lg border px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-orange-500 ${
-              isDark ? "border-slate-700 bg-slate-950 text-white" : "border-slate-300 bg-white"
-            }`}
-          />
-        </div>
-      </div>
-    )
-  }
-
   // Cart Handlers
   const handleQuickAddProduct = (product: MenuItem) => {
     const newItem = createCartItem({ product })
@@ -364,14 +611,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
       description: "",
       inStock: true,
     }
-    const additionsMap: Record<string, number> = {}
-    const availableAdditions = activeRestaurant.additions ?? []
-    ;(item.adiciones || []).forEach((ad) => {
-      const found = availableAdditions.find((a) => a.id === ad.id || a.name === ad.name)
-      if (found) {
-        additionsMap[found.id] = ad.cantidad
-      }
-    })
+    const additionsMap = buildCartItemAdditionsMap(item, activeRestaurant.additions ?? [])
     setCustomizingProduct(product)
     setEditingCartItemIndex(index)
     setCustomAdditions(additionsMap)
@@ -381,22 +621,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
   const handleConfirmCustomizedItem = () => {
     if (!customizingProduct) return
 
-    const additionsList: CartAddition[] = []
-    const availableAdditions = activeRestaurant.additions ?? []
-
-    Object.entries(customAdditions).forEach(([additionId, qty]) => {
-      if (qty > 0) {
-        const found = availableAdditions.find((a) => a.id === additionId)
-        if (found) {
-          additionsList.push({
-            id: found.id,
-            name: found.name,
-            price: found.price,
-            cantidad: qty,
-          })
-        }
-      }
-    })
+    const additionsList = buildSelectedAdditionsList(customAdditions, activeRestaurant.additions ?? [])
 
     if (editingCartItemIndex !== null && editingCartItemIndex >= 0) {
       setSelectedItems((prev) => {
@@ -507,56 +732,18 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
       const items = (orderToEdit.items ?? []).map(orderItemToCartItem)
       setSelectedItems(items)
 
-      const dir = orderToEdit.customer?.direccion ?? ""
-      const isMesa =
-        dir.toLowerCase().includes("mesa") ||
-        dir.toLowerCase().includes("salón") ||
-        dir.toLowerCase().includes("salon") ||
-        Boolean(orderToEdit.customer?.nombre && orderToEdit.customer.nombre.toLowerCase().startsWith("mesa"))
-      const isMostrador =
-        dir.toLowerCase().includes("mostrador") ||
-        dir.toLowerCase().includes("llevar")
-
-      if (isMesa) {
-        setServiceType("mesa")
-        const mesaMatch =
-          dir.match(/mesa\s*(\d+)/i) ||
-          (orderToEdit.customer?.nombre ?? "").match(/mesa\s*(\d+)/i)
-        setTableNumber(mesaMatch ? mesaMatch[1] : "")
-      } else if (isMostrador) {
-        setServiceType("mostrador")
-        setTableNumber("")
-      } else {
-        setServiceType("domicilio")
-        setTableNumber("")
-      }
-
-      const custName = orderToEdit.customer?.nombre ?? ""
-      const isGenericName =
-        custName.startsWith("Mesa ") ||
-        custName === "Cliente Mostrador" ||
-        custName === "Cliente Domicilio" ||
-        custName === "Mesa Salón"
-
-      setCustomerName(isGenericName ? "" : custName)
-      setCustomerPhone(
-        !orderToEdit.customer?.telefono || orderToEdit.customer.telefono === "N/A"
-          ? ""
-          : orderToEdit.customer.telefono
-      )
-      setCustomerAddress(
-        isMesa || isMostrador ? "" : (orderToEdit.customer?.direccion ?? "")
-      )
-      setCustomerBarrio(
-        isMesa || isMostrador || orderToEdit.customer?.barrio === "Local"
-          ? ""
-          : (orderToEdit.customer?.barrio ?? "")
-      )
-      setOrderNotes(orderToEdit.comentario ?? "")
-      setPaymentMethod(orderToEdit.metodo === "Transferencia" ? "Transferencia" : "Efectivo")
-      setPagoCon(orderToEdit.pagoCon ?? "")
+      const parsed = parseOrderToEdit(orderToEdit)
+      setServiceType(parsed.serviceType)
+      setTableNumber(parsed.tableNumber)
+      setCustomerName(parsed.customerName)
+      setCustomerPhone(parsed.customerPhone)
+      setCustomerAddress(parsed.customerAddress)
+      setCustomerBarrio(parsed.customerBarrio)
+      setOrderNotes(parsed.orderNotes)
+      setPaymentMethod(parsed.paymentMethod)
+      setPagoCon(parsed.pagoCon)
       setReceiptFile(null)
-      setReceiptPreview(orderToEdit.receiptUrl ?? null)
+      setReceiptPreview(parsed.receiptPreview)
       setIsUploadingReceipt(false)
       setMobileTab("cart")
     } else {
@@ -583,18 +770,6 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
       }
     }
 
-    // Determine customer display name
-    let finalCustomerName = customerName.trim()
-    if (!finalCustomerName) {
-      if (serviceType === "mesa") {
-        finalCustomerName = tableNumber.trim() ? `Mesa ${tableNumber.trim()}` : "Mesa Salón"
-      } else if (serviceType === "mostrador") {
-        finalCustomerName = "Cliente Mostrador"
-      } else {
-        finalCustomerName = "Cliente Domicilio"
-      }
-    }
-
     let finalReceiptUrl: string | undefined = undefined
     if (paymentMethod === "Transferencia" && (receiptFile || receiptPreview)) {
       setIsUploadingReceipt(true)
@@ -612,52 +787,38 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
       }
     }
 
-    const orderData = {
-      customer: {
-        nombre: finalCustomerName,
-        telefono: customerPhone.trim() || "N/A",
-        direccion: getOrderAddress(serviceType, customerAddress, tableNumber),
-        barrio: serviceType === "domicilio" ? customerBarrio.trim() : "Local",
-      },
-      items: selectedItems.map(cartItemToOrderItem),
-      total: subtotal,
+    const orderPayload = buildOrderPayload({
+      customerName,
+      customerPhone,
+      customerAddress,
+      customerBarrio,
+      serviceType,
+      tableNumber,
+      selectedItems,
+      subtotal,
       deliveryFee,
       finalTotal,
-      metodo: paymentMethod,
-      pagoCon: paymentMethod === "Efectivo" && pagoCon.trim() ? pagoCon.trim() : undefined,
-      cambio: paymentMethod === "Efectivo" && cambio ? cambio : undefined,
-      comentario: orderNotes.trim() || undefined,
+      paymentMethod,
+      pagoCon,
+      cambio,
+      orderNotes,
       receiptUrl: finalReceiptUrl,
-      status: "pending" as const,
-    }
+    })
 
     if (orderToEdit) {
-      updateOrder(orderToEdit.id, {
-        customer: {
-          nombre: finalCustomerName,
-          telefono: customerPhone.trim() || "N/A",
-          direccion: getOrderAddress(serviceType, customerAddress, tableNumber),
-          barrio: serviceType === "domicilio" ? customerBarrio.trim() : "Local",
-        },
-        items: selectedItems.map(cartItemToOrderItem),
-        total: subtotal,
-        deliveryFee,
-        finalTotal,
-        metodo: paymentMethod,
-        pagoCon: paymentMethod === "Efectivo" && pagoCon.trim() ? pagoCon.trim() : undefined,
-        cambio: paymentMethod === "Efectivo" && cambio ? cambio : undefined,
-        comentario: orderNotes.trim() || undefined,
-        receiptUrl: finalReceiptUrl,
-      })
-
+      updateOrder(orderToEdit.id, orderPayload)
       handleResetForm()
       onClose()
       return
     }
 
-    addOrder(orderData)
+    addOrder({
+      ...orderPayload,
+      status: "pending" as const,
+    })
+    const displayName = resolveCustomerDisplayName(serviceType, customerName, tableNumber)
     toast.success("¡Venta manual registrada en el sistema!", {
-      description: `${finalCustomerName} • Total: ${formatCOP(finalTotal)}`,
+      description: `${displayName} • Total: ${formatCOP(finalTotal)}`,
     })
 
     handleResetForm()
@@ -1131,7 +1292,20 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
 
                 {/* Customer Details Inputs */}
                 <div className={`p-3 sm:p-3.5 space-y-2.5 ${isDark ? "bg-slate-900/40" : "bg-slate-50/70"}`}>
-                  {renderCustomerInputs()}
+                  <CustomerInputs
+                    serviceType={serviceType}
+                    isDark={isDark}
+                    tableNumber={tableNumber}
+                    setTableNumber={setTableNumber}
+                    customerName={customerName}
+                    setCustomerName={setCustomerName}
+                    customerPhone={customerPhone}
+                    setCustomerPhone={setCustomerPhone}
+                    customerAddress={customerAddress}
+                    setCustomerAddress={setCustomerAddress}
+                    customerBarrio={customerBarrio}
+                    setCustomerBarrio={setCustomerBarrio}
+                  />
 
                   {/* General Order Notes / Kitchen Observations */}
                   <div>

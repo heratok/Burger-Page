@@ -16,11 +16,29 @@ export class UpdateOrderUseCase {
   ) {}
 
   async execute(id: string, dto: UpdateOrderDTO, restaurantId: string): Promise<Order> {
+    const { order, resolvedRestId } = await this.findAndValidateOrder(id, restaurantId);
+
+    await this.updateCustomerInfo(order, dto.customer, resolvedRestId);
+    this.applyOrderMetadata(order, dto);
+
+    if (dto.items !== undefined) {
+      order.items = await this.validateAndBuildItems(dto.items, order, resolvedRestId);
+    }
+
+    this.recalculatePayment(order, dto.paymentAmount);
+
+    const updated = await this.orderRepo.update(order, resolvedRestId);
+    return updated || order;
+  }
+
+  private async findAndValidateOrder(
+    id: string,
+    restaurantId: string
+  ): Promise<{ order: Order; resolvedRestId: string }> {
     if (!restaurantId) {
       throw new ValidationError('Restaurant context is required to update an order.');
     }
 
-    // 1. Validate order exists for restaurantId (with altRestId fallback for rest- prefix variations)
     let order = await this.orderRepo.findById(id, restaurantId);
     let resolvedRestId = restaurantId;
 
@@ -39,184 +57,235 @@ export class UpdateOrderUseCase {
       throw new EntityNotFoundError(`Order '${id}' not found for restaurant '${restaurantId}'.`);
     }
 
-    // 2. Update customer info if provided
-    if (dto.customer) {
-      order.customer = {
-        name: dto.customer.name ?? order.customer?.name ?? '',
-        nombre: dto.customer.name ?? order.customer?.nombre ?? '',
-        phone: dto.customer.phone ?? order.customer?.phone ?? '',
-        telefono: dto.customer.phone ?? order.customer?.telefono ?? '',
-        address: dto.customer.address ?? order.customer?.address ?? '',
-        direccion: dto.customer.address ?? order.customer?.direccion ?? '',
-        barrio: dto.customer.barrio ?? order.customer?.barrio ?? '',
-        email: dto.customer.email ?? order.customer?.email ?? '',
-      };
+    return { order, resolvedRestId };
+  }
 
-      if (this.customerRepo) {
-        try {
-          const rawPhone = dto.customer.phone?.trim();
-          if (rawPhone) {
-            const existingWithPhone = await this.customerRepo.findByPhone(rawPhone, resolvedRestId);
-            if (existingWithPhone) {
-              // Re-link order to the customer that already owns this phone number
-              (order as any).customerId = existingWithPhone.id;
-              if (dto.customer.name) existingWithPhone.name = dto.customer.name;
-              if (dto.customer.address) existingWithPhone.address = dto.customer.address;
-              if (dto.customer.barrio) existingWithPhone.barrio = dto.customer.barrio;
-              if (dto.customer.email) existingWithPhone.email = dto.customer.email;
-              existingWithPhone.updatedAt = new Date().toISOString();
-              await this.customerRepo.save(existingWithPhone);
-            } else if (order.customerId) {
-              const currentCust = await this.customerRepo.findById(order.customerId, resolvedRestId);
-              if (currentCust) {
-                if (dto.customer.name) currentCust.name = dto.customer.name;
-                currentCust.phone = rawPhone;
-                if (dto.customer.address) currentCust.address = dto.customer.address;
-                if (dto.customer.barrio) currentCust.barrio = dto.customer.barrio;
-                if (dto.customer.email) currentCust.email = dto.customer.email;
-                currentCust.updatedAt = new Date().toISOString();
-                await this.customerRepo.save(currentCust);
-              }
-            }
-          } else if (order.customerId) {
-            const currentCust = await this.customerRepo.findById(order.customerId, resolvedRestId);
-            if (currentCust) {
-              if (dto.customer.name) currentCust.name = dto.customer.name;
-              if (dto.customer.address) currentCust.address = dto.customer.address;
-              if (dto.customer.barrio) currentCust.barrio = dto.customer.barrio;
-              if (dto.customer.email) currentCust.email = dto.customer.email;
-              currentCust.updatedAt = new Date().toISOString();
-              await this.customerRepo.save(currentCust);
-            }
-          }
-        } catch {
-          // Gracefully continue without failing order update
-        }
+  private async updateCustomerInfo(
+    order: Order,
+    customerDto: UpdateOrderDTO['customer'],
+    resolvedRestId: string
+  ): Promise<void> {
+    if (!customerDto) return;
+
+    order.customer = {
+      name: customerDto.name ?? order.customer?.name ?? '',
+      nombre: customerDto.name ?? order.customer?.nombre ?? '',
+      phone: customerDto.phone ?? order.customer?.phone ?? '',
+      telefono: customerDto.phone ?? order.customer?.telefono ?? '',
+      address: customerDto.address ?? order.customer?.address ?? '',
+      direccion: customerDto.address ?? order.customer?.direccion ?? '',
+      barrio: customerDto.barrio ?? order.customer?.barrio ?? '',
+      email: customerDto.email ?? order.customer?.email ?? '',
+    };
+
+    if (!this.customerRepo) return;
+
+    try {
+      await this.syncCustomerProfile(order, customerDto, resolvedRestId);
+    } catch {
+      // Gracefully continue without failing order update
+    }
+  }
+
+  private async syncCustomerProfile(
+    order: Order,
+    customerDto: NonNullable<UpdateOrderDTO['customer']>,
+    resolvedRestId: string
+  ): Promise<void> {
+    if (!this.customerRepo) return;
+
+    const rawPhone = customerDto.phone?.trim();
+    if (rawPhone) {
+      const existingWithPhone = await this.customerRepo.findByPhone(rawPhone, resolvedRestId);
+      if (existingWithPhone) {
+        (order as any).customerId = existingWithPhone.id;
+        this.applyCustomerFields(existingWithPhone, customerDto);
+        await this.customerRepo.save(existingWithPhone);
+        return;
       }
     }
 
-    // 3. Update delivery fee if provided
+    if (order.customerId) {
+      const currentCust = await this.customerRepo.findById(order.customerId, resolvedRestId);
+      if (currentCust) {
+        if (rawPhone) currentCust.phone = rawPhone;
+        this.applyCustomerFields(currentCust, customerDto);
+        await this.customerRepo.save(currentCust);
+      }
+    }
+  }
+
+  private applyCustomerFields(
+    target: { name?: string; address?: string; barrio?: string; email?: string; updatedAt?: string },
+    dto: NonNullable<UpdateOrderDTO['customer']>
+  ): void {
+    if (dto.name) target.name = dto.name;
+    if (dto.address) target.address = dto.address;
+    if (dto.barrio) target.barrio = dto.barrio;
+    if (dto.email) target.email = dto.email;
+    target.updatedAt = new Date().toISOString();
+  }
+
+  private applyOrderMetadata(order: Order, dto: UpdateOrderDTO): void {
     if (dto.deliveryFee !== undefined) {
       order.deliveryFee = dto.deliveryFee;
     }
-
-    // 4. Update payment method and amounts
     if (dto.paymentMethod !== undefined) {
       (order as any).paymentMethod = dto.paymentMethod;
     }
-
     if (dto.comment !== undefined) {
       (order as any).comment = dto.comment;
     }
-
     if (dto.receiptUrl !== undefined) {
       order.receiptUrl = dto.receiptUrl;
     }
-
     if (dto.status !== undefined) {
       order.status = dto.status;
     }
+  }
 
-    // 5. Update items & additions and recalculate subtotal / finalTotal
-    if (dto.items !== undefined) {
-      const validatedItems: OrderItem[] = [];
+  private async validateAndBuildItems(
+    itemDtos: NonNullable<UpdateOrderDTO['items']>,
+    existingOrder: Order,
+    resolvedRestId: string
+  ): Promise<OrderItem[]> {
+    const validatedItems: OrderItem[] = [];
+    for (const itemDto of itemDtos) {
+      validatedItems.push(await this.validateAndBuildItem(itemDto, existingOrder, resolvedRestId));
+    }
+    return validatedItems;
+  }
 
-      for (const itemDto of dto.items) {
-        if (!itemDto.quantity || itemDto.quantity <= 0) {
-          throw new ValidationError(`Invalid quantity for product ${itemDto.productId}`);
-        }
-
-        let product = this.productRepo ? await this.productRepo.findById(itemDto.productId, resolvedRestId) : null;
-        if (!product && this.productRepo && typeof this.productRepo.findByRestaurantId === 'function') {
-          const allProducts = await this.productRepo.findByRestaurantId(resolvedRestId);
-          product =
-            allProducts.find(
-              (p) =>
-                p.id === itemDto.productId ||
-                p.name.toLowerCase() === itemDto.productId.toLowerCase() ||
-                p.name.toLowerCase() === (itemDto as any).productName?.toLowerCase() ||
-                p.name.toLowerCase() === (itemDto as any).name?.toLowerCase()
-            ) || null;
-        }
-
-        // If product was not directly found in catalog, check if existing order already had this item
-        let resolvedProductId = product ? product.id : itemDto.productId;
-        if (!product) {
-          const existingItem = order.items.find(
-            (i) =>
-              i.id === itemDto.productId ||
-              i.id === (itemDto as any).id ||
-              i.productName?.toLowerCase() === (itemDto as any).productName?.toLowerCase() ||
-              i.productName?.toLowerCase() === (itemDto as any).name?.toLowerCase()
-          );
-          if (existingItem?.productId) {
-            resolvedProductId = existingItem.productId;
-            if (this.productRepo) {
-              product = await this.productRepo.findById(existingItem.productId, resolvedRestId);
-            }
-          }
-        }
-
-        const unitPrice = product
-          ? Number(product.price)
-          : ((itemDto as any).unitPrice ?? (itemDto as any).price ?? 0);
-        const productName = product
-          ? product.name
-          : ((itemDto as any).productName ?? (itemDto as any).name ?? 'Product');
-
-        const validatedAdditions: OrderItemAddition[] = [];
-        if (itemDto.additions && itemDto.additions.length > 0) {
-          for (const rawAdd of itemDto.additions) {
-            const additionId = typeof rawAdd === 'string' ? rawAdd : rawAdd.additionId;
-            const addQuantity = typeof rawAdd === 'string' ? 1 : (rawAdd.quantity || 1);
-
-            let addition = this.additionRepo ? await this.additionRepo.findById(additionId, resolvedRestId) : null;
-            if (!addition && this.additionRepo && typeof this.additionRepo.findByRestaurantId === 'function') {
-              const allAdditions = await this.additionRepo.findByRestaurantId(resolvedRestId);
-              addition = allAdditions.find((a) => a.id === additionId || a.name.toLowerCase() === additionId.toLowerCase()) || null;
-            }
-
-            let additionPrice = 0;
-            if (addition) {
-              additionPrice = Number(addition.price);
-            } else if (typeof rawAdd !== 'string' && (rawAdd as any).unitPrice !== undefined) {
-              additionPrice = Number((rawAdd as any).unitPrice);
-            }
-
-            let additionName = additionId;
-            if (addition) {
-              additionName = addition.name;
-            } else if (typeof rawAdd !== 'string' && (rawAdd as any).additionName) {
-              additionName = (rawAdd as any).additionName;
-            }
-
-            validatedAdditions.push({
-              id: (rawAdd as any).id || `ord_add_${randomUUID()}`,
-              additionId,
-              additionName,
-              unitPrice: additionPrice,
-              quantity: addQuantity,
-            });
-          }
-        }
-
-        validatedItems.push({
-          id: (itemDto as any).id || `ord_item_${randomUUID()}`,
-          productId: resolvedProductId,
-          productName,
-          unitPrice,
-          quantity: itemDto.quantity,
-          observation: itemDto.observation || undefined,
-          additions: validatedAdditions,
-        });
-      }
-
-      order.items = validatedItems;
+  private async validateAndBuildItem(
+    itemDto: NonNullable<UpdateOrderDTO['items']>[number],
+    existingOrder: Order,
+    resolvedRestId: string
+  ): Promise<OrderItem> {
+    if (!itemDto.quantity || itemDto.quantity <= 0) {
+      throw new ValidationError(`Invalid quantity for product ${itemDto.productId}`);
     }
 
-    // 6. Recalculate payment & change if cash
+    const { product, resolvedProductId } = await this.resolveProduct(itemDto, existingOrder, resolvedRestId);
+
+    const unitPrice = product
+      ? Number(product.price)
+      : ((itemDto as any).unitPrice ?? (itemDto as any).price ?? 0);
+    const productName = product
+      ? product.name
+      : ((itemDto as any).productName ?? (itemDto as any).name ?? 'Product');
+
+    const additions = await this.validateAndBuildAdditions(itemDto.additions, resolvedRestId);
+
+    return {
+      id: (itemDto as any).id || `ord_item_${randomUUID()}`,
+      productId: resolvedProductId,
+      productName,
+      unitPrice,
+      quantity: itemDto.quantity,
+      observation: itemDto.observation || undefined,
+      additions,
+    };
+  }
+
+  private async resolveProduct(
+    itemDto: NonNullable<UpdateOrderDTO['items']>[number],
+    existingOrder: Order,
+    resolvedRestId: string
+  ): Promise<{ product: any; resolvedProductId: string }> {
+    let product = this.productRepo ? await this.productRepo.findById(itemDto.productId, resolvedRestId) : null;
+
+    if (!product && this.productRepo && typeof this.productRepo.findByRestaurantId === 'function') {
+      const allProducts = await this.productRepo.findByRestaurantId(resolvedRestId);
+      product = this.findProductInList(allProducts, itemDto);
+    }
+
+    let resolvedProductId = product ? product.id : itemDto.productId;
+    if (!product) {
+      const existingItem = this.findExistingOrderItem(existingOrder.items, itemDto);
+      if (existingItem?.productId) {
+        resolvedProductId = existingItem.productId;
+        if (this.productRepo) {
+          product = await this.productRepo.findById(existingItem.productId, resolvedRestId);
+        }
+      }
+    }
+
+    return { product, resolvedProductId };
+  }
+
+  private findProductInList(allProducts: any[], itemDto: any): any {
+    const idLower = itemDto.productId.toLowerCase();
+    const nameLower = (itemDto.productName || itemDto.name || '').toLowerCase();
+    return (
+      allProducts.find(
+        (p) =>
+          p.id === itemDto.productId ||
+          p.name.toLowerCase() === idLower ||
+          (nameLower && p.name.toLowerCase() === nameLower)
+      ) || null
+    );
+  }
+
+  private findExistingOrderItem(existingItems: OrderItem[], itemDto: any): OrderItem | undefined {
+    const idMatch = (i: OrderItem) => i.id === itemDto.productId || i.id === itemDto.id;
+    const nameMatch = (i: OrderItem) => {
+      const name = itemDto.productName || itemDto.name;
+      return name ? i.productName?.toLowerCase() === name.toLowerCase() : false;
+    };
+    return existingItems.find((i) => idMatch(i) || nameMatch(i));
+  }
+
+  private async validateAndBuildAdditions(
+    rawAdditions: any[] | undefined,
+    resolvedRestId: string
+  ): Promise<OrderItemAddition[]> {
+    if (!rawAdditions || rawAdditions.length === 0) {
+      return [];
+    }
+
+    const additions: OrderItemAddition[] = [];
+    for (const rawAdd of rawAdditions) {
+      additions.push(await this.resolveAddition(rawAdd, resolvedRestId));
+    }
+    return additions;
+  }
+
+  private async resolveAddition(rawAdd: any, resolvedRestId: string): Promise<OrderItemAddition> {
+    const additionId = typeof rawAdd === 'string' ? rawAdd : rawAdd.additionId;
+    const addQuantity = typeof rawAdd === 'string' ? 1 : (rawAdd.quantity || 1);
+
+    let addition = this.additionRepo ? await this.additionRepo.findById(additionId, resolvedRestId) : null;
+    if (!addition && this.additionRepo && typeof this.additionRepo.findByRestaurantId === 'function') {
+      const allAdditions = await this.additionRepo.findByRestaurantId(resolvedRestId);
+      addition = allAdditions.find((a) => a.id === additionId || a.name.toLowerCase() === additionId.toLowerCase()) || null;
+    }
+
+    let unitPrice = 0;
+    if (addition) {
+      unitPrice = Number(addition.price);
+    } else if (typeof rawAdd !== 'string' && rawAdd.unitPrice !== undefined) {
+      unitPrice = Number(rawAdd.unitPrice);
+    }
+
+    let additionName = additionId;
+    if (addition) {
+      additionName = addition.name;
+    } else if (typeof rawAdd !== 'string' && rawAdd.additionName) {
+      additionName = rawAdd.additionName;
+    }
+
+    return {
+      id: rawAdd.id || `ord_add_${randomUUID()}`,
+      additionId,
+      additionName,
+      unitPrice,
+      quantity: addQuantity,
+    };
+  }
+
+  private recalculatePayment(order: Order, dtoPaymentAmount?: number): void {
     if (order.paymentMethod === 'Efectivo') {
-      const paymentAmount = dto.paymentAmount ?? order.paymentAmount;
+      const paymentAmount = dtoPaymentAmount ?? order.paymentAmount;
       (order as any).paymentAmount = paymentAmount;
       if (paymentAmount !== undefined) {
         (order as any).changeAmount = Math.max(0, paymentAmount - order.finalTotal);
@@ -225,11 +294,5 @@ export class UpdateOrderUseCase {
       (order as any).paymentAmount = undefined;
       (order as any).changeAmount = undefined;
     }
-
-    // 7. Save via orderRepository.update(updatedOrder, resolvedRestId)
-    const updated = await this.orderRepo.update(order, resolvedRestId);
-
-    // Return updated Order
-    return updated || order;
   }
 }
