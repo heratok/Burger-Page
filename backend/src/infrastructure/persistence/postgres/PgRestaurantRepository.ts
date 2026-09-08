@@ -92,11 +92,11 @@ export class PgRestaurantRepository implements RestaurantRepository {
       updated_at: new Date().toISOString(),
     };
     if (restaurant.config) {
-      if (restaurant.config.logoUrl) payload.logo_url = restaurant.config.logoUrl;
-      if (restaurant.config.bannerUrl) payload.banner_url = restaurant.config.bannerUrl;
+      if (restaurant.config.logoUrl !== undefined) payload.logo_url = restaurant.config.logoUrl || null;
+      if (restaurant.config.bannerUrl !== undefined) payload.banner_url = restaurant.config.bannerUrl || null;
       if (restaurant.config.deliveryFee !== undefined) payload.delivery_fee = restaurant.config.deliveryFee;
       if (restaurant.config.minOrderAmount !== undefined) payload.min_order_amount = restaurant.config.minOrderAmount;
-      if (restaurant.config.address) payload.address = restaurant.config.address;
+      if (restaurant.config.address !== undefined) payload.address = restaurant.config.address || null;
     }
 
     const columns = Object.keys(payload);
