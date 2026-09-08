@@ -480,9 +480,10 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                   </div>
                 ) : (
                   <>
-                    <div
+                    <button
+                      type="button"
                       onClick={() => productFileInputRef.current?.click()}
-                      className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/40 p-4 sm:p-5 text-center hover:border-indigo-500 dark:hover:border-indigo-400 cursor-pointer transition-all"
+                      className="w-full flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/40 p-4 sm:p-5 text-center hover:border-indigo-500 dark:hover:border-indigo-400 cursor-pointer transition-all"
                     >
                       <div className="rounded-full bg-indigo-50 dark:bg-indigo-950/60 p-2 text-indigo-600 dark:text-indigo-400">
                         <Upload className="size-4" />
@@ -495,7 +496,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                           Se comprime automáticamente a formato WebP ultraliviano
                         </p>
                       </div>
-                    </div>
+                    </button>
 
                     <div className="flex items-center gap-2 pt-1">
                       <div className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />

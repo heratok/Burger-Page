@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useMemo, useCallback, useEffect, useState } from "react"
-import type { Order, OrderStatus, Customer } from "@/types/restaurant"
+import type { Order, OrderStatus, Customer, RestaurantRecord } from "@/types/restaurant"
 import type { CreateOrderInput, UpdateOrderInput, OrderEvent, UpdateCustomerInput } from "@burger-page/contracts"
 import { apiClient, isNotFoundError } from "@/core/api/apiClient"
 import { useTenant } from "./TenantContext"
@@ -26,27 +26,55 @@ export interface OrderContextType {
 
 const OrderContext = createContext<OrderContextType | undefined>(undefined)
 
+function generateSecureOrderNumber(): number {
+  if (typeof globalThis.crypto?.getRandomValues === 'function') {
+    const array = new Uint32Array(1)
+    globalThis.crypto.getRandomValues(array)
+    return 10000 + (array[0] % 90000)
+  }
+  return 10000 + (Date.now() % 90000)
+}
+
+function resolveOrderCustomer(boCustomer: any, existing?: Order, matchedCustomer?: any) {
+  if (boCustomer) {
+    return {
+      nombre: boCustomer.nombre || boCustomer.name || existing?.customer?.nombre || 'Cliente',
+      telefono: boCustomer.telefono || boCustomer.phone || existing?.customer?.telefono || '',
+      direccion: boCustomer.direccion || boCustomer.address || existing?.customer?.direccion || '',
+      barrio: boCustomer.barrio || existing?.customer?.barrio || '',
+    }
+  }
+  if (matchedCustomer) {
+    return {
+      nombre: matchedCustomer.nombre,
+      telefono: matchedCustomer.telefono,
+      direccion: matchedCustomer.direccion,
+      barrio: matchedCustomer.barrio,
+    }
+  }
+  return existing?.customer ?? {
+    nombre: 'Cliente',
+    telefono: '',
+    direccion: '',
+    barrio: '',
+  }
+}
+
+function computeLoyaltyTier(totalOrders: number, totalSpent?: number): Customer["loyaltyTier"] {
+  if (totalSpent !== undefined) {
+    if (totalSpent >= 400000 || totalOrders >= 10) return "vip"
+    if (totalSpent >= 250000 || totalOrders >= 6) return "gold"
+    if (totalSpent >= 100000 || totalOrders >= 3) return "silver"
+    return "bronze"
+  }
+  if (totalOrders >= 15) return "vip"
+  if (totalOrders >= 8) return "gold"
+  if (totalOrders >= 3) return "silver"
+  return "bronze"
+}
+
 function mapBackendOrderToDomain(bo: any, existing?: Order, matchedCustomer?: any): Order {
-  const customer = bo.customer
-    ? {
-        nombre: bo.customer.nombre || bo.customer.name || existing?.customer?.nombre || 'Cliente',
-        telefono: bo.customer.telefono || bo.customer.phone || existing?.customer?.telefono || '',
-        direccion: bo.customer.direccion || bo.customer.address || existing?.customer?.direccion || '',
-        barrio: bo.customer.barrio || existing?.customer?.barrio || '',
-      }
-    : matchedCustomer
-      ? {
-          nombre: matchedCustomer.nombre,
-          telefono: matchedCustomer.telefono,
-          direccion: matchedCustomer.direccion,
-          barrio: matchedCustomer.barrio,
-        }
-      : existing?.customer || {
-          nombre: 'Cliente',
-          telefono: '',
-          direccion: '',
-          barrio: '',
-        }
+  const customer = resolveOrderCustomer(bo.customer, existing, matchedCustomer)
 
   const items = (bo.items && bo.items.length > 0 ? bo.items : existing?.items || []).map((item: any) => {
     const unitPrice = Number(item.unitPrice ?? item.price ?? 0)
@@ -79,14 +107,422 @@ function mapBackendOrderToDomain(bo: any, existing?: Order, matchedCustomer?: an
     deliveryFee: Number(bo.deliveryFee ?? existing?.deliveryFee ?? 0),
     finalTotal: Number(bo.finalTotal ?? bo.total ?? existing?.finalTotal ?? 0),
     metodo: (bo.paymentMethod || bo.metodo || existing?.metodo || 'Efectivo') as any,
-    pagoCon: bo.paymentAmount !== undefined ? String(bo.paymentAmount) : (bo.pagoCon || existing?.pagoCon),
-    cambio: bo.changeAmount !== undefined ? Number(bo.changeAmount) : (bo.cambio || existing?.cambio),
+    pagoCon: bo.paymentAmount !== undefined ? String(bo.paymentAmount) : (bo.pagoCon ?? existing?.pagoCon),
+    cambio: bo.changeAmount !== undefined ? Number(bo.changeAmount) : (bo.cambio ?? existing?.cambio),
     comentario: bo.comment || bo.comentario || existing?.comentario,
     receiptUrl: bo.receiptUrl || existing?.receiptUrl,
     status: (bo.status as OrderStatus) || existing?.status || 'pending',
     createdAt: bo.createdAt || existing?.createdAt || new Date().toISOString(),
     updatedAt: bo.updatedAt || existing?.updatedAt || new Date().toISOString(),
   }
+}
+
+// ============================================================================
+// TOP-LEVEL PURE UPDATERS & MAPPERS (SonarQube typescript:S2004 compliance)
+// ============================================================================
+
+export function mapSseOrderAddition(a: any) {
+  return {
+    name: a.additionName || a.name || 'Adición',
+    price: Number(a.unitPrice ?? a.price ?? 0),
+    cantidad: Number(a.quantity ?? 1),
+  }
+}
+
+export function mapSseOrderItem(item: any) {
+  const unitPrice = Number(item.unitPrice ?? item.price ?? 0)
+  const quantity = Number(item.quantity ?? item.cantidad ?? 1)
+  return {
+    id: item.id,
+    name: item.productName || item.name || 'Producto',
+    price: unitPrice,
+    cantidad: quantity,
+    total: unitPrice * quantity,
+    observacion: item.observation || item.observacion,
+    adiciones: (item.additions || item.adiciones || []).map(mapSseOrderAddition),
+  }
+}
+
+export function handleOrderDeletedEvent(current: RestaurantRecord, orderId: string): RestaurantRecord {
+  return {
+    ...current,
+    orders: current.orders.filter((o) => o.id !== orderId),
+  }
+}
+
+export function handleOrderReceiptUpdatedEvent(current: RestaurantRecord, event: OrderEvent): RestaurantRecord {
+  const payloadReceipt = (event.payload as any)?.receiptUrl
+  return {
+    ...current,
+    orders: current.orders.map((o) =>
+      o.id === event.orderId
+        ? {
+            ...o,
+            receiptUrl: payloadReceipt || o.receiptUrl,
+            updatedAt: event.timestamp || new Date().toISOString(),
+          }
+        : o
+    ),
+  }
+}
+
+export function handleOrderCreatedEvent(current: RestaurantRecord, event: OrderEvent): RestaurantRecord {
+  if (!event.payload || typeof event.payload !== "object") {
+    return current
+  }
+
+  const p = event.payload as any
+  const customer = p.customer || {
+    nombre: 'Cliente',
+    telefono: '',
+    direccion: '',
+    barrio: '',
+  }
+
+  const newOrder: Order = {
+    id: event.orderId,
+    orderNumber:
+      event.orderNumber ||
+      p.orderNumber ||
+      generateSecureOrderNumber(),
+    customer,
+    items: (p.items || []).map(mapSseOrderItem),
+    total: Number(p.subtotal ?? p.total ?? 0),
+    deliveryFee: Number(p.deliveryFee ?? 0),
+    finalTotal: Number(p.finalTotal ?? p.total ?? 0),
+    metodo: p.paymentMethod || p.metodo || "Efectivo",
+    pagoCon: p.paymentAmount ? String(p.paymentAmount) : p.pagoCon,
+    cambio: p.changeAmount !== undefined ? Number(p.changeAmount) : p.cambio,
+    comentario: p.comment || p.comentario,
+    receiptUrl: p.receiptUrl,
+    status: (event.status as OrderStatus) || p.status || "pending",
+    createdAt: event.timestamp || new Date().toISOString(),
+    updatedAt: event.timestamp || new Date().toISOString(),
+  }
+
+  return {
+    ...current,
+    orders: [newOrder, ...current.orders],
+  }
+}
+
+export function handleOrderUpdatedEvent(
+  current: RestaurantRecord,
+  event: OrderEvent,
+  matchIndex: number
+): RestaurantRecord {
+  const payload = (event.payload as any) || {}
+  const nextOrders = current.orders.map((o, idx) => {
+    if (idx !== matchIndex) return o
+    if (event.eventType === "ORDER_UPDATED" && payload) {
+      return mapBackendOrderToDomain(
+        {
+          ...payload,
+          id: event.orderId || o.id,
+          status: event.status || payload.status || o.status,
+          updatedAt: event.timestamp || new Date().toISOString(),
+        },
+        o
+      )
+    }
+    return {
+      ...o,
+      id: event.orderId || o.id,
+      status: (event.status as OrderStatus) || (payload.status as OrderStatus) || o.status,
+      receiptUrl: payload.receiptUrl || o.receiptUrl,
+      updatedAt: event.timestamp || new Date().toISOString(),
+    }
+  })
+
+  return {
+    ...current,
+    orders: nextOrders,
+  }
+}
+
+export function updateRestaurantOrderState(current: RestaurantRecord, event: OrderEvent): RestaurantRecord {
+  if (event.eventType === "ORDER_DELETED") {
+    return handleOrderDeletedEvent(current, event.orderId)
+  }
+
+  if (event.eventType === "ORDER_RECEIPT_UPDATED") {
+    return handleOrderReceiptUpdatedEvent(current, event)
+  }
+
+  if (
+    event.eventType === "ORDER_STATUS_UPDATED" ||
+    event.eventType === "ORDER_CREATED" ||
+    event.eventType === "ORDER_UPDATED" ||
+    event.eventType === "ORDER_CANCELLED"
+  ) {
+    const matchIndex = current.orders.findIndex(
+      (o) =>
+        o.id === event.orderId ||
+        (event.orderNumber !== undefined && o.orderNumber === event.orderNumber)
+    )
+
+    if (matchIndex === -1) {
+      if (event.eventType === "ORDER_CREATED") {
+        return handleOrderCreatedEvent(current, event)
+      }
+      return current
+    }
+
+    return handleOrderUpdatedEvent(current, event, matchIndex)
+  }
+
+  return current
+}
+
+export function syncBackendOrders(
+  currentOrders: Order[],
+  backendOrders: any[],
+  currentCustomers: Customer[]
+): Order[] {
+  const ordersMap = new Map<string, Order>()
+  currentOrders.forEach((o) => ordersMap.set(o.id, o))
+
+  if (Array.isArray(backendOrders)) {
+    backendOrders.forEach((bo: any) => {
+      if (bo && bo.id) {
+        const existing = ordersMap.get(bo.id)
+        const matchedCustomer = currentCustomers.find((c) => c.id === bo.customerId)
+        ordersMap.set(bo.id, mapBackendOrderToDomain(bo, existing, matchedCustomer))
+      }
+    })
+  }
+
+  return Array.from(ordersMap.values()).sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  )
+}
+
+export function syncBackendCustomers(
+  currentCustomers: Customer[],
+  backendCustomers: any[],
+  nextOrders: Order[]
+): Customer[] {
+  const customersMap = new Map<string, Customer>()
+  currentCustomers.forEach((c) => customersMap.set(c.id, c))
+
+  if (Array.isArray(backendCustomers) && backendCustomers.length > 0) {
+    backendCustomers.forEach((bc: any) => {
+      if (!bc?.id) return
+
+      const cleanPhone = cleanPhoneNumber(bc.phone || '')
+      const existing =
+        customersMap.get(bc.id) ||
+        Array.from(customersMap.values()).find(
+          (c) => cleanPhoneNumber(c.telefono) === cleanPhone
+        )
+
+      if (existing) {
+        customersMap.delete(existing.id)
+        customersMap.set(bc.id, {
+          ...existing,
+          id: bc.id,
+          nombre: bc.name || existing.nombre,
+          telefono: bc.phone || existing.telefono,
+          direccion: bc.address ?? existing.direccion,
+          barrio: bc.barrio ?? existing.barrio,
+          notes: bc.notes ?? existing.notes,
+        })
+      } else {
+        const custOrders = nextOrders.filter(
+          (o) => cleanPhoneNumber(o.customer.telefono) === cleanPhone
+        )
+        const totalSpent = custOrders.reduce((sum, o) => sum + (o.finalTotal || o.total || 0), 0)
+        const totalOrders = custOrders.length
+        const lastOrderDate = custOrders[0]?.createdAt || bc.createdAt || new Date().toISOString()
+        const loyaltyTier = computeLoyaltyTier(totalOrders, totalSpent)
+
+        customersMap.set(bc.id, {
+          id: bc.id,
+          nombre: bc.name || "Cliente",
+          telefono: bc.phone || "",
+          direccion: bc.address || "",
+          barrio: bc.barrio || "",
+          totalOrders,
+          totalSpent,
+          lastOrderDate,
+          loyaltyTier,
+          notes: bc.notes || "",
+        })
+      }
+    })
+  }
+
+  return Array.from(customersMap.values())
+}
+
+export function syncBackendDataToRestaurant(
+  current: RestaurantRecord,
+  targetRestId: string,
+  backendOrders: any[],
+  backendCustomers: any[]
+): RestaurantRecord {
+  if (current.id !== targetRestId) return current
+
+  const nextOrders = syncBackendOrders(current.orders, backendOrders, current.customers)
+  const nextCustomers = syncBackendCustomers(current.customers, backendCustomers, nextOrders)
+
+  return {
+    ...current,
+    orders: nextOrders,
+    customers: nextCustomers,
+  }
+}
+
+export function recordCustomerForNewOrder(
+  customers: Customer[],
+  newOrder: Order,
+  timestamp: string
+): Customer[] {
+  const phone = cleanPhoneNumber(newOrder.customer.telefono)
+  const nextCustomers = [...customers]
+  const existingIdx = nextCustomers.findIndex(
+    (c) => cleanPhoneNumber(c.telefono) === phone
+  )
+
+  if (existingIdx >= 0) {
+    const c = nextCustomers[existingIdx]
+    const newTotalOrders = c.totalOrders + 1
+    const newTotalSpent = c.totalSpent + newOrder.finalTotal
+    const tier = computeLoyaltyTier(newTotalOrders, newTotalSpent)
+
+    nextCustomers[existingIdx] = {
+      ...c,
+      nombre: newOrder.customer.nombre,
+      direccion: newOrder.customer.direccion,
+      barrio: newOrder.customer.barrio,
+      totalOrders: newTotalOrders,
+      totalSpent: newTotalSpent,
+      lastOrderDate: timestamp,
+      loyaltyTier: tier,
+    }
+  } else {
+    nextCustomers.push({
+      id: `cust-${Date.now()}`,
+      nombre: newOrder.customer.nombre,
+      telefono: newOrder.customer.telefono,
+      direccion: newOrder.customer.direccion,
+      barrio: newOrder.customer.barrio,
+      totalOrders: 1,
+      totalSpent: newOrder.finalTotal,
+      lastOrderDate: timestamp,
+      loyaltyTier: "bronze",
+    })
+  }
+
+  return nextCustomers
+}
+
+export function addOrderToRestaurant(
+  current: RestaurantRecord,
+  newOrder: Order,
+  timestamp: string
+): RestaurantRecord {
+  return {
+    ...current,
+    orders: [newOrder, ...current.orders],
+    customers: recordCustomerForNewOrder(current.customers, newOrder, timestamp),
+  }
+}
+
+function buildCreateOrderItem(item: any, products: any[], additions: any[]) {
+  const matchedProduct = products?.find(
+    (p) => p.name.toLowerCase() === item.name.toLowerCase() || p.id === item.id
+  )
+  return {
+    productId: matchedProduct?.id || item.id || item.name,
+    quantity: item.cantidad,
+    additions: (item.adiciones || []).map((a: any) => {
+      const matchedAddition = additions?.find(
+        (add) =>
+          add.name.toLowerCase() === a.name?.toLowerCase() ||
+          add.id === (a as any).id ||
+          add.id === (a as any).additionId
+      )
+      return {
+        additionId: matchedAddition?.id || (a as any).additionId || (a as any).id || a.name,
+        quantity: typeof a.cantidad === 'number' && a.cantidad > 0 ? a.cantidad : 1,
+      }
+    }),
+  }
+}
+
+export function buildCreateOrderInput(
+  restaurant: RestaurantRecord,
+  newOrder: Order
+): CreateOrderInput {
+  const phone = cleanPhoneNumber(newOrder.customer.telefono)
+  const existingCustomer = restaurant.customers?.find(
+    (c) => cleanPhoneNumber(c.telefono) === phone
+  )
+  const customerId = existingCustomer && !existingCustomer.id.startsWith('cust-')
+    ? existingCustomer.id
+    : undefined
+
+  return {
+    restaurantId: restaurant.id,
+    customerId,
+    customer: {
+      name: newOrder.customer.nombre,
+      phone: newOrder.customer.telefono,
+      address: newOrder.customer.direccion,
+      barrio: newOrder.customer.barrio,
+    },
+    items: newOrder.items.map((item) =>
+      buildCreateOrderItem(item, restaurant.products ?? [], restaurant.additions ?? [])
+    ),
+    deliveryFee: newOrder.deliveryFee,
+    paymentMethod: newOrder.metodo,
+    receiptUrl: newOrder.receiptUrl,
+    comment: newOrder.comentario,
+  }
+}
+
+function buildUpdateOrderItem(item: any, products: any[]) {
+  const matchedProduct = products?.find(
+    (p) => p.name.toLowerCase() === item.name.toLowerCase() || p.id === (item as any).productId || p.id === item.id
+  )
+  return {
+    id: item.id,
+    productId: matchedProduct?.id || (item as any).productId || item.id || item.name,
+    productName: item.name,
+    unitPrice: item.price,
+    quantity: item.cantidad,
+    observation: item.observacion || (item as any).instrucciones,
+    additions: (item.adiciones || []).map((a: any) => {
+      if (typeof a === 'string') return a
+      return { additionId: (a as any).additionId || (a as any).id || (a as any).name, quantity: 1 }
+    }),
+  }
+}
+
+export function buildUpdateOrderInput(
+  updates: Partial<Order>,
+  products: any[]
+): UpdateOrderInput {
+  const updateInput: UpdateOrderInput = {}
+  if (updates.customer) {
+    updateInput.customer = {
+      name: updates.customer.nombre,
+      phone: updates.customer.telefono,
+      address: updates.customer.direccion,
+      barrio: updates.customer.barrio,
+    }
+  }
+  if (updates.items) {
+    updateInput.items = updates.items.map((item) => buildUpdateOrderItem(item, products))
+  }
+  if (updates.deliveryFee !== undefined) updateInput.deliveryFee = updates.deliveryFee
+  if (updates.metodo !== undefined) updateInput.paymentMethod = updates.metodo
+  if (updates.pagoCon !== undefined) updateInput.paymentAmount = Number(updates.pagoCon) || undefined
+  if (updates.cambio !== undefined) updateInput.changeAmount = updates.cambio
+  if (updates.comentario !== undefined) updateInput.comment = updates.comentario
+  if (updates.status !== undefined) updateInput.status = updates.status
+  return updateInput
 }
 
 export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -120,83 +556,9 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     ])
       .then(([backendOrders, backendCustomers]) => {
         if (isCancelled) return
-        updateActiveRestaurantRecord((current) => {
-          if (current.id !== targetRestId) return current
-
-          // 1. Sync orders
-          const ordersMap = new Map<string, Order>()
-          current.orders.forEach((o) => ordersMap.set(o.id, o))
-          if (Array.isArray(backendOrders)) {
-            backendOrders.forEach((bo: any) => {
-              if (bo && bo.id) {
-                const existing = ordersMap.get(bo.id)
-                const matchedCustomer = current.customers.find((c) => c.id === bo.customerId)
-                ordersMap.set(bo.id, mapBackendOrderToDomain(bo, existing, matchedCustomer))
-              }
-            })
-          }
-          const nextOrders = Array.from(ordersMap.values()).sort(
-            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-          )
-
-          // 2. Sync customers
-          const customersMap = new Map<string, Customer>()
-          current.customers.forEach((c) => customersMap.set(c.id, c))
-
-          if (Array.isArray(backendCustomers) && backendCustomers.length > 0) {
-            backendCustomers.forEach((bc: any) => {
-              if (bc && bc.id) {
-                const cleanPhone = cleanPhoneNumber(bc.phone || '')
-                const existing =
-                  customersMap.get(bc.id) ||
-                  Array.from(customersMap.values()).find(
-                    (c) => cleanPhoneNumber(c.telefono) === cleanPhone
-                  )
-
-                if (existing) {
-                  customersMap.delete(existing.id)
-                  customersMap.set(bc.id, {
-                    ...existing,
-                    id: bc.id,
-                    nombre: bc.name || existing.nombre,
-                    telefono: bc.phone || existing.telefono,
-                    direccion: bc.address !== undefined ? bc.address : existing.direccion,
-                    barrio: bc.barrio !== undefined ? bc.barrio : existing.barrio,
-                    notes: bc.notes !== undefined ? bc.notes : existing.notes,
-                  })
-                } else {
-                  const custOrders = nextOrders.filter(
-                    (o) => cleanPhoneNumber(o.customer.telefono) === cleanPhone
-                  )
-                  const totalSpent = custOrders.reduce((sum, o) => sum + (o.finalTotal || o.total || 0), 0)
-                  const totalOrders = custOrders.length
-                  const lastOrderDate = custOrders[0]?.createdAt || bc.createdAt || new Date().toISOString()
-                  const loyaltyTier =
-                    totalOrders >= 15 ? "vip" : totalOrders >= 8 ? "gold" : totalOrders >= 3 ? "silver" : "bronze"
-
-                  customersMap.set(bc.id, {
-                    id: bc.id,
-                    nombre: bc.name || "Cliente",
-                    telefono: bc.phone || "",
-                    direccion: bc.address || "",
-                    barrio: bc.barrio || "",
-                    totalOrders,
-                    totalSpent,
-                    lastOrderDate,
-                    loyaltyTier,
-                    notes: bc.notes || "",
-                  })
-                }
-              }
-            })
-          }
-
-          return {
-            ...current,
-            orders: nextOrders,
-            customers: Array.from(customersMap.values()),
-          }
-        })
+        updateActiveRestaurantRecord((current) =>
+          syncBackendDataToRestaurant(current, targetRestId, backendOrders, backendCustomers)
+        )
       })
       .catch((err) => {
         if (import.meta.env?.MODE !== 'test') {
@@ -214,128 +576,14 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [activeRestaurant?.id, session, updateActiveRestaurantRecord])
 
-
   // Real-time SSE order stream subscription
   useEffect(() => {
     const targetRestId = activeRestaurant?.id
     if (!targetRestId || !apiClient.hasToken()) return
+
     const unsubscribe = apiClient.subscribeToOrderStream((event: OrderEvent) => {
       if (!event || !event.orderId) return
-
-      if (event.eventType === "ORDER_DELETED") {
-        updateActiveRestaurantRecord((current) => ({
-          ...current,
-          orders: current.orders.filter((o) => o.id !== event.orderId),
-        }))
-        return
-      }
-
-      if (event.eventType === "ORDER_RECEIPT_UPDATED") {
-        const payloadReceipt = (event.payload as any)?.receiptUrl
-        updateActiveRestaurantRecord((current) => ({
-          ...current,
-          orders: current.orders.map((o) =>
-            o.id === event.orderId
-              ? {
-                  ...o,
-                  receiptUrl: payloadReceipt || o.receiptUrl,
-                  updatedAt: event.timestamp || new Date().toISOString(),
-                }
-              : o
-          ),
-        }))
-        return
-      }
-
-      if (event.eventType === "ORDER_STATUS_UPDATED" || event.eventType === "ORDER_CREATED") {
-        updateActiveRestaurantRecord((current) => {
-          const matchIndex = current.orders.findIndex(
-            (o) =>
-              o.id === event.orderId ||
-              (event.orderNumber !== undefined && o.orderNumber === event.orderNumber)
-          )
-
-          if (matchIndex === -1) {
-            // New order received via real-time stream
-            if (
-              event.eventType === "ORDER_CREATED" &&
-              event.payload &&
-              typeof event.payload === "object"
-            ) {
-              const p = event.payload as any
-              const customer = p.customer || {
-                nombre: 'Cliente',
-                telefono: '',
-                direccion: '',
-                barrio: '',
-              }
-              const newOrder: Order = {
-                id: event.orderId,
-                orderNumber:
-                  event.orderNumber ||
-                  p.orderNumber ||
-                  Math.floor(10000 + Math.random() * 90000),
-                customer,
-                items: (p.items || []).map((item: any) => ({
-                  id: item.id,
-                  name: item.productName || item.name || 'Producto',
-                  price: Number(item.unitPrice ?? item.price ?? 0),
-                  cantidad: Number(item.quantity ?? item.cantidad ?? 1),
-                  total: Number(item.unitPrice ?? item.price ?? 0) * Number(item.quantity ?? item.cantidad ?? 1),
-                  observacion: item.observation || item.observacion,
-                  adiciones: (item.additions || item.adiciones || []).map((a: any) => ({
-                    name: a.additionName || a.name || 'Adición',
-                    price: Number(a.unitPrice ?? a.price ?? 0),
-                    cantidad: Number(a.quantity ?? 1),
-                  })),
-                })),
-                total: Number(p.subtotal ?? p.total ?? 0),
-                deliveryFee: Number(p.deliveryFee ?? 0),
-                finalTotal: Number(p.finalTotal ?? p.total ?? 0),
-                metodo: p.paymentMethod || p.metodo || "Efectivo",
-                pagoCon: p.paymentAmount ? String(p.paymentAmount) : p.pagoCon,
-                cambio: p.changeAmount !== undefined ? Number(p.changeAmount) : p.cambio,
-                comentario: p.comment || p.comentario,
-                receiptUrl: p.receiptUrl,
-                status: (event.status as OrderStatus) || p.status || "pending",
-                createdAt: event.timestamp || new Date().toISOString(),
-                updatedAt: event.timestamp || new Date().toISOString(),
-              }
-              return {
-                ...current,
-                orders: [newOrder, ...current.orders],
-              }
-            }
-            return current
-          }
-
-          const payload = (event.payload as any) || {}
-          return {
-            ...current,
-            orders: current.orders.map((o, idx) => {
-              if (idx !== matchIndex) return o
-              if (event.eventType === "ORDER_UPDATED" && payload) {
-                return mapBackendOrderToDomain(
-                  {
-                    ...payload,
-                    id: event.orderId || o.id,
-                    status: event.status || payload.status || o.status,
-                    updatedAt: event.timestamp || new Date().toISOString(),
-                  },
-                  o
-                )
-              }
-              return {
-                ...o,
-                id: event.orderId || o.id,
-                status: (event.status as OrderStatus) || (payload.status as OrderStatus) || o.status,
-                receiptUrl: payload.receiptUrl || o.receiptUrl,
-                updatedAt: event.timestamp || new Date().toISOString(),
-              }
-            }),
-          }
-        })
-      }
+      updateActiveRestaurantRecord((current) => updateRestaurantOrderState(current, event))
     }, targetRestId)
 
     return () => {
@@ -349,58 +597,12 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const newOrder: Order = {
         ...orderData,
         id: nextTempId("ord"),
-        orderNumber: Math.floor(10000 + Math.random() * 90000),
+        orderNumber: generateSecureOrderNumber(),
         createdAt: now,
         updatedAt: now,
       }
 
-      updateActiveRestaurantRecord((current) => {
-        // Record or update customer
-        const phone = cleanPhoneNumber(newOrder.customer.telefono)
-        const nextCustomers = [...current.customers]
-        const existingIdx = nextCustomers.findIndex(
-          (c) => cleanPhoneNumber(c.telefono) === phone
-        )
-
-        if (existingIdx >= 0) {
-          const c = nextCustomers[existingIdx]
-          const newTotalOrders = c.totalOrders + 1
-          const newTotalSpent = c.totalSpent + newOrder.finalTotal
-          let tier: Customer["loyaltyTier"] = "bronze"
-          if (newTotalSpent >= 400000 || newTotalOrders >= 10) tier = "vip"
-          else if (newTotalSpent >= 250000 || newTotalOrders >= 6) tier = "gold"
-          else if (newTotalSpent >= 100000 || newTotalOrders >= 3) tier = "silver"
-
-          nextCustomers[existingIdx] = {
-            ...c,
-            nombre: newOrder.customer.nombre,
-            direccion: newOrder.customer.direccion,
-            barrio: newOrder.customer.barrio,
-            totalOrders: newTotalOrders,
-            totalSpent: newTotalSpent,
-            lastOrderDate: now,
-            loyaltyTier: tier,
-          }
-        } else {
-          nextCustomers.push({
-            id: `cust-${Date.now()}`,
-            nombre: newOrder.customer.nombre,
-            telefono: newOrder.customer.telefono,
-            direccion: newOrder.customer.direccion,
-            barrio: newOrder.customer.barrio,
-            totalOrders: 1,
-            totalSpent: newOrder.finalTotal,
-            lastOrderDate: now,
-            loyaltyTier: "bronze",
-          })
-        }
-
-        return {
-          ...current,
-          orders: [newOrder, ...current.orders],
-          customers: nextCustomers,
-        }
-      })
+      updateActiveRestaurantRecord((current) => addOrderToRestaurant(current, newOrder, now))
 
       if (soundEnabled) {
         playNotificationChime()
@@ -412,49 +614,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       // Backend API Integration with graceful offline fallback
       try {
-        const phone = cleanPhoneNumber(newOrder.customer.telefono)
-        const existingCustomer = activeRestaurant.customers?.find(
-          (c) => cleanPhoneNumber(c.telefono) === phone
-        )
-        const customerId = existingCustomer && !existingCustomer.id.startsWith('cust-')
-          ? existingCustomer.id
-          : undefined
-
-        const orderInput: CreateOrderInput = {
-          restaurantId: activeRestaurant.id,
-          customerId,
-          customer: {
-            name: newOrder.customer.nombre,
-            phone: newOrder.customer.telefono,
-            address: newOrder.customer.direccion,
-            barrio: newOrder.customer.barrio,
-          },
-          items: newOrder.items.map((item) => {
-            const matchedProduct = activeRestaurant.products?.find(
-              (p) => p.name.toLowerCase() === item.name.toLowerCase() || p.id === item.id
-            )
-            return {
-              productId: matchedProduct?.id || item.id || item.name,
-              quantity: item.cantidad,
-              additions: (item.adiciones || []).map((a) => {
-                const matchedAddition = activeRestaurant.additions?.find(
-                  (add) =>
-                    add.name.toLowerCase() === a.name?.toLowerCase() ||
-                    add.id === (a as any).id ||
-                    add.id === (a as any).additionId
-                )
-                return {
-                  additionId: matchedAddition?.id || (a as any).additionId || (a as any).id || a.name,
-                  quantity: typeof a.cantidad === 'number' && a.cantidad > 0 ? a.cantidad : 1,
-                }
-              }),
-            }
-          }),
-          deliveryFee: newOrder.deliveryFee,
-          paymentMethod: newOrder.metodo,
-          receiptUrl: newOrder.receiptUrl,
-          comment: newOrder.comentario,
-        }
+        const orderInput = buildCreateOrderInput(activeRestaurant, newOrder)
 
         apiClient
           .createOrder(orderInput)
@@ -513,41 +673,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       // Backend sync
       if (apiClient.hasToken() && targetRestId) {
         try {
-          const updateInput: UpdateOrderInput = {}
-          if (updates.customer) {
-            updateInput.customer = {
-              name: updates.customer.nombre,
-              phone: updates.customer.telefono,
-              address: updates.customer.direccion,
-              barrio: updates.customer.barrio,
-            }
-          }
-          if (updates.items) {
-            updateInput.items = updates.items.map((item) => {
-              const matchedProduct = activeRestaurant.products?.find(
-                (p) => p.name.toLowerCase() === item.name.toLowerCase() || p.id === (item as any).productId || p.id === item.id
-              )
-              return {
-                id: item.id,
-                productId: matchedProduct?.id || (item as any).productId || item.id || item.name,
-                productName: item.name,
-                unitPrice: item.price,
-                quantity: item.cantidad,
-                observation: item.observacion || (item as any).instrucciones,
-                additions: (item.adiciones || []).map((a) => {
-                  if (typeof a === 'string') return a
-                  return { additionId: (a as any).additionId || (a as any).id || (a as any).name, quantity: 1 }
-                }),
-              }
-            })
-          }
-          if (updates.deliveryFee !== undefined) updateInput.deliveryFee = updates.deliveryFee
-          if (updates.metodo !== undefined) updateInput.paymentMethod = updates.metodo
-          if (updates.pagoCon !== undefined) updateInput.paymentAmount = Number(updates.pagoCon) || undefined
-          if (updates.cambio !== undefined) updateInput.changeAmount = updates.cambio
-          if (updates.comentario !== undefined) updateInput.comment = updates.comentario
-          if (updates.status !== undefined) updateInput.status = updates.status
-
+          const updateInput = buildUpdateOrderInput(updates, activeRestaurant.products ?? [])
           const updatedOrder = await apiClient.updateOrder(orderId, updateInput, targetRestId)
           if (updatedOrder) {
             updateActiveRestaurantRecord((current) => ({
@@ -690,9 +816,9 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                       id: updatedCustomer.id || c.id,
                       nombre: updatedCustomer.name ?? c.nombre,
                       telefono: updatedCustomer.phone ?? c.telefono,
-                      direccion: updatedCustomer.address !== undefined ? updatedCustomer.address : c.direccion,
-                      barrio: updatedCustomer.barrio !== undefined ? updatedCustomer.barrio : c.barrio,
-                      notes: updatedCustomer.notes !== undefined ? updatedCustomer.notes : c.notes,
+                      direccion: updatedCustomer.address ?? c.direccion,
+                      barrio: updatedCustomer.barrio ?? c.barrio,
+                      notes: updatedCustomer.notes ?? c.notes,
                     }
                   : c
               ),

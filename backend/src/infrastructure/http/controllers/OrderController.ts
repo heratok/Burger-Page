@@ -14,14 +14,14 @@ import { globalOrderEventBus } from '../../events/OrderEventBus.js';
 
 export class OrderController {
   constructor(
-    private listOrdersUseCase: ListOrdersUseCase,
-    private getOrderByIdUseCase: GetOrderByIdUseCase,
-    private createOrderUseCase: CreateOrderUseCase,
-    private updateOrderStatusUseCase: UpdateOrderStatusUseCase,
-    private updateOrderReceiptUseCase?: UpdateOrderReceiptUseCase,
-    private restaurantRepo?: RestaurantRepository,
-    private deleteOrderUseCase?: DeleteOrderUseCase,
-    private updateOrderUseCase?: UpdateOrderUseCase
+    private readonly listOrdersUseCase: ListOrdersUseCase,
+    private readonly getOrderByIdUseCase: GetOrderByIdUseCase,
+    private readonly createOrderUseCase: CreateOrderUseCase,
+    private readonly updateOrderStatusUseCase: UpdateOrderStatusUseCase,
+    private readonly updateOrderReceiptUseCase?: UpdateOrderReceiptUseCase,
+    private readonly restaurantRepo?: RestaurantRepository,
+    private readonly deleteOrderUseCase?: DeleteOrderUseCase,
+    private readonly updateOrderUseCase?: UpdateOrderUseCase
   ) {}
 
   private async resolveRestaurantId(req: FastifyRequest): Promise<string> {

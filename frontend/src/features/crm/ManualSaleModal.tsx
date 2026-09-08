@@ -41,6 +41,409 @@ export interface ManualSaleModalProps {
 
 type ServiceType = "mostrador" | "mesa" | "domicilio"
 
+function getOrderAddress(serviceType: ServiceType, customerAddress: string, tableNumber: string): string {
+  if (serviceType === "domicilio") {
+    return customerAddress.trim()
+  }
+  if (serviceType === "mesa") {
+    const table = tableNumber.trim()
+    const tableLabel = table ? `Mesa ${table}` : "Mesa general"
+    return `Salón - ${tableLabel}`
+  }
+  return "Mostrador / Para llevar"
+}
+
+function resolveCustomerDisplayName(serviceType: ServiceType, customerName: string, tableNumber: string): string {
+  const trimmed = customerName.trim()
+  if (trimmed) return trimmed
+  if (serviceType === "mesa") {
+    return tableNumber.trim() ? `Mesa ${tableNumber.trim()}` : "Mesa Salón"
+  }
+  if (serviceType === "mostrador") {
+    return "Cliente Mostrador"
+  }
+  return "Cliente Domicilio"
+}
+
+interface ParsedOrderToEdit {
+  serviceType: ServiceType
+  tableNumber: string
+  customerName: string
+  customerPhone: string
+  customerAddress: string
+  customerBarrio: string
+  orderNotes: string
+  paymentMethod: "Efectivo" | "Transferencia"
+  pagoCon: string
+  receiptPreview: string | null
+}
+
+function parseOrderToEdit(order: Order): ParsedOrderToEdit {
+  const dir = order.customer?.direccion ?? ""
+  const lowerDir = dir.toLowerCase()
+  const custName = order.customer?.nombre ?? ""
+  const isMesa =
+    lowerDir.includes("mesa") ||
+    lowerDir.includes("salón") ||
+    lowerDir.includes("salon") ||
+    custName.toLowerCase().startsWith("mesa")
+  const isMostrador =
+    lowerDir.includes("mostrador") ||
+    lowerDir.includes("llevar")
+
+  let parsedServiceType: ServiceType = "domicilio"
+  let parsedTableNumber = ""
+
+  if (isMesa) {
+    parsedServiceType = "mesa"
+    const mesaRegex = /mesa\s*(\d+)/i
+    const mesaMatch = mesaRegex.exec(dir) || mesaRegex.exec(custName)
+    parsedTableNumber = mesaMatch ? mesaMatch[1] : ""
+  } else if (isMostrador) {
+    parsedServiceType = "mostrador"
+  }
+
+  const isGenericName =
+    custName.startsWith("Mesa ") ||
+    custName === "Cliente Mostrador" ||
+    custName === "Cliente Domicilio" ||
+    custName === "Mesa Salón"
+
+  const finalCustName = isGenericName ? "" : custName
+  const customerPhone = order.customer?.telefono
+  const phone = !customerPhone || customerPhone === "N/A" ? "" : customerPhone
+  const address = isMesa || isMostrador ? "" : (order.customer?.direccion ?? "")
+  const barrio = isMesa || isMostrador || order.customer?.barrio === "Local" ? "" : (order.customer?.barrio ?? "")
+
+  return {
+    serviceType: parsedServiceType,
+    tableNumber: parsedTableNumber,
+    customerName: finalCustName,
+    customerPhone: phone,
+    customerAddress: address,
+    customerBarrio: barrio,
+    orderNotes: order.comentario ?? "",
+    paymentMethod: order.metodo === "Transferencia" ? "Transferencia" : "Efectivo",
+    pagoCon: order.pagoCon ?? "",
+    receiptPreview: order.receiptUrl ?? null,
+  }
+}
+
+function buildSelectedAdditionsList(
+  customAdditions: Record<string, number>,
+  availableAdditions: Array<{ id: string; name: string; price: number }>
+): CartAddition[] {
+  const list: CartAddition[] = []
+  for (const [additionId, qty] of Object.entries(customAdditions)) {
+    if (qty > 0) {
+      const found = availableAdditions.find((a) => a.id === additionId)
+      if (found) {
+        list.push({
+          id: found.id,
+          name: found.name,
+          price: found.price,
+          cantidad: qty,
+        })
+      }
+    }
+  }
+  return list
+}
+
+function buildCartItemAdditionsMap(
+  item: CartItem,
+  availableAdditions: Array<{ id: string; name: string }>
+): Record<string, number> {
+  const additionsMap: Record<string, number> = {}
+  ;(item.adiciones || []).forEach((ad) => {
+    const found = availableAdditions.find((a) => a.id === ad.id || a.name === ad.name)
+    if (found) {
+      additionsMap[found.id] = ad.cantidad
+    }
+  })
+  return additionsMap
+}
+
+function buildOrderPayload(params: {
+  customerName: string
+  customerPhone: string
+  customerAddress: string
+  customerBarrio: string
+  serviceType: ServiceType
+  tableNumber: string
+  selectedItems: CartItem[]
+  subtotal: number
+  deliveryFee: number
+  finalTotal: number
+  paymentMethod: "Efectivo" | "Transferencia"
+  pagoCon: string
+  cambio: number | null
+  orderNotes: string
+  receiptUrl?: string
+}) {
+  const finalCustomerName = resolveCustomerDisplayName(params.serviceType, params.customerName, params.tableNumber)
+  return {
+    customer: {
+      nombre: finalCustomerName,
+      telefono: params.customerPhone.trim() || "N/A",
+      direccion: getOrderAddress(params.serviceType, params.customerAddress, params.tableNumber),
+      barrio: params.serviceType === "domicilio" ? params.customerBarrio.trim() : "Local",
+    },
+    items: params.selectedItems.map(cartItemToOrderItem),
+    total: params.subtotal,
+    deliveryFee: params.deliveryFee,
+    finalTotal: params.finalTotal,
+    metodo: params.paymentMethod,
+    pagoCon: params.paymentMethod === "Efectivo" && params.pagoCon.trim() ? params.pagoCon.trim() : undefined,
+    cambio: params.paymentMethod === "Efectivo" && params.cambio ? params.cambio : undefined,
+    comentario: params.orderNotes.trim() || undefined,
+    receiptUrl: params.receiptUrl,
+  }
+}
+
+function getFieldInputClass(isDark: boolean): string {
+  return `mt-1 w-full rounded-lg border px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-orange-500 ${
+    isDark ? "border-slate-700 bg-slate-950 text-white" : "border-slate-300 bg-white"
+  }`
+}
+
+interface MesaInputsProps {
+  readonly isDark: boolean
+  readonly tableNumber: string
+  readonly setTableNumber: (val: string) => void
+  readonly customerName: string
+  readonly setCustomerName: (val: string) => void
+}
+
+function MesaInputs({
+  isDark,
+  tableNumber,
+  setTableNumber,
+  customerName,
+  setCustomerName,
+}: Readonly<MesaInputsProps>) {
+  const inputClass = getFieldInputClass(isDark)
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      <div>
+        <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+          Número de Mesa
+        </label>
+        <input
+          type="text"
+          maxLength={25}
+          placeholder="Ej: 3, Terraza 1"
+          value={tableNumber}
+          onChange={(e) => setTableNumber(e.target.value)}
+          className={inputClass}
+        />
+      </div>
+      <div>
+        <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+          Nombre Cliente (Opcional)
+        </label>
+        <input
+          type="text"
+          maxLength={80}
+          placeholder="Nombre o apodo"
+          value={customerName}
+          onChange={(e) => setCustomerName(e.target.value)}
+          className={inputClass}
+        />
+      </div>
+    </div>
+  )
+}
+
+interface DomicilioInputsProps {
+  readonly isDark: boolean
+  readonly customerName: string
+  readonly setCustomerName: (val: string) => void
+  readonly customerPhone: string
+  readonly setCustomerPhone: (val: string) => void
+  readonly customerAddress: string
+  readonly setCustomerAddress: (val: string) => void
+  readonly customerBarrio: string
+  readonly setCustomerBarrio: (val: string) => void
+}
+
+function DomicilioInputs({
+  isDark,
+  customerName,
+  setCustomerName,
+  customerPhone,
+  setCustomerPhone,
+  customerAddress,
+  setCustomerAddress,
+  customerBarrio,
+  setCustomerBarrio,
+}: Readonly<DomicilioInputsProps>) {
+  const inputClass = getFieldInputClass(isDark)
+  return (
+    <div className="space-y-2">
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+            Nombre Cliente *
+          </label>
+          <input
+            type="text"
+            maxLength={80}
+            placeholder="Nombre completo"
+            value={customerName}
+            onChange={(e) => setCustomerName(e.target.value)}
+            className={inputClass}
+          />
+        </div>
+        <div>
+          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+            Teléfono
+          </label>
+          <input
+            type="text"
+            maxLength={20}
+            placeholder="300 123 4567"
+            value={customerPhone}
+            onChange={(e) => setCustomerPhone(e.target.value)}
+            className={inputClass}
+          />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+            Dirección de Entrega *
+          </label>
+          <input
+            type="text"
+            maxLength={150}
+            placeholder="Calle 10 # 4-20"
+            value={customerAddress}
+            onChange={(e) => setCustomerAddress(e.target.value)}
+            className={inputClass}
+          />
+        </div>
+        <div>
+          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+            Barrio *
+          </label>
+          <input
+            type="text"
+            maxLength={80}
+            placeholder="Barrio o sector"
+            value={customerBarrio}
+            onChange={(e) => setCustomerBarrio(e.target.value)}
+            className={inputClass}
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+interface MostradorInputsProps {
+  readonly isDark: boolean
+  readonly customerName: string
+  readonly setCustomerName: (val: string) => void
+  readonly customerPhone: string
+  readonly setCustomerPhone: (val: string) => void
+}
+
+function MostradorInputs({
+  isDark,
+  customerName,
+  setCustomerName,
+  customerPhone,
+  setCustomerPhone,
+}: Readonly<MostradorInputsProps>) {
+  const inputClass = getFieldInputClass(isDark)
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      <div>
+        <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+          Nombre Cliente (Opcional)
+        </label>
+        <input
+          type="text"
+          maxLength={80}
+          placeholder="Cliente Mostrador"
+          value={customerName}
+          onChange={(e) => setCustomerName(e.target.value)}
+          className={inputClass}
+        />
+      </div>
+      <div>
+        <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+          Teléfono (Opcional)
+        </label>
+        <input
+          type="text"
+          maxLength={20}
+          placeholder="Para fidelización"
+          value={customerPhone}
+          onChange={(e) => setCustomerPhone(e.target.value)}
+          className={inputClass}
+        />
+      </div>
+    </div>
+  )
+}
+
+interface CustomerInputsProps {
+  readonly serviceType: ServiceType
+  readonly isDark: boolean
+  readonly tableNumber: string
+  readonly setTableNumber: (val: string) => void
+  readonly customerName: string
+  readonly setCustomerName: (val: string) => void
+  readonly customerPhone: string
+  readonly setCustomerPhone: (val: string) => void
+  readonly customerAddress: string
+  readonly setCustomerAddress: (val: string) => void
+  readonly customerBarrio: string
+  readonly setCustomerBarrio: (val: string) => void
+}
+
+function CustomerInputs(props: Readonly<CustomerInputsProps>) {
+  if (props.serviceType === "mesa") {
+    return (
+      <MesaInputs
+        isDark={props.isDark}
+        tableNumber={props.tableNumber}
+        setTableNumber={props.setTableNumber}
+        customerName={props.customerName}
+        setCustomerName={props.setCustomerName}
+      />
+    )
+  }
+
+  if (props.serviceType === "domicilio") {
+    return (
+      <DomicilioInputs
+        isDark={props.isDark}
+        customerName={props.customerName}
+        setCustomerName={props.setCustomerName}
+        customerPhone={props.customerPhone}
+        setCustomerPhone={props.setCustomerPhone}
+        customerAddress={props.customerAddress}
+        setCustomerAddress={props.setCustomerAddress}
+        customerBarrio={props.customerBarrio}
+        setCustomerBarrio={props.setCustomerBarrio}
+      />
+    )
+  }
+
+  return (
+    <MostradorInputs
+      isDark={props.isDark}
+      customerName={props.customerName}
+      setCustomerName={props.setCustomerName}
+      customerPhone={props.customerPhone}
+      setCustomerPhone={props.setCustomerPhone}
+    />
+  )
+}
+
 export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClose, orderToEdit }) => {
   const { activeRestaurant, storeConfig, adminTheme, addOrder, updateOrder } = useRestaurant()
   const isDark = adminTheme === "dark"
@@ -76,7 +479,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
   const [customItemNote, setCustomItemNote] = useState("")
 
   // Products from active restaurant
-  const catalogProducts = useMemo(() => activeRestaurant.products || [], [activeRestaurant.products])
+  const catalogProducts = useMemo(() => activeRestaurant.products ?? [], [activeRestaurant.products])
 
   // Extract unique categories from catalog
   const categories = useMemo(() => {
@@ -103,7 +506,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
     return selectedItems.reduce((sum, item) => sum + item.total, 0)
   }, [selectedItems])
 
-  const deliveryFee = serviceType === "domicilio" ? (storeConfig.deliveryFee || 0) : 0
+  const deliveryFee = serviceType === "domicilio" ? (storeConfig.deliveryFee ?? 0) : 0
   const finalTotal = subtotal + deliveryFee
 
   const cambio = useMemo(() => {
@@ -117,14 +520,50 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
 
   const currentModalAdditionsTotal = useMemo(() => {
     if (!customizingProduct) return 0
-    const availableAdditions = activeRestaurant.additions || []
+    const availableAdditions = activeRestaurant.additions ?? []
     return Object.entries(customAdditions).reduce((sum, [addId, qty]) => {
       const found = availableAdditions.find((a) => a.id === addId)
       return sum + (found ? found.price * qty : 0)
     }, 0)
   }, [customizingProduct, customAdditions, activeRestaurant.additions])
 
-  const currentModalItemTotal = (customizingProduct?.price || 0) + currentModalAdditionsTotal
+  const currentModalItemTotal = (customizingProduct?.price ?? 0) + currentModalAdditionsTotal
+
+  const getProductCardClass = (inCart: boolean) => {
+    if (inCart) return "border-orange-500/40 bg-orange-500/5 dark:bg-orange-500/10"
+    return isDark
+      ? "border-slate-800/80 bg-slate-900/40 hover:bg-slate-900/80"
+      : "border-slate-200 bg-white hover:bg-slate-50/80"
+  }
+
+  const getPaymentMethodBtnClass = (method: "Efectivo" | "Transferencia") => {
+    if (paymentMethod === method) {
+      return method === "Efectivo"
+        ? "bg-emerald-500 text-white shadow-xs"
+        : "bg-indigo-500 text-white shadow-xs"
+    }
+    return isDark ? "bg-slate-800 text-slate-300" : "bg-slate-200 text-slate-700"
+  }
+
+  const getAdditionCardClass = (isSelected: boolean) => {
+    if (isSelected) return "border-orange-500/50 bg-orange-500/10 dark:bg-orange-500/15"
+    return isDark
+      ? "border-slate-800/80 bg-slate-900/50 hover:bg-slate-900"
+      : "border-slate-200 bg-slate-50/80 hover:bg-slate-100/60"
+  }
+
+  const getSubmitButtonLabel = () => {
+    if (isUploadingReceipt) return "Subiendo comprobante..."
+    const totalFormatted = formatCOP(finalTotal)
+    return orderToEdit ? `Guardar cambios (${totalFormatted})` : `Registrar Venta (${totalFormatted})`
+  }
+
+  const getCategoryPillClass = (isSelected: boolean) => {
+    if (isSelected) return "bg-orange-500 text-white shadow-xs"
+    return isDark
+      ? "bg-slate-800/80 text-slate-300 hover:bg-slate-800"
+      : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+  }
 
   // Cart Handlers
   const handleQuickAddProduct = (product: MenuItem) => {
@@ -144,7 +583,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
           total: calculateLineItemTotal({
             price: current.price,
             cantidad: updatedQty,
-            adiciones: current.adiciones || [],
+            adiciones: current.adiciones ?? [],
           }),
         }
         return copy
@@ -163,8 +602,8 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
   const handleEditCartItem = (index: number) => {
     const item = selectedItems[index]
     if (!item) return
-    const product: MenuItem = catalogProducts.find((p) => p.id === item.menuItemId) || {
-      id: item.menuItemId || item.id || "temp-item",
+    const product: MenuItem = catalogProducts.find((p) => p.id === item.menuItemId) ?? {
+      id: item.menuItemId ?? item.id ?? "temp-item",
       name: item.name,
       price: item.price,
       category: "",
@@ -172,39 +611,17 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
       description: "",
       inStock: true,
     }
-    const additionsMap: Record<string, number> = {}
-    const availableAdditions = activeRestaurant.additions || []
-    ;(item.adiciones || []).forEach((ad) => {
-      const found = availableAdditions.find((a) => a.id === ad.id || a.name === ad.name)
-      if (found) {
-        additionsMap[found.id] = ad.cantidad
-      }
-    })
+    const additionsMap = buildCartItemAdditionsMap(item, activeRestaurant.additions ?? [])
     setCustomizingProduct(product)
     setEditingCartItemIndex(index)
     setCustomAdditions(additionsMap)
-    setCustomItemNote(item.observacion || "")
+    setCustomItemNote(item.observacion ?? "")
   }
 
   const handleConfirmCustomizedItem = () => {
     if (!customizingProduct) return
 
-    const additionsList: CartAddition[] = []
-    const availableAdditions = activeRestaurant.additions || []
-
-    Object.entries(customAdditions).forEach(([additionId, qty]) => {
-      if (qty > 0) {
-        const found = availableAdditions.find((a) => a.id === additionId)
-        if (found) {
-          additionsList.push({
-            id: found.id,
-            name: found.name,
-            price: found.price,
-            cantidad: qty,
-          })
-        }
-      }
-    })
+    const additionsList = buildSelectedAdditionsList(customAdditions, activeRestaurant.additions ?? [])
 
     if (editingCartItemIndex !== null && editingCartItemIndex >= 0) {
       setSelectedItems((prev) => {
@@ -251,7 +668,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
         total: calculateLineItemTotal({
           price: target.price,
           cantidad: newQty,
-          adiciones: target.adiciones || [],
+          adiciones: target.adiciones ?? [],
         }),
       }
       return copy
@@ -312,59 +729,21 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
     if (!isOpen) return
 
     if (orderToEdit) {
-      const items = (orderToEdit.items || []).map(orderItemToCartItem)
+      const items = (orderToEdit.items ?? []).map(orderItemToCartItem)
       setSelectedItems(items)
 
-      const dir = orderToEdit.customer?.direccion || ""
-      const isMesa =
-        dir.toLowerCase().includes("mesa") ||
-        dir.toLowerCase().includes("salón") ||
-        dir.toLowerCase().includes("salon") ||
-        (orderToEdit.customer?.nombre && orderToEdit.customer.nombre.toLowerCase().startsWith("mesa"))
-      const isMostrador =
-        dir.toLowerCase().includes("mostrador") ||
-        dir.toLowerCase().includes("llevar")
-
-      if (isMesa) {
-        setServiceType("mesa")
-        const mesaMatch =
-          dir.match(/mesa\s*(\d+)/i) ||
-          (orderToEdit.customer?.nombre || "").match(/mesa\s*(\d+)/i)
-        setTableNumber(mesaMatch ? mesaMatch[1] : "")
-      } else if (isMostrador) {
-        setServiceType("mostrador")
-        setTableNumber("")
-      } else {
-        setServiceType("domicilio")
-        setTableNumber("")
-      }
-
-      const custName = orderToEdit.customer?.nombre || ""
-      const isGenericName =
-        custName.startsWith("Mesa ") ||
-        custName === "Cliente Mostrador" ||
-        custName === "Cliente Domicilio" ||
-        custName === "Mesa Salón"
-
-      setCustomerName(isGenericName ? "" : custName)
-      setCustomerPhone(
-        !orderToEdit.customer?.telefono || orderToEdit.customer.telefono === "N/A"
-          ? ""
-          : orderToEdit.customer.telefono
-      )
-      setCustomerAddress(
-        isMesa || isMostrador ? "" : orderToEdit.customer?.direccion || ""
-      )
-      setCustomerBarrio(
-        isMesa || isMostrador || orderToEdit.customer?.barrio === "Local"
-          ? ""
-          : orderToEdit.customer?.barrio || ""
-      )
-      setOrderNotes(orderToEdit.comentario || "")
-      setPaymentMethod(orderToEdit.metodo === "Transferencia" ? "Transferencia" : "Efectivo")
-      setPagoCon(orderToEdit.pagoCon || "")
+      const parsed = parseOrderToEdit(orderToEdit)
+      setServiceType(parsed.serviceType)
+      setTableNumber(parsed.tableNumber)
+      setCustomerName(parsed.customerName)
+      setCustomerPhone(parsed.customerPhone)
+      setCustomerAddress(parsed.customerAddress)
+      setCustomerBarrio(parsed.customerBarrio)
+      setOrderNotes(parsed.orderNotes)
+      setPaymentMethod(parsed.paymentMethod)
+      setPagoCon(parsed.pagoCon)
       setReceiptFile(null)
-      setReceiptPreview(orderToEdit.receiptUrl || null)
+      setReceiptPreview(parsed.receiptPreview)
       setIsUploadingReceipt(false)
       setMobileTab("cart")
     } else {
@@ -391,18 +770,6 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
       }
     }
 
-    // Determine customer display name
-    let finalCustomerName = customerName.trim()
-    if (!finalCustomerName) {
-      if (serviceType === "mesa") {
-        finalCustomerName = tableNumber.trim() ? `Mesa ${tableNumber.trim()}` : "Mesa Salón"
-      } else if (serviceType === "mostrador") {
-        finalCustomerName = "Cliente Mostrador"
-      } else {
-        finalCustomerName = "Cliente Domicilio"
-      }
-    }
-
     let finalReceiptUrl: string | undefined = undefined
     if (paymentMethod === "Transferencia" && (receiptFile || receiptPreview)) {
       setIsUploadingReceipt(true)
@@ -411,71 +778,47 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
           restaurantId: activeRestaurant.id,
           folder: "general",
         })
-        finalReceiptUrl = uploaded || receiptPreview || undefined
+        finalReceiptUrl = uploaded ?? receiptPreview ?? undefined
       } catch (err) {
         console.warn("Could not upload receipt to remote storage, using local preview:", err)
-        finalReceiptUrl = receiptPreview || undefined
+        finalReceiptUrl = receiptPreview ?? undefined
       } finally {
         setIsUploadingReceipt(false)
       }
     }
 
-    const orderData = {
-      customer: {
-        nombre: finalCustomerName,
-        telefono: customerPhone.trim() || "N/A",
-        direccion:
-          serviceType === "domicilio"
-            ? customerAddress.trim()
-            : serviceType === "mesa"
-            ? `Salón - ${tableNumber.trim() ? `Mesa ${tableNumber.trim()}` : "Mesa general"}`
-            : "Mostrador / Para llevar",
-        barrio: serviceType === "domicilio" ? customerBarrio.trim() : "Local",
-      },
-      items: selectedItems.map(cartItemToOrderItem),
-      total: subtotal,
+    const orderPayload = buildOrderPayload({
+      customerName,
+      customerPhone,
+      customerAddress,
+      customerBarrio,
+      serviceType,
+      tableNumber,
+      selectedItems,
+      subtotal,
       deliveryFee,
       finalTotal,
-      metodo: paymentMethod,
-      pagoCon: paymentMethod === "Efectivo" && pagoCon.trim() ? pagoCon.trim() : undefined,
-      cambio: paymentMethod === "Efectivo" && cambio ? cambio : undefined,
-      comentario: orderNotes.trim() || undefined,
+      paymentMethod,
+      pagoCon,
+      cambio,
+      orderNotes,
       receiptUrl: finalReceiptUrl,
-      status: "pending" as const,
-    }
+    })
 
     if (orderToEdit) {
-      updateOrder(orderToEdit.id, {
-        customer: {
-          nombre: finalCustomerName,
-          telefono: customerPhone.trim() || "N/A",
-          direccion:
-            serviceType === "domicilio"
-              ? customerAddress.trim()
-              : serviceType === "mesa"
-              ? `Salón - ${tableNumber.trim() ? `Mesa ${tableNumber.trim()}` : "Mesa general"}`
-              : "Mostrador / Para llevar",
-          barrio: serviceType === "domicilio" ? customerBarrio.trim() : "Local",
-        },
-        items: selectedItems.map(cartItemToOrderItem),
-        total: subtotal,
-        deliveryFee,
-        finalTotal,
-        metodo: paymentMethod,
-        pagoCon: paymentMethod === "Efectivo" && pagoCon.trim() ? pagoCon.trim() : undefined,
-        cambio: paymentMethod === "Efectivo" && cambio ? cambio : undefined,
-        comentario: orderNotes.trim() || undefined,
-        receiptUrl: finalReceiptUrl,
-      })
-
+      updateOrder(orderToEdit.id, orderPayload)
       handleResetForm()
       onClose()
       return
     }
 
-    addOrder(orderData)
+    addOrder({
+      ...orderPayload,
+      status: "pending" as const,
+    })
+    const displayName = resolveCustomerDisplayName(serviceType, customerName, tableNumber)
     toast.success("¡Venta manual registrada en el sistema!", {
-      description: `${finalCustomerName} • Total: ${formatCOP(finalTotal)}`,
+      description: `${displayName} • Total: ${formatCOP(finalTotal)}`,
     })
 
     handleResetForm()
@@ -637,13 +980,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                       key={cat}
                       type="button"
                       onClick={() => setSelectedCategory(cat)}
-                      className={`shrink-0 rounded-lg px-3 py-1 text-xs font-semibold capitalize transition-all cursor-pointer ${
-                        isSelected
-                          ? "bg-orange-500 text-white shadow-xs"
-                          : isDark
-                          ? "bg-slate-800/80 text-slate-300 hover:bg-slate-800"
-                          : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                      }`}
+                      className={`shrink-0 rounded-lg px-3 py-1 text-xs font-semibold capitalize transition-all cursor-pointer ${getCategoryPillClass(isSelected)}`}
                     >
                       {cat === "all" ? "Todos Los Productos" : cat}
                     </button>
@@ -664,7 +1001,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
               ) : (
                 <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                   {filteredProducts.map((product) => {
-                    const hasAdditions = (activeRestaurant.additions || []).length > 0
+                    const hasAdditions = (activeRestaurant.additions ?? []).length > 0
                     const inCartCount = selectedItems
                       .filter((i) => i.menuItemId === product.id)
                       .reduce((sum, i) => sum + i.cantidad, 0)
@@ -672,13 +1009,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                     return (
                       <div
                         key={product.id}
-                        className={`group relative flex flex-col justify-between rounded-xl border p-3 transition-all hover:border-orange-500/50 ${
-                          inCartCount > 0
-                            ? "border-orange-500/40 bg-orange-500/5 dark:bg-orange-500/10"
-                            : isDark
-                            ? "border-slate-800/80 bg-slate-900/40 hover:bg-slate-900/80"
-                            : "border-slate-200 bg-white hover:bg-slate-50/80"
-                        }`}
+                        className={`group relative flex flex-col justify-between rounded-xl border p-3 transition-all hover:border-orange-500/50 ${getProductCardClass(inCartCount > 0)}`}
                       >
                         <div>
                           <div className="flex items-start justify-between gap-2">
@@ -961,140 +1292,20 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
 
                 {/* Customer Details Inputs */}
                 <div className={`p-3 sm:p-3.5 space-y-2.5 ${isDark ? "bg-slate-900/40" : "bg-slate-50/70"}`}>
-                  {serviceType === "mesa" ? (
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                          Número de Mesa
-                        </label>
-                        <input
-                          type="text"
-                          maxLength={25}
-                          placeholder="Ej: 3, Terraza 1"
-                          value={tableNumber}
-                          onChange={(e) => setTableNumber(e.target.value)}
-                          className={`mt-1 w-full rounded-lg border px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-orange-500 ${
-                            isDark ? "border-slate-700 bg-slate-950 text-white" : "border-slate-300 bg-white"
-                          }`}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                          Nombre Cliente (Opcional)
-                        </label>
-                        <input
-                          type="text"
-                          maxLength={80}
-                          placeholder="Nombre o apodo"
-                          value={customerName}
-                          onChange={(e) => setCustomerName(e.target.value)}
-                          className={`mt-1 w-full rounded-lg border px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-orange-500 ${
-                            isDark ? "border-slate-700 bg-slate-950 text-white" : "border-slate-300 bg-white"
-                          }`}
-                        />
-                      </div>
-                    </div>
-                  ) : serviceType === "domicilio" ? (
-                    <div className="space-y-2">
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                            Nombre Cliente *
-                          </label>
-                          <input
-                            type="text"
-                            maxLength={80}
-                            placeholder="Nombre completo"
-                            value={customerName}
-                            onChange={(e) => setCustomerName(e.target.value)}
-                            className={`mt-1 w-full rounded-lg border px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-orange-500 ${
-                              isDark ? "border-slate-700 bg-slate-950 text-white" : "border-slate-300 bg-white"
-                            }`}
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                            Teléfono
-                          </label>
-                          <input
-                            type="text"
-                            maxLength={20}
-                            placeholder="300 123 4567"
-                            value={customerPhone}
-                            onChange={(e) => setCustomerPhone(e.target.value)}
-                            className={`mt-1 w-full rounded-lg border px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-orange-500 ${
-                              isDark ? "border-slate-700 bg-slate-950 text-white" : "border-slate-300 bg-white"
-                            }`}
-                          />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                            Dirección de Entrega *
-                          </label>
-                          <input
-                            type="text"
-                            maxLength={150}
-                            placeholder="Calle 10 # 4-20"
-                            value={customerAddress}
-                            onChange={(e) => setCustomerAddress(e.target.value)}
-                            className={`mt-1 w-full rounded-lg border px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-orange-500 ${
-                              isDark ? "border-slate-700 bg-slate-950 text-white" : "border-slate-300 bg-white"
-                            }`}
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                            Barrio *
-                          </label>
-                          <input
-                            type="text"
-                            maxLength={80}
-                            placeholder="Barrio o sector"
-                            value={customerBarrio}
-                            onChange={(e) => setCustomerBarrio(e.target.value)}
-                            className={`mt-1 w-full rounded-lg border px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-orange-500 ${
-                              isDark ? "border-slate-700 bg-slate-950 text-white" : "border-slate-300 bg-white"
-                            }`}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                          Nombre Cliente (Opcional)
-                        </label>
-                        <input
-                          type="text"
-                          maxLength={80}
-                          placeholder="Cliente Mostrador"
-                          value={customerName}
-                          onChange={(e) => setCustomerName(e.target.value)}
-                          className={`mt-1 w-full rounded-lg border px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-orange-500 ${
-                            isDark ? "border-slate-700 bg-slate-950 text-white" : "border-slate-300 bg-white"
-                          }`}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                          Teléfono (Opcional)
-                        </label>
-                        <input
-                          type="text"
-                          maxLength={20}
-                          placeholder="Para fidelización"
-                          value={customerPhone}
-                          onChange={(e) => setCustomerPhone(e.target.value)}
-                          className={`mt-1 w-full rounded-lg border px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-orange-500 ${
-                            isDark ? "border-slate-700 bg-slate-950 text-white" : "border-slate-300 bg-white"
-                          }`}
-                        />
-                      </div>
-                    </div>
-                  )}
+                  <CustomerInputs
+                    serviceType={serviceType}
+                    isDark={isDark}
+                    tableNumber={tableNumber}
+                    setTableNumber={setTableNumber}
+                    customerName={customerName}
+                    setCustomerName={setCustomerName}
+                    customerPhone={customerPhone}
+                    setCustomerPhone={setCustomerPhone}
+                    customerAddress={customerAddress}
+                    setCustomerAddress={setCustomerAddress}
+                    customerBarrio={customerBarrio}
+                    setCustomerBarrio={setCustomerBarrio}
+                  />
 
                   {/* General Order Notes / Kitchen Observations */}
                   <div>
@@ -1124,26 +1335,14 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                         <button
                           type="button"
                           onClick={() => setPaymentMethod("Efectivo")}
-                          className={`rounded-lg px-2.5 py-1 text-xs font-bold transition-all cursor-pointer ${
-                            paymentMethod === "Efectivo"
-                              ? "bg-emerald-500 text-white shadow-xs"
-                              : isDark
-                              ? "bg-slate-800 text-slate-300"
-                              : "bg-slate-200 text-slate-700"
-                          }`}
+                          className={`rounded-lg px-2.5 py-1 text-xs font-bold transition-all cursor-pointer ${getPaymentMethodBtnClass("Efectivo")}`}
                         >
                           💵 Efectivo
                         </button>
                         <button
                           type="button"
                           onClick={() => setPaymentMethod("Transferencia")}
-                          className={`rounded-lg px-2.5 py-1 text-xs font-bold transition-all cursor-pointer ${
-                            paymentMethod === "Transferencia"
-                              ? "bg-indigo-500 text-white shadow-xs"
-                              : isDark
-                              ? "bg-slate-800 text-slate-300"
-                              : "bg-slate-200 text-slate-700"
-                          }`}
+                          className={`rounded-lg px-2.5 py-1 text-xs font-bold transition-all cursor-pointer ${getPaymentMethodBtnClass("Transferencia")}`}
                         >
                           💳 Transferencia
                         </button>
@@ -1199,7 +1398,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                             />
                             <div className="min-w-0 flex-1">
                               <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
-                                {receiptFile?.name || "Comprobante cargado"}
+                                {receiptFile?.name ?? "Comprobante cargado"}
                               </p>
                               <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
                                 ✓ Listo para adjuntar
@@ -1284,13 +1483,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                   className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-5 py-2 text-xs font-bold text-white shadow-md shadow-orange-500/20 hover:from-orange-600 hover:to-amber-600 disabled:opacity-50 cursor-pointer"
                 >
                   <Check className="size-4" />
-                  <span>
-                    {isUploadingReceipt
-                      ? "Subiendo comprobante..."
-                      : orderToEdit
-                      ? `Guardar cambios (${formatCOP(finalTotal)})`
-                      : `Registrar Venta (${formatCOP(finalTotal)})`}
-                  </span>
+                  <span>{getSubmitButtonLabel()}</span>
                 </button>
               </div>
             </form>
@@ -1352,26 +1545,20 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                     </span>
                   </div>
 
-                  {(activeRestaurant.additions || []).length === 0 ? (
+                  {(activeRestaurant.additions ?? []).length === 0 ? (
                     <p className="text-xs text-slate-400 italic py-2">
                       No hay adiciones registradas para este local.
                     </p>
                   ) : (
                     <div className="space-y-1.5">
-                      {(activeRestaurant.additions || []).map((addition) => {
+                      {(activeRestaurant.additions ?? []).map((addition) => {
                         const qty = customAdditions[addition.id] || 0
                         const isSelected = qty > 0
 
                         return (
                           <div
                             key={addition.id}
-                            className={`flex items-center justify-between rounded-xl border p-2.5 transition-all ${
-                              isSelected
-                                ? "border-orange-500/50 bg-orange-500/10 dark:bg-orange-500/15"
-                                : isDark
-                                ? "border-slate-800/80 bg-slate-900/50 hover:bg-slate-900"
-                                : "border-slate-200 bg-slate-50/80 hover:bg-slate-100/60"
-                            }`}
+                            className={`flex items-center justify-between rounded-xl border p-2.5 transition-all ${getAdditionCardClass(isSelected)}`}
                           >
                             <div className="min-w-0 flex-1 pr-2">
                               <div className="flex items-center gap-1.5">

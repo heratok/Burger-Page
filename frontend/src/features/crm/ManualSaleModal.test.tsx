@@ -296,5 +296,62 @@ describe("ManualSaleModal - Point of Sale (POS) Component", () => {
       expect(onClose).toHaveBeenCalled()
     })
   })
+
+  it("switches service modes correctly between Mostrador, Mesa, and Domicilio", () => {
+    render(
+      <RestaurantProvider repository={createTestRepo()}>
+        <ManualSaleModal isOpen={true} onClose={() => {}} />
+      </RestaurantProvider>
+    )
+
+    // Switch to Mesa / Salón
+    const mesaBtn = screen.getByRole("button", { name: /Mesa \/ Salón/i })
+    fireEvent.click(mesaBtn)
+    expect(screen.getByText(/Número de Mesa/i)).toBeDefined()
+    const tableInput = screen.getByPlaceholderText(/Ej: 3, Terraza 1/i)
+    fireEvent.change(tableInput, { target: { value: "5" } })
+    expect(tableInput).toBeDefined()
+
+    // Switch to Domicilio
+    const deliveryBtn = screen.getByRole("button", { name: /Domicilio/i })
+    fireEvent.click(deliveryBtn)
+    expect(screen.getByText(/Dirección de Entrega \*/i)).toBeDefined()
+    expect(screen.getByText(/Barrio \*/i)).toBeDefined()
+
+    // Switch to Mostrador
+    const mostradorBtn = screen.getByRole("button", { name: /Mostrador/i })
+    fireEvent.click(mostradorBtn)
+    expect(screen.getByPlaceholderText(/Cliente Mostrador/i)).toBeDefined()
+  })
+
+  it("prepopulates table number when editing a salon/mesa order", () => {
+    const mockMesaOrder = {
+      id: "ord-mesa-1",
+      orderNumber: 54322,
+      customer: {
+        nombre: "Mesa 8",
+        telefono: "N/A",
+        direccion: "Salón - Mesa 8",
+        barrio: "Local",
+      },
+      items: [],
+      total: 10000,
+      deliveryFee: 0,
+      finalTotal: 10000,
+      metodo: "Efectivo" as const,
+      status: "pending" as const,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }
+
+    render(
+      <RestaurantProvider repository={createTestRepo()}>
+        <ManualSaleModal isOpen={true} onClose={() => {}} orderToEdit={mockMesaOrder} />
+      </RestaurantProvider>
+    )
+
+    const tableInput = screen.getByDisplayValue("8")
+    expect(tableInput).toBeDefined()
+  })
 })
 

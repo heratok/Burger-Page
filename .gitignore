@@ -10,6 +10,7 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+coverage/
 *.local
 .worktrees/
 
@@ -33,6 +34,7 @@ Thumbs.db
 # Local AI tooling state
 .atl/
 .codegraph/
+.scannerwork/
 
 # Playwright (CLI sessions, generated tests, traces, videos, screenshots)
 .playwright-cli/
@@ -70,3 +72,9 @@ browserstack-node-sdk/
 playwright-report-bs/
 # TestSprite runner artifacts and ephemeral test scripts
 testsprite_tests/
+
+# OWASP ZAP security audit reports
+zap-security-report*
+zap-report*
+*.zap.html
+*.zap.json

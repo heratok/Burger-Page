@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { Order, OrderStatus, OrderItem, OrderItemAddition } from '../../../domain/models/Order.js';
 import { EntityNotFoundError } from '../../../domain/errors/DomainErrors.js';
 import { OrderRepository } from '../../../domain/ports/out/OrderRepository.js';
@@ -103,12 +104,12 @@ export class PgOrderRepository implements OrderRepository {
 
   async save(order: Order): Promise<void> {
     const itemsPayload = order.items.map((item) => ({
-      id: item.id || `item_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      id: item.id || `item_${Date.now()}_${randomBytes(4).toString('hex')}`,
       product_id: item.productId,
       quantity: item.quantity,
       observation: item.observation || null,
       additions: (item.additions || []).map((add) => ({
-        id: add.id || `add_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        id: add.id || `add_${Date.now()}_${randomBytes(4).toString('hex')}`,
         addition_id: add.additionId,
         quantity: add.quantity || 1,
       })),
@@ -122,8 +123,8 @@ export class PgOrderRepository implements OrderRepository {
           order.restaurantId,
           order.customerId || null,
           order.paymentMethod,
-          order.paymentAmount !== undefined ? order.paymentAmount : null,
-          order.changeAmount !== undefined ? order.changeAmount : null,
+          order.paymentAmount ?? null,
+          order.changeAmount ?? null,
           order.comment || null,
           JSON.stringify(itemsPayload),
         ]
@@ -236,9 +237,9 @@ export class PgOrderRepository implements OrderRepository {
             order.deliveryFee,
             order.finalTotal,
             order.paymentMethod,
-            order.paymentAmount !== undefined ? order.paymentAmount : null,
-            order.changeAmount !== undefined ? order.changeAmount : null,
-            order.comment !== undefined ? order.comment : null,
+            order.paymentAmount ?? null,
+            order.changeAmount ?? null,
+            order.comment ?? null,
             order.id,
             restaurantId,
           ]
@@ -260,9 +261,9 @@ export class PgOrderRepository implements OrderRepository {
             order.deliveryFee,
             order.finalTotal,
             order.paymentMethod,
-            order.paymentAmount !== undefined ? order.paymentAmount : null,
-            order.changeAmount !== undefined ? order.changeAmount : null,
-            order.comment !== undefined ? order.comment : null,
+            order.paymentAmount ?? null,
+            order.changeAmount ?? null,
+            order.comment ?? null,
             order.id,
             restaurantId,
           ]
@@ -317,7 +318,7 @@ export class PgOrderRepository implements OrderRepository {
 
       // Re-insert the updated items and their additions
       for (const item of order.items) {
-        const itemId = item.id || `ord_item_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+        const itemId = item.id || `ord_item_${Date.now()}_${randomBytes(4).toString('hex')}`;
 
         // Verify product_id foreign key or resolve by name
         let validProductId: string | null = null;
@@ -348,7 +349,7 @@ export class PgOrderRepository implements OrderRepository {
 
         if (item.additions && item.additions.length > 0) {
           for (const add of item.additions) {
-            const addId = add.id || `ord_add_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+            const addId = add.id || `ord_add_${Date.now()}_${randomBytes(4).toString('hex')}`;
 
             // Verify addition_id foreign key or resolve by name
             let validAdditionId: string | null = null;

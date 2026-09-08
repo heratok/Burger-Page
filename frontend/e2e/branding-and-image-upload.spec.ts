@@ -8,7 +8,7 @@ const __dirname = path.dirname(__filename);
 
 test.describe('Admin Image & Branding CRUD Full Suite', () => {
   const realLogoJpg = fs.readFileSync(path.resolve(__dirname, '../public/logo.jpg'));
-  const realBannerPng = fs.readFileSync(path.resolve(__dirname, 'screenshots/cart-after-reload-desktop-1280x800.png'));
+  const realBannerPng = fs.readFileSync(path.resolve(__dirname, 'screenshots/desktop-pos.png'));
 
   test.beforeEach(async ({ page }) => {
     page.on('console', (msg) => console.log(`[BROWSER ${msg.type()}]: ${msg.text()}`));

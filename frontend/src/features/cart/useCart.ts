@@ -22,7 +22,17 @@ export interface UseCartOptions {
 }
 
 export function getCartStorageKey(restaurantId?: string): string {
-  return `${CART_STORAGE_PREFIX}${restaurantId || "default"}`
+  return `${CART_STORAGE_PREFIX}${restaurantId ?? "default"}`
+}
+
+function isValidCartItem(item: unknown): item is CartItem {
+  if (!item || typeof item !== "object") return false
+  const candidate = item as Partial<CartItem>
+  return (
+    typeof candidate.id === "string" &&
+    typeof candidate.price === "number" &&
+    typeof candidate.name === "string"
+  )
 }
 
 export function loadStoredCart(
@@ -50,14 +60,7 @@ export function loadStoredCart(
       items = parsed.items
     }
 
-    return items.filter(
-      (item) =>
-        item &&
-        typeof item === "object" &&
-        typeof item.id === "string" &&
-        typeof item.price === "number" &&
-        typeof item.name === "string"
-    )
+    return items.filter(isValidCartItem)
   } catch (err) {
     console.warn("Failed to load cart from localStorage", err)
     return []
@@ -77,7 +80,7 @@ export function saveStoredCart(
     }
     const envelope: StoredCartEnvelope = {
       version: 1,
-      restaurantId: restaurantId || "default",
+      restaurantId: restaurantId ?? "default",
       updatedAt: Date.now(),
       items,
     }
@@ -142,8 +145,8 @@ export function useCart({
     for (const item of cartItems) {
       const product = products.find(
         (p) =>
-          (item.menuItemId && p.id === item.menuItemId) ||
-          p.name.toLowerCase().trim() === item.name.toLowerCase().trim()
+          (Boolean(item.menuItemId) && p.id === item.menuItemId) ||
+          p.name.trim().toLowerCase() === item.name.trim().toLowerCase()
       )
 
       if (!product) {
@@ -156,7 +159,7 @@ export function useCart({
         continue
       }
 
-      if (product.inStock === false) {
+      if (!product.inStock) {
         hasChanged = true
         if (onItemRemoved) {
           onItemRemoved(item, "out_of_stock")

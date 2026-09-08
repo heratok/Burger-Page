@@ -46,6 +46,11 @@ export const InventoryStats: React.FC<InventoryStatsProps> = ({
       {/* Metric 2: Low Stock Alert */}
       <div
         onClick={onSelectLowStock}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            onSelectLowStock?.()
+          }
+        }}
         className={`rounded-2xl border p-4 transition-all cursor-pointer hover:border-amber-500/50 ${
           lowStockCount > 0
             ? isDark
@@ -95,6 +100,11 @@ export const InventoryStats: React.FC<InventoryStatsProps> = ({
       {/* Metric 4: Suppliers */}
       <div
         onClick={onSelectSuppliers}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            onSelectSuppliers?.()
+          }
+        }}
         className={`rounded-2xl border p-4 transition-all cursor-pointer hover:border-indigo-500/50 ${
           isDark ? "border-slate-800 bg-[#0E1322]" : "border-slate-200/80 bg-white"
         }`}
