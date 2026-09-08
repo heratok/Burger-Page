@@ -63,9 +63,12 @@ describe('CreateOrderUseCase', () => {
 
     mockCustomerRepo = {
       findById: vi.fn(),
+      findByRestaurantId: vi.fn(),
+      findByPhone: vi.fn(),
       findAll: vi.fn(),
       save: vi.fn(),
-    };
+      delete: vi.fn(),
+    } as any;
 
     useCase = new CreateOrderUseCase(
       mockOrderRepo,
@@ -255,4 +258,79 @@ describe('CreateOrderUseCase', () => {
     expect(order.paymentAmount).toBe(50);
     expect(order.changeAmount).toBe(25); // 50 - 25
   });
+
+  it('updates existing customer when phone matches and customerId is not provided', async () => {
+    const mockProduct = { id: 'p1', name: 'Burger', price: 20, isAvailable: true, additions: [], category: 'Food', description: 'Desc', restaurantId: 'burger-craft' };
+    vi.mocked(mockProductRepo.findById).mockResolvedValue(mockProduct as any);
+
+    const existingCustomer = new Customer(
+      'cust-existing-1',
+      'burger-craft',
+      'Old Name',
+      '1234567890',
+      'Old Address',
+      'Old Barrio',
+      '',
+      'old@example.com',
+      '2026-01-01',
+      '2026-01-01'
+    );
+    vi.mocked(mockCustomerRepo.findByPhone).mockResolvedValue(existingCustomer);
+
+    const order = await useCase.execute({
+      restaurantId: 'burger-craft',
+      items: [{ productId: 'p1', quantity: 1, additions: [] }],
+      customer: {
+        name: 'New Name',
+        phone: '1234567890',
+        address: 'New Street 123',
+        barrio: 'New Barrio',
+      },
+    });
+
+    expect(order.customerId).toBe('cust-existing-1');
+    expect(existingCustomer.name).toBe('New Name');
+    expect(existingCustomer.address).toBe('New Street 123');
+    expect(mockCustomerRepo.save).toHaveBeenCalledWith(existingCustomer);
+  });
+
+  it('creates and saves new customer when phone is not found and customerId is not provided', async () => {
+    const mockProduct = { id: 'p1', name: 'Burger', price: 20, isAvailable: true, additions: [], category: 'Food', description: 'Desc', restaurantId: 'burger-craft' };
+    vi.mocked(mockProductRepo.findById).mockResolvedValue(mockProduct as any);
+    vi.mocked(mockCustomerRepo.findByPhone).mockResolvedValue(null);
+
+    const order = await useCase.execute({
+      restaurantId: 'burger-craft',
+      items: [{ productId: 'p1', quantity: 1, additions: [] }],
+      customer: {
+        name: 'Brand New Customer',
+        phone: '9876543210',
+        address: 'Sunset Blvd 456',
+        barrio: 'West',
+      },
+    });
+
+    expect(order.customerId).toBeDefined();
+    expect(order.customerId).toMatch(/^cust_/);
+    expect(mockCustomerRepo.save).toHaveBeenCalled();
+  });
+
+  it('gracefully creates order even if customer resolution fails', async () => {
+    const mockProduct = { id: 'p1', name: 'Burger', price: 20, isAvailable: true, additions: [], category: 'Food', description: 'Desc', restaurantId: 'burger-craft' };
+    vi.mocked(mockProductRepo.findById).mockResolvedValue(mockProduct as any);
+    vi.mocked(mockCustomerRepo.findByPhone).mockRejectedValue(new Error('DB failure'));
+
+    const order = await useCase.execute({
+      restaurantId: 'burger-craft',
+      items: [{ productId: 'p1', quantity: 1, additions: [] }],
+      customer: {
+        name: 'Customer DB Error',
+        phone: '5551234567',
+      },
+    });
+
+    expect(order.customerId).toBeUndefined();
+    expect(order.id).toBeDefined();
+  });
 });
+

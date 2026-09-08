@@ -152,5 +152,35 @@ describe("Cart Engine - createCartItem and cartItemToOrderItem", () => {
       { id: "add_0", name: "Extra Queso", price: 3000, cantidad: 2 },
     ])
   })
+
+  it("falls back to timestamp-based id when crypto.randomUUID is unavailable", () => {
+    const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis.crypto, "randomUUID")
+    try {
+      Object.defineProperty(globalThis.crypto, "randomUUID", {
+        value: undefined,
+        configurable: true,
+        writable: true,
+      })
+
+      const item = createCartItem({
+        product: mockProduct,
+      })
+      expect(item.id).toMatch(/^cart_\d+$/)
+
+      const converted = orderItemToCartItem({
+        id: "",
+        name: "Test",
+        price: 100,
+        cantidad: 1,
+        total: 100,
+      })
+      expect(converted.id).toMatch(/^cart_\d+$/)
+    } finally {
+      if (originalDescriptor) {
+        Object.defineProperty(globalThis.crypto, "randomUUID", originalDescriptor)
+      }
+    }
+  })
 })
+
 
