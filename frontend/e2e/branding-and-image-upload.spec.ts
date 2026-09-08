@@ -174,8 +174,8 @@ test.describe('Admin Image & Branding CRUD Full Suite', () => {
     // 3. Fill product details
     const productName = `Burger Photo Test ${Date.now().toString().slice(-4)}`;
     await page.getByPlaceholder(/Ej\. Plato Especial de la Casa/i).fill(productName);
-    await page.getByPlaceholder(/0\.00/).fill('14.50');
-    await page.getByPlaceholder(/Describe los ingredientes clave/i).fill('Deliciosa hamburguesa con imagen WebP testeada por TDD');
+    await page.locator('form input[type="number"]').first().fill('14.50');
+    await page.locator('form textarea').fill('Deliciosa hamburguesa con imagen WebP testeada por TDD');
 
     // 4. Upload Product Image (Real JPEG)
     const productFileInput = page.getByTestId('product-image-file-input');
@@ -190,8 +190,9 @@ test.describe('Admin Image & Branding CRUD Full Suite', () => {
     await expect(page.locator('text=Foto optimizada y guardada exitosamente')).toBeVisible({ timeout: 10000 });
 
     // 5. Submit Product
-    const submitBtn = page.locator('form').getByRole('button', { name: /Crear Producto/i });
+    const submitBtn = page.locator('form').getByRole('button', { name: /Guardar en Menú|Crear Producto/i });
     await expect(submitBtn).toBeVisible();
+    await expect(submitBtn).toBeEnabled({ timeout: 10000 });
 
     const [createResp] = await Promise.all([
       page.waitForResponse((resp) => resp.url().includes('/api/products') && resp.request().method() === 'POST', { timeout: 10000 }),
@@ -211,13 +212,12 @@ test.describe('Admin Image & Branding CRUD Full Suite', () => {
     await expect(productCardAfterReload).toBeVisible({ timeout: 10000 });
 
     // 7. Cleanup: Delete created product
-    // Locate the delete button inside or next to this product card
-    const cardContainer = page.locator('div').filter({ hasText: productName }).locator('..').filter({ has: page.getByRole('button', { name: /Eliminar/i }) }).first();
-    const deleteBtn = cardContainer.getByRole('button', { name: /Eliminar/i });
+    const cardContainer = page.locator('.group').filter({ hasText: productName }).first();
+    const deleteBtn = cardContainer.locator('button[title="Eliminar plato"]');
     if (await deleteBtn.isVisible()) {
       await deleteBtn.click();
-      const confirmDelete = page.getByRole('button', { name: /Eliminar/i }).filter({ hasText: /Eliminar/i }).last();
-      if (await confirmDelete.isVisible()) {
+      const confirmDelete = page.getByRole('button', { name: /Eliminar producto/i });
+      if (await confirmDelete.isVisible({ timeout: 3000 }).catch(() => false)) {
         await confirmDelete.click();
       }
     }

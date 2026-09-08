@@ -47,6 +47,8 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   const [isConfirmingRemovePhoto, setIsConfirmingRemovePhoto] = useState(false)
   const [previewFitMode, setPreviewFitMode] = useState<"cover" | "contain">("cover")
 
+  const editingProductId = editingProduct?.id
+
   useEffect(() => {
     if (!isOpen) return
 
@@ -77,7 +79,9 @@ export const ProductModal: React.FC<ProductModalProps> = ({
         preparationTimeMinutes: 15,
       })
     }
-  }, [isOpen, editingProduct, categories])
+    // Only reset form state when modal opens or target product to edit changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, editingProductId])
 
   if (!isOpen) return null
 
@@ -217,6 +221,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                 step="any"
                 value={productForm.price}
                 onChange={(e) => setProductForm({ ...productForm, price: Number(e.target.value) })}
+                placeholder="0.00"
                 className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500"
               />
             </div>
