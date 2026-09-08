@@ -1,6 +1,7 @@
 import { OrderRepository } from '../../domain/ports/out/OrderRepository.js';
 import { Order, OrderStatus } from '../../domain/models/Order.js';
 import { initialOrders } from './seedData.js';
+import { EntityNotFoundError } from '../../domain/errors/DomainErrors.js';
 
 export class InMemoryOrderRepository implements OrderRepository {
   private orders: Map<string, Order> = new Map();
@@ -28,7 +29,7 @@ export class InMemoryOrderRepository implements OrderRepository {
   async updateStatus(id: string, status: OrderStatus, restaurantId: string, _actorId?: string): Promise<void> {
     const order = await this.findById(id, restaurantId);
     if (!order) {
-      throw new Error(`Order ${id} not found for restaurant ${restaurantId}`);
+      throw new EntityNotFoundError(`Order ${id} not found for restaurant ${restaurantId}`);
     }
     order.status = status;
   }
@@ -36,7 +37,7 @@ export class InMemoryOrderRepository implements OrderRepository {
   async updateReceipt(id: string, receiptUrl: string, restaurantId: string): Promise<void> {
     const order = await this.findById(id, restaurantId);
     if (!order) {
-      throw new Error(`Order ${id} not found for restaurant ${restaurantId}`);
+      throw new EntityNotFoundError(`Order ${id} not found for restaurant ${restaurantId}`);
     }
     order.receiptUrl = receiptUrl;
   }
@@ -44,7 +45,7 @@ export class InMemoryOrderRepository implements OrderRepository {
   async delete(id: string, restaurantId: string): Promise<void> {
     const order = await this.findById(id, restaurantId);
     if (!order) {
-      throw new Error(`Order ${id} not found for restaurant ${restaurantId}`);
+      throw new EntityNotFoundError(`Order ${id} not found for restaurant ${restaurantId}`);
     }
     this.orders.delete(id);
   }
@@ -52,7 +53,7 @@ export class InMemoryOrderRepository implements OrderRepository {
   async update(order: Order, restaurantId: string): Promise<Order> {
     const existing = await this.findById(order.id, restaurantId);
     if (!existing) {
-      throw new Error(`Order ${order.id} not found for restaurant ${restaurantId}`);
+      throw new EntityNotFoundError(`Order ${order.id} not found for restaurant ${restaurantId}`);
     }
     this.orders.set(order.id, order);
     return order;

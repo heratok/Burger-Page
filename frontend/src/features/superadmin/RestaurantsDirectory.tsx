@@ -32,19 +32,24 @@ export const RestaurantsDirectory: React.FC = () => {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [restaurantToDelete, setRestaurantToDelete] = useState<RestaurantRecord | null>(null)
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set())
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set())
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
 
   const isDark = adminTheme === "dark"
 
   const filteredRestaurants = useMemo(() => {
-    return restaurants.filter(
-      (r) =>
-        r.config.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        r.slug.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        r.config.tagline.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  }, [restaurants, searchTerm])
+    const term = searchTerm.toLowerCase().trim();
+    return restaurants
+      .filter((r) => !deletedIds.has(r.id) && !deletedIds.has(r.slug))
+      .filter((r) => {
+        if (!term) return true;
+        const name = (r.config?.name || r.name || "").toLowerCase();
+        const slug = (r.slug || "").toLowerCase();
+        const tagline = (r.config?.tagline || r.tagline || "").toLowerCase();
+        return name.includes(term) || slug.includes(term) || tagline.includes(term);
+      });
+  }, [restaurants, searchTerm, deletedIds]);
 
   const paginatedRestaurants = useMemo(() => {
     const start = (currentPage - 1) * pageSize
@@ -274,6 +279,7 @@ export const RestaurantsDirectory: React.FC = () => {
             setRestaurantToDelete(null)
             try {
               await deleteRestaurant(idToDelete)
+              setDeletedIds((prev) => new Set(prev).add(idToDelete))
             } finally {
               setDeletingIds((prev) => {
                 const next = new Set(prev)

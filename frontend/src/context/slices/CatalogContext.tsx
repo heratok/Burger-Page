@@ -2,7 +2,7 @@ import React, { createContext, useContext, useCallback, useMemo, useEffect, useS
 import type { StorefrontConfig, MenuItem, AdditionItem } from "@/types/restaurant"
 import { DEFAULT_STORE_CONFIG } from "@/constants/themePresets"
 import { useTenant } from "./TenantContext"
-import { apiClient } from "@/core/api/apiClient"
+import { apiClient, isNotFoundError } from "@/core/api/apiClient"
 import { toast } from "sonner"
 import { nextTempId } from "@/lib/ids"
 
@@ -260,6 +260,10 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       // Sync with backend API
       apiClient.deleteProduct(id, activeRestaurant.id).catch((err) => {
+        if (isNotFoundError(err)) {
+          // Resource already absent on server: preserve client deletion without rollback
+          return
+        }
         if (import.meta.env?.MODE !== 'test') {
           console.warn("Could not delete product from backend API:", err)
         }
@@ -324,10 +328,12 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
       toast.success(`Adicional "${item.name}" creado`)
 
       // Sync with backend API
+      const targetRestId = activeRestaurant?.id
       apiClient.createAddition({
         name: item.name,
         price: item.price,
         isAvailable: item.available,
+        restaurantId: targetRestId,
       }).then((created) => {
         updateActiveRestaurantRecord((current) => ({
           ...current,
@@ -345,7 +351,7 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
         toast.error("Error al guardar adicional en el servidor")
       })
     },
-    [updateActiveRestaurantRecord]
+    [activeRestaurant?.id, updateActiveRestaurantRecord]
   )
 
   const updateAddition = useCallback(
@@ -364,10 +370,12 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
       toast.success("Adicional actualizado")
 
       // Sync with backend API
+      const targetRestId = activeRestaurant?.id
       apiClient.updateAddition(id, {
         name: updates.name,
         price: updates.price,
         isAvailable: updates.available,
+        restaurantId: targetRestId,
       }).catch((err) => {
         if (import.meta.env?.MODE !== 'test') {
           console.warn("Could not update addition in backend API:", err)
@@ -380,7 +388,7 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
         toast.error("Error al actualizar adicional en el servidor")
       })
     },
-    [updateActiveRestaurantRecord]
+    [activeRestaurant?.id, updateActiveRestaurantRecord]
   )
 
   const deleteAddition = useCallback(
@@ -397,7 +405,12 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
       toast.success("Adicional eliminado")
 
       // Sync with backend API
-      apiClient.deleteAddition(id).catch((err) => {
+      const targetRestId = activeRestaurant?.id
+      apiClient.deleteAddition(id, targetRestId).catch((err) => {
+        if (isNotFoundError(err)) {
+          // Resource already absent on server: preserve client deletion without rollback
+          return
+        }
         if (import.meta.env?.MODE !== 'test') {
           console.warn("Could not delete addition from backend API:", err)
         }
@@ -409,7 +422,7 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
         toast.error("Error al eliminar adicional del servidor")
       })
     },
-    [updateActiveRestaurantRecord]
+    [activeRestaurant?.id, updateActiveRestaurantRecord]
   )
 
   const categories = useMemo(() => {

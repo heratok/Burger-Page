@@ -149,10 +149,14 @@ export type OrderItemAdditionInput = z.infer<typeof orderItemAdditionInputSchema
 
 export const orderItemInputSchema = z.object({
   productId: z.string().min(1, 'Product ID is required'),
+  productName: z.string().optional(),
+  name: z.string().optional(),
+  unitPrice: z.number().nonnegative().optional(),
+  price: z.number().nonnegative().optional(),
   quantity: z.number().int().positive('Quantity must be at least 1'),
   observation: z.string().optional(),
   additions: z.array(z.union([z.string(), orderItemAdditionInputSchema])).default([]),
-});
+}).passthrough();
 export type OrderItemInput = z.infer<typeof orderItemInputSchema>;
 
 export const orderCustomerInputSchema = z.object({

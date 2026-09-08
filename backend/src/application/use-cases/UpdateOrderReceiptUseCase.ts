@@ -11,13 +11,26 @@ export class UpdateOrderReceiptUseCase {
       throw new ValidationError('Restaurant ID is required to update order receipt.');
     }
 
-    const order = await this.orderRepo.findById(id, restaurantId);
+    let order = await this.orderRepo.findById(id, restaurantId);
+    let resolvedRestId = restaurantId;
+
+    if (!order) {
+      const altRestId = restaurantId.startsWith('rest-')
+        ? restaurantId.replace(/^rest-/, '')
+        : `rest-${restaurantId}`;
+      const altOrder = await this.orderRepo.findById(id, altRestId);
+      if (altOrder) {
+        order = altOrder;
+        resolvedRestId = altRestId;
+      }
+    }
+
     if (!order) {
       throw new EntityNotFoundError(`Order ${id} not found for restaurant ${restaurantId}`);
     }
 
     order.receiptUrl = dto.receiptUrl;
-    await this.orderRepo.updateReceipt(id, dto.receiptUrl, restaurantId);
+    await this.orderRepo.updateReceipt(id, dto.receiptUrl, resolvedRestId);
 
     return order;
   }

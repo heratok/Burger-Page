@@ -36,19 +36,27 @@ export class ProductController {
   private async resolveRestaurantId(query: { restaurantId?: string; slug?: string } = {}): Promise<string> {
     if (query.restaurantId) {
       if (this.restaurantRepo) {
-        const rest = await this.restaurantRepo.findById(query.restaurantId);
+        const rest =
+          (await this.restaurantRepo.findById(query.restaurantId)) ||
+          (await this.restaurantRepo.findBySlug(query.restaurantId)) ||
+          (await this.restaurantRepo.findBySlug(query.restaurantId.replace(/^rest-/, ''))) ||
+          (await this.restaurantRepo.findById(query.restaurantId.replace(/^rest-/, '')));
         if (!rest) {
           throw new EntityNotFoundError(`Restaurant '${query.restaurantId}' not found.`);
         }
         if (!rest.isActive) {
           throw new ValidationError(`Restaurant '${rest.name}' is currently inactive.`);
         }
+        return rest.id;
       }
       return query.restaurantId;
     }
 
     if (query.slug && this.restaurantRepo) {
-      const rest = await this.restaurantRepo.findBySlug(query.slug);
+      const rest =
+        (await this.restaurantRepo.findBySlug(query.slug)) ||
+        (await this.restaurantRepo.findById(query.slug)) ||
+        (await this.restaurantRepo.findBySlug(query.slug.replace(/^rest-/, '')));
       if (!rest) {
         throw new EntityNotFoundError(`Restaurant with slug '${query.slug}' not found.`);
       }
@@ -78,6 +86,18 @@ export class ProductController {
         if (active) restaurantId = active.id;
       }
     }
+
+    if (restaurantId && this.restaurantRepo) {
+      const rest =
+        (await this.restaurantRepo.findById(restaurantId)) ||
+        (await this.restaurantRepo.findBySlug(restaurantId)) ||
+        (await this.restaurantRepo.findBySlug(restaurantId.replace(/^rest-/, ''))) ||
+        (await this.restaurantRepo.findById(restaurantId.replace(/^rest-/, '')));
+      if (rest) {
+        return rest.id;
+      }
+    }
+
     return restaurantId || '';
   }
 

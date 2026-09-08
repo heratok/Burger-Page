@@ -41,6 +41,18 @@ export class OrderController {
         if (active) restaurantId = active.id;
       }
     }
+
+    if (restaurantId && this.restaurantRepo) {
+      const rest =
+        (await this.restaurantRepo.findById(restaurantId)) ||
+        (await this.restaurantRepo.findBySlug(restaurantId)) ||
+        (await this.restaurantRepo.findBySlug(restaurantId.replace(/^rest-/, ''))) ||
+        (await this.restaurantRepo.findById(restaurantId.replace(/^rest-/, '')));
+      if (rest) {
+        return rest.id;
+      }
+    }
+
     return restaurantId || '';
   }
 

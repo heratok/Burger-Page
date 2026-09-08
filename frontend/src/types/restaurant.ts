@@ -144,6 +144,8 @@ export interface Supplier {
 export interface RestaurantRecord {
   id: string
   slug: string
+  name?: string
+  tagline?: string
   adminPassword?: string
   config: StorefrontConfig
   categories?: string[]

@@ -8,7 +8,7 @@ import {
   TenantRepository,
   defaultTenantRepository,
 } from "@/core/storage/TenantRepository"
-import { apiClient } from "@/core/api/apiClient"
+import { apiClient, isNotFoundError } from "@/core/api/apiClient"
 import { useAuth } from "./AuthContext"
 import { toast } from "sonner"
 import { nextTempId } from "@/lib/ids"
@@ -303,15 +303,25 @@ export const TenantProvider: React.FC<{
           categories: ["General"],
           config: newRecord.config,
         })
-        .then((created) => {
+        .then(async (created) => {
           if (created && created.id) {
-            setEnvelope((prev) => ({
-              ...prev,
-              restaurants: prev.restaurants.map((r) =>
-                r.id === newRecord.id ? { ...r, id: created.id } : r
-              ),
-            }))
+            setEnvelope((prev) => {
+              const exists = prev.restaurants.some((r) => r.id === created.id || r.id === newRecord.id);
+              if (exists) {
+                return {
+                  ...prev,
+                  restaurants: prev.restaurants.map((r) =>
+                    r.id === newRecord.id ? { ...r, ...created, id: created.id } : r
+                  ),
+                };
+              }
+              return {
+                ...prev,
+                restaurants: [...prev.restaurants, { ...newRecord, ...created, id: created.id }],
+              };
+            });
           }
+          await refreshRestaurants();
         })
         .catch((err) => {
           if (import.meta.env?.MODE !== 'test') {
@@ -322,7 +332,7 @@ export const TenantProvider: React.FC<{
       toast.success(`Restaurante "${data.name}" creado exitosamente`)
       return newRecord
     },
-    []
+    [refreshRestaurants]
   )
 
   const updateRestaurant = useCallback(
@@ -384,6 +394,10 @@ export const TenantProvider: React.FC<{
       try {
         await apiClient.deleteRestaurant(id)
       } catch (err) {
+        if (isNotFoundError(err)) {
+          // Resource already absent on server: preserve client deletion without rollback
+          return
+        }
         if (import.meta.env?.MODE !== 'test') {
           console.warn("Could not soft delete restaurant from backend API, rolling back:", err)
         }

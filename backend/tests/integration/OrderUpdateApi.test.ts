@@ -237,4 +237,119 @@ describe('Order Update API (TDD)', () => {
     expect(capturedEvent.payload.deliveryFee).toBe(6);
     expect(capturedEvent.payload.comment).toBe('Urgent: deliver quickly and hot');
   });
+
+  it('should successfully update order and update status when restaurantId has rest- prefix mismatch in token', async () => {
+    // 1. Create order with 'burger-craft'
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/api/orders',
+      payload: {
+        restaurantId: 'burger-craft',
+        items: [
+          {
+            productId: product1Id,
+            quantity: 1,
+          },
+        ],
+        paymentMethod: 'Efectivo',
+        paymentAmount: 50,
+      },
+    });
+    expect(createRes.statusCode).toBe(201);
+    const order = createRes.json();
+
+    // 2. Token has 'rest-burger-craft' instead of 'burger-craft'
+    const altToken = jwtService.generateToken({
+      id: 'usr-craft-alt',
+      username: 'admin_craft_alt',
+      role: 'restaurant_admin',
+      restaurantId: 'rest-burger-craft',
+    });
+
+    // 3. Update order with altToken
+    const updateRes = await app.inject({
+      method: 'PUT',
+      url: `/api/orders/${order.id}`,
+      headers: { authorization: `Bearer ${altToken}` },
+      payload: {
+        comment: 'Updated with altRestId',
+        deliveryFee: 10,
+      },
+    });
+    expect(updateRes.statusCode).toBe(200);
+    expect(updateRes.json().comment).toBe('Updated with altRestId');
+
+    // 4. Update status with altToken
+    const statusRes = await app.inject({
+      method: 'PATCH',
+      url: `/api/orders/${order.id}/status`,
+      headers: { authorization: `Bearer ${altToken}` },
+      payload: {
+        status: 'cooking',
+      },
+    });
+    expect(statusRes.statusCode).toBe(200);
+    expect(statusRes.json().status).toBe('cooking');
+
+    // 5. Get by ID with altToken
+    const getRes = await app.inject({
+      method: 'GET',
+      url: `/api/orders/${order.id}`,
+      headers: { authorization: `Bearer ${altToken}` },
+    });
+    expect(getRes.statusCode).toBe(200);
+    expect(getRes.json().status).toBe('cooking');
+  });
+
+  it('PUT /api/orders/:id returns 404 Entity Not Found when updating a non-existent order', async () => {
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/api/orders/ord-non-existent-999',
+      headers: { authorization: `Bearer ${craftToken}` },
+      payload: {
+        comment: 'Should fail with 404',
+      },
+    });
+
+    expect(res.statusCode).toBe(404);
+    const body = res.json();
+    expect(body.title).toBe('Entity Not Found');
+  });
+
+  it('PUT /api/orders/:id recalculates subtotal and finalTotal accurately when items or deliveryFee are changed', async () => {
+    // 1. Create order
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/api/orders',
+      payload: {
+        restaurantId: 'burger-craft',
+        items: [{ productId: product1Id, quantity: 1 }],
+        deliveryFee: 5,
+        paymentMethod: 'Efectivo',
+      },
+    });
+    expect(createRes.statusCode).toBe(201);
+    const order = createRes.json();
+    expect(order.subtotal).toBe(20);
+    expect(order.finalTotal).toBe(20);
+
+    // 2. Update with 3 x product2 ($25) and new deliveryFee $8
+    const updateRes = await app.inject({
+      method: 'PUT',
+      url: `/api/orders/${order.id}`,
+      headers: { authorization: `Bearer ${craftToken}` },
+      payload: {
+        items: [{ productId: product2Id, quantity: 3 }],
+        deliveryFee: 8,
+      },
+    });
+
+    expect(updateRes.statusCode).toBe(200);
+    const updated = updateRes.json();
+    // 3 * 25 = 75 subtotal, + 8 deliveryFee = 83 finalTotal
+    expect(updated.subtotal).toBe(75);
+    expect(updated.finalTotal).toBe(83);
+  });
 });
+
+

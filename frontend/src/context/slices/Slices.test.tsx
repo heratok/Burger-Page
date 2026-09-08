@@ -1462,6 +1462,7 @@ describe("CatalogContext Slice - Dynamic Category Management", () => {
       name: "Tocineta Crujiente",
       price: 3500,
       isAvailable: true,
+      restaurantId: "rest-default",
     })
 
     // 2. Update Addition
@@ -1477,6 +1478,7 @@ describe("CatalogContext Slice - Dynamic Category Management", () => {
       name: "Tocineta Extra Crujiente",
       price: 4000,
       isAvailable: false,
+      restaurantId: "rest-burger-craft",
     })
 
     // 3. Delete Addition
@@ -1484,7 +1486,7 @@ describe("CatalogContext Slice - Dynamic Category Management", () => {
       result.current.deleteAddition("add-server-1")
     })
 
-    expect(deleteAdditionSpy).toHaveBeenCalledWith("add-server-1")
+    expect(deleteAdditionSpy).toHaveBeenCalledWith("add-server-1", "rest-burger-craft")
   })
 
   it("produces distinct ids for two addProduct calls in the same tick (collision regression)", async () => {
