@@ -231,7 +231,7 @@ export const CustomizerBrandingSection: React.FC<CustomizerBrandingSectionProps>
           <input
             ref={bannerInputRef}
             type="file"
-            accept="image/png,image/jpeg,image/webp"
+            accept="image/png,image/jpeg,image/webp,image/svg+xml,image/avif"
             onChange={(e) => handleImageUpload(e, "bannerUrl")}
             disabled={uploadingField !== null}
             className="hidden"

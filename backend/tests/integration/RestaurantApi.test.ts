@@ -256,4 +256,81 @@ describe('Restaurant API & Multi-Tenant Security (Integration)', () => {
     });
     expect(publicGetBySlug.statusCode).toBe(404);
   });
+
+  describe('PUT /api/restaurants/:id (Tenant Configuration & Branding Updates)', () => {
+    it('PUT /api/restaurants/:id without auth should return 401 Unauthorized', async () => {
+      const response = await app.inject({
+        method: 'PUT',
+        url: '/api/restaurants/burger-craft',
+        payload: {
+          config: {
+            logoUrl: 'https://example.com/logo.webp'
+          }
+        }
+      });
+      expect(response.statusCode).toBe(401);
+    });
+
+    it('PUT /api/restaurants/:id with restaurant_admin updating their own restaurant should return 200 OK and persist config', async () => {
+      const response = await app.inject({
+        method: 'PUT',
+        url: '/api/restaurants/burger-craft',
+        headers: { authorization: `Bearer ${tokenRestaurantAdmin}` },
+        payload: {
+          config: {
+            logoUrl: 'https://example.com/craft-logo.webp',
+            bannerUrl: 'https://example.com/craft-banner.webp',
+            primaryColor: '#4F46E5',
+          }
+        }
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body.config.logoUrl).toBe('https://example.com/craft-logo.webp');
+      expect(body.config.bannerUrl).toBe('https://example.com/craft-banner.webp');
+      expect(body.config.primaryColor).toBe('#4F46E5');
+
+      // Verify persistence via GET
+      const getRes = await app.inject({
+        method: 'GET',
+        url: '/api/restaurants/burger-craft',
+      });
+      expect(getRes.statusCode).toBe(200);
+      expect(getRes.json().config.logoUrl).toBe('https://example.com/craft-logo.webp');
+      expect(getRes.json().config.bannerUrl).toBe('https://example.com/craft-banner.webp');
+    });
+
+    it('PUT /api/restaurants/:id with restaurant_admin updating a different restaurant should return 403 Forbidden', async () => {
+      const response = await app.inject({
+        method: 'PUT',
+        url: '/api/restaurants/pizzeria-napoli',
+        headers: { authorization: `Bearer ${tokenRestaurantAdmin}` },
+        payload: {
+          config: {
+            logoUrl: 'https://example.com/hacked.webp'
+          }
+        }
+      });
+
+      expect(response.statusCode).toBe(403);
+      expect(response.json().detail).toContain('authorized to update your own restaurant');
+    });
+
+    it('PUT /api/restaurants/:id with super_admin updating any restaurant should return 200 OK', async () => {
+      const response = await app.inject({
+        method: 'PUT',
+        url: '/api/restaurants/burger-craft',
+        headers: { authorization: `Bearer ${tokenSuperAdmin}` },
+        payload: {
+          config: {
+            logoUrl: 'https://example.com/super-craft-logo.webp'
+          }
+        }
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json().config.logoUrl).toBe('https://example.com/super-craft-logo.webp');
+    });
+  });
 });

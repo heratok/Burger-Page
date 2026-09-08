@@ -78,7 +78,18 @@ export async function optimizeImageToWebP(
 
     img.onerror = () => {
       URL.revokeObjectURL(objectUrl);
-      reject(new Error('No se pudo procesar la imagen seleccionada'));
+      // Resilient fallback: If Image() decoding fails in the browser (e.g. SVG without explicit viewBox/dimensions,
+      // exotic color profiles or formats), read directly as a Data URL so upload and preview never fail.
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          resolve(reader.result);
+        } else {
+          reject(new Error('No se pudo procesar la imagen seleccionada'));
+        }
+      };
+      reader.onerror = () => reject(new Error('No se pudo procesar la imagen seleccionada'));
+      reader.readAsDataURL(file);
     };
 
     img.src = objectUrl;

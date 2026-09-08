@@ -4,17 +4,39 @@ import { apiClient } from '../api/apiClient';
  * Converts a base64/WebP Data URL to a native Blob for storage upload.
  */
 export function dataUrlToBlob(dataUrl: string): Blob {
-  const parts = dataUrl.split(';base64,');
-  const contentType = parts[0].replace('data:', '') || 'image/webp';
-  const raw = window.atob(parts[1]);
-  const rawLength = raw.length;
-  const uInt8Array = new Uint8Array(rawLength);
-
-  for (let i = 0; i < rawLength; ++i) {
-    uInt8Array[i] = raw.charCodeAt(i);
+  if (!dataUrl || typeof dataUrl !== 'string') {
+    return new Blob([], { type: 'image/webp' });
   }
 
-  return new Blob([uInt8Array], { type: contentType });
+  if (!dataUrl.includes(';base64,')) {
+    const commaIndex = dataUrl.indexOf(',');
+    const header = commaIndex !== -1 ? dataUrl.slice(0, commaIndex) : '';
+    const content = commaIndex !== -1 ? dataUrl.slice(commaIndex + 1) : dataUrl;
+    const contentType = header.replace(/^data:/, '').split(';')[0] || 'image/svg+xml';
+    try {
+      const decoded = decodeURIComponent(content);
+      return new Blob([decoded], { type: contentType });
+    } catch {
+      return new Blob([content], { type: contentType });
+    }
+  }
+
+  const parts = dataUrl.split(';base64,');
+  const contentType = parts[0].replace(/^data:/, '') || 'image/webp';
+  try {
+    const raw = window.atob(parts[1] || '');
+    const rawLength = raw.length;
+    const uInt8Array = new Uint8Array(rawLength);
+
+    for (let i = 0; i < rawLength; ++i) {
+      uInt8Array[i] = raw.charCodeAt(i);
+    }
+
+    return new Blob([uInt8Array], { type: contentType });
+  } catch (e) {
+    console.warn('Failed to parse base64 Data URL to Blob, falling back:', e);
+    return new Blob([dataUrl], { type: contentType });
+  }
 }
 
 export interface UploadImageOptions {
