@@ -51,7 +51,7 @@ test.describe('Admin Image & Branding CRUD Full Suite', () => {
     await brandingTab.click();
 
     // 3. Upload Logo (Real JPEG)
-    const logoInput = page.locator('input[type="file"][accept*="image/svg+xml"]');
+    const logoInput = page.getByTestId('logo-file-input');
     await expect(logoInput).toBeAttached();
 
     await logoInput.setInputFiles({
@@ -67,7 +67,7 @@ test.describe('Admin Image & Branding CRUD Full Suite', () => {
     await expect(logoImg).toBeVisible({ timeout: 5000 });
 
     // 4. Upload Banner (Real PNG)
-    const bannerInput = page.locator('input[type="file"][accept="image/png,image/jpeg,image/webp"]');
+    const bannerInput = page.getByTestId('banner-file-input');
     await expect(bannerInput).toBeAttached();
 
     await bannerInput.setInputFiles({
@@ -173,12 +173,12 @@ test.describe('Admin Image & Branding CRUD Full Suite', () => {
 
     // 3. Fill product details
     const productName = `Burger Photo Test ${Date.now().toString().slice(-4)}`;
-    await page.getByPlaceholder(/Ej: Doble Carne Clásica/i).fill(productName);
+    await page.getByPlaceholder(/Ej\. Plato Especial de la Casa/i).fill(productName);
     await page.getByPlaceholder(/0\.00/).fill('14.50');
     await page.getByPlaceholder(/Describe los ingredientes clave/i).fill('Deliciosa hamburguesa con imagen WebP testeada por TDD');
 
     // 4. Upload Product Image (Real JPEG)
-    const productFileInput = page.locator('input[type="file"][accept*="image/"]');
+    const productFileInput = page.getByTestId('product-image-file-input');
     await expect(productFileInput).toBeAttached();
 
     await productFileInput.setInputFiles({
@@ -190,7 +190,7 @@ test.describe('Admin Image & Branding CRUD Full Suite', () => {
     await expect(page.locator('text=Foto optimizada y guardada exitosamente')).toBeVisible({ timeout: 10000 });
 
     // 5. Submit Product
-    const submitBtn = page.getByRole('button', { name: /Crear Producto/i });
+    const submitBtn = page.locator('form').getByRole('button', { name: /Crear Producto/i });
     await expect(submitBtn).toBeVisible();
 
     const [createResp] = await Promise.all([
