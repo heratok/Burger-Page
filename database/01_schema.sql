@@ -22,7 +22,9 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'app_user') THEN
-        CREATE ROLE app_user LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE;
+        CREATE ROLE app_user LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE PASSWORD 'app_user_test_only';
+    ELSE
+        ALTER ROLE app_user WITH PASSWORD 'app_user_test_only';
     END IF;
 END $$;
 
@@ -212,6 +214,7 @@ CREATE TABLE IF NOT EXISTS public.orders (
     payment_amount  NUMERIC(12, 2) CHECK (payment_amount IS NULL OR payment_amount >= 0),
     change_amount   NUMERIC(12, 2) CHECK (change_amount IS NULL OR change_amount >= 0),
     comment         TEXT,
+    receipt_url     TEXT,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT uq_orders_restaurant_order_number

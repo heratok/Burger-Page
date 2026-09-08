@@ -85,7 +85,7 @@ npm run test:integration:postgres
 
 Or run manually with Docker Compose:
 ```bash
-# 1. Start test Postgres instance (auto-mounts supabase/schema.sql)
+# 1. Start test Postgres instance (auto-mounts database/01_schema.sql and database/02_seed.sql)
 docker compose up -d --wait postgres-test
 
 # 2. Run the integration suite

@@ -53,11 +53,11 @@ describe('PostgreSQL Real Instance Integration Suite (Docker)', () => {
   // ─────────────────────────────────────────────────────────
   // 1. Migration 001_security_hardening.sql Idempotency
   // ─────────────────────────────────────────────────────────
-  describe('Migration 001_security_hardening.sql', () => {
+  describe('Database 01_schema.sql Idempotency', () => {
     it('applies cleanly and idempotently on the schema', async () => {
       if (!isDbConnected) return;
-      const migrationPath = resolve(process.cwd(), '../supabase/migrations/001_security_hardening.sql');
-      const fallbackPath = resolve(process.cwd(), 'supabase/migrations/001_security_hardening.sql');
+      const migrationPath = resolve(process.cwd(), '../database/01_schema.sql');
+      const fallbackPath = resolve(process.cwd(), 'database/01_schema.sql');
       let sql: string;
       try {
         sql = readFileSync(migrationPath, 'utf8');
