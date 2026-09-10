@@ -15,6 +15,7 @@ import {
   Columns3,
   Archive,
   UtensilsCrossed,
+  RefreshCw,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Pagination } from "@/components/ui/pagination"
@@ -31,6 +32,7 @@ export const OrdersKanban: React.FC = () => {
   const {
     orders,
     isLoadingOrders,
+    refreshOrders,
     updateOrderStatus,
     updateOrderReceipt,
     deleteOrder,
@@ -308,6 +310,24 @@ export const OrdersKanban: React.FC = () => {
               <span>Kanban</span>
             </button>
           </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            aria-label="Sincronizar pedidos"
+            onClick={() => refreshOrders()}
+            disabled={isLoadingOrders}
+            className={`gap-1.5 rounded-xl border text-xs font-bold shrink-0 cursor-pointer ${
+              isDark
+                ? "border-slate-700 bg-slate-850 hover:bg-slate-800 text-slate-200"
+                : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
+            }`}
+            title="Sincronizar pedidos directamente con el servidor"
+          >
+            <RefreshCw className={`size-3.5 shrink-0 ${isLoadingOrders ? "animate-spin text-orange-500" : ""}`} />
+            <span className="hidden sm:inline">Sincronizar</span>
+          </Button>
 
           <Button
             type="button"
