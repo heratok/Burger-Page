@@ -1,7 +1,11 @@
-import { describe, it, expect } from "vitest"
+import { describe, it, expect, vi } from "vitest"
+import React from "react"
+import { renderHook, act } from "@testing-library/react"
 import type { RestaurantRecord, Order, Customer } from "@/types/restaurant"
 import type { OrderEvent } from "@burger-page/contracts"
 import { DEFAULT_STORE_CONFIG } from "@/constants/themePresets"
+import { TenantProvider } from "./TenantContext"
+import { UiProvider } from "./UiContext"
 import {
   mapSseOrderAddition,
   mapSseOrderItem,
@@ -12,6 +16,8 @@ import {
   updateRestaurantOrderState,
   syncBackendOrders,
   syncBackendCustomers,
+  OrderProvider,
+  useOrders,
 } from "./OrderContext"
 
 describe("OrderContext Pure Reducers & Updaters (TDD Tests)", () => {
@@ -226,7 +232,7 @@ describe("OrderContext Pure Reducers & Updaters (TDD Tests)", () => {
   })
 
   describe("syncBackendOrders", () => {
-    it("merges backend orders with current state and sorts descending by date", () => {
+    it("synchronizes backend orders as authoritative source of truth, removing stale local orders", () => {
       const currentOrders = [
         createMockOrder("ord-1"),
       ]
@@ -244,9 +250,23 @@ describe("OrderContext Pure Reducers & Updaters (TDD Tests)", () => {
       ]
 
       const synced = syncBackendOrders(currentOrders, backendOrders, [])
-      expect(synced).toHaveLength(2)
+      expect(synced).toHaveLength(1)
       expect(synced[0].id).toBe("ord-2")
-      expect(synced[1].id).toBe("ord-1")
+    })
+
+    it("returns empty array when backend has 0 orders, purging ghost orders from local state", () => {
+      const currentOrders = [
+        createMockOrder("ord-ghost-1"),
+        createMockOrder("ord-ghost-2"),
+      ]
+      const synced = syncBackendOrders(currentOrders, [], [])
+      expect(synced).toHaveLength(0)
+    })
+
+    it("falls back to currentOrders when backendOrders is not an array", () => {
+      const currentOrders = [createMockOrder("ord-1")]
+      const synced = syncBackendOrders(currentOrders, null as any, [])
+      expect(synced).toEqual(currentOrders)
     })
   })
 
@@ -371,6 +391,41 @@ describe("OrderContext Pure Reducers & Updaters (TDD Tests)", () => {
         timestamp: "2026-08-01T12:00:00.000Z",
       })
       expect(res).toBe(initial)
+    })
+
+    it("refreshOrders invokes apiClient.fetchOrders and updates orders state from backend", async () => {
+      const { apiClient } = await import("@/core/api/apiClient")
+      const fetchSpy = vi.spyOn(apiClient, "fetchOrders").mockResolvedValue([
+        {
+          id: "ord-refreshed",
+          orderNumber: 999,
+          status: "cooking",
+          subtotal: 15000,
+          deliveryFee: 2000,
+          finalTotal: 17000,
+          createdAt: new Date().toISOString(),
+          customer: { name: "Refresh Customer" },
+        } as any,
+      ])
+      vi.spyOn(apiClient, "fetchCustomers").mockResolvedValue([])
+      vi.spyOn(apiClient, "hasToken").mockReturnValue(true)
+
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <TenantProvider>
+          <UiProvider>
+            <OrderProvider>{children}</OrderProvider>
+          </UiProvider>
+        </TenantProvider>
+      )
+
+      const { result } = renderHook(() => useOrders(), { wrapper })
+
+      await act(async () => {
+        await result.current.refreshOrders()
+      })
+
+      expect(fetchSpy).toHaveBeenCalled()
+      expect(result.current.orders.some((o) => o.id === "ord-refreshed")).toBe(true)
     })
   })
 })

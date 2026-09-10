@@ -21,6 +21,7 @@ export interface OrderContextType {
   updateCustomer: (id: string, updates: Partial<Customer>) => Promise<void> | void
   pendingOrdersCount: number
   isLoadingOrders: boolean
+  refreshOrders: () => Promise<void>
 }
 
 
@@ -279,22 +280,21 @@ export function syncBackendOrders(
   backendOrders: any[],
   currentCustomers: Customer[]
 ): Order[] {
-  const ordersMap = new Map<string, Order>()
-  currentOrders.forEach((o) => ordersMap.set(o.id, o))
-
-  if (Array.isArray(backendOrders)) {
-    backendOrders.forEach((bo: any) => {
-      if (bo && bo.id) {
-        const existing = ordersMap.get(bo.id)
-        const matchedCustomer = currentCustomers.find((c) => c.id === bo.customerId)
-        ordersMap.set(bo.id, mapBackendOrderToDomain(bo, existing, matchedCustomer))
-      }
-    })
+  if (!Array.isArray(backendOrders)) {
+    return currentOrders
   }
 
-  return Array.from(ordersMap.values()).sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  )
+  const existingMap = new Map<string, Order>()
+  currentOrders.forEach((o) => existingMap.set(o.id, o))
+
+  return backendOrders
+    .filter((bo: any) => bo && bo.id)
+    .map((bo: any) => {
+      const existing = existingMap.get(bo.id)
+      const matchedCustomer = currentCustomers.find((c) => c.id === bo.customerId)
+      return mapBackendOrderToDomain(bo, existing, matchedCustomer)
+    })
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 }
 
 export function syncBackendCustomers(
@@ -302,55 +302,46 @@ export function syncBackendCustomers(
   backendCustomers: any[],
   nextOrders: Order[]
 ): Customer[] {
-  const customersMap = new Map<string, Customer>()
-  currentCustomers.forEach((c) => customersMap.set(c.id, c))
-
-  if (Array.isArray(backendCustomers) && backendCustomers.length > 0) {
-    backendCustomers.forEach((bc: any) => {
-      if (!bc?.id) return
-
-      const cleanPhone = cleanPhoneNumber(bc.phone || '')
-      const existing =
-        customersMap.get(bc.id) ||
-        Array.from(customersMap.values()).find(
-          (c) => cleanPhoneNumber(c.telefono) === cleanPhone
-        )
-
-      if (existing) {
-        customersMap.delete(existing.id)
-        customersMap.set(bc.id, {
-          ...existing,
-          id: bc.id,
-          nombre: bc.name || existing.nombre,
-          telefono: bc.phone || existing.telefono,
-          direccion: bc.address ?? existing.direccion,
-          barrio: bc.barrio ?? existing.barrio,
-          notes: bc.notes ?? existing.notes,
-        })
-      } else {
-        const custOrders = nextOrders.filter(
-          (o) => cleanPhoneNumber(o.customer.telefono) === cleanPhone
-        )
-        const totalSpent = custOrders.reduce((sum, o) => sum + (o.finalTotal || o.total || 0), 0)
-        const totalOrders = custOrders.length
-        const lastOrderDate = custOrders[0]?.createdAt || bc.createdAt || new Date().toISOString()
-        const loyaltyTier = computeLoyaltyTier(totalOrders, totalSpent)
-
-        customersMap.set(bc.id, {
-          id: bc.id,
-          nombre: bc.name || "Cliente",
-          telefono: bc.phone || "",
-          direccion: bc.address || "",
-          barrio: bc.barrio || "",
-          totalOrders,
-          totalSpent,
-          lastOrderDate,
-          loyaltyTier,
-          notes: bc.notes || "",
-        })
-      }
-    })
+  if (!Array.isArray(backendCustomers)) {
+    return currentCustomers
   }
+
+  const existingMap = new Map<string, Customer>()
+  currentCustomers.forEach((c) => existingMap.set(c.id, c))
+
+  const customersMap = new Map<string, Customer>()
+
+  backendCustomers.forEach((bc: any) => {
+    if (!bc?.id) return
+
+    const cleanPhone = cleanPhoneNumber(bc.phone || "")
+    const existing =
+      existingMap.get(bc.id) ||
+      Array.from(existingMap.values()).find(
+        (c) => cleanPhoneNumber(c.telefono) === cleanPhone
+      )
+
+    const custOrders = nextOrders.filter(
+      (o) => cleanPhoneNumber(o.customer.telefono) === cleanPhone
+    )
+    const totalSpent = custOrders.reduce((sum, o) => sum + (o.finalTotal || o.total || 0), 0)
+    const totalOrders = custOrders.length
+    const lastOrderDate = custOrders[0]?.createdAt || bc.createdAt || new Date().toISOString()
+    const loyaltyTier = computeLoyaltyTier(totalOrders, totalSpent)
+
+    customersMap.set(bc.id, {
+      id: bc.id,
+      nombre: bc.name || existing?.nombre || "Cliente",
+      telefono: bc.phone || existing?.telefono || "",
+      direccion: bc.address ?? existing?.direccion ?? "",
+      barrio: bc.barrio ?? existing?.barrio ?? "",
+      totalOrders: totalOrders || existing?.totalOrders || 0,
+      totalSpent: totalSpent || existing?.totalSpent || 0,
+      lastOrderDate,
+      loyaltyTier,
+      notes: bc.notes ?? existing?.notes ?? "",
+    })
+  })
 
   return Array.from(customersMap.values())
 }
@@ -841,6 +832,32 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   )
 
 
+  const refreshOrders = useCallback(async () => {
+    const targetRestId = activeRestaurant?.id
+    if (!targetRestId || !apiClient.hasToken()) return
+    setIsLoadingOrders(true)
+    try {
+      const [backendOrders, backendCustomers] = await Promise.all([
+        apiClient.fetchOrders(targetRestId),
+        apiClient.fetchCustomers(targetRestId).catch((err) => {
+          if (import.meta.env?.MODE !== 'test') {
+            console.warn("Could not fetch customers from backend API:", err)
+          }
+          return []
+        }),
+      ])
+      updateActiveRestaurantRecord((current) =>
+        syncBackendDataToRestaurant(current, targetRestId, backendOrders, backendCustomers)
+      )
+    } catch (err) {
+      if (import.meta.env?.MODE !== 'test') {
+        console.warn("Could not refresh orders from backend API:", err)
+      }
+    } finally {
+      setIsLoadingOrders(false)
+    }
+  }, [activeRestaurant?.id, updateActiveRestaurantRecord])
+
   const pendingOrdersCount = useMemo(() => {
     return activeRestaurant.orders.filter((o) => o.status === "pending").length
   }, [activeRestaurant.orders])
@@ -856,6 +873,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     updateCustomer,
     pendingOrdersCount,
     isLoadingOrders,
+    refreshOrders,
   }
 
   return <OrderContext.Provider value={value}>{children}</OrderContext.Provider>

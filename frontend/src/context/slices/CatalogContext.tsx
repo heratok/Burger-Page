@@ -55,7 +55,7 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
         .fetchProducts({ restaurantId: restId, slug: restSlug })
         .then((backendProducts) => {
           if (isCancelled) return
-          if (Array.isArray(backendProducts) && backendProducts.length > 0) {
+          if (Array.isArray(backendProducts)) {
             updateActiveRestaurantRecord((current) => {
               if (current.id !== restId && current.slug !== restSlug) {
                 return current

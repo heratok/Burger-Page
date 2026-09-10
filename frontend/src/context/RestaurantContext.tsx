@@ -128,6 +128,7 @@ export interface RestaurantContextType {
 
   // Summary Metrics
   pendingOrdersCount: number
+  refreshOrders: () => Promise<void>
 }
 
 /**
@@ -265,5 +266,6 @@ export const useRestaurant = (): RestaurantContextType => {
     isLoadingCatalog: catalog.isLoadingCatalog,
 
     pendingOrdersCount: orders.pendingOrdersCount,
+    refreshOrders: orders.refreshOrders,
   }
 }
