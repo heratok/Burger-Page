@@ -67,12 +67,25 @@ export function errorHandler(error: FastifyError | Error, request: FastifyReques
     });
   }
 
-  // Fallback generic 500 error - log full context and never let process crash
+  // Framework-produced client errors (e.g. rate limit 429, banned 403, 404 route)
+  const statusCode = (error as FastifyError).statusCode;
+  if (typeof statusCode === 'number' && statusCode >= 400 && statusCode < 500) {
+    const isRateLimit = statusCode === 429;
+    return reply.status(statusCode).send({
+      type: isRateLimit ? 'https://example.com/probs/rate-limited' : 'https://example.com/probs/request-error',
+      title: isRateLimit ? 'Too Many Requests' : 'Request Error',
+      status: statusCode,
+      detail: error.message || 'Request could not be processed.'
+    });
+  }
+
+  // Fallback generic 500 error - log full context and never let process crash.
+  // In production the internal message stays server-side only.
   request.log.error({ err: error, url: request.url, method: request.method }, 'Unhandled Exception');
   return reply.status(500).send({
     type: 'https://example.com/probs/internal-server-error',
     title: 'Internal Server Error',
     status: 500,
-    detail: error.message || 'An unexpected error occurred.'
+    detail: process.env.NODE_ENV === 'production' ? 'An unexpected error occurred.' : (error.message || 'An unexpected error occurred.')
   });
 }
