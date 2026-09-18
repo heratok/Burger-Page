@@ -15,16 +15,21 @@ declare module 'fastify' {
   }
 }
 
-export function createAuthMiddlewares(jwt: JwtService = new JwtService()) {
+export interface AuthMiddlewares {
+  requireAuth: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
+  requireSuperAdmin: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
+  requireAnyAdmin: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
+  tryAuth: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
+  requireStreamToken: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
+}
+
+export function createAuthMiddlewares(jwt: JwtService = new JwtService()): AuthMiddlewares {
   async function requireAuth(req: FastifyRequest, reply: FastifyReply) {
     const authHeader = req.headers.authorization;
     let token: string | undefined;
     if (authHeader && authHeader.startsWith('Bearer ')) {
       token = authHeader.slice(7).trim();
-    } else if ((req.query as any)?.token) {
-      token = (req.query as any).token;
     }
-
     if (!token) {
       return reply.status(401).send({
         type: 'https://example.com/probs/unauthorized',
@@ -98,7 +103,55 @@ export function createAuthMiddlewares(jwt: JwtService = new JwtService()) {
     }
   }
 
-  return { requireAuth, requireSuperAdmin, requireAnyAdmin, tryAuth };
+  /**
+   * Middleware for the EventSource stream: accepts either a regular Bearer
+   * token (fetch-based clients) or a short-lived 'sse'-scoped token in the
+   * query string (browser EventSource cannot send headers). Full-session
+   * JWTs in URLs are rejected on every other endpoint.
+   */
+  async function requireStreamToken(req: FastifyRequest, reply: FastifyReply) {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      await requireAuth(req, reply);
+      if (reply.sent) return;
+    } else {
+      const queryToken = (req.query as any)?.token;
+      if (!queryToken) {
+        return reply.status(401).send({
+          type: 'https://example.com/probs/unauthorized',
+          title: 'Unauthorized',
+          status: 401,
+          detail: 'Missing or invalid Authorization header. Expected Bearer token or SSE stream token.',
+        });
+      }
+      try {
+        const payload = jwt.verifyToken(queryToken);
+        if (payload.scope !== 'sse') {
+          return reply.status(401).send({
+            type: 'https://example.com/probs/unauthorized',
+            title: 'Unauthorized',
+            status: 401,
+            detail: 'Stream token is invalid for this purpose.',
+          });
+        }
+        req.authContext = {
+          userId: payload.sub,
+          username: payload.username,
+          role: payload.role,
+          restaurantId: payload.restaurantId,
+        };
+      } catch (err: any) {
+        return reply.status(401).send({
+          type: 'https://example.com/probs/unauthorized',
+          title: 'Unauthorized',
+          status: 401,
+          detail: err.message || 'Invalid or expired stream token.',
+        });
+      }
+    }
+  }
+
+  return { requireAuth, requireSuperAdmin, requireAnyAdmin, tryAuth, requireStreamToken };
 }
 
 const defaultMiddlewares = createAuthMiddlewares();
@@ -106,3 +159,4 @@ export const requireAuth = defaultMiddlewares.requireAuth;
 export const requireSuperAdmin = defaultMiddlewares.requireSuperAdmin;
 export const requireAnyAdmin = defaultMiddlewares.requireAnyAdmin;
 export const tryAuth = defaultMiddlewares.tryAuth;
+export const requireStreamToken = defaultMiddlewares.requireStreamToken;
