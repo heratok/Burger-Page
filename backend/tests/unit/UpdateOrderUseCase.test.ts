@@ -4,7 +4,7 @@ import { OrderRepository } from '../../src/domain/ports/out/OrderRepository.js';
 import { ProductRepository } from '../../src/domain/ports/out/ProductRepository.js';
 import { ProductAdditionRepository } from '../../src/domain/ports/out/ProductAdditionRepository.js';
 import { CustomerRepository } from '../../src/domain/ports/out/CustomerRepository.js';
-import { EntityNotFoundError, ValidationError } from '../../src/domain/errors/DomainErrors.js';
+import { EntityNotFoundError, ValidationError, InvalidOrderStateError } from '../../src/domain/errors/DomainErrors.js';
 import { Order } from '../../src/domain/models/Order.js';
 
 describe('UpdateOrderUseCase (Unit Tests)', () => {
@@ -14,37 +14,37 @@ describe('UpdateOrderUseCase (Unit Tests)', () => {
   let mockCustomerRepo: CustomerRepository;
   let useCase: UpdateOrderUseCase;
 
-  const createBaseOrder = (): Order => ({
-    id: 'ord-123',
-    restaurantId: 'rest-burger-craft',
-    orderNumber: 101,
-    status: 'pending',
-    items: [
-      {
-        id: 'item-1',
-        productId: 'prod-burger',
-        productName: 'Burger Deluxe',
-        unitPrice: 20000,
-        quantity: 1,
-        additions: [],
-      },
-    ],
-    customer: {
-      name: 'Carlos Perez',
-      phone: '3001234567',
-      address: 'Calle 10 # 5-20',
-      barrio: 'Centro',
-    },
-    subtotal: 20000,
-    deliveryFee: 3000,
-    finalTotal: 23000,
-    total: 23000,
-    paymentMethod: 'Efectivo',
-    paymentAmount: 30000,
-    changeAmount: 7000,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  });
+      const createBaseOrder = (): Order => {
+        const order = new Order(
+          'ord-123',
+          'rest-burger-craft',
+          undefined,
+          [
+            {
+              id: 'item-1',
+              productId: 'prod-burger',
+              productName: 'Burger Deluxe',
+              unitPrice: 20000,
+              quantity: 1,
+              additions: [],
+            },
+          ],
+          'pending',
+          new Date(),
+          3000,
+          101,
+          'Efectivo',
+          30000,
+          7000
+        );
+        order.customer = {
+          name: 'Carlos Perez',
+          phone: '3001234567',
+          address: 'Calle 10 # 5-20',
+          barrio: 'Centro',
+        };
+        return order;
+      };
 
   beforeEach(() => {
     mockOrderRepo = {
@@ -121,7 +121,7 @@ describe('UpdateOrderUseCase (Unit Tests)', () => {
       'ord-123',
       {
         deliveryFee: 5000,
-        status: 'confirmed',
+        status: 'cooking',
         paymentMethod: 'Transferencia',
         comment: 'Sin cebolla por favor',
         receiptUrl: 'https://storage.com/receipt.png',
@@ -130,7 +130,7 @@ describe('UpdateOrderUseCase (Unit Tests)', () => {
     );
 
     expect(result.deliveryFee).toBe(5000);
-    expect(result.status).toBe('confirmed');
+    expect(result.status).toBe('cooking');
     expect((result as any).paymentMethod).toBe('Transferencia');
     expect((result as any).comment).toBe('Sin cebolla por favor');
     expect(result.receiptUrl).toBe('https://storage.com/receipt.png');
@@ -311,7 +311,7 @@ describe('UpdateOrderUseCase (Unit Tests)', () => {
           {
             productId: 'Burger Deluxe',
             quantity: 1,
-            unitPrice: 20000,
+            unitPrice: 99999,
           } as any,
         ],
       },
@@ -352,7 +352,6 @@ describe('UpdateOrderUseCase (Unit Tests)', () => {
             additions: [
               'add-bacon',
               { additionId: 'add-cheese', quantity: 2 },
-              { additionId: 'custom-add', additionName: 'Salsa Especial', unitPrice: 1500, quantity: 1 } as any,
             ],
           },
         ],
@@ -360,19 +359,17 @@ describe('UpdateOrderUseCase (Unit Tests)', () => {
       'rest-burger-craft'
     );
 
-    expect(result.items[0].additions).toHaveLength(3);
+    expect(result.items[0].additions).toHaveLength(2);
     expect(result.items[0].additions[0].additionName).toBe('Tocineta Extra');
     expect(result.items[0].additions[0].unitPrice).toBe(4000);
     expect(result.items[0].additions[1].additionName).toBe('Queso Cheddar');
     expect(result.items[0].additions[1].unitPrice).toBe(3000);
-    expect(result.items[0].additions[2].additionName).toBe('Salsa Especial');
-    expect(result.items[0].additions[2].unitPrice).toBe(1500);
   });
 
   it('correctly recalculates cash changeAmount when paymentAmount is provided', async () => {
     const existing = createBaseOrder();
-    existing.finalTotal = 35000;
-    existing.paymentMethod = 'Efectivo';
+    existing.items[0].unitPrice = 32000;
+    existing.deliveryFee = 3000;
     vi.mocked(mockOrderRepo.findById).mockResolvedValue(existing);
 
     const result = await useCase.execute(
@@ -386,4 +383,76 @@ describe('UpdateOrderUseCase (Unit Tests)', () => {
     expect((result as any).paymentAmount).toBe(50000);
     expect((result as any).changeAmount).toBe(15000);
   });
+      it('rejects client-supplied unitPrice when the product is not in the catalog nor in the order', async () => {
+        const existing = createBaseOrder();
+        vi.mocked(mockOrderRepo.findById).mockResolvedValue(existing);
+        vi.mocked(mockProductRepo.findById).mockResolvedValue(null);
+        vi.mocked(mockProductRepo.findByRestaurantId).mockResolvedValue([]);
+
+        await expect(
+          useCase.execute(
+            'ord-123',
+            {
+              items: [{ productId: 'ghost-product', quantity: 1, unitPrice: 12345 } as any],
+            },
+            'rest-burger-craft'
+          )
+        ).rejects.toThrow(ValidationError);
+      });
+
+      it('honors the order state machine on updates (invalid transition rejected)', async () => {
+        const existing = createBaseOrder();
+        vi.mocked(mockOrderRepo.findById).mockResolvedValue(existing);
+
+        await expect(
+          useCase.execute('ord-123', { status: 'delivered' }, 'rest-burger-craft')
+        ).rejects.toThrow(InvalidOrderStateError);
+      });
+
+      it('rejects quantities above the catalog cap (100)', async () => {
+        const existing = createBaseOrder();
+        vi.mocked(mockOrderRepo.findById).mockResolvedValue(existing);
+        vi.mocked(mockProductRepo.findById).mockResolvedValue({
+          id: 'prod-burger',
+          name: 'Burger Deluxe',
+          price: 20000,
+        } as any);
+
+        await expect(
+          useCase.execute(
+            'ord-123',
+            { items: [{ productId: 'prod-burger', quantity: 150 }] },
+            'rest-burger-craft'
+          )
+        ).rejects.toThrow(ValidationError);
+      });
+
+      it('rejects unknown additions even when the client sends a unitPrice', async () => {
+        const existing = createBaseOrder();
+        vi.mocked(mockOrderRepo.findById).mockResolvedValue(existing);
+        vi.mocked(mockProductRepo.findById).mockResolvedValue({
+          id: 'prod-burger',
+          name: 'Burger Deluxe',
+          price: 20000,
+        } as any);
+        vi.mocked(mockAdditionRepo.findById).mockResolvedValue(null);
+        vi.mocked(mockAdditionRepo.findByRestaurantId).mockResolvedValue([]);
+
+        await expect(
+          useCase.execute(
+            'ord-123',
+            {
+              items: [
+                {
+                  productId: 'prod-burger',
+                  quantity: 1,
+                  additions: [{ additionId: 'ghost-add', unitPrice: 999, quantity: 1 } as any],
+                },
+              ],
+            },
+            'rest-burger-craft'
+          )
+        ).rejects.toThrow(ValidationError);
+      });
+
 });
