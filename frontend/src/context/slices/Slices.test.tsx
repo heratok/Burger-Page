@@ -3,23 +3,8 @@ import { renderHook, act, waitFor } from "@testing-library/react"
 import React from "react"
 import { UiProvider, useUi } from "./UiContext"
 import { AuthProvider, useAuth } from "./AuthContext"
-import type { RestaurantRecord } from "@/types/restaurant"
 import { DEFAULT_STORE_CONFIG } from "@/constants/themePresets"
 
-const mockRestaurants: RestaurantRecord[] = [
-  {
-    id: "rest-burger-craft",
-    slug: "burger-craft",
-    adminPassword: "craft",
-    isActive: true,
-    createdAt: "2026-08-01T12:00:00.000Z",
-    config: DEFAULT_STORE_CONFIG,
-    products: [],
-    additions: [],
-    orders: [],
-    customers: [],
-  },
-]
 
 describe("UiContext Slice", () => {
   beforeEach(() => {
@@ -65,27 +50,38 @@ describe("AuthContext Slice", () => {
     <AuthProvider>{children}</AuthProvider>
   )
 
-  it("rejects invalid passwords", () => {
-    const { result } = renderHook(() => useAuth(), { wrapper })
-    act(() => {
-      const response = result.current.login("wrong-password", mockRestaurants)
-      expect(response.success).toBe(false)
-    })
-    expect(result.current.session.role).toBe("guest")
-  })
+      it("rejects invalid credentials without creating a local session", async () => {
+        const { apiClient } = await import("@/core/api/apiClient")
+        vi.spyOn(apiClient, "login").mockResolvedValue({
+          success: false,
+          error: "Credenciales incorrectas",
+        } as any)
+        const { result } = renderHook(() => useAuth(), { wrapper })
+        await act(async () => {
+          const response = await result.current.login("user", "wrong")
+          expect(response.success).toBe(false)
+        })
+        expect(result.current.session.role).toBe("guest")
+      })
 
-  it("logs out and resets session to guest", () => {
-    const { result } = renderHook(() => useAuth(), { wrapper })
-    act(() => {
-      result.current.login("admin", mockRestaurants)
-    })
-    expect(result.current.session.role).toBe("super")
+      it("authenticates through the backend and resets session to guest on logout", async () => {
+        const { apiClient } = await import("@/core/api/apiClient")
+        vi.spyOn(apiClient, "login").mockResolvedValue({
+          success: true,
+          token: "server-token",
+          user: { id: "u1", username: "root", role: "super_admin" },
+        } as any)
+        const { result } = renderHook(() => useAuth(), { wrapper })
+        await act(async () => {
+          await result.current.login("root", "admin")
+        })
+        expect(result.current.session.role).toBe("super")
 
-    act(() => {
-      result.current.logout()
-    })
-    expect(result.current.session.role).toBe("guest")
-  })
+        act(() => {
+          result.current.logout()
+        })
+        expect(result.current.session.role).toBe("guest")
+      })
 })
 
 describe("InventoryContext Slice", () => {

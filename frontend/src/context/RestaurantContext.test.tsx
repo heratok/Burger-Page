@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest"
+import { describe, it, expect, beforeEach, vi } from "vitest"
 import { renderHook, act } from "@testing-library/react"
 import React from "react"
 import { RestaurantProvider, useRestaurant } from "./RestaurantContext"
@@ -16,6 +16,7 @@ describe("RestaurantContext (Multi-Tenant & Super Admin)", () => {
   beforeEach(() => {
     localStorage.clear()
     sessionStorage.clear()
+    vi.restoreAllMocks()
   })
 
   const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -49,32 +50,43 @@ describe("RestaurantContext (Multi-Tenant & Super Admin)", () => {
     expect(result.current.storeConfig.primaryColor).toBe("#E63946")
   })
 
-  it("authenticates as Super Admin with master password", () => {
-    const { result } = renderHook(() => useRestaurant(), { wrapper })
+      it("authenticates as Super Admin through the backend", async () => {
+        const { apiClient } = await import("@/core/api/apiClient")
+        vi.spyOn(apiClient, "login").mockResolvedValue({
+          success: true,
+          token: "server-token",
+          user: { id: "u1", username: "root", role: "super_admin" },
+        } as any)
+        const { result } = renderHook(() => useRestaurant(), { wrapper })
 
-    expect(result.current.session.role).toBe("guest")
+        expect(result.current.session.role).toBe("guest")
 
-    act(() => {
-      const auth = result.current.login("admin")
-      expect(auth.success).toBe(true)
-      expect(auth.role).toBe("super")
-    })
+        await act(async () => {
+          const auth = await result.current.login("root", "admin")
+          expect(auth.success).toBe(true)
+          expect(auth.role).toBe("super")
+        })
 
-    expect(result.current.session.role).toBe("super")
-  })
+        expect(result.current.session.role).toBe("super")
+      })
 
-  it("authenticates as Local Restaurant Admin with local password", () => {
-    const { result } = renderHook(() => useRestaurant(), { wrapper })
+      it("authenticates as Restaurant Admin through the backend", async () => {
+        const { apiClient } = await import("@/core/api/apiClient")
+        vi.spyOn(apiClient, "login").mockResolvedValue({
+          success: true,
+          token: "server-token",
+          user: { id: "u2", username: "napoli", role: "restaurant_admin", restaurantId: "rest-pizzeria-napoli" },
+        } as any)
+        const { result } = renderHook(() => useRestaurant(), { wrapper })
 
-    act(() => {
-      const auth = result.current.login("napoli", "rest-pizzeria-napoli")
-      expect(auth.success).toBe(true)
-      expect(auth.role).toBe("restaurant")
-    })
+        await act(async () => {
+          const auth = await result.current.login("napoli", "napoli-pass")
+          expect(auth.success).toBe(true)
+          expect(auth.role).toBe("restaurant")
+        })
 
-    expect(result.current.session.role).toBe("restaurant")
-    expect(result.current.activeRestaurant.slug).toBe("pizzeria-napoli")
-  })
+        expect(result.current.session.role).toBe("restaurant")
+      })
 
   it("creates a new restaurant and isolates its catalog", () => {
     const { result } = renderHook(() => useRestaurant(), { wrapper })

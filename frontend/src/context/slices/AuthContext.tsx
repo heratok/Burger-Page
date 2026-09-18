@@ -1,22 +1,25 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react"
-import type { AdminSession, RestaurantRecord } from "@/types/restaurant"
+import type { AdminSession } from "@/types/restaurant"
 import { toast } from "sonner"
 import { apiClient } from "@/core/api/apiClient"
 
 export interface AuthContextType {
   session: AdminSession
+  /**
+   * Authenticates against the backend. There is intentionally NO local
+   * password fallback: default or leaked credentials must never grant
+   * admin access, and the apiClient only ever carries real server tokens.
+   */
   login: (
+    username: string,
     password: string,
-    restaurants: RestaurantRecord[],
-    superAdminPassword?: string,
-    activeRestaurant?: RestaurantRecord,
     targetRestaurantIdOrSlug?: string
-  ) => {
+  ) => Promise<{
     success: boolean
     role: "super" | "restaurant" | null
     restaurantId?: string
     error?: string
-  }
+  }>
   logout: () => void
   setSession: React.Dispatch<React.SetStateAction<AdminSession>>
 }
@@ -45,87 +48,62 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [session])
 
   const login = useCallback(
-    (
+    async (
+      username: string,
       password: string,
-      restaurants: RestaurantRecord[],
-      superAdminPassword = "admin",
-      activeRestaurant?: RestaurantRecord,
       targetRestaurantIdOrSlug?: string
-    ) => {
-      const trimmed = password.trim()
-
-      // 1. Check Super Admin Password
-      if (
-        superAdminPassword &&
-        trimmed === superAdminPassword
-      ) {
-        const newSession: AdminSession = {
-          role: "super",
-          authenticatedAt: new Date().toISOString(),
-        }
-        setSession(newSession)
-        if (!apiClient.hasToken()) {
-          apiClient.setToken(`local-super-${Date.now()}`)
-        }
-        toast.success("Acceso concedido como Super Administrador")
-        return { success: true, role: "super" as const }
+    ): Promise<{
+      success: boolean
+      role: "super" | "restaurant" | null
+      restaurantId?: string
+      error?: string
+    }> => {
+      const trimmedUser = username.trim()
+      const trimmedPass = password.trim()
+      if (!trimmedUser || !trimmedPass) {
+        return { success: false, role: null, error: "Usuario y contraseña son requeridos" }
       }
 
-      // 2. Check Local Restaurant Admin Passwords
-      const candidateRest = targetRestaurantIdOrSlug
-        ? restaurants.find(
-            (r) =>
-              r.id === targetRestaurantIdOrSlug ||
-              r.slug === targetRestaurantIdOrSlug
-          )
-        : activeRestaurant
+      try {
+        const result = await apiClient.login(trimmedUser, trimmedPass)
+        if (!result.success || !result.user) {
+          return {
+            success: false,
+            role: null,
+            error: result.error || "Credenciales incorrectas",
+          }
+        }
 
-      if (
-        candidateRest &&
-        candidateRest.adminPassword &&
-        candidateRest.adminPassword === trimmed
-      ) {
-        const newSession: AdminSession = {
-          role: "restaurant",
-          restaurantId: candidateRest.id,
+        const isSuper = result.user.role === "super_admin"
+        const role = isSuper ? ("super" as const) : ("restaurant" as const)
+        setSession({
+          role,
+          restaurantId: result.user.restaurantId,
           authenticatedAt: new Date().toISOString(),
+        })
+
+        if (role === "super") {
+          toast.success(`Bienvenido, ${result.user.username}`)
+        } else if (result.user.restaurantId) {
+          toast.success("Bienvenido al panel de administración")
         }
-        setSession(newSession)
-        if (!apiClient.hasToken()) {
-          apiClient.setToken(`local-restaurant-${candidateRest.id}-${Date.now()}`)
-        }
-        toast.success(`Bienvenido al panel de ${candidateRest.config.name}`)
+
         return {
           success: true,
-          role: "restaurant" as const,
-          restaurantId: candidateRest.id,
+          role,
+          restaurantId: result.user.restaurantId ?? targetRestaurantIdOrSlug,
         }
-      }
-
-      // 3. Fallback: check all restaurants for matching password
-      const matched = restaurants.find(
-        (r) => r.adminPassword && r.adminPassword === trimmed
-      )
-      if (matched) {
-        const newSession: AdminSession = {
-          role: "restaurant",
-          restaurantId: matched.id,
-          authenticatedAt: new Date().toISOString(),
-        }
-        setSession(newSession)
-        if (!apiClient.hasToken()) {
-          apiClient.setToken(`local-restaurant-${matched.id}-${Date.now()}`)
-        }
-        toast.success(`Bienvenido al panel de ${matched.config.name}`)
+      } catch (err: any) {
+        console.error("[AUTH] Backend login failed:", err)
         return {
-          success: true,
-          role: "restaurant" as const,
-          restaurantId: matched.id,
+          success: false,
+          role: null,
+          error:
+            err?.message?.includes("fetch") || err?.name === "TypeError"
+              ? "No se pudo conectar con el servidor"
+              : "Credenciales incorrectas",
         }
       }
-
-      toast.error("Contraseña incorrecta")
-      return { success: false, role: null, error: "Contraseña incorrecta" }
     },
     []
   )
@@ -150,7 +128,7 @@ const DEFAULT_GUEST_SESSION: AdminSession = Object.freeze({ role: "guest" })
 
 const DEFAULT_AUTH_CONTEXT: AuthContextType = Object.freeze({
   session: DEFAULT_GUEST_SESSION,
-  login: () => ({ success: false, role: null }),
+  login: async () => ({ success: false, role: null }),
   logout: () => {},
   setSession: () => {},
 })
