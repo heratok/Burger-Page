@@ -6,15 +6,40 @@ export interface JwtPayload {
   username: string;
   role: UserRole;
   restaurantId?: string;
+  /** Narrow-purpose tokens (e.g. 'sse' for the EventSource stream). */
+  scope?: string;
   iat: number;
   exp: number;
 }
 
+/**
+ * Public, well-known fallback used ONLY outside production (local dev/tests).
+ * In production the server refuses to sign/verify with it (see getSecret).
+ */
+export const FALLBACK_DEV_SECRET = 'burger-page-secure-jwt-secret-key-change-in-prod';
+
+const MAX_IAT_SKEW_SECONDS = 300;
+
 export class JwtService {
-  private secret: string;
+  /**
+   * Explicit override (tests/di wiring). When undefined, the secret is
+   * resolved lazily from process.env.JWT_SECRET on every use, so the .env
+   * loader (which runs after module imports in ESM) still applies.
+   */
+  private explicitSecret: string | undefined;
 
   constructor(secret?: string) {
-    this.secret = secret || process.env.JWT_SECRET || 'burger-page-secure-jwt-secret-key-change-in-prod';
+    this.explicitSecret = secret;
+  }
+
+  private getSecret(): string {
+    const secret = this.explicitSecret ?? process.env.JWT_SECRET;
+    if (process.env.NODE_ENV === 'production' && (!secret || secret === FALLBACK_DEV_SECRET)) {
+      throw new Error(
+        'JWT_SECRET must be configured in production; refusing to use the insecure fallback secret.'
+      );
+    }
+    return secret || FALLBACK_DEV_SECRET;
   }
 
   private base64UrlEncode(str: string): string {
@@ -34,7 +59,7 @@ export class JwtService {
   }
 
   private sign(headerEncoded: string, payloadEncoded: string): string {
-    return createHmac('sha256', this.secret)
+    return createHmac('sha256', this.getSecret())
       .update(`${headerEncoded}.${payloadEncoded}`)
       .digest('base64')
       .replace(/=/g, '')
@@ -43,7 +68,7 @@ export class JwtService {
   }
 
   generateToken(
-    user: { id: string; username: string; role: UserRole; restaurantId?: string },
+    user: { id: string; username: string; role: UserRole; restaurantId?: string; scope?: string },
     expiresInSeconds: number = 60 * 60 * 24 * 7 // 7 days
   ): string {
     const now = Math.floor(Date.now() / 1000);
@@ -53,6 +78,7 @@ export class JwtService {
       username: user.username,
       role: user.role,
       restaurantId: user.restaurantId,
+      scope: user.scope,
       iat: now,
       exp: now + expiresInSeconds,
     };
@@ -80,13 +106,27 @@ export class JwtService {
       throw new Error('Invalid token signature');
     }
 
-    const payload: JwtPayload = JSON.parse(this.base64UrlDecode(payloadEncoded));
-    const now = Math.floor(Date.now() / 1000);
-
-    if (payload.exp && payload.exp < now) {
-      throw new Error('Token has expired');
+    const header = JSON.parse(this.base64UrlDecode(headerEncoded)) as { alg?: string };
+    if (header.alg !== 'HS256') {
+      throw new Error('Unsupported token algorithm');
     }
 
-    return payload;
+    const payload = JSON.parse(this.base64UrlDecode(payloadEncoded)) as Partial<JwtPayload>;
+    const now = Math.floor(Date.now() / 1000);
+
+    if (typeof payload.exp !== 'number' || !Number.isFinite(payload.exp)) {
+      throw new Error('Token is missing required exp claim');
+    }
+    if (payload.exp < now) {
+      throw new Error('Token has expired');
+    }
+    if (typeof payload.iat !== 'number' || !Number.isFinite(payload.iat)) {
+      throw new Error('Token is missing required iat claim');
+    }
+    if (payload.iat > now + MAX_IAT_SKEW_SECONDS) {
+      throw new Error('Token iat is in the future');
+    }
+
+    return payload as JwtPayload;
   }
 }

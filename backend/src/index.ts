@@ -26,6 +26,12 @@ import { buildApp } from './infrastructure/http/app.js';
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
 const HOST = process.env.HOST || '0.0.0.0';
 
+// Security fail-fast: production must never boot with the public fallback JWT secret.
+if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
+  console.error('❌ [SECURITY] JWT_SECRET is required in production. Set it in the deployment environment before starting.');
+  process.exit(1);
+}
+
 const app = buildApp();
 
 // Filter harmless Fastify v5 deprecation notices from console noise
