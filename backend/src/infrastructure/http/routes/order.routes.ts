@@ -1,7 +1,8 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { OrderController } from '../controllers/OrderController.js';
 import { globalOrderEventBus } from '../../events/OrderEventBus.js';
-import { requireAuth } from '../middleware/auth.middleware.js';
+import { requireAuth, requireStreamToken } from '../middleware/auth.middleware.js';
+import { isOriginAllowed } from '../middleware/cors.js';
 
 export async function orderRoutes(fastify: FastifyInstance, opts: { controller: OrderController }) {
   // 1. List Orders (Protected - Tenant Scoped)
@@ -46,9 +47,36 @@ export async function orderRoutes(fastify: FastifyInstance, opts: { controller: 
     }
   }, opts.controller.list.bind(opts.controller));
 
+  // 1b. Issue a short-lived SSE-scoped token (Bearer only, never in URLs)
+  fastify.post('/stream-token', {
+    preHandler: [requireAuth],
+    schema: {
+      tags: ['Orders'],
+      summary: 'Issue short-lived token for the SSE stream',
+      description: 'Returns a token scoped to the orders stream (valid 60s by default) so browsers can connect via EventSource without leaking the full session JWT into URLs.',
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            token: { type: 'string' },
+            expiresInSeconds: { type: 'number' },
+          },
+        },
+      },
+    },
+  }, async (req: FastifyRequest, reply: FastifyReply) => {
+    const ctx = req.authContext;
+    if (!ctx) {
+      return reply.status(401).send({ title: 'Unauthorized', detail: 'Authentication required.' });
+    }
+    const ttl = Number(process.env.STREAM_TOKEN_TTL_SECONDS) || 60;
+    const streamToken = opts.controller.issueStreamToken({ ...ctx, scope: 'sse' }, ttl);
+    return reply.status(200).send({ token: streamToken, expiresInSeconds: ttl });
+  });
+
   // 2. Real-time SSE stream (Protected - Strictly Tenant Filtered)
   fastify.get('/stream', {
-    preHandler: [requireAuth],
+    preHandler: [requireStreamToken],
     schema: {
       tags: ['Orders'],
       summary: 'Real-time SSE stream for tenant orders',
@@ -57,7 +85,7 @@ export async function orderRoutes(fastify: FastifyInstance, opts: { controller: 
         type: 'object',
         properties: {
           restaurantId: { type: 'string', description: 'Target restaurant identifier for super_admin filter' },
-          token: { type: 'string', description: 'Bearer token for EventSource authentication' },
+          token: { type: 'string', description: 'Short-lived SSE-scoped token obtained from POST /api/orders/stream-token' },
         },
       },
     }
@@ -71,7 +99,13 @@ export async function orderRoutes(fastify: FastifyInstance, opts: { controller: 
     }
 
     reply.hijack();
-    reply.raw.setHeader('Access-Control-Allow-Origin', '*');
+    if (!isOriginAllowed(req.headers.origin)) {
+      reply.raw.statusCode = 403;
+      reply.raw.end('Origin not allowed');
+      return;
+    }
+    reply.raw.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
+    reply.raw.setHeader('Vary', 'Origin');
     reply.raw.setHeader('Content-Type', 'text/event-stream');
     reply.raw.setHeader('Cache-Control', 'no-cache');
     reply.raw.setHeader('Connection', 'keep-alive');
@@ -157,6 +191,7 @@ export async function orderRoutes(fastify: FastifyInstance, opts: { controller: 
 
   // 4. Create Order (Public Storefront - NO requireAuth)
   fastify.post('/', {
+        config: { rateLimit: { max: 30, timeWindow: '1 minute' } },
     schema: {
       tags: ['Orders'],
       summary: 'Create and place a new order',

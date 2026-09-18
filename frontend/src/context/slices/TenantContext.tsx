@@ -26,7 +26,7 @@ export interface TenantContextType {
   activeRestaurant: RestaurantRecord
   activeRestaurantId: string
   activeRestaurantSlug: string
-  superAdminPassword: string
+  superAdminPassword?: string
   isSyncing: boolean
   switchRestaurant: (idOrSlug: string) => void
   createRestaurant: (data: {
@@ -284,10 +284,10 @@ export const TenantProvider: React.FC<{
         customers: [],
       }
 
-      setEnvelope((prev) => ({
-        ...prev,
-        restaurants: [...prev.restaurants, newRecord],
-      }))
+        setEnvelope((prev) => ({
+          ...prev,
+          restaurants: [...prev.restaurants, newRecord],
+        }))
 
       setActiveRestaurantId(newRecord.id)
 
@@ -438,7 +438,7 @@ export const TenantProvider: React.FC<{
     activeRestaurant,
     activeRestaurantId: activeRestaurant.id,
     activeRestaurantSlug: activeRestaurant.slug,
-    superAdminPassword: envelope.superAdminPassword,
+    superAdminPassword: envelope.superAdminPassword ?? undefined,
     isSyncing,
     switchRestaurant,
     createRestaurant,

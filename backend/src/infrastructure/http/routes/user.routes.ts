@@ -45,6 +45,7 @@ export async function userRoutes(
   }, ctrl.create.bind(ctrl));
 
   app.post('/login', {
+        config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
     schema: {
       tags: ['Users'],
       summary: 'Authenticate user',

@@ -8,7 +8,6 @@ export const STORAGE_KEYS = {
 
 export const DEFAULT_ENVELOPE: StorageEnvelopeV2 = {
   version: 2,
-  superAdminPassword: "admin",
   restaurants: [],
 }
 

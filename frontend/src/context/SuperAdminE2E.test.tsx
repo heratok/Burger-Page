@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest"
+import { describe, it, expect, beforeEach, vi } from "vitest"
 import { renderHook, act } from "@testing-library/react"
 import React from "react"
 import { RestaurantProvider, useRestaurant } from "./RestaurantContext"
@@ -12,29 +12,42 @@ const createTestRepo = () => {
   return new TenantRepository(adapter)
 }
 
+// Hermetic test environment: refresh-on-session-change must never hit a
+// real local backend during tests (TDD isolation).
+const hermeticApi = async () => {
+  const { apiClient } = await import("@/core/api/apiClient")
+  vi.spyOn(apiClient, "listRestaurants").mockRejectedValue(new Error("no backend in tests"))
+  vi.spyOn(apiClient, "login").mockResolvedValue({
+    success: true,
+    token: "server-token",
+    user: { id: "u1", username: "root", role: "super_admin" },
+  } as any)
+}
+
 describe("Super Admin - Creación y Aislamiento de Nuevos Restaurantes E2E", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     localStorage.clear()
     sessionStorage.clear()
+    vi.restoreAllMocks()
+    await hermeticApi()
   })
 
   const wrapper = ({ children }: { children: React.ReactNode }) => (
     <RestaurantProvider repository={createTestRepo()}>{children}</RestaurantProvider>
   )
 
-  it("permite al Super Admin crear un nuevo restaurante, personalizarlo, agregar platos y mantenerlo 100% aislado", () => {
+  it("permite al Super Admin crear un nuevo restaurante, personalizarlo, agregar platos y mantenerlo 100% aislado", async () => {
     const { result } = renderHook(() => useRestaurant(), { wrapper })
 
     // 1. Verificar estado inicial (4 restaurantes de fixture)
     expect(result.current.restaurants).toHaveLength(4)
 
-    // 2. Autenticar como Super Admin
-    act(() => {
-      const auth = result.current.login("admin")
-      expect(auth.success).toBe(true)
-      expect(auth.role).toBe("super")
-    })
-
+        // 2. Autenticar como Super Admin (backend)
+    await act(async () => {
+          const auth = await result.current.login("root", "admin")
+          expect(auth.success).toBe(true)
+          expect(auth.role).toBe("super")
+        })
     // 3. Crear un nuevo restaurante "Sushi Express"
     let createdRest: any
     act(() => {

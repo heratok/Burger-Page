@@ -11,6 +11,7 @@ import { RestaurantRepository } from '../../../domain/ports/out/RestaurantReposi
 import { UnauthorizedError, ValidationError } from '../../../domain/errors/DomainErrors.js';
 import { CreateOrderDTO, UpdateOrderStatusDTO, UpdateOrderReceiptDTO, UpdateOrderDTO } from '../../../application/dtos/index.js';
 import { globalOrderEventBus } from '../../events/OrderEventBus.js';
+import { JwtService } from '../../security/JwtService.js';
 
 export class OrderController {
   constructor(
@@ -21,8 +22,30 @@ export class OrderController {
     private readonly updateOrderReceiptUseCase?: UpdateOrderReceiptUseCase,
     private readonly restaurantRepo?: RestaurantRepository,
     private readonly deleteOrderUseCase?: DeleteOrderUseCase,
-    private readonly updateOrderUseCase?: UpdateOrderUseCase
+    private readonly updateOrderUseCase?: UpdateOrderUseCase,
+    private readonly jwtService: JwtService = new JwtService()
   ) {}
+
+  /**
+   * Mints a short-lived token restricted to the SSE stream. Full session JWTs
+   * must never appear in query strings; EventSource cannot set headers, so the
+   * browser receives this scoped token instead.
+   */
+  issueStreamToken(
+    user: { userId: string; username: string; role: string; restaurantId?: string; scope?: string },
+    ttlSeconds: number
+  ): string {
+    return this.jwtService.generateToken(
+      {
+        id: user.userId,
+        username: user.username,
+        role: user.role as 'super_admin' | 'restaurant_admin',
+        restaurantId: user.restaurantId,
+        scope: user.scope,
+      },
+      ttlSeconds
+    );
+  }
 
   private async resolveRestaurantId(req: FastifyRequest): Promise<string> {
     let restaurantId = req.authContext?.restaurantId;

@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { randomUUID, randomBytes } from 'node:crypto';
 import { RestaurantRepository } from '../../domain/ports/out/RestaurantRepository.js';
 import { CategoryRepository } from '../../domain/ports/out/CategoryRepository.js';
 import { Restaurant } from '../../domain/models/Restaurant.js';
@@ -27,14 +27,18 @@ export class CreateRestaurantUseCase {
       throw new ValidationError(`Restaurant with slug "${cleanSlug}" already exists`);
     }
 
-    const restaurantId = input.id || `rest-${Date.now()}`;
+    // Server-owned identity: client-supplied ids are never trusted
+        // (a malicious or stale id could overwrite an existing tenant via upsert).
+        const restaurantId = `rest-${randomUUID()}`;
     const newRestaurant: Restaurant = {
       id: restaurantId,
       slug: cleanSlug,
       name: input.name.trim(),
       tagline: input.tagline || 'Cocina artesanal',
       whatsappNumber: input.whatsappNumber || '573001234567',
-      adminPassword: input.adminPassword || 'admin123',
+      // Default admin credentials must never be predictable: generate a
+          // random secret when the caller does not provide one.
+          adminPassword: input.adminPassword || randomBytes(12).toString('base64url'),
       primaryColor: input.primaryColor || '#FF7A21',
       theme: input.theme || (input.templateType === 'pizza' ? 'warm-cream' : input.templateType === 'tacos' ? 'clean-white' : 'dark-charcoal'),
       config: input.config || {

@@ -1,8 +1,6 @@
 import React, { useState, useRef, useEffect } from "react"
 import { Lock, Eye, EyeOff, Loader2, User } from "lucide-react"
 import { useRestaurant } from "@/context/RestaurantContext"
-import { apiClient } from "@/core/api/apiClient"
-import { toast } from "sonner"
 
 interface LoginModalProps {
   isOpen: boolean
@@ -15,7 +13,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   onClose,
   targetRestaurantIdOrSlug,
 }) => {
-  const { login, setSession, switchRestaurant } = useRestaurant()
+  const { login, switchRestaurant } = useRestaurant()
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
@@ -42,39 +40,19 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     setError("")
 
     try {
-      const result = await apiClient.login(username.trim(), password.trim())
+      const result = await login(username.trim(), password.trim(), targetRestaurantIdOrSlug)
 
-      if (result.success && result.user) {
-        const isSuper = result.user.role === 'super_admin'
-        const role = isSuper ? ('super' as const) : ('restaurant' as const)
-        const resolvedRestId = result.user.restaurantId || (typeof targetRestaurantIdOrSlug === 'string' ? targetRestaurantIdOrSlug : undefined)
-        setSession({
-          role,
-          restaurantId: resolvedRestId,
-          authenticatedAt: new Date().toISOString(),
-        })
-
-        if (role === 'restaurant' && resolvedRestId) {
-          switchRestaurant(resolvedRestId)
-        }
-
-        if (role === 'super') {
-          toast.success(`Bienvenido, ${result.user.username}`)
-        } else {
-          toast.success(`Bienvenido al panel de administración`)
+      if (result.success) {
+        if (result.role === 'restaurant' && result.restaurantId) {
+          switchRestaurant(result.restaurantId)
         }
         onClose()
       } else {
         setError(result.error || "Credenciales incorrectas")
       }
     } catch {
-      // Fallback to legacy password-only login for backwards compatibility
-      const legacyResult = login(password.trim(), targetRestaurantIdOrSlug)
-      if (legacyResult.success) {
-        onClose()
-      } else {
-        setError(legacyResult.error || "Credenciales incorrectas")
-      }
+      // No local fallback: authentication is backend-only.
+      setError("No se pudo conectar con el servidor")
     }
 
     setIsLoading(false)

@@ -170,7 +170,7 @@ export interface AdminSession {
 
 export interface StorageEnvelopeV2 {
   version: 2
-  superAdminPassword: string
+  superAdminPassword?: string
   restaurants: RestaurantRecord[]
 }
 

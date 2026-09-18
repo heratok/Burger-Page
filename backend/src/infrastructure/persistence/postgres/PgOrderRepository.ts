@@ -226,8 +226,7 @@ export class PgOrderRepository implements OrderRepository {
              payment_amount = $9,
              change_amount = $10,
              comment = $11,
-             updated_at = NOW()
-           WHERE id = $12 AND restaurant_id = $13`,
+             status = $12,             updated_at = NOW()           WHERE id = $13 AND restaurant_id = $14`,
           [
             custName,
             custPhone,
@@ -240,6 +239,7 @@ export class PgOrderRepository implements OrderRepository {
             order.paymentAmount ?? null,
             order.changeAmount ?? null,
             order.comment ?? null,
+            order.status,
             order.id,
             restaurantId,
           ]
@@ -254,8 +254,7 @@ export class PgOrderRepository implements OrderRepository {
              payment_amount = $5,
              change_amount = $6,
              comment = $7,
-             updated_at = NOW()
-           WHERE id = $8 AND restaurant_id = $9`,
+             status = $8,             updated_at = NOW()           WHERE id = $9 AND restaurant_id = $10`,
           [
             order.subtotal,
             order.deliveryFee,
@@ -264,6 +263,7 @@ export class PgOrderRepository implements OrderRepository {
             order.paymentAmount ?? null,
             order.changeAmount ?? null,
             order.comment ?? null,
+            order.status,
             order.id,
             restaurantId,
           ]

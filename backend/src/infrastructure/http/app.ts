@@ -1,8 +1,10 @@
 import fastify, { FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
+import rateLimit from '@fastify/rate-limit';
 import swagger from '@fastify/swagger';
 import scalar from '@scalar/fastify-api-reference';
 import { errorHandler } from './middlewares/errorHandler.js';
+import { getAllowedOrigins } from './middleware/cors.js';
 
 // Repositories
 import { InMemoryRestaurantRepository } from '../persistence/InMemoryRestaurantRepository.js';
@@ -298,7 +300,21 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
 
 export function buildApp(
   dependencies?: Partial<AppDependencies>,
-  options?: { dbPath?: string; driver?: StorageDriver }
+  options?: {
+    dbPath?: string;
+    driver?: StorageDriver;
+    rateLimit?: {
+      /** Global max requests per IP per timeWindow (default 300/min). */
+      max?: number;
+      timeWindow?: string;
+      /** Set to false to disable rate limiting entirely. */
+      enabled?: boolean;
+      /** POST /users/login limit per IP (default 10/min). */
+      loginMax?: number;
+      /** Public POST /orders limit per IP (default 30/min). */
+      orderMax?: number;
+    };
+  }
 ): FastifyInstance {
   const isProduction = process.env.NODE_ENV === 'production';
   const isTest = process.env.NODE_ENV === 'test' || Boolean(process.env.VITEST);
@@ -340,16 +356,7 @@ export function buildApp(
 
   const deps = { ...buildDependencies(options?.dbPath, options?.driver), ...dependencies };
 
-  const allowedOrigins = process.env.CORS_ORIGIN
-    ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim())
-    : [
-        'http://localhost:5173',
-        'http://127.0.0.1:5173',
-        'http://localhost:3000',
-        'http://127.0.0.1:3000',
-        'http://localhost:3001',
-        'http://127.0.0.1:3001',
-      ];
+  const allowedOrigins = getAllowedOrigins();
 
   app.register(cors, {
     origin: (origin, cb) => {
@@ -422,7 +429,50 @@ export function buildApp(
     }
   });
 
+  // Rate limiting (login brute-force / storefront spam protection)
+  //
+  // NOTE: the plugin's built-in per-route wiring (via the internal onRoute
+  // hook) does not apply with this Fastify version, so we drive the exposed
+  // `api.rateLimit()` handlers through an explicit onRequest hook instead.
+  const rateMax = options?.rateLimit?.max ?? (Number(process.env.RATE_LIMIT_MAX) || 300);
+  const rateWindow = options?.rateLimit?.timeWindow ?? process.env.RATE_LIMIT_WINDOW ?? '1 minute';
+  // Rate limiting is a production control: strict per-IP caps only apply when
+  // running in production or when explicitly configured (options/env). Local
+  // dev and test suites (e2e included) stay unthrottled by default.
+  const rateLimitExplicit = Boolean(options?.rateLimit) || Boolean(process.env.RATE_LIMIT_MAX);
+  const skipRateLimit =
+    options?.rateLimit?.enabled === false ||
+    rateMax <= 0 ||
+    (process.env.NODE_ENV !== 'production' && !rateLimitExplicit);
+  const loginMax = options?.rateLimit?.loginMax ?? 10;
+  const orderMax = options?.rateLimit?.orderMax ?? 30;
+
   app.register(async (api: FastifyInstance) => {
+    if (!skipRateLimit) {
+      await api.register(rateLimit, {
+        max: rateMax,
+        timeWindow: rateWindow,
+        // Key by IP by default; keep the standard 429 response shape.
+        errorResponseBuilder: (_req, context) => ({
+          statusCode: 429,
+          error: 'Too Many Requests',
+          message: `Rate limit exceeded: retry after ${context.after}`,
+        }),
+      });
+      const globalLimiter = api.rateLimit({ max: rateMax, timeWindow: rateWindow }).bind(api);
+      // Sensitive routes get the stricter of (their own limit, the global cap).
+      const loginLimiter = api.rateLimit({ max: Math.min(loginMax, rateMax), timeWindow: rateWindow }).bind(api);
+      const orderLimiter = api.rateLimit({ max: Math.min(orderMax, rateMax), timeWindow: rateWindow }).bind(api);
+      api.addHook('onRequest', async (req, reply) => {
+        const isLogin = req.method === 'POST' && req.url === '/api/users/login';
+        const isPublicOrder = req.method === 'POST' && req.url === '/api/orders';
+        if (isLogin) return loginLimiter(req, reply);
+        if (isPublicOrder) return orderLimiter(req, reply);
+        return globalLimiter(req, reply);
+      });
+    }
+
+
     api.register(restaurantRoutes, { prefix: '/restaurant', controller: deps.restaurantController });
     api.register(restaurantsRoutes, { prefix: '/restaurants', controller: deps.restaurantController });
     api.register(productRoutes, { prefix: '/products', controller: deps.productController });

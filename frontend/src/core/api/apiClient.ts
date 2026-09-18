@@ -414,36 +414,53 @@ export class ApiClient {
    * Subscribes to real-time Server-Sent Events (SSE) for live order updates.
    * Returns an unsubscribe function.
    */
-  subscribeToOrderStream(onEvent: (event: OrderEvent) => void, restaurantId?: string): () => void {
-    if (typeof EventSource === 'undefined') {
+    subscribeToOrderStream(onEvent: (event: OrderEvent) => void, restaurantId?: string): () => void {
+    if (typeof EventSource === 'undefined' || !this.token) {
       return () => {}
     }
 
-    const params = new URLSearchParams()
-    if (this.token) params.set('token', this.token)
-    if (restaurantId) params.set('restaurantId', restaurantId)
-    const qs = params.toString() ? `?${params.toString()}` : ''
+    let eventSource: EventSource | null = null
+    let disposed = false
 
-    const eventSource = new EventSource(`${this.baseUrl}/orders/stream${qs}`)
-
-    const handleMessage = (e: MessageEvent) => {
+    const open = async () => {
       try {
-        const data = JSON.parse(e.data) as OrderEvent
-        onEvent(data)
+        const res = await this.request<{ token: string; expiresInSeconds?: number }>('/orders/stream-token', {
+          method: 'POST',
+        })
+        if (disposed || !res || !res.token) return
+
+        const params = new URLSearchParams()
+        params.set('token', res.token)
+        if (restaurantId) params.set('restaurantId', restaurantId)
+        const qs = params.toString() ? `?${params.toString()}` : ''
+
+        eventSource = new EventSource(`${this.baseUrl}/orders/stream${qs}`)
+
+        const handleMessage = (e: MessageEvent) => {
+          try {
+            const data = JSON.parse(e.data) as OrderEvent
+            onEvent(data)
+          } catch {
+            // Ignore parse errors on ping/keep-alive frames
+          }
+        }
+
+        eventSource.addEventListener('ORDER_CREATED', handleMessage as EventListener)
+        eventSource.addEventListener('ORDER_STATUS_UPDATED', handleMessage as EventListener)
+        eventSource.addEventListener('ORDER_CANCELLED', handleMessage as EventListener)
+        eventSource.addEventListener('ORDER_RECEIPT_UPDATED', handleMessage as EventListener)
+        eventSource.addEventListener('ORDER_DELETED', handleMessage as EventListener)
+        eventSource.addEventListener('ORDER_UPDATED', handleMessage as EventListener)
       } catch {
-        // Ignore parse errors on ping/keep-alive frames
+        // No stream token available (backend down or session expired):
+        // do not connect; the session token must never travel in URLs.
       }
     }
-
-    eventSource.addEventListener('ORDER_CREATED', handleMessage as EventListener)
-    eventSource.addEventListener('ORDER_STATUS_UPDATED', handleMessage as EventListener)
-    eventSource.addEventListener('ORDER_CANCELLED', handleMessage as EventListener)
-    eventSource.addEventListener('ORDER_RECEIPT_UPDATED', handleMessage as EventListener)
-    eventSource.addEventListener('ORDER_DELETED', handleMessage as EventListener)
-    eventSource.addEventListener('ORDER_UPDATED', handleMessage as EventListener)
+    void open()
 
     return () => {
-      eventSource.close()
+      disposed = true
+      eventSource?.close()
     }
   }
 
@@ -453,6 +470,8 @@ export class ApiClient {
     user?: { id: string; username: string; role: string; restaurantId?: string }
     error?: string
   }> {
+    // A 401 here means bad credentials, not a network failure: surface it as a
+    // structured result so UIs can show "Credenciales incorrectas".
     const result = await this.request<{
       success: boolean
       token?: string
@@ -461,6 +480,11 @@ export class ApiClient {
     }>('/users/login', {
       method: 'POST',
       body: JSON.stringify({ username, password }),
+    }).catch((err: any) => {
+      if (err?.status === 401) {
+        return { success: false, token: undefined, user: undefined, error: 'Credenciales incorrectas' }
+      }
+      throw err
     })
     if (result.token) {
       this.setToken(result.token)

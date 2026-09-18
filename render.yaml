@@ -21,3 +21,7 @@ services:
         sync: false
       - key: SUPABASE_KEY
         sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false

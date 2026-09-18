@@ -85,6 +85,32 @@ export async function restaurantsRoutes(fastify: FastifyInstance, opts: { contro
           idOrSlug: { type: 'string' }
         },
         required: ['idOrSlug']
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' },
+            slug: { type: 'string' },
+            name: { type: 'string' },
+            tagline: { type: 'string' },
+            theme: { type: 'string' },
+            config: { type: 'object', additionalProperties: true },
+            openingHours: { type: 'object', additionalProperties: true },
+            categories: { type: 'array', items: { type: 'string' } },
+            isActive: { type: 'boolean' },
+            createdAt: { type: 'string' },
+          },
+          additionalProperties: false
+        },
+        404: {
+          type: 'object',
+          properties: {
+            title: { type: 'string' },
+            status: { type: 'number' },
+            detail: { type: 'string' }
+          }
+        }
       }
     }
   }, opts.controller.get.bind(opts.controller));

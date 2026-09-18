@@ -7,6 +7,9 @@ import { CustomerRepository } from '../../domain/ports/out/CustomerRepository.js
 import { UpdateOrderDTO } from '../dtos/index.js';
 import { EntityNotFoundError, ValidationError } from '../../domain/errors/DomainErrors.js';
 
+const MAX_ITEM_QUANTITY = 100;
+const MAX_ADDITION_QUANTITY = 10;
+
 export class UpdateOrderUseCase {
   constructor(
     private readonly orderRepo: OrderRepository,
@@ -140,7 +143,9 @@ export class UpdateOrderUseCase {
       order.receiptUrl = dto.receiptUrl;
     }
     if (dto.status !== undefined) {
-      order.status = dto.status;
+      // Status changes must go through the domain state machine (same as
+      // UpdateOrderStatusUseCase); arbitrary jumps are rejected.
+      order.transitionTo(dto.status as Order['status']);
     }
   }
 
@@ -164,17 +169,35 @@ export class UpdateOrderUseCase {
     if (!itemDto.quantity || itemDto.quantity <= 0) {
       throw new ValidationError(`Invalid quantity for product ${itemDto.productId}`);
     }
+    if (itemDto.quantity > MAX_ITEM_QUANTITY) {
+      throw new ValidationError(`Quantity exceeds the maximum of ${MAX_ITEM_QUANTITY} for product ${itemDto.productId}`);
+    }
 
     const { product, resolvedProductId } = await this.resolveProduct(itemDto, existingOrder, resolvedRestId);
+    const existingItem = this.findExistingOrderItem(existingOrder.items, itemDto);
 
-    const unitPrice = product
-      ? Number(product.price)
-      : ((itemDto as any).unitPrice ?? (itemDto as any).price ?? 0);
-    const productName = product
-      ? product.name
-      : ((itemDto as any).productName ?? (itemDto as any).name ?? 'Product');
+    // Authoritative pricing only: catalog price, then the price already stored
+    // on the order (which was catalog-priced at creation time). Client-supplied
+    // prices are never trusted for unknown products.
+    let unitPrice: number;
+    let productName: string;
+    if (product) {
+      unitPrice = Number(product.price);
+      productName = product.name;
+    } else if (existingItem) {
+      unitPrice = Number(existingItem.unitPrice);
+      productName = existingItem.productName || (itemDto as any).productName || (itemDto as any).name || 'Product';
+    } else {
+      throw new ValidationError(
+        `Product '${itemDto.productId}' is not available in the catalog for this restaurant.`
+      );
+    }
 
-    const additions = await this.validateAndBuildAdditions(itemDto.additions, resolvedRestId);
+    const additions = await this.validateAndBuildAdditions(
+      itemDto.additions,
+      resolvedRestId,
+      existingItem?.additions
+    );
 
     return {
       id: (itemDto as any).id || `ord_item_${randomUUID()}`,
@@ -238,7 +261,8 @@ export class UpdateOrderUseCase {
 
   private async validateAndBuildAdditions(
     rawAdditions: any[] | undefined,
-    resolvedRestId: string
+    resolvedRestId: string,
+    existingAdditions?: OrderItemAddition[]
   ): Promise<OrderItemAddition[]> {
     if (!rawAdditions || rawAdditions.length === 0) {
       return [];
@@ -246,14 +270,21 @@ export class UpdateOrderUseCase {
 
     const additions: OrderItemAddition[] = [];
     for (const rawAdd of rawAdditions) {
-      additions.push(await this.resolveAddition(rawAdd, resolvedRestId));
+      additions.push(await this.resolveAddition(rawAdd, resolvedRestId, existingAdditions));
     }
     return additions;
   }
 
-  private async resolveAddition(rawAdd: any, resolvedRestId: string): Promise<OrderItemAddition> {
+  private async resolveAddition(
+    rawAdd: any,
+    resolvedRestId: string,
+    existingAdditions?: OrderItemAddition[]
+  ): Promise<OrderItemAddition> {
     const additionId = typeof rawAdd === 'string' ? rawAdd : rawAdd.additionId;
     const addQuantity = typeof rawAdd === 'string' ? 1 : (rawAdd.quantity || 1);
+    if (addQuantity <= 0 || addQuantity > MAX_ADDITION_QUANTITY) {
+      throw new ValidationError(`Invalid addition quantity for addition '${additionId}'`);
+    }
 
     let addition = this.additionRepo ? await this.additionRepo.findById(additionId, resolvedRestId) : null;
     if (!addition && this.additionRepo && typeof this.additionRepo.findByRestaurantId === 'function') {
@@ -261,18 +292,23 @@ export class UpdateOrderUseCase {
       addition = allAdditions.find((a) => a.id === additionId || a.name.toLowerCase() === additionId.toLowerCase()) || null;
     }
 
-    let unitPrice = 0;
+    // Authoritative pricing: catalog first, then the price already stored on
+    // the order item (catalog-priced at creation). Client prices are rejected.
+    let unitPrice: number;
+    let additionName: string;
     if (addition) {
       unitPrice = Number(addition.price);
-    } else if (typeof rawAdd !== 'string' && rawAdd.unitPrice !== undefined) {
-      unitPrice = Number(rawAdd.unitPrice);
-    }
-
-    let additionName = additionId;
-    if (addition) {
       additionName = addition.name;
-    } else if (typeof rawAdd !== 'string' && rawAdd.additionName) {
-      additionName = rawAdd.additionName;
+    } else {
+      const existing = (existingAdditions || []).find(
+        (a) => a.additionId === additionId || a.additionName?.toLowerCase() === String(additionId).toLowerCase()
+      );
+      if (existing) {
+        unitPrice = Number(existing.unitPrice);
+        additionName = existing.additionName || additionId;
+      } else {
+        throw new ValidationError(`Addition '${additionId}' is not available in the catalog for this restaurant.`);
+      }
     }
 
     return {

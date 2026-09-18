@@ -56,12 +56,16 @@ export interface RestaurantContextType {
   // Auth & Session
   session: AdminSession
   setSession: React.Dispatch<React.SetStateAction<AdminSession>>
-  login: (password: string, targetRestaurantIdOrSlug?: string) => {
+  login: (
+    username: string,
+    password: string,
+    targetRestaurantIdOrSlug?: string
+  ) => Promise<{
     success: boolean
     role: "super" | "restaurant" | null
     restaurantId?: string
     error?: string
-  }
+  }>
   logout: () => void
 
   // Scoped Data of Active Restaurant
@@ -181,14 +185,8 @@ export const useRestaurant = (): RestaurantContextType => {
 
     session: auth.session,
     setSession: auth.setSession,
-    login: (password: string, targetRestaurantIdOrSlug?: string) => {
-      const res = auth.login(
-        password,
-        tenant.restaurants,
-        tenant.superAdminPassword,
-        tenant.activeRestaurant,
-        targetRestaurantIdOrSlug
-      )
+    login: async (username: string, password: string, targetRestaurantIdOrSlug?: string) => {
+      const res = await auth.login(username, password, targetRestaurantIdOrSlug)
       if (res.success) {
         if (res.role === "super") {
           const isDeepRoute = window.location.pathname.toLowerCase().startsWith("/admin/") && window.location.pathname.toLowerCase() !== "/admin"
