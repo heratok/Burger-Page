@@ -325,6 +325,11 @@ export class UpdateOrderUseCase {
       const paymentAmount = dtoPaymentAmount ?? order.paymentAmount;
       (order as any).paymentAmount = paymentAmount;
       if (paymentAmount !== undefined) {
+            // Mirror the creation path: a cash payment below the final total is a
+            // silent underpayment and must be rejected, not recorded.
+            if (paymentAmount < order.finalTotal) {
+            throw new ValidationError(`Payment amount (${paymentAmount}) is less than final total (${order.finalTotal}).`);
+            }
         (order as any).changeAmount = Math.max(0, paymentAmount - order.finalTotal);
       }
     } else if (order.paymentMethod === 'Transferencia') {

@@ -37,10 +37,14 @@ export class AuthenticateUserUseCase {
     }
 
     if (!user) {
-      throw new UnauthorizedError('Invalid credentials');
-    }
+          throw new UnauthorizedError('Invalid credentials');
+        }
 
-    const valid = await this.hasher.verify(password, user.passwordHash);
+        if (user.isActive === false) {
+          throw new UnauthorizedError('Invalid credentials');
+        }
+
+        const valid = await this.hasher.verify(password, user.passwordHash);
     if (!valid) {
       throw new UnauthorizedError('Invalid credentials');
     }

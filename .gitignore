@@ -78,3 +78,7 @@ zap-security-report*
 zap-report*
 *.zap.html
 *.zap.json
+
+# Local pi agent state & Judgment Day review artifacts (never needed in the repo)
+.pi/
+.judgment-day/

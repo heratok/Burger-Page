@@ -27,9 +27,8 @@ export class SqliteProductRepository implements ProductRepository {
   async findById(id: string, restaurantId: string): Promise<Product | null> {
     const row = this.db
       .prepare(`
-        SELECT p.*, c.name as category_name
-        FROM products p
-        LEFT JOIN categories c ON p.category_id = c.id
+        SELECT p.*, p.category as category_name
+            FROM products p
         WHERE p.id = ? AND p.restaurant_id = ?
       `)
       .get(id, restaurantId) as any;
@@ -40,9 +39,8 @@ export class SqliteProductRepository implements ProductRepository {
   async findByRestaurantId(restaurantId: string): Promise<Product[]> {
     const rows = this.db
       .prepare(`
-        SELECT p.*, c.name as category_name
-        FROM products p
-        LEFT JOIN categories c ON p.category_id = c.id
+        SELECT p.*, p.category as category_name
+            FROM products p
         WHERE p.restaurant_id = ?
         ORDER BY p.display_order ASC, p.id ASC
       `)

@@ -29,6 +29,16 @@ describe("CSV Export Core Engine", () => {
       expect(formatCsvCell('Burger "Especial"')).toBe('"Burger ""Especial"""')
     })
 
+    it('neutralizes spreadsheet formula injection', () => {
+      const quoted = (payload: string) => '"' + "'" + payload + '"'
+      expect(formatCsvCell('=SUM(A1:A9)')).toBe(quoted('=SUM(A1:A9)'))
+      expect(formatCsvCell('+1234')).toBe(quoted('+1234'))
+      expect(formatCsvCell('-cmd|/C calc')).toBe(quoted('-cmd|/C calc'))
+      expect(formatCsvCell('@SUM(A1)')).toBe(quoted('@SUM(A1)'))
+      expect(formatCsvCell('normal text')).toBe('normal text')
+    })
+
+
     it("quotes strings with newlines", () => {
       expect(formatCsvCell("Línea 1\nLínea 2")).toBe('"Línea 1\nLínea 2"')
     })

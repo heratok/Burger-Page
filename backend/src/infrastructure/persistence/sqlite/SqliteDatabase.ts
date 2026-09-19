@@ -99,10 +99,14 @@ export function createSqliteDatabase(dbPath = ':memory:'): Database {
     );
   `);
 
-  const inventoryColumns = db.prepare("PRAGMA table_info(inventory)").all() as Array<{ name: string }>;
+  // Defensive migration for the real inventory table: the schema only ever
+  // creates inventory_items (with restaurant_id). Probing/altering a legacy
+  // "inventory" table crashed every fresh boot with 'no such table:
+  // inventory', so the probe targets inventory_items instead.
+  const inventoryColumns = db.prepare("PRAGMA table_info(inventory_items)").all() as Array<{ name: string }>;
   const hasInvRestaurant = inventoryColumns.some(c => c.name === 'restaurant_id');
   if (!hasInvRestaurant) {
-    db.exec("ALTER TABLE inventory ADD COLUMN restaurant_id TEXT NOT NULL DEFAULT 'burger-craft'");
+    db.exec("ALTER TABLE inventory_items ADD COLUMN restaurant_id TEXT NOT NULL DEFAULT 'burger-craft'");
   }
 
   const customerColumns = db.prepare("PRAGMA table_info(customers)").all() as Array<{ name: string }>;

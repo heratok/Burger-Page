@@ -198,6 +198,18 @@ describe('User Use Cases', () => {
       expect(mockHasher.verify).toHaveBeenCalledWith('securePass123', 'hashed_password');
     });
 
+        it('should throw UnauthorizedError when the account is deactivated (isActive=false)', async () => {
+          const useCase = new AuthenticateUserUseCase(mockUserRepo, mockHasher);
+          vi.mocked(mockUserRepo.findByUsername).mockResolvedValue({ ...storedUser, isActive: false });
+          vi.mocked(mockHasher.verify).mockResolvedValue(true);
+
+          await expect(
+            useCase.execute('admin_rosto', 'securePass123')
+          ).rejects.toThrow(UnauthorizedError);
+          // Deactivated users must not reach the password check path.
+          expect(mockHasher.verify).not.toHaveBeenCalled();
+        });
+
     it('should throw UnauthorizedError for non-existent username', async () => {
       const useCase = new AuthenticateUserUseCase(mockUserRepo, mockHasher);
       vi.mocked(mockUserRepo.findByUsername).mockResolvedValue(null);

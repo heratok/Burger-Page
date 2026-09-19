@@ -253,4 +253,96 @@ describe('ApiClient', () => {
   })
 })
 
+  describe('subscribeToOrderStream — token refresh & bounded reconnect (JD-CONF-03)', () => {
+        const flushMicrotasks = async () => {
+          for (let i = 0; i < 12; i += 1) {
+            await Promise.resolve()
+          }
+        }
+    class FakeEventSource {
+      static instances: FakeEventSource[] = []
+      url: string
+      closed = false
+      listeners: Record<string, Array<(e?: any) => void>> = {}
+
+      constructor(url: string) {
+        this.url = url
+        FakeEventSource.instances.push(this)
+      }
+
+      addEventListener(type: string, listener: (e?: any) => void) {
+        if (!this.listeners[type]) this.listeners[type] = []
+        this.listeners[type].push(listener)
+      }
+
+      close() {
+        this.closed = true
+      }
+
+      emit(type: string, e?: any) {
+        (this.listeners[type] || []).forEach((listener) => listener(e))
+      }
+    }
+
+    let originalEventSource: any
+
+    afterEach(() => {
+      vi.useRealTimers()
+      if (originalEventSource !== undefined) {
+        (globalThis as any).EventSource = originalEventSource
+      }
+      FakeEventSource.instances = []
+    })
+
+    it('re-mints a fresh stream token and reopens with bounded backoff after an error', async () => {
+      vi.useFakeTimers()
+      const client = new ApiClient({ baseUrl: 'http://localhost:3001/api' })
+      client.setToken('session-token')
+
+      originalEventSource = (globalThis as any).EventSource
+      ;(globalThis as any).EventSource = FakeEventSource
+
+      let tokenCalls = 0
+      ;(globalThis.fetch as any).mockImplementation(async (url: string) => {
+        if (url.includes('/orders/stream-token')) {
+          tokenCalls += 1
+          return { ok: true, status: 200, json: async () => ({ token: `stream-token-${tokenCalls}` }) }
+        }
+        return { ok: false, status: 404, json: async () => ({}) }
+      })
+
+      const unsub = client.subscribeToOrderStream(() => {})
+          await flushMicrotasks()
+
+      expect(FakeEventSource.instances).toHaveLength(1)
+      expect(FakeEventSource.instances[0].url).toContain('stream-token-1')
+
+      // Stream dies (expired 60s token → 401 → error event).
+      FakeEventSource.instances[0].emit('error')
+
+      // First retry after 1s backoff, with a freshly minted token.
+      await vi.advanceTimersByTimeAsync(1000)
+          await flushMicrotasks()
+
+      expect(FakeEventSource.instances).toHaveLength(2)
+      expect(FakeEventSource.instances[1].url).toContain('stream-token-2')
+      expect(FakeEventSource.instances[1].url).not.toContain('stream-token-1')
+
+      // A successful open resets the backoff counter.
+      FakeEventSource.instances[1].emit('open')
+      FakeEventSource.instances[1].emit('error')
+      await vi.advanceTimersByTimeAsync(1000)
+          await flushMicrotasks()
+
+      expect(FakeEventSource.instances).toHaveLength(3)
+      expect(FakeEventSource.instances[2].url).toContain('stream-token-3')
+
+      // Unsubscribe stops any further reconnects.
+      unsub()
+      FakeEventSource.instances[2].emit('error')
+      await vi.advanceTimersByTimeAsync(120_000)
+      expect(FakeEventSource.instances).toHaveLength(3)
+    })
+  })
+
 

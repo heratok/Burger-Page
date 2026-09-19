@@ -4,6 +4,19 @@ import { requireAuth } from '../middleware/auth.middleware.js';
 import { getSupabaseClient } from '../../persistence/supabase/SupabaseClient.js';
 import { defaultStorageUrlResolver } from '../../storage/StorageUrlResolver.js';
 
+/**
+ * Builds a server-owned, safe object key stem from a client-supplied filename.
+ * Every character outside [a-zA-Z0-9._-] is replaced with '-', leading dots and
+ * dashes are stripped (blocks ".." traversal segments and dotfile keys), and
+ * the result is capped at 80 chars. A client filename can therefore never
+ * introduce path separators, traversal segments, or cross-tenant keys into the
+ * storage object path. Falls back to a random UUID when nothing survives.
+ */
+export function sanitizeStorageObjectName(filename: string): string {
+  const cleaned = filename.replace(/[^a-z0-9._-]/gi, '-').replace(/^[.\-]+/, '').slice(0, 80);
+  return cleaned || crypto.randomUUID();
+}
+
 export async function storageRoutes(fastify: FastifyInstance) {
   fastify.post('/upload-url', {
     preHandler: [requireAuth],
@@ -42,7 +55,10 @@ export async function storageRoutes(fastify: FastifyInstance) {
       : (authRestId || body.restaurantId || 'default');
     const folder = body.folder || 'products';
     const cleanRestId = targetRestaurantId.replace(/[^a-z0-9-_]/gi, '-');
-    const uniqueId = body.filename || crypto.randomUUID();
+    // Never splice the raw client filename into the object key: sanitize it
+    // (or fall back to a random UUID) so the key stays a single, tenant-
+    // scoped segment even with upsert:true.
+    const uniqueId = body.filename ? sanitizeStorageObjectName(body.filename) : crypto.randomUUID();
     const objectPath = `${cleanRestId}/${folder}/${uniqueId}.webp`;
 
     const supabaseUrl = process.env.SUPABASE_URL || process.env.PUBLIC_SUPABASE_URL;
