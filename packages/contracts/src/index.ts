@@ -172,7 +172,7 @@ export const createOrderSchema = z.object({
   restaurantId: z.string().min(1, 'Restaurant ID is required'),
   customerId: z.string().optional(),
   customer: orderCustomerInputSchema.optional(),
-  items: z.array(orderItemInputSchema).min(1, 'Order must have at least one item'),
+  items: z.array(orderItemInputSchema).min(1, 'Order must have at least one item').max(100, 'Order cannot exceed 100 items'),
   deliveryFee: z.number().nonnegative().optional(),
   paymentMethod: z.enum(['Efectivo', 'Transferencia']).optional(),
   paymentAmount: z.number().nonnegative().optional(),
@@ -194,7 +194,7 @@ export type UpdateOrderReceiptInput = z.infer<typeof updateOrderReceiptSchema>;
 
 export const updateOrderSchema = z.object({
   customer: orderCustomerInputSchema.optional(),
-  items: z.array(orderItemInputSchema).optional(),
+  items: z.array(orderItemInputSchema).max(100, 'Order cannot exceed 100 items').optional(),
   deliveryFee: z.number().nonnegative().optional(),
   paymentMethod: z.enum(['Efectivo', 'Transferencia']).optional(),
   paymentAmount: z.number().nonnegative().optional(),
