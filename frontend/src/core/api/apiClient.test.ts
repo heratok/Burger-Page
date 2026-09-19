@@ -280,7 +280,7 @@ describe('ApiClient', () => {
       }
 
       emit(type: string, e?: any) {
-        ;(this.listeners[type] || []).forEach((listener) => listener(e))
+        (this.listeners[type] || []).forEach((listener) => listener(e))
       }
     }
 
@@ -289,7 +289,7 @@ describe('ApiClient', () => {
     afterEach(() => {
       vi.useRealTimers()
       if (originalEventSource !== undefined) {
-        ;(globalThis as any).EventSource = originalEventSource
+        (globalThis as any).EventSource = originalEventSource
       }
       FakeEventSource.instances = []
     })
