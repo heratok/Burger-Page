@@ -283,4 +283,49 @@ describe('PostgreSQL Real Instance Integration Suite (Docker)', () => {
       expect(Number(res.rows[0].current_stock)).toBe(35);
     });
   });
+
+  describe('Customer metrics trigger — DELETE orders (JD-CRIT-01)', () => {
+    let customerId: string;
+    let orderId: string;
+
+    it('deletes an order without raising "record new is not assigned yet" and refreshes customer metrics', async () => {
+      if (!isDbConnected) return;
+      customerId = `cust-${randomUUID().slice(0, 8)}`;
+      orderId = `order-${randomUUID().slice(0, 8)}`;
+
+      await pool.query(
+        `INSERT INTO public.customers (id, restaurant_id, name, phone) VALUES ($1, $2, 'Trigger Test Customer', '3005556677')`,
+        [customerId, RESTAURANT_A]
+      );
+
+      // Metrics trigger must run on INSERT (order linked to a customer).
+      const inserted = await pool.query(
+        `INSERT INTO public.orders (id, restaurant_id, customer_id, status, subtotal, delivery_fee, final_total, payment_method)
+         VALUES ($1, $2, $3, 'pending', 100.00, 10.00, 110.00, 'Efectivo')`,
+        [orderId, RESTAURANT_A, customerId]
+      );
+      expect(inserted.rowCount).toBe(1);
+
+      const afterInsert = await pool.query(
+        `SELECT total_orders, total_spent FROM public.customers WHERE id = $1`,
+        [customerId]
+      );
+      expect(Number(afterInsert.rows[0].total_orders)).toBe(1);
+      expect(Number(afterInsert.rows[0].total_spent)).toBe(110.0);
+
+      // Regression: DELETE used to abort with 'record "new" is not assigned yet'.
+      const deleted = await pool.query(
+        `DELETE FROM public.orders WHERE id = $1 AND restaurant_id = $2`,
+        [orderId, RESTAURANT_A]
+      );
+      expect(deleted.rowCount).toBe(1);
+
+      const afterDelete = await pool.query(
+        `SELECT total_orders, total_spent FROM public.customers WHERE id = $1`,
+        [customerId]
+      );
+      expect(Number(afterDelete.rows[0].total_orders)).toBe(0);
+      expect(Number(afterDelete.rows[0].total_spent)).toBe(0.0);
+    });
+  });
 });

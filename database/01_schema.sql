@@ -410,7 +410,17 @@ DECLARE
     v_total_spent NUMERIC(12, 2);
     v_last_order_date TIMESTAMPTZ;
 BEGIN
-    v_customer_id := COALESCE(NEW.customer_id, OLD.customer_id);
+    -- NEW is an unassigned record in DELETE triggers: pick the row
+    -- source by operation before touching any column (previously this
+    -- COALESCE ran unconditionally and every DELETE on public.orders
+    -- raised 'record "new" is not assigned yet').
+    IF TG_OP = 'DELETE' THEN
+        v_customer_id := OLD.customer_id;
+    ELSIF TG_OP = 'UPDATE' THEN
+        v_customer_id := COALESCE(NEW.customer_id, OLD.customer_id);
+    ELSE
+        v_customer_id := NEW.customer_id;
+    END IF;
     IF v_customer_id IS NULL THEN
         RETURN NEW;
     END IF;
@@ -785,28 +795,94 @@ CREATE POLICY "public_read_available_additions"
     USING (is_available = TRUE);
 
 -- 7.2 Multi-Tenant Write & Admin Policies (Optimized with InitPlan caching)
--- Users auth policy: allows finding user by username before knowing tenant
-DROP POLICY IF EXISTS "users_select_for_auth" ON public.users;
-CREATE POLICY "users_select_for_auth" ON public.users
-    FOR SELECT
-    USING (true);
-
-DROP POLICY IF EXISTS "tenant_isolation_users_write" ON public.users;
-CREATE POLICY "tenant_isolation_users_write" ON public.users
-    FOR INSERT
-    WITH CHECK ((restaurant_id = (SELECT current_setting('app.restaurant_id'::text, true))) OR (restaurant_id IS NULL) OR ((SELECT current_setting('app.actor_role'::text, true)) = 'super_admin'::text));
-
-DROP POLICY IF EXISTS "tenant_isolation_users_update" ON public.users;
-CREATE POLICY "tenant_isolation_users_update" ON public.users
-    FOR UPDATE
-    USING ((restaurant_id = (SELECT current_setting('app.restaurant_id'::text, true))) OR (restaurant_id IS NULL) OR ((SELECT current_setting('app.actor_role'::text, true)) = 'super_admin'::text))
-    WITH CHECK ((restaurant_id = (SELECT current_setting('app.restaurant_id'::text, true))) OR (restaurant_id IS NULL) OR ((SELECT current_setting('app.actor_role'::text, true)) = 'super_admin'::text));
-
-DROP POLICY IF EXISTS "tenant_isolation_users_delete" ON public.users;
-CREATE POLICY "tenant_isolation_users_delete" ON public.users
-    FOR DELETE
-    USING ((restaurant_id = (SELECT current_setting('app.restaurant_id'::text, true))) OR ((SELECT current_setting('app.actor_role'::text, true)) = 'super_admin'::text));
-
+    -- Users auth policy: scoped reads.
+    --  - Tenant sessions see only their own restaurant's users.
+    --  - Super-admin context sees all users.
+    --  - Auth bootstrap (no tenant context yet: login resolves a user by
+    --    username before restaurantId is known) can read any row; every
+    --    authenticated request afterwards runs with an explicit tenant context.
+    DROP POLICY IF EXISTS "users_select_for_auth" ON public.users;
+    CREATE POLICY "users_select_for_auth" ON public.users
+        FOR SELECT
+        USING (
+            ((SELECT current_setting('app.actor_role'::text, true)) = 'super_admin'::text)
+            OR (
+                (SELECT current_setting('app.restaurant_id'::text, true)) IS NOT NULL
+                AND restaurant_id = (SELECT current_setting('app.restaurant_id'::text, true))
+            )
+            OR (
+                (SELECT current_setting('app.restaurant_id'::text, true)) IS NULL
+                AND (SELECT current_setting('app.actor_role'::text, true)) IS NULL
+            )
+        );
+    
+    -- Platform rows (restaurant_id IS NULL) are reserved for super_admin: a
+    -- tenant session may only create its own restaurant_admin staff and can
+    -- never mint a platform-level account.
+    DROP POLICY IF EXISTS "tenant_isolation_users_write" ON public.users;
+    CREATE POLICY "tenant_isolation_users_write" ON public.users
+        FOR INSERT
+        WITH CHECK (
+            ((SELECT current_setting('app.actor_role'::text, true)) = 'super_admin'::text)
+            OR (
+                restaurant_id = (SELECT current_setting('app.restaurant_id'::text, true))
+                AND role <> 'super_admin'::text
+            )
+        );
+    
+    -- Tenant sessions may update only their own rows and may never escalate:
+    -- role and restaurant_id must stay unchanged (password_hash changes for
+    -- own staff remain allowed).
+        -- Tenant sessions may update only their own rows. RLS policies cannot
+        -- compare NEW vs OLD rows (PostgreSQL rejects NEW/OLD in policy
+        -- expressions), so role/restaurant escalation is blocked by the
+        -- BEFORE UPDATE trigger guard_users_privilege_change below.
+        DROP POLICY IF EXISTS "tenant_isolation_users_update" ON public.users;
+        CREATE POLICY "tenant_isolation_users_update" ON public.users
+            FOR UPDATE
+            USING (
+                ((SELECT current_setting('app.actor_role'::text, true)) = 'super_admin'::text)
+                OR (restaurant_id = (SELECT current_setting('app.restaurant_id'::text, true)))
+            )
+            WITH CHECK (
+                ((SELECT current_setting('app.actor_role'::text, true)) = 'super_admin'::text)
+                OR (restaurant_id = (SELECT current_setting('app.restaurant_id'::text, true)))
+            );
+        
+        -- Privilege-change backstop: RLS cannot compare OLD vs NEW, so this
+        -- BEFORE UPDATE trigger is the only DB-level way to stop a tenant
+        -- session from escalating a user's role or moving a user between
+        -- tenants (self-promotion / cross-tenant takeover).
+        CREATE OR REPLACE FUNCTION public.guard_users_privilege_change()
+        RETURNS TRIGGER
+        LANGUAGE plpgsql
+        SET search_path = public, pg_temp
+        AS $$
+        BEGIN
+            IF NEW.role IS DISTINCT FROM OLD.role
+               OR NEW.restaurant_id IS DISTINCT FROM OLD.restaurant_id THEN
+                IF (SELECT current_setting('app.actor_role'::text, true)) IS DISTINCT FROM 'super_admin'::text THEN
+                    RAISE EXCEPTION USING ERRCODE = '42501',
+                        MESSAGE = 'Only super_admin may change a user''s role or restaurant';
+                END IF;
+            END IF;
+            RETURN NEW;
+        END;
+        $$;
+        
+        DROP TRIGGER IF EXISTS trg_users_guard_privilege_change ON public.users;
+        CREATE TRIGGER trg_users_guard_privilege_change
+            BEFORE UPDATE ON public.users
+            FOR EACH ROW EXECUTE FUNCTION public.guard_users_privilege_change();
+        
+    DROP POLICY IF EXISTS "tenant_isolation_users_delete" ON public.users;
+    CREATE POLICY "tenant_isolation_users_delete" ON public.users
+        FOR DELETE
+        USING (
+            ((SELECT current_setting('app.actor_role'::text, true)) = 'super_admin'::text)
+            OR (restaurant_id = (SELECT current_setting('app.restaurant_id'::text, true)))
+        );
+    
 -- Restaurants write isolation
 DROP POLICY IF EXISTS "tenant_isolation_restaurants_write" ON public.restaurants;
 CREATE POLICY "tenant_isolation_restaurants_write" ON public.restaurants

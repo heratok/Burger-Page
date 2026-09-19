@@ -135,4 +135,106 @@ describe('RLS tenant isolation (write policies, app_user role)', () => {
     );
     expect(read.rowCount).toBe(1);
   });
+
+  describe('users RLS — tenant isolation & platform protection (JD-CONF-01)', () => {
+    const PLATFORM_USER = `platform-${randomUUID().slice(0, 8)}`;
+    const TENANT_A_USER = `tenant-a-${randomUUID().slice(0, 8)}`;
+    const TENANT_B_USER = `tenant-b-${randomUUID().slice(0, 8)}`;
+
+    beforeAll(async () => {
+      if (!isDbConnected) return;
+      await adminPool.query(
+        `INSERT INTO public.users (id, username, password_hash, role, restaurant_id)
+         VALUES ($1, $1, 'hash-platform', 'super_admin', NULL),
+                ($2, $2, 'hash-a', 'restaurant_admin', $3),
+                ($4, $4, 'hash-b', 'restaurant_admin', $5)`,
+        [PLATFORM_USER, TENANT_A_USER, RESTAURANT_A, TENANT_B_USER, RESTAURANT_B]
+      );
+    });
+
+    afterAll(async () => {
+      if (isDbConnected) {
+        await adminPool.query(`DELETE FROM public.users WHERE id IN ($1, $2, $3)`, [
+          PLATFORM_USER,
+          TENANT_A_USER,
+          TENANT_B_USER,
+        ]);
+      }
+    });
+
+    it('tenant context reads only its own users, never other tenants or platform rows', async () => {
+      if (!isDbConnected) return;
+      const read = await asTenant(RESTAURANT_A, null, (c) =>
+        c.query(
+          `SELECT id, username, password_hash FROM public.users WHERE username IN ($1, $2, $3)`,
+          [TENANT_A_USER, TENANT_B_USER, PLATFORM_USER]
+        )
+      );
+      const usernames = read.rows.map((r) => r.username);
+      expect(usernames).toContain(TENANT_A_USER);
+      expect(usernames).not.toContain(TENANT_B_USER);
+      expect(usernames).not.toContain(PLATFORM_USER);
+    });
+
+    it('auth bootstrap (no tenant context) can still resolve a user by username for login', async () => {
+      if (!isDbConnected) return;
+      const read = await asTenant(null, null, (c) =>
+        c.query(`SELECT username, password_hash FROM public.users WHERE username = $1`, [PLATFORM_USER])
+      );
+      expect(read.rowCount).toBe(1);
+      expect(read.rows[0].password_hash).toBe('hash-platform');
+    });
+
+    it('super_admin context sees all users', async () => {
+      if (!isDbConnected) return;
+      const read = await asTenant(RESTAURANT_A, 'super_admin', (c) =>
+        c.query(`SELECT username FROM public.users WHERE username IN ($1, $2, $3)`, [
+          TENANT_A_USER,
+          TENANT_B_USER,
+          PLATFORM_USER,
+        ])
+      );
+      expect(read.rows).toHaveLength(3);
+    });
+
+    it('tenant cannot overwrite a platform super_admin password_hash', async () => {
+      if (!isDbConnected) return;
+      await expect(
+        asTenant(RESTAURANT_A, null, (c) =>
+          c.query(`UPDATE public.users SET password_hash = 'pwned' WHERE id = $1`, [PLATFORM_USER])
+        )
+      ).rejects.toMatchObject({ code: '42501' });
+    });
+
+    it('tenant cannot self-promote to super_admin', async () => {
+      if (!isDbConnected) return;
+      await expect(
+        asTenant(RESTAURANT_A, null, (c) =>
+          c.query(`UPDATE public.users SET role = 'super_admin' WHERE id = $1`, [TENANT_A_USER])
+        )
+      ).rejects.toMatchObject({ code: '42501' });
+    });
+
+    it('tenant cannot insert a platform-level super_admin account', async () => {
+      if (!isDbConnected) return;
+      await expect(
+        asTenant(RESTAURANT_A, null, (c) =>
+          c.query(
+            `INSERT INTO public.users (id, username, password_hash, role, restaurant_id)
+             VALUES ($1, 'fake-platform', 'x', 'super_admin', NULL)`,
+            [`fake-${randomUUID().slice(0, 8)}`]
+          )
+        )
+      ).rejects.toMatchObject({ code: '42501' });
+    });
+
+    it('tenant can update password_hash of its own staff (role unchanged)', async () => {
+      if (!isDbConnected) return;
+      const updated = await asTenant(RESTAURANT_A, null, (c) =>
+        c.query(`UPDATE public.users SET password_hash = 'hash-a-2' WHERE id = $1 RETURNING role`, [TENANT_A_USER])
+      );
+      expect(updated.rowCount).toBe(1);
+      expect(updated.rows[0].role).toBe('restaurant_admin');
+    });
+  });
 });
