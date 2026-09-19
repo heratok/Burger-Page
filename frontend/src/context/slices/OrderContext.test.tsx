@@ -13,6 +13,7 @@ import {
   handleOrderReceiptUpdatedEvent,
   handleOrderCreatedEvent,
   handleOrderUpdatedEvent,
+      buildCreateOrderInput,
   updateRestaurantOrderState,
   syncBackendOrders,
   syncBackendCustomers,
@@ -428,4 +429,295 @@ describe("OrderContext Pure Reducers & Updaters (TDD Tests)", () => {
       expect(result.current.orders.some((o) => o.id === "ord-refreshed")).toBe(true)
     })
   })
+
+  describe("handleOrderCreatedEvent — idempotent SSE merge (JD-CONF-04)", () => {
+    it("does not duplicate an order already present by server id", () => {
+      const initial = createMockRestaurant([createMockOrder("order-1", 101)])
+      const event: OrderEvent = {
+        eventType: "ORDER_CREATED",
+        orderId: "order-1",
+        orderNumber: 202,
+        status: "pending",
+        timestamp: "2026-08-01T17:00:00.000Z",
+        payload: {
+          customer: { nombre: "Maria Gomez", telefono: "3112223344", direccion: "Cra 7", barrio: "Norte" },
+          items: [],
+          subtotal: 10000,
+          deliveryFee: 2000,
+          finalTotal: 12000,
+        },
+      }
+
+      const res = handleOrderCreatedEvent(initial, event)
+      expect(res).toBe(initial)
+      expect(res.orders).toHaveLength(1)
+    })
+
+    it("does not duplicate an order already present by orderNumber", () => {
+      const initial = createMockRestaurant([createMockOrder("order-existing", 202)])
+      const event: OrderEvent = {
+        eventType: "ORDER_CREATED",
+        orderId: "order-new-id",
+        orderNumber: 202,
+        timestamp: "2026-08-01T17:00:00.000Z",
+        payload: { customer: { nombre: "Nuevo" }, items: [], total: 15000 },
+      }
+
+      const res = handleOrderCreatedEvent(initial, event)
+      expect(res.orders).toHaveLength(1)
+      expect(res.orders[0].id).toBe("order-existing")
+    })
+  })
+
+  describe("updateOrderStatus — optimistic rollback (JD-CONF-05)", () => {
+    it("reverts the status when the backend rejects the transition", async () => {
+      const { apiClient } = await import("@/core/api/apiClient")
+      vi.spyOn(apiClient, "updateOrderStatus").mockRejectedValue(new Error("invalid status transition"))
+      vi.spyOn(apiClient, "fetchOrders").mockResolvedValue([
+        {
+          id: "ord-status-1",
+          orderNumber: 77,
+          status: "pending",
+          subtotal: 15000,
+          deliveryFee: 0,
+          finalTotal: 15000,
+          createdAt: new Date().toISOString(),
+          customer: { name: "Status Tester" },
+        } as any,
+      ])
+      vi.spyOn(apiClient, "fetchCustomers").mockResolvedValue([])
+      vi.spyOn(apiClient, "hasToken").mockReturnValue(true)
+
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <TenantProvider>
+          <UiProvider>
+            <OrderProvider>{children}</OrderProvider>
+          </UiProvider>
+        </TenantProvider>
+      )
+
+      const { result } = renderHook(() => useOrders(), { wrapper })
+
+      await act(async () => {
+        await result.current.refreshOrders()
+      })
+      expect(result.current.orders[0].status).toBe("pending")
+
+      act(() => {
+        result.current.updateOrderStatus("ord-status-1", "cooking")
+      })
+      expect(result.current.orders[0].status).toBe("cooking")
+
+      await act(async () => {
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+      expect(result.current.orders[0].status).toBe("pending")
+    })
+  })
+
+  describe("addOrder — SSE/create race converges on a single card (JD-CONF-04)", () => {
+    it("drops the SSE-inserted duplicate and adopts the server identity", async () => {
+      const { apiClient } = await import("@/core/api/apiClient")
+      let resolveCreate: (value: any) => void = () => {}
+      vi.spyOn(apiClient, "createOrder").mockReturnValue(
+        new Promise<any>((resolve) => {
+          resolveCreate = resolve
+        })
+      )
+      let sseHandler: ((event: OrderEvent) => void) | undefined
+      vi.spyOn(apiClient, "subscribeToOrderStream").mockImplementation((onEvent) => {
+        sseHandler = onEvent
+        return () => {}
+      })
+      vi.spyOn(apiClient, "hasToken").mockReturnValue(true)
+          // Isolate from earlier tests: the mount effect fetches orders/customers,
+          // and a stale spy from a previous test would inject its fixture order.
+          vi.spyOn(apiClient, "fetchOrders").mockResolvedValue([])
+          vi.spyOn(apiClient, "fetchCustomers").mockResolvedValue([])
+
+
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <TenantProvider>
+          <UiProvider>
+            <OrderProvider>{children}</OrderProvider>
+          </UiProvider>
+        </TenantProvider>
+      )
+
+      const { result } = renderHook(() => useOrders(), { wrapper })
+
+      // Let the mount fetch effect settle first: syncBackendDataToRestaurant
+      // replaces local orders with the fetch result, so it must not race the
+      // create/SSE assertions below.
+      await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+      })
+
+      act(() => {
+        result.current.addOrder({
+          customer: { nombre: "Race Tester", telefono: "3009998877", direccion: "Calle 1", barrio: "Centro" },
+          items: [{ id: "i1", name: "Burger", price: 20000, cantidad: 1, total: 20000, adiciones: [] }],
+          total: 20000,
+          deliveryFee: 0,
+          finalTotal: 20000,
+          metodo: "Efectivo",
+          status: "pending",
+        })
+      })
+      expect(result.current.orders).toHaveLength(1)
+
+      // SSE ORDER_CREATED event arrives before the create promise resolves.
+      act(() => {
+        sseHandler!({
+          eventType: "ORDER_CREATED",
+          orderId: "server-race-1",
+          orderNumber: 4242,
+          status: "pending",
+          timestamp: "2026-08-01T18:00:00.000Z",
+          payload: {
+            customer: { nombre: "Race Tester", telefono: "3009998877", direccion: "Calle 1", barrio: "Centro" },
+            items: [],
+            subtotal: 20000,
+            deliveryFee: 0,
+            finalTotal: 20000,
+          },
+        })
+      })
+      expect(result.current.orders).toHaveLength(2)
+
+      await act(async () => {
+        resolveCreate({
+          id: "server-race-1",
+          orderNumber: 4242,
+          status: "pending",
+          createdAt: "2026-08-01T18:00:00.000Z",
+          updatedAt: "2026-08-01T18:00:00.000Z",
+        })
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      expect(result.current.orders).toHaveLength(1)
+      expect(result.current.orders[0].id).toBe("server-race-1")
+    })
+        it('keeps the server card when a refresh already replaced the temp (JD-CONF-04 regression)', async () => {
+          const { apiClient } = await import('@/core/api/apiClient')
+          let resolveCreate: (value: any) => void = () => {}
+          vi.spyOn(apiClient, 'createOrder').mockReturnValue(
+            new Promise<any>((resolve) => {
+              resolveCreate = resolve
+            })
+          )
+          vi.spyOn(apiClient, 'subscribeToOrderStream').mockImplementation(() => () => {})
+          vi.spyOn(apiClient, 'hasToken').mockReturnValue(true)
+          vi.spyOn(apiClient, 'fetchOrders').mockResolvedValue([
+            {
+              id: 'server-refresh-1',
+              orderNumber: 5151,
+              status: 'pending',
+              subtotal: 20000,
+              deliveryFee: 0,
+              finalTotal: 20000,
+              createdAt: '2026-08-01T18:00:00.000Z',
+              customer: { name: 'Refresh Tester' },
+            } as any,
+          ])
+          vi.spyOn(apiClient, 'fetchCustomers').mockResolvedValue([])
+
+          const wrapper = ({ children }: { children: React.ReactNode }) => (
+            <TenantProvider>
+              <UiProvider>
+                <OrderProvider>{children}</OrderProvider>
+              </UiProvider>
+            </TenantProvider>
+          )
+
+          const { result } = renderHook(() => useOrders(), { wrapper })
+
+          await act(async () => {
+            await Promise.resolve()
+            await Promise.resolve()
+          })
+
+          act(() => {
+            result.current.addOrder({
+              customer: { nombre: 'Refresh Tester', telefono: '3001112222', direccion: 'Cra 5', barrio: 'Sur' },
+              items: [{ id: 'i1', name: 'Burger', price: 20000, cantidad: 1, total: 20000, adiciones: [] }],
+              total: 20000,
+              deliveryFee: 0,
+              finalTotal: 20000,
+              metodo: 'Efectivo',
+              status: 'pending',
+            })
+          })
+
+          act(() => {
+            result.current.refreshOrders()
+          })
+          await act(async () => {
+            await Promise.resolve()
+            await Promise.resolve()
+          })
+
+          await act(async () => {
+            resolveCreate({
+              id: 'server-refresh-1',
+              orderNumber: 5151,
+              status: 'pending',
+              createdAt: '2026-08-01T18:00:00.000Z',
+              updatedAt: '2026-08-01T18:00:00.000Z',
+            })
+            await Promise.resolve()
+            await Promise.resolve()
+            await Promise.resolve()
+          })
+
+          expect(result.current.orders.length).toBeGreaterThanOrEqual(1)
+        })
+  })
 })
+
+
+  describe("buildCreateOrderInput - cash payment fields (SUS-01)", () => {
+    it("carries pagoCon/cambio into paymentAmount/changeAmount", () => {
+      const restaurant = { id: "rest-1", orders: [], customers: [] } as any
+      const order = {
+        id: "order-cash",
+        orderNumber: 42,
+        customer: { nombre: "Juan", telefono: "3001234567", direccion: "", barrio: "" },
+        items: [],
+        total: 23000,
+        deliveryFee: 0,
+        finalTotal: 23000,
+        metodo: "Efectivo",
+        status: "pending",
+      } as any
+      const input = buildCreateOrderInput(restaurant, {
+        ...order,
+        pagoCon: "50000",
+        cambio: 27000,
+      })
+      expect(input.paymentAmount).toBe(50000)
+      expect(input.changeAmount).toBe(27000)
+    })
+
+    it("omits payment fields when no cash amount is recorded", () => {
+      const restaurant = { id: "rest-1", orders: [], customers: [] } as any
+      const order = {
+        id: "order-card",
+        orderNumber: 43,
+        customer: { nombre: "Juan", telefono: "3001234567", direccion: "", barrio: "" },
+        items: [],
+        total: 23000,
+        deliveryFee: 0,
+        finalTotal: 23000,
+        metodo: "Efectivo",
+        status: "pending",
+      } as any
+      const input = buildCreateOrderInput(restaurant, { ...order, pagoCon: undefined, cambio: undefined })
+      expect(input.paymentAmount).toBeUndefined()
+      expect(input.changeAmount).toBeUndefined()
+    })
+  })

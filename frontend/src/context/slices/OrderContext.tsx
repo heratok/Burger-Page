@@ -172,6 +172,17 @@ export function handleOrderCreatedEvent(current: RestaurantRecord, event: OrderE
     return current
   }
 
+  // Idempotent SSE merge: never unshift a second card when this order is
+  // already present (same server id or same orderNumber).
+  const alreadyPresent = current.orders.some(
+    (o) =>
+      o.id === event.orderId ||
+      (event.orderNumber !== undefined && o.orderNumber === event.orderNumber)
+  )
+  if (alreadyPresent) {
+    return current
+  }
+
   const p = event.payload as any
   const customer = p.customer || {
     nombre: 'Cliente',
@@ -468,6 +479,8 @@ export function buildCreateOrderInput(
     ),
     deliveryFee: newOrder.deliveryFee,
     paymentMethod: newOrder.metodo,
+        paymentAmount: newOrder.pagoCon ? Number(newOrder.pagoCon) : undefined,
+        changeAmount: newOrder.cambio !== undefined ? Number(newOrder.cambio) : undefined,
     receiptUrl: newOrder.receiptUrl,
     comment: newOrder.comentario,
   }
@@ -610,16 +623,28 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         apiClient
           .createOrder(orderInput)
           .then((createdOrder) => {
-            if (createdOrder?.id && createdOrder.id !== newOrder.id) {
-              updateActiveRestaurantRecord((current) => ({
+            if (!createdOrder?.id) return
+            updateActiveRestaurantRecord((current) => {
+                  // A refresh/SSE merge may have already replaced the temp
+                  // order with the server record (same id): in that case the
+                  // server card is the only copy and must not be dropped.
+                  const tempStillPresent = current.orders.some((o) => o.id === newOrder.id)
+                  if (!tempStillPresent) return current
+              // The ORDER_CREATED SSE event may have arrived first and
+              // unshifted its own card with the server id: drop that
+              // duplicate, then adopt the server identity on the still
+              // optimistic temp order (matched by its stable temp id), so
+              // both paths converge on a single card.
+              const withoutSseDuplicate = current.orders.filter((o) => o.id !== createdOrder.id)
+              return {
                 ...current,
-                orders: current.orders.map((o) =>
-                  o === newOrder
+                orders: withoutSseDuplicate.map((o) =>
+                  o.id === newOrder.id
                     ? { ...o, id: createdOrder.id, orderNumber: createdOrder.orderNumber ?? o.orderNumber }
                     : o
                 ),
-              }))
-            }
+              }
+            })
           })
           .catch((error) => {
             if (import.meta.env?.MODE !== 'test') {
@@ -690,6 +715,10 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const updateOrderStatus = useCallback(
     (orderId: string, newStatus: OrderStatus) => {
+      // Snapshot the committed state so a rejected backend transition can
+      // roll the kanban back instead of silently diverging from the server.
+      const previousOrders = activeRestaurant.orders
+
       updateActiveRestaurantRecord((current) => ({
         ...current,
         orders: current.orders.map((o) =>
@@ -704,9 +733,16 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (import.meta.env?.MODE !== 'test') {
           console.warn(`Could not sync status update for order ${orderId} to backend API:`, error)
         }
+        // Revert the optimistic status and surface a user-visible error so
+        // the kanban never silently diverges from server state.
+        updateActiveRestaurantRecord((current) => ({
+          ...current,
+          orders: previousOrders,
+        }))
+        toast.error(`No se pudo actualizar la orden a: ${newStatus.toUpperCase()}`)
       })
     },
-    [activeRestaurant.id, updateActiveRestaurantRecord]
+    [activeRestaurant, updateActiveRestaurantRecord]
   )
 
   const updateOrderReceipt = useCallback(

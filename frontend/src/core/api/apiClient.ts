@@ -421,6 +421,22 @@ export class ApiClient {
 
     let eventSource: EventSource | null = null
     let disposed = false
+    let attempt = 0
+    let reconnecting = false
+    const MAX_RECONNECT_DELAY_MS = 30_000
+
+    const scheduleReconnect = () => {
+      if (disposed || reconnecting) return
+      reconnecting = true
+      // Bounded exponential backoff (1s, 2s, 4s, ... capped at 30s) so a dead
+      // backend or an expired session never hammers the token endpoint.
+      const delayMs = Math.min(1000 * 2 ** Math.min(attempt, 5), MAX_RECONNECT_DELAY_MS)
+      attempt += 1
+      setTimeout(() => {
+        reconnecting = false
+        if (!disposed) void open()
+      }, delayMs)
+    }
 
     const open = async () => {
       try {
@@ -434,7 +450,9 @@ export class ApiClient {
         if (restaurantId) params.set('restaurantId', restaurantId)
         const qs = params.toString() ? `?${params.toString()}` : ''
 
-        eventSource = new EventSource(`${this.baseUrl}/orders/stream${qs}`)
+        eventSource?.close()
+        const es = new EventSource(`${this.baseUrl}/orders/stream${qs}`)
+        eventSource = es
 
         const handleMessage = (e: MessageEvent) => {
           try {
@@ -445,15 +463,31 @@ export class ApiClient {
           }
         }
 
-        eventSource.addEventListener('ORDER_CREATED', handleMessage as EventListener)
-        eventSource.addEventListener('ORDER_STATUS_UPDATED', handleMessage as EventListener)
-        eventSource.addEventListener('ORDER_CANCELLED', handleMessage as EventListener)
-        eventSource.addEventListener('ORDER_RECEIPT_UPDATED', handleMessage as EventListener)
-        eventSource.addEventListener('ORDER_DELETED', handleMessage as EventListener)
-        eventSource.addEventListener('ORDER_UPDATED', handleMessage as EventListener)
+        es.addEventListener('open', () => {
+          // Successful connection: reset the backoff counter.
+          attempt = 0
+        })
+
+        es.addEventListener('error', () => {
+          // The stream token is short-lived (60s TTL): once the EventSource
+          // errors, its URL can never recover (401 on every reconnect), so
+          // close it, mint a fresh token and reopen with bounded backoff.
+          if (eventSource !== es) return
+          eventSource = null
+          es.close()
+          scheduleReconnect()
+        })
+
+        es.addEventListener('ORDER_CREATED', handleMessage as EventListener)
+        es.addEventListener('ORDER_STATUS_UPDATED', handleMessage as EventListener)
+        es.addEventListener('ORDER_CANCELLED', handleMessage as EventListener)
+        es.addEventListener('ORDER_RECEIPT_UPDATED', handleMessage as EventListener)
+        es.addEventListener('ORDER_DELETED', handleMessage as EventListener)
+        es.addEventListener('ORDER_UPDATED', handleMessage as EventListener)
       } catch {
-        // No stream token available (backend down or session expired):
-        // do not connect; the session token must never travel in URLs.
+        // No stream token available (backend down or session expired): retry
+        // with bounded backoff; the session token must never travel in URLs.
+        scheduleReconnect()
       }
     }
     void open()
@@ -461,6 +495,7 @@ export class ApiClient {
     return () => {
       disposed = true
       eventSource?.close()
+      eventSource = null
     }
   }
 
