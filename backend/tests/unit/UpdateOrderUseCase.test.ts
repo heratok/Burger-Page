@@ -355,6 +355,9 @@ describe('UpdateOrderUseCase (Unit Tests)', () => {
             ],
           },
         ],
+        // Additions raise the final total above the stored payment: the
+        // cashier re-enters a sufficient payment (SUS-03 guard).
+        paymentAmount: 50000,
       },
       'rest-burger-craft'
     );

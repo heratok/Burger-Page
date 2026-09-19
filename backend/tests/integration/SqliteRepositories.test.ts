@@ -313,4 +313,16 @@ describe.skipIf(!hasSqliteBinding)('SQLite Persistence Adapter Suite (TDD)', () 
     expect(memoryDeps.customerController).toBeDefined();
     expect(memoryDeps.inventoryController).toBeDefined();
   });
+
+  it('boots a fresh database and exposes inventory_items with restaurant_id (JD-CRIT-02)', () => {
+    const bootDb = createSqliteDatabase(':memory:');
+    const cols = bootDb.prepare('PRAGMA table_info(inventory_items)').all() as Array<{ name: string }>;
+    expect(cols.some((c) => c.name === 'restaurant_id')).toBe(true);
+    // The legacy 'inventory' table name must not be probed, created, or altered.
+    const legacyTables = bootDb
+      .prepare(`SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'inventory'`)
+      .all();
+    expect(legacyTables).toHaveLength(0);
+    bootDb.close();
+  });
 });

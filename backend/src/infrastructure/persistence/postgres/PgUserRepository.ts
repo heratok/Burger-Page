@@ -10,6 +10,7 @@ function mapRow(row: any): User {
     role: row.role as UserRole,
     restaurantId: row.restaurant_id || undefined,
     createdAt: row.created_at || new Date().toISOString(),
+        isActive: row.is_active === undefined ? undefined : Boolean(row.is_active),
   };
 }
 

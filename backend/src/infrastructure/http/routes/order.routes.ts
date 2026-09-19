@@ -113,25 +113,44 @@ export async function orderRoutes(fastify: FastifyInstance, opts: { controller: 
 
     reply.raw.write(`event: connected\ndata: ${JSON.stringify({ message: 'Connected to live orders stream', restaurantId: tenantId || 'all' })}\n\n`);
 
-    const pingInterval = setInterval(() => {
+    // Guard writes after the client disconnects: writes to a destroyed
+    // socket emit an 'error' on the raw response stream which, unhandled,
+    // surfaces as an uncaughtException. Mark the stream as ended on the
+    // first write failure and stop pinging/subscribing.
+    let streamEnded = false;
+    const safeWrite = (chunk: string) => {
+      if (streamEnded) return;
       try {
-        reply.raw.write(': ping\n\n');
+        reply.raw.write(chunk);
       } catch {
+        streamEnded = true;
         clearInterval(pingInterval);
+        unsubscribe();
       }
+    };
+    reply.raw.on('error', () => {
+      streamEnded = true;
+      clearInterval(pingInterval);
+      unsubscribe();
+    });
+
+    const pingInterval = setInterval(() => {
+      safeWrite(': ping\n\n');
     }, 15000);
 
     const unsubscribe = globalOrderEventBus.subscribe((event: any) => {
       const eventRestaurantId = event.payload?.restaurantId || event.restaurantId;
       if (!tenantId || eventRestaurantId === tenantId) {
-        reply.raw.write(`event: ${event.eventType}\ndata: ${JSON.stringify(event)}\n\n`);
+        safeWrite(`event: ${event.eventType}\ndata: ${JSON.stringify(event)}\n\n`);
       }
     });
 
     req.raw.on('close', () => {
+      streamEnded = true;
       clearInterval(pingInterval);
       unsubscribe();
     });
+
   });
 
   // 3. Get Order by ID (Protected - Tenant Scoped)
