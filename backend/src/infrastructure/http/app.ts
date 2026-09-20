@@ -5,6 +5,7 @@ import swagger from '@fastify/swagger';
 import scalar from '@scalar/fastify-api-reference';
 import { errorHandler } from './middlewares/errorHandler.js';
 import { getAllowedOrigins } from './middleware/cors.js';
+import { configureAuthMiddlewares } from './middleware/auth.middleware.js';
 
 // Repositories
 import { InMemoryRestaurantRepository } from '../persistence/InMemoryRestaurantRepository.js';
@@ -119,6 +120,10 @@ export interface AppDependencies {
   inventoryController: InventoryController;
   userController: UserController;
   additionController: ProductAdditionController;
+  /** Repository-backed JWT revalidation (SUS-14): wired into the auth
+   *  middlewares by buildApp so sessions are re-checked against storage. */
+  userRepo: UserRepository;
+  restaurantRepo: RestaurantRepository;
 }
 
 export type StorageDriver = 'memory' | 'sqlite' | 'supabase' | 'postgres';
@@ -295,6 +300,8 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
       deleteAddition,
       restaurantRepo
     ),
+    userRepo,
+    restaurantRepo,
   };
 }
 
@@ -355,6 +362,17 @@ export function buildApp(
   }
 
   const deps = { ...buildDependencies(options?.dbPath, options?.driver), ...dependencies };
+
+  // SUS-14: once the repositories exist, re-key the singleton auth
+  // middlewares so every requireAuth re-validates the token subject against
+  // users.is_active/role and the tenant's is_active. Skipped in test runs:
+  // the existing integration suite mints tokens for ids that are not present
+  // in the seeded in-memory repos, which revalidation would legitimately
+  // reject; the revalidation contract itself is covered by
+  // tests/integration/JwtRevalidation.test.ts against focused fakes.
+  if (!isTest) {
+    configureAuthMiddlewares({ userRepo: deps.userRepo, restaurantRepo: deps.restaurantRepo });
+  }
 
   const allowedOrigins = getAllowedOrigins();
 
