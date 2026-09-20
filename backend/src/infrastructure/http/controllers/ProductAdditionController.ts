@@ -136,18 +136,7 @@ export class ProductAdditionController {
 
   async update(req: FastifyRequest, reply: FastifyReply) {
     const params = req.params as { id: string };
-    let restaurantId = await this.resolveTenantForMutation(req, { mutation: true });
-
-    if (!restaurantId && this.restaurantRepo) {
-      const all = await this.restaurantRepo.findAll();
-      for (const r of all) {
-        const found = await this.getAdditionByIdUseCase.execute(params.id, r.id).catch(() => null);
-        if (found) {
-          restaurantId = r.id;
-          break;
-        }
-      }
-    }
+    const restaurantId = await this.resolveTenantForMutation(req, { mutation: true });
 
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to update a product addition.');
@@ -164,18 +153,7 @@ export class ProductAdditionController {
 
   async delete(req: FastifyRequest, reply: FastifyReply) {
     const params = req.params as { id: string };
-    let restaurantId = await this.resolveTenantForMutation(req, { mutation: true });
-
-    if (!restaurantId && this.restaurantRepo) {
-      const all = await this.restaurantRepo.findAll();
-      for (const r of all) {
-        const found = await this.getAdditionByIdUseCase.execute(params.id, r.id).catch(() => null);
-        if (found) {
-          restaurantId = r.id;
-          break;
-        }
-      }
-    }
+    const restaurantId = await this.resolveTenantForMutation(req, { mutation: true });
 
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to delete a product addition.');
