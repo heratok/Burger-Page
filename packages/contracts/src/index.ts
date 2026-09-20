@@ -180,6 +180,11 @@ export const createOrderSchema = z.object({
   changeAmount: z.number().nonnegative().optional(),
   comment: z.string().optional(),
   receiptUrl: z.string().optional(),
+  // SUS-19: client-generated correlation id for idempotent order creation.
+  // The frontend generates one per sale attempt and reuses it on offline
+  // retries; the server replays (returns) an order already persisted for the
+  // same (restaurantId, clientOrderId) instead of inserting a duplicate.
+  clientOrderId: z.string().min(1).max(100).optional(),
 });
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;
 

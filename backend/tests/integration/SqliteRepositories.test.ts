@@ -325,4 +325,79 @@ describe.skipIf(!hasSqliteBinding)('SQLite Persistence Adapter Suite (TDD)', () 
     expect(legacyTables).toHaveLength(0);
     bootDb.close();
   });
+
+  describe('sqlite order idempotent replay by client correlation (SUS-19)', () => {
+    const makeOrder = (id: string) =>
+      new Order(
+        id,
+        'burger-craft',
+        undefined,
+        [{ productId: 'p-100', productName: 'Burger', unitPrice: 25000, quantity: 1, additions: [] }],
+        'pending',
+        new Date(),
+        0,
+        undefined,
+        'Efectivo',
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        'cli-sus19-replay'
+      );
+
+    it('saves once when the same (restaurantId, clientOrderId) is saved again (replay)', async () => {
+      await orderRepo.save(makeOrder('ord-sus19-a'));
+      await orderRepo.save(makeOrder('ord-sus19-b'));
+
+      // The replay must not insert a second row under the new id.
+      expect(await orderRepo.findById('ord-sus19-b', 'burger-craft')).toBeNull();
+      const all = await orderRepo.findByRestaurantId('burger-craft');
+      const correlated = all.filter((o) => o.clientOrderId === 'cli-sus19-replay');
+      expect(correlated).toHaveLength(1);
+      expect(correlated[0].id).toBe('ord-sus19-a');
+    });
+
+    it('creates separate rows for distinct clientOrderIds (SUS-19)', async () => {
+      const makeWithId = (id: string, clientOrderId: string) =>
+        new Order(
+          id,
+          'burger-craft',
+          undefined,
+          [{ productId: 'p-100', productName: 'Burger', unitPrice: 25000, quantity: 1, additions: [] }],
+          'pending',
+          new Date(),
+          0,
+          undefined,
+          'Efectivo',
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          clientOrderId
+        );
+
+      await orderRepo.save(makeWithId('ord-sus19-c1', 'cli-customer-1'));
+      await orderRepo.save(makeWithId('ord-sus19-c2', 'cli-customer-2'));
+
+      const correlated = (await orderRepo.findByRestaurantId('burger-craft')).filter((o) =>
+        ['cli-customer-1', 'cli-customer-2'].includes(o.clientOrderId as string)
+      );
+      expect(correlated).toHaveLength(2);
+    });
+
+    it('keeps NULL clientOrderId flows working (legacy callers unaffected)', async () => {
+      const order = new Order(
+        'ord-sus19-legacy',
+        'burger-craft',
+        undefined,
+        [{ productId: 'p-100', productName: 'Burger', unitPrice: 25000, quantity: 1, additions: [] }],
+        'pending',
+        new Date()
+      );
+      await orderRepo.save(order);
+      const found = await orderRepo.findById('ord-sus19-legacy', 'burger-craft');
+      expect(found).not.toBeNull();
+      expect(found?.clientOrderId).toBeUndefined();
+    });
+  });
 });

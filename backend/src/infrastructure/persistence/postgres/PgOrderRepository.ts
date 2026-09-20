@@ -56,7 +56,8 @@ function mapOrderRow(row: any, items: OrderItem[]): Order {
     row.payment_amount !== null ? Number(row.payment_amount) : undefined,
     row.change_amount !== null ? Number(row.change_amount) : undefined,
     row.comment || undefined,
-    row.receipt_url || undefined
+    row.receipt_url || undefined,
+    row.client_order_id || undefined
   );
   if (row.customer_name) {
     (order as any).customer = {
@@ -118,7 +119,7 @@ export class PgOrderRepository implements OrderRepository {
 
     await withTenantContext({ restaurantId: order.restaurantId }, async (client) => {
       const { rows } = await client.query(
-        `SELECT * FROM public.create_order_atomic($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        `SELECT * FROM public.create_order_atomic($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
         [
           order.id,
           order.restaurantId,
@@ -132,6 +133,9 @@ export class PgOrderRepository implements OrderRepository {
           // fallback otherwise) is authoritative: the RPC must not silently
           // re-derive the restaurant fee for counter/table sales.
           order.deliveryFee ?? null,
+          // SUS-19: idempotent replay key — the RPC returns the existing order
+          // when one is already persisted for (restaurant_id, client_order_id).
+          order.clientOrderId ?? null,
         ]
       );
       const created = rows[0]?.create_order_atomic;

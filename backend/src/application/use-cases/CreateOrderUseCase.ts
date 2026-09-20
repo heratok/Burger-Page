@@ -19,7 +19,7 @@ export class CreateOrderUseCase {
     private readonly customerRepo?: CustomerRepository
   ) {}
 
-  async execute(dto: CreateOrderDTO, opts: { authenticated?: boolean } = {}): Promise<Order> {
+  async execute(dto: CreateOrderDTO & { clientOrderId?: string }, opts: { authenticated?: boolean } = {}): Promise<Order> {
     const authenticated = Boolean(opts.authenticated);
     const restaurant = await this.validateAndGetRestaurant(dto.restaurantId);
     const validatedCustomerId = await this.resolveCustomerId(dto, restaurant, authenticated);
@@ -347,7 +347,7 @@ export class CreateOrderUseCase {
     items: OrderItem[];
     deliveryFee: number;
     payment: { paymentMethod: PaymentMethod; paymentAmount?: number; changeAmount?: number };
-    dto: CreateOrderDTO;
+    dto: CreateOrderDTO & { clientOrderId?: string };
   }): Order {
     const { restaurantId, customerId, items, deliveryFee, payment, dto } = params;
     const order = new Order(
@@ -363,7 +363,8 @@ export class CreateOrderUseCase {
       payment.paymentAmount,
       payment.changeAmount,
       dto.comment,
-      dto.receiptUrl
+      dto.receiptUrl,
+      dto.clientOrderId
     );
 
     if (dto.customer) {

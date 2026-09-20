@@ -215,6 +215,7 @@ CREATE TABLE IF NOT EXISTS public.orders (
     change_amount   NUMERIC(12, 2) CHECK (change_amount IS NULL OR change_amount >= 0),
     comment         TEXT,
     receipt_url     TEXT,
+    client_order_id TEXT,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT uq_orders_restaurant_order_number
@@ -493,6 +494,13 @@ END;
 $$;
 
 -- 4.2 Atomic order creation ----------------------------------------------------
+-- SUS-19: the 9-arg overload is dropped in favor of the 10-arg signature with
+-- p_client_order_id (idempotency replay). DROP persists the canonical form on
+-- databases that already received the older overload; it is a no-op on fresh
+-- ones, so the file stays idempotent.
+DROP FUNCTION IF EXISTS public.create_order_atomic(
+    text, text, text, text, numeric, numeric, text, jsonb, numeric
+);
 CREATE OR REPLACE FUNCTION public.create_order_atomic(
     p_order_id TEXT,
     p_restaurant_id TEXT,
@@ -502,7 +510,8 @@ CREATE OR REPLACE FUNCTION public.create_order_atomic(
     p_change_amount NUMERIC,
     p_comment TEXT,
     p_items JSONB,
-    p_delivery_fee NUMERIC DEFAULT NULL
+    p_delivery_fee NUMERIC DEFAULT NULL,
+    p_client_order_id TEXT DEFAULT NULL
 )
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -521,6 +530,19 @@ DECLARE
     v_final_total NUMERIC(12, 2);
     v_created_order RECORD;
 BEGIN
+    -- 0. SUS-19 idempotent replay by client correlation: an offline retry or a
+    -- lost-response re-POST carries the same client_order_id, so the already
+    -- persisted order is returned instead of inserting a duplicate sale. This
+    -- runs before validation and BEFORE the INSERT: no second order_number is
+    -- assigned and the order counters are never double-counted.
+    IF p_client_order_id IS NOT NULL AND p_client_order_id <> '' THEN
+        SELECT * INTO v_created_order FROM public.orders
+        WHERE restaurant_id = p_restaurant_id
+          AND client_order_id = p_client_order_id;
+        IF FOUND THEN
+            RETURN to_jsonb(v_created_order);
+        END IF;
+    END IF;
     -- 1. Validar estructura básica de items
     IF p_items IS NULL OR jsonb_typeof(p_items) <> 'array' OR jsonb_array_length(p_items) = 0 THEN
         RAISE EXCEPTION 'Order must contain at least one item' USING ERRCODE = 'P0001';
@@ -553,7 +575,7 @@ BEGIN
     INSERT INTO public.orders (
         id, restaurant_id, customer_id, status, subtotal,
         delivery_fee, final_total, payment_method, payment_amount,
-        change_amount, comment, created_at, updated_at
+        change_amount, comment, client_order_id, created_at, updated_at
     ) VALUES (
         p_order_id,
         p_restaurant_id,
@@ -566,6 +588,7 @@ BEGIN
         p_payment_amount,
         p_change_amount,
         NULLIF(p_comment, ''),
+        NULLIF(p_client_order_id, ''),
         NOW(),
         NOW()
     );
@@ -708,6 +731,13 @@ $$;
 -- ============================================================================
 -- 5. PERFORMANCE INDEXES (Multi-Tenancy & Query Patterns)
 -- ============================================================================
+-- SUS-19: unique (restaurant_id, client_order_id) so a retried POST can never
+-- insert a second sale. Partial (WHERE client_order_id IS NOT NULL) so
+-- legacy/unknown flows stay unconstrained (skill: partial indexes for filtered
+-- uniqueness; IF NOT EXISTS avoids the ADD CONSTRAINT IF NOT EXISTS trap).
+CREATE UNIQUE INDEX IF NOT EXISTS uq_orders_client_order_id
+    ON public.orders (restaurant_id, client_order_id)
+    WHERE client_order_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_users_username            ON public.users(username);
 CREATE INDEX IF NOT EXISTS idx_users_restaurant_id       ON public.users(restaurant_id);
 CREATE INDEX IF NOT EXISTS idx_categories_restaurant     ON public.categories(restaurant_id, display_order);
@@ -770,7 +800,7 @@ COMMIT;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO app_user;
 
 GRANT EXECUTE ON FUNCTION public.adjust_inventory_stock(TEXT, TEXT, NUMERIC) TO app_user;
-GRANT EXECUTE ON FUNCTION public.create_order_atomic(TEXT, TEXT, TEXT, TEXT, NUMERIC, NUMERIC, TEXT, JSONB, NUMERIC) TO app_user;
+GRANT EXECUTE ON FUNCTION public.create_order_atomic(TEXT, TEXT, TEXT, TEXT, NUMERIC, NUMERIC, TEXT, JSONB, NUMERIC, TEXT) TO app_user;
 GRANT EXECUTE ON FUNCTION public.update_order_status_with_actor(TEXT, TEXT, TEXT, TEXT) TO app_user;
 
 

@@ -485,5 +485,47 @@ describe('CreateOrderUseCase', () => {
     expect(order.customerId).toBeUndefined();
     expect(order.id).toBeDefined();
   });
-});
 
+  it('threads the client clientOrderId into the persisted order (SUS-19)', async () => {
+    const mockProduct = { id: 'p1', name: 'Burger', price: 20, isAvailable: true, additions: [], category: 'Food', description: 'Desc', restaurantId: 'burger-craft' };
+    vi.mocked(mockProductRepo.findById).mockResolvedValue(mockProduct as any);
+
+    const order = await useCase.execute({
+      restaurantId: 'burger-craft',
+      items: [{ productId: 'p1', quantity: 1, additions: [] }],
+      clientOrderId: 'cli-attempt-1',
+    });
+
+    expect(order.clientOrderId).toBe('cli-attempt-1');
+    const saved = vi.mocked(mockOrderRepo.save).mock.calls[0][0];
+    expect(saved.clientOrderId).toBe('cli-attempt-1');
+  });
+
+  it('replays a save with the same clientOrderId instead of duplicating (SUS-19, in-memory)', async () => {
+    const { InMemoryOrderRepository } = await import('../../src/infrastructure/persistence/InMemoryOrderRepository.js');
+    const inMemoryRepo = new InMemoryOrderRepository();
+    const inMemoryUseCase = new CreateOrderUseCase(
+      inMemoryRepo,
+      mockProductRepo,
+      mockRestaurantRepo,
+      mockAdditionRepo,
+      mockCustomerRepo
+    );
+    const mockProduct = { id: 'p1', name: 'Burger', price: 20, isAvailable: true, additions: [], category: 'Food', description: 'Desc', restaurantId: 'burger-craft' };
+    vi.mocked(mockProductRepo.findById).mockResolvedValue(mockProduct as any);
+
+    const dto = {
+      restaurantId: 'burger-craft',
+      items: [{ productId: 'p1', quantity: 1, additions: [] }],
+      clientOrderId: 'cli-same-attempt',
+    };
+    const first = await inMemoryUseCase.execute(dto);
+    await inMemoryUseCase.execute(dto);
+    const all = await inMemoryRepo.findByRestaurantId('burger-craft');
+    // The repo seeds its own orders; only orders carrying the correlation id
+    // must be deduplicated (SUS-19).
+    const correlated = all.filter((o) => (o as any).clientOrderId === 'cli-same-attempt');
+    expect(correlated).toHaveLength(1);
+    expect(correlated[0].id).toBe(first.id);
+  });
+});

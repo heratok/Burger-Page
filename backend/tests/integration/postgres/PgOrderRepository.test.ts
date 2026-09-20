@@ -222,15 +222,92 @@ describe('PgOrderRepository (real Postgres, app_user role, via create_order_atom
       expect(rows.length).toBe(0);
     });
 
-    it('grants app_user EXECUTE on the 9-arg create_order_atomic signature', async () => {
+    it('grants app_user EXECUTE on the 10-arg create_order_atomic signature', async () => {
       if (!isDbConnected) return;
-      // Pins the exact 9-arg signature (parameter-order contract): if the
-      // function is renamed/re-signed, regprocedure resolution throws and the
-      // test fails; if EXECUTE is revoked for app_user, this returns false.
+      // Pins the exact 10-arg signature (parameter-order contract): the SUS-19
+      // idempotency replay appended p_client_order_id as the 10th arg, so the
+      // old 9-arg overload is dropped and this must now resolve the 10-arg one.
       const { rows } = await adminPool.query(
-        `SELECT has_function_privilege('app_user', 'public.create_order_atomic(text,text,text,text,numeric,numeric,text,jsonb,numeric)', 'EXECUTE') AS ok`
+        `SELECT has_function_privilege('app_user', 'public.create_order_atomic(text,text,text,text,numeric,numeric,text,jsonb,numeric,text)', 'EXECUTE') AS ok`
       );
       expect(rows[0].ok).toBe(true);
+    });
+  });
+
+  describe('create_order_atomic client correlation idempotency (SUS-19)', () => {
+    const makeOrder = (id: string, clientOrderId: string) =>
+      new Order(
+        id,
+        RESTAURANT_A,
+        undefined,
+        [{ id: `item-${randomUUID().slice(0, 8)}`, productId: PRODUCT_ID, productName: 'ignored', unitPrice: 0, quantity: 1 }],
+        'pending',
+        new Date(),
+        0,
+        undefined,
+        'Efectivo',
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        clientOrderId
+      );
+
+    it('replays a save with the same (restaurant_id, client_order_id) instead of duplicating the sale', async () => {
+      if (!isDbConnected) return;
+      const clientOrderId = `cli-${randomUUID().slice(0, 8)}`;
+      const first = makeOrder(`ord-${randomUUID().slice(0, 8)}`, clientOrderId);
+      const replay = makeOrder(`ord-${randomUUID().slice(0, 8)}`, clientOrderId);
+
+      await repo.save(first);
+      const firstOrderNumber = (first as any).orderNumber;
+      await repo.save(replay);
+
+      // Nothing was inserted under the replay's fresh server id.
+      expect(await repo.findById(replay.id, RESTAURANT_A)).toBeNull();
+      // Exactly one row carries the correlation id — the first order, with its
+      // original order_number (no double-counted counters, no new assignment).
+      const { rows } = await adminPool.query(
+        `SELECT id, order_number FROM public.orders WHERE restaurant_id = $1 AND client_order_id = $2`,
+        [RESTAURANT_A, clientOrderId]
+      );
+      expect(rows).toHaveLength(1);
+      expect(rows[0].id).toBe(first.id);
+      expect(Number(rows[0].order_number)).toBe(firstOrderNumber);
+    });
+
+    it('creates separate rows for distinct clientOrderIds (SUS-19)', async () => {
+      if (!isDbConnected) return;
+      const aCid = `cli-a-${randomUUID().slice(0, 8)}`;
+      const bCid = `cli-b-${randomUUID().slice(0, 8)}`;
+      await repo.save(makeOrder(`ord-${randomUUID().slice(0, 8)}`, aCid));
+      await repo.save(makeOrder(`ord-${randomUUID().slice(0, 8)}`, bCid));
+
+      const { rows } = await adminPool.query(
+        `SELECT count(*)::int AS n FROM public.orders WHERE restaurant_id = $1 AND client_order_id IN ($2, $3)`,
+        [RESTAURANT_A, aCid, bCid]
+      );
+      expect(rows[0].n).toBe(2);
+    });
+
+    it('keeps NULL client_order_id flows working (legacy callers unaffected)', async () => {
+      if (!isDbConnected) return;
+      const order = new Order(
+        `ord-${randomUUID().slice(0, 8)}`,
+        RESTAURANT_A,
+        undefined,
+        [{ id: `item-${randomUUID().slice(0, 8)}`, productId: PRODUCT_ID, productName: 'ignored', unitPrice: 0, quantity: 1 }],
+        'pending',
+        new Date()
+      );
+      await repo.save(order);
+      const found = await repo.findById(order.id, RESTAURANT_A);
+      const { rows } = await adminPool.query(
+        `SELECT client_order_id FROM public.orders WHERE id = $1`,
+        [order.id]
+      );
+      expect(found).not.toBeNull();
+      expect(rows[0].client_order_id).toBeNull();
     });
   });
 });

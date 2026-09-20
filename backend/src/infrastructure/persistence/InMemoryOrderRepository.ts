@@ -23,6 +23,15 @@ export class InMemoryOrderRepository implements OrderRepository {
   }
 
   async save(order: Order): Promise<void> {
+    // SUS-19 idempotent replay: a retried save carrying the same
+    // (restaurantId, clientOrderId) as an existing order must not create a
+    // duplicate sale — the first persisted order already represents it.
+    if (order.clientOrderId) {
+      const existing = Array.from(this.orders.values()).find(
+        (o) => o.restaurantId === order.restaurantId && o.clientOrderId === order.clientOrderId
+      );
+      if (existing) return;
+    }
     this.orders.set(order.id, order);
   }
 

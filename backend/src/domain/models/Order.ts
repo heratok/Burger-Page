@@ -35,7 +35,11 @@ export class Order {
     public readonly paymentAmount?: number,
     public readonly changeAmount?: number,
     public readonly comment?: string,
-    public receiptUrl?: string
+    public receiptUrl?: string,
+    // SUS-19: optional client-generated idempotency correlation id. Set by the
+    // use case from the dto; repos persist it and replay (return) an existing
+    // order for the same (restaurantId, clientOrderId) instead of duplicating.
+    public readonly clientOrderId?: string
   ) {}
 
   public customer?: {
