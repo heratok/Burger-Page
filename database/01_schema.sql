@@ -918,6 +918,16 @@ COMMIT;
             )
         );
     
+    -- INVARIANT (JD-INFO-6): public.users has FORCE ROW LEVEL SECURITY
+    -- (see ALTER TABLE public.users ... FORCE below), which removes the
+    -- default table-owner RLS bypass — a SECURITY DEFINER function only
+    -- bypasses RLS here when its owner is superuser (or has BYPASSRLS).
+    -- The functions below rely on being created by the migration role,
+    -- which is a superuser in both documented deployment paths
+    -- (docker-compose initdb runs as postgres; Supabase postgres is a
+    -- superuser). If the schema is ever applied by a non-superuser role or
+    -- function ownership is transferred, every login fails closed with 0
+    -- rows — which is the safe direction, but keep the owner superuser.
     -- Auth bootstrap escape hatches (JD-CRIT-03): RLS now denies every
     -- direct no-context read of public.users, but the login path must still
     -- resolve the single user matching the login credential before any tenant
