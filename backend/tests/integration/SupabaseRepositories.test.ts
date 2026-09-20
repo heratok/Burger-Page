@@ -16,6 +16,7 @@ import { Inventory } from '../../src/domain/models/Inventory.js';
 describe('Supabase Persistence Adapter Suite', () => {
   let mockTables: Record<string, any[]>;
   let mockSupabaseClient: any;
+  let rpcCalls: Array<{ functionName: string; params: any }>;
 
   beforeEach(() => {
     mockTables = {
@@ -25,6 +26,7 @@ describe('Supabase Persistence Adapter Suite', () => {
       customers: [],
       inventory: []
     };
+    rpcCalls = [];
 
     mockSupabaseClient = {
       from: (tableName: string) => {
@@ -106,6 +108,7 @@ describe('Supabase Persistence Adapter Suite', () => {
         };
       },
       rpc: async (functionName: string, params: any) => {
+        rpcCalls.push({ functionName, params });
         if (functionName === 'create_order_atomic') {
           const newOrder = {
             id: params.p_order_id,
@@ -283,12 +286,38 @@ describe('Supabase Persistence Adapter Suite', () => {
       expect(retrieved?.total).toBe(69000);
       expect(retrieved?.status).toBe('pending');
 
+      // Supabase path must forward the resolved delivery fee to the RPC
+      // (mirror PgOrderRepository's 9th arg) so COALESCE never falls back
+      // to the restaurant fee.
+      const createCall = rpcCalls.find((c) => c.functionName === 'create_order_atomic');
+      expect(createCall?.params).toEqual(expect.objectContaining({ p_delivery_fee: 5000 }));
+
       const all = await repo.findByRestaurantId('burger-craft');
       expect(all.length).toBe(1);
 
       // Foreign tenant isolation
       const foreign = await repo.findById('order-supabase-1', 'other-tenant');
       expect(foreign).toBeNull();
+    });
+
+    it('passes p_delivery_fee = 0 for fee-exempt orders so COALESCE does not fall back to the restaurant fee', async () => {
+      const repo = new SupabaseOrderRepository(mockSupabaseClient as unknown as SupabaseClient);
+
+      // Counter/table sales: use case resolves the fee to 0.
+      const order = new Order(
+        'order-supabase-fee0',
+        'burger-craft',
+        'cust-10',
+        [{ productId: 'prod-10', productName: 'Truffle Burger', unitPrice: 32000, quantity: 1, additions: [] }],
+        'pending',
+        new Date('2026-08-28T12:00:00Z'),
+        0
+      );
+
+      await repo.save(order);
+
+      const createCall = rpcCalls.find((c) => c.functionName === 'create_order_atomic');
+      expect(createCall?.params).toEqual(expect.objectContaining({ p_delivery_fee: 0 }));
     });
   });
 

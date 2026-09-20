@@ -177,18 +177,77 @@ describe('CreateOrderUseCase', () => {
     })).rejects.toThrow(ValidationError);
   });
 
-  it('should ignore client-provided delivery fee and enforce official restaurant delivery fee', async () => {
+  it('should honor a valid client-provided delivery fee of 0 for counter sales (JD-CRIT-02)', async () => {
     const mockProduct = { id: 'p1', name: 'Burger', price: 20, isAvailable: true, additions: [], category: 'Food', description: 'Desc', restaurantId: 'burger-craft' };
     vi.mocked(mockProductRepo.findById).mockResolvedValue(mockProduct as any);
 
     const order = await useCase.execute({
       restaurantId: 'burger-craft',
       items: [{ productId: 'p1', quantity: 1, additions: [] }],
-      deliveryFee: 0 // Client attempts to send $0 delivery fee
+      deliveryFee: 0 // Counter sale waives the $5 restaurant delivery fee
     });
 
-    expect(order.deliveryFee).toBe(5); // Official restaurant delivery fee is $5
+    expect(order.deliveryFee).toBe(0); // Client fee honored
+    expect(order.finalTotal).toBe(20); // 20 + 0 (no inflated restaurant fee)
+  });
+
+  it('should fall back to the restaurant delivery fee when the client omits it (JD-CRIT-02)', async () => {
+    const mockProduct = { id: 'p1', name: 'Burger', price: 20, isAvailable: true, additions: [], category: 'Food', description: 'Desc', restaurantId: 'burger-craft' };
+    vi.mocked(mockProductRepo.findById).mockResolvedValue(mockProduct as any);
+
+    const order = await useCase.execute({
+      restaurantId: 'burger-craft',
+      items: [{ productId: 'p1', quantity: 1, additions: [] }]
+    });
+
+    expect(order.deliveryFee).toBe(5); // Restaurant fee as fallback
     expect(order.finalTotal).toBe(25); // 20 + 5
+  });
+
+  it('should fall back to the restaurant delivery fee when the client fee is negative (JD-CRIT-02)', async () => {
+    const mockProduct = { id: 'p1', name: 'Burger', price: 20, isAvailable: true, additions: [], category: 'Food', description: 'Desc', restaurantId: 'burger-craft' };
+    vi.mocked(mockProductRepo.findById).mockResolvedValue(mockProduct as any);
+
+    const order = await useCase.execute({
+      restaurantId: 'burger-craft',
+      items: [{ productId: 'p1', quantity: 1, additions: [] }],
+      deliveryFee: -100 // Invalid: must never reach the payment validation
+    });
+
+    expect(order.deliveryFee).toBe(5);
+    expect(order.finalTotal).toBe(25);
+  });
+
+  it('should accept a mostrador cash payment equal to the subtotal when delivery fee is 0 (JD-CRIT-02)', async () => {
+    const mockProduct = { id: 'p1', name: 'Burger', price: 20, isAvailable: true, additions: [], category: 'Food', description: 'Desc', restaurantId: 'burger-craft' };
+    vi.mocked(mockProductRepo.findById).mockResolvedValue(mockProduct as any);
+
+    const order = await useCase.execute({
+      restaurantId: 'burger-craft',
+      items: [{ productId: 'p1', quantity: 1, additions: [] }],
+      deliveryFee: 0,
+      paymentMethod: 'Efectivo',
+      paymentAmount: 20, // == subtotal == finalTotal (fee waived)
+    });
+
+    expect(order.deliveryFee).toBe(0);
+    expect(order.subtotal).toBe(20);
+    expect(order.finalTotal).toBe(20);
+    expect(order.paymentAmount).toBe(20);
+    expect(order.changeAmount).toBe(0); // exact payment, no change owed
+  });
+
+  it('should reject a cash payment below the corrected final total (JD-CRIT-02)', async () => {
+    const mockProduct = { id: 'p1', name: 'Burger', price: 20, isAvailable: true, additions: [], category: 'Food', description: 'Desc', restaurantId: 'burger-craft' };
+    vi.mocked(mockProductRepo.findById).mockResolvedValue(mockProduct as any);
+
+    await expect(useCase.execute({
+      restaurantId: 'burger-craft',
+      items: [{ productId: 'p1', quantity: 1, additions: [] }],
+      deliveryFee: 0,
+      paymentMethod: 'Efectivo',
+      paymentAmount: 19,
+    })).rejects.toThrow(ValidationError);
   });
 
   it('should apply minOrderAmount including additions in subtotal calculation', async () => {

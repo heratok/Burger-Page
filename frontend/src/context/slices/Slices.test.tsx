@@ -625,7 +625,16 @@ describe("OrderContext Slice", () => {
     }).not.toThrow()
 
     expect(addedOrder).toBeDefined()
-    expect(result.current.orders.some((o) => o.customer.nombre === "Carlos Vives")).toBe(true)
+
+    // act flushes the rejection microtask: the backend rejected the order, so
+    // the temp card is removed — a failed sale is never kept as a silent
+    // local-only success (JD-CONF-01).
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(result.current.orders.some((o) => o.customer.nombre === "Carlos Vives")).toBe(false)
   })
 
   it("calls apiClient.updateOrderStatus when updateOrderStatus is called", async () => {

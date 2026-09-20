@@ -29,6 +29,12 @@ export interface CartSummary {
 
 /**
  * Calculates the total for a single cart line item including its additions.
+ *
+ * Mirrors the authoritative backend formula
+ * (unitPrice + SUM(add.price * add.cantidad)) * quantity
+ * (CreateOrderUseCase.validateAndBuildItem / Order.subtotal): priced
+ * additions are applied once per item quantity, so a 2x line with a priced
+ * addition does not under-quote the display vs the server order.
  */
 export function calculateLineItemTotal(item: {
   price: number
@@ -36,12 +42,11 @@ export function calculateLineItemTotal(item: {
   adiciones?: Array<{ price: number; cantidad: number }>
 }): number {
   const quantity = Math.max(1, item.cantidad || 1)
-  const baseTotal = item.price * quantity
   const additionsTotal = (item.adiciones ?? []).reduce(
     (acc, add) => acc + (add.price || 0) * (add.cantidad || 0),
     0
   )
-  return baseTotal + additionsTotal
+  return (item.price + additionsTotal) * quantity
 }
 
 /**
@@ -136,7 +141,13 @@ export function orderItemToCartItem(orderItem: OrderItem): CartItem {
     name: orderItem.name,
     price: orderItem.price,
     cantidad: orderItem.cantidad || 1,
-    total: orderItem.total || orderItem.price * (orderItem.cantidad || 1),
+    total:
+      orderItem.total ??
+      calculateLineItemTotal({
+        price: orderItem.price,
+        cantidad: orderItem.cantidad || 1,
+        adiciones: orderItem.adiciones ?? [],
+      }),
     src: orderItem.src || "",
     observacion: orderItem.observacion || "",
     adiciones: (orderItem.adiciones || []).map((a, idx) => ({

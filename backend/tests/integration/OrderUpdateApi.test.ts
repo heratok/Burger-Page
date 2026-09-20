@@ -148,7 +148,11 @@ describe('Order Update API (TDD)', () => {
     expect(createRes.statusCode).toBe(201);
     const initialOrder = createRes.json();
     expect(initialOrder.subtotal).toBe(20);
-    expect(initialOrder.finalTotal).toBe(20);
+    // JD-CRIT-02: the backend honors a valid client-provided deliveryFee, so
+    // finalTotal = subtotal + client fee (20 + 4 = 24) instead of silently
+    // charging the restaurant's own delivery fee.
+    expect(initialOrder.deliveryFee).toBe(4);
+    expect(initialOrder.finalTotal).toBe(24);
 
     // 2. Set up SSE event listener on globalOrderEventBus
     let capturedEvent: any = null;
@@ -331,7 +335,9 @@ describe('Order Update API (TDD)', () => {
     expect(createRes.statusCode).toBe(201);
     const order = createRes.json();
     expect(order.subtotal).toBe(20);
-    expect(order.finalTotal).toBe(20);
+    // JD-CRIT-02: the client deliveryFee 5 is honored, so finalTotal = 25.
+    expect(order.deliveryFee).toBe(5);
+    expect(order.finalTotal).toBe(25);
 
     // 2. Update with 3 x product2 ($25) and new deliveryFee $8
     const updateRes = await app.inject({

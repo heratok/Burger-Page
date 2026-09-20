@@ -117,7 +117,7 @@ export class PgOrderRepository implements OrderRepository {
 
     await withTenantContext({ restaurantId: order.restaurantId }, async (client) => {
       const { rows } = await client.query(
-        `SELECT * FROM public.create_order_atomic($1, $2, $3, $4, $5, $6, $7, $8)`,
+        `SELECT * FROM public.create_order_atomic($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
         [
           order.id,
           order.restaurantId,
@@ -127,6 +127,10 @@ export class PgOrderRepository implements OrderRepository {
           order.changeAmount ?? null,
           order.comment || null,
           JSON.stringify(itemsPayload),
+          // The use-case-computed fee (client-honored when valid, restaurant
+          // fallback otherwise) is authoritative: the RPC must not silently
+          // re-derive the restaurant fee for counter/table sales.
+          order.deliveryFee ?? null,
         ]
       );
       const created = rows[0]?.create_order_atomic;

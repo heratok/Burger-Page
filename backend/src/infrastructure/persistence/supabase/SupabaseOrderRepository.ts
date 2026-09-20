@@ -97,6 +97,10 @@ export class SupabaseOrderRepository implements OrderRepository {
       p_change_amount: order.changeAmount ?? null,
       p_comment: order.comment || null,
       p_items: itemsPayload,
+      // Authoritative use-case-resolved fee (mirrors PgOrderRepository's 9th arg):
+      // forward it so COALESCE(p_delivery_fee, v_rest.delivery_fee) does not
+      // silently re-derive the restaurant fee for counter/table sales.
+      p_delivery_fee: order.deliveryFee ?? null,
     });
 
     if (error) {

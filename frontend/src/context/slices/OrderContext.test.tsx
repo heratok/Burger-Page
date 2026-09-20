@@ -677,6 +677,107 @@ describe("OrderContext Pure Reducers & Updaters (TDD Tests)", () => {
           expect(result.current.orders.length).toBeGreaterThanOrEqual(1)
         })
   })
+
+  describe("addOrder — server rejection is visible and never a phantom success (JD-CONF-01)", () => {
+    const createOrderParams: Omit<Order, "id" | "orderNumber" | "createdAt" | "updatedAt"> = {
+      customer: { nombre: "Rejection Tester", telefono: "3004443322", direccion: "Calle 3", barrio: "Centro" },
+      items: [{ id: "i1", name: "Burger", price: 20000, cantidad: 1, total: 20000, adiciones: [] }],
+      total: 20000,
+      deliveryFee: 0,
+      finalTotal: 20000,
+      metodo: "Efectivo",
+      status: "pending",
+    }
+
+    it("removes the temp order and shows an error (never a success toast) when the server rejects", async () => {
+      const { apiClient } = await import("@/core/api/apiClient")
+      const { toast } = await import("sonner")
+      const successSpy = vi.spyOn(toast, "success")
+      const errorSpy = vi.spyOn(toast, "error")
+      vi.spyOn(apiClient, "createOrder").mockRejectedValue(new Error("API Error: 400 Bad Request"))
+      vi.spyOn(apiClient, "subscribeToOrderStream").mockImplementation(() => () => {})
+      vi.spyOn(apiClient, "hasToken").mockReturnValue(true)
+      vi.spyOn(apiClient, "fetchOrders").mockResolvedValue([])
+      vi.spyOn(apiClient, "fetchCustomers").mockResolvedValue([])
+
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <TenantProvider>
+          <UiProvider>
+            <OrderProvider>{children}</OrderProvider>
+          </UiProvider>
+        </TenantProvider>
+      )
+
+      const { result } = renderHook(() => useOrders(), { wrapper })
+
+      await act(async () => {
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      await act(async () => {
+        result.current.addOrder(createOrderParams)
+        // act flushes the rejection microtask: the temp card is removed and
+        // the failure surfaced synchronously relative to the caller.
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      // Rejection: no success toast, temp order removed, error shown.
+      expect(result.current.orders).toHaveLength(0)
+      expect(successSpy).not.toHaveBeenCalled()
+      expect(errorSpy).toHaveBeenCalledTimes(1)
+    })
+
+    it("adopts the server identity and shows a success toast when the order is accepted", async () => {
+      const { apiClient } = await import("@/core/api/apiClient")
+      const { toast } = await import("sonner")
+      const successSpy = vi.spyOn(toast, "success")
+      vi.spyOn(apiClient, "createOrder").mockResolvedValue({
+        id: "server-accepted-1",
+        orderNumber: 3131,
+        status: "pending",
+        createdAt: "2026-08-01T19:00:00.000Z",
+        updatedAt: "2026-08-01T19:00:00.000Z",
+      } as any)
+      vi.spyOn(apiClient, "subscribeToOrderStream").mockImplementation(() => () => {})
+      vi.spyOn(apiClient, "hasToken").mockReturnValue(true)
+      vi.spyOn(apiClient, "fetchOrders").mockResolvedValue([])
+      vi.spyOn(apiClient, "fetchCustomers").mockResolvedValue([])
+
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <TenantProvider>
+          <UiProvider>
+            <OrderProvider>{children}</OrderProvider>
+          </UiProvider>
+        </TenantProvider>
+      )
+
+      const { result } = renderHook(() => useOrders(), { wrapper })
+
+      await act(async () => {
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      act(() => {
+        result.current.addOrder(createOrderParams)
+      })
+      expect(result.current.orders).toHaveLength(1)
+
+      await act(async () => {
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      expect(result.current.orders).toHaveLength(1)
+      expect(result.current.orders[0].id).toBe("server-accepted-1")
+      expect(result.current.orders[0].orderNumber).toBe(3131)
+      expect(successSpy).toHaveBeenCalledTimes(1)
+    })
+  })
 })
 
 

@@ -501,7 +501,8 @@ CREATE OR REPLACE FUNCTION public.create_order_atomic(
     p_payment_amount NUMERIC,
     p_change_amount NUMERIC,
     p_comment TEXT,
-    p_items JSONB
+    p_items JSONB,
+    p_delivery_fee NUMERIC DEFAULT NULL
 )
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -534,6 +535,13 @@ BEGIN
         RAISE EXCEPTION 'Restaurant % is inactive', v_rest.name USING ERRCODE = 'P0001';
     END IF;
 
+    -- 2b. Validate the client-provided delivery fee when present: it is
+    -- computed by the use case and must never be negative (a negative fee
+    -- would let cash below the real total pass the step-8 validation).
+    IF p_delivery_fee IS NOT NULL AND p_delivery_fee < 0 THEN
+        RAISE EXCEPTION 'Invalid delivery fee: %', p_delivery_fee USING ERRCODE = 'P0001';
+    END IF;
+
     -- 3. Validar customer_id si fue provisto
     IF p_customer_id IS NOT NULL AND p_customer_id <> '' THEN
         IF NOT EXISTS (SELECT 1 FROM public.customers WHERE id = p_customer_id AND restaurant_id = p_restaurant_id) THEN
@@ -552,8 +560,8 @@ BEGIN
         NULLIF(p_customer_id, ''),
         'pending',
         0.00,
-        v_rest.delivery_fee,
-        v_rest.delivery_fee,
+        COALESCE(p_delivery_fee, v_rest.delivery_fee),
+        COALESCE(p_delivery_fee, v_rest.delivery_fee),
         COALESCE(p_payment_method, 'Efectivo'),
         p_payment_amount,
         p_change_amount,
@@ -641,8 +649,9 @@ BEGIN
         RAISE EXCEPTION 'Subtotal % is below minimum order amount %', v_calculated_subtotal, v_rest.min_order_amount USING ERRCODE = 'P0001';
     END IF;
 
-    -- 8. Validar efectivo vs monto pagado si aplica
-    v_final_total := v_calculated_subtotal + v_rest.delivery_fee;
+    -- 8. Validar efectivo vs monto pagado si aplica (fee provided by the
+    -- use case is authoritative; restaurant fee is only the SQL fallback)
+    v_final_total := v_calculated_subtotal + COALESCE(p_delivery_fee, v_rest.delivery_fee);
     IF p_payment_method = 'Efectivo' AND p_payment_amount IS NOT NULL THEN
         IF p_payment_amount < v_final_total THEN
             RAISE EXCEPTION 'Payment amount % is less than final total %', p_payment_amount, v_final_total USING ERRCODE = 'P0001';
@@ -732,7 +741,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO app_user;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO app_user;
 
 GRANT EXECUTE ON FUNCTION public.adjust_inventory_stock(TEXT, TEXT, NUMERIC) TO app_user;
-GRANT EXECUTE ON FUNCTION public.create_order_atomic(TEXT, TEXT, TEXT, TEXT, NUMERIC, NUMERIC, TEXT, JSONB) TO app_user;
+GRANT EXECUTE ON FUNCTION public.create_order_atomic(TEXT, TEXT, TEXT, TEXT, NUMERIC, NUMERIC, TEXT, JSONB, NUMERIC) TO app_user;
 GRANT EXECUTE ON FUNCTION public.update_order_status_with_actor(TEXT, TEXT, TEXT, TEXT) TO app_user;
 
 

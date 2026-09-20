@@ -59,6 +59,15 @@ describe("ManualSaleModal - Point of Sale (POS) Component", () => {
   })
 
   it("allows searching products, adding items to order, updating quantity and calculating total", async () => {
+    const { apiClient } = await import("@/core/api/apiClient")
+    const createOrderSpy = vi.spyOn(apiClient, "createOrder").mockResolvedValue({
+      id: "server-pos-1",
+      orderNumber: 4242,
+      status: "pending",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    } as any)
+
     render(
       <RestaurantProvider repository={createTestRepo()}>
         <ManualSaleModal isOpen={true} onClose={() => {}} />
@@ -68,33 +77,65 @@ describe("ManualSaleModal - Point of Sale (POS) Component", () => {
     // Initially order is empty
     expect(screen.getByText(/Venta vacía/i)).toBeDefined()
 
-    // Add first available product
+    // Add the first product twice: the quick-add merges the line and
+    // increments the quantity (2x Burger Doble Queso at 25000 = 50000 with
+    // the corrected (price + additions) * quantity line-total formula).
     const addButtons = screen.getAllByRole("button", { name: /Agregar/i })
     expect(addButtons.length).toBeGreaterThan(0)
     fireEvent.click(addButtons[0])
+    fireEvent.click(addButtons[0])
 
-    // Should now show item in order list
+    // Should now show item in order list with quantity 2 and total 50.000
     expect(screen.queryByText(/Venta vacía/i)).toBeNull()
+    expect(screen.getByText("2x")).toBeDefined()
     expect(screen.getByText(/Subtotal productos:/i)).toBeDefined()
+    expect(screen.getAllByText("$50.000").length).toBeGreaterThan(0)
 
-    // Add another item
-    if (addButtons.length > 1) {
-      fireEvent.click(addButtons[1])
-    }
+    // Add a priced addition (Tocineta Extra 4000) to the 2x line and verify
+    // the corrected line-total formula charges it per item quantity:
+    // (25000 + 4000) * 2 = 58.000
+    fireEvent.click(screen.getByRole("button", { name: /\+ Extras \/ nota/i }))
+    fireEvent.click(screen.getByRole("button", { name: /Agregar Tocineta Extra/i }))
+    fireEvent.click(screen.getByRole("button", { name: /Guardar Cambios/i }))
+    expect(screen.getByText(/Tocineta Extra/i)).toBeDefined()
+    expect(screen.getAllByText("$58.000").length).toBeGreaterThan(0)
 
-    // Submit order for Mostrador
+    // Submit order for Mostrador (deliveryFee 0)
     const submitBtn = screen.getByRole("button", { name: /Registrar Venta/i })
     expect(submitBtn).toBeDefined()
     fireEvent.click(submitBtn)
 
+    // No synchronous success toast from the modal: the outcome toast is owned
+    // by addOrder and only fires once the server accepts the order.
+    expect(toast.success).not.toHaveBeenCalled()
+
     await waitFor(() => {
-      expect(toast.success).toHaveBeenCalledWith(
-        "¡Venta manual registrada en el sistema!",
+      expect(createOrderSpy).toHaveBeenCalledTimes(1)
+      expect(createOrderSpy).toHaveBeenCalledWith(
         expect.objectContaining({
-          description: expect.any(String),
+          deliveryFee: 0,
+          items: [
+            {
+              productId: "prod-1",
+              quantity: 2,
+              additions: [{ additionId: "add-2", quantity: 1 }],
+            },
+          ],
         })
       )
     })
+
+    // addOrder owns the outcome toast after the server accepts the order.
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledTimes(1)
+    })
+    expect(toast.success).toHaveBeenCalledWith("Orden #4242 registrada", expect.anything())
+    expect(toast.success).not.toHaveBeenCalledWith(
+      "¡Venta manual registrada en el sistema!",
+      expect.objectContaining({
+        description: expect.any(String),
+      })
+    )
   })
 
   it("requires address and barrio when service mode is Domicilio", async () => {
@@ -122,6 +163,15 @@ describe("ManualSaleModal - Point of Sale (POS) Component", () => {
   })
 
   it("allows entering order observations and includes them in the registered sale", async () => {
+    const { apiClient } = await import("@/core/api/apiClient")
+    const createOrderSpy = vi.spyOn(apiClient, "createOrder").mockResolvedValue({
+      id: "server-pos-2",
+      orderNumber: 4243,
+      status: "pending",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    } as any)
+
     render(
       <RestaurantProvider repository={createTestRepo()}>
         <ManualSaleModal isOpen={true} onClose={() => {}} />
@@ -141,12 +191,29 @@ describe("ManualSaleModal - Point of Sale (POS) Component", () => {
     const submitBtn = screen.getByRole("button", { name: /Registrar Venta/i })
     fireEvent.click(submitBtn)
 
+    // No synchronous success toast from the modal: the outcome toast is owned
+    // by addOrder and only fires once the server accepts the order.
+    expect(toast.success).not.toHaveBeenCalled()
+
     await waitFor(() => {
-      expect(toast.success).toHaveBeenCalledWith(
-        "¡Venta manual registrada en el sistema!",
-        expect.anything()
+      expect(createOrderSpy).toHaveBeenCalledTimes(1)
+      expect(createOrderSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          deliveryFee: 0,
+          comment: "Sin cebolla y salsas aparte",
+        })
       )
     })
+
+    // addOrder owns the outcome toast after the server accepts the order.
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledTimes(1)
+    })
+    expect(toast.success).toHaveBeenCalledWith("Orden #4243 registrada", expect.anything())
+    expect(toast.success).not.toHaveBeenCalledWith(
+      "¡Venta manual registrada en el sistema!",
+      expect.anything()
+    )
   })
 
   it("allows customizing additions and kitchen notes via '+ Extras' button", async () => {

@@ -612,24 +612,32 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         playNotificationChime()
       }
 
-      toast.success(`Orden #${newOrder.orderNumber} registrada`, {
-        description: `${newOrder.customer.nombre} - ${formatCurrency(newOrder.finalTotal)}`,
-      })
-
-      // Backend API Integration with graceful offline fallback
+      // Backend API integration. The card is optimistic; the outcome toast is
+      // only shown once the server answers: success adopts the server identity
+      // (temp id -> server id, SSE duplicate collapse), and a rejection shows
+      // an error and removes the temporary card so a phantom order is never
+      // silently dropped by the next refresh/SSE sync without user visibility.
       try {
         const orderInput = buildCreateOrderInput(activeRestaurant, newOrder)
 
         apiClient
           .createOrder(orderInput)
           .then((createdOrder) => {
-            if (!createdOrder?.id) return
+            const adoptedOrderNumber = createdOrder?.orderNumber ?? newOrder.orderNumber
+            if (!createdOrder?.id) {
+              // Server accepted but returned no body: keep the optimistic card
+              // (it still represents a persisted order) and confirm success.
+              toast.success(`Orden #${adoptedOrderNumber} registrada`, {
+                description: `${newOrder.customer.nombre} - ${formatCurrency(newOrder.finalTotal)}`,
+              })
+              return
+            }
             updateActiveRestaurantRecord((current) => {
-                  // A refresh/SSE merge may have already replaced the temp
-                  // order with the server record (same id): in that case the
-                  // server card is the only copy and must not be dropped.
-                  const tempStillPresent = current.orders.some((o) => o.id === newOrder.id)
-                  if (!tempStillPresent) return current
+              // A refresh/SSE merge may have already replaced the temp
+              // order with the server record (same id): in that case the
+              // server card is the only copy and must not be dropped.
+              const tempStillPresent = current.orders.some((o) => o.id === newOrder.id)
+              if (!tempStillPresent) return current
               // The ORDER_CREATED SSE event may have arrived first and
               // unshifted its own card with the server id: drop that
               // duplicate, then adopt the server identity on the still
@@ -645,16 +653,41 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 ),
               }
             })
+            toast.success(`Orden #${adoptedOrderNumber} registrada`, {
+              description: `${newOrder.customer.nombre} - ${formatCurrency(newOrder.finalTotal)}`,
+            })
           })
           .catch((error) => {
             if (import.meta.env?.MODE !== 'test') {
-              console.warn("Could not sync order to backend API, falling back to local state:", error)
+              console.warn("Could not sync order to backend API, removing local optimistic order:", error)
             }
+            // The server rejected the order (unavailable product, min order,
+            // cash below final total, tenant mismatch...): surface it and drop
+            // the temporary card instead of pretending the sale succeeded.
+            updateActiveRestaurantRecord((current) => ({
+              ...current,
+              orders: current.orders.filter((o) => o.id !== newOrder.id),
+            }))
+            const err = error as any
+            const description =
+              err && typeof err.message === 'string' && !err.message.includes('Failed to fetch')
+                ? err.message
+                : 'El servidor no está disponible en este momento'
+            toast.error(`No se pudo registrar la orden #${newOrder.orderNumber}`, {
+              description,
+            })
           })
       } catch (err) {
         if (import.meta.env?.MODE !== 'test') {
           console.warn("Error preparing order input for backend API:", err)
         }
+        updateActiveRestaurantRecord((current) => ({
+          ...current,
+          orders: current.orders.filter((o) => o.id !== newOrder.id),
+        }))
+        toast.error(`No se pudo registrar la orden #${newOrder.orderNumber}`, {
+          description: 'No se pudo preparar la orden para el servidor',
+        })
       }
 
       return newOrder

@@ -47,6 +47,39 @@ describe("Cart Engine - calculateLineItemTotal", () => {
     })
     expect(total).toBe(25000)
   })
+
+  it("multiplies priced additions by item quantity (backend formula, JD-CRIT-01)", () => {
+    // Claim example: 2x product at 9.99 + 1x addition at 1.50 must quote
+    // (9.99 + 1.50) * 2 = 22.98, not 21.48.
+    const total = calculateLineItemTotal({
+      price: 9.99,
+      cantidad: 2,
+      adiciones: [{ price: 1.5, cantidad: 1 }],
+    })
+    expect(total).toBe(22.98)
+  })
+
+  it("applies additions total per unit for quantity >= 2 with multiple additions (JD-CRIT-01)", () => {
+    const total = calculateLineItemTotal({
+      price: 25000,
+      cantidad: 3,
+      adiciones: [
+        { price: 3000, cantidad: 2 },
+        { price: 2000, cantidad: 1 },
+      ],
+    })
+    // (25000 + (3000*2 + 2000*1)) * 3 = (25000 + 8000) * 3 = 99000
+    expect(total).toBe(99000)
+  })
+
+  it("falls back to quantity 1 for additions when missing (JD-CRIT-01)", () => {
+    const total = calculateLineItemTotal({
+      price: 10000,
+      cantidad: 2,
+      adiciones: [{ price: 500, cantidad: undefined as any }],
+    })
+    expect(total).toBe(20000)
+  })
 })
 
 describe("Cart Engine - calculateCartSummary", () => {
@@ -107,7 +140,8 @@ describe("Cart Engine - createCartItem and cartItemToOrderItem", () => {
     expect(item.cantidad).toBe(2)
     expect(item.adiciones).toHaveLength(1)
     expect(item.adiciones[0].name).toBe("Extra Cheese")
-    expect(item.total).toBe(53000)
+    // Backend formula (price + additions) * quantity = (25000 + 3000) * 2
+    expect(item.total).toBe(56000)
     expect(item.observacion).toBe("Extra crispy please")
   })
 
@@ -151,6 +185,20 @@ describe("Cart Engine - createCartItem and cartItemToOrderItem", () => {
     expect(cartItem.adiciones).toEqual([
       { id: "add_0", name: "Extra Queso", price: 3000, cantidad: 2 },
     ])
+  })
+
+  it("recomputes the fallback total with additions x quantity when total is absent (JD-CRIT-01)", () => {
+    const cartItem = orderItemToCartItem({
+      id: "ord-item-2",
+      name: "Classic Cheeseburger",
+      price: 25000,
+      cantidad: 2,
+      total: undefined as any,
+      adiciones: [{ name: "Extra Queso", price: 3000, cantidad: 1 }],
+    })
+    // (25000 + 3000) * 2 = 56000 — additions charged per item quantity,
+    // never once per line.
+    expect(cartItem.total).toBe(56000)
   })
 
   it("falls back to timestamp-based id when crypto.randomUUID is unavailable", () => {
