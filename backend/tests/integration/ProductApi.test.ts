@@ -152,4 +152,32 @@ describe('Product API Integration', () => {
     });
     expect(getRes.statusCode).toBe(404);
   });
+
+  it('GET /api/products/:id should not expose unavailable products to anonymous storefront visitors (JD-INFO-01)', async () => {
+    // 1. Create an unavailable product (draft/hidden from storefront)
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/api/products',
+      headers: { authorization: `Bearer ${authToken}` },
+      payload: {
+        name: 'Hidden Draft Burger',
+        price: 25000,
+        categoryId: 'cat-1',
+        category: 'Burgers',
+        isAvailable: false
+      }
+    });
+    expect(createRes.statusCode).toBe(201);
+    const product = createRes.json();
+    expect(product.isAvailable).toBe(false);
+
+    // 2. Anonymous storefront visitor requests the product by id: the by-id
+    // endpoint must apply the same isAvailableOnly semantics as the list
+    // endpoint (JD-INFO-01) instead of leaking draft items.
+    const getRes = await app.inject({
+      method: 'GET',
+      url: `/api/products/${product.id}?restaurantId=burger-craft`
+    });
+    expect(getRes.statusCode).toBe(404);
+  });
 });

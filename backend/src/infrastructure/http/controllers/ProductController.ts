@@ -131,11 +131,14 @@ export class ProductController {
     }
 
     const product = await this.getProduct.execute(params.id, restaurantId);
+    if (req.authContext?.role !== 'super_admin' && product.isAvailable === false) {
+      throw new EntityNotFoundError(`Product '${params.id}' not found for restaurant '${restaurantId}'.`);
+    }
     return reply.status(200).send(this.formatProduct(product));
   }
 
   async create(req: FastifyRequest, reply: FastifyReply) {
-    const restaurantId = await this.resolveTenantForMutation(req);
+    const restaurantId = await this.resolveTenantForMutation(req, { mutation: true });
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to create a product.');
     }
