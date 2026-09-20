@@ -1093,6 +1093,77 @@ describe("OrderContext Slice", () => {
     expect(synced?.nombre).toBe("Laura Restrepo")
     expect(synced?.notes).toBe("Cliente frecuente")
   })
+
+  it("retries a pendingSync order present at mount once the initial sync proves connectivity (REJ-02)", async () => {
+    const { TenantProvider } = await import("./TenantContext")
+    const { OrderProvider, useOrders } = await import("./OrderContext")
+    const { UiProvider } = await import("./UiContext")
+    const { apiClient } = await import("@/core/api/apiClient")
+
+    // Seed a restaurant whose board already holds an offline-created sale
+    // (pendingSync) that never reached the server.
+    localStorage.setItem("burger_page_platform_v2", JSON.stringify({
+      version: 2,
+      restaurants: [
+        {
+          id: "rest-burger-craft",
+          slug: "burger-craft",
+          adminPassword: "craft",
+          isActive: true,
+          createdAt: "2026-08-01T12:00:00.000Z",
+          config: DEFAULT_STORE_CONFIG,
+          products: [],
+          additions: [],
+          orders: [
+            {
+              id: "ord-temp-mount",
+              orderNumber: 606,
+              customer: { nombre: "Offline Client", telefono: "3006060606", direccion: "Calle 6", barrio: "Centro" },
+              items: [{ id: "i1", name: "Burger", price: 20000, cantidad: 1, total: 20000, adiciones: [] }],
+              total: 20000,
+              deliveryFee: 3000,
+              finalTotal: 23000,
+              metodo: "Efectivo",
+              status: "pending",
+              createdAt: "2026-08-01T14:00:00.000Z",
+              updatedAt: "2026-08-01T14:00:00.000Z",
+              pendingSync: true,
+            },
+          ],
+          customers: [],
+        },
+      ],
+    }))
+    localStorage.setItem("burger_page_active_rest_v2", "rest-burger-craft")
+
+    const createSpy = vi.spyOn(apiClient, "createOrder").mockResolvedValue({
+      id: "server-mount-1",
+      orderNumber: 6060,
+      status: "pending",
+    } as any)
+    vi.spyOn(apiClient, "hasToken").mockReturnValue(true)
+    vi.spyOn(apiClient, "fetchOrders").mockResolvedValue([])
+    vi.spyOn(apiClient, "fetchCustomers").mockResolvedValue([])
+    vi.spyOn(apiClient, "subscribeToOrderStream").mockImplementation(() => () => {})
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>
+        <UiProvider>
+          <OrderProvider>{children}</OrderProvider>
+        </UiProvider>
+      </TenantProvider>
+    )
+
+    const { result } = renderHook(() => useOrders(), { wrapper })
+
+    // The mount sync keeps the pending sale (empty server list) and the
+    // post-sync retry adopts the server identity exactly once.
+    await waitFor(() => expect(createSpy).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(result.current.orders[0]?.id).toBe("server-mount-1"))
+    expect(result.current.orders).toHaveLength(1)
+    expect(result.current.orders[0]?.pendingSync).toBeFalsy()
+    expect(result.current.orders[0]?.orderNumber).toBe(6060)
+  })
 })
 
 

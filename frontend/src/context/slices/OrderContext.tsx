@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useMemo, useCallback, useEffect, useState } from "react"
+import React, { createContext, useContext, useMemo, useCallback, useEffect, useRef, useState } from "react"
 import type { Order, OrderStatus, Customer, RestaurantRecord } from "@/types/restaurant"
 import type { CreateOrderInput, UpdateOrderInput, OrderEvent, UpdateCustomerInput } from "@burger-page/contracts"
 import { apiClient, isNotFoundError } from "@/core/api/apiClient"
@@ -310,7 +310,7 @@ export function syncBackendOrders(
   const existingMap = new Map<string, Order>()
   currentOrders.forEach((o) => existingMap.set(o.id, o))
 
-  return backendOrders
+  const serverOrders = backendOrders
     .filter((bo: any) => bo && bo.id)
     .map((bo: any) => {
       const existing = existingMap.get(bo.id)
@@ -318,6 +318,23 @@ export function syncBackendOrders(
       return mapBackendOrderToDomain(bo, existing, matchedCustomer)
     })
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+
+  // Offline-created orders (pendingSync) are absent from the server response:
+  // append them after the server cards so a sale entered during an API outage
+  // survives the rebuild and stays retryable (REJ-02). A pending order matched
+  // above by id or orderNumber was already replaced by the merge (the mapped
+  // record omits pendingSync, i.e. "synced") and must not be re-appended.
+  // Plain ghost orders remain dropped exactly as before.
+  const serverIds = new Set(serverOrders.map((o) => o.id))
+  const serverOrderNumbers = new Set(serverOrders.map((o) => o.orderNumber))
+  const pendingLocalOrders = currentOrders.filter(
+    (o) =>
+      o.pendingSync &&
+      !serverIds.has(o.id) &&
+      !serverOrderNumbers.has(o.orderNumber)
+  )
+
+  return [...serverOrders, ...pendingLocalOrders]
 }
 
 export function syncBackendCustomers(
@@ -443,6 +460,53 @@ export function addOrderToRestaurant(
   }
 }
 
+/**
+ * True when an API failure is a connectivity/offline problem (fetch TypeError,
+ * 'Failed to fetch', …) rather than a server rejection. Server rejections keep
+ * the removal semantics; network failures keep the sale pending local sync
+ * (REJ-02).
+ */
+export function isNetworkFailure(err: unknown): boolean {
+  if (!err) return false
+  const anyErr = err as any
+  return !!(
+    anyErr.message &&
+    (anyErr.message.includes('Failed to fetch') ||
+      anyErr.name === 'TypeError' ||
+      /NetworkError|network request failed/i.test(anyErr.message))
+  )
+}
+
+/**
+ * Adopts the server identity of a created order onto its optimistic temp card:
+ * drops the ORDER_CREATED SSE duplicate (same server id), matches by the stable
+ * temp id, and clears pendingSync when the card was held pending (REJ-02). If a
+ * refresh/SSE merge already replaced the temp card, the server card is the only
+ * copy and is left untouched.
+ */
+export function adoptCreatedOrderToActive(
+  current: RestaurantRecord,
+  tempOrderId: string,
+  createdOrder: any
+): RestaurantRecord {
+  const tempStillPresent = current.orders.some((o) => o.id === tempOrderId)
+  if (!tempStillPresent) return current
+  const withoutSseDuplicate = current.orders.filter((o) => o.id !== createdOrder.id)
+  return {
+    ...current,
+    orders: withoutSseDuplicate.map((o) =>
+      o.id === tempOrderId
+        ? {
+            ...o,
+            id: createdOrder.id,
+            orderNumber: createdOrder.orderNumber ?? o.orderNumber,
+            pendingSync: false,
+          }
+        : o
+    ),
+  }
+}
+
 function buildCreateOrderItem(item: any, products: any[], additions: any[]) {
   const matchedProduct = products?.find(
     (p) => p.name.toLowerCase() === item.name.toLowerCase() || p.id === item.id
@@ -554,6 +618,82 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     )
   })
 
+  // REJ-02: offline-created orders (pendingSync) are flushed automatically once
+  // connectivity is proven — after the mount sync and after every successful
+  // refresh. One create attempt per order per invocation, guarded against
+  // re-entrancy; no timers, so the retry stays refresh-driven and testable.
+  const retryInFlightRef = useRef(false)
+  const retryPendingOrdersRef = useRef<() => Promise<void>>(async () => {})
+
+  const attemptPendingOrderSync = useCallback(
+    async (order: Order) => {
+      const targetRestId = activeRestaurant?.id
+      if (!targetRestId) return
+      try {
+        const orderInput = buildCreateOrderInput(activeRestaurant, order)
+        const createdOrder = await apiClient.createOrder(orderInput)
+        if (!createdOrder?.id) {
+          // Accepted but no body returned: the order is persisted server-side;
+          // keep the optimistic card and stop treating it as pending.
+          updateActiveRestaurantRecord((current) => ({
+            ...current,
+            orders: current.orders.map((o) =>
+              o.id === order.id ? { ...o, pendingSync: false } : o
+            ),
+          }))
+          return
+        }
+        // Adopt the server identity exactly like addOrder's success path
+        // (SSE-duplicate collapse included) and clear the pending flag.
+        updateActiveRestaurantRecord((current) =>
+          adoptCreatedOrderToActive(current, order.id, createdOrder)
+        )
+      } catch (error) {
+        if (isNetworkFailure(error)) {
+          // Still offline: keep the pending flag; the next refresh retries.
+          return
+        }
+        // Server rejection: the order can never sync — surface it and remove
+        // the card, mirroring addOrder's rejection semantics (REJ-02).
+        if (import.meta.env?.MODE !== 'test') {
+          console.warn("Server rejected a pending order during retry; removing it:", error)
+        }
+        updateActiveRestaurantRecord((current) => ({
+          ...current,
+          orders: current.orders.filter((o) => o.id !== order.id),
+        }))
+        const err = error as any
+        toast.error(`No se pudo registrar la orden #${order.orderNumber}`, {
+          description:
+            err && typeof err.message === 'string'
+              ? err.message
+              : 'El servidor no está disponible en este momento',
+        })
+      }
+    },
+    [activeRestaurant, updateActiveRestaurantRecord]
+  )
+
+  const retryPendingOrders = useCallback(async () => {
+    const targetRestId = activeRestaurant?.id
+    if (!targetRestId || !apiClient.hasToken()) return
+    if (retryInFlightRef.current) return
+    const pendingOrders = activeRestaurant.orders.filter((o) => o.pendingSync)
+    if (pendingOrders.length === 0) return
+    retryInFlightRef.current = true
+    try {
+      await Promise.all(pendingOrders.map((order) => attemptPendingOrderSync(order)))
+    } finally {
+      retryInFlightRef.current = false
+    }
+  }, [activeRestaurant, attemptPendingOrderSync])
+
+  // Keep the latest retry callback reachable from the mount/refresh effects
+  // without re-running them on every restaurant record identity change.
+  useEffect(() => {
+    retryPendingOrdersRef.current = retryPendingOrders
+  })
+
   // Synchronize orders & customers with backend if token & restaurant context exist
   useEffect(() => {
     if (!apiClient.hasToken() || !activeRestaurant?.id) return
@@ -575,6 +715,9 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         updateActiveRestaurantRecord((current) =>
           syncBackendDataToRestaurant(current, targetRestId, backendOrders, backendCustomers)
         )
+        // The fetch just proved connectivity: flush orders held pendingSync
+        // during the outage (REJ-02).
+        void retryPendingOrdersRef.current()
       })
       .catch((err) => {
         if (import.meta.env?.MODE !== 'test') {
@@ -644,32 +787,34 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               })
               return
             }
-            updateActiveRestaurantRecord((current) => {
-              // A refresh/SSE merge may have already replaced the temp
-              // order with the server record (same id): in that case the
-              // server card is the only copy and must not be dropped.
-              const tempStillPresent = current.orders.some((o) => o.id === newOrder.id)
-              if (!tempStillPresent) return current
-              // The ORDER_CREATED SSE event may have arrived first and
-              // unshifted its own card with the server id: drop that
-              // duplicate, then adopt the server identity on the still
-              // optimistic temp order (matched by its stable temp id), so
-              // both paths converge on a single card.
-              const withoutSseDuplicate = current.orders.filter((o) => o.id !== createdOrder.id)
-              return {
-                ...current,
-                orders: withoutSseDuplicate.map((o) =>
-                  o.id === newOrder.id
-                    ? { ...o, id: createdOrder.id, orderNumber: createdOrder.orderNumber ?? o.orderNumber }
-                    : o
-                ),
-              }
-            })
+            updateActiveRestaurantRecord((current) =>
+              adoptCreatedOrderToActive(current, newOrder.id, createdOrder)
+            )
             toast.success(`Orden #${adoptedOrderNumber} registrada`, {
               description: `${newOrder.customer.nombre} - ${formatCurrency(newOrder.finalTotal)}`,
             })
           })
           .catch((error) => {
+            if (isNetworkFailure(error)) {
+              // Pure connectivity failure (offline, 'Failed to fetch'): the
+              // sale must not be destroyed with no record and no retry — keep
+              // the optimistic card marked pendingSync and flush it once a
+              // fetch/refresh proves connectivity again (REJ-02).
+              if (import.meta.env?.MODE !== 'test') {
+                console.warn(
+                  "Could not sync order to backend API; keeping the order pending local sync:",
+                  error
+                )
+              }
+              updateActiveRestaurantRecord((current) => ({
+                ...current,
+                orders: current.orders.map((o) =>
+                  o.id === newOrder.id ? { ...o, pendingSync: true } : o
+                ),
+              }))
+              toast.warning('Sin conexión: la venta quedó guardada localmente y se sincronizará automáticamente')
+              return
+            }
             if (import.meta.env?.MODE !== 'test') {
               console.warn("Could not sync order to backend API, removing local optimistic order:", error)
             }
@@ -682,7 +827,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             }))
             const err = error as any
             const description =
-              err && typeof err.message === 'string' && !err.message.includes('Failed to fetch')
+              err && typeof err.message === 'string'
                 ? err.message
                 : 'El servidor no está disponible en este momento'
             toast.error(`No se pudo registrar la orden #${newOrder.orderNumber}`, {
@@ -693,13 +838,16 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (import.meta.env?.MODE !== 'test') {
           console.warn("Error preparing order input for backend API:", err)
         }
+        // Input preparation never reached the server (local condition): treat
+        // it like an offline failure and keep the sale pending sync instead of
+        // deleting it (REJ-02).
         updateActiveRestaurantRecord((current) => ({
           ...current,
-          orders: current.orders.filter((o) => o.id !== newOrder.id),
+          orders: current.orders.map((o) =>
+            o.id === newOrder.id ? { ...o, pendingSync: true } : o
+          ),
         }))
-        toast.error(`No se pudo registrar la orden #${newOrder.orderNumber}`, {
-          description: 'No se pudo preparar la orden para el servidor',
-        })
+        toast.warning('Sin conexión: la venta quedó guardada localmente y se sincronizará automáticamente')
       }
 
       return newOrder
@@ -930,6 +1078,9 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       updateActiveRestaurantRecord((current) =>
         syncBackendDataToRestaurant(current, targetRestId, backendOrders, backendCustomers)
       )
+      // A successful refresh proves connectivity: flush offline-created orders
+      // held as pendingSync (REJ-02).
+      await retryPendingOrders()
     } catch (err) {
       if (import.meta.env?.MODE !== 'test') {
         console.warn("Could not refresh orders from backend API:", err)
@@ -937,7 +1088,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } finally {
       setIsLoadingOrders(false)
     }
-  }, [activeRestaurant?.id, updateActiveRestaurantRecord])
+  }, [activeRestaurant?.id, updateActiveRestaurantRecord, retryPendingOrders])
 
   const pendingOrdersCount = useMemo(() => {
     return activeRestaurant.orders.filter((o) => o.status === "pending").length

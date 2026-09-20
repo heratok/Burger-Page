@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest"
+import { describe, it, expect, vi, beforeEach } from "vitest"
 import React from "react"
 import { renderHook, act } from "@testing-library/react"
 import type { RestaurantRecord, Order, Customer } from "@/types/restaurant"
@@ -367,6 +367,58 @@ describe("OrderContext Pure Reducers & Updaters (TDD Tests)", () => {
       )
 
       expect(synced[0].items[0].total).toBe(25999)
+    })
+
+    it("keeps pendingSync orders absent from the server response (REJ-02)", () => {
+      const pendingLocal = { ...createMockOrder("ord-temp-1", 777), pendingSync: true }
+      const synced = syncBackendOrders(
+        [pendingLocal, createMockOrder("ord-synced")],
+        [
+          {
+            id: "ord-synced",
+            orderNumber: 102,
+            subtotal: 30000,
+            deliveryFee: 4000,
+            finalTotal: 34000,
+            status: "confirmed",
+            createdAt: "2026-08-02T10:00:00.000Z",
+            customer: { name: "Andres", phone: "3123456789" },
+          },
+        ],
+        []
+      )
+
+      // Server orders first, then the pending local sale; ghosts stay dropped.
+      expect(synced).toHaveLength(2)
+      expect(synced[0].id).toBe("ord-synced")
+      expect(synced[1].id).toBe("ord-temp-1")
+      expect(synced[1].pendingSync).toBe(true)
+    })
+
+    it("treats a pendingSync order as synced once it appears on the server (REJ-02)", () => {
+      const pendingLocal = { ...createMockOrder("ord-temp-1", 777), pendingSync: true }
+      // Same orderNumber with a server-assigned id: the server record wins and
+      // the temp card is not re-appended (its pendingSync is dropped by the merge).
+      const synced = syncBackendOrders(
+        [pendingLocal],
+        [
+          {
+            id: "server-555",
+            orderNumber: 777,
+            subtotal: 23000,
+            deliveryFee: 3000,
+            finalTotal: 26000,
+            status: "pending",
+            createdAt: "2026-08-02T10:00:00.000Z",
+            customer: { name: "Andres", phone: "3123456789" },
+          },
+        ],
+        []
+      )
+
+      expect(synced).toHaveLength(1)
+      expect(synced[0].id).toBe("server-555")
+      expect(synced[0].pendingSync).toBeUndefined()
     })
   })
 
@@ -875,6 +927,123 @@ describe("OrderContext Pure Reducers & Updaters (TDD Tests)", () => {
       expect(result.current.orders[0].id).toBe("server-accepted-1")
       expect(result.current.orders[0].orderNumber).toBe(3131)
       expect(successSpy).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe("addOrder — offline sale kept pending sync, retried on connectivity (REJ-02)", () => {
+    // This file has no global localStorage reset: isolate this describe so the
+    // persisted envelope from earlier provider tests cannot leak pending orders
+    // into the mount-retry assertions.
+    beforeEach(() => {
+      localStorage.clear()
+    })
+
+    const createOrderParams: Omit<Order, "id" | "orderNumber" | "createdAt" | "updatedAt"> = {
+      customer: { nombre: "Offline Tester", telefono: "3006665544", direccion: "Calle 6", barrio: "Centro" },
+      items: [{ id: "i1", name: "Burger", price: 20000, cantidad: 1, total: 20000, adiciones: [] }],
+      total: 20000,
+      deliveryFee: 3000,
+      finalTotal: 23000,
+      metodo: "Efectivo",
+      status: "pending",
+    }
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>
+        <UiProvider>
+          <OrderProvider>{children}</OrderProvider>
+        </UiProvider>
+      </TenantProvider>
+    )
+
+    it("keeps the temp order marked pendingSync on a pure network failure (REJ-02)", async () => {
+      const { apiClient } = await import("@/core/api/apiClient")
+      const { toast } = await import("sonner")
+      const warningSpy = vi.spyOn(toast, "warning")
+      const errorSpy = vi.spyOn(toast, "error")
+      const createSpy = vi
+        .spyOn(apiClient, "createOrder")
+        .mockRejectedValue(new TypeError("Failed to fetch"))
+      vi.spyOn(apiClient, "subscribeToOrderStream").mockImplementation(() => () => {})
+      vi.spyOn(apiClient, "hasToken").mockReturnValue(true)
+      vi.spyOn(apiClient, "fetchOrders").mockResolvedValue([])
+      vi.spyOn(apiClient, "fetchCustomers").mockResolvedValue([])
+
+      const { result } = renderHook(() => useOrders(), { wrapper })
+
+      // Mount fetch settles (no pending orders yet, so no createOrder call).
+      await act(async () => {
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+      expect(createSpy).not.toHaveBeenCalled()
+
+      // The network failure: sale kept, marked pending, warning toast, NO removal.
+      await act(async () => {
+        result.current.addOrder(createOrderParams)
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      expect(createSpy).toHaveBeenCalledTimes(1)
+      expect(result.current.orders).toHaveLength(1)
+      expect(result.current.orders[0].customer.nombre).toBe("Offline Tester")
+      expect(result.current.orders[0].pendingSync).toBe(true)
+      expect(warningSpy).toHaveBeenCalledTimes(1)
+      expect(warningSpy).toHaveBeenCalledWith(
+        'Sin conexión: la venta quedó guardada localmente y se sincronizará automáticamente'
+      )
+      expect(errorSpy).not.toHaveBeenCalled()
+
+      // A rebuild from an empty server list must NOT drop the pending sale, and
+      // a still-offline retry keeps it pending without spamming toasts.
+      await act(async () => {
+        await result.current.refreshOrders()
+      })
+      expect(result.current.orders).toHaveLength(1)
+      expect(result.current.orders[0].pendingSync).toBe(true)
+      expect(warningSpy).toHaveBeenCalledTimes(1)
+    })
+
+    it("retries a pendingSync order after a successful refresh and adopts the server identity (REJ-02)", async () => {
+      const { apiClient } = await import("@/core/api/apiClient")
+      const createSpy = vi
+        .spyOn(apiClient, "createOrder")
+        .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+        .mockResolvedValue({ id: "server-retry-1", orderNumber: 7777, status: "pending" } as any)
+      vi.spyOn(apiClient, "subscribeToOrderStream").mockImplementation(() => () => {})
+      vi.spyOn(apiClient, "hasToken").mockReturnValue(true)
+      vi.spyOn(apiClient, "fetchOrders").mockResolvedValue([])
+      vi.spyOn(apiClient, "fetchCustomers").mockResolvedValue([])
+
+      const { result } = renderHook(() => useOrders(), { wrapper })
+
+      await act(async () => {
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      // First attempt fails offline: the sale is held pending.
+      await act(async () => {
+        result.current.addOrder(createOrderParams)
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+      expect(result.current.orders[0].pendingSync).toBe(true)
+      expect(createSpy).toHaveBeenCalledTimes(1)
+
+      // Successful refresh: the automatic retry adopts the server identity.
+      await act(async () => {
+        await result.current.refreshOrders()
+      })
+
+      expect(createSpy).toHaveBeenCalledTimes(2)
+      expect(result.current.orders).toHaveLength(1)
+      expect(result.current.orders[0].id).toBe("server-retry-1")
+      expect(result.current.orders[0].orderNumber).toBe(7777)
+      expect(result.current.orders[0].pendingSync).toBeFalsy()
     })
   })
 })
