@@ -869,9 +869,14 @@ COMMIT;
     -- Users auth policy: scoped reads.
     --  - Tenant sessions see only their own restaurant's users.
     --  - Super-admin context sees all users.
-    --  - Auth bootstrap (no tenant context yet: login resolves a user by
-    --    username before restaurantId is known) can read any row; every
-    --    authenticated request afterwards runs with an explicit tenant context.
+    --  - A session with NO tenant context (empty app.restaurant_id AND empty
+    --    app.actor_role GUCs) sees NOTHING directly. The old third OR branch
+    --    (both GUCs NULL -> USING (TRUE)) made any no-context session — e.g.
+    --    the anon role on a Supabase-hosted DB, which keeps default table
+    --    grants and never sets these GUCs — able to dump the whole table
+    --    including password_hash (JD-CRIT-03). Login bootstrap must resolve
+    --    a user by credential BEFORE restaurantId is known; that path is the
+    --    narrow SECURITY DEFINER escape hatch below, never a full-table read.
     DROP POLICY IF EXISTS "users_select_for_auth" ON public.users;
     CREATE POLICY "users_select_for_auth" ON public.users
         FOR SELECT
@@ -881,11 +886,74 @@ COMMIT;
                 (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), '')) IS NOT NULL
                 AND restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))
             )
-            OR (
-                (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), '')) IS NULL
-                AND (SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) IS NULL
-            )
         );
+    
+    -- Auth bootstrap escape hatches (JD-CRIT-03): RLS now denies every
+    -- direct no-context read of public.users, but the login path must still
+    -- resolve the single user matching the login credential before any tenant
+    -- context exists. These SECURITY DEFINER functions are the ONLY
+    -- no-context readers: they search by exact match on one credential only
+    -- (never a scan), return at most the single matching row with every
+    -- column the authenticator needs (password_hash is included solely for
+    -- password verification), and run as the owning superuser with a
+    -- hardened search_path so RLS never applies inside them and no
+    -- search_path object can be injected. Every other read of public.users
+    -- must go through RLS with an explicit tenant context.
+    CREATE OR REPLACE FUNCTION public.look_up_user_for_auth(p_username TEXT)
+    RETURNS SETOF public.users
+    LANGUAGE plpgsql
+    SECURITY DEFINER
+    SET search_path = pg_catalog
+    AS $$
+    BEGIN
+        RETURN QUERY
+        SELECT *
+        FROM public.users
+        WHERE username = p_username
+        LIMIT 1;
+    END;
+    $$;
+
+    -- By-id variant for the repository's findById: users.id is TEXT (like
+    -- every id in this schema), so a second overload of look_up_user_for_auth
+    -- would collide with the TEXT username signature — hence the distinct name.
+    CREATE OR REPLACE FUNCTION public.look_up_user_for_auth_by_id(p_user_id TEXT)
+    RETURNS SETOF public.users
+    LANGUAGE plpgsql
+    SECURITY DEFINER
+    SET search_path = pg_catalog
+    AS $$
+    BEGIN
+        RETURN QUERY
+        SELECT *
+        FROM public.users
+        WHERE id = p_user_id
+        LIMIT 1;
+    END;
+    $$;
+
+    -- Least privilege on the escape hatches: drop the default PUBLIC
+    -- EXECUTE grant (Postgres grants EXECUTE to PUBLIC on every new
+    -- function; on a Supabase-hosted DB that would let the anon key call
+    -- the lookup via PostgREST RPC and read password hashes by username,
+    -- recreating the JD-CRIT-03 leak through a narrower hole).
+    REVOKE EXECUTE ON FUNCTION public.look_up_user_for_auth(TEXT) FROM PUBLIC;
+    REVOKE EXECUTE ON FUNCTION public.look_up_user_for_auth_by_id(TEXT) FROM PUBLIC;
+    -- The app_user connection pool is the only consumer of the auth path.
+    GRANT EXECUTE ON FUNCTION public.look_up_user_for_auth(TEXT) TO app_user;
+    GRANT EXECUTE ON FUNCTION public.look_up_user_for_auth_by_id(TEXT) TO app_user;
+    -- Supabase-managed databases also ship a service_role role (the backend's
+    -- supabase-js client can run with the service-role key); grant it there
+    -- too, guarded so it is a no-op on vanilla PostgreSQL (docker-compose,
+    -- CI service containers) where that role does not exist.
+    DO $$
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+            EXECUTE 'GRANT EXECUTE ON FUNCTION public.look_up_user_for_auth(TEXT) TO service_role';
+            EXECUTE 'GRANT EXECUTE ON FUNCTION public.look_up_user_for_auth_by_id(TEXT) TO service_role';
+        END IF;
+    END;
+    $$;
     
     -- Platform rows (restaurant_id IS NULL) are reserved for super_admin: a
     -- tenant session may only create its own restaurant_admin staff and can

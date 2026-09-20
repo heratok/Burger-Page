@@ -176,13 +176,51 @@ describe('RLS tenant isolation (write policies, app_user role)', () => {
       expect(usernames).not.toContain(PLATFORM_USER);
     });
 
-    it('auth bootstrap (no tenant context) can still resolve a user by username for login', async () => {
+    it('no-context app_user session reads ZERO users rows directly (JD-CRIT-03 closed)', async () => {
       if (!isDbConnected) return;
+      // Direct full-table read with neither app.restaurant_id nor app.actor_role
+      // set. The old users_select_for_auth third OR branch (both GUCs NULL ->
+      // USING (TRUE)) returned every row incl. password_hash; it is removed, so
+      // every row must be filtered out for a no-context session.
       const read = await asTenant(null, null, (c) =>
-        c.query(`SELECT username, password_hash FROM public.users WHERE username = $1`, [PLATFORM_USER])
+        c.query(`SELECT id, username, password_hash FROM public.users`)
       );
-      expect(read.rowCount).toBe(1);
-      expect(read.rows[0].password_hash).toBe('hash-platform');
+      expect(read.rowCount).toBe(0);
+    });
+
+    it('login bootstrap resolves exactly the single matching user via look_up_user_for_auth, nothing else', async () => {
+      if (!isDbConnected) return;
+      // The narrow SECURITY DEFINER escape hatch is the ONLY no-context way to
+      // read a user: exact match on the login credential, at most one row, with
+      // every column the authenticator needs (password_hash for verification).
+      const byUsername = await asTenant(null, null, (c) =>
+        c.query(
+          `SELECT id, username, role, restaurant_id, is_active, password_hash
+           FROM public.look_up_user_for_auth($1)`,
+          [PLATFORM_USER]
+        )
+      );
+      expect(byUsername.rowCount).toBe(1);
+      expect(byUsername.rows[0]).toMatchObject({
+        username: PLATFORM_USER,
+        role: 'super_admin',
+        restaurant_id: null,
+        is_active: true,
+        password_hash: 'hash-platform',
+      });
+
+      // By-id variant (PgUserRepository.findById before tenant resolution).
+      const byId = await asTenant(null, null, (c) =>
+        c.query(`SELECT id FROM public.look_up_user_for_auth_by_id($1)`, [PLATFORM_USER])
+      );
+      expect(byId.rowCount).toBe(1);
+      expect(byId.rows[0].id).toBe(PLATFORM_USER);
+
+      // Exact-match only: a lookup for a non-existent credential returns nothing.
+      const missing = await asTenant(null, null, (c) =>
+        c.query(`SELECT id FROM public.look_up_user_for_auth($1)`, [`no-such-${randomUUID().slice(0, 8)}`])
+      );
+      expect(missing.rowCount).toBe(0);
     });
 
     it('super_admin context sees all users', async () => {

@@ -15,21 +15,23 @@ function mapRow(row: any): User {
 }
 
 export class PgUserRepository implements UserRepository {
-  // findById/findByUsername/findAll have no restaurantId in their port
-  // signature — they run with no tenant context, relying on the
-  // users_select_for_auth RLS policy (SELECT USING (true)), the one
-  // legitimately pre-tenant-context read (login resolves the user before
-  // restaurantId is known).
+  // findById/findByUsername have no restaurantId in their port signature —
+  // they run with no tenant context and are used before restaurantId is
+  // known (login bootstrap in AuthenticateUserUseCase, the delete() row
+  // probe). Direct no-context table reads are denied by RLS (JD-CRIT-03), so
+  // these two lookups are the only no-context readers and route through the
+  // narrow SECURITY DEFINER escape hatch look_up_user_for_auth(_by_id),
+  // which matches the login credential exactly and returns at most one row.
   async findById(id: string): Promise<User | null> {
     return withTenantContext({ restaurantId: null }, async (client) => {
-      const { rows } = await client.query(`SELECT * FROM public.users WHERE id = $1`, [id]);
+      const { rows } = await client.query(`SELECT * FROM public.look_up_user_for_auth_by_id($1)`, [id]);
       return rows[0] ? mapRow(rows[0]) : null;
     });
   }
 
   async findByUsername(username: string): Promise<User | null> {
     return withTenantContext({ restaurantId: null }, async (client) => {
-      const { rows } = await client.query(`SELECT * FROM public.users WHERE username = $1`, [username]);
+      const { rows } = await client.query(`SELECT * FROM public.look_up_user_for_auth($1)`, [username]);
       return rows[0] ? mapRow(rows[0]) : null;
     });
   }
