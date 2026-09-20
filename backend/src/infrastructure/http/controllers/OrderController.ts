@@ -149,7 +149,8 @@ export class OrderController {
       params.id,
       parsed.data as UpdateOrderStatusDTO,
       restaurantId,
-      actorId
+      actorId,
+      req.authContext?.role
     );
 
     // Publish SSE Real-time Event with tenant ID

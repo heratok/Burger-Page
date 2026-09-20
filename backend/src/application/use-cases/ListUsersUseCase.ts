@@ -1,4 +1,5 @@
 import { UserRepository } from '../../domain/ports/out/UserRepository.js';
+import { UserRole } from '../../domain/models/User.js';
 
 export interface SafeUser {
   id: string;
@@ -11,10 +12,10 @@ export interface SafeUser {
 export class ListUsersUseCase {
   constructor(private userRepo: UserRepository) {}
 
-  async execute(restaurantId?: string): Promise<SafeUser[]> {
+  async execute(restaurantId?: string, callerRole?: UserRole): Promise<SafeUser[]> {
     const users = restaurantId
       ? await this.userRepo.findByRestaurantId(restaurantId)
-      : await this.userRepo.findAll();
+      : await this.userRepo.findAll(callerRole);
 
     return users.map(({ passwordHash: _, ...safe }) => safe);
   }

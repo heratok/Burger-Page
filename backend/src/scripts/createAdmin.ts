@@ -97,14 +97,22 @@ async function main() {
         }
       }
 
-      await userRepo.save({
-        id: userId,
-        username,
-        passwordHash,
-        role,
-        restaurantId,
-        createdAt: now,
-      });
+      // SUS-03: the repo no longer hardcodes actorRole 'super_admin'; this
+      // bootstrap script is the trusted operator path (direct DB access), so
+      // it declares the super_admin actor explicitly to pass the
+      // tenant_isolation_users_write RLS WITH CHECK when creating a
+      // platform/tenant admin row.
+      await userRepo.save(
+        {
+          id: userId,
+          username,
+          passwordHash,
+          role,
+          restaurantId,
+          createdAt: now,
+        },
+        'super_admin'
+      );
 
       console.log(`✅ ¡Usuario ${username} (${role}) creado exitosamente en la base de datos PostgreSQL!`);
       return;

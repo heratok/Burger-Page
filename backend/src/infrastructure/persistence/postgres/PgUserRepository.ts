@@ -41,41 +41,49 @@ export class PgUserRepository implements UserRepository {
     });
   }
 
-  async findAll(): Promise<User[]> {
-    return withTenantContext({ restaurantId: null, actorRole: 'super_admin' }, async (client) => {
+  async findAll(actorRole?: UserRole): Promise<User[]> {
+    // SUS-03: the tenant context GUC comes from the caller's granted role, never
+    // a hardcoded super_admin — an undefined actorRole omits app.actor_role so
+    // RLS applies with the caller's real identity.
+    return withTenantContext({ restaurantId: null, ...(actorRole ? { actorRole } : {}) }, async (client) => {
       const { rows } = await client.query(`SELECT * FROM public.users ORDER BY created_at DESC`);
       return rows.map(mapRow);
     });
   }
 
-  async save(user: User): Promise<void> {
-    await withTenantContext({ restaurantId: user.restaurantId ?? null, actorRole: 'super_admin' }, async (client) => {
-      const existing = await client.query(`SELECT id FROM public.users WHERE username = $1 OR id = $2`, [user.username, user.id]);
-      if (existing.rows.length > 0) {
-        await client.query(
-          `UPDATE public.users SET
-             username = $1,
-             password_hash = $2,
-             role = $3,
-             restaurant_id = $4,
-             updated_at = NOW()
-           WHERE id = $5`,
-          [user.username, user.passwordHash, user.role, user.restaurantId || null, existing.rows[0].id]
-        );
-      } else {
-        await client.query(
-          `INSERT INTO public.users (id, username, password_hash, role, restaurant_id, is_active, created_at)
-           VALUES ($1, $2, $3, $4, $5, true, $6)`,
-          [user.id, user.username, user.passwordHash, user.role, user.restaurantId || null, user.createdAt || new Date().toISOString()]
-        );
+  async save(user: User, actorRole?: UserRole): Promise<void> {
+    await withTenantContext(
+      { restaurantId: user.restaurantId ?? null, ...(actorRole ? { actorRole } : {}) },
+      async (client) => {
+        const existing = await client.query(`SELECT id FROM public.users WHERE username = $1 OR id = $2`, [user.username, user.id]);
+        if (existing.rows.length > 0) {
+          await client.query(
+            `UPDATE public.users SET
+               username = $1,
+               password_hash = $2,
+               role = $3,
+               restaurant_id = $4,
+               updated_at = NOW()
+             WHERE id = $5`,
+            [user.username, user.passwordHash, user.role, user.restaurantId || null, existing.rows[0].id]
+          );
+        } else {
+          await client.query(
+            `INSERT INTO public.users (id, username, password_hash, role, restaurant_id, is_active, created_at)
+             VALUES ($1, $2, $3, $4, $5, true, $6)`,
+            [user.id, user.username, user.passwordHash, user.role, user.restaurantId || null, user.createdAt || new Date().toISOString()]
+          );
+        }
       }
-    });
+    );
   }
 
-  async delete(id: string): Promise<void> {
+  async delete(id: string, actorRole?: UserRole): Promise<void> {
+    // The findById probe legitimately runs with no tenant context: it resolves
+    // the row (and hence its restaurant) before tenant scoping is known.
     const existing = await this.findById(id);
     await withTenantContext(
-      { restaurantId: existing?.restaurantId ?? null, actorRole: 'super_admin' },
+      { restaurantId: existing?.restaurantId ?? null, ...(actorRole ? { actorRole } : {}) },
       async (client) => {
         await client.query(`DELETE FROM public.users WHERE id = $1`, [id]);
       }
