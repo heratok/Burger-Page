@@ -19,14 +19,15 @@ export class CreateOrderUseCase {
     private readonly customerRepo?: CustomerRepository
   ) {}
 
-  async execute(dto: CreateOrderDTO): Promise<Order> {
+  async execute(dto: CreateOrderDTO & { clientOrderId?: string }, opts: { authenticated?: boolean } = {}): Promise<Order> {
+    const authenticated = Boolean(opts.authenticated);
     const restaurant = await this.validateAndGetRestaurant(dto.restaurantId);
-    const validatedCustomerId = await this.resolveCustomerId(dto, restaurant);
+    const validatedCustomerId = await this.resolveCustomerId(dto, restaurant, authenticated);
     const { validatedItems, calculatedSubtotal } = await this.validateAndCalculateItems(dto.items, restaurant);
 
     this.validateMinOrderAmount(calculatedSubtotal, restaurant);
 
-    const deliveryFee = this.resolveDeliveryFee(dto.deliveryFee, restaurant);
+    const deliveryFee = this.resolveDeliveryFee(dto.deliveryFee, restaurant, authenticated);
     const finalTotal = calculatedSubtotal + deliveryFee;
 
     const payment = this.resolvePaymentDetails(
@@ -68,11 +69,15 @@ export class CreateOrderUseCase {
     return restaurant;
   }
 
-  private async resolveCustomerId(dto: CreateOrderDTO, restaurant: Restaurant): Promise<string | undefined> {
+  private async resolveCustomerId(
+    dto: CreateOrderDTO,
+    restaurant: Restaurant,
+    authenticated: boolean
+  ): Promise<string | undefined> {
     let validatedCustomerId = await this.validateExistingCustomerId(dto.customerId, restaurant);
 
     if (!validatedCustomerId && dto.customer?.phone && dto.customer?.name && this.customerRepo) {
-      validatedCustomerId = await this.findOrCreateCustomer(dto.customer, restaurant.id);
+      validatedCustomerId = await this.findOrCreateCustomer(dto.customer, restaurant.id, authenticated);
     }
 
     return validatedCustomerId;
@@ -101,7 +106,8 @@ export class CreateOrderUseCase {
 
   private async findOrCreateCustomer(
     customerDto: NonNullable<CreateOrderDTO['customer']>,
-    restaurantId: string
+    restaurantId: string,
+    authenticated: boolean
   ): Promise<string | undefined> {
     if (!this.customerRepo) return undefined;
 
@@ -111,11 +117,17 @@ export class CreateOrderUseCase {
 
       let customer = await this.customerRepo.findByPhone(phone, restaurantId);
       if (customer) {
-        if (customerDto.name) customer.name = customerDto.name.trim();
-        if (customerDto.address) customer.address = customerDto.address.trim();
-        if (customerDto.barrio) customer.barrio = customerDto.barrio.trim();
-        customer.updatedAt = new Date().toISOString();
-        await this.customerRepo.save(customer);
+        // SUS-15: anonymous storefront input must never mutate an existing CRM
+        // profile (name/address/barrio/updatedAt). Only an authenticated staff
+        // session may update a matched customer; anonymous orders reuse the
+        // stored profile as-is, which also stops anonymous row-spam updates.
+        if (authenticated) {
+          if (customerDto.name) customer.name = customerDto.name.trim();
+          if (customerDto.address) customer.address = customerDto.address.trim();
+          if (customerDto.barrio) customer.barrio = customerDto.barrio.trim();
+          customer.updatedAt = new Date().toISOString();
+          await this.customerRepo.save(customer);
+        }
         return customer.id;
       }
 
@@ -281,14 +293,16 @@ export class CreateOrderUseCase {
   /**
    * Resolves the delivery fee charged for the order.
    *
-   * A valid client-provided fee (finite number >= 0) is honored so counter
-   * and table sales can waive the restaurant delivery fee exactly as the
-   * POS displays it. Only when the client omits the fee (or sends an invalid
-   * value) does the restaurant's configured fee apply, guarded against
-   * missing/negative defaults.
+   * Only an authenticated staff session (counter/table POS) may drive the fee:
+   * a valid client-provided fee (finite number >= 0) is honored so those sales
+   * can waive the restaurant delivery fee exactly as the POS displays it. An
+   * anonymous storefront order never influences the fee: the client-supplied
+   * value is ignored and the restaurant's configured fee applies, guarded
+   * against missing/negative defaults (SUS-12). Invalid fees always fall back
+   * to the restaurant fee.
    */
-  private resolveDeliveryFee(dtoFee: number | undefined, restaurant: Restaurant): number {
-    if (typeof dtoFee === 'number' && Number.isFinite(dtoFee) && dtoFee >= 0) {
+  private resolveDeliveryFee(dtoFee: number | undefined, restaurant: Restaurant, authenticated: boolean): number {
+    if (authenticated && typeof dtoFee === 'number' && Number.isFinite(dtoFee) && dtoFee >= 0) {
       return dtoFee;
     }
     const restaurantFee = Number(restaurant.deliveryFee ?? restaurant.config?.deliveryFee ?? 0);
@@ -333,7 +347,7 @@ export class CreateOrderUseCase {
     items: OrderItem[];
     deliveryFee: number;
     payment: { paymentMethod: PaymentMethod; paymentAmount?: number; changeAmount?: number };
-    dto: CreateOrderDTO;
+    dto: CreateOrderDTO & { clientOrderId?: string };
   }): Order {
     const { restaurantId, customerId, items, deliveryFee, payment, dto } = params;
     const order = new Order(
@@ -349,7 +363,8 @@ export class CreateOrderUseCase {
       payment.paymentAmount,
       payment.changeAmount,
       dto.comment,
-      dto.receiptUrl
+      dto.receiptUrl,
+      dto.clientOrderId
     );
 
     if (dto.customer) {

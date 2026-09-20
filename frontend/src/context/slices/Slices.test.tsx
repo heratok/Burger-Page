@@ -1728,7 +1728,7 @@ describe("TenantContext Slice - One-Time Admin Credentials (SUS-02)", () => {
     vi.clearAllMocks()
   })
 
-  it("persists the backend admin credentials and shows the one-time credential toast", async () => {
+  it("surfaces the one-time backend credentials in the toast without persisting them in the envelope record (SUS-20)", async () => {
     const { TenantProvider, useTenant } = await import("./TenantContext")
     const { apiClient } = await import("@/core/api/apiClient")
     const { toast } = await import("sonner")
@@ -1766,8 +1766,10 @@ describe("TenantContext Slice - One-Time Admin Credentials (SUS-02)", () => {
     })
 
     const record = result.current.restaurants.find((r) => r.slug === "creds-tenant")
+    // SUS-20: the envelope record may keep the harmless adminUsername metadata
+    // but must never carry the one-time admin password, in memory or storage.
     expect((record as any).adminUsername).toBe("admin_creds-tenant")
-    expect(record?.adminPassword).toBe("server-secret-abc")
+    expect(record?.adminPassword).toBeUndefined()
     expect(toastSpy).toHaveBeenCalledWith(
       "Restaurante creado con éxito",
       expect.objectContaining({
@@ -1816,11 +1818,11 @@ describe("TenantContext Slice - One-Time Admin Credentials (SUS-02)", () => {
     )
   })
 
-  it("generates a secure password instead of the 'admin123' literal", async () => {
+  it("keeps the envelope record free of admin credentials; backend owns secure generation (SUS-20)", async () => {
     const { TenantProvider, useTenant } = await import("./TenantContext")
     const { apiClient } = await import("@/core/api/apiClient")
 
-    vi.spyOn(apiClient, "createRestaurant").mockResolvedValue({
+    const createSpy = vi.spyOn(apiClient, "createRestaurant").mockResolvedValue({
       id: "rest-sec-1",
       slug: "sec-tenant",
     } as any)
@@ -1845,10 +1847,14 @@ describe("TenantContext Slice - One-Time Admin Credentials (SUS-02)", () => {
       await Promise.resolve()
     })
 
+    // The one-time secret is generated server-side; the client never sends a
+    // literal when none is provided and never carries the secret in the
+    // envelope. Secure generation stays covered by backend
+    // CreateRestaurantSecurity.test.ts.
+    expect(createSpy.mock.calls[0][0].adminPassword).toBeUndefined()
     const record = result.current.restaurants.find((r) => r.slug === "sec-tenant")
-    expect(record?.adminPassword).toBeDefined()
-    expect(record?.adminPassword).not.toBe("admin123")
-    expect(record?.adminPassword!.length).toBeGreaterThanOrEqual(12)
+    expect(record?.adminPassword).toBeUndefined()
+    expect((record as any).adminUsername).toBeUndefined()
   })
 })
 

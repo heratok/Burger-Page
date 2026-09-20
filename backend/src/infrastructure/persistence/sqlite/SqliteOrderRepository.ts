@@ -24,6 +24,7 @@ export class SqliteOrderRepository implements OrderRepository {
         change_amount REAL,
         comment TEXT,
         receipt_url TEXT,
+        client_order_id TEXT,
         items TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
@@ -40,6 +41,18 @@ export class SqliteOrderRepository implements OrderRepository {
     } catch {
       // Column already exists
     }
+    try {
+      this.db.exec(`ALTER TABLE orders ADD COLUMN client_order_id TEXT;`);
+    } catch {
+      // Column already exists
+    }
+    // SUS-19: unique (restaurant_id, client_order_id) so a retried save can
+    // never insert a duplicate sale. SQLite UNIQUE treats NULLs as distinct,
+    // so legacy/unknown flows (client_order_id IS NULL) stay unconstrained.
+    this.db.exec(`
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_orders_client_order_id
+        ON orders (restaurant_id, client_order_id)
+    `);
   }
 
   async findById(id: string, restaurantId: string): Promise<Order | null> {
@@ -54,12 +67,21 @@ export class SqliteOrderRepository implements OrderRepository {
   }
 
   async save(order: Order): Promise<void> {
+    // SUS-19 idempotent replay: a retried save carrying the same
+    // (restaurant_id, client_order_id) as an existing order returns the first
+    // persisted order instead of inserting a duplicate sale.
+    if (order.clientOrderId) {
+      const existing = this.db
+        .prepare('SELECT id FROM orders WHERE restaurant_id = ? AND client_order_id = ? LIMIT 1')
+        .get(order.restaurantId, order.clientOrderId);
+      if (existing) return;
+    }
     const stmt = this.db.prepare(`
       INSERT INTO orders (
         id, restaurant_id, order_number, customer_id, status, total, delivery_fee, final_total,
-        payment_method, payment_amount, change_amount, comment, receipt_url, items, created_at, updated_at
+        payment_method, payment_amount, change_amount, comment, receipt_url, client_order_id, items, created_at, updated_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         status = excluded.status,
         total = excluded.total,
@@ -88,6 +110,7 @@ export class SqliteOrderRepository implements OrderRepository {
       order.changeAmount || null,
       order.comment || null,
       order.receiptUrl || null,
+      order.clientOrderId || null,
       JSON.stringify(order.items),
       order.createdAt.toISOString(),
       now
@@ -185,7 +208,8 @@ export class SqliteOrderRepository implements OrderRepository {
       row.payment_amount !== null ? Number(row.payment_amount) : undefined,
       row.change_amount !== null ? Number(row.change_amount) : undefined,
       row.comment || undefined,
-      row.receipt_url || undefined
+      row.receipt_url || undefined,
+      row.client_order_id || undefined
     );
     if (row.customer) {
       try {

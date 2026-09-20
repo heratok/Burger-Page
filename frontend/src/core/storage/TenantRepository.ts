@@ -52,7 +52,18 @@ export class TenantRepository {
 
   saveEnvelope(envelope: StorageEnvelopeV2): void {
     try {
-      this.adapter.setItem(STORAGE_KEYS.ENVELOPE, JSON.stringify(envelope))
+      // SUS-20: the one-time admin password is a secret and must never be
+      // persisted at rest inside the localStorage envelope. Sanitize at the
+      // persistence boundary so that no caller (current or future) can leak
+      // it into storage, even if a record still carries it in memory.
+      const sanitized: StorageEnvelopeV2 = {
+        ...envelope,
+        restaurants: envelope.restaurants.map((r) => {
+          const { adminPassword: _oneTimeSecret, ...safeRecord } = r
+          return safeRecord
+        }),
+      }
+      this.adapter.setItem(STORAGE_KEYS.ENVELOPE, JSON.stringify(sanitized))
     } catch (err) {
       console.error("Failed to save storage envelope to localStorage (quota exceeded or storage blocked):", err)
     }

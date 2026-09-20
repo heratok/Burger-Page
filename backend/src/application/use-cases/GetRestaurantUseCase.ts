@@ -1,6 +1,6 @@
 import { RestaurantRepository } from '../../domain/ports/out/RestaurantRepository.js';
 import { CategoryRepository } from '../../domain/ports/out/CategoryRepository.js';
-import { Restaurant } from '../../domain/models/Restaurant.js';
+import { Restaurant, omitAdminPassword } from '../../domain/models/Restaurant.js';
 import { EntityNotFoundError } from '../../domain/errors/DomainErrors.js';
 
 export class GetRestaurantUseCase {
@@ -37,6 +37,7 @@ export class GetRestaurantUseCase {
       }
     }
 
-    return restaurant;
+    // SUS-20: one-time admin credentials must never leave through read paths.
+    return omitAdminPassword(restaurant);
   }
 }

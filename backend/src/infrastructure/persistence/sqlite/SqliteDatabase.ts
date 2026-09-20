@@ -67,6 +67,7 @@ export function createSqliteDatabase(dbPath = ':memory:'): Database {
       payment_amount REAL,
       change_amount REAL,
       comment TEXT,
+      client_order_id TEXT,
       items TEXT NOT NULL,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL

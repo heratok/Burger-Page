@@ -215,6 +215,7 @@ CREATE TABLE IF NOT EXISTS public.orders (
     change_amount   NUMERIC(12, 2) CHECK (change_amount IS NULL OR change_amount >= 0),
     comment         TEXT,
     receipt_url     TEXT,
+    client_order_id TEXT,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT uq_orders_restaurant_order_number
@@ -493,6 +494,13 @@ END;
 $$;
 
 -- 4.2 Atomic order creation ----------------------------------------------------
+-- SUS-19: the 9-arg overload is dropped in favor of the 10-arg signature with
+-- p_client_order_id (idempotency replay). DROP persists the canonical form on
+-- databases that already received the older overload; it is a no-op on fresh
+-- ones, so the file stays idempotent.
+DROP FUNCTION IF EXISTS public.create_order_atomic(
+    text, text, text, text, numeric, numeric, text, jsonb, numeric
+);
 CREATE OR REPLACE FUNCTION public.create_order_atomic(
     p_order_id TEXT,
     p_restaurant_id TEXT,
@@ -502,7 +510,8 @@ CREATE OR REPLACE FUNCTION public.create_order_atomic(
     p_change_amount NUMERIC,
     p_comment TEXT,
     p_items JSONB,
-    p_delivery_fee NUMERIC DEFAULT NULL
+    p_delivery_fee NUMERIC DEFAULT NULL,
+    p_client_order_id TEXT DEFAULT NULL
 )
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -521,6 +530,19 @@ DECLARE
     v_final_total NUMERIC(12, 2);
     v_created_order RECORD;
 BEGIN
+    -- 0. SUS-19 idempotent replay by client correlation: an offline retry or a
+    -- lost-response re-POST carries the same client_order_id, so the already
+    -- persisted order is returned instead of inserting a duplicate sale. This
+    -- runs before validation and BEFORE the INSERT: no second order_number is
+    -- assigned and the order counters are never double-counted.
+    IF p_client_order_id IS NOT NULL AND p_client_order_id <> '' THEN
+        SELECT * INTO v_created_order FROM public.orders
+        WHERE restaurant_id = p_restaurant_id
+          AND client_order_id = p_client_order_id;
+        IF FOUND THEN
+            RETURN to_jsonb(v_created_order);
+        END IF;
+    END IF;
     -- 1. Validar estructura básica de items
     IF p_items IS NULL OR jsonb_typeof(p_items) <> 'array' OR jsonb_array_length(p_items) = 0 THEN
         RAISE EXCEPTION 'Order must contain at least one item' USING ERRCODE = 'P0001';
@@ -553,7 +575,7 @@ BEGIN
     INSERT INTO public.orders (
         id, restaurant_id, customer_id, status, subtotal,
         delivery_fee, final_total, payment_method, payment_amount,
-        change_amount, comment, created_at, updated_at
+        change_amount, comment, client_order_id, created_at, updated_at
     ) VALUES (
         p_order_id,
         p_restaurant_id,
@@ -566,6 +588,7 @@ BEGIN
         p_payment_amount,
         p_change_amount,
         NULLIF(p_comment, ''),
+        NULLIF(p_client_order_id, ''),
         NOW(),
         NOW()
     );
@@ -708,6 +731,13 @@ $$;
 -- ============================================================================
 -- 5. PERFORMANCE INDEXES (Multi-Tenancy & Query Patterns)
 -- ============================================================================
+-- SUS-19: unique (restaurant_id, client_order_id) so a retried POST can never
+-- insert a second sale. Partial (WHERE client_order_id IS NOT NULL) so
+-- legacy/unknown flows stay unconstrained (skill: partial indexes for filtered
+-- uniqueness; IF NOT EXISTS avoids the ADD CONSTRAINT IF NOT EXISTS trap).
+CREATE UNIQUE INDEX IF NOT EXISTS uq_orders_client_order_id
+    ON public.orders (restaurant_id, client_order_id)
+    WHERE client_order_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_users_username            ON public.users(username);
 CREATE INDEX IF NOT EXISTS idx_users_restaurant_id       ON public.users(restaurant_id);
 CREATE INDEX IF NOT EXISTS idx_categories_restaurant     ON public.categories(restaurant_id, display_order);
@@ -770,7 +800,7 @@ COMMIT;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO app_user;
 
 GRANT EXECUTE ON FUNCTION public.adjust_inventory_stock(TEXT, TEXT, NUMERIC) TO app_user;
-GRANT EXECUTE ON FUNCTION public.create_order_atomic(TEXT, TEXT, TEXT, TEXT, NUMERIC, NUMERIC, TEXT, JSONB, NUMERIC) TO app_user;
+GRANT EXECUTE ON FUNCTION public.create_order_atomic(TEXT, TEXT, TEXT, TEXT, NUMERIC, NUMERIC, TEXT, JSONB, NUMERIC, TEXT) TO app_user;
 GRANT EXECUTE ON FUNCTION public.update_order_status_with_actor(TEXT, TEXT, TEXT, TEXT) TO app_user;
 
 
@@ -869,9 +899,14 @@ COMMIT;
     -- Users auth policy: scoped reads.
     --  - Tenant sessions see only their own restaurant's users.
     --  - Super-admin context sees all users.
-    --  - Auth bootstrap (no tenant context yet: login resolves a user by
-    --    username before restaurantId is known) can read any row; every
-    --    authenticated request afterwards runs with an explicit tenant context.
+    --  - A session with NO tenant context (empty app.restaurant_id AND empty
+    --    app.actor_role GUCs) sees NOTHING directly. The old third OR branch
+    --    (both GUCs NULL -> USING (TRUE)) made any no-context session — e.g.
+    --    the anon role on a Supabase-hosted DB, which keeps default table
+    --    grants and never sets these GUCs — able to dump the whole table
+    --    including password_hash (JD-CRIT-03). Login bootstrap must resolve
+    --    a user by credential BEFORE restaurantId is known; that path is the
+    --    narrow SECURITY DEFINER escape hatch below, never a full-table read.
     DROP POLICY IF EXISTS "users_select_for_auth" ON public.users;
     CREATE POLICY "users_select_for_auth" ON public.users
         FOR SELECT
@@ -881,11 +916,84 @@ COMMIT;
                 (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), '')) IS NOT NULL
                 AND restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))
             )
-            OR (
-                (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), '')) IS NULL
-                AND (SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) IS NULL
-            )
         );
+    
+    -- INVARIANT (JD-INFO-6): public.users has FORCE ROW LEVEL SECURITY
+    -- (see ALTER TABLE public.users ... FORCE below), which removes the
+    -- default table-owner RLS bypass — a SECURITY DEFINER function only
+    -- bypasses RLS here when its owner is superuser (or has BYPASSRLS).
+    -- The functions below rely on being created by the migration role,
+    -- which is a superuser in both documented deployment paths
+    -- (docker-compose initdb runs as postgres; Supabase postgres is a
+    -- superuser). If the schema is ever applied by a non-superuser role or
+    -- function ownership is transferred, every login fails closed with 0
+    -- rows — which is the safe direction, but keep the owner superuser.
+    -- Auth bootstrap escape hatches (JD-CRIT-03): RLS now denies every
+    -- direct no-context read of public.users, but the login path must still
+    -- resolve the single user matching the login credential before any tenant
+    -- context exists. These SECURITY DEFINER functions are the ONLY
+    -- no-context readers: they search by exact match on one credential only
+    -- (never a scan), return at most the single matching row with every
+    -- column the authenticator needs (password_hash is included solely for
+    -- password verification), and run as the owning superuser with a
+    -- hardened search_path so RLS never applies inside them and no
+    -- search_path object can be injected. Every other read of public.users
+    -- must go through RLS with an explicit tenant context.
+    CREATE OR REPLACE FUNCTION public.look_up_user_for_auth(p_username TEXT)
+    RETURNS SETOF public.users
+    LANGUAGE plpgsql
+    SECURITY DEFINER
+    SET search_path = pg_catalog
+    AS $$
+    BEGIN
+        RETURN QUERY
+        SELECT *
+        FROM public.users
+        WHERE username = p_username
+        LIMIT 1;
+    END;
+    $$;
+
+    -- By-id variant for the repository's findById: users.id is TEXT (like
+    -- every id in this schema), so a second overload of look_up_user_for_auth
+    -- would collide with the TEXT username signature — hence the distinct name.
+    CREATE OR REPLACE FUNCTION public.look_up_user_for_auth_by_id(p_user_id TEXT)
+    RETURNS SETOF public.users
+    LANGUAGE plpgsql
+    SECURITY DEFINER
+    SET search_path = pg_catalog
+    AS $$
+    BEGIN
+        RETURN QUERY
+        SELECT *
+        FROM public.users
+        WHERE id = p_user_id
+        LIMIT 1;
+    END;
+    $$;
+
+    -- Least privilege on the escape hatches: drop the default PUBLIC
+    -- EXECUTE grant (Postgres grants EXECUTE to PUBLIC on every new
+    -- function; on a Supabase-hosted DB that would let the anon key call
+    -- the lookup via PostgREST RPC and read password hashes by username,
+    -- recreating the JD-CRIT-03 leak through a narrower hole).
+    REVOKE EXECUTE ON FUNCTION public.look_up_user_for_auth(TEXT) FROM PUBLIC;
+    REVOKE EXECUTE ON FUNCTION public.look_up_user_for_auth_by_id(TEXT) FROM PUBLIC;
+    -- The app_user connection pool is the only consumer of the auth path.
+    GRANT EXECUTE ON FUNCTION public.look_up_user_for_auth(TEXT) TO app_user;
+    GRANT EXECUTE ON FUNCTION public.look_up_user_for_auth_by_id(TEXT) TO app_user;
+    -- Supabase-managed databases also ship a service_role role (the backend's
+    -- supabase-js client can run with the service-role key); grant it there
+    -- too, guarded so it is a no-op on vanilla PostgreSQL (docker-compose,
+    -- CI service containers) where that role does not exist.
+    DO $$
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+            EXECUTE 'GRANT EXECUTE ON FUNCTION public.look_up_user_for_auth(TEXT) TO service_role';
+            EXECUTE 'GRANT EXECUTE ON FUNCTION public.look_up_user_for_auth_by_id(TEXT) TO service_role';
+        END IF;
+    END;
+    $$;
     
     -- Platform rows (restaurant_id IS NULL) are reserved for super_admin: a
     -- tenant session may only create its own restaurant_admin staff and can

@@ -91,8 +91,25 @@ describe('Order API', () => {
     expect(body.changeAmount).toBe(0); // exact payment -> zero change
   });
 
-  it('POST /api/orders should honor an explicit deliveryFee and fall back when absent (JD-CRIT-02)', async () => {
-    const withFee = await app.inject({
+  it('POST /api/orders: authenticated staff fee honored; anonymous caller gets configured fee (SUS-12)', async () => {
+    // Authenticated (POS/staff) caller: explicit fee is honored.
+    const staffWithFee = await app.inject({
+      method: 'POST',
+      url: '/api/orders',
+      headers: { authorization: `Bearer ${authToken}` },
+      payload: {
+        restaurantId: 'burger-craft',
+        customerId: 'customer-123',
+        items: [{ productId, quantity: 1, additions: [] }],
+        deliveryFee: 2500,
+      }
+    });
+    expect(staffWithFee.statusCode).toBe(201);
+    expect(staffWithFee.json().deliveryFee).toBe(2500); // explicit fee honored
+    expect(staffWithFee.json().finalTotal).toBe(2510); // 10 + 2500
+
+    // Anonymous caller: client fee is ignored, configured restaurant fee enforced.
+    const anonymousWithFee = await app.inject({
       method: 'POST',
       url: '/api/orders',
       payload: {
@@ -102,11 +119,13 @@ describe('Order API', () => {
         deliveryFee: 2500,
       }
     });
-    expect(withFee.statusCode).toBe(201);
-    expect(withFee.json().deliveryFee).toBe(2500); // explicit fee honored
-    expect(withFee.json().finalTotal).toBe(2510); // 10 + 2500
+    expect(anonymousWithFee.statusCode).toBe(201);
+    // Restaurant has no configured fee in the SQLite envelope: enforced fee is 0.
+    expect(anonymousWithFee.json().deliveryFee).toBe(0);
+    expect(anonymousWithFee.json().finalTotal).toBe(10);
 
-    const withoutFee = await app.inject({
+    // Anonymous caller without a fee: falls back to the configured fee (0).
+    const anonymousWithoutFee = await app.inject({
       method: 'POST',
       url: '/api/orders',
       payload: {
@@ -115,10 +134,9 @@ describe('Order API', () => {
         items: [{ productId, quantity: 1, additions: [] }],
       }
     });
-    expect(withoutFee.statusCode).toBe(201);
-    // Restaurant has no configured fee in the SQLite envelope: fallback is 0.
-    expect(withoutFee.json().deliveryFee).toBe(0);
-    expect(withoutFee.json().finalTotal).toBe(10);
+    expect(anonymousWithoutFee.statusCode).toBe(201);
+    expect(anonymousWithoutFee.json().deliveryFee).toBe(0);
+    expect(anonymousWithoutFee.json().finalTotal).toBe(10);
   });
 
   it('POST /api/orders should return validation error for missing fields', async () => {

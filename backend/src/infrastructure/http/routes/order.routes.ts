@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { OrderController } from '../controllers/OrderController.js';
 import { globalOrderEventBus } from '../../events/OrderEventBus.js';
-import { requireAuth, requireStreamToken } from '../middleware/auth.middleware.js';
+import { requireAuth, requireStreamToken, tryAuth } from '../middleware/auth.middleware.js';
 import { isOriginAllowed } from '../middleware/cors.js';
 
 export async function orderRoutes(fastify: FastifyInstance, opts: { controller: OrderController }) {
@@ -208,8 +208,12 @@ export async function orderRoutes(fastify: FastifyInstance, opts: { controller: 
     }
   }, opts.controller.getById.bind(opts.controller));
 
-  // 4. Create Order (Public Storefront - NO requireAuth)
+  // 4. Create Order (Public Storefront - NO requireAuth; tryAuth is opt-in,
+  //    non-blocking: a valid Bearer token marks the caller as an authenticated
+  //    staff session so the POS keeps fee-waiver/CRM-update capabilities, while
+  //    anonymous callers stay public and are charged the configured fee)
   fastify.post('/', {
+    preHandler: [tryAuth],
         config: { rateLimit: { max: 30, timeWindow: '1 minute' } },
     schema: {
       tags: ['Orders'],

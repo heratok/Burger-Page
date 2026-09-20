@@ -37,6 +37,21 @@ function generateSecureOrderNumber(): number {
   return 10000 + (Date.now() % 90000)
 }
 
+/**
+ * SUS-19: client-generated idempotency correlation id, one per sale attempt.
+ * The backend replays (returns) the already-persisted order for the same
+ * (restaurantId, clientOrderId), so a double-click or an offline retry after a
+ * lost response can never duplicate a server order. crypto.randomUUID() needs
+ * a secure context; the deterministic fallback only needs uniqueness per
+ * attempt (time + random suffix), which is collision-safe for that purpose.
+ */
+function generateClientOrderId(): string {
+  if (typeof globalThis.crypto?.randomUUID === 'function') {
+    return globalThis.crypto.randomUUID()
+  }
+  return `cli-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`
+}
+
 function resolveOrderCustomer(boCustomer: any, existing?: Order, matchedCustomer?: any) {
   if (boCustomer) {
     return {
@@ -531,7 +546,7 @@ function buildCreateOrderItem(item: any, products: any[], additions: any[]) {
 
 export function buildCreateOrderInput(
   restaurant: RestaurantRecord,
-  newOrder: Order
+  newOrder: Order & { clientOrderId?: string }
 ): CreateOrderInput {
   const phone = cleanPhoneNumber(newOrder.customer.telefono)
   const existingCustomer = restaurant.customers?.find(
@@ -559,6 +574,10 @@ export function buildCreateOrderInput(
         changeAmount: newOrder.cambio !== undefined ? Number(newOrder.cambio) : undefined,
     receiptUrl: newOrder.receiptUrl,
     comment: newOrder.comentario,
+    // SUS-19: the offline retry re-sends the same correlation id (it rebuilds
+    // the input from the same optimistic order object), so the backend replays
+    // instead of duplicating.
+    ...(newOrder.clientOrderId ? { clientOrderId: newOrder.clientOrderId } : {}),
   }
 }
 
@@ -624,6 +643,18 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // re-entrancy; no timers, so the retry stays refresh-driven and testable.
   const retryInFlightRef = useRef(false)
   const retryPendingOrdersRef = useRef<() => Promise<void>>(async () => {})
+
+  // SUS-19: double-click protection. Both UI entry points (ManualSaleModal,
+  // CheckoutForm) trigger addOrder once per sale; a double-click can fire the
+  // handler twice within the same tick, producing two optimistic cards and two
+  // createOrder POSTs. The first invocation of a sale attempt is remembered;
+  // a repeat trigger of the SAME payload within the double-click window is
+  // dropped (same clientOrderId, same card, one API call). A legitimate new
+  // sale always carries a different payload and arrives after the modal is
+  // reopened (human interaction), so it can never collide. 500ms mirrors the
+  // OS double-click threshold.
+  const DOUBLE_CLICK_WINDOW_MS = 500
+  const lastSaleAttemptRef = useRef<{ key: string; at: number; order: Order } | null>(null)
 
   const attemptPendingOrderSync = useCallback(
     async (order: Order) => {
@@ -752,7 +783,21 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const addOrder = useCallback(
     (orderData: Omit<Order, "id" | "orderNumber" | "createdAt" | "updatedAt">) => {
+      const attemptKey = JSON.stringify(orderData)
+      const lastAttempt = lastSaleAttemptRef.current
+      if (
+        lastAttempt &&
+        lastAttempt.key === attemptKey &&
+        Date.now() - lastAttempt.at <= DOUBLE_CLICK_WINDOW_MS
+      ) {
+        // Same sale placed twice within the double-click window: drop the
+        // repeat trigger — the first invocation already created the optimistic
+        // card and the createOrder call carrying this attempt's clientOrderId.
+        return lastAttempt.order
+      }
+
       const now = new Date().toISOString()
+      const clientOrderId = generateClientOrderId()
       const newOrder: Order = {
         ...orderData,
         id: nextTempId("ord"),
@@ -760,6 +805,11 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         createdAt: now,
         updatedAt: now,
       }
+      // SUS-19: the correlation id rides on the optimistic Order so the offline
+      // retry (attemptPendingOrderSync) rebuilds the input from this same
+      // object and re-sends the SAME id — the server replays the first order.
+      ;(newOrder as Order & { clientOrderId?: string }).clientOrderId = clientOrderId
+      lastSaleAttemptRef.current = { key: attemptKey, at: Date.now(), order: newOrder }
 
       updateActiveRestaurantRecord((current) => addOrderToRestaurant(current, newOrder, now))
 

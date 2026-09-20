@@ -42,7 +42,8 @@ export class SupabaseOrderRepository implements OrderRepository {
       row.payment_amount !== null ? Number(row.payment_amount) : undefined,
       row.change_amount !== null ? Number(row.change_amount) : undefined,
       row.comment || undefined,
-      row.receipt_url || undefined
+      row.receipt_url || undefined,
+      row.client_order_id || undefined
     );
   }
 
@@ -101,6 +102,9 @@ export class SupabaseOrderRepository implements OrderRepository {
       // forward it so COALESCE(p_delivery_fee, v_rest.delivery_fee) does not
       // silently re-derive the restaurant fee for counter/table sales.
       p_delivery_fee: order.deliveryFee ?? null,
+      // SUS-19: idempotent replay key — the RPC returns the existing order when
+      // one is already persisted for (restaurant_id, client_order_id).
+      p_client_order_id: order.clientOrderId ?? null,
     });
 
     if (error) {
