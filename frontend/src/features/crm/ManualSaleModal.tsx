@@ -816,10 +816,10 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
       ...orderPayload,
       status: "pending" as const,
     })
-    const displayName = resolveCustomerDisplayName(serviceType, customerName, tableNumber)
-    toast.success("¡Venta manual registrada en el sistema!", {
-      description: `${displayName} • Total: ${formatCOP(finalTotal)}`,
-    })
+    // No unconditional success toast here: addOrder confirms only after the
+    // server accepts the order and surfaces a rejection with an error toast
+    // (removing the optimistic card), so a rejected sale is never reported
+    // as "registrada".
 
     handleResetForm()
     onClose()

@@ -1,7 +1,6 @@
 import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { toast } from "sonner"
 import {
   ArrowLeft,
   Banknote,
@@ -80,7 +79,10 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
   const cambio = calculateChange(total, pagoCon)
 
   const onSubmit = (values: FormValues) => {
-    // 1. Register order in CRM context
+    // 1. Register order in CRM context. The outcome toast is owned by
+    // addOrder: it confirms only after the server accepts the order, and
+    // shows an error (removing the optimistic card) when the server
+    // rejects it, so a failed sale is never reported as successful.
     addOrder({
       customer: {
         nombre: values.nombre,
@@ -97,11 +99,6 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
       cambio: cambio || undefined,
       comentario: values.mensaje,
       status: "pending",
-    })
-
-    // 2. Direct sale confirmation feedback
-    toast.success("¡Venta registrada con éxito!", {
-      description: `${values.nombre} • Total: ${formatCurrency(total + storeConfig.deliveryFee)}`,
     })
     onClose()
   }
