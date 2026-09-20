@@ -68,6 +68,38 @@ describe('Order API', () => {
     expect(body.changeAmount).toBe(5);
   });
 
+  it('POST /api/orders replays the SAME persisted order id for a repeated clientOrderId (SUS-19)', async () => {
+    const first = await app.inject({
+      method: 'POST',
+      url: '/api/orders',
+      payload: {
+        restaurantId: 'burger-craft',
+        items: [{ productId, quantity: 1, additions: [] }],
+        paymentMethod: 'Efectivo',
+        paymentAmount: 20,
+        clientOrderId: 'cli-http-replay-1',
+      },
+    });
+    expect(first.statusCode).toBe(201);
+    const firstBody = first.json();
+
+    // A lost-response retry re-POSTs the same correlation id: the HTTP response
+    // must return the ORIGINAL persisted id, never a freshly generated phantom id.
+    const replay = await app.inject({
+      method: 'POST',
+      url: '/api/orders',
+      payload: {
+        restaurantId: 'burger-craft',
+        items: [{ productId, quantity: 1, additions: [] }],
+        paymentMethod: 'Efectivo',
+        paymentAmount: 20,
+        clientOrderId: 'cli-http-replay-1',
+      },
+    });
+    expect(replay.statusCode).toBe(201);
+    expect(replay.json().id).toBe(firstBody.id);
+  });
+
   it('POST /api/orders should accept a mostrador cash payment equal to the subtotal when deliveryFee is 0 (JD-CRIT-02)', async () => {
     const response = await app.inject({
       method: 'POST',

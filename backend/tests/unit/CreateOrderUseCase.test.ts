@@ -501,6 +501,31 @@ describe('CreateOrderUseCase', () => {
     expect(saved.clientOrderId).toBe('cli-attempt-1');
   });
 
+  it('returns the originally persisted id on replay of the same clientOrderId (SUS-19, in-memory)', async () => {
+    const { InMemoryOrderRepository } = await import('../../src/infrastructure/persistence/InMemoryOrderRepository.js');
+    const inMemoryRepo = new InMemoryOrderRepository();
+    const inMemoryUseCase = new CreateOrderUseCase(
+      inMemoryRepo,
+      mockProductRepo,
+      mockRestaurantRepo,
+      mockAdditionRepo,
+      mockCustomerRepo
+    );
+    const mockProduct = { id: 'p1', name: 'Burger', price: 20, isAvailable: true, additions: [], category: 'Food', description: 'Desc', restaurantId: 'burger-craft' };
+    vi.mocked(mockProductRepo.findById).mockResolvedValue(mockProduct as any);
+
+    const dto = {
+      restaurantId: 'burger-craft',
+      items: [{ productId: 'p1', quantity: 1, additions: [] }],
+      clientOrderId: 'cli-same-attempt',
+    };
+    const first = await inMemoryUseCase.execute(dto);
+    // A lost-response retry re-POSTs the same correlation id: the server must
+    // return the SAME persisted identity, never a freshly generated phantom id.
+    const replay = await inMemoryUseCase.execute(dto);
+    expect(replay.id).toBe(first.id);
+  });
+
   it('replays a save with the same clientOrderId instead of duplicating (SUS-19, in-memory)', async () => {
     const { InMemoryOrderRepository } = await import('../../src/infrastructure/persistence/InMemoryOrderRepository.js');
     const inMemoryRepo = new InMemoryOrderRepository();
