@@ -1,17 +1,22 @@
 import { randomUUID, randomBytes } from 'node:crypto';
 import { RestaurantRepository } from '../../domain/ports/out/RestaurantRepository.js';
 import { CategoryRepository } from '../../domain/ports/out/CategoryRepository.js';
+import { UserRepository } from '../../domain/ports/out/UserRepository.js';
+import { PasswordHasher } from '../../domain/ports/out/PasswordHasher.js';
 import { Restaurant } from '../../domain/models/Restaurant.js';
+import { User, UserRole } from '../../domain/models/User.js';
 import { CreateRestaurantInput } from '@burger-page/contracts';
 import { ValidationError } from '../../domain/errors/DomainErrors.js';
 
 export class CreateRestaurantUseCase {
   constructor(
     private readonly restaurantRepo: RestaurantRepository,
-    private readonly categoryRepo?: CategoryRepository
+    private readonly categoryRepo?: CategoryRepository,
+    private readonly userRepo?: UserRepository,
+    private readonly hasher?: PasswordHasher
   ) {}
 
-  async execute(input: CreateRestaurantInput): Promise<Restaurant> {
+  async execute(input: CreateRestaurantInput, callerRole?: UserRole): Promise<Restaurant> {
     const cleanSlug = input.slug
       .toLowerCase()
       .trim()
@@ -72,6 +77,31 @@ export class CreateRestaurantUseCase {
       }
     }
 
-    return newRestaurant;
+    // SUS-02: a tenant is only usable when its admin user exists, so provision
+    // the restaurant_admin row from the one-time credentials we are about to
+    // return. The actor role comes from the authenticated caller (the create
+    // route is super-admin-gated) and defaults to super_admin for script/test
+    // callers that do not authenticate.
+    const adminUsername = input.adminUsername?.trim() || `admin_${cleanSlug}`;
+    if (this.userRepo && this.hasher) {
+      try {
+        const adminUser: User = {
+          id: randomUUID(),
+          username: adminUsername,
+          passwordHash: await this.hasher.hash(newRestaurant.adminPassword ?? ''),
+          role: 'restaurant_admin',
+          restaurantId,
+          createdAt: new Date().toISOString(),
+          isActive: true,
+        };
+        await this.userRepo.save(adminUser, callerRole ?? 'super_admin');
+      } catch (err) {
+        // A secondary admin-row failure must never roll back tenant creation:
+        // the response still carries the credentials for a manual retry.
+        console.warn('Could not create admin user for restaurant:', err);
+      }
+    }
+
+    return { ...newRestaurant, adminUsername } as Restaurant;
   }
 }

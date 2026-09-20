@@ -2,11 +2,12 @@ import { OrderRepository } from '../../domain/ports/out/OrderRepository.js';
 import { UpdateOrderStatusDTO } from '../dtos/index.js';
 import { EntityNotFoundError, ValidationError } from '../../domain/errors/DomainErrors.js';
 import { Order } from '../../domain/models/Order.js';
+import { UserRole } from '../../domain/models/User.js';
 
 export class UpdateOrderStatusUseCase {
   constructor(private orderRepo: OrderRepository) {}
 
-  async execute(id: string, dto: UpdateOrderStatusDTO, restaurantId: string, actorId?: string): Promise<Order> {
+  async execute(id: string, dto: UpdateOrderStatusDTO, restaurantId: string, actorId?: string, actorRole?: UserRole): Promise<Order> {
     if (!restaurantId) {
       throw new ValidationError('Restaurant ID is required to update order status.');
     }
@@ -33,7 +34,7 @@ export class UpdateOrderStatusUseCase {
     order.transitionTo(dto.status);
 
     // 2. Persistir cambio de estado con aislamiento y actor
-    await this.orderRepo.updateStatus(id, dto.status, resolvedRestId, actorId);
+    await this.orderRepo.updateStatus(id, dto.status, resolvedRestId, actorId, actorRole);
 
     return order;
   }

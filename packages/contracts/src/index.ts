@@ -39,6 +39,7 @@ export const createRestaurantSchema = z.object({
   tagline: z.string().optional(),
   whatsappNumber: z.string().optional(),
   adminPassword: z.string().optional(),
+  adminUsername: z.string().optional(),
   primaryColor: z.string().optional(),
   templateType: z.enum(['burger', 'pizza', 'tacos', 'blank']).optional(),
   categories: z.array(z.string()).optional(),

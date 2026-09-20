@@ -71,7 +71,13 @@ describe('PgUserRepository (real Postgres, app_user role — login is the pre-te
       createdAt: new Date().toISOString(),
     };
 
-    await repo.save(user);
+    // Platform rows (restaurant_id IS NULL) are reserved for super_admin
+    // sessions (JD-CONF-01 write policy): the caller passes its granted
+    // super_admin role through the repository port, mirroring how an
+    // authenticated super_admin provisions platform accounts in production
+    // (SUS-03: actor_role comes from the caller's granted role, never a
+    // hardcoded value).
+    await repo.save(user, 'super_admin');
     const found = await repo.findById(user.id);
 
     expect(found).not.toBeNull();

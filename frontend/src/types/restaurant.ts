@@ -91,6 +91,9 @@ export interface Order {
   status: OrderStatus
   createdAt: string
   updatedAt: string
+  // Offline-created order awaiting automatic server sync (REJ-02). Local-only
+  // flag: never a server field; cleared once the order reaches the backend.
+  pendingSync?: boolean
 }
 
 export type LoyaltyTier = "bronze" | "silver" | "gold" | "vip"

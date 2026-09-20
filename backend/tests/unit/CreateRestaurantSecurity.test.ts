@@ -53,6 +53,108 @@ describe('CreateRestaurantUseCase (Security Hardening)', () => {
 
     expect(result.adminPassword).toBe('custom-secret-42');
   });
+
+  it('provisions the admin user row when userRepo and hasher are injected (SUS-02)', async () => {
+    const mockUserRepo = {
+      save: vi.fn().mockResolvedValue(undefined),
+    } as any;
+    const mockHasher = {
+      hash: vi.fn(async (p: string) => `hashed:${p}`),
+      verify: vi.fn(),
+    } as any;
+    const useCaseWithUsers = new CreateRestaurantUseCase(
+      mockRestaurantRepo,
+      mockCategoryRepo,
+      mockUserRepo,
+      mockHasher
+    );
+
+    const result = await useCaseWithUsers.execute({
+      name: 'Rosto',
+      slug: 'rosto',
+      adminPassword: 'custom-secret-42',
+    } as any);
+
+    expect(mockUserRepo.save).toHaveBeenCalledTimes(1);
+    const [savedUser, actorRole] = mockUserRepo.save.mock.calls[0];
+    expect(savedUser.username).toBe('admin_rosto');
+    expect(savedUser.role).toBe('restaurant_admin');
+    expect(savedUser.restaurantId).toBe(result.id);
+    expect(savedUser.isActive).toBe(true);
+    expect(savedUser.createdAt).toBeDefined();
+    // The stored credential is the hash of the returned one-time password
+    expect(mockHasher.hash).toHaveBeenCalledWith('custom-secret-42');
+    expect(savedUser.passwordHash).toBe('hashed:custom-secret-42');
+    // SUS-03: the real caller role is forwarded to the user repository
+    expect(actorRole).toBe('super_admin');
+    // The entity still carries the one-time credentials for the caller
+    expect(result.adminPassword).toBe('custom-secret-42');
+    expect((result as any).adminUsername).toBe('admin_rosto');
+  });
+
+  it('uses a caller-provided adminUsername and forwards an explicit caller role (SUS-02/SUS-03)', async () => {
+    const mockUserRepo = {
+      save: vi.fn().mockResolvedValue(undefined),
+    } as any;
+    const mockHasher = {
+      hash: vi.fn(async (p: string) => `hashed:${p}`),
+      verify: vi.fn(),
+    } as any;
+    const useCaseWithUsers = new CreateRestaurantUseCase(
+      mockRestaurantRepo,
+      mockCategoryRepo,
+      mockUserRepo,
+      mockHasher
+    );
+
+    const result = await useCaseWithUsers.execute(
+      {
+        name: 'Rosto',
+        slug: 'rosto',
+        adminUsername: '  gerente  ',
+      } as any,
+      'restaurant_admin'
+    );
+
+    expect(mockUserRepo.save).toHaveBeenCalledTimes(1);
+    const [savedUser, actorRole] = mockUserRepo.save.mock.calls[0];
+    expect(savedUser.username).toBe('gerente');
+    expect(savedUser.passwordHash).toBeDefined();
+    expect(savedUser.restaurantId).toBe(result.id);
+    expect(actorRole).toBe('restaurant_admin');
+    expect((result as any).adminUsername).toBe('gerente');
+  });
+
+  it('keeps creating the tenant when userRepo is not injected (backward-compatible)', async () => {
+    const result = await useCase.execute({ name: 'Rosto', slug: 'rosto' } as any);
+
+    expect(result.id).toMatch(/^rest-/);
+    expect(result.adminPassword).toBeDefined();
+  });
+
+  it('keeps creating the tenant when the admin user save fails (secondary failure)', async () => {
+    const mockUserRepo = {
+      save: vi.fn().mockRejectedValue(new Error('user save failed')),
+    } as any;
+    const mockHasher = {
+      hash: vi.fn(async (p: string) => `hashed:${p}`),
+      verify: vi.fn(),
+    } as any;
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const useCaseWithUsers = new CreateRestaurantUseCase(
+      mockRestaurantRepo,
+      mockCategoryRepo,
+      mockUserRepo,
+      mockHasher
+    );
+
+    const result = await useCaseWithUsers.execute({ name: 'Rosto', slug: 'rosto' } as any);
+
+    expect(result.id).toMatch(/^rest-/);
+    expect(result.adminPassword).toBeDefined();
+    expect(warnSpy).toHaveBeenCalled();
+    warnSpy.mockRestore();
+  });
 });
 
 describe('Public restaurant API (Response Shape)', () => {

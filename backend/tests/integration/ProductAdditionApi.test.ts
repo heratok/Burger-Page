@@ -183,6 +183,30 @@ describe('Product Addition API Integration', () => {
     expect(deleteRes.statusCode).toBe(404);
   });
 
+  it('POST /api/additions should reject a super-admin mutation without an explicit tenant (JD-INFO-02)', async () => {
+    // Super admin token WITHOUT restaurantId: no query, no body, no header tenant
+    const superAdminToken = jwtService.generateToken({
+      id: 'usr-super-1',
+      username: 'root',
+      role: 'super_admin',
+    });
+
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/api/additions',
+      headers: { authorization: `Bearer ${superAdminToken}` },
+      payload: {
+        name: 'Super Admin Addition',
+        price: 1500,
+      },
+    });
+
+    // Mutation without an explicit tenant must fail with a client error (400-499),
+    // never silently operate on a defaulted (first active) restaurant
+    expect(createRes.statusCode).toBeGreaterThanOrEqual(400);
+    expect(createRes.statusCode).toBeLessThan(500);
+  });
+
   it('DELETE /api/additions/:id deletes addition (204)', async () => {
     // 1. Create
     const createRes = await app.inject({

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react"
-import { RestaurantProvider } from "@/context/RestaurantContext"
+import { render, screen, cleanup, fireEvent, waitFor, within } from "@testing-library/react"
+import { RestaurantProvider, useRestaurant } from "@/context/RestaurantContext"
 import CheckoutForm from "./CheckoutForm"
 import type { CartItem } from "./cartEngine"
 import { toast } from "sonner"
@@ -13,6 +13,12 @@ vi.mock("sonner", () => ({
     warning: vi.fn(),
   },
 }))
+
+/** Renders the local order records so tests can assert the recorded payload. */
+function OrdersProbe() {
+  const { orders } = useRestaurant()
+  return <pre data-testid="orders-probe">{JSON.stringify(orders)}</pre>
+}
 
 const mockCartItems: CartItem[] = [
   {
@@ -127,6 +133,101 @@ describe("CheckoutForm - Direct Sale Flow", () => {
         description: expect.stringContaining("Carlos Pérez"),
       })
     )
+
+    windowOpenSpy.mockRestore()
+  })
+
+  it("includes the delivery fee in the displayed change, summary, and recorded total", async () => {
+    // Subtotal 30.000 + delivery fee 5.000 -> total 35.000. Paying 40.000
+    // must quote a change of 5.000 (NOT 10.000, which would exclude the fee)
+    // and the recorded order must match the displayed charge.
+    const cartItems: CartItem[] = [
+      {
+        id: "prod-rosto-1",
+        name: "Rosto Clásica Ahumada",
+        price: 30000,
+        cantidad: 1,
+        total: 30000,
+        src: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800&auto=format&fit=crop&q=80",
+        adiciones: [],
+      },
+    ]
+    const windowOpenSpy = vi.spyOn(window, "open").mockImplementation(() => null)
+    const { apiClient } = await import("@/core/api/apiClient")
+    const createOrderSpy = vi.spyOn(apiClient, "createOrder").mockResolvedValue({
+      id: "server-checkout-2",
+      orderNumber: 4242,
+      status: "pending",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    } as any)
+
+    render(
+      <RestaurantProvider>
+        <OrdersProbe />
+        <CheckoutForm
+          cartItems={cartItems}
+          onClose={() => {}}
+          onBackToCart={() => {}}
+        />
+      </RestaurantProvider>
+    )
+
+    fireEvent.change(screen.getByLabelText(/Nombre/i), {
+      target: { value: "Carlos Pérez" },
+    })
+    fireEvent.change(screen.getByLabelText(/Celular/i), {
+      target: { value: "3001234567" },
+    })
+    fireEvent.change(screen.getByLabelText(/Dirección/i), {
+      target: { value: "Calle 45 # 12-34" },
+    })
+    fireEvent.change(screen.getByLabelText(/Barrio/i), {
+      target: { value: "El Poblado" },
+    })
+    fireEvent.change(screen.getByLabelText(/¿Con cuánto pagas\?/i), {
+      target: { value: "40000" },
+    })
+
+    // Change is computed over the fee-inclusive total: 40.000 - 35.000 = 5.000.
+    const cambioText = screen.getByText(/Tu cambio:/i).textContent
+    expect(cambioText).toContain("$5.000")
+    expect(cambioText).not.toContain("$10.000")
+    expect(screen.queryByText("$10.000")).toBeNull()
+
+    // The checkout summary shows Subtotal (fee excluded), the delivery fee
+    // line, and the fee-inclusive final total, mirroring the WhatsApp message.
+    const subtotalRow = screen.getByText("Subtotal").closest("li")
+    expect(subtotalRow).not.toBeNull()
+    expect(within(subtotalRow as HTMLElement).getByText("$30.000")).toBeDefined()
+    const feeRow = screen.getByText("Domicilio / Envío").closest("li")
+    expect(feeRow).not.toBeNull()
+    expect(within(feeRow as HTMLElement).getByText("$5.000")).toBeDefined()
+    const totalRow = screen.getByText("Total").closest("li")
+    expect(totalRow).not.toBeNull()
+    expect(within(totalRow as HTMLElement).getByText("$35.000")).toBeDefined()
+
+    fireEvent.click(screen.getByRole("button", { name: /Registrar venta/i }))
+
+    // The recorded (optimistic) order carries the same charge shown to the
+    // customer: subtotal 30.000, fee 5.000, finalTotal 35.000, cambio 5.000.
+    await waitFor(() => {
+      const orders = JSON.parse(screen.getByTestId("orders-probe").textContent ?? "[]")
+      expect(orders.length).toBeGreaterThan(0)
+      const recorded = orders[0]
+      expect(recorded.total).toBe(30000)
+      expect(recorded.deliveryFee).toBe(5000)
+      expect(recorded.finalTotal).toBe(35000)
+      expect(recorded.cambio).toBe(5000)
+    })
+
+    // The backend payload carries the fee-inclusive change/payment amounts.
+    await waitFor(() => {
+      expect(createOrderSpy).toHaveBeenCalledTimes(1)
+      const orderInput = createOrderSpy.mock.calls[0][0]
+      expect(orderInput.changeAmount).toBe(5000)
+      expect(orderInput.paymentAmount).toBe(40000)
+    })
 
     windowOpenSpy.mockRestore()
   })

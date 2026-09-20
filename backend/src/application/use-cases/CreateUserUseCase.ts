@@ -3,7 +3,7 @@ import { UserRepository } from '../../domain/ports/out/UserRepository.js';
 import { PasswordHasher } from '../../domain/ports/out/PasswordHasher.js';
 import { RestaurantRepository } from '../../domain/ports/out/RestaurantRepository.js';
 import { ValidationError, EntityNotFoundError } from '../../domain/errors/DomainErrors.js';
-import { User } from '../../domain/models/User.js';
+import { User, UserRole } from '../../domain/models/User.js';
 import { CreateUserDTO } from '../dtos/index.js';
 
 export class CreateUserUseCase {
@@ -13,7 +13,7 @@ export class CreateUserUseCase {
     private restaurantRepo: RestaurantRepository
   ) {}
 
-  async execute(dto: CreateUserDTO): Promise<User> {
+  async execute(dto: CreateUserDTO, callerRole?: UserRole): Promise<User> {
     const username = dto.username.trim();
     if (!username) {
       throw new ValidationError('Username is required');
@@ -49,7 +49,7 @@ export class CreateUserUseCase {
       createdAt: new Date().toISOString(),
     };
 
-    await this.userRepo.save(user);
+    await this.userRepo.save(user, callerRole);
     return user;
   }
 }

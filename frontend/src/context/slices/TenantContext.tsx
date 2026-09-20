@@ -13,6 +13,21 @@ import { useAuth } from "./AuthContext"
 import { toast } from "sonner"
 import { nextTempId } from "@/lib/ids"
 
+/**
+ * Generates a secure random one-time admin password for a new tenant.
+ * Never falls back to a predictable literal (SUS-02).
+ */
+function generateSecurePassword(): string {
+  if (typeof globalThis.crypto?.getRandomValues === "function") {
+    const bytes = new Uint8Array(12)
+    globalThis.crypto.getRandomValues(bytes)
+    return Array.from(bytes, (b) => b.toString(36).padStart(2, "0")).join("")
+  }
+  return Array.from({ length: 18 }, () =>
+    "abcdefghijklmnopqrstuvwxyz0123456789".charAt(Math.floor(Math.random() * 36))
+  ).join("")
+}
+
 export interface GlobalPlatformStats {
   totalRevenue: number
   totalOrders: number
@@ -35,6 +50,7 @@ export interface TenantContextType {
     tagline: string
     whatsappNumber: string
     adminPassword?: string
+    adminUsername?: string
     primaryColor?: string
     templateType?: "burger" | "pizza" | "tacos" | "blank"
   }) => RestaurantRecord
@@ -81,7 +97,7 @@ export const TenantProvider: React.FC<{
               ...local,
               id: br.id,
               slug: br.slug,
-              adminPassword: br.adminPassword || local?.adminPassword || "admin123",
+              adminPassword: br.adminPassword || local?.adminPassword,
               isActive: br.isActive !== undefined ? Boolean(br.isActive) : true,
               createdAt: br.createdAt || local?.createdAt || new Date().toISOString(),
               categories: br.categories && br.categories.length > 0 ? br.categories : local?.categories || ['General'],
@@ -182,7 +198,7 @@ export const TenantProvider: React.FC<{
                 const formatted: RestaurantRecord = {
                   id: fetched.id,
                   slug: fetched.slug,
-                  adminPassword: (fetched as any).adminPassword || "admin123",
+                  adminPassword: (fetched as any).adminPassword,
                   isActive: fetched.isActive !== undefined ? Boolean(fetched.isActive) : true,
                   createdAt: (fetched as any).createdAt || new Date().toISOString(),
                   categories: fetched.categories && fetched.categories.length > 0 ? fetched.categories : ['Hamburguesas', 'Bebidas', 'Acompañamientos'],
@@ -255,6 +271,7 @@ export const TenantProvider: React.FC<{
       tagline: string
       whatsappNumber: string
       adminPassword?: string
+      adminUsername?: string
       primaryColor?: string
       templateType?: "burger" | "pizza" | "tacos" | "blank"
     }) => {
@@ -267,7 +284,7 @@ export const TenantProvider: React.FC<{
       const newRecord: RestaurantRecord = {
         id: nextTempId("rest"),
         slug: cleanSlug || `rest-${Date.now().toString(36)}`,
-        adminPassword: data.adminPassword || "admin123",
+        adminPassword: data.adminPassword || generateSecurePassword(),
         isActive: true,
         createdAt: new Date().toISOString(),
         config: {
@@ -298,6 +315,8 @@ export const TenantProvider: React.FC<{
           slug: newRecord.slug,
           tagline: data.tagline,
           whatsappNumber: data.whatsappNumber,
+          adminUsername: data.adminUsername,
+          adminPassword: data.adminPassword,
           primaryColor: data.primaryColor,
           templateType: data.templateType,
           categories: ["General"],
@@ -305,21 +324,34 @@ export const TenantProvider: React.FC<{
         })
         .then(async (created) => {
           if (created && created.id) {
+            // SUS-02: when the backend provisions the admin user it returns the
+            // one-time credentials; persist them so the envelope matches server
+            // truth and surface them exactly once to the caller.
+            const createdCreds = created as { adminUsername?: string; adminPassword?: string }
+            const credentials =
+              createdCreds.adminUsername && createdCreds.adminPassword
+                ? { adminUsername: createdCreds.adminUsername, adminPassword: createdCreds.adminPassword }
+                : undefined
             setEnvelope((prev) => {
               const exists = prev.restaurants.some((r) => r.id === created.id || r.id === newRecord.id);
               if (exists) {
                 return {
                   ...prev,
                   restaurants: prev.restaurants.map((r) =>
-                    r.id === newRecord.id ? { ...r, ...created, id: created.id } : r
+                    r.id === newRecord.id ? { ...r, ...created, ...(credentials || {}), id: created.id } : r
                   ),
                 };
               }
               return {
                 ...prev,
-                restaurants: [...prev.restaurants, { ...newRecord, ...created, id: created.id }],
+                restaurants: [...prev.restaurants, { ...newRecord, ...created, ...(credentials || {}), id: created.id }],
               };
             });
+            if (credentials) {
+              toast.success("Restaurante creado con éxito", {
+                description: `Usuario: ${credentials.adminUsername} — Clave: ${credentials.adminPassword}`,
+              })
+            }
           }
           await refreshRestaurants();
         })

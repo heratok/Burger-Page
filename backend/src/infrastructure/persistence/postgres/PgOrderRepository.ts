@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { Order, OrderStatus, OrderItem, OrderItemAddition } from '../../../domain/models/Order.js';
+import { UserRole } from '../../../domain/models/User.js';
 import { EntityNotFoundError } from '../../../domain/errors/DomainErrors.js';
 import { OrderRepository } from '../../../domain/ports/out/OrderRepository.js';
 import { withTenantContext } from './PgClient.js';
@@ -146,8 +147,12 @@ export class PgOrderRepository implements OrderRepository {
     });
   }
 
-  async updateStatus(id: string, status: OrderStatus, restaurantId: string, actorId?: string): Promise<void> {
-    await withTenantContext({ restaurantId }, async (client) => {
+  async updateStatus(id: string, status: OrderStatus, restaurantId: string, actorId?: string, actorRole?: UserRole): Promise<void> {
+    // SUS-03: app.actor_role is derived from the caller's granted role (JWT),
+    // never hardcoded — undefined omits it so the SECURITY DEFINER
+    // update_order_status_with_actor validation runs under RLS with the
+    // caller's real identity.
+    await withTenantContext({ restaurantId, ...(actorRole ? { actorRole } : {}) }, async (client) => {
       const { rows } = await client.query(
         `SELECT public.update_order_status_with_actor($1, $2, $3, $4) AS updated`,
         [id, status, restaurantId, actorId || null]

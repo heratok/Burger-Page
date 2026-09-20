@@ -15,7 +15,7 @@ export class UserController {
     request: FastifyRequest,
     reply: FastifyReply
   ) {
-    const user = await this.createUser.execute(request.body as CreateUserDTO);
+    const user = await this.createUser.execute(request.body as CreateUserDTO, request.authContext?.role);
     const { passwordHash: _, ...safe } = user;
     return reply.status(201).send(safe);
   }
@@ -51,7 +51,7 @@ export class UserController {
       resolvedRestaurantId = auth?.restaurantId;
     }
 
-    const users = await this.listUsers.execute(resolvedRestaurantId);
+    const users = await this.listUsers.execute(resolvedRestaurantId, auth?.role);
     return reply.send(users);
   }
 }

@@ -199,11 +199,19 @@ describe('RLS tenant isolation (write policies, app_user role)', () => {
 
     it('tenant cannot overwrite a platform super_admin password_hash', async () => {
       if (!isDbConnected) return;
-      await expect(
-        asTenant(RESTAURANT_A, null, (c) =>
-          c.query(`UPDATE public.users SET password_hash = 'pwned' WHERE id = $1`, [PLATFORM_USER])
-        )
-      ).rejects.toMatchObject({ code: '42501' });
+      // Platform rows are invisible to tenant sessions (users_select_for_auth
+      // reserves restaurant_id IS NULL rows for super_admin), so an UPDATE
+      // attempt is a silent 0-row no-op rather than an explicit 42501.
+      // Fail-loud semantics here would require revealing platform rows to
+      // tenant reads (an UPDATE's row visibility is governed by the SELECT
+      // policies), leaking their existence — the enforced contract is
+      // immutability, which we assert directly.
+      const attempt = await asTenant(RESTAURANT_A, null, (c) =>
+        c.query(`UPDATE public.users SET password_hash = 'pwned' WHERE id = $1`, [PLATFORM_USER])
+      );
+      expect(attempt.rowCount).toBe(0);
+      const { rows } = await adminPool.query(`SELECT password_hash FROM public.users WHERE id = $1`, [PLATFORM_USER]);
+      expect(rows[0].password_hash).toBe('hash-platform');
     });
 
     it('tenant cannot self-promote to super_admin', async () => {

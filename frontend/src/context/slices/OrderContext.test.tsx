@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest"
+import { describe, it, expect, vi, beforeEach } from "vitest"
 import React from "react"
 import { renderHook, act } from "@testing-library/react"
 import type { RestaurantRecord, Order, Customer } from "@/types/restaurant"
@@ -80,7 +80,7 @@ describe("OrderContext Pure Reducers & Updaters (TDD Tests)", () => {
   })
 
   describe("mapSseOrderItem", () => {
-    it("maps item and calculates line total", () => {
+    it("maps item and calculates line total including priced additions (SUS-01)", () => {
       const res = mapSseOrderItem({
         id: "item-10",
         productName: "Doble Carne",
@@ -93,7 +93,9 @@ describe("OrderContext Pure Reducers & Updaters (TDD Tests)", () => {
       expect(res.name).toBe("Doble Carne")
       expect(res.price).toBe(25000)
       expect(res.cantidad).toBe(2)
-      expect(res.total).toBe(50000)
+      // (25000 + 4000*1) * 2 = 58000: priced additions are applied per unit,
+      // same formula as cartEngine/backend (JD-CRIT-01), never dropped.
+      expect(res.total).toBe(58000)
       expect(res.observacion).toBe("Sin salsas")
       expect(res.adiciones).toHaveLength(1)
       expect(res.adiciones[0].name).toBe("Tocineta")
@@ -159,6 +161,42 @@ describe("OrderContext Pure Reducers & Updaters (TDD Tests)", () => {
       expect(updated.orders[0].status).toBe("pending")
       expect(updated.orders[0].customer.nombre).toBe("Maria Gomez")
       expect(updated.orders[0].finalTotal).toBe(12000)
+    })
+
+    it("merges SSE payload items with addition-inclusive line totals (SUS-01)", () => {
+      const initial = createMockRestaurant()
+      const event: OrderEvent = {
+        eventType: "ORDER_CREATED",
+        orderId: "order-sse-sus01",
+        orderNumber: 606,
+        status: "pending",
+        timestamp: "2026-08-03T12:00:00.000Z",
+        payload: {
+          customer: { nombre: "SSE SUS Test", telefono: "3129998877", direccion: "Cra 10", barrio: "Centro" },
+          items: [
+            {
+              id: "item-sse-1",
+              productName: "Hamburguesa Triple",
+              unitPrice: 30000,
+              quantity: 2,
+              additions: [
+                { additionName: "Tocineta", unitPrice: 4000, quantity: 1 },
+                { additionName: "Queso", unitPrice: 2000, quantity: 1 },
+              ],
+            },
+          ],
+          subtotal: 72000,
+          deliveryFee: 0,
+          finalTotal: 72000,
+        },
+      }
+
+      const updated = handleOrderCreatedEvent(initial, event)
+      expect(updated.orders).toHaveLength(1)
+      expect(updated.orders[0].items).toHaveLength(1)
+      expect(updated.orders[0].items[0].adiciones).toHaveLength(2)
+      // (30000 + 4000 + 2000) * 2 = 72000: SSE line totals include priced additions
+      expect(updated.orders[0].items[0].total).toBe(72000)
     })
   })
 
@@ -268,6 +306,119 @@ describe("OrderContext Pure Reducers & Updaters (TDD Tests)", () => {
       const currentOrders = [createMockOrder("ord-1")]
       const synced = syncBackendOrders(currentOrders, null as any, [])
       expect(synced).toEqual(currentOrders)
+    })
+
+    it("computes addition-inclusive item totals when backend omits per-item total (SUS-01)", () => {
+      const synced = syncBackendOrders(
+        [],
+        [
+          {
+            id: "ord-sus01",
+            orderNumber: 303,
+            subtotal: 58000,
+            deliveryFee: 2000,
+            finalTotal: 60000,
+            status: "pending",
+            createdAt: "2026-08-03T10:00:00.000Z",
+            customer: { name: "SUS Test", phone: "3121112233" },
+            items: [
+              {
+                id: "item-sus-1",
+                productName: "Doble Carne",
+                unitPrice: 25000,
+                quantity: 2,
+                additions: [{ additionName: "Tocineta", unitPrice: 4000, quantity: 1 }],
+              },
+            ],
+          },
+        ],
+        []
+      )
+
+      expect(synced).toHaveLength(1)
+      expect(synced[0].items).toHaveLength(1)
+      expect(synced[0].items[0].adiciones).toHaveLength(1)
+      // (25000 + 4000*1) * 2 = 58000: read-back totals match the cart/backend formula
+      expect(synced[0].items[0].total).toBe(58000)
+    })
+
+    it("prefers the backend-provided item total over the computed one (SUS-01)", () => {
+      const synced = syncBackendOrders(
+        [],
+        [
+          {
+            id: "ord-sus02",
+            orderNumber: 304,
+            status: "pending",
+            createdAt: "2026-08-03T10:00:00.000Z",
+            items: [
+              {
+                id: "item-sus-2",
+                productName: "Combo Especial",
+                unitPrice: 20000,
+                quantity: 1,
+                total: 25999,
+                additions: [{ additionName: "Queso", unitPrice: 3000, quantity: 1 }],
+              },
+            ],
+          },
+        ],
+        []
+      )
+
+      expect(synced[0].items[0].total).toBe(25999)
+    })
+
+    it("keeps pendingSync orders absent from the server response (REJ-02)", () => {
+      const pendingLocal = { ...createMockOrder("ord-temp-1", 777), pendingSync: true }
+      const synced = syncBackendOrders(
+        [pendingLocal, createMockOrder("ord-synced")],
+        [
+          {
+            id: "ord-synced",
+            orderNumber: 102,
+            subtotal: 30000,
+            deliveryFee: 4000,
+            finalTotal: 34000,
+            status: "confirmed",
+            createdAt: "2026-08-02T10:00:00.000Z",
+            customer: { name: "Andres", phone: "3123456789" },
+          },
+        ],
+        []
+      )
+
+      // Server orders first, then the pending local sale; ghosts stay dropped.
+      expect(synced).toHaveLength(2)
+      expect(synced[0].id).toBe("ord-synced")
+      expect(synced[1].id).toBe("ord-temp-1")
+      expect(synced[1].pendingSync).toBe(true)
+    })
+
+    it("treats a pendingSync order as synced once it appears on the server (REJ-02)", () => {
+      const pendingLocal = { ...createMockOrder("ord-temp-1", 777), pendingSync: true }
+      // Same orderNumber with a server-assigned id: the server record wins and
+      // the temp card is not re-appended (its pendingSync is dropped by the merge).
+      const synced = syncBackendOrders(
+        [pendingLocal],
+        [
+          {
+            id: "server-555",
+            orderNumber: 777,
+            subtotal: 23000,
+            deliveryFee: 3000,
+            finalTotal: 26000,
+            status: "pending",
+            createdAt: "2026-08-02T10:00:00.000Z",
+            customer: { name: "Andres", phone: "3123456789" },
+          },
+        ],
+        []
+      )
+
+      expect(synced).toHaveLength(1)
+      expect(synced[0].id).toBe("server-555")
+      expect(synced[0].pendingSync).toBeUndefined()
     })
   })
 
@@ -776,6 +927,123 @@ describe("OrderContext Pure Reducers & Updaters (TDD Tests)", () => {
       expect(result.current.orders[0].id).toBe("server-accepted-1")
       expect(result.current.orders[0].orderNumber).toBe(3131)
       expect(successSpy).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe("addOrder — offline sale kept pending sync, retried on connectivity (REJ-02)", () => {
+    // This file has no global localStorage reset: isolate this describe so the
+    // persisted envelope from earlier provider tests cannot leak pending orders
+    // into the mount-retry assertions.
+    beforeEach(() => {
+      localStorage.clear()
+    })
+
+    const createOrderParams: Omit<Order, "id" | "orderNumber" | "createdAt" | "updatedAt"> = {
+      customer: { nombre: "Offline Tester", telefono: "3006665544", direccion: "Calle 6", barrio: "Centro" },
+      items: [{ id: "i1", name: "Burger", price: 20000, cantidad: 1, total: 20000, adiciones: [] }],
+      total: 20000,
+      deliveryFee: 3000,
+      finalTotal: 23000,
+      metodo: "Efectivo",
+      status: "pending",
+    }
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>
+        <UiProvider>
+          <OrderProvider>{children}</OrderProvider>
+        </UiProvider>
+      </TenantProvider>
+    )
+
+    it("keeps the temp order marked pendingSync on a pure network failure (REJ-02)", async () => {
+      const { apiClient } = await import("@/core/api/apiClient")
+      const { toast } = await import("sonner")
+      const warningSpy = vi.spyOn(toast, "warning")
+      const errorSpy = vi.spyOn(toast, "error")
+      const createSpy = vi
+        .spyOn(apiClient, "createOrder")
+        .mockRejectedValue(new TypeError("Failed to fetch"))
+      vi.spyOn(apiClient, "subscribeToOrderStream").mockImplementation(() => () => {})
+      vi.spyOn(apiClient, "hasToken").mockReturnValue(true)
+      vi.spyOn(apiClient, "fetchOrders").mockResolvedValue([])
+      vi.spyOn(apiClient, "fetchCustomers").mockResolvedValue([])
+
+      const { result } = renderHook(() => useOrders(), { wrapper })
+
+      // Mount fetch settles (no pending orders yet, so no createOrder call).
+      await act(async () => {
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+      expect(createSpy).not.toHaveBeenCalled()
+
+      // The network failure: sale kept, marked pending, warning toast, NO removal.
+      await act(async () => {
+        result.current.addOrder(createOrderParams)
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      expect(createSpy).toHaveBeenCalledTimes(1)
+      expect(result.current.orders).toHaveLength(1)
+      expect(result.current.orders[0].customer.nombre).toBe("Offline Tester")
+      expect(result.current.orders[0].pendingSync).toBe(true)
+      expect(warningSpy).toHaveBeenCalledTimes(1)
+      expect(warningSpy).toHaveBeenCalledWith(
+        'Sin conexión: la venta quedó guardada localmente y se sincronizará automáticamente'
+      )
+      expect(errorSpy).not.toHaveBeenCalled()
+
+      // A rebuild from an empty server list must NOT drop the pending sale, and
+      // a still-offline retry keeps it pending without spamming toasts.
+      await act(async () => {
+        await result.current.refreshOrders()
+      })
+      expect(result.current.orders).toHaveLength(1)
+      expect(result.current.orders[0].pendingSync).toBe(true)
+      expect(warningSpy).toHaveBeenCalledTimes(1)
+    })
+
+    it("retries a pendingSync order after a successful refresh and adopts the server identity (REJ-02)", async () => {
+      const { apiClient } = await import("@/core/api/apiClient")
+      const createSpy = vi
+        .spyOn(apiClient, "createOrder")
+        .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+        .mockResolvedValue({ id: "server-retry-1", orderNumber: 7777, status: "pending" } as any)
+      vi.spyOn(apiClient, "subscribeToOrderStream").mockImplementation(() => () => {})
+      vi.spyOn(apiClient, "hasToken").mockReturnValue(true)
+      vi.spyOn(apiClient, "fetchOrders").mockResolvedValue([])
+      vi.spyOn(apiClient, "fetchCustomers").mockResolvedValue([])
+
+      const { result } = renderHook(() => useOrders(), { wrapper })
+
+      await act(async () => {
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      // First attempt fails offline: the sale is held pending.
+      await act(async () => {
+        result.current.addOrder(createOrderParams)
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+      expect(result.current.orders[0].pendingSync).toBe(true)
+      expect(createSpy).toHaveBeenCalledTimes(1)
+
+      // Successful refresh: the automatic retry adopts the server identity.
+      await act(async () => {
+        await result.current.refreshOrders()
+      })
+
+      expect(createSpy).toHaveBeenCalledTimes(2)
+      expect(result.current.orders).toHaveLength(1)
+      expect(result.current.orders[0].id).toBe("server-retry-1")
+      expect(result.current.orders[0].orderNumber).toBe(7777)
+      expect(result.current.orders[0].pendingSync).toBeFalsy()
     })
   })
 })

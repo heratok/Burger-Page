@@ -1,10 +1,12 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   dataUrlToBlob,
   uploadImageToStorage,
   resolveImageUrl,
   getDefaultStorageBucket,
+  sanitizeSegment,
 } from './supabaseStorage';
+import { apiClient } from '../api/apiClient';
 
 describe('supabaseStorage - Storage decoupling and resolveImageUrl', () => {
   beforeEach(() => {
@@ -35,6 +37,78 @@ describe('supabaseStorage - Storage decoupling and resolveImageUrl', () => {
       restaurantId: 'burger-craft',
     });
     expect(result).toBe(externalUrl);
+  });
+
+  describe('sanitizeSegment', () => {
+    it('normalizes backslashes to slashes and joins surviving parts with dashes', () => {
+      expect(sanitizeSegment('a\\b')).toBe('a-b');
+      expect(sanitizeSegment('a/b')).toBe('a-b');
+    });
+
+    it('strips empty, dot, and dot-dot traversal parts', () => {
+      expect(sanitizeSegment('../../other-tenant/branding/logo')).toBe('other-tenant-branding-logo');
+      expect(sanitizeSegment('a//b/./c')).toBe('a-b-c');
+      expect(sanitizeSegment('..')).toBe('');
+    });
+  });
+
+  describe('uploadImageToStorage legacy direct-upload fallback', () => {
+    const imageDataUrl = 'data:image/webp;base64,dGVzdA==';
+
+    beforeEach(() => {
+      // Force the legacy branch: presigned endpoint unreachable
+      vi.spyOn(apiClient, 'getPresignedUploadUrl').mockRejectedValue(new Error('offline'));
+      vi.stubGlobal('fetch', vi.fn());
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it('never uses the client-supplied filename and strips traversal segments from the upload URL', async () => {
+      const fetchMock = vi.mocked(fetch);
+      fetchMock.mockResolvedValue({ ok: true } as Response);
+
+      const result = await uploadImageToStorage(imageDataUrl, {
+        restaurantId: 'victim-tenant',
+        folder: 'branding',
+        filename: '../../other-tenant/branding/logo',
+        supabaseUrl: 'https://test-project.supabase.co/',
+        supabaseKey: 'test-anon-key',
+      });
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const [uploadUrl, init] = fetchMock.mock.calls[0];
+      const url = String(uploadUrl);
+
+      // No traversal segments and none of the client-supplied path survives
+      expect(url).not.toContain('..');
+      expect(url).not.toContain('other-tenant');
+      expect(url).not.toContain('logo');
+      expect(url).toMatch(/\/storage\/v1\/object\/image\/victim-tenant\/branding\/[a-f0-9-]{8,}\.webp$/);
+
+      // The object id is a fresh random value, not the passed filename
+      expect(result).toMatch(/^victim-tenant\/branding\/[a-f0-9-]{8,}\.webp$/);
+      expect(result).not.toContain('logo');
+      expect(init?.method).toBe('POST');
+    });
+
+    it('does not send an x-upsert header on the legacy direct upload', async () => {
+      const fetchMock = vi.mocked(fetch);
+      fetchMock.mockResolvedValue({ ok: true } as Response);
+
+      await uploadImageToStorage(imageDataUrl, {
+        restaurantId: 'victim-tenant',
+        folder: 'branding',
+        filename: 'trusted-name',
+        supabaseUrl: 'https://test-project.supabase.co/',
+        supabaseKey: 'test-anon-key',
+      });
+
+      const [, init] = fetchMock.mock.calls[0];
+      expect(init?.headers).not.toHaveProperty('x-upsert');
+      expect(init?.headers).not.toHaveProperty('X-Upsert');
+    });
   });
 
   describe('resolveImageUrl', () => {

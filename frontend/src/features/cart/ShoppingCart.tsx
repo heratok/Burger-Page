@@ -30,7 +30,13 @@ function ShoppingCart({
     onCloseCart()
   }
 
-  const total = items.reduce((acc, item) => acc + item.total, 0)
+  // The displayed charge must equal the recorded charge: mirror the
+  // calculateCartSummary semantics so the delivery fee is included when the
+  // cart has items (the cart is never empty here, but the guard keeps the
+  // math consistent with the rest of the codebase).
+  const subtotal = items.reduce((acc, item) => acc + item.total, 0)
+  const deliveryFee = items.length > 0 ? (storeConfig.deliveryFee ?? 0) : 0
+  const total = subtotal + deliveryFee
 
   const deleteItem = (i: number) => {
     onDeleteCart(items.filter((_, index) => index !== i))
@@ -161,6 +167,14 @@ function ShoppingCart({
       >
         <div className="mx-auto flex max-w-(--container) flex-col items-stretch gap-3 px-4 py-3 sm:flex-row sm:items-center md:px-6 lg:px-8">
           <div className="flex flex-1 items-center justify-between sm:flex-col sm:items-start sm:justify-center">
+            {deliveryFee > 0 && (
+              <span
+                style={{ color: "var(--color-text-muted)" }}
+                className="text-xs tracking-wide uppercase font-semibold"
+              >
+                Domicilio / Envío {formatCurrency(deliveryFee)}
+              </span>
+            )}
             <span
               style={{ color: "var(--color-text-muted)" }}
               className="text-xs tracking-wide uppercase font-semibold"
