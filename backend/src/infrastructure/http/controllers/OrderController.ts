@@ -106,7 +106,9 @@ export class OrderController {
     if (!parsed.success) {
       throw new ValidationError(parsed.error.message);
     }
-    const order = await this.createOrderUseCase.execute(parsed.data as CreateOrderDTO);
+    const order = await this.createOrderUseCase.execute(parsed.data as CreateOrderDTO, {
+      authenticated: Boolean(req.authContext),
+    });
 
     // Publish SSE Real-time Event with tenant ID
     globalOrderEventBus.publish({

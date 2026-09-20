@@ -181,11 +181,14 @@ describe('CreateOrderUseCase', () => {
     const mockProduct = { id: 'p1', name: 'Burger', price: 20, isAvailable: true, additions: [], category: 'Food', description: 'Desc', restaurantId: 'burger-craft' };
     vi.mocked(mockProductRepo.findById).mockResolvedValue(mockProduct as any);
 
-    const order = await useCase.execute({
-      restaurantId: 'burger-craft',
-      items: [{ productId: 'p1', quantity: 1, additions: [] }],
-      deliveryFee: 0 // Counter sale waives the $5 restaurant delivery fee
-    });
+    const order = await useCase.execute(
+      {
+        restaurantId: 'burger-craft',
+        items: [{ productId: 'p1', quantity: 1, additions: [] }],
+        deliveryFee: 0, // Counter sale waives the $5 restaurant delivery fee
+      },
+      { authenticated: true } // counter/table POS is an authenticated staff session
+    );
 
     expect(order.deliveryFee).toBe(0); // Client fee honored
     expect(order.finalTotal).toBe(20); // 20 + 0 (no inflated restaurant fee)
@@ -218,17 +221,65 @@ describe('CreateOrderUseCase', () => {
     expect(order.finalTotal).toBe(25);
   });
 
-  it('should accept a mostrador cash payment equal to the subtotal when delivery fee is 0 (JD-CRIT-02)', async () => {
+  it('enforces the restaurant delivery fee for anonymous orders, ignoring deliveryFee: 0 (SUS-12)', async () => {
     const mockProduct = { id: 'p1', name: 'Burger', price: 20, isAvailable: true, additions: [], category: 'Food', description: 'Desc', restaurantId: 'burger-craft' };
     vi.mocked(mockProductRepo.findById).mockResolvedValue(mockProduct as any);
 
     const order = await useCase.execute({
       restaurantId: 'burger-craft',
       items: [{ productId: 'p1', quantity: 1, additions: [] }],
-      deliveryFee: 0,
-      paymentMethod: 'Efectivo',
-      paymentAmount: 20, // == subtotal == finalTotal (fee waived)
+      deliveryFee: 0, // anonymous visitor attempts the fee bypass
     });
+
+    expect(order.deliveryFee).toBe(5); // restaurant's configured fee enforced
+    expect(order.finalTotal).toBe(25); // 20 + 5
+  });
+
+  it('honors the client delivery fee of 0 for an authenticated POS session (SUS-12 waiver preserved)', async () => {
+    const mockProduct = { id: 'p1', name: 'Burger', price: 20, isAvailable: true, additions: [], category: 'Food', description: 'Desc', restaurantId: 'burger-craft' };
+    vi.mocked(mockProductRepo.findById).mockResolvedValue(mockProduct as any);
+
+    const order = await useCase.execute(
+      {
+        restaurantId: 'burger-craft',
+        items: [{ productId: 'p1', quantity: 1, additions: [] }],
+        deliveryFee: 0, // counter/table POS waives the fee
+      },
+      { authenticated: true }
+    );
+
+    expect(order.deliveryFee).toBe(0); // waiver preserved for staff sessions
+    expect(order.finalTotal).toBe(20);
+  });
+
+  it('ignores an anonymous client delivery fee different from the configured fee (SUS-12)', async () => {
+    const mockProduct = { id: 'p1', name: 'Burger', price: 20, isAvailable: true, additions: [], category: 'Food', description: 'Desc', restaurantId: 'burger-craft' };
+    vi.mocked(mockProductRepo.findById).mockResolvedValue(mockProduct as any);
+
+    const order = await useCase.execute({
+      restaurantId: 'burger-craft',
+      items: [{ productId: 'p1', quantity: 1, additions: [] }],
+      deliveryFee: 7, // anonymous visitor sends a fee different from the configured 5
+    });
+
+    expect(order.deliveryFee).toBe(5); // configured fee wins for anonymous
+    expect(order.finalTotal).toBe(25);
+  });
+
+  it('should accept a mostrador cash payment equal to the subtotal when delivery fee is 0 (JD-CRIT-02)', async () => {
+    const mockProduct = { id: 'p1', name: 'Burger', price: 20, isAvailable: true, additions: [], category: 'Food', description: 'Desc', restaurantId: 'burger-craft' };
+    vi.mocked(mockProductRepo.findById).mockResolvedValue(mockProduct as any);
+
+    const order = await useCase.execute(
+      {
+        restaurantId: 'burger-craft',
+        items: [{ productId: 'p1', quantity: 1, additions: [] }],
+        deliveryFee: 0,
+        paymentMethod: 'Efectivo',
+        paymentAmount: 20, // == subtotal == finalTotal (fee waived)
+      },
+      { authenticated: true }
+    );
 
     expect(order.deliveryFee).toBe(0);
     expect(order.subtotal).toBe(20);
@@ -241,13 +292,16 @@ describe('CreateOrderUseCase', () => {
     const mockProduct = { id: 'p1', name: 'Burger', price: 20, isAvailable: true, additions: [], category: 'Food', description: 'Desc', restaurantId: 'burger-craft' };
     vi.mocked(mockProductRepo.findById).mockResolvedValue(mockProduct as any);
 
-    await expect(useCase.execute({
-      restaurantId: 'burger-craft',
-      items: [{ productId: 'p1', quantity: 1, additions: [] }],
-      deliveryFee: 0,
-      paymentMethod: 'Efectivo',
-      paymentAmount: 19,
-    })).rejects.toThrow(ValidationError);
+    await expect(useCase.execute(
+      {
+        restaurantId: 'burger-craft',
+        items: [{ productId: 'p1', quantity: 1, additions: [] }],
+        deliveryFee: 0,
+        paymentMethod: 'Efectivo',
+        paymentAmount: 19,
+      },
+      { authenticated: true }
+    )).rejects.toThrow(ValidationError);
   });
 
   it('should apply minOrderAmount including additions in subtotal calculation', async () => {
@@ -336,16 +390,19 @@ describe('CreateOrderUseCase', () => {
     );
     vi.mocked(mockCustomerRepo.findByPhone).mockResolvedValue(existingCustomer);
 
-    const order = await useCase.execute({
-      restaurantId: 'burger-craft',
-      items: [{ productId: 'p1', quantity: 1, additions: [] }],
-      customer: {
-        name: 'New Name',
-        phone: '1234567890',
-        address: 'New Street 123',
-        barrio: 'New Barrio',
+    const order = await useCase.execute(
+      {
+        restaurantId: 'burger-craft',
+        items: [{ productId: 'p1', quantity: 1, additions: [] }],
+        customer: {
+          name: 'New Name',
+          phone: '1234567890',
+          address: 'New Street 123',
+          barrio: 'New Barrio',
+        },
       },
-    });
+      { authenticated: true } // staff POS may update a matched CRM profile
+    );
 
     expect(order.customerId).toBe('cust-existing-1');
     expect(existingCustomer.name).toBe('New Name');
@@ -372,6 +429,43 @@ describe('CreateOrderUseCase', () => {
     expect(order.customerId).toBeDefined();
     expect(order.customerId).toMatch(/^cust_/);
     expect(mockCustomerRepo.save).toHaveBeenCalled();
+  });
+
+  it('does not overwrite an existing CRM profile from anonymous order input (SUS-15)', async () => {
+    const mockProduct = { id: 'p1', name: 'Burger', price: 20, isAvailable: true, additions: [], category: 'Food', description: 'Desc', restaurantId: 'burger-craft' };
+    vi.mocked(mockProductRepo.findById).mockResolvedValue(mockProduct as any);
+
+    const existingCustomer = new Customer(
+      'cust-existing-2',
+      'burger-craft',
+      'Old Name',
+      '1234567890',
+      'Old Address',
+      'Old Barrio',
+      '',
+      'old@example.com',
+      '2026-01-01',
+      '2026-01-01'
+    );
+    vi.mocked(mockCustomerRepo.findByPhone).mockResolvedValue(existingCustomer);
+
+    const order = await useCase.execute({
+      restaurantId: 'burger-craft',
+      items: [{ productId: 'p1', quantity: 1, additions: [] }],
+      customer: {
+        name: 'Attacker Name',
+        phone: '1234567890',
+        address: 'Hacker Address',
+        barrio: 'Bad Barrio',
+      },
+    });
+
+    expect(order.customerId).toBe('cust-existing-2'); // order reuses the stored profile
+    expect(existingCustomer.name).toBe('Old Name'); // profile not mutated
+    expect(existingCustomer.address).toBe('Old Address');
+    expect(existingCustomer.barrio).toBe('Old Barrio');
+    expect(existingCustomer.updatedAt).toBe('2026-01-01');
+    expect(mockCustomerRepo.save).not.toHaveBeenCalled(); // no mutation write
   });
 
   it('gracefully creates order even if customer resolution fails', async () => {
