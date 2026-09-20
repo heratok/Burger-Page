@@ -71,10 +71,12 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
   const metodo = watch("metodo")
   const pagoCon = watch("pagoCon")
 
-  const total = cartItems.reduce(
-    (acc, item) => acc + item.total,
-    0
-  )
+  // The displayed charge must equal the recorded charge: the delivery fee
+  // applies to orders with items (mirroring calculateCartSummary), so the
+  // change and the summary total are computed over the fee-inclusive amount.
+  const subtotal = cartItems.reduce((acc, item) => acc + item.total, 0)
+  const deliveryFee = cartItems.length > 0 ? (storeConfig.deliveryFee ?? 0) : 0
+  const total = subtotal + deliveryFee
 
   const cambio = calculateChange(total, pagoCon)
 
@@ -91,9 +93,9 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
         barrio: values.barrio,
       },
       items: cartItems.map(cartItemToOrderItem),
-      total,
+      total: subtotal,
       deliveryFee: storeConfig.deliveryFee,
-      finalTotal: total + storeConfig.deliveryFee,
+      finalTotal: total,
       metodo: values.metodo,
       pagoCon: values.pagoCon,
       cambio: cambio || undefined,
@@ -120,7 +122,7 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
         </p>
       </header>
 
-      <FormSummary cartItems={cartItems} total={total} />
+      <FormSummary cartItems={cartItems} subtotal={subtotal} deliveryFee={deliveryFee} total={total} />
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
         <FieldGroup>
@@ -342,10 +344,12 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
 
 interface FormSummaryProps {
   cartItems: CartItem[]
+  subtotal: number
+  deliveryFee: number
   total: number
 }
 
-function FormSummary({ cartItems, total }: FormSummaryProps) {
+function FormSummary({ cartItems, subtotal, deliveryFee, total }: FormSummaryProps) {
   const { storeConfig } = useRestaurant()
   const [open, setOpen] = useState(true)
 
@@ -404,6 +408,35 @@ function FormSummary({ cartItems, total }: FormSummaryProps) {
               </span>
             </li>
           ))}
+          <li className="flex items-center justify-between border-t border-border-subtle pt-2 text-sm">
+            <span style={{ color: "var(--color-text-muted)" }}>Subtotal</span>
+            <span
+              style={{ color: "var(--color-text-primary)" }}
+              className="ml-3 shrink-0 font-bold"
+            >
+              {formatCurrency(subtotal)}
+            </span>
+          </li>
+          {deliveryFee > 0 && (
+            <li className="flex items-center justify-between text-sm">
+              <span style={{ color: "var(--color-text-muted)" }}>Domicilio / Envío</span>
+              <span
+                style={{ color: "var(--color-text-primary)" }}
+                className="ml-3 shrink-0 font-bold"
+              >
+                {formatCurrency(deliveryFee)}
+              </span>
+            </li>
+          )}
+          <li className="flex items-center justify-between pt-1 text-sm font-black">
+            <span style={{ color: "var(--color-text-primary)" }}>Total</span>
+            <span
+              style={{ color: storeConfig.primaryColor }}
+              className="ml-3 shrink-0 text-base"
+            >
+              {formatCurrency(total)}
+            </span>
+          </li>
         </ul>
       )}
     </section>
