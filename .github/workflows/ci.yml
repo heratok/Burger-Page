@@ -11,6 +11,21 @@ jobs:
     name: Lint, Typecheck & Test Monorepo
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: burger_page_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d burger_page_test"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -32,6 +47,27 @@ jobs:
 
       - name: Run automated test suite
         run: npm test
+
+      # The service container starts before checkout, so bind-mounting
+      # ./database/*.sql into docker-entrypoint-initdb.d is racy (a missing
+      # host file mounts as a directory and the init scripts are silently
+      # skipped). Copy + apply idempotently after checkout instead: the
+      # schema creates the app_user role used by the integration tests.
+      - name: Apply Postgres schema and seed
+        run: |
+          docker cp ./database/01_schema.sql "${{ job.services.postgres.id }}":/tmp/01_schema.sql
+          docker cp ./database/02_seed.sql "${{ job.services.postgres.id }}":/tmp/02_seed.sql
+          docker exec "${{ job.services.postgres.id }}" psql -U postgres -d burger_page_test -v ON_ERROR_STOP=1 -f /tmp/01_schema.sql
+          docker exec "${{ job.services.postgres.id }}" psql -U postgres -d burger_page_test -v ON_ERROR_STOP=1 -f /tmp/02_seed.sql
+
+      - name: Run PostgreSQL integration tests
+        run: npm run test:integration:postgres
+        env:
+          # SKIP_COMPOSE avoids the script's docker compose lifecycle: the
+          # service container above is already running and reachable.
+          SKIP_COMPOSE: '1'
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/burger_page_test
+          APP_USER_DATABASE_URL: postgres://app_user:app_user_test_only@localhost:5432/burger_page_test
 
       - name: Build production artifacts
         run: npm run build

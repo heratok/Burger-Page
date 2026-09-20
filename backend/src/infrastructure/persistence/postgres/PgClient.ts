@@ -71,15 +71,18 @@ export async function withTenantContext<T>(
   const client = await getPgPool().connect();
   try {
     await client.query('BEGIN');
-    if (context.restaurantId !== null) {
-      await client.query("SELECT set_config('app.restaurant_id', $1, true)", [context.restaurantId]);
-    }
-    if (context.actorRole) {
-      await client.query("SELECT set_config('app.actor_role', $1, true)", [context.actorRole]);
-    }
-    if (context.actor) {
-      await client.query("SELECT set_config('app.actor', $1, true)", [context.actor]);
-    }
+    // Every call explicitly represents its context GUCs ('' = no context),
+    // including absent ones. PostgreSQL keeps a sticky '' placeholder for a
+    // custom GUC once it has been SET in the session — SET LOCAL + COMMIT
+    // leaves current_setting() returning '' on pooled reuse, and neither
+    // set_config(name, NULL, ...) nor RESET restores NULL (probe-verified on
+    // PG16). The schema policies therefore normalize '' to NULL via
+    // NULLIF(current_setting(...), ''), and this explicit '' makes the
+    // no-context state deterministic on fresh and reused pooled connections
+    // alike.
+    await client.query("SELECT set_config('app.restaurant_id', $1, true)", [context.restaurantId ?? '']);
+    await client.query("SELECT set_config('app.actor_role', $1, true)", [context.actorRole ?? '']);
+    await client.query("SELECT set_config('app.actor', $1, true)", [context.actor ?? '']);
     const result = await fn(client);
     await client.query('COMMIT');
     return result;
