@@ -196,9 +196,10 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
   }
 
   // Use Cases
+  const hasher: PasswordHasher = new CryptoPasswordHasher();
   const getRestaurant = new GetRestaurantUseCase(restaurantRepo, categoryRepo);
   const listRestaurants = new ListRestaurantsUseCase(restaurantRepo);
-  const createRestaurant = new CreateRestaurantUseCase(restaurantRepo, categoryRepo);
+  const createRestaurant = new CreateRestaurantUseCase(restaurantRepo, categoryRepo, userRepo, hasher);
   const deleteRestaurant = new DeleteRestaurantUseCase(restaurantRepo);
   const updateRestaurantCategories = new UpdateRestaurantCategoriesUseCase(restaurantRepo, categoryRepo);
   const updateRestaurant = new UpdateRestaurantUseCase(restaurantRepo);
@@ -230,7 +231,6 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
   const updateInventoryItem = new UpdateInventoryItemUseCase(inventoryRepo);
   const deleteInventoryItem = new DeleteInventoryItemUseCase(inventoryRepo);
 
-  const hasher: PasswordHasher = new CryptoPasswordHasher();
   const createUser = new CreateUserUseCase(userRepo, hasher, restaurantRepo);
   const authenticateUser = new AuthenticateUserUseCase(userRepo, hasher);
   const listUsersUC = new ListUsersUseCase(userRepo);

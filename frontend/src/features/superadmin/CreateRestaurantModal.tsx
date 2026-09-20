@@ -1,5 +1,6 @@
 import React, { useState } from "react"
 import { useRestaurant } from "@/context/RestaurantContext"
+import { useTenant } from "@/context/slices/TenantContext"
 import { Store, X, Sparkles, Check, Phone } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { THEME_COLOR_PRESETS } from "@/constants/themePresets"
@@ -10,7 +11,10 @@ interface CreateRestaurantModalProps {
 }
 
 export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ isOpen, onClose }) => {
-  const { createRestaurant, adminTheme } = useRestaurant()
+  const { adminTheme } = useRestaurant()
+  // TenantContext owns the wider createRestaurant contract (adminUsername +
+  // adminPassword one-time credentials), so use it directly.
+  const { createRestaurant } = useTenant()
 
   const [name, setName] = useState("")
   const [slug, setSlug] = useState("")
@@ -18,6 +22,8 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
   const [whatsapp, setWhatsapp] = useState("573001234567")
   const [primaryColor, setPrimaryColor] = useState("#FF7A21")
   const [templateType, setTemplateType] = useState<"burger" | "pizza" | "tacos" | "blank">("burger")
+  const [adminUsername, setAdminUsername] = useState("")
+  const [adminPassword, setAdminPassword] = useState("")
 
   const isDark = adminTheme === "dark"
 
@@ -46,6 +52,8 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
       whatsappNumber: whatsapp.trim() || "573001234567",
       primaryColor,
       templateType,
+      adminUsername: adminUsername.trim() || undefined,
+      adminPassword: adminPassword.trim() || undefined,
     })
 
     onClose()
@@ -164,6 +172,45 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
                   isDark
                     ? "border-slate-700 bg-slate-800 text-white"
                     : "border-slate-200 bg-slate-50 text-slate-900"
+                }`}
+              />
+            </div>
+          </div>
+
+          {/* One-time Admin Credentials */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className="block text-xs font-bold mb-1 text-slate-700 dark:text-slate-300">
+                Usuario Admin (Opcional)
+              </label>
+              <input
+                type="text"
+                maxLength={50}
+                value={adminUsername}
+                onChange={(e) => setAdminUsername(e.target.value)}
+                placeholder={`admin_${slug || "slug"}`}
+                className={`w-full rounded-xl border px-3.5 py-2 text-xs font-mono transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                  isDark
+                    ? "border-slate-700 bg-slate-800 text-white placeholder-slate-500"
+                    : "border-slate-200 bg-slate-50 text-slate-900 placeholder-slate-400"
+                }`}
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold mb-1 text-slate-700 dark:text-slate-300">
+                Clave Admin (Opcional)
+              </label>
+              <input
+                type="password"
+                maxLength={80}
+                value={adminPassword}
+                onChange={(e) => setAdminPassword(e.target.value)}
+                placeholder="Generar automáticamente"
+                className={`w-full rounded-xl border px-3.5 py-2 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                  isDark
+                    ? "border-slate-700 bg-slate-800 text-white placeholder-slate-500"
+                    : "border-slate-200 bg-slate-50 text-slate-900 placeholder-slate-400"
                 }`}
               />
             </div>

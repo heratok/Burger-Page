@@ -44,7 +44,7 @@ export class RestaurantController {
     if (!parsed.success) {
       throw new ValidationError(parsed.error.message);
     }
-    const created = await this.createRestaurantUseCase.execute(parsed.data);
+    const created = await this.createRestaurantUseCase.execute(parsed.data, req.authContext?.role);
     return reply.status(201).send(created);
   }
 

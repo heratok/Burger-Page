@@ -1651,5 +1651,135 @@ describe("TenantContext Slice - Same-Tick Restaurant Creation", () => {
   })
 })
 
+describe("TenantContext Slice - One-Time Admin Credentials (SUS-02)", () => {
+  beforeEach(() => {
+    localStorage.clear()
+    vi.clearAllMocks()
+  })
+
+  it("persists the backend admin credentials and shows the one-time credential toast", async () => {
+    const { TenantProvider, useTenant } = await import("./TenantContext")
+    const { apiClient } = await import("@/core/api/apiClient")
+    const { toast } = await import("sonner")
+
+    vi.spyOn(apiClient, "createRestaurant").mockResolvedValue({
+      id: "rest-creds-1",
+      slug: "creds-tenant",
+      adminUsername: "admin_creds-tenant",
+      adminPassword: "server-secret-abc",
+    } as any)
+    // Reject the refresh sync (like hermeticApi): a real backend would not
+    // return the brand-new tenant on the mount sync; a resolved list here
+    // would shadow the credential-merged record.
+    vi.spyOn(apiClient, "listRestaurants").mockRejectedValue(new Error("no backend in tests"))
+    const toastSpy = vi.spyOn(toast, "success")
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>{children}</TenantProvider>
+    )
+    const { result } = renderHook(() => useTenant(), { wrapper })
+
+    act(() => {
+      result.current.createRestaurant({
+        name: "Creds Tenant",
+        slug: "creds-tenant",
+        tagline: "Creds",
+        whatsappNumber: "3000000000",
+      })
+    })
+
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    const record = result.current.restaurants.find((r) => r.slug === "creds-tenant")
+    expect((record as any).adminUsername).toBe("admin_creds-tenant")
+    expect(record?.adminPassword).toBe("server-secret-abc")
+    expect(toastSpy).toHaveBeenCalledWith(
+      "Restaurante creado con éxito",
+      expect.objectContaining({
+        description: "Usuario: admin_creds-tenant — Clave: server-secret-abc",
+      })
+    )
+  })
+
+  it("sends adminUsername to the backend when provided", async () => {
+    const { TenantProvider, useTenant } = await import("./TenantContext")
+    const { apiClient } = await import("@/core/api/apiClient")
+
+    const createSpy = vi.spyOn(apiClient, "createRestaurant").mockResolvedValue({
+      id: "rest-uname-1",
+      slug: "uname-tenant",
+      adminUsername: "gerente",
+      adminPassword: "s3cret!",
+    } as any)
+    vi.spyOn(apiClient, "listRestaurants").mockRejectedValue(new Error("no backend in tests"))
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>{children}</TenantProvider>
+    )
+    const { result } = renderHook(() => useTenant(), { wrapper })
+
+    act(() => {
+      result.current.createRestaurant({
+        name: "Uname Tenant",
+        slug: "uname-tenant",
+        tagline: "U",
+        whatsappNumber: "3000000001",
+        adminUsername: "gerente",
+        adminPassword: "s3cret!",
+      })
+    })
+
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(createSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        adminUsername: "gerente",
+      })
+    )
+  })
+
+  it("generates a secure password instead of the 'admin123' literal", async () => {
+    const { TenantProvider, useTenant } = await import("./TenantContext")
+    const { apiClient } = await import("@/core/api/apiClient")
+
+    vi.spyOn(apiClient, "createRestaurant").mockResolvedValue({
+      id: "rest-sec-1",
+      slug: "sec-tenant",
+    } as any)
+    vi.spyOn(apiClient, "listRestaurants").mockRejectedValue(new Error("no backend in tests"))
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>{children}</TenantProvider>
+    )
+    const { result } = renderHook(() => useTenant(), { wrapper })
+
+    act(() => {
+      result.current.createRestaurant({
+        name: "Sec Tenant",
+        slug: "sec-tenant",
+        tagline: "S",
+        whatsappNumber: "3000000002",
+      })
+    })
+
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    const record = result.current.restaurants.find((r) => r.slug === "sec-tenant")
+    expect(record?.adminPassword).toBeDefined()
+    expect(record?.adminPassword).not.toBe("admin123")
+    expect(record?.adminPassword!.length).toBeGreaterThanOrEqual(12)
+  })
+})
+
 
 
