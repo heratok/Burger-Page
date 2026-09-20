@@ -219,6 +219,41 @@ describe('Order API', () => {
     expect(updateRes.statusCode).toBe(400); // 400 Bad Request mapped from Domain Error
   });
 
+  it('PATCH /api/orders/:id/status should reject a super-admin mutation without an explicit tenant (JD-INFO-02)', async () => {
+    // Create an order in 'burger-craft' first
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/api/orders',
+      payload: {
+        restaurantId: 'burger-craft',
+        customerId: 'customer-123',
+        items: [{ productId, quantity: 1, additions: [] }],
+        paymentMethod: 'Efectivo',
+      }
+    });
+    expect(createRes.statusCode).toBe(201);
+    const order = createRes.json();
+
+    // Super admin token WITHOUT restaurantId: no query, no body, no header tenant
+    const superAdminToken = jwtService.generateToken({
+      id: 'usr-super-1',
+      username: 'root',
+      role: 'super_admin',
+    });
+
+    const updateRes = await app.inject({
+      method: 'PATCH',
+      url: `/api/orders/${order.id}/status`,
+      headers: { authorization: `Bearer ${superAdminToken}` },
+      payload: { status: 'cooking' },
+    });
+
+    // Mutation without an explicit tenant must fail with a client error (400-499),
+    // never silently operate on a defaulted (first active) restaurant
+    expect(updateRes.statusCode).toBeGreaterThanOrEqual(400);
+    expect(updateRes.statusCode).toBeLessThan(500);
+  });
+
   it('POST /api/orders should accept receiptUrl when paying via Transferencia', async () => {
     const response = await app.inject({
       method: 'POST',

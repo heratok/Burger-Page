@@ -69,7 +69,7 @@ export class ProductController {
     throw new ValidationError('Restaurant ID or slug is required to view menu products.');
   }
 
-  private async resolveTenantForMutation(req: FastifyRequest): Promise<string> {
+  private async resolveTenantForMutation(req: FastifyRequest, options: { mutation?: boolean } = {}): Promise<string> {
     let restaurantId = req.authContext?.restaurantId;
     if (!restaurantId && req.authContext?.role === 'super_admin') {
       const body = req.body as any;
@@ -80,7 +80,10 @@ export class ProductController {
         query?.restaurantId ||
         headers?.['x-restaurant-id'];
 
-      if (!restaurantId && this.restaurantRepo) {
+      // Mutations must never default to an arbitrary tenant (JD-INFO-02): a
+      // super admin without an explicit tenant gets undefined and the caller
+      // rejects the request. Reads may keep the first-active fallback.
+      if (!restaurantId && !options.mutation && this.restaurantRepo) {
         const all = await this.restaurantRepo.findAll();
         const active = all.find((r) => r.isActive);
         if (active) restaurantId = active.id;
@@ -159,7 +162,7 @@ export class ProductController {
 
   async update(req: FastifyRequest, reply: FastifyReply) {
     const params = req.params as { id: string };
-    const restaurantId = await this.resolveTenantForMutation(req);
+    const restaurantId = await this.resolveTenantForMutation(req, { mutation: true });
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to update a product.');
     }
@@ -180,7 +183,7 @@ export class ProductController {
 
   async delete(req: FastifyRequest, reply: FastifyReply) {
     const params = req.params as { id: string };
-    const restaurantId = await this.resolveTenantForMutation(req);
+    const restaurantId = await this.resolveTenantForMutation(req, { mutation: true });
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to delete a product.');
     }

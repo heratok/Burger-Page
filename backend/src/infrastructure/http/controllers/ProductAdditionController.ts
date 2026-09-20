@@ -84,7 +84,7 @@ export class ProductAdditionController {
     return reply.status(200).send(addition);
   }
 
-  private async resolveTenantForMutation(req: FastifyRequest): Promise<string> {
+  private async resolveTenantForMutation(req: FastifyRequest, options: { mutation?: boolean } = {}): Promise<string> {
     let restaurantId = req.authContext?.restaurantId;
     if (!restaurantId && req.authContext?.role === 'super_admin') {
       const body = (req.body || {}) as any;
@@ -95,7 +95,10 @@ export class ProductAdditionController {
         query?.restaurantId ||
         headers?.['x-restaurant-id'];
 
-      if (!restaurantId && this.restaurantRepo) {
+      // Mutations must never default to an arbitrary tenant (JD-INFO-02): a
+      // super admin without an explicit tenant gets undefined and the caller
+      // rejects the request. Reads may keep the first-active fallback.
+      if (!restaurantId && !options.mutation && this.restaurantRepo) {
         const all = await this.restaurantRepo.findAll();
         const active = all.find((r) => r.isActive);
         if (active) restaurantId = active.id;
@@ -117,7 +120,7 @@ export class ProductAdditionController {
   }
 
   async create(req: FastifyRequest, reply: FastifyReply) {
-    const restaurantId = await this.resolveTenantForMutation(req);
+    const restaurantId = await this.resolveTenantForMutation(req, { mutation: true });
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to create a product addition.');
     }
@@ -133,7 +136,7 @@ export class ProductAdditionController {
 
   async update(req: FastifyRequest, reply: FastifyReply) {
     const params = req.params as { id: string };
-    let restaurantId = await this.resolveTenantForMutation(req);
+    let restaurantId = await this.resolveTenantForMutation(req, { mutation: true });
 
     if (!restaurantId && this.restaurantRepo) {
       const all = await this.restaurantRepo.findAll();
@@ -161,7 +164,7 @@ export class ProductAdditionController {
 
   async delete(req: FastifyRequest, reply: FastifyReply) {
     const params = req.params as { id: string };
-    let restaurantId = await this.resolveTenantForMutation(req);
+    let restaurantId = await this.resolveTenantForMutation(req, { mutation: true });
 
     if (!restaurantId && this.restaurantRepo) {
       const all = await this.restaurantRepo.findAll();

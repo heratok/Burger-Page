@@ -47,7 +47,7 @@ export class OrderController {
     );
   }
 
-  private async resolveRestaurantId(req: FastifyRequest): Promise<string> {
+  private async resolveRestaurantId(req: FastifyRequest, options: { mutation?: boolean } = {}): Promise<string> {
     let restaurantId = req.authContext?.restaurantId;
     if (!restaurantId && req.authContext?.role === 'super_admin') {
       const query = (req.query || {}) as any;
@@ -58,7 +58,10 @@ export class OrderController {
         body?.restaurantId ||
         headers?.['x-restaurant-id'];
 
-      if (!restaurantId && this.restaurantRepo) {
+      // Mutations must never default to an arbitrary tenant (JD-INFO-02): a
+      // super admin without an explicit tenant gets undefined and the caller
+      // rejects the request. Reads may keep the first-active fallback.
+      if (!restaurantId && !options.mutation && this.restaurantRepo) {
         const all = await this.restaurantRepo.findAll();
         const active = all.find((r) => r.isActive);
         if (active) restaurantId = active.id;
@@ -134,7 +137,7 @@ export class OrderController {
 
   async updateStatus(req: FastifyRequest, reply: FastifyReply) {
     const params = req.params as { id: string };
-    const restaurantId = await this.resolveRestaurantId(req);
+    const restaurantId = await this.resolveRestaurantId(req, { mutation: true });
     const actorId = req.authContext?.userId;
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to update order status.');
@@ -181,7 +184,7 @@ export class OrderController {
 
   async updateReceipt(req: FastifyRequest, reply: FastifyReply) {
     const params = req.params as { id: string };
-    const restaurantId = await this.resolveRestaurantId(req);
+    const restaurantId = await this.resolveRestaurantId(req, { mutation: true });
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to update order receipt.');
     }
@@ -221,7 +224,7 @@ export class OrderController {
 
   async delete(req: FastifyRequest, reply: FastifyReply) {
     const params = req.params as { id: string };
-    const restaurantId = await this.resolveRestaurantId(req);
+    const restaurantId = await this.resolveRestaurantId(req, { mutation: true });
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to delete an order.');
     }
@@ -255,7 +258,7 @@ export class OrderController {
 
   async update(req: FastifyRequest, reply: FastifyReply) {
     const params = req.params as { id: string };
-    const restaurantId = await this.resolveRestaurantId(req);
+    const restaurantId = await this.resolveRestaurantId(req, { mutation: true });
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to update an order.');
     }
