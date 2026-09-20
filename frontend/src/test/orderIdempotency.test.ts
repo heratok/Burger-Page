@@ -44,7 +44,6 @@ function createOrderParams(): Omit<Order, "id" | "orderNumber" | "createdAt" | "
 }
 
 // .ts file (no JSX): build the provider tree with createElement.
-// eslint-disable-next-line react/react-in-jsx-scope
 const wrapper = ({ children }: { children: React.ReactNode }) =>
   React.createElement(
     TenantProvider,
