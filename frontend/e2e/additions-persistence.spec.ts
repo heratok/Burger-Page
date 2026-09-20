@@ -115,7 +115,7 @@ test.describe('Additions & DB Persistence Suite (admin & rosto)', () => {
     await superUserField.fill('admin');
 
     const superPassField = superPage.locator('input[type="password"]').first();
-    await superPassField.fill('Test0502*');
+    await superPassField.fill('admin');
 
     await Promise.all([
       superPage.waitForResponse(resp => resp.url().includes('/api/users/login') && resp.status() === 200),

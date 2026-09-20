@@ -25,7 +25,7 @@ test.describe('Live DB Multi-Tenant Lifecycle, Mobile Storefront & CRM Persisten
     await userInput.fill('admin');
 
     const passwordInput = superPage.locator('input[type="password"]');
-    await passwordInput.fill('Test0502*');
+    await passwordInput.fill('admin');
     
     await Promise.all([
       superPage.waitForResponse(resp => resp.url().includes('/api/users/login') && resp.status() === 200),

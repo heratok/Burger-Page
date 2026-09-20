@@ -274,6 +274,36 @@ test.describe('Judgment Day Confirmed Severe Fixes E2E Verification Suite', () =
       }
     });
 
+    // The storefront syncs its catalog from the backend API (authoritative
+    // sync): feed it the envelope product/addition so the UI flow below runs
+    // against the fixture data the test asserts on.
+    await page.route('**/api/products**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        json: [
+          {
+            id: 'prod-1',
+            name: 'Hamburguesa Clásica Artesanal',
+            description: 'Carne 180g con queso cheddar',
+            price: 26000,
+            category: 'Hamburguesas',
+            isAvailable: true,
+            isPopular: true,
+            imageUrl: '',
+          },
+        ],
+      });
+    });
+
+    await page.route('**/api/additions**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        json: [
+          { id: 'add-1', name: 'Queso Cheddar Extra', price: 3000, available: true, isAvailable: true },
+        ],
+      });
+    });
+
     await page.goto('/burger-craft');
 
     // Click on the product "Hamburguesa Clásica Artesanal"
@@ -316,7 +346,7 @@ test.describe('Judgment Day Confirmed Severe Fixes E2E Verification Suite', () =
     await expect(submitBtn).toBeVisible();
     await submitBtn.click();
 
-    await expect(page.getByText(/¡Venta registrada con éxito!/i)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/Orden #101 registrada/i)).toBeVisible({ timeout: 10000 });
 
     // Verify backend payload structure
     expect(capturedOrderPayload).toBeDefined();

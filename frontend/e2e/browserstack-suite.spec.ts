@@ -57,13 +57,11 @@ const RESTO_USER = process.env.TEST_RESTO_USER;
 const RESTO_PASS = process.env.TEST_RESTO_PASS;
 const TENANT_SLUG = process.env.TEST_TENANT_SLUG ?? 'rosto';
 
-test.beforeAll(() => {
-  if (!SUPER_USER || !SUPER_PASS || !RESTO_USER || !RESTO_PASS) {
-    throw new Error(
-      'Missing test credentials. Set TEST_SUPER_USER, TEST_SUPER_PASS, TEST_RESTO_USER, TEST_RESTO_PASS env vars.'
-    );
-  }
-});
+// BrowserStack credentials are optional: without them the whole suite is
+// skipped (0 tests run) instead of failing the local/CI run.
+const hasBrowserStackCredentials = Boolean(
+  SUPER_USER && SUPER_PASS && RESTO_USER && RESTO_PASS
+);
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
@@ -112,6 +110,7 @@ const RESTAURANT_MODULES: Array<[string, RegExp]> = [
 ];
 
 test.describe('BrowserStack Suite', () => {
+  test.skip(!hasBrowserStackCredentials, 'TEST_SUPER_USER/TEST_SUPER_PASS/TEST_RESTO_USER/TEST_RESTO_PASS not set — skipping BrowserStack suite');
 // ---------- 1. Public landing ----------
 
 async function openSidebarAndClick(page: Page, label: string) {
