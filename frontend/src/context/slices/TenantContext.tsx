@@ -13,21 +13,6 @@ import { useAuth } from "./AuthContext"
 import { toast } from "sonner"
 import { nextTempId } from "@/lib/ids"
 
-/**
- * Generates a secure random one-time admin password for a new tenant.
- * Never falls back to a predictable literal (SUS-02).
- */
-function generateSecurePassword(): string {
-  if (typeof globalThis.crypto?.getRandomValues === "function") {
-    const bytes = new Uint8Array(12)
-    globalThis.crypto.getRandomValues(bytes)
-    return Array.from(bytes, (b) => b.toString(36).padStart(2, "0")).join("")
-  }
-  return Array.from({ length: 18 }, () =>
-    "abcdefghijklmnopqrstuvwxyz0123456789".charAt(Math.floor(Math.random() * 36))
-  ).join("")
-}
-
 export interface GlobalPlatformStats {
   totalRevenue: number
   totalOrders: number
@@ -93,11 +78,15 @@ export const TenantProvider: React.FC<{
             const local =
               prev.restaurants.find((r) => r.id === br.id || r.slug === br.slug) ||
               diskEnvelope.restaurants.find((r) => r.id === br.id || r.slug === br.slug)
+            // SUS-20: never re-merge the one-time admin password into the
+            // envelope — not from backend responses and not from legacy local
+            // records; the secret must not ride along on refresh.
+            const { adminPassword: _legacySecret, ...safeLocal } =
+              local || ({} as Partial<RestaurantRecord>)
             return {
-              ...local,
+              ...safeLocal,
               id: br.id,
               slug: br.slug,
-              adminPassword: br.adminPassword || local?.adminPassword,
               isActive: br.isActive !== undefined ? Boolean(br.isActive) : true,
               createdAt: br.createdAt || local?.createdAt || new Date().toISOString(),
               categories: br.categories && br.categories.length > 0 ? br.categories : local?.categories || ['General'],
@@ -198,7 +187,6 @@ export const TenantProvider: React.FC<{
                 const formatted: RestaurantRecord = {
                   id: fetched.id,
                   slug: fetched.slug,
-                  adminPassword: (fetched as any).adminPassword,
                   isActive: fetched.isActive !== undefined ? Boolean(fetched.isActive) : true,
                   createdAt: (fetched as any).createdAt || new Date().toISOString(),
                   categories: fetched.categories && fetched.categories.length > 0 ? fetched.categories : ['Hamburguesas', 'Bebidas', 'Acompañamientos'],
@@ -284,7 +272,6 @@ export const TenantProvider: React.FC<{
       const newRecord: RestaurantRecord = {
         id: nextTempId("rest"),
         slug: cleanSlug || `rest-${Date.now().toString(36)}`,
-        adminPassword: data.adminPassword || generateSecurePassword(),
         isActive: true,
         createdAt: new Date().toISOString(),
         config: {
@@ -324,27 +311,30 @@ export const TenantProvider: React.FC<{
         })
         .then(async (created) => {
           if (created && created.id) {
-            // SUS-02: when the backend provisions the admin user it returns the
-            // one-time credentials; persist them so the envelope matches server
-            // truth and surface them exactly once to the caller.
+            // SUS-02: the backend provisions the admin user and returns the
+            // one-time credentials in the 201 create response. SUS-20: those
+            // credentials are surfaced exactly once via the toast below and
+            // must NEVER enter the envelope record (the envelope is persisted
+            // to localStorage); only the harmless adminUsername metadata stays.
             const createdCreds = created as { adminUsername?: string; adminPassword?: string }
             const credentials =
               createdCreds.adminUsername && createdCreds.adminPassword
                 ? { adminUsername: createdCreds.adminUsername, adminPassword: createdCreds.adminPassword }
                 : undefined
             setEnvelope((prev) => {
+              const { adminPassword: _oneTimeSecret, ...safeCreated } = created
               const exists = prev.restaurants.some((r) => r.id === created.id || r.id === newRecord.id);
               if (exists) {
                 return {
                   ...prev,
                   restaurants: prev.restaurants.map((r) =>
-                    r.id === newRecord.id ? { ...r, ...created, ...(credentials || {}), id: created.id } : r
+                    r.id === newRecord.id ? { ...r, ...safeCreated, id: created.id } : r
                   ),
                 };
               }
               return {
                 ...prev,
-                restaurants: [...prev.restaurants, { ...newRecord, ...created, ...(credentials || {}), id: created.id }],
+                restaurants: [...prev.restaurants, { ...newRecord, ...safeCreated, id: created.id }],
               };
             });
             if (credentials) {

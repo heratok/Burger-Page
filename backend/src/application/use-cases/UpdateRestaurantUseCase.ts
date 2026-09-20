@@ -1,5 +1,5 @@
 import { RestaurantRepository } from '../../domain/ports/out/RestaurantRepository.js';
-import { Restaurant } from '../../domain/models/Restaurant.js';
+import { Restaurant, omitAdminPassword } from '../../domain/models/Restaurant.js';
 import { UpdateRestaurantInput } from '@burger-page/contracts';
 import { EntityNotFoundError, ValidationError } from '../../domain/errors/DomainErrors.js';
 
@@ -54,6 +54,9 @@ export class UpdateRestaurantUseCase {
     };
 
     await this.restaurantRepo.save(updated);
-    return updated;
+    // SUS-20: a provided adminPassword is accepted (update semantics) but must
+    // never be echoed back in the response — only the create 201 carries
+    // one-time credentials.
+    return omitAdminPassword(updated);
   }
 }
