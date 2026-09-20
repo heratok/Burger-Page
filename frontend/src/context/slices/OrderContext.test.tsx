@@ -80,7 +80,7 @@ describe("OrderContext Pure Reducers & Updaters (TDD Tests)", () => {
   })
 
   describe("mapSseOrderItem", () => {
-    it("maps item and calculates line total", () => {
+    it("maps item and calculates line total including priced additions (SUS-01)", () => {
       const res = mapSseOrderItem({
         id: "item-10",
         productName: "Doble Carne",
@@ -93,7 +93,9 @@ describe("OrderContext Pure Reducers & Updaters (TDD Tests)", () => {
       expect(res.name).toBe("Doble Carne")
       expect(res.price).toBe(25000)
       expect(res.cantidad).toBe(2)
-      expect(res.total).toBe(50000)
+      // (25000 + 4000*1) * 2 = 58000: priced additions are applied per unit,
+      // same formula as cartEngine/backend (JD-CRIT-01), never dropped.
+      expect(res.total).toBe(58000)
       expect(res.observacion).toBe("Sin salsas")
       expect(res.adiciones).toHaveLength(1)
       expect(res.adiciones[0].name).toBe("Tocineta")
@@ -159,6 +161,42 @@ describe("OrderContext Pure Reducers & Updaters (TDD Tests)", () => {
       expect(updated.orders[0].status).toBe("pending")
       expect(updated.orders[0].customer.nombre).toBe("Maria Gomez")
       expect(updated.orders[0].finalTotal).toBe(12000)
+    })
+
+    it("merges SSE payload items with addition-inclusive line totals (SUS-01)", () => {
+      const initial = createMockRestaurant()
+      const event: OrderEvent = {
+        eventType: "ORDER_CREATED",
+        orderId: "order-sse-sus01",
+        orderNumber: 606,
+        status: "pending",
+        timestamp: "2026-08-03T12:00:00.000Z",
+        payload: {
+          customer: { nombre: "SSE SUS Test", telefono: "3129998877", direccion: "Cra 10", barrio: "Centro" },
+          items: [
+            {
+              id: "item-sse-1",
+              productName: "Hamburguesa Triple",
+              unitPrice: 30000,
+              quantity: 2,
+              additions: [
+                { additionName: "Tocineta", unitPrice: 4000, quantity: 1 },
+                { additionName: "Queso", unitPrice: 2000, quantity: 1 },
+              ],
+            },
+          ],
+          subtotal: 72000,
+          deliveryFee: 0,
+          finalTotal: 72000,
+        },
+      }
+
+      const updated = handleOrderCreatedEvent(initial, event)
+      expect(updated.orders).toHaveLength(1)
+      expect(updated.orders[0].items).toHaveLength(1)
+      expect(updated.orders[0].items[0].adiciones).toHaveLength(2)
+      // (30000 + 4000 + 2000) * 2 = 72000: SSE line totals include priced additions
+      expect(updated.orders[0].items[0].total).toBe(72000)
     })
   })
 
@@ -268,6 +306,67 @@ describe("OrderContext Pure Reducers & Updaters (TDD Tests)", () => {
       const currentOrders = [createMockOrder("ord-1")]
       const synced = syncBackendOrders(currentOrders, null as any, [])
       expect(synced).toEqual(currentOrders)
+    })
+
+    it("computes addition-inclusive item totals when backend omits per-item total (SUS-01)", () => {
+      const synced = syncBackendOrders(
+        [],
+        [
+          {
+            id: "ord-sus01",
+            orderNumber: 303,
+            subtotal: 58000,
+            deliveryFee: 2000,
+            finalTotal: 60000,
+            status: "pending",
+            createdAt: "2026-08-03T10:00:00.000Z",
+            customer: { name: "SUS Test", phone: "3121112233" },
+            items: [
+              {
+                id: "item-sus-1",
+                productName: "Doble Carne",
+                unitPrice: 25000,
+                quantity: 2,
+                additions: [{ additionName: "Tocineta", unitPrice: 4000, quantity: 1 }],
+              },
+            ],
+          },
+        ],
+        []
+      )
+
+      expect(synced).toHaveLength(1)
+      expect(synced[0].items).toHaveLength(1)
+      expect(synced[0].items[0].adiciones).toHaveLength(1)
+      // (25000 + 4000*1) * 2 = 58000: read-back totals match the cart/backend formula
+      expect(synced[0].items[0].total).toBe(58000)
+    })
+
+    it("prefers the backend-provided item total over the computed one (SUS-01)", () => {
+      const synced = syncBackendOrders(
+        [],
+        [
+          {
+            id: "ord-sus02",
+            orderNumber: 304,
+            status: "pending",
+            createdAt: "2026-08-03T10:00:00.000Z",
+            items: [
+              {
+                id: "item-sus-2",
+                productName: "Combo Especial",
+                unitPrice: 20000,
+                quantity: 1,
+                total: 25999,
+                additions: [{ additionName: "Queso", unitPrice: 3000, quantity: 1 }],
+              },
+            ],
+          },
+        ],
+        []
+      )
+
+      expect(synced[0].items[0].total).toBe(25999)
     })
   })
 

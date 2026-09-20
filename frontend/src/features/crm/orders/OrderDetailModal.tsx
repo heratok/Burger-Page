@@ -5,6 +5,7 @@ import { OrderStatusBadge } from "@/components/ui/status-badge"
 import { formatCurrency } from "@/lib/utils"
 import { uploadImageToStorage } from "@/core/storage/supabaseStorage"
 import { toast } from "sonner"
+import { calculateLineItemTotal } from "@/features/cart/cartEngine"
 
 export interface OrderDetailModalProps {
   order: Order | null
@@ -177,7 +178,14 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                   {item.cantidad || (item as any).quantity || 1}× {item.name || (item as any).productName || "Producto"}
                 </span>
                 <span className="text-indigo-600 dark:text-indigo-400 font-extrabold">
-                  {formatCurrency(item.total ?? ((item.price || (item as any).unitPrice || 0) * (item.cantidad || (item as any).quantity || 1)))}
+                  {formatCurrency(
+                    item.total ??
+                      calculateLineItemTotal({
+                        price: item.price || (item as any).unitPrice || 0,
+                        cantidad: item.cantidad || (item as any).quantity || 1,
+                        adiciones: item.adiciones ?? [],
+                      })
+                  )}
                 </span>
               </div>
               {item.adiciones && item.adiciones.length > 0 && (

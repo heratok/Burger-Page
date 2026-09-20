@@ -2,6 +2,7 @@ import React, { createContext, useContext, useMemo, useCallback, useEffect, useS
 import type { Order, OrderStatus, Customer, RestaurantRecord } from "@/types/restaurant"
 import type { CreateOrderInput, UpdateOrderInput, OrderEvent, UpdateCustomerInput } from "@burger-page/contracts"
 import { apiClient, isNotFoundError } from "@/core/api/apiClient"
+import { calculateLineItemTotal } from "@/features/cart/cartEngine"
 import { useTenant } from "./TenantContext"
 import { useAuth } from "./AuthContext"
 import { useUi } from "./UiContext"
@@ -80,22 +81,30 @@ function mapBackendOrderToDomain(bo: any, existing?: Order, matchedCustomer?: an
   const items = (bo.items && bo.items.length > 0 ? bo.items : existing?.items || []).map((item: any) => {
     const unitPrice = Number(item.unitPrice ?? item.price ?? 0)
     const quantity = Number(item.quantity ?? item.cantidad ?? 1)
+    const additions = (item.additions || item.adiciones || []).map((a: any) => ({
+      id: a.id,
+      additionId: a.additionId || a.addition_id,
+      name: a.additionName || a.name || 'Adición',
+      price: Number(a.unitPrice ?? a.price ?? 0),
+      cantidad: Number(a.quantity ?? 1),
+    }))
     return {
       id: item.id,
       productId: item.productId || item.product_id,
       name: item.productName || item.name || 'Producto',
       price: unitPrice,
       cantidad: quantity,
-      total: Number(item.total ?? (unitPrice * quantity)),
+      // Backend order items carry no per-item total: fall back to the shared
+      // cart/backend formula (price + SUM(add.price * add.cantidad)) * quantity
+      // so priced additions are never dropped from the read-back breakdown
+      // (SUS-01, same semantics as JD-CRIT-01).
+      total: Number(
+        item.total ??
+          calculateLineItemTotal({ price: unitPrice, cantidad: quantity, adiciones: additions })
+      ),
       observacion: item.observation || item.observacion,
       src: item.src,
-      adiciones: (item.additions || item.adiciones || []).map((a: any) => ({
-        id: a.id,
-        additionId: a.additionId || a.addition_id,
-        name: a.additionName || a.name || 'Adición',
-        price: Number(a.unitPrice ?? a.price ?? 0),
-        cantidad: Number(a.quantity ?? 1),
-      })),
+      adiciones: additions,
     }
   })
 
@@ -133,14 +142,17 @@ export function mapSseOrderAddition(a: any) {
 export function mapSseOrderItem(item: any) {
   const unitPrice = Number(item.unitPrice ?? item.price ?? 0)
   const quantity = Number(item.quantity ?? item.cantidad ?? 1)
+  const adiciones = (item.additions || item.adiciones || []).map(mapSseOrderAddition)
   return {
     id: item.id,
     name: item.productName || item.name || 'Producto',
     price: unitPrice,
     cantidad: quantity,
-    total: unitPrice * quantity,
+    // SSE order items carry no per-item total: use the shared cart/backend
+    // formula so priced additions are included (SUS-01).
+    total: calculateLineItemTotal({ price: unitPrice, cantidad: quantity, adiciones }),
     observacion: item.observation || item.observacion,
-    adiciones: (item.additions || item.adiciones || []).map(mapSseOrderAddition),
+    adiciones,
   }
 }
 
