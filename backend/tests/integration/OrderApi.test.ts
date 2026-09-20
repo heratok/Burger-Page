@@ -68,6 +68,59 @@ describe('Order API', () => {
     expect(body.changeAmount).toBe(5);
   });
 
+  it('POST /api/orders should accept a mostrador cash payment equal to the subtotal when deliveryFee is 0 (JD-CRIT-02)', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/orders',
+      payload: {
+        restaurantId: 'burger-craft',
+        customerId: 'customer-123',
+        items: [{ productId, quantity: 2, additions: [] }],
+        deliveryFee: 0, // Counter sale: client fee waives any restaurant fee
+        paymentMethod: 'Efectivo',
+        paymentAmount: 20, // == subtotal == finalTotal
+      }
+    });
+
+    expect(response.statusCode).toBe(201);
+    const body = response.json();
+    expect(body.subtotal).toBe(20);
+    expect(body.deliveryFee).toBe(0);
+    expect(body.finalTotal).toBe(20); // finalTotal == subtotal, no inflated fee
+    expect(body.paymentAmount).toBe(20);
+    expect(body.changeAmount).toBe(0); // exact payment -> zero change
+  });
+
+  it('POST /api/orders should honor an explicit deliveryFee and fall back when absent (JD-CRIT-02)', async () => {
+    const withFee = await app.inject({
+      method: 'POST',
+      url: '/api/orders',
+      payload: {
+        restaurantId: 'burger-craft',
+        customerId: 'customer-123',
+        items: [{ productId, quantity: 1, additions: [] }],
+        deliveryFee: 2500,
+      }
+    });
+    expect(withFee.statusCode).toBe(201);
+    expect(withFee.json().deliveryFee).toBe(2500); // explicit fee honored
+    expect(withFee.json().finalTotal).toBe(2510); // 10 + 2500
+
+    const withoutFee = await app.inject({
+      method: 'POST',
+      url: '/api/orders',
+      payload: {
+        restaurantId: 'burger-craft',
+        customerId: 'customer-123',
+        items: [{ productId, quantity: 1, additions: [] }],
+      }
+    });
+    expect(withoutFee.statusCode).toBe(201);
+    // Restaurant has no configured fee in the SQLite envelope: fallback is 0.
+    expect(withoutFee.json().deliveryFee).toBe(0);
+    expect(withoutFee.json().finalTotal).toBe(10);
+  });
+
   it('POST /api/orders should return validation error for missing fields', async () => {
     const response = await app.inject({
       method: 'POST',

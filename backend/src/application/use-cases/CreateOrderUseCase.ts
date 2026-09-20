@@ -26,7 +26,7 @@ export class CreateOrderUseCase {
 
     this.validateMinOrderAmount(calculatedSubtotal, restaurant);
 
-    const deliveryFee = Number(restaurant.deliveryFee ?? restaurant.config?.deliveryFee ?? 0);
+    const deliveryFee = this.resolveDeliveryFee(dto.deliveryFee, restaurant);
     const finalTotal = calculatedSubtotal + deliveryFee;
 
     const payment = this.resolvePaymentDetails(
@@ -276,6 +276,23 @@ export class CreateOrderUseCase {
       },
       additionTotal,
     };
+  }
+
+  /**
+   * Resolves the delivery fee charged for the order.
+   *
+   * A valid client-provided fee (finite number >= 0) is honored so counter
+   * and table sales can waive the restaurant delivery fee exactly as the
+   * POS displays it. Only when the client omits the fee (or sends an invalid
+   * value) does the restaurant's configured fee apply, guarded against
+   * missing/negative defaults.
+   */
+  private resolveDeliveryFee(dtoFee: number | undefined, restaurant: Restaurant): number {
+    if (typeof dtoFee === 'number' && Number.isFinite(dtoFee) && dtoFee >= 0) {
+      return dtoFee;
+    }
+    const restaurantFee = Number(restaurant.deliveryFee ?? restaurant.config?.deliveryFee ?? 0);
+    return Number.isFinite(restaurantFee) && restaurantFee > 0 ? restaurantFee : 0;
   }
 
   private validateMinOrderAmount(calculatedSubtotal: number, restaurant: Restaurant): void {
