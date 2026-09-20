@@ -39,6 +39,20 @@ export function dataUrlToBlob(dataUrl: string): Blob {
   }
 }
 
+/**
+ * Normalizes a user-supplied path segment before it is embedded in a storage
+ * object key: backslashes are treated as path separators and any '', '.' or
+ * '..' parts are stripped, so the result can never traverse outside the
+ * tenant's storage prefix (SUS-06).
+ */
+export function sanitizeSegment(value: string): string {
+  return value
+    .replace(/\\/g, '/')
+    .split('/')
+    .filter((part) => part !== '' && part !== '.' && part !== '..')
+    .join('-');
+}
+
 export interface UploadImageOptions {
   restaurantId: string;
   folder?: 'products' | 'branding' | 'general';
@@ -141,13 +155,11 @@ export async function uploadImageToStorage(
     return imageSource;
   }
 
-  const folder = options.folder || 'general';
+  const folder = sanitizeSegment(options.folder || 'general');
   const cleanRestId = options.restaurantId.replace(/[^a-z0-9-_]/gi, '-');
   const randomSuffix = typeof globalThis.crypto?.randomUUID === 'function'
     ? globalThis.crypto.randomUUID().slice(0, 8)
     : Date.now().toString(36);
-  const uniqueId = options.filename || `${Date.now()}-${randomSuffix}`;
-  const objectPath = `${cleanRestId}/${folder}/${uniqueId}.webp`;
 
   let blob: Blob;
   if (typeof imageSource === 'string' && imageSource.startsWith('data:')) {
@@ -203,20 +215,28 @@ export async function uploadImageToStorage(
 
   if (supabaseUrl && supabaseKey) {
     try {
-      const uploadEndpoint = `${supabaseUrl.replace(/\/$/, '')}/storage/v1/object/${bucket}/${objectPath}`;
+      // Legacy direct upload (SUS-06): never reuse the client-supplied filename.
+      // Derive the object id from a fresh random value, so even with anonymous
+      // bucket write access an attacker cannot target or overwrite an existing
+      // object key.
+      const fallbackId =
+        typeof globalThis.crypto?.randomUUID === 'function'
+          ? globalThis.crypto.randomUUID()
+          : `${Date.now()}-${randomSuffix}`;
+      const fallbackObjectPath = `${cleanRestId}/${folder}/${sanitizeSegment(fallbackId)}.webp`;
+      const uploadEndpoint = `${supabaseUrl.replace(/\/$/, '')}/storage/v1/object/${bucket}/${fallbackObjectPath}`;
       const response = await fetch(uploadEndpoint, {
         method: 'POST',
         headers: {
           apikey: supabaseKey,
           Authorization: `Bearer ${supabaseKey}`,
           'Content-Type': 'image/webp',
-          'x-upsert': 'true',
         },
         body: blob,
       });
 
       if (response.ok) {
-        return objectPath;
+        return fallbackObjectPath;
       }
     } catch {
       // Fallback
