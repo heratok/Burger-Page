@@ -154,14 +154,53 @@ test.describe('Menu & Categories Full CRUD & Customization E2E Suite', () => {
           }),
         });
       } else if (route.request().method() === 'GET') {
+        // Authoritative sync rebuilds the admin catalog from the backend:
+        // serve the envelope's products (backend shape) so 'Hamburguesa
+        // Clásica Artesanal' and 'Papas Rústicas al Romero' render.
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify([]),
+          body: JSON.stringify([
+            {
+              id: 'prod-1',
+              name: 'Hamburguesa Clásica Artesanal',
+              description: 'Carne 180g con queso cheddar',
+              price: 26000,
+              category: 'Hamburguesas',
+              imageUrl: '',
+              isAvailable: true,
+              isPopular: true,
+              isNew: false,
+            },
+            {
+              id: 'prod-2',
+              name: 'Papas Rústicas al Romero',
+              description: 'Crujientes con romero',
+              price: 9000,
+              category: 'Acompañamientos',
+              imageUrl: '',
+              isAvailable: true,
+              isPopular: false,
+              isNew: false,
+            },
+          ]),
         });
       } else {
         await route.continue();
       }
+    });
+
+    await page.route('**/api/restaurant*/categories**', async (route) => {
+      if (route.request().method() !== 'GET') return route.continue();
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([
+          { id: 'cat-1', name: 'Hamburguesas', displayOrder: 0, isActive: true },
+          { id: 'cat-2', name: 'Acompañamientos', displayOrder: 1, isActive: true },
+          { id: 'cat-3', name: 'Bebidas', displayOrder: 2, isActive: true },
+        ]),
+      });
     });
   });
 

@@ -9,7 +9,11 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  // The e2e suites share one live backend/database (seeded Postgres), and
+  // several specs mutate the same tenants (orders, customers, products).
+  // Running workers in parallel makes those suites race each other and turn
+  // green specs flaky, so serialize locally exactly like CI does.
+  workers: 1,
   reporter: 'list',
   use: {
     baseURL: 'http://localhost:5173',

@@ -439,6 +439,10 @@ test.describe('Playwright Full Multi-Tenant & Security E2E Suite', () => {
           data: {
             restaurantId: tenantAId,
             items: [{ productId: prod.id, quantity: 1 }],
+            // A valid client fee is honored (authoritative pricing): pin it to
+            // 0 so every concurrent order has the deterministic total the
+            // assertions below expect (no tenant delivery fee added).
+            deliveryFee: 0,
             comment: `Concurrent Order #${i + 1}`,
           }
         })

@@ -72,6 +72,48 @@ test.describe('ProductModal Responsive & Dark/Light Mode Audit', () => {
       localStorage.setItem('burger_page_platform_v2', JSON.stringify(envelope));
       localStorage.setItem('burger_page_active_rest_v2', 'rest-burger-craft');
     });
+
+    // Authoritative sync rebuilds the admin catalog from the backend: serve
+    // the envelope's product WITH the photo URL so the Modal photo section
+    // (conditional on productForm.src) renders.
+    await page.route('**/api/products*', async (route) => {
+      if (route.request().method() !== 'GET') return route.continue();
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([
+          {
+            id: 'prod-1',
+            name: 'Hamburguesa Clásica Artesanal',
+            description: 'Carne 180g con queso cheddar y vegetales frescos en pan brioche',
+            price: 26000,
+            category: 'Hamburguesas',
+            imageUrl: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800',
+            isAvailable: true,
+            isPopular: true,
+            isNew: false,
+            preparationTimeMinutes: 15,
+          },
+        ]),
+      });
+    });
+
+    await page.route('**/api/restaurants*', async (route) => {
+      if (route.request().method() !== 'GET') return route.continue();
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([
+          {
+            id: 'rest-burger-craft',
+            slug: 'burger-craft',
+            name: 'Burger Craft',
+            isActive: true,
+            config: { name: 'Burger Craft', tagline: 'Cocina artesanal de autor', deliveryFee: 5000 },
+          },
+        ]),
+      });
+    });
   });
 
   const viewports = [
@@ -121,7 +163,7 @@ test.describe('ProductModal Responsive & Dark/Light Mode Audit', () => {
         await expect(modal).toBeVisible();
 
         // Check photo section visibility
-        const photoSection = modal.locator('label:has-text("Foto del Producto") ~ div.relative.overflow-hidden').first();
+        const photoSection = modal.locator('div.relative.overflow-hidden.rounded-2xl').first();
         await expect(photoSection).toBeVisible();
 
         const box = await photoSection.boundingBox();

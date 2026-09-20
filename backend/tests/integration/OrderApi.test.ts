@@ -206,6 +206,36 @@ describe('Order API', () => {
     expect(Array.isArray(response.json())).toBe(true);
   });
 
+  it('GET /api/orders should serialize the order customer (name) in the list response', async () => {
+    // Create an order with an explicit customer first.
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/api/orders',
+      payload: {
+        restaurantId: 'burger-craft',
+        customer: { name: 'Cliente Listado', phone: '3009876543', barrio: 'Centro' },
+        items: [{ productId, quantity: 1, additions: [] }],
+        paymentMethod: 'Efectivo',
+        paymentAmount: 20000,
+      },
+    });
+    expect(createRes.statusCode).toBe(201);
+
+    const listRes = await app.inject({
+      method: 'GET',
+      url: '/api/orders',
+      headers: { authorization: `Bearer ${authToken}` },
+    });
+    expect(listRes.statusCode).toBe(200);
+    const orders = listRes.json();
+    expect(Array.isArray(orders)).toBe(true);
+
+    const created = orders.find((o: any) => o.customer?.nombre === 'Cliente Listado');
+    expect(created).toBeDefined();
+    expect(created.customer.nombre).toBe('Cliente Listado');
+    expect(created.customer.telefono).toBe('3009876543');
+  });
+
   it('PATCH /api/orders/:id/status should update status to valid state for authenticated tenant', async () => {
     // Create an order first
     const createRes = await app.inject({
