@@ -1,10 +1,13 @@
-import { describe, it, expect, beforeEach, vi } from "vitest"
-import { renderHook, act } from "@testing-library/react"
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
+import { renderHook, act, render, screen, cleanup, fireEvent } from "@testing-library/react"
 import React from "react"
 import { RestaurantProvider, useRestaurant } from "./RestaurantContext"
 import { InMemoryStorageAdapter } from "@/core/storage/StorageAdapter"
 import { TenantRepository, STORAGE_KEYS } from "@/core/storage/TenantRepository"
 import { TEST_STORAGE_ENVELOPE } from "@/test/fixtures"
+import { MainRouter } from "@/App"
+import * as routerModule from "@/core/router/useAppRouter"
+import type { AdminTab } from "@/types/restaurant"
 
 const createTestRepo = () => {
   const adapter = new InMemoryStorageAdapter()
@@ -163,5 +166,100 @@ describe("Super Admin - Creación y Aislamiento de Nuevos Restaurantes E2E", () 
 
     expect(result.current.restaurants).toHaveLength(5)
     expect(result.current.restaurants.find((r) => r.id === tempRest.id)?.isActive).toBe(false)
+  })
+})
+
+describe("SUS-04 - Route-level gating of global SaaS modules in MainRouter", () => {
+  beforeEach(async () => {
+    localStorage.clear()
+    sessionStorage.clear()
+    vi.restoreAllMocks()
+    await hermeticApi()
+  })
+
+  afterEach(() => {
+    cleanup()
+    vi.restoreAllMocks()
+  })
+
+  const AdminTabBootstrap = ({ tab }: { tab: AdminTab }) => {
+    const { setAdminTab } = useRestaurant()
+    React.useEffect(() => {
+      setAdminTab(tab)
+    }, [tab, setAdminTab])
+    return null
+  }
+
+  const renderAdminRoute = (
+    adminTab: AdminTab,
+    session: { role: "super" | "restaurant"; restaurantId?: string },
+    navigateToMock = vi.fn()
+  ) => {
+    sessionStorage.setItem(
+      "burger_page_session_v2",
+      JSON.stringify({ ...session, authenticatedAt: new Date().toISOString() })
+    )
+    vi.spyOn(routerModule, "useAppRouter").mockReturnValue({
+      activeView: "admin",
+      adminTab,
+      isNotFound: false,
+      attemptedSlug: null,
+      navigateTo: navigateToMock,
+    })
+    render(
+      <RestaurantProvider repository={createTestRepo()}>
+        <AdminTabBootstrap tab={adminTab} />
+        <MainRouter />
+      </RestaurantProvider>
+    )
+    return navigateToMock
+  }
+
+  it("bloquea a un admin de restaurante que entra directo a /admin/metrics: nunca renderiza GlobalAnalytics", async () => {
+    renderAdminRoute("metrics", { role: "restaurant", restaurantId: "rest-burger-craft" })
+
+    await screen.findByText(/No tienes permisos para acceder a este módulo global/i)
+
+    // Contenido exclusivo de GlobalAnalytics: jamás debe estar presente
+    expect(screen.queryByText(/Métricas & Rendimiento Global SaaS/i)).toBeNull()
+    expect(screen.queryByText(/Facturación Consolidada/i)).toBeNull()
+    expect(screen.queryByText(/Ranking de Restaurantes por Facturación/i)).toBeNull()
+  })
+
+  it("bloquea a un admin de restaurante que entra directo a /admin/restaurants", async () => {
+    renderAdminRoute("restaurants", { role: "restaurant", restaurantId: "rest-burger-craft" })
+
+    await screen.findByText(/No tienes permisos para acceder a este módulo global/i)
+
+    // Contenido exclusivo de RestaurantsDirectory: jamás debe estar presente
+    expect(screen.queryByPlaceholderText(/Buscar por nombre, slug o tipo/)).toBeNull()
+  })
+
+  it("bloquea a un admin de restaurante que entra directo a /admin/users", async () => {
+    renderAdminRoute("users", { role: "restaurant", restaurantId: "rest-burger-craft" })
+
+    await screen.findByText(/No tienes permisos para acceder a este módulo global/i)
+
+    // Contenido exclusivo de UsersDirectory: jamás debe estar presente
+    expect(screen.queryByText(/Directorio Global de Usuarios/i)).toBeNull()
+  })
+
+  it("el Super Admin sigue viendo GlobalAnalytics en /admin/metrics", async () => {
+    renderAdminRoute("metrics", { role: "super" })
+
+    await screen.findByText(/Métricas & Rendimiento Global SaaS/i)
+    expect(screen.getByText(/Facturación Consolidada/i)).toBeDefined()
+    expect(screen.queryByText(/No tienes permisos para acceder a este módulo global/i)).toBeNull()
+  })
+
+  it("el botón 'Volver al Dashboard' navega a /admin/dashboard", async () => {
+    const navigateToMock = renderAdminRoute("metrics", {
+      role: "restaurant",
+      restaurantId: "rest-burger-craft",
+    })
+
+    const backButton = await screen.findByRole("button", { name: /Volver al Dashboard/i })
+    fireEvent.click(backButton)
+    expect(navigateToMock).toHaveBeenCalledWith("/admin/dashboard")
   })
 })
