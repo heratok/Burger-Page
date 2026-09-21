@@ -17,6 +17,9 @@ describe('PgProductRepository (real Postgres, app_user role)', () => {
   let repo: PgProductRepository;
   const RESTAURANT_A = `pgprod-rest-a-${randomUUID().slice(0, 8)}`;
   const RESTAURANT_B = `pgprod-rest-b-${randomUUID().slice(0, 8)}`;
+  const CATEGORY_A_BURGERS = `cat-${randomUUID().slice(0, 8)}`;
+  const CATEGORY_A_COMBOS = `cat-${randomUUID().slice(0, 8)}`;
+  const CATEGORY_B_BURGERS = `cat-${randomUUID().slice(0, 8)}`;
 
   beforeAll(async () => {
     process.env.DATABASE_URL = APP_USER_DATABASE_URL;
@@ -30,6 +33,15 @@ describe('PgProductRepository (real Postgres, app_user role)', () => {
          VALUES ($1, $1, 'PgProduct Test A', true), ($2, $2, 'PgProduct Test B', true)
          ON CONFLICT (id) DO UPDATE SET is_active = true`,
         [RESTAURANT_A, RESTAURANT_B]
+      );
+      // La categoría es ahora la fuente de la etiqueta (JOIN en el repo): los
+      // productos de prueba referencian categorías reales, como hace el caso de
+      // uso CreateProductUseCase (nunca un label desnormalizado).
+      await adminPool.query(
+        `INSERT INTO public.categories (id, restaurant_id, name, is_active)
+         VALUES ($1, $2, 'Burgers', true), ($3, $2, 'Combos', true), ($4, $5, 'Burgers', true)
+         ON CONFLICT (id, restaurant_id) DO NOTHING`,
+        [CATEGORY_A_BURGERS, RESTAURANT_A, CATEGORY_A_COMBOS, CATEGORY_B_BURGERS, RESTAURANT_B]
       );
       repo = new PgProductRepository();
     } catch (err: any) {
@@ -62,6 +74,7 @@ describe('PgProductRepository (real Postgres, app_user role)', () => {
       description: 'Beef, cheese, lettuce',
       price: 15000,
       category: 'Burgers',
+      categoryId: CATEGORY_A_BURGERS,
       isAvailable: true,
       isPopular: true,
       isNew: false,
@@ -150,6 +163,7 @@ describe('PgProductRepository (real Postgres, app_user role)', () => {
       description: 'v1',
       price: 10000,
       category: 'Burgers',
+      categoryId: CATEGORY_A_BURGERS,
       isAvailable: true,
       displayOrder: 0,
     });
@@ -160,6 +174,7 @@ describe('PgProductRepository (real Postgres, app_user role)', () => {
       description: 'v2',
       price: 12500,
       category: 'Combos',
+      categoryId: CATEGORY_A_COMBOS,
       isAvailable: true,
       displayOrder: 5,
     });

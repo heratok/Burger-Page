@@ -45,10 +45,23 @@ export class SupabaseRestaurantRepository implements RestaurantRepository {
     };
   }
 
+  private flattenEmbedded(row: any): any {
+    // 1:1 embeds de PostgREST llegan como arreglos de 0/1 elementos.
+    const settings = Array.isArray(row.restaurant_settings)
+      ? row.restaurant_settings[0]
+      : row.restaurant_settings;
+    const branding = Array.isArray(row.restaurant_branding)
+      ? row.restaurant_branding[0]
+      : row.restaurant_branding;
+    // Orden: branding < settings < restaurants (la identidad manda en
+    // created_at/is_active; settings/branding aportan el resto).
+    return { ...(branding || {}), ...(settings || {}), ...row };
+  }
+
   async findById(id: string): Promise<Restaurant | null> {
     const { data, error } = await this.client
       .from('restaurants')
-      .select('*')
+      .select('*, restaurant_settings(*), restaurant_branding(*)')
       .eq('id', id)
       .maybeSingle();
 
@@ -56,13 +69,13 @@ export class SupabaseRestaurantRepository implements RestaurantRepository {
       throw new Error(`Failed to find restaurant by id: ${error.message}`);
     }
     if (!data) return null;
-    return this.mapRow(data);
+    return this.mapRow(this.flattenEmbedded(data));
   }
 
   async findBySlug(slug: string): Promise<Restaurant | null> {
     const { data, error } = await this.client
       .from('restaurants')
-      .select('*')
+      .select('*, restaurant_settings(*), restaurant_branding(*)')
       .eq('slug', slug)
       .maybeSingle();
 
@@ -70,19 +83,19 @@ export class SupabaseRestaurantRepository implements RestaurantRepository {
       throw new Error(`Failed to find restaurant by slug: ${error.message}`);
     }
     if (!data) return null;
-    return this.mapRow(data);
+    return this.mapRow(this.flattenEmbedded(data));
   }
 
   async findAll(): Promise<Restaurant[]> {
     const { data, error } = await this.client
       .from('restaurants')
-      .select('*')
+      .select('*, restaurant_settings(*), restaurant_branding(*)')
       .order('created_at', { ascending: true });
 
     if (error) {
       throw new Error(`Failed to list restaurants: ${error.message}`);
     }
-    return (data || []).map((row: any) => this.mapRow(row));
+    return (data || []).map((row: any) => this.mapRow(this.flattenEmbedded(row)));
   }
 
   async save(restaurant: Restaurant): Promise<void> {
@@ -90,36 +103,66 @@ export class SupabaseRestaurantRepository implements RestaurantRepository {
       restaurant.slug?.trim() ||
       restaurant.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') ||
       restaurant.id;
+    const now = new Date().toISOString();
+    const cfg = restaurant.config || {};
+    const openTime = restaurant.openingHours?.open ? `${restaurant.openingHours.open}:00` : '12:00:00';
+    const closeTime = restaurant.openingHours?.close ? `${restaurant.openingHours.close}:00` : '22:30:00';
 
-    const payload: any = {
+    // Identidad (restaurants)
+    const identity: any = {
       id: restaurant.id,
       slug,
       name: restaurant.name,
-      tagline: restaurant.tagline || restaurant.config?.tagline || 'Cocina artesanal',
-      whatsapp_number: restaurant.whatsappNumber || restaurant.config?.whatsappNumber || null,
-      primary_color: restaurant.primaryColor || restaurant.config?.primaryColor || '#E63946',
-      bg_theme: restaurant.theme || restaurant.config?.bgTheme || 'dark-charcoal',
-      open_time: restaurant.openingHours?.open ? `${restaurant.openingHours.open}:00` : '12:00:00',
-      close_time: restaurant.openingHours?.close ? `${restaurant.openingHours.close}:00` : '22:30:00',
+      tagline: restaurant.tagline || cfg.tagline || 'Cocina artesanal',
+      whatsapp_number: restaurant.whatsappNumber || cfg.whatsappNumber || null,
       is_active: restaurant.isActive !== undefined ? Boolean(restaurant.isActive) : true,
-      created_at: restaurant.createdAt || new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      created_at: restaurant.createdAt || now,
+      updated_at: now,
     };
+    if (cfg.address !== undefined) identity.address = cfg.address || null;
 
-    if (restaurant.config) {
-      if (restaurant.config.logoUrl !== undefined) payload.logo_url = restaurant.config.logoUrl || null;
-      if (restaurant.config.bannerUrl !== undefined) payload.banner_url = restaurant.config.bannerUrl || null;
-      if (restaurant.config.deliveryFee !== undefined) payload.delivery_fee = restaurant.config.deliveryFee;
-      if (restaurant.config.minOrderAmount !== undefined) payload.min_order_amount = restaurant.config.minOrderAmount;
-      if (restaurant.config.address !== undefined) payload.address = restaurant.config.address || null;
-    }
+    // Configuración operativa (restaurant_settings) — solo campos provistos
+    const settings: any = { restaurant_id: restaurant.id, updated_at: now };
+    if (cfg.currency !== undefined) settings.currency = cfg.currency;
+    if (cfg.currencySymbol !== undefined) settings.currency_symbol = cfg.currencySymbol;
+    if (cfg.deliveryFee !== undefined) settings.delivery_fee = cfg.deliveryFee;
+    if (cfg.minOrderAmount !== undefined) settings.min_order_amount = cfg.minOrderAmount;
+    if (cfg.estimatedDeliveryTime !== undefined) settings.estimated_delivery_time = cfg.estimatedDeliveryTime;
+    if (cfg.openingHours !== undefined) settings.opening_hours_text = cfg.openingHours;
+    settings.open_time = openTime;
+    settings.close_time = closeTime;
+    if (cfg.announcementText !== undefined) settings.announcement_text = cfg.announcementText || null;
+    if (cfg.showAnnouncement !== undefined) settings.show_announcement = cfg.showAnnouncement;
 
-    const { error } = await this.client
-      .from('restaurants')
-      .upsert(payload, { onConflict: 'id' });
+    // Identidad visual (restaurant_branding)
+    const branding: any = { restaurant_id: restaurant.id, updated_at: now };
+    if (cfg.logoUrl !== undefined) branding.logo_url = cfg.logoUrl || null;
+    if (cfg.bannerUrl !== undefined) branding.banner_url = cfg.bannerUrl || null;
+    if (cfg.showBanner !== undefined) branding.show_banner = cfg.showBanner;
+    branding.primary_color = restaurant.primaryColor || cfg.primaryColor || '#E63946';
+    if (cfg.primaryHoverColor !== undefined) branding.primary_hover_color = cfg.primaryHoverColor;
+    branding.bg_theme = restaurant.theme || cfg.bgTheme || 'dark-charcoal';
+    if (cfg.fontFamily !== undefined) branding.font_family = cfg.fontFamily;
+    if (cfg.cardRadius !== undefined) branding.card_radius = cfg.cardRadius;
+    if (cfg.cardStyle !== undefined) branding.card_style = cfg.cardStyle;
+    if (cfg.compactGrid !== undefined) branding.compact_grid = cfg.compactGrid;
+    if (cfg.showBadges !== undefined) branding.show_badges = cfg.showBadges;
 
+    const { error } = await this.client.from('restaurants').upsert(identity, { onConflict: 'id' });
     if (error) {
       throw new Error(`Failed to save restaurant: ${error.message}`);
+    }
+    const { error: settingsError } = await this.client
+      .from('restaurant_settings')
+      .upsert(settings, { onConflict: 'restaurant_id' });
+    if (settingsError) {
+      throw new Error(`Failed to save restaurant settings: ${settingsError.message}`);
+    }
+    const { error: brandingError } = await this.client
+      .from('restaurant_branding')
+      .upsert(branding, { onConflict: 'restaurant_id' });
+    if (brandingError) {
+      throw new Error(`Failed to save restaurant branding: ${brandingError.message}`);
     }
   }
 

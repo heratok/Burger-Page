@@ -20,6 +20,10 @@
     "build:frontend": "npm --prefix frontend run build",
     "build:backend": "npm --prefix backend run build",
     "create:admin": "npm --prefix backend run create:admin",
+    "db:migrate": "node --env-file=backend/.env ./node_modules/node-pg-migrate/bin/node-pg-migrate.js -m database/migrations --ignore-pattern \".*\\.down\\.sql|.*\\.md\" up",
+    "db:baseline": "node --env-file=backend/.env ./node_modules/node-pg-migrate/bin/node-pg-migrate.js -m database/migrations --ignore-pattern \".*\\.down\\.sql|.*\\.md\" baseline",
+    "db:migrate:down": "node --env-file=backend/.env ./node_modules/node-pg-migrate/bin/node-pg-migrate.js -m database/migrations --ignore-pattern \".*\\.up\\.sql|.*\\.md\" down",
+    "db:migrate:create": "node --env-file=backend/.env ./node_modules/node-pg-migrate/bin/node-pg-migrate.js -m database/migrations --migration-file-language sql create",
     "test": "npm --prefix packages/contracts run test && npm --prefix frontend run test && npm --prefix backend run test",
     "test:contracts": "npm --prefix packages/contracts run test",
     "test:frontend": "npm --prefix frontend run test",
@@ -31,5 +35,8 @@
     "lint": "npm --prefix frontend run lint",
     "prepare": "git config core.hooksPath .githooks 2>nul || git config core.hooksPath .githooks || true",
     "preview": "npm --prefix frontend run preview"
+  },
+  "devDependencies": {
+    "node-pg-migrate": "^9.0.0"
   }
 }

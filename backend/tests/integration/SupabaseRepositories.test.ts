@@ -21,6 +21,8 @@ describe('Supabase Persistence Adapter Suite', () => {
   beforeEach(() => {
     mockTables = {
       restaurants: [],
+      restaurant_settings: [],
+      restaurant_branding: [],
       products: [],
       orders: [],
       customers: [],
@@ -35,6 +37,23 @@ describe('Supabase Persistence Adapter Suite', () => {
             const filters: Array<{ field: string; value: any }> = [];
             let sortField: string | null = null;
             let sortAscending = true;
+
+            // Simula los embeds 1:1 de PostgREST: al pedir
+            // '*, restaurant_settings(*), restaurant_branding(*)' se adjunta la
+            // fila 1:1 (como arreglo de 0/1 elementos, igual que PostgREST).
+            const embed1to1 = (row: any) => {
+              if (!row) return row;
+              const out = { ...row };
+              if (columns.includes('restaurant_settings')) {
+                out.restaurant_settings =
+                  (mockTables['restaurant_settings'] || []).filter((s) => s.restaurant_id === row.id);
+              }
+              if (columns.includes('restaurant_branding')) {
+                out.restaurant_branding =
+                  (mockTables['restaurant_branding'] || []).filter((b) => b.restaurant_id === row.id);
+              }
+              return out;
+            };
 
             const queryBuilder: any = {
               eq: (field: string, value: any) => {
@@ -51,7 +70,7 @@ describe('Supabase Persistence Adapter Suite', () => {
                 const matched = filters.length > 0
                   ? table.find((row) => filters.every((f) => row[f.field] === f.value))
                   : table[0];
-                return { data: matched || null, error: null };
+                return { data: matched ? embed1to1(matched) : null, error: null };
               },
               then: (resolve: any, reject: any) => {
                 let rows = [...(mockTables[tableName] || [])];
@@ -65,6 +84,7 @@ describe('Supabase Persistence Adapter Suite', () => {
                     return 0;
                   });
                 }
+                rows = rows.map(embed1to1);
                 return Promise.resolve({ data: rows, error: null }).then(resolve, reject);
               }
             };

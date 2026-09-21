@@ -31,8 +31,8 @@ describe('PgOrderRepository (real Postgres, app_user role, via create_order_atom
         [RESTAURANT_A, RESTAURANT_B]
       );
       await adminPool.query(
-        `INSERT INTO public.products (id, restaurant_id, category_name, name, price, is_available)
-         VALUES ($1, $2, 'Burgers', 'Test Burger', 15000, true)
+        `INSERT INTO public.products (id, restaurant_id, name, price, is_available)
+         VALUES ($1, $2, 'Test Burger', 15000, true)
          ON CONFLICT (id, restaurant_id) DO UPDATE SET is_available = true`,
         [PRODUCT_ID, RESTAURANT_A]
       );
@@ -165,9 +165,13 @@ describe('PgOrderRepository (real Postgres, app_user role, via create_order_atom
 
     it('honors an explicit zero fee over a configured restaurant fee (counter-sale semantics)', async () => {
       if (!isDbConnected) return;
-      // Give the restaurant a real configured fee first: without the explicit
-      // zero, COALESCE(p_delivery_fee, v_rest.delivery_fee) would store 5000.
-      await adminPool.query(`UPDATE public.restaurants SET delivery_fee = 5000 WHERE id = $1`, [RESTAURANT_A]);
+      // The configured fee lives in restaurant_settings since the 3NF split.
+      await adminPool.query(
+        `INSERT INTO public.restaurant_settings (restaurant_id, delivery_fee)
+         VALUES ($1, 5000)
+         ON CONFLICT (restaurant_id) DO UPDATE SET delivery_fee = EXCLUDED.delivery_fee`,
+        [RESTAURANT_A]
+      );
       try {
         const order = new Order(
           `ord-${randomUUID().slice(0, 8)}`,
@@ -195,7 +199,10 @@ describe('PgOrderRepository (real Postgres, app_user role, via create_order_atom
         expect(Number(rows[0].final_total)).toBe(15000);
       } finally {
         // Keep the shared fixture hermetic for the rest of the suite.
-        await adminPool.query(`UPDATE public.restaurants SET delivery_fee = 0 WHERE id = $1`, [RESTAURANT_A]);
+        await adminPool.query(
+          `UPDATE public.restaurant_settings SET delivery_fee = 0 WHERE restaurant_id = $1`,
+          [RESTAURANT_A]
+        );
       }
     });
 

@@ -39,9 +39,9 @@ describe('PgProductAdditionRepository (real Postgres, app_user role)', () => {
           [RESTAURANT_A, RESTAURANT_B]
         );
         await seedClient.query(
-          `INSERT INTO public.products (id, restaurant_id, name, category_name, price, is_available)
-           VALUES ($1, $2, 'PgAddition Test Product', 'Burgers', 15000.00, true),
-                  ($3, $2, 'PgAddition Test Other Product', 'Burgers', 12000.00, true)
+          `INSERT INTO public.products (id, restaurant_id, name, price, is_available)
+           VALUES ($1, $2, 'PgAddition Test Product', 15000.00, true),
+                  ($3, $2, 'PgAddition Test Other Product', 12000.00, true)
            ON CONFLICT (id, restaurant_id) DO UPDATE SET name = EXCLUDED.name`,
           [PRODUCT_A, RESTAURANT_A, PRODUCT_OTHER]
         );

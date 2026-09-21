@@ -82,3 +82,6 @@ zap-report*
 # Local pi agent state & Judgment Day review artifacts (never needed in the repo)
 .pi/
 .judgment-day/
+
+# Orchestration artifacts (el Gentleman ODD tracking)
+odd/

@@ -10,15 +10,32 @@
 --   - Local PostgreSQL (Docker, bare metal)
 --   - Supabase (via SQL Editor or direct postgres connection)
 --   - AWS RDS / Aurora / Neon / Render / Railway
+--
+-- Convención de idioma: identificadores en inglés (estándar de la industria,
+-- decisión del equipo). Los comentarios y COMMENT ON están en español de
+-- adrede: el idioma de los identificadores no afecta tooling y los comentarios
+-- los lee el equipo. Los únicos valores en español no-técnicos son parte del
+-- producto ('Efectivo', 'Transferencia', units 'unidades'...).
+--
+-- Buenas prácticas aplicadas (ver odd/tasks/bd-buenas-practicas.md):
+--   - Sin extensión pgcrypto: gen_random_uuid() es núcleo desde PG 13.
+--   - products.category_name ELIMINADO: desnormalización con drift; la
+--     categoría se resuelve por category_id vía JOIN (repos PG/Supabase).
+--   - COMMENT ON TABLE/COLUMN en español para discovery vía información_schema.
+--   - Migraciones versionadas en database/migrations/ (node-pg-migrate).
 -- ============================================================================
 
 
 -- ============================================================================
 -- 0. EXTENSIONS & ROLES
 -- ============================================================================
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+-- gen_random_uuid() es parte del núcleo de PostgreSQL desde la 13; la
+-- extensión pgcrypto ya no se requiere.
 
 -- Application role for the backend connection pool (without BYPASSRLS)
+-- ADVERTENCIA: 'app_user_test_only' es SOLO para desarrollo/CI (volúmenes
+-- tmpfs efímeros de docker-compose). En producción: ALTER ROLE app_user WITH
+-- PASSWORD '...segura...'; ver database/README.md.
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'app_user') THEN
@@ -48,18 +65,33 @@ $$;
 -- 2. RELATIONAL TABLES
 -- ============================================================================
 
--- 2.1 RESTAURANTS (Tenants) --------------------------------------------------
+-- 2.1 RESTAURANTS (Tenants — identidad) ----------------------------------
+-- Solo identidad y ciclo de vida del tenant. La configuración operativa y la
+-- identidad visual viven en tablas 1:1 separadas (3NF / cohesión):
+--   restaurant_settings  → operación comercial (rompecabezas de delivery/orden)
+--   restaurant_branding  → tema, marca y assets visuales
 CREATE TABLE IF NOT EXISTS public.restaurants (
     id                      TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
     slug                    TEXT UNIQUE NOT NULL,
     name                    TEXT NOT NULL,
     tagline                 TEXT,
-    logo_url                TEXT,
-    banner_url              TEXT,
-    show_banner             BOOLEAN NOT NULL DEFAULT TRUE,
-    announcement_text       TEXT,
-    show_announcement       BOOLEAN NOT NULL DEFAULT TRUE,
     whatsapp_number         TEXT,
+    address                 TEXT,
+    is_active               BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+COMMENT ON TABLE public.restaurants IS 'Tenants: identidad y ciclo de vida del restaurante. Config/branding viven en restaurant_settings / restaurant_branding (1:1).';
+COMMENT ON COLUMN public.restaurants.is_active IS 'Restaurante visible y operativo (usado por la política de lectura pública).';
+
+-- 2.1.1 RESTAURANT SETTINGS (Configuración operativa 1:1) -------------------
+-- Operación comercial del tenant: moneda, delivery, mínimos, horarios por
+-- defecto y anuncios. open_time/close_time son el horario GENERAL resumido
+-- para la vitrina; horarios_restaurante (2.1.3) es el detalle por día de la
+-- semana y tiene precedencia cuando existe (patrón default + overrides).
+CREATE TABLE IF NOT EXISTS public.restaurant_settings (
+    restaurant_id           TEXT PRIMARY KEY REFERENCES public.restaurants(id) ON DELETE CASCADE,
     currency                TEXT NOT NULL DEFAULT 'COP',
     currency_symbol         TEXT NOT NULL DEFAULT '$',
     delivery_fee            NUMERIC(12, 2) NOT NULL DEFAULT 0.00 CHECK (delivery_fee >= 0),
@@ -68,26 +100,44 @@ CREATE TABLE IF NOT EXISTS public.restaurants (
     opening_hours_text      TEXT DEFAULT '12:00 - 22:30',
     open_time               TIME DEFAULT '12:00',
     close_time              TIME DEFAULT '22:30',
-    address                 TEXT,
-    -- Theme & Visual Branding
-    primary_color           TEXT NOT NULL DEFAULT '#E63946',
-    primary_hover_color     TEXT NOT NULL DEFAULT '#F25C69',
-    bg_theme                TEXT NOT NULL DEFAULT 'dark-charcoal'
-                              CHECK (bg_theme IN ('dark-charcoal', 'deep-midnight', 'warm-cream', 'clean-white')),
-    font_family             TEXT NOT NULL DEFAULT 'sans'
-                              CHECK (font_family IN ('sans', 'serif', 'mono', 'display')),
-    card_radius             TEXT NOT NULL DEFAULT 'md'
-                              CHECK (card_radius IN ('sm', 'md', 'lg', 'full')),
-    card_style              TEXT NOT NULL DEFAULT 'elevated'
-                              CHECK (card_style IN ('elevated', 'bordered', 'glass', 'minimal')),
-    compact_grid            BOOLEAN NOT NULL DEFAULT FALSE,
-    show_badges             BOOLEAN NOT NULL DEFAULT TRUE,
-    is_active               BOOLEAN NOT NULL DEFAULT TRUE,
+    announcement_text       TEXT,
+    show_announcement       BOOLEAN NOT NULL DEFAULT TRUE,
     created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 2.1.1 RESTAURANT HOURS -----------------------------------------------------
+COMMENT ON TABLE public.restaurant_settings IS 'Configuración operativa 1:1 del restaurante (3NF: identidad ≠ configuración).';
+COMMENT ON COLUMN public.restaurant_settings.delivery_fee IS 'Cargo de envío por defecto en la moneda del restaurante (>= 0).';
+COMMENT ON COLUMN public.restaurant_settings.open_time IS 'Horario general de apertura (por defecto); horarios_restaurante lo pisa por día.';
+
+-- 2.1.2 RESTAURANT BRANDING (Identidad visual 1:1) ---------------------------
+-- Tema, marca y assets. Solo URLs (nunca binarios): los archivos viven en
+-- storage de objetos (S3, Cloud Storage, etc.).
+CREATE TABLE IF NOT EXISTS public.restaurant_branding (
+    restaurant_id        TEXT PRIMARY KEY REFERENCES public.restaurants(id) ON DELETE CASCADE,
+    logo_url             TEXT,
+    banner_url           TEXT,
+    show_banner          BOOLEAN NOT NULL DEFAULT TRUE,
+    primary_color        TEXT NOT NULL DEFAULT '#E63946',
+    primary_hover_color  TEXT NOT NULL DEFAULT '#F25C69',
+    bg_theme             TEXT NOT NULL DEFAULT 'dark-charcoal'
+                            CHECK (bg_theme IN ('dark-charcoal', 'deep-midnight', 'warm-cream', 'clean-white')),
+    font_family          TEXT NOT NULL DEFAULT 'sans'
+                            CHECK (font_family IN ('sans', 'serif', 'mono', 'display')),
+    card_radius          TEXT NOT NULL DEFAULT 'md'
+                            CHECK (card_radius IN ('sm', 'md', 'lg', 'full')),
+    card_style           TEXT NOT NULL DEFAULT 'elevated'
+                            CHECK (card_style IN ('elevated', 'bordered', 'glass', 'minimal')),
+    compact_grid         BOOLEAN NOT NULL DEFAULT FALSE,
+    show_badges          BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+COMMENT ON TABLE public.restaurant_branding IS 'Identidad visual 1:1 del restaurante. URL de assets; tema, fuente, radios y estilos de UI.';
+COMMENT ON COLUMN public.restaurant_branding.logo_url IS 'URL al storage de objetos (nunca binario en BD).';
+
+-- 2.1.3 RESTAURANT HOURS -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.restaurant_hours (
     id             TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
     restaurant_id  TEXT NOT NULL REFERENCES public.restaurants(id) ON DELETE CASCADE,
@@ -100,6 +150,8 @@ CREATE TABLE IF NOT EXISTS public.restaurant_hours (
     CONSTRAINT chk_hours_consistent
         CHECK (is_closed OR (open_time IS NOT NULL AND close_time IS NOT NULL))
 );
+
+COMMENT ON TABLE public.restaurant_hours IS 'Horarios por día de la semana (0=Domingo..6=Sábado).';
 
 -- 2.2 USERS (Authentication & Role-Based Access Control) -----------------------
 CREATE TABLE IF NOT EXISTS public.users (
@@ -116,6 +168,9 @@ CREATE TABLE IF NOT EXISTS public.users (
         CHECK (role != 'restaurant_admin' OR restaurant_id IS NOT NULL)
 );
 
+COMMENT ON TABLE public.users IS 'Empleados/administradores. rol super_admin es de plataforma (restaurant_id NULL).';
+COMMENT ON COLUMN public.users.password_hash IS 'Hash con salt del credencial de acceso. Nunca se devuelve al frontend.';
+
 -- 2.3 CATEGORIES (Relational Menu Sections) ----------------------------------
 CREATE TABLE IF NOT EXISTS public.categories (
     id            TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -130,12 +185,13 @@ CREATE TABLE IF NOT EXISTS public.categories (
         UNIQUE (restaurant_id, name)
 );
 
+COMMENT ON TABLE public.categories IS 'Secciones del menú por restaurante.';
+
 -- 2.4 PRODUCTS (Menu Items) ---------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.products (
     id                       TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
     restaurant_id            TEXT NOT NULL REFERENCES public.restaurants(id) ON DELETE CASCADE,
     category_id              TEXT REFERENCES public.categories(id) ON DELETE SET NULL,
-    category_name            TEXT NOT NULL,
     name                     TEXT NOT NULL,
     description              TEXT DEFAULT '',
     price                    NUMERIC(12, 2) NOT NULL CHECK (price >= 0),
@@ -150,6 +206,9 @@ CREATE TABLE IF NOT EXISTS public.products (
     CONSTRAINT uq_products_id_restaurant
         UNIQUE (id, restaurant_id)
 );
+
+COMMENT ON TABLE public.products IS 'Ítems del menú. La categoría se resuelve por category_id (JOIN a categories); nunca se duplica el nombre.';
+COMMENT ON COLUMN public.products.price IS 'Precio oficial de venta (usado por create_order_atomic; nunca confiar en el cliente).';
 
 -- 2.5 PRODUCT ADDITIONS (Modifiers & Extras) ---------------------------------
 CREATE TABLE IF NOT EXISTS public.product_additions (
@@ -167,6 +226,8 @@ CREATE TABLE IF NOT EXISTS public.product_additions (
         REFERENCES public.products(id, restaurant_id)
         ON DELETE CASCADE
 );
+
+COMMENT ON TABLE public.product_additions IS 'Extras/modificadores. product_id NULL = aplica a todo el restaurante.';
 
 -- 2.6 CUSTOMERS (CRM) --------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.customers (
@@ -192,11 +253,16 @@ CREATE TABLE IF NOT EXISTS public.customers (
         UNIQUE (id, restaurant_id)
 );
 
+COMMENT ON TABLE public.customers IS 'CRM. total_orders/total_spent/last_order_date son mantenidos por trigger en pedidos.';
+COMMENT ON COLUMN public.customers.loyalty_tier IS 'Nivel de fidelidad (tokens estables de UI, no cambiar sin tocar frontend).';
+
 -- 2.6.1 RESTAURANT ORDER COUNTERS --------------------------------------------
 CREATE TABLE IF NOT EXISTS public.restaurant_order_counters (
     restaurant_id TEXT PRIMARY KEY REFERENCES public.restaurants(id) ON DELETE CASCADE,
     last_number   INTEGER NOT NULL DEFAULT 0 CHECK (last_number >= 0)
 );
+
+COMMENT ON TABLE public.restaurant_order_counters IS 'Contador atómico por restaurante para numerar pedidos concurrentemente.';
 
 -- 2.7 ORDERS (Sales Header / POS) --------------------------------------------
 CREATE TABLE IF NOT EXISTS public.orders (
@@ -222,6 +288,10 @@ CREATE TABLE IF NOT EXISTS public.orders (
         UNIQUE (restaurant_id, order_number)
 );
 
+COMMENT ON TABLE public.orders IS 'Cabecera de venta. subtotal/total_final los calcula la BD (create_order_atomic).';
+COMMENT ON COLUMN public.orders.status IS 'Estado del pedido. Valores = enum del contrato HTTP (no renombrar sin full-stack).';
+COMMENT ON COLUMN public.orders.client_order_id IS 'Idempotencia SUS-19: correlación del cliente; único por (restaurant_id, client_order_id).';
+
 -- 2.7.1 ORDER STATUS HISTORY --------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.order_status_history (
     id            TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -232,6 +302,8 @@ CREATE TABLE IF NOT EXISTS public.order_status_history (
     changed_by    TEXT,
     changed_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+COMMENT ON TABLE public.order_status_history IS 'Auditoría inmutable de transiciones de estado (insert/update automáticos).';
 
 -- 2.8 ORDER ITEMS (Line Items — Fully Normalized) ----------------------------
 CREATE TABLE IF NOT EXISTS public.order_items (
@@ -247,6 +319,8 @@ CREATE TABLE IF NOT EXISTS public.order_items (
     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+COMMENT ON TABLE public.order_items IS 'Líneas de pedido con snapshot histórico del producto vendido.';
+
 -- 2.9 ORDER ITEM ADDITIONS (Modifiers selected per order item) --------------
 CREATE TABLE IF NOT EXISTS public.order_item_additions (
     id            TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -259,6 +333,8 @@ CREATE TABLE IF NOT EXISTS public.order_item_additions (
     total         NUMERIC(12, 2) GENERATED ALWAYS AS (unit_price * quantity) STORED,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+COMMENT ON TABLE public.order_item_additions IS 'Adiciones seleccionadas por línea de pedido (snapshot histórico).';
 
 -- 2.10 SUPPLIERS (Inventory Suppliers) ---------------------------------------
 CREATE TABLE IF NOT EXISTS public.suppliers (
@@ -275,6 +351,8 @@ CREATE TABLE IF NOT EXISTS public.suppliers (
     CONSTRAINT uq_suppliers_id_restaurant
         UNIQUE (id, restaurant_id)
 );
+
+COMMENT ON TABLE public.suppliers IS 'Proveedores de insumos por restaurante.';
 
 -- 2.11 INVENTORY ITEMS (Raw Materials, Ingredients, Supplies) ----------------
 CREATE TABLE IF NOT EXISTS public.inventory_items (
@@ -296,6 +374,9 @@ CREATE TABLE IF NOT EXISTS public.inventory_items (
         UNIQUE (id, restaurant_id)
 );
 
+COMMENT ON TABLE public.inventory_items IS 'Inventario en unidades de compra (kg, litros, paquetes...).';
+COMMENT ON COLUMN public.inventory_items.category IS 'Códigos: ingredients/beverages/packaging/cleaning/other (validados también en el backend).';
+
 
 -- ============================================================================
 -- 3. TRIGGERS (Automations inside Postgres Transactions)
@@ -305,6 +386,16 @@ CREATE TABLE IF NOT EXISTS public.inventory_items (
 DROP TRIGGER IF EXISTS trg_restaurants_updated_at ON public.restaurants;
 CREATE TRIGGER trg_restaurants_updated_at
     BEFORE UPDATE ON public.restaurants
+    FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+DROP TRIGGER IF EXISTS trg_restaurant_settings_updated_at ON public.restaurant_settings;
+CREATE TRIGGER trg_restaurant_settings_updated_at
+    BEFORE UPDATE ON public.restaurant_settings
+    FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+DROP TRIGGER IF EXISTS trg_restaurant_branding_updated_at ON public.restaurant_branding;
+CREATE TRIGGER trg_restaurant_branding_updated_at
+    BEFORE UPDATE ON public.restaurant_branding
     FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
 DROP TRIGGER IF EXISTS trg_users_updated_at ON public.users;
@@ -548,8 +639,13 @@ BEGIN
         RAISE EXCEPTION 'Order must contain at least one item' USING ERRCODE = 'P0001';
     END IF;
 
-    -- 2. Validar que el restaurante exista y esté ACTIVO
-    SELECT * INTO v_rest FROM public.restaurants WHERE id = p_restaurant_id;
+    -- 2. Validar que el restaurante exista y esté ACTIVO (delivery_fee y
+    -- min_order_amount viven en restaurant_settings desde el split 3NF).
+    SELECT r.*, s.delivery_fee, s.min_order_amount
+    INTO v_rest
+    FROM public.restaurants r
+    LEFT JOIN public.restaurant_settings s ON s.restaurant_id = r.id
+    WHERE r.id = p_restaurant_id;
     IF NOT FOUND THEN
         RAISE EXCEPTION 'Restaurant % not found', p_restaurant_id USING ERRCODE = 'P0002';
     END IF;
@@ -771,6 +867,10 @@ GRANT USAGE ON SCHEMA public TO app_user;
 -- under section 7).
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.restaurants TO app_user;
 COMMIT;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.restaurant_settings TO app_user;
+COMMIT;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.restaurant_branding TO app_user;
+COMMIT;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.restaurant_hours TO app_user;
 COMMIT;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.categories TO app_user;
@@ -824,6 +924,12 @@ GRANT EXECUTE ON FUNCTION public.update_order_status_with_actor(TEXT, TEXT, TEXT
 ALTER TABLE public.restaurants               ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.restaurants               FORCE ROW LEVEL SECURITY;
 COMMIT;
+ALTER TABLE public.restaurant_settings       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.restaurant_settings       FORCE ROW LEVEL SECURITY;
+COMMIT;
+ALTER TABLE public.restaurant_branding       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.restaurant_branding       FORCE ROW LEVEL SECURITY;
+COMMIT;
 ALTER TABLE public.restaurant_hours          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.restaurant_hours          FORCE ROW LEVEL SECURITY;
 COMMIT;
@@ -869,6 +975,18 @@ DROP POLICY IF EXISTS "public_read_active_restaurants" ON public.restaurants;
 CREATE POLICY "public_read_active_restaurants"
     ON public.restaurants FOR SELECT
     USING (is_active = TRUE);
+
+COMMIT;
+DROP POLICY IF EXISTS "public_read_restaurant_settings" ON public.restaurant_settings;
+CREATE POLICY "public_read_restaurant_settings"
+    ON public.restaurant_settings FOR SELECT
+    USING (TRUE);
+
+COMMIT;
+DROP POLICY IF EXISTS "public_read_restaurant_branding" ON public.restaurant_branding;
+CREATE POLICY "public_read_restaurant_branding"
+    ON public.restaurant_branding FOR SELECT
+    USING (TRUE);
 
 COMMIT;
 DROP POLICY IF EXISTS "public_read_restaurant_hours" ON public.restaurant_hours;
@@ -1075,6 +1193,22 @@ CREATE POLICY "tenant_isolation_restaurants_write" ON public.restaurants
     FOR ALL
     USING ((id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text))
     WITH CHECK ((id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
+
+COMMIT;
+-- Restaurant Settings isolation
+DROP POLICY IF EXISTS "tenant_isolation_restaurant_settings" ON public.restaurant_settings;
+CREATE POLICY "tenant_isolation_restaurant_settings" ON public.restaurant_settings
+    FOR ALL
+    USING ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text))
+    WITH CHECK ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
+
+COMMIT;
+-- Restaurant Branding isolation
+DROP POLICY IF EXISTS "tenant_isolation_restaurant_branding" ON public.restaurant_branding;
+CREATE POLICY "tenant_isolation_restaurant_branding" ON public.restaurant_branding
+    FOR ALL
+    USING ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text))
+    WITH CHECK ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
 
 COMMIT;
 -- Restaurant Hours isolation
