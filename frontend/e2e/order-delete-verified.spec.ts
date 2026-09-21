@@ -2,6 +2,74 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Order Deletion & Persistence E2E Suite', () => {
   test.describe.configure({ mode: 'serial' });
+  let seededProductName: string
+
+  test.beforeAll(async ({ request }) => {
+    const API_BASE = 'http://localhost:3001/api'
+    const loginRes = await request.post(`${API_BASE}/users/login`, {
+      data: { username: 'rosto', password: 'rosto0502' },
+    })
+    expect(loginRes.status()).toBe(200)
+    const { token, user } = await loginRes.json()
+    // Run-unique customer phone: create_order_atomic reuses customers by
+    // phone, so each run gets a private customer row and never collides
+    // with order-edit-verified.spec.ts (family '3008').
+    const seedPhone = `3015${Date.now().toString().slice(-6)}`
+
+    // Purge stale seeded customers from previous runs (their orders were
+    // deleted by this spec's tests) so each run starts with a private
+    // customer row for this spec's phone family.
+    const custRes = await request.get(`${API_BASE}/customers?restaurantId=${user.restaurantId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (custRes.status() === 200) {
+      const custs = await custRes.json()
+      for (const c of Array.isArray(custs) ? custs : []) {
+        if (c?.phone && String(c.phone).startsWith('3015')) {
+          await request.delete(`${API_BASE}/customers/${c.id}?restaurantId=${user.restaurantId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          })
+        }
+      }
+    }
+
+    const productRes = await request.post(`${API_BASE}/products`, {
+      headers: { Authorization: `Bearer ${token}` },
+      data: {
+        name: `E2E Delete Seed ${Date.now().toString().slice(-6)}`,
+        price: 20000,
+        category: 'Hamburguesas',
+        isAvailable: true,
+      },
+    })
+    expect(productRes.status()).toBe(201)
+    const product = await productRes.json()
+    seededProductName = product.name
+
+    const orderPayload = {
+      restaurantId: user.restaurantId,
+      items: [{ productId: product.id, quantity: 1 }],
+      customer: { name: 'Seed Cliente', phone: seedPhone, barrio: 'Centro' },
+      deliveryFee: 0,
+      paymentMethod: 'Efectivo',
+      paymentAmount: 20000,
+      changeAmount: 0,
+      comment: 'seeded-for-delete-verified',
+      clientOrderId: `delete-seed-a-${Date.now()}`,
+    }
+    const orderARes = await request.post(`${API_BASE}/orders`, {
+      headers: { Authorization: `Bearer ${token}` },
+      data: orderPayload,
+    })
+    expect(orderARes.status()).toBe(201)
+
+    orderPayload.clientOrderId = `delete-seed-b-${Date.now()}`
+    const orderBRes = await request.post(`${API_BASE}/orders`, {
+      headers: { Authorization: `Bearer ${token}` },
+      data: orderPayload,
+    })
+    expect(orderBRes.status()).toBe(201)
+  })
 
   test('logs in as rosto admin, deletes an order via modal, verifies DB deletion and persistence after reload', async ({ page }) => {
     test.setTimeout(60000);
@@ -35,12 +103,17 @@ test.describe('Order Deletion & Persistence E2E Suite', () => {
     await ordersBtn.click();
     await ordersResponsePromise;
 
-    // 5. Look for first order card in Comandas feed
-    const firstEyeBtn = page.locator('button[title*="Ver detalles completos de la orden"]').first();
-    await expect(firstEyeBtn).toBeVisible({ timeout: 10000 });
+    // 5. Locate THIS run's seeded card (unique product name) and its eye button
+    const seededCard = page
+      .locator('div')
+      .filter({ hasText: seededProductName })
+      .filter({ has: page.locator('button[title*="Ver detalles completos"]') })
+      .first();
+    await expect(seededCard).toBeVisible({ timeout: 10000 });
+    const firstEyeBtn = seededCard.locator('button[title*="Ver detalles completos de la orden"]').first();
 
     // Get order number from the card
-    const firstOrderCard = page.locator('article, div').filter({ has: firstEyeBtn }).first();
+    const firstOrderCard = seededCard;
     const cardText = await firstOrderCard.innerText();
     const orderNumberMatch = cardText.match(/#(\d+)/);
     const orderNumber = orderNumberMatch ? orderNumberMatch[1] : null;
@@ -150,11 +223,16 @@ test.describe('Order Deletion & Persistence E2E Suite', () => {
       await page.waitForTimeout(500);
     }
 
-    // 6. Look for eye icon button on a card in Kanban or Feed
-    const eyeBtn = page.locator('button[title*="Ver detalles completos del pedido"], button[title*="Ver detalles completos de la orden"]').first();
-    await expect(eyeBtn).toBeVisible({ timeout: 10000 });
+    // 6. Locate THIS run's seeded card (unique product name) and its eye button
+    const seededCard = page
+      .locator('div')
+      .filter({ hasText: seededProductName })
+      .filter({ has: page.locator('button[title*="Ver detalles completos"]') })
+      .first();
+    await expect(seededCard).toBeVisible({ timeout: 10000 });
+    const eyeBtn = seededCard.locator('button[title*="Ver detalles completos del pedido"], button[title*="Ver detalles completos de la orden"]').first();
 
-    const card = page.locator('div').filter({ has: eyeBtn }).first();
+    const card = seededCard;
     const cardText = await card.innerText();
     const orderNumberMatch = cardText.match(/#(\d+)/);
     const orderNumber = orderNumberMatch ? orderNumberMatch[1] : null;

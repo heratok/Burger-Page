@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { mockBackendGets, mockOrderStatusTransitions } from './mock-backend.js';
 
 function generateBulkOrders(count: number) {
   const statuses = ['pending', 'cooking', 'delivering', 'delivered', 'cancelled'] as const;
@@ -48,6 +49,47 @@ function generateBulkOrders(count: number) {
       createdAt: new Date(Date.now() - i * 180000).toISOString(),
     };
   });
+}
+
+// The injected localStorage envelope and the mocked backend GETs must share the
+// exact same 60 orders, so capture the array once at module scope.
+const bulkOrders = generateBulkOrders(60);
+
+/** Converts the legacy envelope orders into the authoritative backend shape read by mapBackendOrderToDomain. */
+function toBackendOrders(orders: any[]): any[] {
+  return orders.map((o) => ({
+    id: o.id,
+    orderNumber: o.orderNumber,
+    customer: {
+      name: o.customer?.nombre || o.customer?.name || '',
+      phone: o.customer?.telefono || o.customer?.phone || '',
+      address: o.customer?.direccion || o.customer?.address || '',
+      barrio: o.customer?.barrio || '',
+    },
+    items: (o.items || []).map((it: any) => ({
+      id: it.id || `item-${o.id}-${it.name}`,
+      productId: it.productId || it.id,
+      productName: it.name || it.productName,
+      unitPrice: it.price ?? it.unitPrice ?? 0,
+      quantity: it.cantidad ?? it.quantity ?? 1,
+      observation: it.observacion,
+      additions: (it.adiciones || it.additions || []).map((a: any) => ({
+        additionId: a.id,
+        additionName: a.name,
+        unitPrice: a.price,
+        quantity: a.cantidad ?? a.quantity ?? 1,
+      })),
+    })),
+    subtotal: o.total ?? o.subtotal ?? 0,
+    deliveryFee: o.deliveryFee ?? 0,
+    finalTotal: o.finalTotal ?? o.total ?? 0,
+    paymentMethod: o.metodo || o.paymentMethod || 'Efectivo',
+    paymentAmount: o.pagoCon !== undefined ? Number(o.pagoCon) : undefined,
+    changeAmount: o.cambio !== undefined ? Number(o.cambio) : undefined,
+    comment: o.comentario || o.comment,
+    status: o.status || 'pending',
+    createdAt: o.createdAt || new Date().toISOString(),
+  }))
 }
 
 test.describe('Kanban Board - High Load & Responsiveness Suite', () => {
@@ -116,8 +158,54 @@ test.describe('Kanban Board - High Load & Responsiveness Suite', () => {
         ]
       };
       localStorage.setItem('burger_page_platform_v2', JSON.stringify(envelope));
+      // The frontend now defaults to "feed" view mode; force the kanban board.
+      localStorage.setItem('burger_page_orders_view_mode', 'kanban');
       localStorage.setItem('burger_page_active_rest_v2', 'rest-burger-craft');
-    }, generateBulkOrders(60));
+    }, bulkOrders);
+
+    // Authoritative-backend runtime: the sync pulls orders/customers from the
+    // API, so serve the envelope's 60 orders through the mocked GETs and
+    // deterministically fulfill status transitions and POS order creation.
+    await mockBackendGets(page, {
+      orders: toBackendOrders(bulkOrders),
+      customers: [],
+      products: [
+        {
+          id: 'prod-pos-1',
+          name: 'Doble Smash Bacon',
+          price: 28900,
+          category: 'Hamburguesas',
+          imageUrl: '',
+          description: 'Doble carne angus, queso cheddar, tocineta',
+          isAvailable: true,
+          isPopular: true,
+          isNew: false,
+        },
+      ],
+    })
+    await mockOrderStatusTransitions(page)
+
+    // Registered after the GET mocks: Playwright matches the most recent
+    // handler per URL, and the method guard keeps both routes cooperative.
+    await page.route('**/api/orders', async (route) => {
+      if (route.request().method() !== 'POST') return route.continue()
+      const payload = route.request().postDataJSON?.() ?? {}
+      return route.fulfill({
+        status: 201,
+        json: {
+          id: `ord-pos-${Date.now()}`,
+          orderNumber: 61,
+          status: 'pending',
+          restaurantId: 'rest-burger-craft',
+          items: payload.items || [],
+          subtotal: 22000,
+          deliveryFee: 5000,
+          finalTotal: 27000,
+          paymentMethod: 'Efectivo',
+          createdAt: new Date().toISOString(),
+        },
+      })
+    })
   });
 
   test('Desktop Viewport (1440x900): Handles 60 orders smoothly with search and phase transitions', async ({ page }) => {

@@ -77,7 +77,7 @@ test.describe('TestSprite Audit & Resolution Suite', () => {
   test('TC017: Super Admin toggles restaurant active status in registry', async ({ page }) => {
     await page.goto('/admin');
     await page.getByPlaceholder(/Tu nombre de usuario/i).fill('admin');
-    await page.locator('input[type="password"]').fill('Test0502*');
+    await page.locator('input[type="password"]').fill('admin');
     await page.getByRole('button', { name: /Acceder al Panel/i }).click();
 
     await page.waitForURL(/\/admin/);

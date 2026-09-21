@@ -30,7 +30,14 @@ export class InMemoryOrderRepository implements OrderRepository {
       const existing = Array.from(this.orders.values()).find(
         (o) => o.restaurantId === order.restaurantId && o.clientOrderId === order.clientOrderId
       );
-      if (existing) return;
+      if (existing) {
+        // SUS-19 replay: adopt the originally persisted identity so the
+        // returned order (and the HTTP response) references the real row,
+        // never a freshly generated phantom id.
+        (order as any).id = existing.id;
+        (order as any).orderNumber = existing.orderNumber;
+        return;
+      }
     }
     this.orders.set(order.id, order);
   }

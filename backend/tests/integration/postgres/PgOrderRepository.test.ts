@@ -263,8 +263,11 @@ describe('PgOrderRepository (real Postgres, app_user role, via create_order_atom
       const firstOrderNumber = (first as any).orderNumber;
       await repo.save(replay);
 
-      // Nothing was inserted under the replay's fresh server id.
-      expect(await repo.findById(replay.id, RESTAURANT_A)).toBeNull();
+      // The replayed save carries the ORIGINAL persisted identity forward: it
+      // references the first row (never a fresh phantom id), and no duplicate
+      // row was inserted for the correlation id.
+      expect(replay.id).toBe(first.id);
+      expect(await repo.findById(replay.id, RESTAURANT_A)).not.toBeNull();
       // Exactly one row carries the correlation id — the first order, with its
       // original order_number (no double-counted counters, no new assignment).
       const { rows } = await adminPool.query(
@@ -274,6 +277,29 @@ describe('PgOrderRepository (real Postgres, app_user role, via create_order_atom
       expect(rows).toHaveLength(1);
       expect(rows[0].id).toBe(first.id);
       expect(Number(rows[0].order_number)).toBe(firstOrderNumber);
+    });
+
+    it('adopts the originally persisted id on replay (SUS-19 response identity)', async () => {
+      if (!isDbConnected) return;
+      const clientOrderId = `cli-replay-id-${randomUUID().slice(0, 8)}`;
+      const first = makeOrder(`ord-${randomUUID().slice(0, 8)}`, clientOrderId);
+      const replay = makeOrder(`ord-${randomUUID().slice(0, 8)}`, clientOrderId);
+
+      await repo.save(first);
+      const firstSavedId = first.id;
+      await repo.save(replay);
+      await repo.save(replay);
+
+      // The retried save must carry the ORIGINAL persisted identity forward so
+      // the HTTP response returns the real order id (an offline retry adopting a
+      // fresh client-generated id would reference a row that never exists).
+      expect(replay.id).toBe(firstSavedId);
+      expect(replay.orderNumber).toBe((first as any).orderNumber);
+      const { rows } = await adminPool.query(
+        `SELECT order_number FROM public.orders WHERE id = $1`,
+        [firstSavedId]
+      );
+      expect(Number(rows[0].order_number)).toBe(replay.orderNumber);
     });
 
     it('creates separate rows for distinct clientOrderIds (SUS-19)', async () => {

@@ -1,6 +1,29 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('CRM Customer Editing & Backend Persistence Suite', () => {
+  test.beforeAll(async ({ request }) => {
+    const API_BASE = 'http://localhost:3001/api'
+    const loginRes = await request.post(`${API_BASE}/users/login`, {
+      data: { username: 'admin_craft', password: 'craft' },
+    })
+    expect(loginRes.status()).toBe(200)
+    const { token } = await loginRes.json()
+
+    // The CI Postgres seed has no customers for the burger-craft tenant;
+    // seed one so the CRM table renders a row to edit.
+    const custRes = await request.post(`${API_BASE}/customers`, {
+      headers: { Authorization: `Bearer ${token}` },
+      data: {
+        name: 'Carlos Gómez CRM',
+        phone: `300${Date.now().toString().slice(-7)}`,
+        address: 'Calle 45 # 12-34',
+        barrio: 'El Poblado',
+        notes: 'Cliente inicial',
+      },
+    })
+    expect(custRes.status()).toBe(201)
+  })
+
   test('logs in as restaurant admin, edits customer notes via CRM modal, verifies backend PUT and persistence after reload', async ({ page }) => {
     test.setTimeout(60000);
 

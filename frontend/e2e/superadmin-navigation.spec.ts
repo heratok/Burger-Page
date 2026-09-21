@@ -68,7 +68,7 @@ test.describe('Super Admin Multi-Tenant Navigation, Dedicated SaaS Modules & Imp
     await expect(page.getByRole('button', { name: /Stock & Insumos/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /Clientes CRM/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /Reportes & Cierre/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /Personalizador UI\/UX/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Personalizar/i })).toBeVisible();
 
     // 11. Test collapsing and expanding the sidebar on desktop
     const sidebar = page.locator('aside[role="complementary"]');

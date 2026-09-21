@@ -38,9 +38,11 @@ export async function orderRoutes(fastify: FastifyInstance, opts: { controller: 
               changeAmount: { type: 'number' },
               comment: { type: 'string' },
               receiptUrl: { type: 'string' },
+              customer: { type: 'object', additionalProperties: true },
               items: { type: 'array', items: { type: 'object', additionalProperties: true } },
               createdAt: { type: 'string' },
-            }
+            },
+            additionalProperties: true
           }
         }
       }

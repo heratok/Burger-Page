@@ -72,9 +72,17 @@ export class SqliteOrderRepository implements OrderRepository {
     // persisted order instead of inserting a duplicate sale.
     if (order.clientOrderId) {
       const existing = this.db
-        .prepare('SELECT id FROM orders WHERE restaurant_id = ? AND client_order_id = ? LIMIT 1')
-        .get(order.restaurantId, order.clientOrderId);
-      if (existing) return;
+        .prepare('SELECT id, order_number FROM orders WHERE restaurant_id = ? AND client_order_id = ? LIMIT 1')
+        .get(order.restaurantId, order.clientOrderId) as { id: string; order_number?: number } | undefined;
+      if (existing) {
+        // SUS-19 replay: adopt the originally persisted identity so the
+        // returned order (and the HTTP response) references the real row.
+        (order as any).id = existing.id;
+        if (existing.order_number != null) {
+          (order as any).orderNumber = existing.order_number;
+        }
+        return;
+      }
     }
     const stmt = this.db.prepare(`
       INSERT INTO orders (

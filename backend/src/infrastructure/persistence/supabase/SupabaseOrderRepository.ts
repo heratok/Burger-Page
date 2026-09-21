@@ -114,6 +114,12 @@ export class SupabaseOrderRepository implements OrderRepository {
     if (data && data.order_number) {
       (order as any).orderNumber = data.order_number;
     }
+    // SUS-19 replay: the RPC returned the already-persisted row for this
+    // (restaurant_id, client_order_id); adopt its real id so the response
+    // references the original order, not a freshly generated phantom id.
+    if (data && data.id && data.id !== order.id) {
+      (order as any).id = data.id;
+    }
 
     if (order.receiptUrl) {
       await this.client

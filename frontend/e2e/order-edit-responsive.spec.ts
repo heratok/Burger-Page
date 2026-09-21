@@ -109,11 +109,67 @@ test.describe('Order Edit in Backoffice POS - Responsive Verification (320px, 39
       });
     });
 
-    await page.route('**/api/orders**', async (route) => {
+    // The optimistic envelope still holds order #101, but the authoritative
+    // backend sync rebuilds orders from GET /api/orders: serve the same order
+    // in backend shape so the card renders and edit flows work.
+    const order101 = {
+      id: 'ord-101',
+      orderNumber: 101,
+      customer: {
+        name: 'Carlos Gómez',
+        phone: '3001234567',
+        address: 'Calle 10 # 4-20',
+        barrio: 'El Poblado',
+      },
+      items: [
+        {
+          id: 'p1',
+          productName: 'Hamburguesa Doble Queso',
+          unitPrice: 25000,
+          quantity: 2,
+          observation: 'Término medio',
+          additions: [{ additionName: 'Tocineta', unitPrice: 4000, quantity: 1 }],
+        },
+      ],
+      subtotal: 54000,
+      deliveryFee: 5000,
+      finalTotal: 59000,
+      paymentMethod: 'Efectivo',
+      paymentAmount: 60000,
+      changeAmount: 1000,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    await page.route('**/api/orders?*', async (route) => {
+      if (route.request().method() !== 'GET') return route.continue();
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([]),
+        body: JSON.stringify([order101]),
+      });
+    });
+    await page.route('**/api/orders', async (route) => {
+      if (route.request().method() !== 'GET') return route.continue();
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([order101]),
+      });
+    });
+    // Editing the order does PUT /api/orders/:id — fulfill it so the save
+    // succeeds and the modal closes.
+    await page.route('**/api/orders/*', async (route) => {
+      if (route.request().method() !== 'PUT') return route.continue();
+      const payload = route.request().postDataJSON?.() ?? {};
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ...order101,
+          ...payload,
+          customer: { name: payload.customer?.name ?? order101.customer.name },
+        }),
       });
     });
   });

@@ -71,3 +71,73 @@ jobs:
 
       - name: Build production artifacts
         run: npm run build
+
+  e2e:
+    name: Playwright E2E (Postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: burger_page_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d burger_page_test"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The e2e suite needs the Postgres schema + seed: same copy+apply
+      # approach as the validate job (docker-entrypoint-initdb.d bind-mount
+      # is racy). The seed contains the tenant/credential fixtures the
+      # Playwright specs log in with against the live backend.
+      - name: Apply Postgres schema and seed
+        run: |
+          docker cp ./database/01_schema.sql "${{ job.services.postgres.id }}":/tmp/01_schema.sql
+          docker cp ./database/02_seed.sql "${{ job.services.postgres.id }}":/tmp/02_seed.sql
+          docker exec "${{ job.services.postgres.id }}" psql -U postgres -d burger_page_test -v ON_ERROR_STOP=1 -f /tmp/01_schema.sql
+          docker exec "${{ job.services.postgres.id }}" psql -U postgres -d burger_page_test -v ON_ERROR_STOP=1 -f /tmp/02_seed.sql
+
+      # @burger-page/contracts ships compiled JS only via its dist/ folder,
+      # which is gitignored: compile it before booting the dev servers.
+      - name: Build shared contracts
+        run: npm --prefix packages/contracts run build
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright E2E suite against live Postgres
+        run: npm --prefix frontend run test:e2e
+        env:
+          STORAGE_DRIVER: postgres
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/burger_page_test
+          CI: 'true'
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ github.run_number }}
+          path: |
+            frontend/test-results/
+            frontend/playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7

@@ -1,14 +1,7 @@
 import { test, expect } from '@playwright/test';
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { realLogoJpg, realBannerPng } from './branding-assets.js';
 
 test.describe('Admin Image & Branding CRUD Full Suite', () => {
-  const realLogoJpg = fs.readFileSync(path.resolve(__dirname, '../public/logo.jpg'));
-  const realBannerPng = fs.readFileSync(path.resolve(__dirname, 'screenshots/desktop-pos.png'));
 
   test.beforeEach(async ({ page }) => {
     page.on('console', (msg) => console.log(`[BROWSER ${msg.type()}]: ${msg.text()}`));

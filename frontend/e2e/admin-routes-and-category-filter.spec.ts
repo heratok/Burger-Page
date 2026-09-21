@@ -24,7 +24,7 @@ test.describe('Admin Routing, Tenant Management & Storefront Category Filter E2E
     await expect(passwordInput).toBeVisible();
 
     await userInput.fill('admin');
-    await passwordInput.fill('Test0502*');
+    await passwordInput.fill('admin');
     await page.getByRole('button', { name: /Acceder al Panel/i }).click();
 
     // Verify backoffice is reached
@@ -39,7 +39,7 @@ test.describe('Admin Routing, Tenant Management & Storefront Category Filter E2E
     await expect(page.getByText('Restaurante no encontrado')).not.toBeVisible();
 
     await userInput.fill('admin');
-    await page.locator('input[type="password"]').fill('Test0502*');
+    await page.locator('input[type="password"]').fill('admin');
     await page.getByRole('button', { name: /Acceder al Panel/i }).click();
 
     await expect(page.getByRole('button', { name: /Nuevo Restaurante/i })).toBeVisible({ timeout: 10000 });

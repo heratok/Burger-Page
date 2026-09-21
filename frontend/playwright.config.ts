@@ -9,7 +9,11 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  // The e2e suites share one live backend/database (seeded Postgres), and
+  // several specs mutate the same tenants (orders, customers, products).
+  // Running workers in parallel makes those suites race each other and turn
+  // green specs flaky, so serialize locally exactly like CI does.
+  workers: 1,
   reporter: 'list',
   use: {
     baseURL: 'http://localhost:5173',
@@ -20,13 +24,13 @@ export default defineConfig({
       command: 'npm --prefix ../backend run dev',
       url: 'http://localhost:3001/health',
       reuseExistingServer: true,
-      timeout: 30000,
+      timeout: process.env.CI ? 90000 : 30000,
     },
     {
       command: 'npm run dev',
       url: 'http://localhost:5173',
       reuseExistingServer: true,
-      timeout: 30000,
+      timeout: process.env.CI ? 90000 : 30000,
     },
   ],
   projects: [

@@ -142,6 +142,12 @@ export class PgOrderRepository implements OrderRepository {
       if (created && created.order_number) {
         (order as any).orderNumber = created.order_number;
       }
+      // SUS-19 replay: the RPC returned the already-persisted row for this
+      // (restaurant_id, client_order_id); adopt its real id so the response
+      // references the original order, not a freshly generated phantom id.
+      if (created && created.id && created.id !== order.id) {
+        (order as any).id = created.id;
+      }
       if (order.receiptUrl) {
         await client.query(
           `UPDATE public.orders SET receipt_url = $1, updated_at = NOW() WHERE id = $2 AND restaurant_id = $3`,

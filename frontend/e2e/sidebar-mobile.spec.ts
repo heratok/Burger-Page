@@ -33,7 +33,7 @@ test.describe('Admin Mobile Sidebar Drawer Responsiveness', () => {
     await page.getByRole('button', { name: /Acceder al Panel/i }).click();
 
     // 2. Wait for dashboard
-    await expect(page.getByRole('button', { name: /Nueva Venta/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Nueva Venta/i }).first()).toBeVisible();
 
     // 3. Open mobile drawer
     const openMenuBtn = page.getByRole('button', { name: /Abrir menú/i });
@@ -50,7 +50,7 @@ test.describe('Admin Mobile Sidebar Drawer Responsiveness', () => {
 
     // 6. Verify all modules exist in drawer
     await expect(sidebar.getByRole('button', { name: 'Dashboard' })).toBeVisible();
-    await expect(sidebar.getByRole('button', { name: 'Personalizador UI/UX' })).toBeVisible();
+    await expect(sidebar.getByRole('button', { name: 'Personalizar' })).toBeVisible();
 
     // 7. Verify bottom footer buttons ("Ver Tienda" and "Cerrar Sesión") are fully in viewport
     const verTiendaBtn = sidebar.getByRole('button', { name: /Ver Tienda/i });
