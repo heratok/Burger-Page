@@ -113,4 +113,24 @@ describe('SSE & Token Hardening Suite', () => {
     vi.unstubAllEnvs();
     await prodApp.close();
   });
-});
+
+  it('rejects SSE-scoped tokens when used as Bearer tokens on general API endpoints (JD-CONFIRMED-004)', async () => {
+    const fullToken = jwtService.generateToken(craftAdmin);
+    const streamTokenRes = await app.inject({
+      method: 'POST',
+      url: '/api/orders/stream-token',
+      headers: { authorization: `Bearer ${fullToken}` },
+    });
+    const sseToken = streamTokenRes.json().token;
+
+    for (const url of ['/api/orders', '/api/customers', '/api/users', '/api/inventory']) {
+      const res = await app.inject({
+        method: 'GET',
+        url,
+        headers: { authorization: `Bearer ${sseToken}` },
+      });
+      expect(res.statusCode, url).toBe(401);
+      expect(res.json().detail).toBe('Token has restricted scope and cannot be used for general API access.');
+    }
+  });
+});

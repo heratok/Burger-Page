@@ -47,8 +47,16 @@ export class UserController {
     if (auth?.role === 'super_admin') {
       resolvedRestaurantId = query.restaurantId;
     } else {
+      if (!auth?.restaurantId) {
+        return reply.status(403).send({
+          type: 'https://example.com/probs/forbidden',
+          title: 'Forbidden',
+          status: 403,
+          detail: 'Restaurant administrator has no assigned restaurant.',
+        });
+      }
       // restaurant_admin is strictly locked to their assigned restaurant
-      resolvedRestaurantId = auth?.restaurantId;
+      resolvedRestaurantId = auth.restaurantId;
     }
 
     const users = await this.listUsers.execute(resolvedRestaurantId, auth?.role);
