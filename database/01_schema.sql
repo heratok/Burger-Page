@@ -903,6 +903,30 @@ GRANT EXECUTE ON FUNCTION public.adjust_inventory_stock(TEXT, TEXT, NUMERIC) TO 
 GRANT EXECUTE ON FUNCTION public.create_order_atomic(TEXT, TEXT, TEXT, TEXT, NUMERIC, NUMERIC, TEXT, JSONB, NUMERIC, TEXT) TO app_user;
 GRANT EXECUTE ON FUNCTION public.update_order_status_with_actor(TEXT, TEXT, TEXT, TEXT) TO app_user;
 
+-- JD-A-001: these SECURITY DEFINER mutation functions bypass RLS as owner, so
+-- the default PUBLIC EXECUTE must be revoked — the anon key ships in the
+-- frontend bundle and PUBLIC would let unauthenticated PostgREST callers
+-- create orders, mutate order status and adjust stock. Only the authenticated
+-- backend role app_user may execute them.
+REVOKE EXECUTE ON FUNCTION public.adjust_inventory_stock(TEXT, TEXT, NUMERIC) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.create_order_atomic(TEXT, TEXT, TEXT, TEXT, NUMERIC, NUMERIC, TEXT, JSONB, NUMERIC, TEXT) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.update_order_status_with_actor(TEXT, TEXT, TEXT, TEXT) FROM PUBLIC;
+-- The deployed backend runs supabase-js with the service-role key (see
+-- backend/src/infrastructure/persistence/supabase/SupabaseClient.ts), so
+-- PostgREST executes these RPCs as service_role; re-grant EXECUTE to that
+-- role, guarded so it is a no-op on vanilla PostgreSQL (docker-compose, CI
+-- service containers) where the role does not exist. anon/authenticated
+-- keep no EXECUTE: the anon key ships in the frontend bundle.
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+        EXECUTE 'GRANT EXECUTE ON FUNCTION public.adjust_inventory_stock(TEXT, TEXT, NUMERIC) TO service_role';
+        EXECUTE 'GRANT EXECUTE ON FUNCTION public.create_order_atomic(TEXT, TEXT, TEXT, TEXT, NUMERIC, NUMERIC, TEXT, JSONB, NUMERIC, TEXT) TO service_role';
+        EXECUTE 'GRANT EXECUTE ON FUNCTION public.update_order_status_with_actor(TEXT, TEXT, TEXT, TEXT) TO service_role';
+    END IF;
+END;
+$$;
+
 
 -- ============================================================================
 -- 7. ROW LEVEL SECURITY (Multi-Tenant Isolation & Storefront Access)

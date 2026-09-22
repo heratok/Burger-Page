@@ -325,3 +325,23 @@ BEGIN
     RETURN to_jsonb(v_created_order);
 END;
 $$;
+
+-- JD-A-001: this copy of create_order_atomic is SECURITY DEFINER. The
+-- CREATE OR REPLACE above preserves privileges loaded with the original
+-- baseline, where PUBLIC held EXECUTE by default; revoke it here too for
+-- existing databases that never re-apply 01_schema.sql (idempotent, mirrors
+-- the REVOKE in database/01_schema.sql). The .down.sql needs no mirror: it
+-- neither drops nor re-grants this function.
+REVOKE EXECUTE ON FUNCTION public.create_order_atomic(TEXT, TEXT, TEXT, TEXT, NUMERIC, NUMERIC, TEXT, JSONB, NUMERIC, TEXT) FROM PUBLIC;
+-- JD-A-001: the deployed backend runs supabase-js with the service-role key
+-- (backend/src/infrastructure/persistence/supabase/SupabaseClient.ts), so
+-- PostgREST executes this RPC as service_role; re-grant EXECUTE to that role
+-- for existing databases that never re-apply 01_schema.sql, guarded so it is
+-- a no-op on vanilla PostgreSQL where the role does not exist.
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+        EXECUTE 'GRANT EXECUTE ON FUNCTION public.create_order_atomic(TEXT, TEXT, TEXT, TEXT, NUMERIC, NUMERIC, TEXT, JSONB, NUMERIC, TEXT) TO service_role';
+    END IF;
+END;
+$$;
