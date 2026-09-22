@@ -56,6 +56,7 @@ describe('CreateRestaurantUseCase (Security Hardening)', () => {
 
   it('provisions the admin user row when userRepo and hasher are injected (SUS-02)', async () => {
     const mockUserRepo = {
+      findByUsername: vi.fn().mockResolvedValue(null),
       save: vi.fn().mockResolvedValue(undefined),
     } as any;
     const mockHasher = {
@@ -94,6 +95,7 @@ describe('CreateRestaurantUseCase (Security Hardening)', () => {
 
   it('uses a caller-provided adminUsername and forwards an explicit caller role (SUS-02/SUS-03)', async () => {
     const mockUserRepo = {
+      findByUsername: vi.fn().mockResolvedValue(null),
       save: vi.fn().mockResolvedValue(undefined),
     } as any;
     const mockHasher = {
@@ -134,6 +136,7 @@ describe('CreateRestaurantUseCase (Security Hardening)', () => {
 
   it('keeps creating the tenant when the admin user save fails (secondary failure)', async () => {
     const mockUserRepo = {
+      findByUsername: vi.fn().mockResolvedValue(null),
       save: vi.fn().mockRejectedValue(new Error('user save failed')),
     } as any;
     const mockHasher = {
@@ -152,6 +155,49 @@ describe('CreateRestaurantUseCase (Security Hardening)', () => {
 
     expect(result.id).toMatch(/^rest-/);
     expect(result.adminPassword).toBeDefined();
+    expect(warnSpy).toHaveBeenCalled();
+    warnSpy.mockRestore();
+  });
+
+  it('never overwrites an existing user when adminUsername collides (JD-B-001)', async () => {
+    // The seeded super admin 'admin' already owns the username: save() must
+    // never be reached, so no password_hash/role/restaurant_id rewrite can
+    // happen through the Pg username-or-id upsert.
+    const mockUserRepo = {
+      findByUsername: vi.fn().mockResolvedValue({
+        id: 'usr-seeded-admin',
+        username: 'admin',
+        role: 'super_admin',
+      }),
+      save: vi.fn().mockResolvedValue(undefined),
+    } as any;
+    const mockHasher = {
+      hash: vi.fn(async (p: string) => `hashed:${p}`),
+      verify: vi.fn(),
+    } as any;
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const useCaseWithUsers = new CreateRestaurantUseCase(
+      mockRestaurantRepo,
+      mockCategoryRepo,
+      mockUserRepo,
+      mockHasher
+    );
+
+    const result = await useCaseWithUsers.execute({
+      name: 'Rosto',
+      slug: 'rosto',
+      adminUsername: 'admin',
+      adminPassword: 'custom-secret-42',
+    } as any);
+
+    // SUS-02 contract is preserved: the tenant is still created and the
+    // response still carries the one-time credentials for a manual retry...
+    expect(result.id).toMatch(/^rest-/);
+    expect(result.adminPassword).toBe('custom-secret-42');
+    // ...but the colliding user was never saved, and the secondary failure
+    // reported through the existing warn path.
+    expect(mockUserRepo.findByUsername).toHaveBeenCalledWith('admin');
+    expect(mockUserRepo.save).not.toHaveBeenCalled();
     expect(warnSpy).toHaveBeenCalled();
     warnSpy.mockRestore();
   });

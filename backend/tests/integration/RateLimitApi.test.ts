@@ -42,4 +42,44 @@ describe('Rate Limiting Suite', () => {
     const statuses = attempts.map((r) => r.statusCode);
     expect(statuses.filter((s) => s === 429).length).toBeGreaterThan(0);
   });
-});
+
+  it('cannot bypass login rate limit using query parameters or trailing slashes (JD-CONFIRMED-001)', async () => {
+    const testApp = buildApp(undefined, { rateLimit: { max: 50, loginMax: 3, orderMax: 3 } });
+    await testApp.ready();
+    try {
+      const statuses: number[] = [];
+      for (let i = 0; i < 5; i++) {
+        const res = await testApp.inject({
+          method: 'POST',
+          url: `/api/users/login?probe=${i}`,
+          payload: { username: `probe-${i}`, password: 'wrong-password' },
+        });
+        statuses.push(res.statusCode);
+      }
+      expect(statuses.slice(0, 3)).not.toContain(429);
+      expect(statuses.slice(3)).toContain(429);
+    } finally {
+      await testApp.close();
+    }
+  });
+
+  it('cannot bypass order rate limit using query parameters or trailing slashes (JD-CONFIRMED-001)', async () => {
+    const testApp = buildApp(undefined, { rateLimit: { max: 50, loginMax: 3, orderMax: 3 } });
+    await testApp.ready();
+    try {
+      const statuses: number[] = [];
+      for (let i = 0; i < 5; i++) {
+        const res = await testApp.inject({
+          method: 'POST',
+          url: `/api/orders/?table=${i}`,
+          payload: { restaurantId: 'rest-rate', items: [{ productId: `p-${i}`, quantity: 1 }] },
+        });
+        statuses.push(res.statusCode);
+      }
+      expect(statuses.slice(0, 3)).not.toContain(429);
+      expect(statuses.slice(3)).toContain(429);
+    } finally {
+      await testApp.close();
+    }
+  });
+});

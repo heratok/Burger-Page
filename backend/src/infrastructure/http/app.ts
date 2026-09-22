@@ -482,8 +482,10 @@ export function buildApp(
       const loginLimiter = api.rateLimit({ max: Math.min(loginMax, rateMax), timeWindow: rateWindow }).bind(api);
       const orderLimiter = api.rateLimit({ max: Math.min(orderMax, rateMax), timeWindow: rateWindow }).bind(api);
       api.addHook('onRequest', async (req, reply) => {
-        const isLogin = req.method === 'POST' && req.url === '/api/users/login';
-        const isPublicOrder = req.method === 'POST' && req.url === '/api/orders';
+        const rawPath = req.url.split('?')[0] || '';
+        const pathname = rawPath.replace(/\/+$/, '') || '/';
+        const isLogin = req.method === 'POST' && pathname === '/api/users/login';
+        const isPublicOrder = req.method === 'POST' && pathname === '/api/orders';
         if (isLogin) return loginLimiter(req, reply);
         if (isPublicOrder) return orderLimiter(req, reply);
         return globalLimiter(req, reply);
