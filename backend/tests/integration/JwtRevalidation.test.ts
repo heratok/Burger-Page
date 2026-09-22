@@ -74,13 +74,14 @@ function makeUser(partial: Partial<User> & { id: string; role: User['role'] }): 
 
 function buildRevalidatingApp(userRepo: UserRepository, restaurantRepo?: RestaurantRepository) {
   const jwtService = new JwtService('test-secret-jwt-revalidation');
-  const { requireAuth, requireSuperAdmin } = createAuthMiddlewares(jwtService, {
+  const { requireAuth, requireSuperAdmin, requireStreamToken } = createAuthMiddlewares(jwtService, {
     userRepo,
     ...(restaurantRepo ? { restaurantRepo } : {}),
   });
   const app: FastifyInstance = fastify();
   app.get('/me', { preHandler: [requireAuth] }, async (req) => ({ context: req.authContext }));
   app.get('/super-only', { preHandler: [requireSuperAdmin] }, async (req) => ({ context: req.authContext }));
+  app.get('/stream', { preHandler: [requireStreamToken] }, async (req) => ({ context: req.authContext }));
   return { app, jwtService };
 }
 
@@ -305,5 +306,138 @@ describe('JWT revalidation against users.is_active / role / restaurant (SUS-14)'
 
     expect(res.statusCode).toBe(200);
     expect(res.json().context.role).toBe('super_admin');
+  });
+
+  describe('requireStreamToken SUS-14 parity (JD-CONFIRMED-002)', () => {
+    it('rejects with 401 if user in query token no longer exists in repository', async () => {
+      const userRepo = new FakeUserRepository();
+      const restaurantRepo = new FakeRestaurantRepository();
+      const { app, jwtService } = await buildAndTrack(userRepo, restaurantRepo);
+
+      const token = jwtService.generateToken({
+        id: 'user-missing',
+        username: 'ghost',
+        role: 'restaurant_admin',
+        restaurantId: 'rest-1',
+        scope: 'sse',
+      });
+
+      const res = await app.inject({
+        method: 'GET',
+        url: `/stream?token=${token}`,
+      });
+
+      expect(res.statusCode).toBe(401);
+      expect(res.json().detail).toBe('Account no longer exists.');
+    });
+
+    it('rejects with 401 if user in query token is deactivated in repository', async () => {
+      const userRepo = new FakeUserRepository();
+      userRepo.setUser(
+        makeUser({
+          id: 'user-deactivated',
+          username: 'disabled_user',
+          role: 'restaurant_admin',
+          restaurantId: 'rest-1',
+          isActive: false,
+        })
+      );
+      const restaurantRepo = new FakeRestaurantRepository();
+      const { app, jwtService } = await buildAndTrack(userRepo, restaurantRepo);
+
+      const token = jwtService.generateToken({
+        id: 'user-deactivated',
+        username: 'disabled_user',
+        role: 'restaurant_admin',
+        restaurantId: 'rest-1',
+        scope: 'sse',
+      });
+
+      const res = await app.inject({
+        method: 'GET',
+        url: `/stream?token=${token}`,
+      });
+
+      expect(res.statusCode).toBe(401);
+      expect(res.json().detail).toBe('Account is deactivated.');
+    });
+
+    it('rejects with 401 if restaurant in query token is deactivated in repository', async () => {
+      const userRepo = new FakeUserRepository();
+      userRepo.setUser(
+        makeUser({
+          id: 'user-active',
+          username: 'active_admin',
+          role: 'restaurant_admin',
+          restaurantId: 'rest-off',
+          isActive: true,
+        })
+      );
+      const restaurantRepo = new FakeRestaurantRepository();
+      restaurantRepo.setRestaurant({
+        id: 'rest-off',
+        name: 'Deactivated Tenant',
+        theme: 'dark',
+        openingHours: { open: '10:00', close: '22:00' },
+        isActive: false,
+      });
+
+      const { app, jwtService } = await buildAndTrack(userRepo, restaurantRepo);
+
+      const token = jwtService.generateToken({
+        id: 'user-active',
+        username: 'active_admin',
+        role: 'restaurant_admin',
+        restaurantId: 'rest-off',
+        scope: 'sse',
+      });
+
+      const res = await app.inject({
+        method: 'GET',
+        url: `/stream?token=${token}`,
+      });
+
+      expect(res.statusCode).toBe(401);
+      expect(res.json().detail).toBe('Restaurant is deactivated.');
+    });
+
+    it('allows query token with valid active user and restaurant and updates authContext', async () => {
+      const userRepo = new FakeUserRepository();
+      userRepo.setUser(
+        makeUser({
+          id: 'user-ok',
+          username: 'fresh_username',
+          role: 'restaurant_admin',
+          restaurantId: 'rest-active',
+          isActive: true,
+        })
+      );
+      const restaurantRepo = new FakeRestaurantRepository();
+      restaurantRepo.setRestaurant({
+        id: 'rest-active',
+        name: 'Active Tenant',
+        theme: 'dark',
+        openingHours: { open: '10:00', close: '22:00' },
+        isActive: true,
+      });
+
+      const { app, jwtService } = await buildAndTrack(userRepo, restaurantRepo);
+
+      const token = jwtService.generateToken({
+        id: 'user-ok',
+        username: 'stale_username',
+        role: 'restaurant_admin',
+        restaurantId: 'rest-active',
+        scope: 'sse',
+      });
+
+      const res = await app.inject({
+        method: 'GET',
+        url: `/stream?token=${token}`,
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json().context.username).toBe('fresh_username');
+    });
   });
 });

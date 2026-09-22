@@ -333,4 +333,85 @@ describe('Restaurant API & Multi-Tenant Security (Integration)', () => {
       expect(response.json().config.logoUrl).toBe('https://example.com/super-craft-logo.webp');
     });
   });
+
+  describe('Restaurant Categories Tenancy & Role Hardening (JD-CONFIRMED-003)', () => {
+    it('PUT /api/restaurant/categories with restaurant_admin lacking restaurantId returns 403 Forbidden', async () => {
+      const tokenNoTenant = jwtService.generateToken({
+        id: 'usr-admin-no-tenant',
+        username: 'admin_no_tenant',
+        role: 'restaurant_admin',
+      });
+
+      const res = await app.inject({
+        method: 'PUT',
+        url: '/api/restaurant/categories',
+        headers: { authorization: `Bearer ${tokenNoTenant}` },
+        payload: { categories: ['Fast Food'] },
+      });
+
+      expect(res.statusCode).toBe(403);
+      expect(res.json().detail).toBe('Restaurant administrator has no assigned restaurant.');
+    });
+
+    it('PUT /api/restaurant/:slug/categories with restaurant_admin lacking restaurantId returns 403 Forbidden', async () => {
+      const tokenNoTenant = jwtService.generateToken({
+        id: 'usr-admin-no-tenant',
+        username: 'admin_no_tenant',
+        role: 'restaurant_admin',
+      });
+
+      const res = await app.inject({
+        method: 'PUT',
+        url: '/api/restaurant/burger-craft/categories',
+        headers: { authorization: `Bearer ${tokenNoTenant}` },
+        payload: { categories: ['Fast Food'] },
+      });
+
+      expect(res.statusCode).toBe(403);
+      expect(res.json().detail).toBe('Restaurant administrator has no assigned restaurant.');
+    });
+
+    it('PUT /api/restaurant/:slug/categories with restaurant_admin targeting another restaurant returns 403 Forbidden', async () => {
+      const res = await app.inject({
+        method: 'PUT',
+        url: '/api/restaurant/tacos-el-rey/categories',
+        headers: { authorization: `Bearer ${tokenRestaurantAdmin}` },
+        payload: { categories: ['Tacos', 'Burritos'] },
+      });
+
+      expect(res.statusCode).toBe(403);
+      expect(res.json().detail).toBe('You are only authorized to update your own restaurant categories.');
+    });
+
+    it('PUT /api/restaurant/:slug/categories with restaurant_admin targeting own restaurant succeeds (200)', async () => {
+      const res = await app.inject({
+        method: 'PUT',
+        url: '/api/restaurant/burger-craft/categories',
+        headers: { authorization: `Bearer ${tokenRestaurantAdmin}` },
+        payload: { categories: ['Smash Burgers', 'Sides', 'Drinks'] },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json().categories).toEqual(['Smash Burgers', 'Sides', 'Drinks']);
+    });
+
+    it('PUT /api/restaurant/categories with non-admin token returns 403 Forbidden (requireAnyAdmin)', async () => {
+      const tokenCustomer = jwtService.generateToken({
+        id: 'usr-customer',
+        username: 'customer_bob',
+        role: 'customer' as any,
+      });
+
+      const res = await app.inject({
+        method: 'PUT',
+        url: '/api/restaurant/categories',
+        headers: { authorization: `Bearer ${tokenCustomer}` },
+        payload: { categories: ['Hacked'] },
+      });
+
+      expect(res.statusCode).toBe(403);
+      expect(res.json().detail).toBe('Administrator privileges required to access this resource.');
+    });
+  });
 });
+

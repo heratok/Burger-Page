@@ -58,6 +58,14 @@ export function createAuthMiddlewares(
     }
     try {
       const payload = jwt.verifyToken(token);
+      if (payload.scope && payload.scope !== 'session') {
+        return reply.status(401).send({
+          type: 'https://example.com/probs/unauthorized',
+          title: 'Unauthorized',
+          status: 401,
+          detail: 'Token has restricted scope and cannot be used for general API access.',
+        });
+      }
       const authContext: AuthContext = {
         userId: payload.sub,
         username: payload.username,
@@ -201,12 +209,50 @@ export function createAuthMiddlewares(
             detail: 'Stream token is invalid for this purpose.',
           });
         }
-        req.authContext = {
+        const authContext: AuthContext = {
           userId: payload.sub,
           username: payload.username,
           role: payload.role,
           restaurantId: payload.restaurantId,
         };
+
+        if (deps?.userRepo) {
+          const user = await deps.userRepo.findById(payload.sub);
+          if (!user) {
+            return reply.status(401).send({
+              type: 'https://example.com/probs/unauthorized',
+              title: 'Unauthorized',
+              status: 401,
+              detail: 'Account no longer exists.',
+            });
+          }
+          if (user.isActive === false) {
+            return reply.status(401).send({
+              type: 'https://example.com/probs/unauthorized',
+              title: 'Unauthorized',
+              status: 401,
+              detail: 'Account is deactivated.',
+            });
+          }
+          authContext.userId = user.id;
+          authContext.username = user.username;
+          authContext.role = user.role;
+          authContext.restaurantId = user.restaurantId;
+        }
+
+        if (deps?.restaurantRepo && authContext.restaurantId) {
+          const restaurant = await deps.restaurantRepo.findById(authContext.restaurantId);
+          if (!restaurant || !restaurant.isActive) {
+            return reply.status(401).send({
+              type: 'https://example.com/probs/unauthorized',
+              title: 'Unauthorized',
+              status: 401,
+              detail: 'Restaurant is deactivated.',
+            });
+          }
+        }
+
+        req.authContext = authContext;
       } catch (err: any) {
         return reply.status(401).send({
           type: 'https://example.com/probs/unauthorized',

@@ -113,4 +113,24 @@ describe('Auth Middleware & JWT Suite', () => {
     const body = res.json();
     expect(body.context.role).toBe('super_admin');
   });
+
+  it('rechaza con 401 si el token tiene un scope restringido como sse (JD-CONFIRMED-004)', async () => {
+    const sseToken = jwtService.generateToken({
+      id: 'usr-1',
+      username: 'manager_craft',
+      role: 'restaurant_admin',
+      restaurantId: 'rest-craft',
+      scope: 'sse',
+    });
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/protected-route',
+      headers: { authorization: `Bearer ${sseToken}` },
+    });
+
+    expect(res.statusCode).toBe(401);
+    expect(res.json().detail).toBe('Token has restricted scope and cannot be used for general API access.');
+  });
 });
+

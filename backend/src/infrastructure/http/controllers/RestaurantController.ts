@@ -74,10 +74,31 @@ export class RestaurantController {
     let identifier: string;
 
     if (auth?.role === 'super_admin') {
-      identifier = params.slug || auth.restaurantId || 'burger-craft';
+      identifier = params.slug || auth?.restaurantId || 'burger-craft';
     } else {
+      if (!auth?.restaurantId) {
+        return reply.status(403).send({
+          type: 'https://example.com/probs/forbidden',
+          title: 'Forbidden',
+          status: 403,
+          detail: 'Restaurant administrator has no assigned restaurant.',
+        });
+      }
+
+      if (params.slug && params.slug !== auth.restaurantId) {
+        const assignedRest = await this.getRestaurantUseCase.execute(auth.restaurantId);
+        if (!assignedRest || (assignedRest.id !== params.slug && assignedRest.slug !== params.slug)) {
+          return reply.status(403).send({
+            type: 'https://example.com/probs/forbidden',
+            title: 'Forbidden',
+            status: 403,
+            detail: 'You are only authorized to update your own restaurant categories.',
+          });
+        }
+      }
+
       // restaurant_admin is strictly bound to their assigned restaurant
-      identifier = auth?.restaurantId || 'burger-craft';
+      identifier = params.slug || auth.restaurantId;
     }
 
     const { categories } = parsed.data;

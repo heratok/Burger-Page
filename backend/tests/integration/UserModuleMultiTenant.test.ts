@@ -159,4 +159,23 @@ describe('User Module Multi-Tenant & Security Suite (Integration)', () => {
     expect(user.passwordHash).toBeUndefined();
     expect(user.password_hash).toBeUndefined();
   });
+
+  it('8. GET /api/users with restaurant_admin token lacking restaurantId returns 403 Forbidden (JD-CONFIRMED-001)', async () => {
+    const tokenNoTenant = jwtService.generateToken({
+      id: 'usr-admin-no-tenant',
+      username: 'admin_no_tenant',
+      role: 'restaurant_admin',
+    });
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/users',
+      headers: { authorization: `Bearer ${tokenNoTenant}` },
+    });
+
+    expect(res.statusCode).toBe(403);
+    const body = res.json();
+    expect(body.detail).toBe('Restaurant administrator has no assigned restaurant.');
+  });
 });
+
