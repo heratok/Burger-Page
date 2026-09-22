@@ -85,6 +85,15 @@ export class CreateRestaurantUseCase {
     const adminUsername = input.adminUsername?.trim() || `admin_${cleanSlug}`;
     if (this.userRepo && this.hasher) {
       try {
+        // JD-B-001: a colliding adminUsername (e.g. the seeded super admin
+        // 'admin') must never reach userRepo.save — the Pg driver upserts by
+        // username OR id and would rewrite the existing user's
+        // password_hash/role/restaurant_id. Mirror CreateUserUseCase's
+        // uniqueness check; the throw is handled by the SUS-02 catch below.
+        const existing = await this.userRepo.findByUsername(adminUsername);
+        if (existing) {
+          throw new ValidationError(`Username "${adminUsername}" already exists`);
+        }
         const adminUser: User = {
           id: randomUUID(),
           username: adminUsername,
