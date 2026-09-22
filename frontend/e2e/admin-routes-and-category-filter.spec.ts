@@ -53,11 +53,11 @@ test.describe('Admin Routing, Tenant Management & Storefront Category Filter E2E
     await expect(burgersBtn).toBeVisible({ timeout: 10000 });
     await burgersBtn.click();
 
-    const burgerItem = page.getByText('Burger Test Diagnostico', { exact: false });
+    const burgerItem = page.getByText('Hamburguesa Clásica', { exact: false });
     await expect(burgerItem).toBeVisible({ timeout: 10000 });
 
     // Non-hamburger items must NOT appear under Hamburguesas
-    await expect(page.getByText('Motherboard Godlike Test', { exact: false })).not.toBeVisible();
-    await expect(page.getByText('yuca', { exact: true })).not.toBeVisible();
+    await expect(page.getByText('Gaseosa 400ml', { exact: false })).not.toBeVisible();
+    await expect(page.getByText('Yuca Frita', { exact: false })).not.toBeVisible();
   });
 });

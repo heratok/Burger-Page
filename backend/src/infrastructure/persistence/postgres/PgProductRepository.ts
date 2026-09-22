@@ -9,7 +9,7 @@ function mapRow(row: any): Product {
     name: row.name,
     description: row.description || '',
     price: Number(row.price),
-    category: row.category_name,
+    category: row.category_name || '',
     categoryId: row.category_id || undefined,
     imageUrl: row.image_url || undefined,
     isAvailable: Boolean(row.is_available),
@@ -25,7 +25,10 @@ export class PgProductRepository implements ProductRepository {
   async findById(id: string, restaurantId: string): Promise<Product | null> {
     return withTenantContext({ restaurantId }, async (client) => {
       const { rows } = await client.query(
-        `SELECT * FROM public.products WHERE id = $1 AND restaurant_id = $2`,
+        `SELECT p.*, c.name AS category_name
+         FROM public.products p
+         LEFT JOIN public.categories c ON c.id = p.category_id
+         WHERE p.id = $1 AND p.restaurant_id = $2`,
         [id, restaurantId]
       );
       return rows[0] ? mapRow(rows[0]) : null;
@@ -35,7 +38,11 @@ export class PgProductRepository implements ProductRepository {
   async findByRestaurantId(restaurantId: string): Promise<Product[]> {
     return withTenantContext({ restaurantId }, async (client) => {
       const { rows } = await client.query(
-        `SELECT * FROM public.products WHERE restaurant_id = $1 ORDER BY display_order ASC, id ASC`,
+        `SELECT p.*, c.name AS category_name
+         FROM public.products p
+         LEFT JOIN public.categories c ON c.id = p.category_id
+         WHERE p.restaurant_id = $1
+         ORDER BY p.display_order ASC, p.id ASC`,
         [restaurantId]
       );
       return rows.map(mapRow);
@@ -46,13 +53,12 @@ export class PgProductRepository implements ProductRepository {
     await withTenantContext({ restaurantId: product.restaurantId }, async (client) => {
       await client.query(
         `INSERT INTO public.products (
-           id, restaurant_id, category_id, category_name, name, description, price,
+           id, restaurant_id, category_id, name, description, price,
            image_url, is_available, is_popular, is_new, preparation_time_minutes, display_order
          )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
          ON CONFLICT (id) DO UPDATE SET
            category_id = EXCLUDED.category_id,
-           category_name = EXCLUDED.category_name,
            name = EXCLUDED.name,
            description = EXCLUDED.description,
            price = EXCLUDED.price,
@@ -66,7 +72,6 @@ export class PgProductRepository implements ProductRepository {
           product.id,
           product.restaurantId,
           product.categoryId || null,
-          product.category,
           product.name,
           product.description,
           product.price,

@@ -42,6 +42,19 @@ function mapRow(row: any): Restaurant {
   };
 }
 
+const RESTAURANT_READ_COLUMNS = `
+  SELECT r.id, r.slug, r.name, r.tagline, r.whatsapp_number, r.address, r.is_active,
+         r.created_at,
+         s.currency, s.currency_symbol, s.delivery_fee, s.min_order_amount,
+         s.estimated_delivery_time, s.opening_hours_text, s.open_time, s.close_time,
+         s.announcement_text, s.show_announcement,
+         b.logo_url, b.banner_url, b.show_banner, b.primary_color, b.primary_hover_color,
+         b.bg_theme, b.font_family, b.card_radius, b.card_style, b.compact_grid, b.show_badges
+  FROM public.restaurants r
+  LEFT JOIN public.restaurant_settings s ON s.restaurant_id = r.id
+  LEFT JOIN public.restaurant_branding b ON b.restaurant_id = r.id
+`;
+
 // findById/findAll/save/delete/hardDelete are administrative — no tenant
 // context exists yet to scope by (a restaurant is the tenant root), so they
 // run as actorRole 'super_admin' to preserve today's unrestricted
@@ -52,23 +65,35 @@ function mapRow(row: any): Restaurant {
 export class PgRestaurantRepository implements RestaurantRepository {
   async findById(id: string): Promise<Restaurant | null> {
     return withTenantContext({ restaurantId: null, actorRole: 'super_admin' }, async (client) => {
-      const { rows } = await client.query(`SELECT * FROM public.restaurants WHERE id = $1`, [id]);
+      const { rows } = await client.query(`${RESTAURANT_READ_COLUMNS} WHERE r.id = $1`, [id]);
       return rows[0] ? mapRow(rows[0]) : null;
     });
   }
 
   async findBySlug(slug: string): Promise<Restaurant | null> {
     return withTenantContext({ restaurantId: null }, async (client) => {
-      const { rows } = await client.query(`SELECT * FROM public.restaurants WHERE slug = $1`, [slug]);
+      const { rows } = await client.query(`${RESTAURANT_READ_COLUMNS} WHERE r.slug = $1`, [slug]);
       return rows[0] ? mapRow(rows[0]) : null;
     });
   }
 
   async findAll(): Promise<Restaurant[]> {
     return withTenantContext({ restaurantId: null, actorRole: 'super_admin' }, async (client) => {
-      const { rows } = await client.query(`SELECT * FROM public.restaurants ORDER BY created_at ASC`);
+      const { rows } = await client.query(`${RESTAURANT_READ_COLUMNS} ORDER BY r.created_at ASC`);
       return rows.map(mapRow);
     });
+  }
+
+  private async upsert(client: any, table: string, payload: Record<string, unknown>): Promise<void> {
+    const columns = Object.keys(payload);
+    const values = Object.values(payload);
+    const placeholders = columns.map((_, i) => `$${i + 1}`);
+    const updates = columns.filter((c) => c !== 'id' && c !== 'restaurant_id').map((c) => `${c} = EXCLUDED.${c}`);
+    await client.query(
+      `INSERT INTO ${table} (${columns.join(', ')}) VALUES (${placeholders.join(', ')})
+       ON CONFLICT (${columns.includes('id') ? 'id' : 'restaurant_id'}) DO UPDATE SET ${updates.join(', ')}`,
+      values
+    );
   }
 
   async save(restaurant: Restaurant): Promise<void> {
@@ -76,40 +101,57 @@ export class PgRestaurantRepository implements RestaurantRepository {
       restaurant.slug?.trim() ||
       restaurant.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') ||
       restaurant.id;
+    const now = new Date().toISOString();
+    const cfg = restaurant.config || {};
+    const openTime = restaurant.openingHours?.open ? `${restaurant.openingHours.open}:00` : '12:00:00';
+    const closeTime = restaurant.openingHours?.close ? `${restaurant.openingHours.close}:00` : '22:30:00';
 
-    const payload: Record<string, unknown> = {
+    // Identidad del tenant (restaurants)
+    const identity: Record<string, unknown> = {
       id: restaurant.id,
       slug,
       name: restaurant.name,
-      tagline: restaurant.tagline || restaurant.config?.tagline || 'Cocina artesanal',
-      whatsapp_number: restaurant.whatsappNumber || restaurant.config?.whatsappNumber || null,
-      primary_color: restaurant.primaryColor || restaurant.config?.primaryColor || '#E63946',
-      bg_theme: restaurant.theme || restaurant.config?.bgTheme || 'dark-charcoal',
-      open_time: restaurant.openingHours?.open ? `${restaurant.openingHours.open}:00` : '12:00:00',
-      close_time: restaurant.openingHours?.close ? `${restaurant.openingHours.close}:00` : '22:30:00',
+      tagline: restaurant.tagline || cfg.tagline || 'Cocina artesanal',
+      whatsapp_number: restaurant.whatsappNumber || cfg.whatsappNumber || null,
       is_active: restaurant.isActive !== undefined ? Boolean(restaurant.isActive) : true,
-      created_at: restaurant.createdAt || new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      created_at: restaurant.createdAt || now,
+      updated_at: now,
     };
-    if (restaurant.config) {
-      if (restaurant.config.logoUrl !== undefined) payload.logo_url = restaurant.config.logoUrl || null;
-      if (restaurant.config.bannerUrl !== undefined) payload.banner_url = restaurant.config.bannerUrl || null;
-      if (restaurant.config.deliveryFee !== undefined) payload.delivery_fee = restaurant.config.deliveryFee;
-      if (restaurant.config.minOrderAmount !== undefined) payload.min_order_amount = restaurant.config.minOrderAmount;
-      if (restaurant.config.address !== undefined) payload.address = restaurant.config.address || null;
-    }
+    if (cfg.address !== undefined) identity.address = cfg.address || null;
 
-    const columns = Object.keys(payload);
-    const values = Object.values(payload);
-    const placeholders = columns.map((_, i) => `$${i + 1}`);
-    const updates = columns.filter((c) => c !== 'id').map((c) => `${c} = EXCLUDED.${c}`);
+    // Configuración operativa (restaurant_settings) — solo campos provistos
+    // para no pisar valores existentes en updates parciales; el INSERT nuevo
+    // completa con los defaults de la tabla.
+    const settings: Record<string, unknown> = { restaurant_id: restaurant.id, updated_at: now };
+    if (cfg.currency !== undefined) settings.currency = cfg.currency;
+    if (cfg.currencySymbol !== undefined) settings.currency_symbol = cfg.currencySymbol;
+    if (cfg.deliveryFee !== undefined) settings.delivery_fee = cfg.deliveryFee;
+    if (cfg.minOrderAmount !== undefined) settings.min_order_amount = cfg.minOrderAmount;
+    if (cfg.estimatedDeliveryTime !== undefined) settings.estimated_delivery_time = cfg.estimatedDeliveryTime;
+    if (cfg.openingHours !== undefined) settings.opening_hours_text = cfg.openingHours;
+    settings.open_time = openTime;
+    settings.close_time = closeTime;
+    if (cfg.announcementText !== undefined) settings.announcement_text = cfg.announcementText || null;
+    if (cfg.showAnnouncement !== undefined) settings.show_announcement = cfg.showAnnouncement;
+
+    // Identidad visual (restaurant_branding)
+    const branding: Record<string, unknown> = { restaurant_id: restaurant.id, updated_at: now };
+    if (cfg.logoUrl !== undefined) branding.logo_url = cfg.logoUrl || null;
+    if (cfg.bannerUrl !== undefined) branding.banner_url = cfg.bannerUrl || null;
+    if (cfg.showBanner !== undefined) branding.show_banner = cfg.showBanner;
+    branding.primary_color = restaurant.primaryColor || cfg.primaryColor || '#E63946';
+    if (cfg.primaryHoverColor !== undefined) branding.primary_hover_color = cfg.primaryHoverColor;
+    branding.bg_theme = restaurant.theme || cfg.bgTheme || 'dark-charcoal';
+    if (cfg.fontFamily !== undefined) branding.font_family = cfg.fontFamily;
+    if (cfg.cardRadius !== undefined) branding.card_radius = cfg.cardRadius;
+    if (cfg.cardStyle !== undefined) branding.card_style = cfg.cardStyle;
+    if (cfg.compactGrid !== undefined) branding.compact_grid = cfg.compactGrid;
+    if (cfg.showBadges !== undefined) branding.show_badges = cfg.showBadges;
 
     await withTenantContext({ restaurantId: restaurant.id, actorRole: 'super_admin' }, async (client) => {
-      await client.query(
-        `INSERT INTO public.restaurants (${columns.join(', ')}) VALUES (${placeholders.join(', ')})
-         ON CONFLICT (id) DO UPDATE SET ${updates.join(', ')}`,
-        values
-      );
+      await this.upsert(client, 'public.restaurants', identity);
+      await this.upsert(client, 'public.restaurant_settings', settings);
+      await this.upsert(client, 'public.restaurant_branding', branding);
     });
   }
 

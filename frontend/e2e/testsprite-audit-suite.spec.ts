@@ -81,7 +81,9 @@ test.describe('TestSprite Audit & Resolution Suite', () => {
     await page.getByRole('button', { name: /Acceder al Panel/i }).click();
 
     await page.waitForURL(/\/admin/);
-    const targetRow = page.locator('tr').filter({ hasText: 'Test Resto 2026-09-06 1145' });
+    // Deterministic seed tenant (3NF/clean-seed refactor): the dedicated
+    // 'Test Resto 2026-09-06 1145' fixture no longer exists.
+    const targetRow = page.locator('tr').filter({ hasText: 'Burger Craft' });
     await expect(targetRow).toBeVisible({ timeout: 10000 });
 
     const toggleBtn = targetRow.getByRole('button', { name: /Operando|Pausado/i });

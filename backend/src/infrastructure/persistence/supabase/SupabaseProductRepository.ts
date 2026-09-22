@@ -17,7 +17,7 @@ export class SupabaseProductRepository implements ProductRepository {
       }
     }
 
-    const categoryName = row.categories?.name || row.category_name || row.category || 'General';
+    const categoryName = row.categories?.name || row.category || 'General';
 
     return {
       id: row.id,
@@ -73,7 +73,6 @@ export class SupabaseProductRepository implements ProductRepository {
       name: product.name,
       description: product.description,
       price: product.price,
-      category_name: product.category,
       category_id: product.categoryId || null,
       image_url: product.imageUrl || null,
       is_available: product.isAvailable,

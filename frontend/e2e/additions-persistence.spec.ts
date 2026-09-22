@@ -39,8 +39,8 @@ test.describe('Additions & DB Persistence Suite (admin & rosto)', () => {
     await expect(additionsSubtab).toBeVisible({ timeout: 10000 });
     await additionsSubtab.click();
 
-    // Verify existing additions are loaded from DB
-    await expect(restoPage.getByText(/agua/i).first()).toBeVisible({ timeout: 15000 });
+    // Verify existing additions are loaded from DB (fixture demo determinista)
+    await expect(restoPage.getByText(/queso extra/i).first()).toBeVisible({ timeout: 15000 });
 
     // 1.4 Create a new addition as rosto
     const uniqueAdditionName = `Papas Rosto E2E ${Date.now().toString().slice(-4)}`;

@@ -98,8 +98,8 @@ describe('PostgreSQL Real Instance Integration Suite (Docker)', () => {
     it('creates product in restaurant A using composite ON CONFLICT', async () => {
       if (!isDbConnected) return;
       const result = await pool.query(
-        `INSERT INTO public.products (id, restaurant_id, name, category_name, price, is_available)
-         VALUES ($1, $2, 'Test Burger', 'Burgers', 10000.00, true)
+        `INSERT INTO public.products (id, restaurant_id, name, price, is_available)
+         VALUES ($1, $2, 'Test Burger', 10000.00, true)
          ON CONFLICT (id, restaurant_id) DO UPDATE SET price = EXCLUDED.price
          RETURNING *`,
         [productId, RESTAURANT_A]
@@ -112,8 +112,8 @@ describe('PostgreSQL Real Instance Integration Suite (Docker)', () => {
     it('updates product in restaurant A idempotently', async () => {
       if (!isDbConnected) return;
       const result = await pool.query(
-        `INSERT INTO public.products (id, restaurant_id, name, category_name, price, is_available)
-         VALUES ($1, $2, 'Test Burger Updated', 'Burgers', 12500.00, true)
+        `INSERT INTO public.products (id, restaurant_id, name, price, is_available)
+         VALUES ($1, $2, 'Test Burger Updated', 12500.00, true)
          ON CONFLICT (id, restaurant_id) DO UPDATE
          SET name = EXCLUDED.name, price = EXCLUDED.price
          RETURNING *`,
@@ -130,8 +130,8 @@ describe('PostgreSQL Real Instance Integration Suite (Docker)', () => {
       let errorOccurred = false;
       try {
         await pool.query(
-          `INSERT INTO public.products (id, restaurant_id, name, category_name, price, is_available)
-           VALUES ($1, $2, 'Hijacked Burger', 'Burgers', 1.00, true)
+          `INSERT INTO public.products (id, restaurant_id, name, price, is_available)
+           VALUES ($1, $2, 'Hijacked Burger', 1.00, true)
            ON CONFLICT (id, restaurant_id) DO UPDATE SET name = EXCLUDED.name`,
           [productId, RESTAURANT_B]
         );
