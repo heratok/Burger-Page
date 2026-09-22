@@ -15,8 +15,8 @@ Este directorio contiene la definición canónica y datos demo para PostgreSQL
   - Triggers automáticos (`updated_at`, contadores atómicos, auditoría de estado, métricas de clientes).
   - Políticas Row Level Security (RLS) con InitPlan (`current_setting(...)`) y FORCE RLS.
   - `COMMENT ON TABLE/COLUMN` en español para discovery.
-* **[`02_seed.sql`](file:///C:/Users/ASUS/Desktop/Burger-Page/database/02_seed.sql)**: Datos **demo deterministas**
-  (2 restaurantes, usuarios, menú demo). **Sin fixtures de tests**: los datos de QA/E2E viven en los tests.
+* **[`02_seed.sql`](file:///C:/Users/ASUS/Desktop/Burger-Page/database/02_seed.sql)**: Datos **demo deterministas locales**
+  (2 restaurantes, usuarios, menú demo para CI/Docker). **EXCLUSIVO para desarrollo local y tests**: nunca debe exigirse en entornos remotos o Supabase.
 * **[`migrations/`](file:///C:/Users/ASUS/Desktop/Burger-Page/database/migrations)**: Migraciones versionadas con `node-pg-migrate`.
 
 ---

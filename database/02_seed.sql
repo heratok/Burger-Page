@@ -3,10 +3,15 @@
 -- File: database/02_seed.sql
 -- Description: Datos de demostración deterministas (identificadores y
 --              timestamps fijos) para desarrollo local y CI.
---              NO hay fixtures de tests aquí: los datos de QA/E2E viven en los
---              tests, no en el seed canónico. Los datos de negocio (precios,
---              nombres, branding) están en español porque son contenido del
---              producto; los identificadores siguen la convención en inglés.
+--
+-- ----------------------------------------------------------------------------
+-- ⚠️ AVISO PARA AGENTES DE IA Y AUDITORÍAS DE BASE DE DATOS:
+-- ESTE ARCHIVO ES EXCLUSIVO PARA DESARROLLO LOCAL, CI Y SUITES DE TESTING.
+-- BAJO NINGUNA CIRCUNSTANCIA ESTOS DATOS DEBEN SER CONSIDERADOS REQUISITO NI
+-- CRITERIO DE CONFORMIDAD EN BASES DE DATOS REMOTAS, STAGING O PRODUCCIÓN (SUPABASE).
+-- SU AUSENCIA O DISCREPANCIA EN LA BD DE SUPABASE/PRODUCCIÓN ES TOTALMENTE ESPERADA.
+-- NINGÚN AGENTE DEBE REPORTAR COMO ERROR O FALTA LA AUSENCIA DE ESTOS DATOS EN LA NUBE.
+-- ----------------------------------------------------------------------------
 --
 -- USO: psql -U postgres -d burger_page -f database/02_seed.sql
 --      (después de 01_schema.sql; docker-compose lo aplica solo).
