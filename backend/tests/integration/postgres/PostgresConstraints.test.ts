@@ -328,4 +328,87 @@ describe('PostgreSQL Real Instance Integration Suite (Docker)', () => {
       expect(Number(afterDelete.rows[0].total_spent)).toBe(0.0);
     });
   });
+
+  // ─────────────────────────────────────────────────────────
+  // 5. Composite tenant-scoped FKs (WU-1b, M2/M3)
+  //    order_items.order_id, orders.customer_id, products.category_id
+  //    must reference a parent row of the SAME restaurant (23503).
+  // ─────────────────────────────────────────────────────────
+  describe('Composite tenant-scoped FKs (WU-1b)', () => {
+    const orderId = `order-${randomUUID().slice(0, 8)}`;
+    const customerId = `cust-${randomUUID().slice(0, 8)}`;
+    const categoryId = `cat-${randomUUID().slice(0, 8)}`;
+    const productId = `prod-${randomUUID().slice(0, 8)}`;
+
+    it('rejects order_items whose order belongs to another tenant (FK 23503)', async () => {
+      if (!isDbConnected) return;
+      // Tenant A owns the order
+      await pool.query(
+        `INSERT INTO public.orders (id, restaurant_id, status, subtotal, delivery_fee, final_total, payment_method)
+         VALUES ($1, $2, 'pending', 100.00, 10.00, 110.00, 'Efectivo')`,
+        [orderId, RESTAURANT_A]
+      );
+
+      // order_id is tenant A's, but restaurant_id claims tenant B
+      let errorOccurred = false;
+      try {
+        await pool.query(
+          `INSERT INTO public.order_items (id, order_id, restaurant_id, product_name, unit_price, quantity)
+           VALUES ($1, $2, $3, 'Cross Tenant Burger', 100.00, 1)`,
+          [`oi-${randomUUID().slice(0, 8)}`, orderId, RESTAURANT_B]
+        );
+      } catch (err: any) {
+        errorOccurred = true;
+        expect(err.code).toBe('23503');
+      }
+      expect(errorOccurred).toBe(true);
+    });
+
+    it('rejects orders whose customer belongs to another tenant (FK 23503)', async () => {
+      if (!isDbConnected) return;
+      // Tenant A owns the customer
+      await pool.query(
+        `INSERT INTO public.customers (id, restaurant_id, name, phone) VALUES ($1, $2, 'Cross Tenant Customer', '3007778899')`,
+        [customerId, RESTAURANT_A]
+      );
+
+      // customer_id is tenant A's, but restaurant_id claims tenant B
+      let errorOccurred = false;
+      try {
+        await pool.query(
+          `INSERT INTO public.orders (id, restaurant_id, customer_id, status, subtotal, delivery_fee, final_total, payment_method)
+           VALUES ($1, $2, $3, 'pending', 100.00, 10.00, 110.00, 'Efectivo')`,
+          [`order-${randomUUID().slice(0, 8)}`, RESTAURANT_B, customerId]
+        );
+      } catch (err: any) {
+        errorOccurred = true;
+        expect(err.code).toBe('23503');
+      }
+      expect(errorOccurred).toBe(true);
+    });
+
+    it('rejects products whose category belongs to another tenant (FK 23503)', async () => {
+      if (!isDbConnected) return;
+      // Tenant A owns the category
+      await pool.query(
+        `INSERT INTO public.categories (id, restaurant_id, name, display_order, is_active)
+         VALUES ($1, $2, 'Cat A', 0, true)`,
+        [categoryId, RESTAURANT_A]
+      );
+
+      // category_id is tenant A's, but restaurant_id claims tenant B
+      let errorOccurred = false;
+      try {
+        await pool.query(
+          `INSERT INTO public.products (id, restaurant_id, category_id, name, price, is_available)
+           VALUES ($1, $2, $3, 'Cross Tenant Burger', 10000.00, true)`,
+          [productId, RESTAURANT_B, categoryId]
+        );
+      } catch (err: any) {
+        errorOccurred = true;
+        expect(err.code).toBe('23503');
+      }
+      expect(errorOccurred).toBe(true);
+    });
+  });
 });

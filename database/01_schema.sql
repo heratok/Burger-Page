@@ -182,7 +182,10 @@ CREATE TABLE IF NOT EXISTS public.categories (
     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT uq_categories_restaurant_name
-        UNIQUE (restaurant_id, name)
+        UNIQUE (restaurant_id, name),
+    -- WU-1b (M2/M3): target del FK compuesto tenant-scoped de products.
+    CONSTRAINT uq_categories_id_restaurant
+        UNIQUE (id, restaurant_id)
 );
 
 COMMENT ON TABLE public.categories IS 'Secciones del menú por restaurante.';
@@ -191,7 +194,7 @@ COMMENT ON TABLE public.categories IS 'Secciones del menú por restaurante.';
 CREATE TABLE IF NOT EXISTS public.products (
     id                       TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
     restaurant_id            TEXT NOT NULL REFERENCES public.restaurants(id) ON DELETE CASCADE,
-    category_id              TEXT REFERENCES public.categories(id) ON DELETE SET NULL,
+    category_id              TEXT,
     name                     TEXT NOT NULL,
     description              TEXT DEFAULT '',
     price                    NUMERIC(12, 2) NOT NULL CHECK (price >= 0),
@@ -204,7 +207,17 @@ CREATE TABLE IF NOT EXISTS public.products (
     created_at               TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at               TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT uq_products_id_restaurant
-        UNIQUE (id, restaurant_id)
+        UNIQUE (id, restaurant_id),
+    -- WU-1b (M2/M3): la categoría referenciada debe pertenecer al mismo
+    -- restaurante; SET NULL sigue anulando solo category_id al borrar la
+    -- categoría (como hoy).
+    CONSTRAINT fk_products_category_tenant
+        FOREIGN KEY (category_id, restaurant_id)
+        REFERENCES public.categories(id, restaurant_id)
+        -- PG15+ column list: anula SOLO category_id al borrar la categoría
+        -- (comportamiento previo); un SET NULL sin lista anularía también
+        -- restaurant_id y fallaría por NOT NULL con productos existentes.
+        ON DELETE SET NULL (category_id)
 );
 
 COMMENT ON TABLE public.products IS 'Ítems del menú. La categoría se resuelve por category_id (JOIN a categories); nunca se duplica el nombre.';
@@ -269,7 +282,7 @@ CREATE TABLE IF NOT EXISTS public.orders (
     id              TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
     restaurant_id   TEXT NOT NULL REFERENCES public.restaurants(id) ON DELETE CASCADE,
     order_number    INTEGER, -- auto-assigned by trigger if left NULL
-    customer_id     TEXT REFERENCES public.customers(id) ON DELETE SET NULL,
+    customer_id     TEXT,
     status          TEXT NOT NULL DEFAULT 'pending'
                       CHECK (status IN ('pending', 'cooking', 'delivering', 'delivered', 'cancelled')),
     subtotal        NUMERIC(12, 2) NOT NULL DEFAULT 0.00 CHECK (subtotal >= 0),
@@ -284,6 +297,18 @@ CREATE TABLE IF NOT EXISTS public.orders (
     client_order_id TEXT,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    -- WU-1b (M2/M3): el customer referenciado debe pertenecer al mismo
+    -- restaurante que la orden; SET NULL anula customer_id (columnas NULL
+    -- del FK se saltan el chequeo, así las órdenes sin customer siguen OK).
+    CONSTRAINT uq_orders_id_restaurant
+        UNIQUE (id, restaurant_id),
+    CONSTRAINT fk_orders_customer_tenant
+        FOREIGN KEY (customer_id, restaurant_id)
+        REFERENCES public.customers(id, restaurant_id)
+        -- PG15+ column list: anula SOLO customer_id al borrar el customer
+        -- (comportamiento previo); un SET NULL sin lista anularía también
+        -- restaurant_id y fallaría por NOT NULL con órdenes existentes.
+        ON DELETE SET NULL (customer_id),
     CONSTRAINT uq_orders_restaurant_order_number
         UNIQUE (restaurant_id, order_number)
 );
@@ -295,12 +320,17 @@ COMMENT ON COLUMN public.orders.client_order_id IS 'Idempotencia SUS-19: correla
 -- 2.7.1 ORDER STATUS HISTORY --------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.order_status_history (
     id            TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-    order_id      TEXT NOT NULL REFERENCES public.orders(id) ON DELETE CASCADE,
+    order_id      TEXT NOT NULL,
     restaurant_id TEXT NOT NULL REFERENCES public.restaurants(id) ON DELETE CASCADE,
     old_status    TEXT,
     new_status    TEXT NOT NULL,
     changed_by    TEXT,
-    changed_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    changed_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    -- WU-1b (M2/M3): el histórico apunta a la orden del mismo restaurante.
+    CONSTRAINT fk_order_status_history_order_tenant
+        FOREIGN KEY (order_id, restaurant_id)
+        REFERENCES public.orders(id, restaurant_id)
+        ON DELETE CASCADE
 );
 
 COMMENT ON TABLE public.order_status_history IS 'Auditoría inmutable de transiciones de estado (insert/update automáticos).';
@@ -308,7 +338,7 @@ COMMENT ON TABLE public.order_status_history IS 'Auditoría inmutable de transic
 -- 2.8 ORDER ITEMS (Line Items — Fully Normalized) ----------------------------
 CREATE TABLE IF NOT EXISTS public.order_items (
     id            TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-    order_id      TEXT NOT NULL REFERENCES public.orders(id) ON DELETE CASCADE,
+    order_id      TEXT NOT NULL,
     restaurant_id TEXT NOT NULL REFERENCES public.restaurants(id) ON DELETE CASCADE,
     product_id    TEXT REFERENCES public.products(id) ON DELETE SET NULL,
     product_name  TEXT NOT NULL, -- historical snapshot at time of sale
@@ -316,7 +346,15 @@ CREATE TABLE IF NOT EXISTS public.order_items (
     quantity      INTEGER NOT NULL DEFAULT 1 CHECK (quantity > 0),
     subtotal      NUMERIC(12, 2) GENERATED ALWAYS AS (unit_price * quantity) STORED,
     observation   TEXT,
-    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    -- WU-1b (M2/M3): la línea apunta a la orden del mismo restaurante;
+    -- UNIQUE (id, restaurant_id) es el target del FK de las adiciones.
+    CONSTRAINT uq_order_items_id_restaurant
+        UNIQUE (id, restaurant_id),
+    CONSTRAINT fk_order_items_order_tenant
+        FOREIGN KEY (order_id, restaurant_id)
+        REFERENCES public.orders(id, restaurant_id)
+        ON DELETE CASCADE
 );
 
 COMMENT ON TABLE public.order_items IS 'Líneas de pedido con snapshot histórico del producto vendido.';
@@ -324,14 +362,19 @@ COMMENT ON TABLE public.order_items IS 'Líneas de pedido con snapshot históric
 -- 2.9 ORDER ITEM ADDITIONS (Modifiers selected per order item) --------------
 CREATE TABLE IF NOT EXISTS public.order_item_additions (
     id            TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-    order_item_id TEXT NOT NULL REFERENCES public.order_items(id) ON DELETE CASCADE,
+    order_item_id TEXT NOT NULL,
     restaurant_id TEXT NOT NULL REFERENCES public.restaurants(id) ON DELETE CASCADE,
     addition_id   TEXT REFERENCES public.product_additions(id) ON DELETE SET NULL,
     addition_name TEXT NOT NULL, -- historical snapshot
     unit_price    NUMERIC(12, 2) NOT NULL DEFAULT 0.00 CHECK (unit_price >= 0),
     quantity      INTEGER NOT NULL DEFAULT 1 CHECK (quantity > 0),
     total         NUMERIC(12, 2) GENERATED ALWAYS AS (unit_price * quantity) STORED,
-    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    -- WU-1b (M2/M3): la adición apunta a la línea de la misma orden/restaurante.
+    CONSTRAINT fk_order_item_additions_order_item_tenant
+        FOREIGN KEY (order_item_id, restaurant_id)
+        REFERENCES public.order_items(id, restaurant_id)
+        ON DELETE CASCADE
 );
 
 COMMENT ON TABLE public.order_item_additions IS 'Adiciones seleccionadas por línea de pedido (snapshot histórico).';
@@ -498,6 +541,7 @@ SET search_path = public, pg_temp
 AS $$
 DECLARE
     v_customer_id TEXT;
+    v_restaurant_id TEXT;
     v_total_orders INTEGER;
     v_total_spent NUMERIC(12, 2);
     v_last_order_date TIMESTAMPTZ;
@@ -506,12 +550,20 @@ BEGIN
     -- source by operation before touching any column (previously this
     -- COALESCE ran unconditionally and every DELETE on public.orders
     -- raised 'record "new" is not assigned yet').
+    -- WU-1b (M2/M3): el agregado se filtra por el restaurante de la orden
+    -- disparadora (fuente OLD/NEW según operación, igual que v_customer_id)
+    -- para que las ventas de un tenant jamás recomputen los totales de un
+    -- customer de otro tenant, aunque hubiera entrado un link cross-tenant
+    -- antes del fix de FKs compuestos.
     IF TG_OP = 'DELETE' THEN
         v_customer_id := OLD.customer_id;
+        v_restaurant_id := OLD.restaurant_id;
     ELSIF TG_OP = 'UPDATE' THEN
         v_customer_id := COALESCE(NEW.customer_id, OLD.customer_id);
+        v_restaurant_id := COALESCE(NEW.restaurant_id, OLD.restaurant_id);
     ELSE
         v_customer_id := NEW.customer_id;
+        v_restaurant_id := NEW.restaurant_id;
     END IF;
     IF v_customer_id IS NULL THEN
         RETURN NEW;
@@ -527,6 +579,7 @@ BEGIN
         v_last_order_date
     FROM public.orders
     WHERE customer_id = v_customer_id
+      AND restaurant_id = v_restaurant_id
       AND status != 'cancelled';
 
     UPDATE public.customers
@@ -535,7 +588,8 @@ BEGIN
         total_spent = v_total_spent,
         last_order_date = v_last_order_date,
         updated_at = NOW()
-    WHERE id = v_customer_id;
+    WHERE id = v_customer_id
+      AND restaurant_id = v_restaurant_id;
 
     RETURN NEW;
 END;
