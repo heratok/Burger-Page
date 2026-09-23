@@ -1,6 +1,8 @@
 import { randomBytes } from 'node:crypto';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Order, OrderStatus, OrderItem, OrderItemAddition } from '../../../domain/models/Order.js';
+import { UserRole } from '../../../domain/models/User.js';
+import { InvalidOrderStateError } from '../../../domain/errors/DomainErrors.js';
 import { OrderRepository } from '../../../domain/ports/out/OrderRepository.js';
 
 export class SupabaseOrderRepository implements OrderRepository {
@@ -130,15 +132,21 @@ export class SupabaseOrderRepository implements OrderRepository {
     }
   }
 
-  async updateStatus(id: string, status: OrderStatus, restaurantId: string, actorId?: string): Promise<void> {
+  async updateStatus(id: string, status: OrderStatus, restaurantId: string, actorId?: string, _actorRole?: UserRole, expectedStatus?: OrderStatus): Promise<void> {
     const { data, error } = await this.client.rpc('update_order_status_with_actor', {
       p_order_id: id,
       p_new_status: status,
       p_restaurant_id: restaurantId,
       p_actor: actorId || null,
+      // M1 CAS: the RPC raises 'Order status changed concurrently' when the
+      // snapshot status no longer matches the persisted row.
+      p_expected_status: expectedStatus ?? null,
     });
 
     if (error) {
+      if (/concurrently/i.test(error.message)) {
+        throw new InvalidOrderStateError(`Order status changed concurrently for order ${id}`);
+      }
       throw new Error(`Failed to update order status via RPC: ${error.message}`);
     }
 

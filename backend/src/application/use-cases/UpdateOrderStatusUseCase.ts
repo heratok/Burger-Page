@@ -31,10 +31,16 @@ export class UpdateOrderStatusUseCase {
     }
 
     // 1. Validar máquina de estados en el Dominio
+    // M1: capture the validated snapshot BEFORE transitionTo mutates it — the
+    // CAS compare must be against the state the domain read, not the target.
+    const previousStatus = order.status;
     order.transitionTo(dto.status);
 
-    // 2. Persistir cambio de estado con aislamiento y actor
-    await this.orderRepo.updateStatus(id, dto.status, resolvedRestId, actorId, actorRole);
+    // 2. Persistir cambio de estado con aislamiento, actor y CAS: el repo
+    // recibe el snapshot validado como expectedStatus, de modo que una
+    // escritura concurrente (delivered -> cooking, cancel tras delivery)
+    // levanta InvalidOrderStateError en vez de regresar el status.
+    await this.orderRepo.updateStatus(id, dto.status, resolvedRestId, actorId, actorRole, previousStatus);
 
     return order;
   }

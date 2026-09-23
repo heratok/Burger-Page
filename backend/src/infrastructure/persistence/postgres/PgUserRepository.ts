@@ -24,6 +24,9 @@ export class PgUserRepository implements UserRepository {
   // which matches the login credential exactly and returns at most one row.
   async findById(id: string): Promise<User | null> {
     return withTenantContext({ restaurantId: null }, async (client) => {
+      // C2: mark the lookup as login bootstrap so the SECURITY DEFINER escape
+      // hatch accepts it (see look_up_user_for_auth_by_id in 01_schema.sql).
+      await client.query("SELECT set_config('app.auth_bootstrap', 'true', true)");
       const { rows } = await client.query(`SELECT * FROM public.look_up_user_for_auth_by_id($1)`, [id]);
       return rows[0] ? mapRow(rows[0]) : null;
     });
@@ -31,6 +34,7 @@ export class PgUserRepository implements UserRepository {
 
   async findByUsername(username: string): Promise<User | null> {
     return withTenantContext({ restaurantId: null }, async (client) => {
+      await client.query("SELECT set_config('app.auth_bootstrap', 'true', true)");
       const { rows } = await client.query(`SELECT * FROM public.look_up_user_for_auth($1)`, [username]);
       return rows[0] ? mapRow(rows[0]) : null;
     });

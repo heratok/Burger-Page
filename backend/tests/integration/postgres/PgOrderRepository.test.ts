@@ -18,6 +18,8 @@ describe('PgOrderRepository (real Postgres, app_user role, via create_order_atom
   const RESTAURANT_A = `pgorder-rest-a-${randomUUID().slice(0, 8)}`;
   const RESTAURANT_B = `pgorder-rest-b-${randomUUID().slice(0, 8)}`;
   const PRODUCT_ID = `pgorder-prod-${randomUUID().slice(0, 8)}`;
+  // C2: update_order_status_with_actor mandates an actor; seed one for tenant A.
+  const ACTOR_ID = `usr_test_actor_${randomUUID().slice(0, 8)}`;
 
   beforeAll(async () => {
     process.env.DATABASE_URL = APP_USER_DATABASE_URL;
@@ -36,6 +38,14 @@ describe('PgOrderRepository (real Postgres, app_user role, via create_order_atom
          ON CONFLICT (id, restaurant_id) DO UPDATE SET is_available = true`,
         [PRODUCT_ID, RESTAURANT_A]
       );
+      // Mandatory-actor contract (C2): the audited status RPC requires a user
+      // that belongs to the restaurant (or is super_admin) to execute it.
+      await adminPool.query(
+        `INSERT INTO public.users (id, username, password_hash, role, restaurant_id)
+         VALUES ($1, $1, 'x:salt-key', 'restaurant_admin', $2)
+         ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, restaurant_id = EXCLUDED.restaurant_id`,
+        [ACTOR_ID, RESTAURANT_A]
+      );
       repo = new PgOrderRepository();
     } catch (err: any) {
       console.warn(`\n⚠️ [PgOrderRepository Test] Skipping: cannot connect (${err.message}).`);
@@ -45,6 +55,7 @@ describe('PgOrderRepository (real Postgres, app_user role, via create_order_atom
 
   afterAll(async () => {
     if (isDbConnected) {
+      await adminPool.query(`DELETE FROM public.users WHERE id = $1`, [ACTOR_ID]);
       await adminPool.query(`DELETE FROM public.restaurants WHERE id IN ($1, $2)`, [RESTAURANT_A, RESTAURANT_B]);
     }
     await adminPool?.end();
@@ -103,7 +114,7 @@ describe('PgOrderRepository (real Postgres, app_user role, via create_order_atom
     );
     await repo.save(order);
 
-    await repo.updateStatus(order.id, 'cooking', RESTAURANT_A);
+    await repo.updateStatus(order.id, 'cooking', RESTAURANT_A, ACTOR_ID);
     const found = await repo.findById(order.id, RESTAURANT_A);
     expect(found?.status).toBe('cooking');
   });

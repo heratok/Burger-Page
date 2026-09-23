@@ -563,6 +563,19 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 BEGIN
+    -- 0. Tenant-context guard (C1): si la sesión declaró un restaurante vía
+    -- GUC app.restaurant_id (lo hace PgClient.withTenantContext con SET LOCAL),
+    -- DEBE coincidir con p_restaurant_id. Sin GUC (storefront público) no hay
+    -- guard; con GUC y argumento distinto es un intento cross-tenant -> 42501.
+    IF NULLIF(current_setting('app.restaurant_id', true), '') IS NOT NULL
+       AND NULLIF(current_setting('app.restaurant_id', true), '') IS DISTINCT FROM p_restaurant_id THEN
+        RAISE EXCEPTION 'Tenant context mismatch' USING ERRCODE = '42501';
+    END IF;
+    -- C1 bis: rechazar deltas no finitos/NULL (Infinity/-Infinity corromperían
+    -- current_stock o bloquearían el guard de stock insuficiente).
+    IF p_delta IS NULL OR p_delta = 'Infinity'::numeric OR p_delta = '-Infinity'::numeric THEN
+        RAISE EXCEPTION 'Invalid quantity change';
+    END IF;
     IF p_delta < 0 THEN
         RETURN QUERY
         UPDATE public.inventory_items
@@ -620,18 +633,42 @@ DECLARE
     v_calculated_subtotal NUMERIC(12, 2) := 0.00;
     v_final_total NUMERIC(12, 2);
     v_created_order RECORD;
+    -- Lean replay projection (C1): the replay path must NEVER return the full
+    -- order row (customer, payments, comment, receipt) — it is a cross-tenant
+    -- read vector when a session passes a foreign restaurant_id while another
+    -- tenant's GUC is active. Only the fields the repositories need are read.
+    v_replay_id TEXT;
+    v_replay_order_number INTEGER;
+    v_replay_status TEXT;
+    v_replay_restaurant_id TEXT;
+    v_replay_created_at TIMESTAMPTZ;
 BEGIN
+    -- 0. Tenant-context guard (C1): if the session declared a restaurant via
+    -- GUC app.restaurant_id (PgClient.withTenantContext, SET LOCAL), it must
+    -- match p_restaurant_id. Absent GUC (public storefront) = no guard.
+    IF NULLIF(current_setting('app.restaurant_id', true), '') IS NOT NULL
+       AND NULLIF(current_setting('app.restaurant_id', true), '') IS DISTINCT FROM p_restaurant_id THEN
+        RAISE EXCEPTION 'Tenant context mismatch' USING ERRCODE = '42501';
+    END IF;
     -- 0. SUS-19 idempotent replay by client correlation: an offline retry or a
     -- lost-response re-POST carries the same client_order_id, so the already
     -- persisted order is returned instead of inserting a duplicate sale. This
     -- runs before validation and BEFORE the INSERT: no second order_number is
     -- assigned and the order counters are never double-counted.
     IF p_client_order_id IS NOT NULL AND p_client_order_id <> '' THEN
-        SELECT * INTO v_created_order FROM public.orders
+        SELECT id, order_number, status, restaurant_id, created_at
+        INTO v_replay_id, v_replay_order_number, v_replay_status, v_replay_restaurant_id, v_replay_created_at
+        FROM public.orders
         WHERE restaurant_id = p_restaurant_id
           AND client_order_id = p_client_order_id;
         IF FOUND THEN
-            RETURN to_jsonb(v_created_order);
+            RETURN jsonb_build_object(
+                'id', v_replay_id,
+                'order_number', v_replay_order_number,
+                'status', v_replay_status,
+                'restaurant_id', v_replay_restaurant_id,
+                'created_at', v_replay_created_at
+            );
         END IF;
     END IF;
     -- 1. Validar estructura básica de items
@@ -788,11 +825,25 @@ END;
 $$;
 
 -- 4.3 Atomic order status update with actor audit ------------------------------
+-- M1/C2 hardening: p_actor becomes mandatory (every status mutation must
+-- record who did it), the tenant-context GUC guard is added, and the new 5th
+-- parameter p_expected_status turns the write into a CAS: the UPDATE only
+-- matches when the persisted status equals the snapshot the domain validated,
+-- so a concurrent write (delivered -> cooking regression, cancel after
+-- delivery) raises 'Order status changed concurrently' instead of silently
+-- overwriting. The old 4-arg signature is DROPped — leaving it would keep a
+-- bypass that accepts any actor-less call (nullable p_expected_status on the
+-- new signature keeps 4-arg calls working via the DEFAULT). DROP IF EXISTS
+-- keeps the file idempotent on fresh and migrated databases alike.
+DROP FUNCTION IF EXISTS public.update_order_status_with_actor(
+    text, text, text, text
+);
 CREATE OR REPLACE FUNCTION public.update_order_status_with_actor(
     p_order_id TEXT,
     p_new_status TEXT,
     p_restaurant_id TEXT,
-    p_actor TEXT
+    p_actor TEXT,
+    p_expected_status TEXT DEFAULT NULL
 )
 RETURNS BOOLEAN
 LANGUAGE plpgsql
@@ -802,23 +853,41 @@ AS $$
 DECLARE
     v_rows_affected INTEGER;
 BEGIN
-    -- Validar actor si fue provisto
-    IF p_actor IS NOT NULL AND p_actor <> '' THEN
-        IF NOT EXISTS (
-            SELECT 1 FROM public.users
-            WHERE id = p_actor AND (restaurant_id = p_restaurant_id OR role = 'super_admin')
-        ) THEN
-            RAISE EXCEPTION 'Actor % is not authorized for restaurant %', p_actor, p_restaurant_id USING ERRCODE = 'P0001';
-        END IF;
-        PERFORM set_config('app.actor', p_actor, true);
+    -- Actor obligatorio (C2): sin actor la mutación falla cerrado con 42501;
+    -- nunca se acepta un cambio de estado sin registrar quién lo ejecutó.
+    IF p_actor IS NULL OR p_actor = '' THEN
+        RAISE EXCEPTION 'Actor is required' USING ERRCODE = '42501';
     END IF;
 
-    -- Actualizar status aislando estrictamente por id Y restaurant_id
+    -- Tenant-context guard (C1): if the session declared a restaurant via GUC
+    -- app.restaurant_id, it must match p_restaurant_id (cross-tenant attempt).
+    IF NULLIF(current_setting('app.restaurant_id', true), '') IS NOT NULL
+       AND NULLIF(current_setting('app.restaurant_id', true), '') IS DISTINCT FROM p_restaurant_id THEN
+        RAISE EXCEPTION 'Tenant context mismatch' USING ERRCODE = '42501';
+    END IF;
+
+    -- Validar actor: pertenece al restaurante (o es super_admin)
+    IF NOT EXISTS (
+        SELECT 1 FROM public.users
+        WHERE id = p_actor AND (restaurant_id = p_restaurant_id OR role = 'super_admin')
+    ) THEN
+        RAISE EXCEPTION 'Actor % is not authorized for restaurant %', p_actor, p_restaurant_id USING ERRCODE = 'P0001';
+    END IF;
+    PERFORM set_config('app.actor', p_actor, true);
+
+    -- Actualizar status aislando estrictamente por id Y restaurant_id, con CAS
+    -- (M1): la fila solo se toca si su status actual coincide con el snapshot
+    -- validado en el dominio (p_expected_status). Sin expected (legacy) el
+    -- comportamiento previo se conserva.
     UPDATE public.orders
     SET status = p_new_status, updated_at = NOW()
-    WHERE id = p_order_id AND restaurant_id = p_restaurant_id;
+    WHERE id = p_order_id AND restaurant_id = p_restaurant_id
+      AND (p_expected_status IS NULL OR status = p_expected_status);
 
     GET DIAGNOSTICS v_rows_affected = ROW_COUNT;
+    IF v_rows_affected = 0 AND p_expected_status IS NOT NULL THEN
+        RAISE EXCEPTION 'Order status changed concurrently' USING ERRCODE = 'P0001';
+    END IF;
     RETURN v_rows_affected > 0;
 END;
 $$;
@@ -901,7 +970,9 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE O
 
 GRANT EXECUTE ON FUNCTION public.adjust_inventory_stock(TEXT, TEXT, NUMERIC) TO app_user;
 GRANT EXECUTE ON FUNCTION public.create_order_atomic(TEXT, TEXT, TEXT, TEXT, NUMERIC, NUMERIC, TEXT, JSONB, NUMERIC, TEXT) TO app_user;
-GRANT EXECUTE ON FUNCTION public.update_order_status_with_actor(TEXT, TEXT, TEXT, TEXT) TO app_user;
+-- M1/C2: the hardened signature is the 5-arg one (p_expected_status CAS); the
+-- 4-arg overload was DROPped in section 4.3.
+GRANT EXECUTE ON FUNCTION public.update_order_status_with_actor(TEXT, TEXT, TEXT, TEXT, TEXT) TO app_user;
 
 -- JD-A-001: these SECURITY DEFINER mutation functions bypass RLS as owner, so
 -- the default PUBLIC EXECUTE must be revoked — the anon key ships in the
@@ -910,7 +981,7 @@ GRANT EXECUTE ON FUNCTION public.update_order_status_with_actor(TEXT, TEXT, TEXT
 -- backend role app_user may execute them.
 REVOKE EXECUTE ON FUNCTION public.adjust_inventory_stock(TEXT, TEXT, NUMERIC) FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION public.create_order_atomic(TEXT, TEXT, TEXT, TEXT, NUMERIC, NUMERIC, TEXT, JSONB, NUMERIC, TEXT) FROM PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.update_order_status_with_actor(TEXT, TEXT, TEXT, TEXT) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.update_order_status_with_actor(TEXT, TEXT, TEXT, TEXT, TEXT) FROM PUBLIC;
 -- The deployed backend runs supabase-js with the service-role key (see
 -- backend/src/infrastructure/persistence/supabase/SupabaseClient.ts), so
 -- PostgREST executes these RPCs as service_role; re-grant EXECUTE to that
@@ -922,7 +993,7 @@ BEGIN
     IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
         EXECUTE 'GRANT EXECUTE ON FUNCTION public.adjust_inventory_stock(TEXT, TEXT, NUMERIC) TO service_role';
         EXECUTE 'GRANT EXECUTE ON FUNCTION public.create_order_atomic(TEXT, TEXT, TEXT, TEXT, NUMERIC, NUMERIC, TEXT, JSONB, NUMERIC, TEXT) TO service_role';
-        EXECUTE 'GRANT EXECUTE ON FUNCTION public.update_order_status_with_actor(TEXT, TEXT, TEXT, TEXT) TO service_role';
+        EXECUTE 'GRANT EXECUTE ON FUNCTION public.update_order_status_with_actor(TEXT, TEXT, TEXT, TEXT, TEXT) TO service_role';
     END IF;
 END;
 $$;
@@ -1088,6 +1159,14 @@ COMMIT;
     SET search_path = pg_catalog
     AS $$
     BEGIN
+        -- C2: the escape hatch is only reachable from the login-bootstrap path,
+        -- which PgUserRepository marks by setting app.auth_bootstrap='true' via
+        -- SET LOCAL. Any other session (PostgREST anon, a stray backend call)
+        -- fails closed with 42501: password_hash must never be readable without
+        -- an explicit bootstrap context.
+        IF NULLIF(current_setting('app.auth_bootstrap', true), '') IS DISTINCT FROM 'true' THEN
+            RAISE EXCEPTION 'Auth bootstrap context required' USING ERRCODE = '42501';
+        END IF;
         RETURN QUERY
         SELECT *
         FROM public.users
@@ -1106,6 +1185,9 @@ COMMIT;
     SET search_path = pg_catalog
     AS $$
     BEGIN
+        IF NULLIF(current_setting('app.auth_bootstrap', true), '') IS DISTINCT FROM 'true' THEN
+            RAISE EXCEPTION 'Auth bootstrap context required' USING ERRCODE = '42501';
+        END IF;
         RETURN QUERY
         SELECT *
         FROM public.users
