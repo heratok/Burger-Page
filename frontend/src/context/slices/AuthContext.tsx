@@ -30,7 +30,16 @@ const STORAGE_KEYS = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AuthProvider: React.FC<{
+  children: React.ReactNode
+  /**
+   * Session-end callback invoked by logout() AFTER the session and token are
+   * cleared. AuthContext does not own the tenant repository, so the purge of
+   * the whole-tenant localStorage envelope (C3) is wired here by the provider
+   * composition (RestaurantProvider), keeping this slice storage-agnostic.
+   */
+  onLogout?: () => void
+}> = ({ children, onLogout }) => {
   const [session, setSession] = useState<AdminSession>(() => {
     try {
       const saved = sessionStorage.getItem(STORAGE_KEYS.SESSION)
@@ -111,8 +120,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = useCallback(() => {
     setSession({ role: "guest" })
     apiClient.setToken(null)
+    // C3: purge whole-tenants envelope + persisted active restaurant exactly
+    // once, at session end. Guest storefront caching is unaffected (this path
+    // only runs when an authenticated session is being closed).
+    onLogout?.()
     toast.info("Sesión cerrada")
-  }, [])
+  }, [onLogout])
 
   const value: AuthContextType = {
     session,

@@ -629,10 +629,19 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const { session } = useAuth()
   const { soundEnabled } = useUi()
 
+  // A1/A2: all backend targets below key on the session-aware effective tenant
+  // instead of the persisted activeRestaurant record, so a restaurant admin's
+  // first render (and every refreshed effect) fetches/streams THEIR tenant and
+  // never the stale persisted one.
+  const effectiveId =
+    session.role === "restaurant" && session.restaurantId
+      ? session.restaurantId
+      : activeRestaurant?.id
+
   const [isLoadingOrders, setIsLoadingOrders] = useState<boolean>(() => {
     return Boolean(
       apiClient.hasToken() &&
-        activeRestaurant?.id &&
+        effectiveId &&
         (!activeRestaurant.orders || activeRestaurant.orders.length === 0)
     )
   })
@@ -727,10 +736,10 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Synchronize orders & customers with backend if token & restaurant context exist
   useEffect(() => {
-    if (!apiClient.hasToken() || !activeRestaurant?.id) return
+    if (!apiClient.hasToken() || !effectiveId) return
 
     let isCancelled = false
-    const targetRestId = activeRestaurant.id
+    const targetRestId = effectiveId
 
     Promise.all([
       apiClient.fetchOrders(targetRestId),
@@ -764,11 +773,11 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return () => {
       isCancelled = true
     }
-  }, [activeRestaurant?.id, session, updateActiveRestaurantRecord])
+  }, [effectiveId, session, updateActiveRestaurantRecord])
 
   // Real-time SSE order stream subscription
   useEffect(() => {
-    const targetRestId = activeRestaurant?.id
+    const targetRestId = effectiveId
     if (!targetRestId || !apiClient.hasToken()) return
 
     const unsubscribe = apiClient.subscribeToOrderStream((event: OrderEvent) => {
@@ -779,7 +788,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return () => {
       unsubscribe()
     }
-  }, [activeRestaurant?.id, session, updateActiveRestaurantRecord])
+  }, [effectiveId, session, updateActiveRestaurantRecord])
 
   const addOrder = useCallback(
     (orderData: Omit<Order, "id" | "orderNumber" | "createdAt" | "updatedAt">) => {
@@ -1112,7 +1121,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
 
   const refreshOrders = useCallback(async () => {
-    const targetRestId = activeRestaurant?.id
+    const targetRestId = effectiveId
     if (!targetRestId || !apiClient.hasToken()) return
     setIsLoadingOrders(true)
     try {
@@ -1138,7 +1147,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } finally {
       setIsLoadingOrders(false)
     }
-  }, [activeRestaurant?.id, updateActiveRestaurantRecord, retryPendingOrders])
+  }, [effectiveId, updateActiveRestaurantRecord, retryPendingOrders])
 
   const pendingOrdersCount = useMemo(() => {
     return activeRestaurant.orders.filter((o) => o.status === "pending").length

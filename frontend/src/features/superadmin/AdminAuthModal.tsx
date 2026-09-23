@@ -1,5 +1,6 @@
 import React, { useState } from "react"
 import { useRestaurant } from "@/context/RestaurantContext"
+import { useAuth } from "@/context/RestaurantContext"
 import { useAppRouter } from "@/core/router/useAppRouter"
 import {
   ShieldCheck,
@@ -16,7 +17,6 @@ import {
   User,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { apiClient } from "@/core/api/apiClient"
 import { toast } from "sonner"
 
 interface AdminAuthModalProps {
@@ -25,7 +25,13 @@ interface AdminAuthModalProps {
 }
 
 export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose }) => {
-  const { setSession, switchRestaurant, refreshRestaurants } = useRestaurant()
+  const { switchRestaurant, refreshRestaurants } = useRestaurant()
+  // M6: the session is written ONLY through AuthContext.login, which performs
+  // the backend call and sets the session from the REAL validated server
+  // response. This modal is the only production caller that previously wrote
+  // setSession from a locally-assembled payload, which would let a console/XSS
+  // path fabricate { role: "super" } and unlock global modules.
+  const { login } = useAuth()
   const { navigateTo } = useAppRouter()
 
   const [username, setUsername] = useState("")
@@ -47,23 +53,16 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
     setIsLoading(true)
 
     try {
-      const result = await apiClient.login(username.trim(), password.trim())
+      const result = await login(username.trim(), password.trim())
 
-      if (result.success && result.user) {
-        const isSuper = result.user.role === "super_admin"
-        const role = isSuper ? ("super" as const) : ("restaurant" as const)
-        setSession({
-          role,
-          restaurantId: result.user.restaurantId,
-          authenticatedAt: new Date().toISOString(),
-        })
-        if (result.user.restaurantId) {
-          switchRestaurant(result.user.restaurantId)
+      if (result.success && result.role) {
+        if (result.restaurantId) {
+          switchRestaurant(result.restaurantId)
         }
         await refreshRestaurants()
         setUsername("")
         setPassword("")
-        if (isSuper) {
+        if (result.role === "super") {
           if (window.location.pathname.startsWith("/admin/") && window.location.pathname !== "/admin") {
             navigateTo(window.location.pathname)
           } else {

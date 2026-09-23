@@ -20,6 +20,7 @@ import { OrderProvider, useOrders } from "./slices/OrderContext"
 import { InventoryProvider, useInventory } from "./slices/InventoryContext"
 import type { InventoryItem, Supplier } from "@/types/restaurant"
 import type { TenantRepository } from "@/core/storage/TenantRepository"
+import { defaultTenantRepository } from "@/core/storage/TenantRepository"
 
 // Export individual slice hooks for fine-grained subscriptions
 export { useUi } from "./slices/UiContext"
@@ -33,6 +34,13 @@ export interface RestaurantContextType {
   // Global Multi-Tenant State
   restaurants: RestaurantRecord[]
   activeRestaurant: RestaurantRecord
+  /**
+   * Session-aware tenant id: session.restaurantId when the session is a
+   * restaurant admin, else the raw persisted activeRestaurantId. Data
+   * providers key every fetch/SSE/mutation on this value so a stale persisted
+   * active restaurant can never leak cross-tenant traffic (A1/A2).
+   */
+  effectiveRestaurantId: string
   activeRestaurantId: string
   activeRestaurantSlug: string
   isSyncing: boolean
@@ -47,7 +55,7 @@ export interface RestaurantContextType {
     adminPassword?: string
     primaryColor?: string
     templateType?: "burger" | "pizza" | "tacos" | "blank"
-  }) => RestaurantRecord
+  }) => RestaurantRecord | undefined
   updateRestaurant: (id: string, updates: Partial<RestaurantRecord>) => Promise<void>
   deleteRestaurant: (id: string) => Promise<void>
   refreshRestaurants: () => Promise<void>
@@ -144,7 +152,9 @@ export const RestaurantProvider: React.FC<{
 }> = ({ children, repository }) => {
   return (
     <UiProvider>
-      <AuthProvider>
+      <AuthProvider
+        onLogout={() => (repository ?? defaultTenantRepository).purgeTenantData()}
+      >
         <TenantProvider repository={repository}>
           <CatalogProvider>
             <InventoryProvider>
@@ -172,6 +182,7 @@ export const useRestaurant = (): RestaurantContextType => {
   return {
     restaurants: tenant.restaurants,
     activeRestaurant: tenant.activeRestaurant,
+    effectiveRestaurantId: tenant.effectiveRestaurantId,
     activeRestaurantId: tenant.activeRestaurantId,
     activeRestaurantSlug: tenant.activeRestaurantSlug,
     isSyncing: tenant.isSyncing,
