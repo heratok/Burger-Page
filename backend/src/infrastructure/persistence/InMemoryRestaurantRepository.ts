@@ -1,12 +1,15 @@
 import { RestaurantRepository } from '../../domain/ports/out/RestaurantRepository.js';
 import { Restaurant } from '../../domain/models/Restaurant.js';
-import { defaultRestaurant } from './seedData.js';
+import { defaultRestaurant, multiTenantSeedRestaurants } from './seedData.js';
 
 export class InMemoryRestaurantRepository implements RestaurantRepository {
   private restaurants: Map<string, Restaurant> = new Map();
 
   constructor() {
     this.restaurants.set(defaultRestaurant.id, { ...defaultRestaurant });
+    for (const restaurant of multiTenantSeedRestaurants) {
+      this.restaurants.set(restaurant.id, { ...restaurant });
+    }
   }
 
   async findById(id: string): Promise<Restaurant | null> {

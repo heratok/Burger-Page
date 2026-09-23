@@ -96,7 +96,9 @@ export class CreateOrderUseCase {
     const customer = await this.customerRepo.findById(customerId, restaurant.id);
     if (customer) {
       if (customer.restaurantId !== restaurant.id) {
-        throw new ValidationError(`Customer '${customerId}' does not belong to restaurant '${restaurant.name}'.`);
+        // M8: never reveal cross-tenant existence — a customer living in another
+        // tenant must be indistinguishable from one that does not exist.
+        throw new EntityNotFoundError('Customer not found for this restaurant.');
       }
       return customer.id;
     }
@@ -213,13 +215,15 @@ export class CreateOrderUseCase {
       product = allProducts.find(p => p.name.toLowerCase() === productId.toLowerCase() || p.id === productId) || null;
     }
     if (!product) {
-      throw new EntityNotFoundError(`Product '${productId}' not found.`);
+      throw new EntityNotFoundError('Product not found or not available for this restaurant.');
     }
     if (product.restaurantId && product.restaurantId !== restaurant.id) {
-      throw new ValidationError(`Product '${product.name}' does not belong to restaurant '${restaurant.name}'.`);
+      // M8: a product from another tenant must be indistinguishable from one
+      // that does not exist here.
+      throw new EntityNotFoundError('Product not found or not available for this restaurant.');
     }
     if (!product.isAvailable) {
-      throw new ValidationError(`Product '${product.name}' is currently not available.`);
+      throw new ValidationError('Product is currently not available.');
     }
     return product;
   }
@@ -263,16 +267,17 @@ export class CreateOrderUseCase {
       addition = allAdditions.find(a => a.name.toLowerCase() === additionId.toLowerCase() || a.id === additionId) || null;
     }
     if (!addition) {
-      throw new EntityNotFoundError(`Addition '${additionId}' not found for restaurant '${restaurant.name}'.`);
+      throw new EntityNotFoundError('Addition not found for this restaurant.');
     }
     if (addition.restaurantId !== restaurant.id) {
-      throw new ValidationError(`Addition '${addition.name}' does not belong to restaurant '${restaurant.name}'.`);
+      // M8: a cross-tenant addition must be indistinguishable from a missing one.
+      throw new EntityNotFoundError('Addition not found for this restaurant.');
     }
     if (addition.productId && addition.productId !== product.id) {
       throw new ValidationError(`Addition '${addition.name}' is not applicable to product '${product.name}'.`);
     }
     if (!addition.isAvailable) {
-      throw new ValidationError(`Addition '${addition.name}' is currently not available.`);
+      throw new ValidationError('Addition is currently not available.');
     }
 
     const verifiedAdditionPrice = Number(addition.price);

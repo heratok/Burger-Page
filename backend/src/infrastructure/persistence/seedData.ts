@@ -15,6 +15,52 @@ export const defaultRestaurant: Restaurant = {
   categories: ['Burgers', 'Sides', 'Bebidas'],
 };
 
+/**
+ * Multi-tenant test tenants backing the cat-a1/cat-b1 category seeds. These
+ * restaurant rows exist so tenant-scoped mutations resolve to a real tenant
+ * (M7) instead of writing orphan rows.
+ */
+export const multiTenantSeedRestaurants: Restaurant[] = [
+  {
+    id: 'tenant-a',
+    slug: 'tenant-a',
+    name: 'Tenant A',
+    tagline: 'Tenant A storefront',
+    whatsappNumber: '573009990001',
+    theme: 'dark',
+    config: {
+      name: 'Tenant A',
+      tagline: 'Tenant A storefront',
+      whatsappNumber: '573009990001',
+      primaryColor: '#E11D48',
+      bgTheme: '#0B1220',
+    },
+    openingHours: { open: '10:00', close: '22:00' },
+    isActive: true,
+    categories: ['General'],
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'tenant-b',
+    slug: 'tenant-b',
+    name: 'Tenant B',
+    tagline: 'Tenant B storefront',
+    whatsappNumber: '573009990002',
+    theme: 'dark',
+    config: {
+      name: 'Tenant B',
+      tagline: 'Tenant B storefront',
+      whatsappNumber: '573009990002',
+      primaryColor: '#2563EB',
+      bgTheme: '#0B1220',
+    },
+    openingHours: { open: '10:00', close: '22:00' },
+    isActive: true,
+    categories: ['General'],
+    createdAt: new Date().toISOString(),
+  },
+];
+
 export const initialCategories: Category[] = [
   { id: 'cat-1', restaurantId: 'burger-craft', name: 'Burgers', isActive: true },
   { id: 'cat-2', restaurantId: 'burger-craft', name: 'Sides', isActive: true },

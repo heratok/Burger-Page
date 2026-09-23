@@ -413,5 +413,44 @@ describe('Restaurant API & Multi-Tenant Security (Integration)', () => {
       expect(res.json().detail).toBe('Administrator privileges required to access this resource.');
     });
   });
+
+  describe('GET /api/restaurants public directory redaction (A9)', () => {
+    it('anonymous list keeps storefront fields but strips operator fields and filters deactivated tenants', async () => {
+      // 'pizzeria-napoli-test' was soft-deleted by the delete test above.
+      const anonRes = await app.inject({ method: 'GET', url: '/api/restaurants' });
+      expect(anonRes.statusCode).toBe(200);
+      const publicList = anonRes.json();
+      expect(Array.isArray(publicList)).toBe(true);
+      expect(publicList.length).toBeGreaterThan(0);
+
+      // Landing still receives the storefront identity fields.
+      for (const r of publicList) {
+        expect(r.id).toBeDefined();
+        expect(r.slug).toBeDefined();
+        expect(r.name).toBeDefined();
+      }
+
+      // Operator records never leak anonymously.
+      for (const r of publicList) {
+        expect(r).not.toHaveProperty('isActive');
+        expect(r).not.toHaveProperty('createdAt');
+      }
+
+      // Deactivated tenants are filtered OUT of the public directory.
+      expect(publicList.some((r: any) => r.slug === 'pizzeria-napoli-test')).toBe(false);
+
+      // Super admin still sees the full detail for the same data.
+      const superRes = await app.inject({
+        method: 'GET',
+        url: '/api/restaurants',
+        headers: { authorization: `Bearer ${tokenSuperAdmin}` },
+      });
+      expect(superRes.statusCode).toBe(200);
+      const full = superRes.json();
+      const deleted = full.find((r: any) => r.slug === 'pizzeria-napoli-test');
+      expect(deleted).toBeDefined();
+      expect(deleted.isActive).toBe(false);
+    });
+  });
 });
 

@@ -140,41 +140,45 @@ describe('CreateOrderUseCase', () => {
     })).rejects.toThrow(EntityNotFoundError);
   });
 
-  it('should reject if product belongs to another tenant', async () => {
+  it('should reject if product belongs to another tenant with a non-revealing error (M8)', async () => {
     const foreignProduct = { id: 'p-foreign', name: 'Other Burger', price: 20, isAvailable: true, additions: [], category: 'Food', description: 'Desc', restaurantId: 'other-restaurant' };
     vi.mocked(mockProductRepo.findById).mockResolvedValue(foreignProduct as any);
 
+    // Same error and message as the not-found case: cross-tenant existence
+    // must never be observable through the public order endpoint.
     await expect(useCase.execute({
       restaurantId: 'burger-craft',
       items: [{ productId: 'p-foreign', quantity: 1, additions: [] }]
-    })).rejects.toThrow(ValidationError);
+    })).rejects.toThrow('Product not found or not available for this restaurant.');
   });
 
-  it('should reject if addition belongs to another tenant', async () => {
+  it('should reject if addition belongs to another tenant with a non-revealing error (M8)', async () => {
     const mockProduct = { id: 'p1', name: 'Burger', price: 20, isAvailable: true, additions: [], category: 'Food', description: 'Desc', restaurantId: 'burger-craft' };
     const foreignAddition = new ProductAddition('add-foreign', 'other-restaurant', 'Foreign Sauce', 3, true);
 
     vi.mocked(mockProductRepo.findById).mockResolvedValue(mockProduct as any);
     vi.mocked(mockAdditionRepo.findById).mockResolvedValue(foreignAddition);
 
+    // Same error and message as the not-found case (M8): no cross-tenant oracle.
     await expect(useCase.execute({
       restaurantId: 'burger-craft',
       items: [{ productId: 'p1', quantity: 1, additions: [{ additionId: 'add-foreign', quantity: 1 }] }]
-    })).rejects.toThrow(ValidationError);
+    })).rejects.toThrow('Addition not found for this restaurant.');
   });
 
-  it('should reject if customer belongs to another tenant', async () => {
+  it('should reject if customer belongs to another tenant with a non-revealing error (M8)', async () => {
     const mockProduct = { id: 'p1', name: 'Burger', price: 20, isAvailable: true, additions: [], category: 'Food', description: 'Desc', restaurantId: 'burger-craft' };
     const foreignCustomer = new Customer('c-foreign', 'other-restaurant', 'Foreign User', '123');
 
     vi.mocked(mockProductRepo.findById).mockResolvedValue(mockProduct as any);
     vi.mocked(mockCustomerRepo.findById).mockResolvedValue(foreignCustomer);
 
+    // Same error and message as the not-found case (M8): no cross-tenant oracle.
     await expect(useCase.execute({
       restaurantId: 'burger-craft',
       customerId: 'c-foreign',
       items: [{ productId: 'p1', quantity: 1, additions: [] }]
-    })).rejects.toThrow(ValidationError);
+    })).rejects.toThrow('Customer not found for this restaurant.');
   });
 
   it('should honor a valid client-provided delivery fee of 0 for counter sales (JD-CRIT-02)', async () => {

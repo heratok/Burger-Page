@@ -5,7 +5,7 @@ import { CreateCustomerUseCase } from '../../../application/use-cases/CreateCust
 import { UpdateCustomerUseCase } from '../../../application/use-cases/UpdateCustomerUseCase.js';
 import { DeleteCustomerUseCase } from '../../../application/use-cases/DeleteCustomerUseCase.js';
 import { RestaurantRepository } from '../../../domain/ports/out/RestaurantRepository.js';
-import { UnauthorizedError, ValidationError } from '../../../domain/errors/DomainErrors.js';
+import { UnauthorizedError, ValidationError, EntityNotFoundError } from '../../../domain/errors/DomainErrors.js';
 import { CreateCustomerDTO, UpdateCustomerDTO } from '../../../application/dtos/index.js';
 
 export class CustomerController {
@@ -47,6 +47,13 @@ export class CustomerController {
         (await this.restaurantRepo.findById(restaurantId.replace(/^rest-/, '')));
       if (rest) {
         return rest.id;
+      }
+
+      // M7: a mutation must never fall through to a tenant the repository
+      // cannot resolve — that is exactly how orphan rows are written. Reads
+      // keep the raw-id passthrough (and the first-active fallback) above.
+      if (options.mutation) {
+        throw new EntityNotFoundError(`Restaurant '${restaurantId}' not found.`);
       }
     }
 

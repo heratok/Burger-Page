@@ -6,7 +6,7 @@ import { createAuthMiddlewares } from '../../src/infrastructure/http/middleware/
 describe('Auth Middleware & JWT Suite', () => {
   let app: FastifyInstance;
   const jwtService = new JwtService('test-secret-key-12345');
-  const { requireAuth, requireSuperAdmin } = createAuthMiddlewares(jwtService);
+  const { requireAuth, requireSuperAdmin, tryAuth } = createAuthMiddlewares(jwtService);
 
   beforeAll(async () => {
     app = fastify();
@@ -23,6 +23,12 @@ describe('Auth Middleware & JWT Suite', () => {
     // 3. Ruta de Super Admin
     app.get('/superadmin-route', { preHandler: [requireSuperAdmin] }, async (req) => ({
       status: 'superadmin',
+      context: req.authContext,
+    }));
+
+    // 4. Ruta storefront pública con tryAuth (opt-in, nunca obligatoria)
+    app.get('/storefront-route', { preHandler: [tryAuth] }, async (req) => ({
+      status: 'storefront',
       context: req.authContext,
     }));
 
@@ -131,6 +137,58 @@ describe('Auth Middleware & JWT Suite', () => {
 
     expect(res.statusCode).toBe(401);
     expect(res.json().detail).toBe('Token has restricted scope and cannot be used for general API access.');
+  });
+
+  it('tryAuth: un token sse NO autentica llamadas storefront (queda guest) (A4b)', async () => {
+    const sseToken = jwtService.generateToken({
+      id: 'usr-1',
+      username: 'manager_craft',
+      role: 'restaurant_admin',
+      restaurantId: 'rest-craft',
+      scope: 'sse',
+    });
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/storefront-route',
+      headers: { authorization: `Bearer ${sseToken}` },
+    });
+
+    expect(res.statusCode).toBe(200); // storefront stays open
+    expect(res.json().context).toBeUndefined(); // but NOT treated as authenticated staff
+  });
+
+  it('tryAuth: sin token queda guest (context undefined)', async () => {
+    const res = await app.inject({
+      method: 'GET',
+      url: '/storefront-route',
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().context).toBeUndefined();
+  });
+
+  it('tryAuth: un token de sesión válido sí autentica la llamada storefront', async () => {
+    const token = jwtService.generateToken({
+      id: 'usr-1',
+      username: 'manager_craft',
+      role: 'restaurant_admin',
+      restaurantId: 'rest-craft',
+    });
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/storefront-route',
+      headers: { authorization: `Bearer ${token}` },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().context).toEqual({
+      userId: 'usr-1',
+      username: 'manager_craft',
+      role: 'restaurant_admin',
+      restaurantId: 'rest-craft',
+    });
   });
 });
 
