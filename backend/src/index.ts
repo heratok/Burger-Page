@@ -50,13 +50,46 @@ process.on('unhandledRejection', (reason, promise) => {
 // Global safety net for uncaught synchronous exceptions
 process.on('uncaughtException', (error) => {
   app.log.error({ error }, 'Uncaught Exception caught at process level');
+  // H3: the process is in an undefined state after an uncaught synchronous
+  // exception — continuing to serve would mask corrupted invariants. Fail
+  // fast so a supervisor restarts the process (previously it logged and
+  // kept serving). Route-handler errors stay caught by Fastify's error
+  // handler and never reach this hook.
+  process.exit(1);
 });
+
+// Graceful shutdown deadline: SSE streams keep sockets open, and a stuck
+// stream must never hang shutdown forever. The 10s race is the backstop.
+const SHUTDOWN_DEADLINE_MS = 10_000;
 
 // Graceful shutdown
 const shutdown = async (signal: string) => {
   app.log.info(`Received ${signal}, closing server gracefully...`);
   try {
-    await app.close();
+    await Promise.race([
+      (async () => {
+        await app.close();
+        // Close the lazy Postgres pool when it exists; closePgPool() is
+        // guarded and idempotent (no-op when the pool was never created).
+        // Sqlite close is intentionally skipped: createSqliteDatabase() runs
+        // inside buildDependencies() and the Database handle is not exposed
+        // by buildApp(), so there is no reachable handle to close.
+        try {
+          const { closePgPool } = await import('./infrastructure/persistence/postgres/PgClient.js');
+          await closePgPool();
+        } catch (pgErr) {
+          // A pool-end hiccup must not turn a successful server close into a
+          // failed shutdown; the OS reclaims the sockets.
+          app.log.warn({ err: pgErr }, 'Postgres pool close failed during shutdown; continuing');
+        }
+      })(),
+      new Promise<void>((resolve) => {
+        setTimeout(() => {
+          app.log.warn(`Graceful shutdown deadline (${SHUTDOWN_DEADLINE_MS}ms) reached; proceeding with exit`);
+          resolve();
+        }, SHUTDOWN_DEADLINE_MS);
+      }),
+    ]);
     process.exit(0);
   } catch (err) {
     app.log.error({ err }, 'Error during graceful shutdown');
@@ -89,9 +122,19 @@ const start = async () => {
           console.log(`   └─ Host          : ${dbStatus.host}\n`);
         } else {
           console.error(`\n❌ [POSTGRES] Error al conectar a la Base de Datos: ${dbStatus.error}\n`);
+          // H3: default remains degraded boot (tests/dev stay unaffected);
+          // PG_FAIL_FAST=true opts production deployments into fail-fast.
+          if ((process.env.PG_FAIL_FAST || '').toLowerCase() === 'true') {
+            console.error('❌ [POSTGRES] PG_FAIL_FAST=true: refusing to boot with an unreachable database. Set PG_FAIL_FAST=false to allow degraded boot.');
+            process.exit(1);
+          }
         }
       } catch (dbErr: any) {
         console.error(`\n❌ [POSTGRES] Error al verificar la Base de Datos: ${dbErr?.message || dbErr}\n`);
+        if ((process.env.PG_FAIL_FAST || '').toLowerCase() === 'true') {
+          console.error('❌ [POSTGRES] PG_FAIL_FAST=true: refusing to boot with an unreachable database. Set PG_FAIL_FAST=false to allow degraded boot.');
+          process.exit(1);
+        }
       }
     } else if (selectedDriver === 'supabase') {
       console.log(`\n✅ [SUPABASE] Cliente configurado para ${process.env.SUPABASE_URL}\n`);

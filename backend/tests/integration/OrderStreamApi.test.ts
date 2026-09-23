@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { FastifyInstance } from 'fastify';
 import { buildApp } from '../../src/infrastructure/http/app.js';
-import { globalOrderEventBus } from '../../src/infrastructure/events/OrderEventBus.js';
+import { globalOrderEventBus, MAX_ACTIVE_STREAMS, registerStream, unregisterStream, getActiveStreamCount } from '../../src/infrastructure/events/OrderEventBus.js';
 import { JwtService } from '../../src/infrastructure/security/JwtService.js';
 
 describe('Real-Time Order SSE Stream (TDD)', () => {
@@ -106,6 +106,7 @@ describe('Real-Time Order SSE Stream (TDD)', () => {
   it('should establish SSE stream connection with correct headers and tenant context', async () => {
     const address = await app.listen({ port: 0, host: '127.0.0.1' });
     const abortController = new AbortController();
+    const streamBaseline = getActiveStreamCount();
     try {
       const response = await fetch(`${address}/api/orders/stream`, {
         headers: {
@@ -127,5 +128,36 @@ describe('Real-Time Order SSE Stream (TDD)', () => {
     } finally {
       abortController.abort();
     }
+    // H3: the stream slot reserved by this connection must be released once
+    // the client disconnects (close/error/teardown all funnel into the same
+    // once-only release helper).
+    await expect.poll(() => getActiveStreamCount(), { timeout: 2000 }).toBe(streamBaseline);
+  });
+
+  it('should cap concurrent streams at MAX_ACTIVE_STREAMS and release slots exactly once', () => {
+    // The registry is a per-process module global, so drain any slots left
+    // over from prior suite runs before asserting the cap from a clean base.
+    while (getActiveStreamCount() > 0) unregisterStream();
+
+    const reservations: boolean[] = [];
+    for (let i = 0; i < MAX_ACTIVE_STREAMS; i++) {
+      reservations.push(registerStream());
+    }
+    expect(reservations.every((ok) => ok)).toBe(true);
+    expect(getActiveStreamCount()).toBe(MAX_ACTIVE_STREAMS);
+
+    // The next reservation over the cap is refused (the route answers 503).
+    expect(registerStream()).toBe(false);
+    expect(getActiveStreamCount()).toBe(MAX_ACTIVE_STREAMS);
+
+    // Releasing a slot admits a new stream again.
+    unregisterStream();
+    expect(registerStream()).toBe(true);
+    expect(getActiveStreamCount()).toBe(MAX_ACTIVE_STREAMS);
+
+    // unregisterStream never underflows below zero.
+    while (getActiveStreamCount() > 0) unregisterStream();
+    unregisterStream();
+    expect(getActiveStreamCount()).toBe(0);
   });
 });

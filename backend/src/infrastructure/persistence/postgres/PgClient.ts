@@ -2,6 +2,23 @@ import pg from 'pg';
 
 const { Pool } = pg;
 
+// Pool hardening (H3): the previous config had NO limits, so a DB outage
+// that did not fail fast at the TCP level made every DB-bound request block
+// indefinitely (effective connectionTimeoutMillis: 0 — wait forever). These
+// bring bounded concurrency, fail-fast pool acquisition, idle reaping and
+// connection rotation. Values are exported so tests/observability can refer
+// to the same numbers.
+export const PG_POOL_MAX = 10;
+export const PG_CONNECTION_TIMEOUT_MS = 5000;
+export const PG_IDLE_TIMEOUT_MS = 30000;
+export const PG_MAX_USES = 7500;
+// Sent as a server startup parameter on every pooled connection (pg supports
+// statement_timeout in the client/Pool config — ConnectionParameters reads
+// it and forwards it in the startup packet), so any single statement that
+// runs longer than 15s is aborted by Postgres instead of hanging the request
+// forever. Transaction-scoped via the server, so it needs no per-call SET.
+export const PG_STATEMENT_TIMEOUT_MS = 15000;
+
 let pool: pg.Pool | null = null;
 
 export function getPgPool(): pg.Pool {
@@ -15,9 +32,29 @@ export function getPgPool(): pg.Pool {
     pool = new Pool({
       connectionString,
       ssl: sslDisabled || isLocalhost ? undefined : { rejectUnauthorized: false },
+      max: PG_POOL_MAX,
+      connectionTimeoutMillis: PG_CONNECTION_TIMEOUT_MS,
+      idleTimeoutMillis: PG_IDLE_TIMEOUT_MS,
+      maxUses: PG_MAX_USES,
+      statement_timeout: PG_STATEMENT_TIMEOUT_MS,
     });
   }
   return pool;
+}
+
+/**
+ * Ends the lazy pool and clears the module reference so graceful shutdown
+ * can wait for in-flight pool work before the process exits. Guarded and
+ * idempotent: no-op when the pool was never created; the reference is
+ * cleared before end() so a concurrent second call cannot double-end the
+ * same pool. Rejects only if the pool fails to end cleanly (callers decide
+ * whether that must fail the shutdown).
+ */
+export async function closePgPool(): Promise<void> {
+  const p = pool;
+  pool = null;
+  if (!p) return;
+  await p.end();
 }
 
 export async function verifyPgConnection(): Promise<{

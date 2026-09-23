@@ -24,6 +24,7 @@ import { SqliteCustomerRepository } from '../persistence/sqlite/SqliteCustomerRe
 import { SqliteInventoryRepository } from '../persistence/sqlite/SqliteInventoryRepository.js';
 import { SqliteProductAdditionRepository } from '../persistence/sqlite/SqliteProductAdditionRepository.js';
 import { getSupabaseClient } from '../persistence/supabase/SupabaseClient.js';
+import { verifyPgConnection } from '../persistence/postgres/PgClient.js';
 import { SupabaseRestaurantRepository } from '../persistence/supabase/SupabaseRestaurantRepository.js';
 import { SupabaseCategoryRepository } from '../persistence/supabase/SupabaseCategoryRepository.js';
 import { SupabaseProductRepository } from '../persistence/supabase/SupabaseProductRepository.js';
@@ -425,17 +426,53 @@ export function buildApp(
     schema: {
       tags: ['Health'],
       summary: 'Health check endpoint',
-      description: 'Verifies the server is online and operational.',
+      description: 'Verifies the server is online and operational. When the Postgres driver is active, also probes the database pool so orchestrators can distinguish healthy from degraded states via the status code.',
       response: {
         200: {
           type: 'object',
           properties: {
-            status: { type: 'string', example: 'ok' }
-          }
-        }
-      }
+            status: { type: 'string', example: 'ok' },
+            db: { type: 'string', example: 'connected' },
+          },
+          additionalProperties: true,
+          required: ['status'],
+        },
+        503: {
+          type: 'object',
+          properties: {
+            status: { type: 'string', example: 'degraded' },
+            db: { type: 'string', example: 'unreachable' },
+          },
+          additionalProperties: true,
+          required: ['status'],
+        },
+      },
+    },
+  }, async (_req, reply) => {
+    // Mirror index.ts driver detection: probe the pool only when the Postgres
+    // driver is actually active. sqlite/memory/supabase keep the static ok
+    // response — their health must not depend on an external DB probe.
+    const selectedDriver = (
+      process.env.STORAGE_DRIVER ||
+      (process.env.SUPABASE_URL ? 'supabase' : (process.env.DATABASE_URL ? 'postgres' : 'memory'))
+    ).toLowerCase();
+    const postgresActive =
+      selectedDriver === 'postgres' ||
+      (selectedDriver !== 'supabase' && selectedDriver !== 'sqlite' && Boolean(process.env.DATABASE_URL));
+    if (!postgresActive) {
+      return reply.status(200).send({ status: 'ok' });
     }
-  }, async () => ({ status: 'ok' }));
+
+    // Probe with fail-fast semantics: pool acquisition is bounded by
+    // connectionTimeoutMillis (5s) and statements by statement_timeout (15s),
+    // so a DB outage surfaces as 503 instead of hanging the probe forever.
+    const dbStatus = await verifyPgConnection();
+    if (dbStatus.ok) {
+      return reply.status(200).send({ status: 'ok', db: 'connected' });
+    }
+    // Never crash here: orchestrators read the 503 and route traffic away.
+    return reply.status(503).send({ status: 'degraded', db: 'unreachable' });
+  });
 
   // 2. Interactive Documentation with Scalar
   app.register(scalar, {
