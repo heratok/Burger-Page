@@ -1,7 +1,8 @@
 import { Database } from 'better-sqlite3';
 import { Order, OrderStatus, OrderItem } from '../../../domain/models/Order.js';
+import { UserRole } from '../../../domain/models/User.js';
 import { OrderRepository } from '../../../domain/ports/out/OrderRepository.js';
-import { EntityNotFoundError } from '../../../domain/errors/DomainErrors.js';
+import { EntityNotFoundError, InvalidOrderStateError } from '../../../domain/errors/DomainErrors.js';
 
 export class SqliteOrderRepository implements OrderRepository {
   constructor(private db: Database) {
@@ -125,11 +126,19 @@ export class SqliteOrderRepository implements OrderRepository {
     );
   }
 
-  async updateStatus(id: string, status: OrderStatus, restaurantId: string, _actorId?: string): Promise<void> {
-    const result = this.db.prepare('UPDATE orders SET status = ?, updated_at = ? WHERE id = ? AND restaurant_id = ?')
-      .run(status, new Date().toISOString(), id, restaurantId);
+  async updateStatus(id: string, status: OrderStatus, restaurantId: string, _actorId?: string, _actorRole?: UserRole, expectedStatus?: OrderStatus): Promise<void> {
+    // M1 CAS: the UPDATE only matches when the persisted status equals the
+    // snapshot the domain validated (expectedStatus); a concurrent write that
+    // moved the row first fails with a concurrency DomainError instead of
+    // silently regressing the status (delivered -> cooking / cancel after delivery).
+    const result = this.db
+      .prepare('UPDATE orders SET status = ?, updated_at = ? WHERE id = ? AND restaurant_id = ? AND (? IS NULL OR status = ?)')
+      .run(status, new Date().toISOString(), id, restaurantId, expectedStatus ?? null, expectedStatus ?? null);
 
     if (result.changes === 0) {
+      if (expectedStatus !== undefined && expectedStatus !== null) {
+        throw new InvalidOrderStateError(`Order status changed concurrently for order ${id}`);
+      }
       throw new EntityNotFoundError(`Order ${id} not found for restaurant ${restaurantId}`);
     }
   }

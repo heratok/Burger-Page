@@ -24,6 +24,13 @@ export interface GlobalPlatformStats {
 export interface TenantContextType {
   restaurants: RestaurantRecord[]
   activeRestaurant: RestaurantRecord
+  /**
+   * Session-aware tenant id (A1/A2): session.restaurantId when the session is
+   * a restaurant admin, else the raw persisted activeRestaurantId. Data
+   * providers key fetches/SSE/mutations on this value so a stale persisted
+   * active restaurant can never emit cross-tenant traffic on first render.
+   */
+  effectiveRestaurantId: string
   activeRestaurantId: string
   activeRestaurantSlug: string
   superAdminPassword?: string
@@ -38,7 +45,7 @@ export interface TenantContextType {
     adminUsername?: string
     primaryColor?: string
     templateType?: "burger" | "pizza" | "tacos" | "blank"
-  }) => RestaurantRecord
+  }) => RestaurantRecord | undefined
   updateRestaurant: (id: string, updates: Partial<RestaurantRecord>) => Promise<void>
   deleteRestaurant: (id: string) => Promise<void>
   updateActiveRestaurantRecord: (updater: (current: RestaurantRecord) => RestaurantRecord) => void
@@ -122,6 +129,16 @@ export const TenantProvider: React.FC<{
 
   const { session } = useAuth()
 
+  // A1/A2: a restaurant-bound session owns its tenant — the effective tenant
+  // is ALWAYS session.restaurantId, so a stale persisted activeRestaurant can
+  // never win on render and every data provider keys on this value. Guests and
+  // super admins keep the raw persisted activeRestaurantId (storefront switcher
+  // and super-tenant navigation still work unchanged).
+  const effectiveRestaurantId =
+    session.role === "restaurant" && session.restaurantId
+      ? session.restaurantId
+      : activeRestaurantId
+
   // Sync with Backend DB on mount and when authentication session changes
   useEffect(() => {
     refreshRestaurants()
@@ -150,7 +167,7 @@ export const TenantProvider: React.FC<{
   const activeRestaurant = useMemo(() => {
     const found =
       envelope.restaurants.find(
-        (r) => r.id === activeRestaurantId || r.slug === activeRestaurantId
+        (r) => r.id === effectiveRestaurantId || r.slug === effectiveRestaurantId
       ) || envelope.restaurants[0]
 
     return (
@@ -166,13 +183,23 @@ export const TenantProvider: React.FC<{
         customers: [],
       }
     )
-  }, [envelope.restaurants, activeRestaurantId])
+  }, [envelope.restaurants, effectiveRestaurantId])
 
   const switchRestaurant = useCallback(
     (idOrSlug: string) => {
       const target = envelope.restaurants.find(
         (r) => r.id === idOrSlug || r.slug === idOrSlug
       )
+      // M5: a restaurant admin must never live-switch the active tenant (neither
+      // by direct /slug navigation nor via the fetch fallback below). Only their
+      // own session-bound restaurant is allowed; guests (storefront/landing) and
+      // super admins keep the full switcher behavior.
+      if (session.role === "restaurant" && session.restaurantId) {
+        if (!target || target.id !== session.restaurantId) {
+          toast.warning("Solo podés operar tu propio restaurante")
+          return
+        }
+      }
       if (target) {
         setActiveRestaurantId(target.id)
       } else {
@@ -213,16 +240,19 @@ export const TenantProvider: React.FC<{
           .catch(() => {})
       }
     },
-    [envelope.restaurants]
+    [envelope.restaurants, session.role, session.restaurantId]
   )
 
   const updateActiveRestaurantRecord = useCallback(
     (updater: (current: RestaurantRecord) => RestaurantRecord) => {
       setEnvelope((prev) => {
-        const targetId = activeRestaurantId || prev.restaurants[0]?.id || "rest-burger-craft"
+        // M10: bind the mutation to the session-aware effective tenant. When the
+        // target is a stub/unknown id (e.g. the record vanished after a backend
+        // refresh), create a NEW record with id targetId instead of silently
+        // redirecting the write to prev.restaurants[0] (another tenant's record).
+        const targetId = effectiveRestaurantId || prev.restaurants[0]?.id || "rest-burger-craft"
         const target =
-          prev.restaurants.find((r) => r.id === targetId || r.slug === targetId) ||
-          prev.restaurants[0] || {
+          prev.restaurants.find((r) => r.id === targetId) || {
             id: targetId,
             slug: targetId.replace(/^rest-/, ""),
             isActive: true,
@@ -238,18 +268,18 @@ export const TenantProvider: React.FC<{
           }
 
         const updated = updater(target)
-        const exists = prev.restaurants.some((r) => r.id === target.id || r.slug === target.slug)
+        // Identity is the id ONLY — slug stays in the record as a display/business
+        // key but is never an identity key for mutations (M10).
+        const exists = prev.restaurants.some((r) => r.id === target.id)
         return {
           ...prev,
           restaurants: exists
-            ? prev.restaurants.map((r) =>
-                r.id === target.id || r.slug === target.slug ? updated : r
-              )
+            ? prev.restaurants.map((r) => (r.id === target.id ? updated : r))
             : [updated, ...prev.restaurants],
         }
       })
     },
-    [activeRestaurantId]
+    [effectiveRestaurantId]
   )
 
   const createRestaurant = useCallback(
@@ -268,6 +298,15 @@ export const TenantProvider: React.FC<{
         .trim()
         .replace(/[^a-z0-9-]/g, "-")
         .replace(/-+/g, "-")
+
+      // M9: reject duplicate slugs client-side before any write. A slug is the
+      // public storefront URL key — two tenants sharing it would make mutations
+      // and lookups ambiguous, so the envelope (and backend) must never receive
+      // a second tenant with the same slug.
+      if (envelope.restaurants.some((r) => r.slug === cleanSlug)) {
+        toast.error("Ya existe un restaurante con ese slug")
+        return undefined
+      }
 
       const newRecord: RestaurantRecord = {
         id: nextTempId("rest"),
@@ -354,7 +393,7 @@ export const TenantProvider: React.FC<{
       toast.success(`Restaurante "${data.name}" creado exitosamente`)
       return newRecord
     },
-    [refreshRestaurants]
+    [refreshRestaurants, envelope.restaurants]
   )
 
   const updateRestaurant = useCallback(
@@ -458,6 +497,7 @@ export const TenantProvider: React.FC<{
   const value: TenantContextType = {
     restaurants: envelope.restaurants,
     activeRestaurant,
+    effectiveRestaurantId,
     activeRestaurantId: activeRestaurant.id,
     activeRestaurantSlug: activeRestaurant.slug,
     superAdminPassword: envelope.superAdminPassword ?? undefined,

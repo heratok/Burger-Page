@@ -53,3 +53,39 @@ describe("TenantRepository with InMemoryStorageAdapter", () => {
     expect(envelope.restaurants).toHaveLength(DEFAULT_ENVELOPE.restaurants.length)
   })
 })
+
+describe("TenantRepository purgeTenantData (C3 isolation)", () => {
+  let adapter: InMemoryStorageAdapter
+  let repo: TenantRepository
+
+  beforeEach(() => {
+    adapter = new InMemoryStorageAdapter()
+    repo = new TenantRepository(adapter)
+  })
+
+  it("removes BOTH the whole-tenant envelope and the persisted active restaurant id", () => {
+    adapter.setItem(STORAGE_KEYS.ENVELOPE, JSON.stringify(TEST_STORAGE_ENVELOPE))
+    adapter.setItem(STORAGE_KEYS.ACTIVE_REST, "rest-pizzeria-napoli")
+
+    repo.purgeTenantData()
+
+    expect(adapter.getItem(STORAGE_KEYS.ENVELOPE)).toBeNull()
+    expect(adapter.getItem(STORAGE_KEYS.ACTIVE_REST)).toBeNull()
+  })
+
+  it("leaves unrelated storage keys untouched (session/UI keys survive)", () => {
+    adapter.setItem("burger_page_sidebar_collapsed", "true")
+    adapter.setItem(STORAGE_KEYS.ENVELOPE, JSON.stringify(TEST_STORAGE_ENVELOPE))
+
+    repo.purgeTenantData()
+
+    expect(adapter.getItem("burger_page_sidebar_collapsed")).toBe("true")
+    expect(adapter.getItem(STORAGE_KEYS.ENVELOPE)).toBeNull()
+  })
+
+  it("is idempotent when nothing is stored", () => {
+    expect(() => repo.purgeTenantData()).not.toThrow()
+    expect(adapter.getItem(STORAGE_KEYS.ENVELOPE)).toBeNull()
+    expect(adapter.getItem(STORAGE_KEYS.ACTIVE_REST)).toBeNull()
+  })
+})

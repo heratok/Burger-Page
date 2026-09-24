@@ -78,6 +78,23 @@ export class TenantRepository {
     this.adapter.setItem(STORAGE_KEYS.ACTIVE_REST, id)
   }
 
+  /**
+   * C3 tenant-isolation purge: removes the whole-platform envelope (orders,
+   * customers, inventory, suppliers of every tenant) AND the persisted active
+   * restaurant id at once, through the storage adapter. It is invoked only at
+   * session end (logout) by AuthProvider's onLogout callback; guest/super
+   * storefront caching is intentionally untouched because nothing calls this
+   * outside the session-end path.
+   */
+  purgeTenantData(): void {
+    try {
+      this.adapter.removeItem(STORAGE_KEYS.ENVELOPE)
+      this.adapter.removeItem(STORAGE_KEYS.ACTIVE_REST)
+    } catch (err) {
+      console.error("Failed to purge tenant data from storage:", err)
+    }
+  }
+
   findRestaurant(
     envelope: StorageEnvelopeV2,
     idOrSlug: string

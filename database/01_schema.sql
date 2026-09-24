@@ -182,7 +182,10 @@ CREATE TABLE IF NOT EXISTS public.categories (
     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT uq_categories_restaurant_name
-        UNIQUE (restaurant_id, name)
+        UNIQUE (restaurant_id, name),
+    -- WU-1b (M2/M3): target del FK compuesto tenant-scoped de products.
+    CONSTRAINT uq_categories_id_restaurant
+        UNIQUE (id, restaurant_id)
 );
 
 COMMENT ON TABLE public.categories IS 'Secciones del menú por restaurante.';
@@ -191,7 +194,7 @@ COMMENT ON TABLE public.categories IS 'Secciones del menú por restaurante.';
 CREATE TABLE IF NOT EXISTS public.products (
     id                       TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
     restaurant_id            TEXT NOT NULL REFERENCES public.restaurants(id) ON DELETE CASCADE,
-    category_id              TEXT REFERENCES public.categories(id) ON DELETE SET NULL,
+    category_id              TEXT,
     name                     TEXT NOT NULL,
     description              TEXT DEFAULT '',
     price                    NUMERIC(12, 2) NOT NULL CHECK (price >= 0),
@@ -204,7 +207,17 @@ CREATE TABLE IF NOT EXISTS public.products (
     created_at               TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at               TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT uq_products_id_restaurant
-        UNIQUE (id, restaurant_id)
+        UNIQUE (id, restaurant_id),
+    -- WU-1b (M2/M3): la categoría referenciada debe pertenecer al mismo
+    -- restaurante; SET NULL sigue anulando solo category_id al borrar la
+    -- categoría (como hoy).
+    CONSTRAINT fk_products_category_tenant
+        FOREIGN KEY (category_id, restaurant_id)
+        REFERENCES public.categories(id, restaurant_id)
+        -- PG15+ column list: anula SOLO category_id al borrar la categoría
+        -- (comportamiento previo); un SET NULL sin lista anularía también
+        -- restaurant_id y fallaría por NOT NULL con productos existentes.
+        ON DELETE SET NULL (category_id)
 );
 
 COMMENT ON TABLE public.products IS 'Ítems del menú. La categoría se resuelve por category_id (JOIN a categories); nunca se duplica el nombre.';
@@ -269,7 +282,7 @@ CREATE TABLE IF NOT EXISTS public.orders (
     id              TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
     restaurant_id   TEXT NOT NULL REFERENCES public.restaurants(id) ON DELETE CASCADE,
     order_number    INTEGER, -- auto-assigned by trigger if left NULL
-    customer_id     TEXT REFERENCES public.customers(id) ON DELETE SET NULL,
+    customer_id     TEXT,
     status          TEXT NOT NULL DEFAULT 'pending'
                       CHECK (status IN ('pending', 'cooking', 'delivering', 'delivered', 'cancelled')),
     subtotal        NUMERIC(12, 2) NOT NULL DEFAULT 0.00 CHECK (subtotal >= 0),
@@ -284,6 +297,18 @@ CREATE TABLE IF NOT EXISTS public.orders (
     client_order_id TEXT,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    -- WU-1b (M2/M3): el customer referenciado debe pertenecer al mismo
+    -- restaurante que la orden; SET NULL anula customer_id (columnas NULL
+    -- del FK se saltan el chequeo, así las órdenes sin customer siguen OK).
+    CONSTRAINT uq_orders_id_restaurant
+        UNIQUE (id, restaurant_id),
+    CONSTRAINT fk_orders_customer_tenant
+        FOREIGN KEY (customer_id, restaurant_id)
+        REFERENCES public.customers(id, restaurant_id)
+        -- PG15+ column list: anula SOLO customer_id al borrar el customer
+        -- (comportamiento previo); un SET NULL sin lista anularía también
+        -- restaurant_id y fallaría por NOT NULL con órdenes existentes.
+        ON DELETE SET NULL (customer_id),
     CONSTRAINT uq_orders_restaurant_order_number
         UNIQUE (restaurant_id, order_number)
 );
@@ -295,12 +320,17 @@ COMMENT ON COLUMN public.orders.client_order_id IS 'Idempotencia SUS-19: correla
 -- 2.7.1 ORDER STATUS HISTORY --------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.order_status_history (
     id            TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-    order_id      TEXT NOT NULL REFERENCES public.orders(id) ON DELETE CASCADE,
+    order_id      TEXT NOT NULL,
     restaurant_id TEXT NOT NULL REFERENCES public.restaurants(id) ON DELETE CASCADE,
     old_status    TEXT,
     new_status    TEXT NOT NULL,
     changed_by    TEXT,
-    changed_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    changed_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    -- WU-1b (M2/M3): el histórico apunta a la orden del mismo restaurante.
+    CONSTRAINT fk_order_status_history_order_tenant
+        FOREIGN KEY (order_id, restaurant_id)
+        REFERENCES public.orders(id, restaurant_id)
+        ON DELETE CASCADE
 );
 
 COMMENT ON TABLE public.order_status_history IS 'Auditoría inmutable de transiciones de estado (insert/update automáticos).';
@@ -308,7 +338,7 @@ COMMENT ON TABLE public.order_status_history IS 'Auditoría inmutable de transic
 -- 2.8 ORDER ITEMS (Line Items — Fully Normalized) ----------------------------
 CREATE TABLE IF NOT EXISTS public.order_items (
     id            TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-    order_id      TEXT NOT NULL REFERENCES public.orders(id) ON DELETE CASCADE,
+    order_id      TEXT NOT NULL,
     restaurant_id TEXT NOT NULL REFERENCES public.restaurants(id) ON DELETE CASCADE,
     product_id    TEXT REFERENCES public.products(id) ON DELETE SET NULL,
     product_name  TEXT NOT NULL, -- historical snapshot at time of sale
@@ -316,7 +346,15 @@ CREATE TABLE IF NOT EXISTS public.order_items (
     quantity      INTEGER NOT NULL DEFAULT 1 CHECK (quantity > 0),
     subtotal      NUMERIC(12, 2) GENERATED ALWAYS AS (unit_price * quantity) STORED,
     observation   TEXT,
-    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    -- WU-1b (M2/M3): la línea apunta a la orden del mismo restaurante;
+    -- UNIQUE (id, restaurant_id) es el target del FK de las adiciones.
+    CONSTRAINT uq_order_items_id_restaurant
+        UNIQUE (id, restaurant_id),
+    CONSTRAINT fk_order_items_order_tenant
+        FOREIGN KEY (order_id, restaurant_id)
+        REFERENCES public.orders(id, restaurant_id)
+        ON DELETE CASCADE
 );
 
 COMMENT ON TABLE public.order_items IS 'Líneas de pedido con snapshot histórico del producto vendido.';
@@ -324,14 +362,19 @@ COMMENT ON TABLE public.order_items IS 'Líneas de pedido con snapshot históric
 -- 2.9 ORDER ITEM ADDITIONS (Modifiers selected per order item) --------------
 CREATE TABLE IF NOT EXISTS public.order_item_additions (
     id            TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-    order_item_id TEXT NOT NULL REFERENCES public.order_items(id) ON DELETE CASCADE,
+    order_item_id TEXT NOT NULL,
     restaurant_id TEXT NOT NULL REFERENCES public.restaurants(id) ON DELETE CASCADE,
     addition_id   TEXT REFERENCES public.product_additions(id) ON DELETE SET NULL,
     addition_name TEXT NOT NULL, -- historical snapshot
     unit_price    NUMERIC(12, 2) NOT NULL DEFAULT 0.00 CHECK (unit_price >= 0),
     quantity      INTEGER NOT NULL DEFAULT 1 CHECK (quantity > 0),
     total         NUMERIC(12, 2) GENERATED ALWAYS AS (unit_price * quantity) STORED,
-    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    -- WU-1b (M2/M3): la adición apunta a la línea de la misma orden/restaurante.
+    CONSTRAINT fk_order_item_additions_order_item_tenant
+        FOREIGN KEY (order_item_id, restaurant_id)
+        REFERENCES public.order_items(id, restaurant_id)
+        ON DELETE CASCADE
 );
 
 COMMENT ON TABLE public.order_item_additions IS 'Adiciones seleccionadas por línea de pedido (snapshot histórico).';
@@ -498,6 +541,7 @@ SET search_path = public, pg_temp
 AS $$
 DECLARE
     v_customer_id TEXT;
+    v_restaurant_id TEXT;
     v_total_orders INTEGER;
     v_total_spent NUMERIC(12, 2);
     v_last_order_date TIMESTAMPTZ;
@@ -506,12 +550,20 @@ BEGIN
     -- source by operation before touching any column (previously this
     -- COALESCE ran unconditionally and every DELETE on public.orders
     -- raised 'record "new" is not assigned yet').
+    -- WU-1b (M2/M3): el agregado se filtra por el restaurante de la orden
+    -- disparadora (fuente OLD/NEW según operación, igual que v_customer_id)
+    -- para que las ventas de un tenant jamás recomputen los totales de un
+    -- customer de otro tenant, aunque hubiera entrado un link cross-tenant
+    -- antes del fix de FKs compuestos.
     IF TG_OP = 'DELETE' THEN
         v_customer_id := OLD.customer_id;
+        v_restaurant_id := OLD.restaurant_id;
     ELSIF TG_OP = 'UPDATE' THEN
         v_customer_id := COALESCE(NEW.customer_id, OLD.customer_id);
+        v_restaurant_id := COALESCE(NEW.restaurant_id, OLD.restaurant_id);
     ELSE
         v_customer_id := NEW.customer_id;
+        v_restaurant_id := NEW.restaurant_id;
     END IF;
     IF v_customer_id IS NULL THEN
         RETURN NEW;
@@ -527,6 +579,7 @@ BEGIN
         v_last_order_date
     FROM public.orders
     WHERE customer_id = v_customer_id
+      AND restaurant_id = v_restaurant_id
       AND status != 'cancelled';
 
     UPDATE public.customers
@@ -535,7 +588,8 @@ BEGIN
         total_spent = v_total_spent,
         last_order_date = v_last_order_date,
         updated_at = NOW()
-    WHERE id = v_customer_id;
+    WHERE id = v_customer_id
+      AND restaurant_id = v_restaurant_id;
 
     RETURN NEW;
 END;
@@ -563,6 +617,19 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 BEGIN
+    -- 0. Tenant-context guard (C1): si la sesión declaró un restaurante vía
+    -- GUC app.restaurant_id (lo hace PgClient.withTenantContext con SET LOCAL),
+    -- DEBE coincidir con p_restaurant_id. Sin GUC (storefront público) no hay
+    -- guard; con GUC y argumento distinto es un intento cross-tenant -> 42501.
+    IF NULLIF(current_setting('app.restaurant_id', true), '') IS NOT NULL
+       AND NULLIF(current_setting('app.restaurant_id', true), '') IS DISTINCT FROM p_restaurant_id THEN
+        RAISE EXCEPTION 'Tenant context mismatch' USING ERRCODE = '42501';
+    END IF;
+    -- C1 bis: rechazar deltas no finitos/NULL (Infinity/-Infinity corromperían
+    -- current_stock o bloquearían el guard de stock insuficiente).
+    IF p_delta IS NULL OR p_delta = 'Infinity'::numeric OR p_delta = '-Infinity'::numeric THEN
+        RAISE EXCEPTION 'Invalid quantity change';
+    END IF;
     IF p_delta < 0 THEN
         RETURN QUERY
         UPDATE public.inventory_items
@@ -620,18 +687,42 @@ DECLARE
     v_calculated_subtotal NUMERIC(12, 2) := 0.00;
     v_final_total NUMERIC(12, 2);
     v_created_order RECORD;
+    -- Lean replay projection (C1): the replay path must NEVER return the full
+    -- order row (customer, payments, comment, receipt) — it is a cross-tenant
+    -- read vector when a session passes a foreign restaurant_id while another
+    -- tenant's GUC is active. Only the fields the repositories need are read.
+    v_replay_id TEXT;
+    v_replay_order_number INTEGER;
+    v_replay_status TEXT;
+    v_replay_restaurant_id TEXT;
+    v_replay_created_at TIMESTAMPTZ;
 BEGIN
+    -- 0. Tenant-context guard (C1): if the session declared a restaurant via
+    -- GUC app.restaurant_id (PgClient.withTenantContext, SET LOCAL), it must
+    -- match p_restaurant_id. Absent GUC (public storefront) = no guard.
+    IF NULLIF(current_setting('app.restaurant_id', true), '') IS NOT NULL
+       AND NULLIF(current_setting('app.restaurant_id', true), '') IS DISTINCT FROM p_restaurant_id THEN
+        RAISE EXCEPTION 'Tenant context mismatch' USING ERRCODE = '42501';
+    END IF;
     -- 0. SUS-19 idempotent replay by client correlation: an offline retry or a
     -- lost-response re-POST carries the same client_order_id, so the already
     -- persisted order is returned instead of inserting a duplicate sale. This
     -- runs before validation and BEFORE the INSERT: no second order_number is
     -- assigned and the order counters are never double-counted.
     IF p_client_order_id IS NOT NULL AND p_client_order_id <> '' THEN
-        SELECT * INTO v_created_order FROM public.orders
+        SELECT id, order_number, status, restaurant_id, created_at
+        INTO v_replay_id, v_replay_order_number, v_replay_status, v_replay_restaurant_id, v_replay_created_at
+        FROM public.orders
         WHERE restaurant_id = p_restaurant_id
           AND client_order_id = p_client_order_id;
         IF FOUND THEN
-            RETURN to_jsonb(v_created_order);
+            RETURN jsonb_build_object(
+                'id', v_replay_id,
+                'order_number', v_replay_order_number,
+                'status', v_replay_status,
+                'restaurant_id', v_replay_restaurant_id,
+                'created_at', v_replay_created_at
+            );
         END IF;
     END IF;
     -- 1. Validar estructura básica de items
@@ -788,11 +879,25 @@ END;
 $$;
 
 -- 4.3 Atomic order status update with actor audit ------------------------------
+-- M1/C2 hardening: p_actor becomes mandatory (every status mutation must
+-- record who did it), the tenant-context GUC guard is added, and the new 5th
+-- parameter p_expected_status turns the write into a CAS: the UPDATE only
+-- matches when the persisted status equals the snapshot the domain validated,
+-- so a concurrent write (delivered -> cooking regression, cancel after
+-- delivery) raises 'Order status changed concurrently' instead of silently
+-- overwriting. The old 4-arg signature is DROPped — leaving it would keep a
+-- bypass that accepts any actor-less call (nullable p_expected_status on the
+-- new signature keeps 4-arg calls working via the DEFAULT). DROP IF EXISTS
+-- keeps the file idempotent on fresh and migrated databases alike.
+DROP FUNCTION IF EXISTS public.update_order_status_with_actor(
+    text, text, text, text
+);
 CREATE OR REPLACE FUNCTION public.update_order_status_with_actor(
     p_order_id TEXT,
     p_new_status TEXT,
     p_restaurant_id TEXT,
-    p_actor TEXT
+    p_actor TEXT,
+    p_expected_status TEXT DEFAULT NULL
 )
 RETURNS BOOLEAN
 LANGUAGE plpgsql
@@ -802,23 +907,41 @@ AS $$
 DECLARE
     v_rows_affected INTEGER;
 BEGIN
-    -- Validar actor si fue provisto
-    IF p_actor IS NOT NULL AND p_actor <> '' THEN
-        IF NOT EXISTS (
-            SELECT 1 FROM public.users
-            WHERE id = p_actor AND (restaurant_id = p_restaurant_id OR role = 'super_admin')
-        ) THEN
-            RAISE EXCEPTION 'Actor % is not authorized for restaurant %', p_actor, p_restaurant_id USING ERRCODE = 'P0001';
-        END IF;
-        PERFORM set_config('app.actor', p_actor, true);
+    -- Actor obligatorio (C2): sin actor la mutación falla cerrado con 42501;
+    -- nunca se acepta un cambio de estado sin registrar quién lo ejecutó.
+    IF p_actor IS NULL OR p_actor = '' THEN
+        RAISE EXCEPTION 'Actor is required' USING ERRCODE = '42501';
     END IF;
 
-    -- Actualizar status aislando estrictamente por id Y restaurant_id
+    -- Tenant-context guard (C1): if the session declared a restaurant via GUC
+    -- app.restaurant_id, it must match p_restaurant_id (cross-tenant attempt).
+    IF NULLIF(current_setting('app.restaurant_id', true), '') IS NOT NULL
+       AND NULLIF(current_setting('app.restaurant_id', true), '') IS DISTINCT FROM p_restaurant_id THEN
+        RAISE EXCEPTION 'Tenant context mismatch' USING ERRCODE = '42501';
+    END IF;
+
+    -- Validar actor: pertenece al restaurante (o es super_admin)
+    IF NOT EXISTS (
+        SELECT 1 FROM public.users
+        WHERE id = p_actor AND (restaurant_id = p_restaurant_id OR role = 'super_admin')
+    ) THEN
+        RAISE EXCEPTION 'Actor % is not authorized for restaurant %', p_actor, p_restaurant_id USING ERRCODE = 'P0001';
+    END IF;
+    PERFORM set_config('app.actor', p_actor, true);
+
+    -- Actualizar status aislando estrictamente por id Y restaurant_id, con CAS
+    -- (M1): la fila solo se toca si su status actual coincide con el snapshot
+    -- validado en el dominio (p_expected_status). Sin expected (legacy) el
+    -- comportamiento previo se conserva.
     UPDATE public.orders
     SET status = p_new_status, updated_at = NOW()
-    WHERE id = p_order_id AND restaurant_id = p_restaurant_id;
+    WHERE id = p_order_id AND restaurant_id = p_restaurant_id
+      AND (p_expected_status IS NULL OR status = p_expected_status);
 
     GET DIAGNOSTICS v_rows_affected = ROW_COUNT;
+    IF v_rows_affected = 0 AND p_expected_status IS NOT NULL THEN
+        RAISE EXCEPTION 'Order status changed concurrently' USING ERRCODE = 'P0001';
+    END IF;
     RETURN v_rows_affected > 0;
 END;
 $$;
@@ -901,7 +1024,9 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE O
 
 GRANT EXECUTE ON FUNCTION public.adjust_inventory_stock(TEXT, TEXT, NUMERIC) TO app_user;
 GRANT EXECUTE ON FUNCTION public.create_order_atomic(TEXT, TEXT, TEXT, TEXT, NUMERIC, NUMERIC, TEXT, JSONB, NUMERIC, TEXT) TO app_user;
-GRANT EXECUTE ON FUNCTION public.update_order_status_with_actor(TEXT, TEXT, TEXT, TEXT) TO app_user;
+-- M1/C2: the hardened signature is the 5-arg one (p_expected_status CAS); the
+-- 4-arg overload was DROPped in section 4.3.
+GRANT EXECUTE ON FUNCTION public.update_order_status_with_actor(TEXT, TEXT, TEXT, TEXT, TEXT) TO app_user;
 
 -- JD-A-001: these SECURITY DEFINER mutation functions bypass RLS as owner, so
 -- the default PUBLIC EXECUTE must be revoked — the anon key ships in the
@@ -910,7 +1035,7 @@ GRANT EXECUTE ON FUNCTION public.update_order_status_with_actor(TEXT, TEXT, TEXT
 -- backend role app_user may execute them.
 REVOKE EXECUTE ON FUNCTION public.adjust_inventory_stock(TEXT, TEXT, NUMERIC) FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION public.create_order_atomic(TEXT, TEXT, TEXT, TEXT, NUMERIC, NUMERIC, TEXT, JSONB, NUMERIC, TEXT) FROM PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.update_order_status_with_actor(TEXT, TEXT, TEXT, TEXT) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.update_order_status_with_actor(TEXT, TEXT, TEXT, TEXT, TEXT) FROM PUBLIC;
 -- The deployed backend runs supabase-js with the service-role key (see
 -- backend/src/infrastructure/persistence/supabase/SupabaseClient.ts), so
 -- PostgREST executes these RPCs as service_role; re-grant EXECUTE to that
@@ -922,7 +1047,7 @@ BEGIN
     IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
         EXECUTE 'GRANT EXECUTE ON FUNCTION public.adjust_inventory_stock(TEXT, TEXT, NUMERIC) TO service_role';
         EXECUTE 'GRANT EXECUTE ON FUNCTION public.create_order_atomic(TEXT, TEXT, TEXT, TEXT, NUMERIC, NUMERIC, TEXT, JSONB, NUMERIC, TEXT) TO service_role';
-        EXECUTE 'GRANT EXECUTE ON FUNCTION public.update_order_status_with_actor(TEXT, TEXT, TEXT, TEXT) TO service_role';
+        EXECUTE 'GRANT EXECUTE ON FUNCTION public.update_order_status_with_actor(TEXT, TEXT, TEXT, TEXT, TEXT) TO service_role';
     END IF;
 END;
 $$;
@@ -1088,6 +1213,14 @@ COMMIT;
     SET search_path = pg_catalog
     AS $$
     BEGIN
+        -- C2: the escape hatch is only reachable from the login-bootstrap path,
+        -- which PgUserRepository marks by setting app.auth_bootstrap='true' via
+        -- SET LOCAL. Any other session (PostgREST anon, a stray backend call)
+        -- fails closed with 42501: password_hash must never be readable without
+        -- an explicit bootstrap context.
+        IF NULLIF(current_setting('app.auth_bootstrap', true), '') IS DISTINCT FROM 'true' THEN
+            RAISE EXCEPTION 'Auth bootstrap context required' USING ERRCODE = '42501';
+        END IF;
         RETURN QUERY
         SELECT *
         FROM public.users
@@ -1106,6 +1239,9 @@ COMMIT;
     SET search_path = pg_catalog
     AS $$
     BEGIN
+        IF NULLIF(current_setting('app.auth_bootstrap', true), '') IS DISTINCT FROM 'true' THEN
+            RAISE EXCEPTION 'Auth bootstrap context required' USING ERRCODE = '42501';
+        END IF;
         RETURN QUERY
         SELECT *
         FROM public.users

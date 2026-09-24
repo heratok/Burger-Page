@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { OrderController } from '../controllers/OrderController.js';
-import { globalOrderEventBus } from '../../events/OrderEventBus.js';
+import { globalOrderEventBus, registerStream, unregisterStream } from '../../events/OrderEventBus.js';
 import { requireAuth, requireStreamToken, tryAuth } from '../middleware/auth.middleware.js';
 import { isOriginAllowed } from '../middleware/cors.js';
 
@@ -100,10 +100,28 @@ export async function orderRoutes(fastify: FastifyInstance, opts: { controller: 
       return reply.status(401).send({ title: 'Unauthorized', detail: 'Missing restaurant context in token.' });
     }
 
+    // H3: bound concurrent streams per process. Must run BEFORE
+    // reply.hijack(): the refusal is a normal JSON reply. Every connection
+    // then reserves a slot that is released exactly once on teardown.
+    if (!registerStream()) {
+      return reply.status(503).send({
+        title: 'Stream Capacity Exceeded',
+        status: 503,
+        detail: 'Stream capacity exceeded: too many active order streams. Retry shortly.',
+      });
+    }
+    let released = false;
+    const release = () => {
+      if (released) return;
+      released = true;
+      unregisterStream();
+    };
+
     reply.hijack();
     if (!isOriginAllowed(req.headers.origin)) {
       reply.raw.statusCode = 403;
       reply.raw.end('Origin not allowed');
+      release();
       return;
     }
     reply.raw.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
@@ -123,15 +141,22 @@ export async function orderRoutes(fastify: FastifyInstance, opts: { controller: 
     const safeWrite = (chunk: string) => {
       if (streamEnded) return;
       try {
+        // Backpressure note (H3): reply.raw.write() returning false (socket
+        // buffer full) is intentionally NOT queued here — a slow client only
+        // receives the 15s heartbeat until its socket errors out, which the
+        // 'error' handler below turns into teardown. A full drain-queue
+        // backpressure implementation is out of scope.
         reply.raw.write(chunk);
       } catch {
         streamEnded = true;
+        release();
         clearInterval(pingInterval);
         unsubscribe();
       }
     };
     reply.raw.on('error', () => {
       streamEnded = true;
+      release();
       clearInterval(pingInterval);
       unsubscribe();
     });
@@ -149,6 +174,7 @@ export async function orderRoutes(fastify: FastifyInstance, opts: { controller: 
 
     req.raw.on('close', () => {
       streamEnded = true;
+      release();
       clearInterval(pingInterval);
       unsubscribe();
     });

@@ -27,17 +27,24 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const { activeRestaurant, updateActiveRestaurantRecord } = useTenant()
   const { session } = useAuth()
 
+  // A1/A2: the inventory fetch keys on the session-aware effective tenant so a
+  // restaurant admin's first render never pulls another tenant's stock.
+  const effectiveId =
+    session.role === "restaurant" && session.restaurantId
+      ? session.restaurantId
+      : activeRestaurant?.id
+
   const [isLoadingInventory, setIsLoadingInventory] = useState<boolean>(() => {
     return Boolean(
       apiClient.hasToken() &&
-        activeRestaurant?.id &&
+        effectiveId &&
         (!activeRestaurant.inventory || activeRestaurant.inventory.length === 0)
     )
   })
 
   // Hydrate inventory from database
   React.useEffect(() => {
-    const targetRestId = activeRestaurant?.id
+    const targetRestId = effectiveId
     if (!targetRestId || !apiClient.hasToken()) {
       setIsLoadingInventory(false)
       return
@@ -73,7 +80,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return () => {
       isCancelled = true
     }
-  }, [activeRestaurant?.id, session, updateActiveRestaurantRecord])
+  }, [effectiveId, session, updateActiveRestaurantRecord])
 
   const inventory: InventoryItem[] = useMemo(() => {
     return activeRestaurant.inventory || []

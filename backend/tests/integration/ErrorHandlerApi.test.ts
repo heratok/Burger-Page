@@ -18,6 +18,37 @@ describe('Error Handler Suite', () => {
       vi.unstubAllEnvs();
       await app.close();
     });
+
+    it('keeps the current dev behavior when NODE_ENV is unset (detail exposed) (M5)', async () => {
+      vi.stubEnv('NODE_ENV', '');
+      vi.stubEnv('API_EXPOSE_ERRORS', '');
+      const app = buildApp();
+      app.get('/boom-unset', async () => {
+        throw new Error('SECRET_DEV_DETAIL_LEAK');
+      });
+      await app.ready();
+      const res = await app.inject({ method: 'GET', url: '/boom-unset' });
+      expect(res.statusCode).toBe(500);
+      // Dev parity: the 500 detail is not part of the prod surface.
+      expect(res.json().detail).toContain('SECRET_DEV_DETAIL_LEAK');
+      vi.unstubAllEnvs();
+      await app.close();
+    });
+
+    it('forces internal detail exposure in production only via explicit API_EXPOSE_ERRORS=true (M5)', async () => {
+      vi.stubEnv('NODE_ENV', 'production');
+      vi.stubEnv('API_EXPOSE_ERRORS', 'true');
+      const app = buildApp();
+      app.get('/boom-exposed', async () => {
+        throw new Error('SECRET_FORCED_DETAIL_XYZ');
+      });
+      await app.ready();
+      const res = await app.inject({ method: 'GET', url: '/boom-exposed' });
+      expect(res.statusCode).toBe(500);
+      expect(res.json().detail).toContain('SECRET_FORCED_DETAIL_XYZ');
+      vi.unstubAllEnvs();
+      await app.close();
+    });
   });
 
   describe('rate limit response shape', () => {

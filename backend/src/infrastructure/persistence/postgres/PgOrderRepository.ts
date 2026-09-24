@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { Order, OrderStatus, OrderItem, OrderItemAddition } from '../../../domain/models/Order.js';
 import { UserRole } from '../../../domain/models/User.js';
-import { EntityNotFoundError } from '../../../domain/errors/DomainErrors.js';
+import { EntityNotFoundError, InvalidOrderStateError } from '../../../domain/errors/DomainErrors.js';
 import { OrderRepository } from '../../../domain/ports/out/OrderRepository.js';
 import { withTenantContext } from './PgClient.js';
 import type { PoolClient } from 'pg';
@@ -157,16 +157,29 @@ export class PgOrderRepository implements OrderRepository {
     });
   }
 
-  async updateStatus(id: string, status: OrderStatus, restaurantId: string, actorId?: string, actorRole?: UserRole): Promise<void> {
+  async updateStatus(id: string, status: OrderStatus, restaurantId: string, actorId?: string, actorRole?: UserRole, expectedStatus?: OrderStatus): Promise<void> {
     // SUS-03: app.actor_role is derived from the caller's granted role (JWT),
     // never hardcoded — undefined omits it so the SECURITY DEFINER
     // update_order_status_with_actor validation runs under RLS with the
     // caller's real identity.
     await withTenantContext({ restaurantId, ...(actorRole ? { actorRole } : {}) }, async (client) => {
-      const { rows } = await client.query(
-        `SELECT public.update_order_status_with_actor($1, $2, $3, $4) AS updated`,
-        [id, status, restaurantId, actorId || null]
-      );
+      let rows: any[];
+      try {
+        const res = await client.query(
+          `SELECT public.update_order_status_with_actor($1, $2, $3, $4, $5) AS updated`,
+          [id, status, restaurantId, actorId || null, expectedStatus ?? null]
+        );
+        rows = res.rows;
+      } catch (err: any) {
+        // M1 CAS: the RPC raises P0001 'Order status changed concurrently'
+        // when the expected (snapshot) status no longer matches the persisted
+        // row; surface it as the same DomainError the domain's own transition
+        // validation throws, so both paths map identically in the API.
+        if (err?.code === 'P0001' && /concurrently/i.test(err?.message ?? '')) {
+          throw new InvalidOrderStateError(`Order status changed concurrently for order ${id}`);
+        }
+        throw err;
+      }
       if (rows[0]?.updated === false) {
         throw new EntityNotFoundError(`Order ${id} not found for restaurant ${restaurantId}`);
       }

@@ -193,12 +193,15 @@ describe('RLS tenant isolation (write policies, app_user role)', () => {
       // The narrow SECURITY DEFINER escape hatch is the ONLY no-context way to
       // read a user: exact match on the login credential, at most one row, with
       // every column the authenticator needs (password_hash for verification).
+      // C2: the path is gated on app.auth_bootstrap='true' (what the
+      // PgUserRepository login bootstrap sets via SET LOCAL before looking up).
+      const bootstrap = async (c: pg.PoolClient, q: string, p: unknown[]) => {
+        await c.query("SELECT set_config('app.auth_bootstrap', 'true', true)");
+        return c.query(q, p);
+      };
+
       const byUsername = await asTenant(null, null, (c) =>
-        c.query(
-          `SELECT id, username, role, restaurant_id, is_active, password_hash
-           FROM public.look_up_user_for_auth($1)`,
-          [PLATFORM_USER]
-        )
+        bootstrap(c, `SELECT id, username, role, restaurant_id, is_active, password_hash FROM public.look_up_user_for_auth($1)`, [PLATFORM_USER])
       );
       expect(byUsername.rowCount).toBe(1);
       expect(byUsername.rows[0]).toMatchObject({
@@ -211,16 +214,30 @@ describe('RLS tenant isolation (write policies, app_user role)', () => {
 
       // By-id variant (PgUserRepository.findById before tenant resolution).
       const byId = await asTenant(null, null, (c) =>
-        c.query(`SELECT id FROM public.look_up_user_for_auth_by_id($1)`, [PLATFORM_USER])
+        bootstrap(c, `SELECT id FROM public.look_up_user_for_auth_by_id($1)`, [PLATFORM_USER])
       );
       expect(byId.rowCount).toBe(1);
       expect(byId.rows[0].id).toBe(PLATFORM_USER);
 
       // Exact-match only: a lookup for a non-existent credential returns nothing.
       const missing = await asTenant(null, null, (c) =>
-        c.query(`SELECT id FROM public.look_up_user_for_auth($1)`, [`no-such-${randomUUID().slice(0, 8)}`])
+        bootstrap(c, `SELECT id FROM public.look_up_user_for_auth($1)`, [`no-such-${randomUUID().slice(0, 8)}`])
       );
       expect(missing.rowCount).toBe(0);
+    });
+
+    it('look_up_user_for_auth WITHOUT app.auth_bootstrap fails closed with 42501 (C2)', async () => {
+      if (!isDbConnected) return;
+      await expect(
+        asTenant(null, null, (c) =>
+          c.query(`SELECT id, username, password_hash FROM public.look_up_user_for_auth($1)`, [PLATFORM_USER])
+        )
+      ).rejects.toMatchObject({ code: '42501' });
+      await expect(
+        asTenant(null, null, (c) =>
+          c.query(`SELECT id FROM public.look_up_user_for_auth_by_id($1)`, [PLATFORM_USER])
+        )
+      ).rejects.toMatchObject({ code: '42501' });
     });
 
     it('super_admin context sees all users', async () => {
@@ -281,6 +298,142 @@ describe('RLS tenant isolation (write policies, app_user role)', () => {
       );
       expect(updated.rowCount).toBe(1);
       expect(updated.rows[0].role).toBe('restaurant_admin');
+    });
+  });
+
+  describe('SECURITY DEFINER GUC guards (C1/C2/M1 hardening)', () => {
+    const ORDER_ID = `rls-order-${randomUUID().slice(0, 8)}`;
+    const ORDER_ID_B = `rls-order-b-${randomUUID().slice(0, 8)}`;
+    const INVENTORY_ID = `rls-inv-${randomUUID().slice(0, 8)}`;
+    const ACTOR_ID = `rls-actor-${randomUUID().slice(0, 8)}`;
+
+    beforeAll(async () => {
+      if (!isDbConnected) return;
+      await adminPool.query(
+        `INSERT INTO public.orders (id, restaurant_id, status, subtotal, delivery_fee, final_total, payment_method)
+         VALUES ($1, $2, 'cooking', 0, 0, 0, 'Efectivo')
+         ON CONFLICT (id) DO UPDATE SET status = EXCLUDED.status`,
+        [ORDER_ID, RESTAURANT_A]
+      );
+      await adminPool.query(
+        `INSERT INTO public.orders (id, restaurant_id, status, subtotal, delivery_fee, final_total, payment_method, client_order_id)
+         VALUES ($1, $2, 'pending', 0, 0, 0, 'Efectivo', 'rls-replay-ok')
+         ON CONFLICT (id) DO UPDATE SET status = EXCLUDED.status, client_order_id = EXCLUDED.client_order_id`,
+        [ORDER_ID_B, RESTAURANT_B]
+      );
+      await adminPool.query(
+        `INSERT INTO public.inventory_items (id, restaurant_id, name, current_stock, unit, min_stock_alert, cost_per_unit)
+         VALUES ($1, $2, 'RLS Hardening Stock', 10, 'kg', 1, 1000)
+         ON CONFLICT (id, restaurant_id) DO UPDATE SET current_stock = EXCLUDED.current_stock`,
+        [INVENTORY_ID, RESTAURANT_A]
+      );
+      await adminPool.query(
+        `INSERT INTO public.users (id, username, password_hash, role, restaurant_id)
+         VALUES ($1, $1, 'hash-rls-actor', 'restaurant_admin', $2)
+         ON CONFLICT (id) DO UPDATE SET restaurant_id = EXCLUDED.restaurant_id`,
+        [ACTOR_ID, RESTAURANT_A]
+      );
+    });
+
+    afterAll(async () => {
+      if (isDbConnected) {
+        await adminPool.query(`DELETE FROM public.orders WHERE id IN ($1, $2)`, [ORDER_ID, ORDER_ID_B]);
+        await adminPool.query(`DELETE FROM public.inventory_items WHERE id = $1`, [INVENTORY_ID]);
+        await adminPool.query(`DELETE FROM public.users WHERE id = $1`, [ACTOR_ID]);
+      }
+    });
+
+    it('create_order_atomic: GUC tenant A + p_restaurant_id tenant B → 42501 (C1)', async () => {
+      if (!isDbConnected) return;
+      // The tenant-context guard fires before any validation/data access, so
+      // minimal args suffice — the call must fail closed with 42501 before
+      // touching rows.
+      await expect(
+        asTenant(RESTAURANT_A, null, (c) =>
+          c.query(
+            `SELECT public.create_order_atomic($1, $2, NULL, 'Efectivo', 100, 0, NULL, '[]'::jsonb, NULL, NULL)`,
+            [`rls-order-forbidden-${randomUUID().slice(0, 8)}`, RESTAURANT_B]
+          )
+        )
+      ).rejects.toMatchObject({ code: '42501' });
+    });
+
+    it('create_order_atomic: matching GUC still succeeds (storefront path preserved)', async () => {
+      if (!isDbConnected) return;
+      // Positive control: the app_user session sets app.restaurant_id to the
+      // SAME restaurant it passes, so the guard must NOT block the legitimate
+      // backend/storefront path. Exercises the idempotent replay against the
+      // pre-seeded order in restaurant B (client_order_id = 'rls-replay-ok').
+      const result = await asTenant(RESTAURANT_B, null, (c) =>
+        c.query(
+          `SELECT public.create_order_atomic($1, $2, NULL, 'Efectivo', 0, 0, NULL, '[]'::jsonb, NULL, 'rls-replay-ok') AS out`,
+          [ORDER_ID_B, RESTAURANT_B]
+        )
+      );
+      // The idempotency replay finds the pre-seeded order in restaurant B and
+      // returns its lean projection — proving the GUC==arg path is NOT blocked.
+      expect(result.rows[0].out).toMatchObject({ id: ORDER_ID_B, status: 'pending', restaurant_id: RESTAURANT_B });
+    });
+
+    it('adjust_inventory_stock: GUC tenant A + p_restaurant_id tenant B → 42501 (C1)', async () => {
+      if (!isDbConnected) return;
+      await expect(
+        asTenant(RESTAURANT_A, null, (c) =>
+          c.query(`SELECT * FROM public.adjust_inventory_stock($1, $2, $3)`, [INVENTORY_ID, RESTAURANT_B, 5])
+        )
+      ).rejects.toMatchObject({ code: '42501' });
+    });
+
+    it('adjust_inventory_stock: non-finite delta is rejected', async () => {
+      if (!isDbConnected) return;
+      await expect(
+        asTenant(RESTAURANT_A, null, (c) =>
+          c.query(`SELECT * FROM public.adjust_inventory_stock($1, $2, $3::numeric)`, [INVENTORY_ID, RESTAURANT_A, 'Infinity'])
+        )
+      ).rejects.toThrow(/Invalid quantity change/);
+    });
+
+    it('update_order_status_with_actor: p_actor = NULL is rejected with 42501 (C2)', async () => {
+      if (!isDbConnected) return;
+      await expect(
+        asTenant(RESTAURANT_A, null, (c) =>
+          c.query(`SELECT public.update_order_status_with_actor($1, 'delivered', $2, NULL)`, [ORDER_ID, RESTAURANT_A])
+        )
+      ).rejects.toMatchObject({ code: '42501' });
+    });
+
+    it('update_order_status_with_actor: GUC tenant A + p_restaurant_id tenant B → 42501 (C1)', async () => {
+      if (!isDbConnected) return;
+      await expect(
+        asTenant(RESTAURANT_A, null, (c) =>
+          c.query(`SELECT public.update_order_status_with_actor($1, 'delivered', $2, $3)`, [ORDER_ID, RESTAURANT_B, ACTOR_ID])
+        )
+      ).rejects.toMatchObject({ code: '42501' });
+    });
+
+    it('update_order_status_with_actor: status CAS rejects a stale snapshot with P0001 (M1)', async () => {
+      if (!isDbConnected) return;
+      // The seeded order in restaurant A is 'cooking'; asking to move it with
+      // expectedStatus='pending' (stale) must raise the concurrency error
+      // instead of regressing/skipping.
+      await expect(
+        asTenant(RESTAURANT_A, null, (c) =>
+          c.query(`SELECT public.update_order_status_with_actor($1, 'delivered', $2, $3, 'pending')`, [ORDER_ID, RESTAURANT_A, ACTOR_ID])
+        )
+      ).rejects.toMatchObject({ code: 'P0001', message: expect.stringContaining('concurrently') });
+      // Verify the row is untouched.
+      const { rows } = await adminPool.query(`SELECT status FROM public.orders WHERE id = $1`, [ORDER_ID]);
+      expect(rows[0].status).toBe('cooking');
+    });
+
+    it('update_order_status_with_actor: matching snapshot CAS succeeds', async () => {
+      if (!isDbConnected) return;
+      const updated = await asTenant(RESTAURANT_A, null, (c) =>
+        c.query(`SELECT public.update_order_status_with_actor($1, 'delivered', $2, $3, 'cooking') AS updated`, [ORDER_ID, RESTAURANT_A, ACTOR_ID])
+      );
+      expect(updated.rows[0].updated).toBe(true);
+      const { rows } = await adminPool.query(`SELECT status FROM public.orders WHERE id = $1`, [ORDER_ID]);
+      expect(rows[0].status).toBe('delivered');
     });
   });
 });

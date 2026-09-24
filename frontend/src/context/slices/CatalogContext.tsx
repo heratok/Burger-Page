@@ -2,6 +2,7 @@ import React, { createContext, useContext, useCallback, useMemo, useEffect, useS
 import type { StorefrontConfig, MenuItem, AdditionItem } from "@/types/restaurant"
 import { DEFAULT_STORE_CONFIG } from "@/constants/themePresets"
 import { useTenant } from "./TenantContext"
+import { useAuth } from "./AuthContext"
 import { apiClient, isNotFoundError } from "@/core/api/apiClient"
 import { toast } from "sonner"
 import { nextTempId } from "@/lib/ids"
@@ -30,19 +31,34 @@ const CatalogContext = createContext<CatalogContextType | undefined>(undefined)
 
 export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { activeRestaurant, updateActiveRestaurantRecord } = useTenant()
+  const { session } = useAuth()
+
+  // A1/A2: fetch targets key on the session-aware effective tenant. For a
+  // restaurant admin the session binds the fetch to THEIR restaurant even when
+  // a stale persisted activeRestaurant is present in the envelope.
+  const effectiveId =
+    session.role === "restaurant" && session.restaurantId
+      ? session.restaurantId
+      : activeRestaurant?.id
+  // The slug is only trustworthy when it belongs to the effective tenant record
+  // (avoids sending another tenant's slug when the memo fell back to [0]).
+  const effectiveSlug =
+    activeRestaurant && activeRestaurant.id === effectiveId
+      ? activeRestaurant.slug
+      : undefined
 
   const [isLoadingCatalog, setIsLoadingCatalog] = useState<boolean>(() => {
     return Boolean(
-      activeRestaurant?.id &&
-        activeRestaurant.id !== "rest-default" &&
+      effectiveId &&
+        effectiveId !== "rest-default" &&
         (!activeRestaurant.products || activeRestaurant.products.length === 0)
     )
   })
 
   // Sync products and additions from database for active tenant
   useEffect(() => {
-    const restId = activeRestaurant?.id
-    const restSlug = activeRestaurant?.slug
+    const restId = effectiveId
+    const restSlug = effectiveSlug
     if (!restId || restId === "rest-default") {
       setIsLoadingCatalog(false)
       return
@@ -97,7 +113,7 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return () => {
       isCancelled = true
     }
-  }, [activeRestaurant?.id, activeRestaurant?.slug, updateActiveRestaurantRecord])
+  }, [effectiveId, effectiveSlug, updateActiveRestaurantRecord])
 
   const updateStoreConfig = useCallback(
     (newConfig: Partial<StorefrontConfig>) => {

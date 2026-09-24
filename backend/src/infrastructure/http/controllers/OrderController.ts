@@ -106,8 +106,17 @@ export class OrderController {
     if (!parsed.success) {
       throw new ValidationError(parsed.error.message);
     }
+    // H1/A4: a storefront order only carries staff privileges when the
+    // authenticated session actually targets its own tenant (or an
+    // authenticated super admin explicitly targets a tenant). Any mismatch
+    // degrades the call to a public guest, so fee waivers and CRM profile
+    // updates can never cross tenant boundaries.
+    const bodyRestaurantId = (req.body as any)?.restaurantId;
+    const ctx = req.authContext;
+    const isStaffForTarget = Boolean(ctx) &&
+      Boolean(ctx!.role === 'super_admin' || (ctx!.restaurantId && ctx!.restaurantId === bodyRestaurantId));
     const order = await this.createOrderUseCase.execute(parsed.data as CreateOrderDTO, {
-      authenticated: Boolean(req.authContext),
+      authenticated: isStaffForTarget,
     });
 
     // Publish SSE Real-time Event with tenant ID

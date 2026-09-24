@@ -3,6 +3,12 @@ import { ZodError } from 'zod';
 import { DomainError, EntityNotFoundError, ValidationError, InvalidOrderStateError, UnauthorizedError } from '../../../domain/errors/DomainErrors.js';
 
 export function errorHandler(error: FastifyError | Error, request: FastifyRequest, reply: FastifyReply) {
+  // M5: internal messages are only exposed on an explicit opt-in
+  // (API_EXPOSE_ERRORS=true) or outside production. Production always hides
+  // the error.message even when NODE_ENV is unset, and tests can force
+  // exposure/inspection regardless of the environment.
+  const exposeErrorDetails = process.env.API_EXPOSE_ERRORS === 'true' || process.env.NODE_ENV !== 'production';
+
   // Domain errors
   if (error instanceof DomainError) {
     if (error instanceof EntityNotFoundError) {
@@ -80,12 +86,12 @@ export function errorHandler(error: FastifyError | Error, request: FastifyReques
   }
 
   // Fallback generic 500 error - log full context and never let process crash.
-  // In production the internal message stays server-side only.
+  // The internal message stays server-side only unless explicitly exposed.
   request.log.error({ err: error, url: request.url, method: request.method }, 'Unhandled Exception');
   return reply.status(500).send({
     type: 'https://example.com/probs/internal-server-error',
     title: 'Internal Server Error',
     status: 500,
-    detail: process.env.NODE_ENV === 'production' ? 'An unexpected error occurred.' : (error.message || 'An unexpected error occurred.')
+    detail: exposeErrorDetails ? (error.message || 'An unexpected error occurred.') : 'An unexpected error occurred.'
   });
 }

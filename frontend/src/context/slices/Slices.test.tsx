@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest"
-import { renderHook, act, waitFor } from "@testing-library/react"
+import { renderHook, act, waitFor, render, screen, fireEvent } from "@testing-library/react"
 import React from "react"
 import { UiProvider, useUi } from "./UiContext"
 import { AuthProvider, useAuth } from "./AuthContext"
@@ -81,6 +81,32 @@ describe("AuthContext Slice", () => {
           result.current.logout()
         })
         expect(result.current.session.role).toBe("guest")
+      })
+
+      it("invokes the onLogout callback after clearing the session on logout (C3)", async () => {
+        const { apiClient } = await import("@/core/api/apiClient")
+        vi.spyOn(apiClient, "login").mockResolvedValue({
+          success: true,
+          token: "server-token",
+          user: { id: "u1", username: "root", role: "super_admin" },
+        } as any)
+        const onLogout = vi.fn()
+        const wrapper = ({ children }: { children: React.ReactNode }) => (
+          <AuthProvider onLogout={onLogout}>{children}</AuthProvider>
+        )
+        const { result } = renderHook(() => useAuth(), { wrapper })
+
+        await act(async () => {
+          await result.current.login("root", "admin")
+        })
+        expect(result.current.session.role).toBe("super")
+        expect(onLogout).not.toHaveBeenCalled()
+
+        act(() => {
+          result.current.logout()
+        })
+        expect(result.current.session.role).toBe("guest")
+        expect(onLogout).toHaveBeenCalledTimes(1)
       })
 })
 
@@ -1855,6 +1881,83 @@ describe("TenantContext Slice - One-Time Admin Credentials (SUS-02)", () => {
     const record = result.current.restaurants.find((r) => r.slug === "sec-tenant")
     expect(record?.adminPassword).toBeUndefined()
     expect((record as any).adminUsername).toBeUndefined()
+  })
+})
+
+describe("AdminAuthModal - session comes only from the validated auth.login result (M6)", () => {
+  beforeEach(() => {
+    localStorage.clear()
+    sessionStorage.clear()
+    vi.restoreAllMocks()
+  })
+
+  it("authenticates through AuthContext.login from the real backend response and never writes the session from local data", async () => {
+    const { apiClient } = await import("@/core/api/apiClient")
+    const loginSpy = vi.spyOn(apiClient, "login").mockResolvedValue({
+      success: true,
+      token: "server-token",
+      user: {
+        id: "u9",
+        username: "chef",
+        role: "restaurant_admin",
+        restaurantId: "rest-from-server",
+      },
+    } as any)
+    vi.spyOn(apiClient, "listRestaurants").mockRejectedValue(new Error("no backend in tests"))
+    vi.spyOn(apiClient, "hasToken").mockReturnValue(true)
+    vi.spyOn(apiClient, "fetchOrders").mockResolvedValue([])
+    vi.spyOn(apiClient, "fetchCustomers").mockResolvedValue([])
+    // The modal's own session write must never exist: the only session source is
+    // the server-validated login response through AuthContext.
+
+    const routerModule = await import("@/core/router/useAppRouter")
+    vi.spyOn(routerModule, "useAppRouter").mockReturnValue({
+      activeView: "admin",
+      adminTab: "dashboard",
+      isNotFound: false,
+      attemptedSlug: null,
+      navigateTo: vi.fn(),
+    })
+
+    const { AdminAuthModal } = await import("@/features/superadmin/AdminAuthModal")
+    const { RestaurantProvider, useRestaurant } = await import("../RestaurantContext")
+    const { InMemoryStorageAdapter } = await import("@/core/storage/StorageAdapter")
+    const { TenantRepository, STORAGE_KEYS } = await import("@/core/storage/TenantRepository")
+    const { TEST_STORAGE_ENVELOPE } = await import("@/test/fixtures")
+
+    const adapter = new InMemoryStorageAdapter()
+    adapter.setItem(STORAGE_KEYS.ENVELOPE, JSON.stringify(TEST_STORAGE_ENVELOPE))
+    const repo = new TenantRepository(adapter)
+
+    let sessionRef: any = null
+    const SessionProbe = () => {
+      sessionRef = useRestaurant().session
+      return null
+    }
+
+    render(
+      <RestaurantProvider repository={repo}>
+        <AdminAuthModal isOpen />
+        <SessionProbe />
+      </RestaurantProvider>
+    )
+
+    fireEvent.change(screen.getByPlaceholderText("Tu nombre de usuario"), {
+      target: { value: "chef" },
+    })
+    fireEvent.change(
+      screen.getByPlaceholderText("Ingresá tu clave de administración..."),
+      { target: { value: "clave" } }
+    )
+    fireEvent.click(screen.getByRole("button", { name: /Acceder al Panel/i }))
+
+    await waitFor(() => {
+      expect(loginSpy).toHaveBeenCalledTimes(1)
+    })
+    // The session carries ONLY fields from the authenticated server response.
+    await waitFor(() => {
+      expect(sessionRef).toMatchObject({ role: "restaurant", restaurantId: "rest-from-server" })
+    })
   })
 })
 

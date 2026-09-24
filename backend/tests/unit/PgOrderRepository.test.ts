@@ -1,11 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PgOrderRepository } from '../../src/infrastructure/persistence/postgres/PgOrderRepository.js';
 import { Order } from '../../src/domain/models/Order.js';
-import { EntityNotFoundError } from '../../src/domain/errors/DomainErrors.js';
+import { EntityNotFoundError, InvalidOrderStateError } from '../../src/domain/errors/DomainErrors.js';
 
 // RED round-2 regressions: the Pg update must persist the status column.
 const h = vi.hoisted(() => {
   const queries: string[] = [];
+  const rpcParams: unknown[][] = [];
   const client: any = {
     query: async (sql: string) => {
       queries.push(sql);
@@ -17,7 +18,7 @@ const h = vi.hoisted(() => {
       return { rows: [] };
     },
   };
-  return { queries, client };
+  return { queries, rpcParams, client };
 });
 
 vi.mock('../../src/infrastructure/persistence/postgres/PgClient.js', () => ({
@@ -84,5 +85,64 @@ describe('PgOrderRepository.update (Status Persistence)', () => {
     const updateSql = h.queries.find((q) => q.includes('UPDATE public.orders SET'));
     expect(updateSql).toBeDefined();
     expect(updateSql).toContain('status');
+  });
+
+  it('passes the 5th expectedStatus arg to the CAS RPC', async () => {
+    h.rpcParams.length = 0;
+    h.client.query = vi.fn(async (sql: string, params?: unknown[]) => {
+      h.queries.push(sql);
+      if (sql.includes('update_order_status_with_actor')) {
+        h.rpcParams.push(params ?? []);
+        return { rows: [{ updated: true }] };
+      }
+      return { rows: [] };
+    });
+
+    const repo = new PgOrderRepository();
+    await repo.updateStatus('ord-1', 'cooking', 'rest-a', 'actor-1', 'restaurant_admin', 'pending');
+
+    expect(h.rpcParams).toHaveLength(1);
+    // Parameters: id, new status, restaurant, actor, expectedStatus.
+    expect(h.rpcParams[0]).toEqual(['ord-1', 'cooking', 'rest-a', 'actor-1', 'pending']);
+    // And the CAS arg is omitted as NULL when no snapshot is passed.
+    h.rpcParams.length = 0;
+    h.client.query = vi.fn(async (sql: string, params?: unknown[]) => {
+      h.queries.push(sql);
+      if (sql.includes('update_order_status_with_actor')) {
+        h.rpcParams.push(params ?? []);
+        return { rows: [{ updated: true }] };
+      }
+      return { rows: [] };
+    });
+    await repo.updateStatus('ord-1', 'cooking', 'rest-a');
+    expect(h.rpcParams[0]).toEqual(['ord-1', 'cooking', 'rest-a', null, null]);
+  });
+
+  it('maps the RPC concurrency P0001 to InvalidOrderStateError when expectedStatus is stale', async () => {
+    h.client.query = vi.fn(async (sql: string) => {
+      h.queries.push(sql);
+      if (sql.includes('update_order_status_with_actor')) {
+        const err: any = new Error('Order status changed concurrently');
+        err.code = 'P0001';
+        throw err;
+      }
+      return { rows: [] };
+    });
+
+    const repo = new PgOrderRepository();
+    await expect(
+      repo.updateStatus('ord-1', 'cooking', 'rest-a', 'actor-1', 'restaurant_admin', 'pending')
+    ).rejects.toBeInstanceOf(InvalidOrderStateError);
+  });
+
+  it('still surfaces EntityNotFoundError when the RPC returns false (no CAS arg)', async () => {
+    h.client.query = vi.fn(async (sql: string) => {
+      h.queries.push(sql);
+      if (sql.includes('update_order_status_with_actor')) return { rows: [{ updated: false }] };
+      return { rows: [] };
+    });
+
+    const repo = new PgOrderRepository();
+    await expect(repo.updateStatus('ord-1', 'cooking', 'rest-a')).rejects.toBeInstanceOf(EntityNotFoundError);
   });
 });

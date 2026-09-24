@@ -171,6 +171,56 @@ describe('Order API', () => {
     expect(anonymousWithoutFee.json().finalTotal).toBe(10);
   });
 
+  it('POST /api/orders: staff token of ANOTHER tenant is degraded to guest, fee enforced (H1/A4)', async () => {
+    const foreignStaffToken = jwtService.generateToken({
+      id: 'usr-other-1',
+      username: 'manager_other',
+      role: 'restaurant_admin',
+      restaurantId: 'rest-other', // NOT the restaurant targeted in the order
+    });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/orders',
+      headers: { authorization: `Bearer ${foreignStaffToken}` },
+      payload: {
+        restaurantId: 'burger-craft',
+        customerId: 'customer-123',
+        items: [{ productId, quantity: 1, additions: [] }],
+        deliveryFee: 2500, // staff-style fee waiver attempt across tenants
+      }
+    });
+
+    expect(res.statusCode).toBe(201);
+    // The mismatch must drop the call to guest: client fee ignored, configured fee (0) enforced.
+    expect(res.json().deliveryFee).toBe(0);
+    expect(res.json().finalTotal).toBe(10);
+  });
+
+  it('POST /api/orders: authenticated super_admin explicitly targeting the tenant keeps staff privileges (H1/A4)', async () => {
+    const superAdminToken = jwtService.generateToken({
+      id: 'usr-super-1',
+      username: 'root',
+      role: 'super_admin',
+    });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/orders',
+      headers: { authorization: `Bearer ${superAdminToken}` },
+      payload: {
+        restaurantId: 'burger-craft',
+        customerId: 'customer-123',
+        items: [{ productId, quantity: 1, additions: [] }],
+        deliveryFee: 2500,
+      }
+    });
+
+    expect(res.statusCode).toBe(201);
+    expect(res.json().deliveryFee).toBe(2500); // explicit staff waiver honored
+    expect(res.json().finalTotal).toBe(2510); // 10 + 2500
+  });
+
   it('POST /api/orders should return validation error for missing fields', async () => {
     const response = await app.inject({
       method: 'POST',

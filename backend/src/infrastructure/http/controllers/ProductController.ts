@@ -99,6 +99,13 @@ export class ProductController {
       if (rest) {
         return rest.id;
       }
+
+      // M7: a mutation must never fall through to a tenant the repository
+      // cannot resolve — that is exactly how orphan rows are written. Reads
+      // keep the raw-id passthrough (and the first-active fallback) above.
+      if (options.mutation) {
+        throw new EntityNotFoundError(`Restaurant '${restaurantId}' not found.`);
+      }
     }
 
     return restaurantId || '';

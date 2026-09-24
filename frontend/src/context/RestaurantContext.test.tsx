@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest"
-import { renderHook, act } from "@testing-library/react"
+import { renderHook, act, waitFor } from "@testing-library/react"
 import React from "react"
 import { RestaurantProvider, useRestaurant } from "./RestaurantContext"
 import { InMemoryStorageAdapter } from "@/core/storage/StorageAdapter"
@@ -130,6 +130,163 @@ describe("RestaurantContext (Multi-Tenant & Super Admin)", () => {
 
     expect(result.current.activeRestaurant.slug).toBe("burger-craft")
     expect(result.current.products.some((p) => p.name === "Dragon Roll")).toBe(false)
+  })
+
+  it("purges the whole-tenant envelope and persisted active restaurant from storage on logout (C3)", async () => {
+    const adapter = new InMemoryStorageAdapter()
+    adapter.setItem(STORAGE_KEYS.ENVELOPE, JSON.stringify(TEST_STORAGE_ENVELOPE))
+    adapter.setItem(STORAGE_KEYS.ACTIVE_REST, "rest-pizzeria-napoli")
+    const repo = new TenantRepository(adapter)
+    const purgeSpy = vi.spyOn(repo, "purgeTenantData")
+
+    const w = ({ children }: { children: React.ReactNode }) => (
+      <RestaurantProvider repository={repo}>{children}</RestaurantProvider>
+    )
+    const { result } = renderHook(() => useRestaurant(), { wrapper: w })
+
+    expect(adapter.getItem(STORAGE_KEYS.ENVELOPE)).not.toBeNull()
+
+    act(() => {
+      result.current.logout()
+    })
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(purgeSpy).toHaveBeenCalledTimes(1)
+    expect(adapter.getItem(STORAGE_KEYS.ENVELOPE)).toBeNull()
+    expect(adapter.getItem(STORAGE_KEYS.ACTIVE_REST)).toBeNull()
+  })
+
+  it("derives effectiveRestaurantId from the session for restaurant admins, ignoring a stale persisted active restaurant, and binds first-render fetches to the session tenant (A1)", async () => {
+    // Shared-browser scenario: a restaurant session restored next day while the
+    // persisted activeRestaurant still points at a DIFFERENT tenant.
+    sessionStorage.setItem(
+      "burger_page_session_v2",
+      JSON.stringify({
+        role: "restaurant",
+        restaurantId: "rest-pizzeria-napoli",
+        authenticatedAt: new Date().toISOString(),
+      })
+    )
+    const adapter = new InMemoryStorageAdapter()
+    adapter.setItem(STORAGE_KEYS.ENVELOPE, JSON.stringify(TEST_STORAGE_ENVELOPE))
+    adapter.setItem(STORAGE_KEYS.ACTIVE_REST, "rest-burger-craft")
+    const repo = new TenantRepository(adapter)
+
+    const { apiClient } = await import("@/core/api/apiClient")
+    vi.spyOn(apiClient, "hasToken").mockReturnValue(true)
+    // Keep the seeded envelope stable: the mount refresh must not rewrite it.
+    vi.spyOn(apiClient, "listRestaurants").mockRejectedValue(new Error("no backend in tests"))
+    const fetchOrdersSpy = vi.spyOn(apiClient, "fetchOrders").mockResolvedValue([])
+    const fetchCustomersSpy = vi.spyOn(apiClient, "fetchCustomers").mockResolvedValue([])
+
+    const w = ({ children }: { children: React.ReactNode }) => (
+      <RestaurantProvider repository={repo}>{children}</RestaurantProvider>
+    )
+    const { result } = renderHook(() => useRestaurant(), { wrapper: w })
+
+    // The stale persisted id never wins: session tenant wins for both the
+    // derived value and the rendered active restaurant.
+    expect(result.current.effectiveRestaurantId).toBe("rest-pizzeria-napoli")
+    expect(result.current.activeRestaurantId).toBe("rest-pizzeria-napoli")
+    expect(result.current.activeRestaurant.slug).toBe("pizzeria-napoli")
+
+    // First-render order/customer fetch targets the SESSION tenant, never the
+    // stale persisted rest-burger-craft.
+    await waitFor(() => {
+      expect(fetchOrdersSpy).toHaveBeenCalledWith("rest-pizzeria-napoli")
+      expect(fetchCustomersSpy).toHaveBeenCalledWith("rest-pizzeria-napoli")
+    })
+    expect(fetchOrdersSpy).not.toHaveBeenCalledWith("rest-burger-craft")
+  })
+
+  it("keeps the persisted active restaurant for guest and super admin sessions (A1)", async () => {
+    const adapter = new InMemoryStorageAdapter()
+    adapter.setItem(STORAGE_KEYS.ENVELOPE, JSON.stringify(TEST_STORAGE_ENVELOPE))
+    adapter.setItem(STORAGE_KEYS.ACTIVE_REST, "rest-tacos-el-rey")
+    const repo = new TenantRepository(adapter)
+
+    const w = ({ children }: { children: React.ReactNode }) => (
+      <RestaurantProvider repository={repo}>{children}</RestaurantProvider>
+    )
+    const { result } = renderHook(() => useRestaurant(), { wrapper: w })
+
+    expect(result.current.effectiveRestaurantId).toBe("rest-tacos-el-rey")
+    expect(result.current.activeRestaurant.slug).toBe("tacos-el-rey")
+
+    // Same rule for super admin: the persisted switch must still win.
+    act(() => {
+      result.current.setSession({ role: "super", authenticatedAt: new Date().toISOString() })
+    })
+    expect(result.current.effectiveRestaurantId).toBe("rest-tacos-el-rey")
+    expect(result.current.activeRestaurant.slug).toBe("tacos-el-rey")
+  })
+
+  it("prevents a restaurant admin from switching to another tenant, allowing only the session tenant (M5)", async () => {
+    sessionStorage.setItem(
+      "burger_page_session_v2",
+      JSON.stringify({
+        role: "restaurant",
+        restaurantId: "rest-burger-craft",
+        authenticatedAt: new Date().toISOString(),
+      })
+    )
+    const { result } = renderHook(() => useRestaurant(), {
+      wrapper: ({ children }: { children: React.ReactNode }) => (
+        <RestaurantProvider repository={createTestRepo()}>{children}</RestaurantProvider>
+      ),
+    })
+
+    expect(result.current.activeRestaurant.slug).toBe("burger-craft")
+
+    // Direct switch to another tenant (id or slug) is ignored.
+    act(() => {
+      result.current.switchRestaurant("rest-tacos-el-rey")
+    })
+    expect(result.current.activeRestaurant.slug).toBe("burger-craft")
+    act(() => {
+      result.current.switchRestaurant("pizzeria-napoli")
+    })
+    expect(result.current.activeRestaurant.slug).toBe("burger-craft")
+
+    // Switching to the OWN tenant (by slug or id) still works.
+    act(() => {
+      result.current.switchRestaurant("rest-burger-craft")
+    })
+    expect(result.current.activeRestaurant.slug).toBe("burger-craft")
+  })
+
+  it("rejects creating a restaurant with a duplicate slug and persists nothing (M9)", async () => {
+    const { apiClient } = await import("@/core/api/apiClient")
+    const createSpy = vi.spyOn(apiClient, "createRestaurant")
+    vi.spyOn(apiClient, "listRestaurants").mockRejectedValue(new Error("no backend in tests"))
+    const { toast } = await import("sonner")
+    const errorSpy = vi.spyOn(toast, "error")
+
+    const { result } = renderHook(() => useRestaurant(), {
+      wrapper: ({ children }: { children: React.ReactNode }) => (
+        <RestaurantProvider repository={createTestRepo()}>{children}</RestaurantProvider>
+      ),
+    })
+    const before = result.current.restaurants.length
+
+    let created: any
+    act(() => {
+      created = result.current.createRestaurant({
+        name: "Burger Craft Duplicado",
+        slug: "burger-craft",
+        tagline: "Dup",
+        whatsappNumber: "111",
+      })
+    })
+
+    expect(created).toBeUndefined()
+    expect(result.current.restaurants).toHaveLength(before)
+    expect(result.current.restaurants.some((r) => r.config.name === "Burger Craft Duplicado")).toBe(false)
+    expect(createSpy).not.toHaveBeenCalled()
+    expect(errorSpy).toHaveBeenCalledWith("Ya existe un restaurante con ese slug")
   })
 
   it("isolates orders and customer directory per restaurant", () => {

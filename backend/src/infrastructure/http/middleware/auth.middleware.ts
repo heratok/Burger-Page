@@ -166,6 +166,7 @@ export function createAuthMiddlewares(
       const token = authHeader.slice(7).trim();
       try {
         const payload = jwt.verifyToken(token);
+        if (payload.scope && payload.scope !== 'session') return; // restricted token never authenticates storefront calls
         req.authContext = {
           userId: payload.sub,
           username: payload.username,

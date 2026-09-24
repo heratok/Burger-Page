@@ -7,7 +7,7 @@ import { UpdateInventoryItemUseCase } from '../../../application/use-cases/Updat
 import { DeleteInventoryItemUseCase } from '../../../application/use-cases/DeleteInventoryItemUseCase.js';
 import { RestaurantRepository } from '../../../domain/ports/out/RestaurantRepository.js';
 import { updateInventoryStockSchema } from '@burger-page/contracts';
-import { UnauthorizedError, ValidationError } from '../../../domain/errors/DomainErrors.js';
+import { UnauthorizedError, ValidationError, EntityNotFoundError } from '../../../domain/errors/DomainErrors.js';
 import { CreateInventoryItemDTO, UpdateInventoryItemDTO } from '../../../application/dtos/index.js';
 
 export class InventoryController {
@@ -50,6 +50,13 @@ export class InventoryController {
         (await this.restaurantRepo.findById(restaurantId.replace(/^rest-/, '')));
       if (rest) {
         return rest.id;
+      }
+
+      // M7: a mutation must never fall through to a tenant the repository
+      // cannot resolve — that is exactly how orphan rows are written. Reads
+      // keep the raw-id passthrough (and the first-active fallback) above.
+      if (options.mutation) {
+        throw new EntityNotFoundError(`Restaurant '${restaurantId}' not found.`);
       }
     }
 

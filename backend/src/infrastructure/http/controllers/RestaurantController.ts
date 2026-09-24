@@ -8,6 +8,38 @@ import { UpdateRestaurantUseCase } from '../../../application/use-cases/UpdateRe
 import { createRestaurantSchema, updateRestaurantCategoriesSchema, updateRestaurantSchema } from '@burger-page/contracts';
 import { ValidationError } from '../../../domain/errors/DomainErrors.js';
 
+/**
+ * A9: storefront-only projection of a tenant for the public landing.
+ * Strips operator records (isActive, createdAt) and internal config so the
+ * anonymous directory can never leak tenant internals.
+ */
+function redactPublic(restaurant: any): any {
+  const config = restaurant.config || {};
+  return {
+    id: restaurant.id,
+    slug: restaurant.slug,
+    name: restaurant.name,
+    tagline: restaurant.tagline,
+    whatsappNumber: restaurant.whatsappNumber,
+    primaryColor: restaurant.primaryColor,
+    theme: restaurant.theme,
+    openingHours: restaurant.openingHours,
+    categories: restaurant.categories,
+    config: {
+      name: config.name,
+      tagline: config.tagline,
+      logoUrl: config.logoUrl,
+      whatsappNumber: config.whatsappNumber,
+      deliveryFee: config.deliveryFee,
+      minOrderAmount: config.minOrderAmount,
+      currency: config.currency,
+      currencySymbol: config.currencySymbol,
+      estimatedDeliveryTime: config.estimatedDeliveryTime,
+      bgTheme: config.bgTheme,
+    },
+  };
+}
+
 export class RestaurantController {
   constructor(
     private readonly getRestaurantUseCase: GetRestaurantUseCase,
@@ -36,6 +68,18 @@ export class RestaurantController {
     }
 
     const restaurants = await this.listRestaurantsUseCase.execute();
+
+    // A9: the public directory is a landing page by design, but it must never
+    // leak tenant operators' internal records. Only authenticated staff sees
+    // the full detail (restaurant_admin returned their own tenant above);
+    // anonymous/guest/customer callers get storefront fields only and
+    // deactivated tenants are removed from the visible list.
+    if (auth?.role !== 'super_admin') {
+      return reply
+        .status(200)
+        .send(restaurants.filter((r) => r.isActive !== false).map((r) => redactPublic(r)));
+    }
+
     return reply.status(200).send(restaurants);
   }
 
