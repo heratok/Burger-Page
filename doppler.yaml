@@ -1,0 +1,5 @@
+# Doppler project setup for local development.
+# Run `doppler setup` at the repo root to adopt this configuration.
+setup:
+  - project: burger-page
+    config: dev
