@@ -27,4 +27,4 @@ services:
         sync: false
       - key: DATABASE_URL
         sync: false
-        value: postgresql://app_user.<ref>:<password>@<pooler-host>/postgres?sslmode=require
+        value: postgresql://app_user.<ref>:<password>@aws-0-us-west-2.pooler.supabase.com:5432/postgres
