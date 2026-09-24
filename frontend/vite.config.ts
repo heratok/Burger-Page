@@ -10,6 +10,9 @@ export default defineConfig({
     alias: { '@': path.resolve(import.meta.dirname, './src') },
   },
   server: {
+    // Allow public tunnel hostnames (localshot/pinggy/cloudflare/localtunnel) in dev.
+    // Vite blocks unknown Host headers by default to prevent DNS rebinding attacks.
+    allowedHosts: ['.pinggy-free.link', '.free.pinggy.net', '.loca.lt', '.trycloudflare.com'],
     headers: {
       'X-Frame-Options': 'DENY',
       'X-Content-Type-Options': 'nosniff',
