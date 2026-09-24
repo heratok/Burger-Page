@@ -2,6 +2,7 @@ import { Database } from 'better-sqlite3';
 import { Inventory } from '../../../domain/models/Inventory.js';
 import { InventoryRepository } from '../../../domain/ports/out/InventoryRepository.js';
 import { EntityNotFoundError, ValidationError } from '../../../domain/errors/DomainErrors.js';
+import { ListOptions } from '../../../domain/ports/out/ListOptions.js';
 
 export class SqliteInventoryRepository implements InventoryRepository {
   constructor(private db: Database) {}
@@ -31,11 +32,27 @@ export class SqliteInventoryRepository implements InventoryRepository {
     return this.mapToDomain(row);
   }
 
-  async findByRestaurantId(restaurantId: string): Promise<Inventory[]> {
-    const rows = this.db
-      .prepare('SELECT * FROM inventory_items WHERE restaurant_id = ? ORDER BY name ASC')
-      .all(restaurantId) as any[];
+  async findByRestaurantId(restaurantId: string, options?: ListOptions): Promise<Inventory[]> {
+    const limit = options?.limit;
+    let rows: any[];
+    if (typeof limit === 'number' && Number.isInteger(limit) && limit > 0) {
+      const page = options?.page && Number.isInteger(options.page) && options.page >= 1 ? options.page : 1;
+      rows = this.db
+        .prepare('SELECT * FROM inventory_items WHERE restaurant_id = ? ORDER BY name ASC LIMIT ? OFFSET ?')
+        .all(restaurantId, limit, (page - 1) * limit) as any[];
+    } else {
+      rows = this.db
+        .prepare('SELECT * FROM inventory_items WHERE restaurant_id = ? ORDER BY name ASC')
+        .all(restaurantId) as any[];
+    }
     return rows.map((r) => this.mapToDomain(r));
+  }
+
+  async countByRestaurantId(restaurantId: string): Promise<number> {
+    const row = this.db
+      .prepare('SELECT COUNT(*) AS total FROM inventory_items WHERE restaurant_id = ?')
+      .get(restaurantId) as { total: number } | undefined;
+    return Number(row?.total ?? 0);
   }
 
   async save(inventory: Inventory): Promise<void> {

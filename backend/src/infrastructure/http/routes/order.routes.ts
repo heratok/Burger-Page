@@ -3,6 +3,8 @@ import { OrderController } from '../controllers/OrderController.js';
 import { globalOrderEventBus, registerStream, unregisterStream } from '../../events/OrderEventBus.js';
 import { requireAuth, requireStreamToken, tryAuth } from '../middleware/auth.middleware.js';
 import { isOriginAllowed } from '../middleware/cors.js';
+import { updateOrderReceiptSchema, updateOrderStatusSchema } from '@burger-page/contracts';
+import { jsonSchemaFromZod, ORDER_STATUS_JSON } from '../zodSchemas.js';
 
 export async function orderRoutes(fastify: FastifyInstance, opts: { controller: OrderController }) {
   // 1. List Orders (Protected - Tenant Scoped)
@@ -16,6 +18,8 @@ export async function orderRoutes(fastify: FastifyInstance, opts: { controller: 
         type: 'object',
         properties: {
           restaurantId: { type: 'string', description: 'Target restaurant identifier for super_admin override' },
+          page: { type: 'integer', minimum: 1, description: 'Page number (1-based); requires limit' },
+          limit: { type: 'integer', minimum: 1, maximum: 100, description: 'Items per page (bounded 1..100); requires page' },
         },
       },
       response: {
@@ -247,6 +251,11 @@ export async function orderRoutes(fastify: FastifyInstance, opts: { controller: 
       tags: ['Orders'],
       summary: 'Create and place a new order',
       description: 'Public storefront endpoint to place an order. Totals are calculated authoritatively by the backend and database.',
+      // Kept inline: the createOrderBody contract is not AJV-safe under the
+      // openApi3 target (orderItemInputSchema.quantity is z.number().int()
+      // .positive(), rendered as a boolean exclusiveMinimum that AJV cannot
+      // compile) — see zodSchemas.ts. The controller's zod safeParse remains
+      // the enforcement point for this body.
       body: {
         type: 'object',
         required: ['restaurantId', 'items'],
@@ -305,13 +314,7 @@ export async function orderRoutes(fastify: FastifyInstance, opts: { controller: 
           restaurantId: { type: 'string', description: 'Target restaurant identifier for super_admin override' },
         },
       },
-      body: {
-        type: 'object',
-        required: ['status'],
-        properties: {
-          status: { type: 'string', enum: ['pending', 'cooking', 'delivering', 'delivered', 'cancelled'] }
-        }
-      },
+      body: jsonSchemaFromZod(updateOrderStatusSchema, 'updateOrderStatusBody'),
       response: {
         200: {
           type: 'object',
@@ -354,13 +357,7 @@ export async function orderRoutes(fastify: FastifyInstance, opts: { controller: 
           restaurantId: { type: 'string', description: 'Target restaurant identifier for super_admin override' },
         },
       },
-      body: {
-        type: 'object',
-        required: ['receiptUrl'],
-        properties: {
-          receiptUrl: { type: 'string' }
-        }
-      },
+      body: jsonSchemaFromZod(updateOrderReceiptSchema, 'updateOrderReceiptBody'),
       response: {
         200: {
           type: 'object',
@@ -445,6 +442,11 @@ export async function orderRoutes(fastify: FastifyInstance, opts: { controller: 
           restaurantId: { type: 'string', description: 'Target restaurant identifier for super_admin override' },
         },
       },
+      // Kept inline: the updateOrderBody contract is not AJV-safe under the
+      // openApi3 target (orderItemInputSchema.quantity is z.number().int()
+      // .positive(), rendered as a boolean exclusiveMinimum that AJV cannot
+      // compile) — see zodSchemas.ts. The status enum below is single-sourced
+      // from ORDER_STATUS_JSON.
       body: {
         type: 'object',
         properties: {
@@ -484,7 +486,7 @@ export async function orderRoutes(fastify: FastifyInstance, opts: { controller: 
           paymentAmount: { type: 'number' },
           changeAmount: { type: 'number' },
           comment: { type: 'string' },
-          status: { type: 'string', enum: ['pending', 'cooking', 'delivering', 'delivered', 'cancelled'] },
+          status: { type: 'string', enum: ORDER_STATUS_JSON },
         },
       },
       response: {

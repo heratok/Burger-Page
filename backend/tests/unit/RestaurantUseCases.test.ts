@@ -107,10 +107,18 @@ describe('SUS-20 update responses never echo adminPassword (Seam D)', () => {
   it('does not echo a newly provided adminPassword while keeping update semantics', async () => {
     (repo.findById as any).mockResolvedValue(restaurantWithSecret('rest-1'));
 
-    const updated = await new UpdateRestaurantUseCase(repo).execute('rest-1', {
-      name: 'Rosto V2',
-      adminPassword: 'fresh-secret-7',
-    } as any);
+    // S3: credential rotation is super_admin-only (a tenant admin sending the
+    // same plaintext cannot be compared to the stored hash), so this update
+    // runs as super_admin — the genuine assertion is that the provided
+    // password is never echoed back in the response.
+    const updated = await new UpdateRestaurantUseCase(repo).execute(
+      'rest-1',
+      {
+        name: 'Rosto V2',
+        adminPassword: 'fresh-secret-7',
+      } as any,
+      'super_admin'
+    );
 
     // Response is redacted: the plaintext never leaves the server again.
     expect((updated as any).adminPassword).toBeUndefined();

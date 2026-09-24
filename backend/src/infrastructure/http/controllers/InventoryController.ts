@@ -7,8 +7,24 @@ import { UpdateInventoryItemUseCase } from '../../../application/use-cases/Updat
 import { DeleteInventoryItemUseCase } from '../../../application/use-cases/DeleteInventoryItemUseCase.js';
 import { RestaurantRepository } from '../../../domain/ports/out/RestaurantRepository.js';
 import { updateInventoryStockSchema } from '@burger-page/contracts';
-import { UnauthorizedError, ValidationError, EntityNotFoundError } from '../../../domain/errors/DomainErrors.js';
+import { UnauthorizedError, ValidationError } from '../../../domain/errors/DomainErrors.js';
+import { resolveTenantForRequest } from '../TenantResolver.js';
 import { CreateInventoryItemDTO, UpdateInventoryItemDTO } from '../../../application/dtos/index.js';
+import { ListOptions } from '../../../domain/ports/out/ListOptions.js';
+
+/**
+ * Lenient pagination parsing: honored only when BOTH page and limit are
+ * present valid integers (page >= 1, limit clamped 1..100); anything else is
+ * ignored so the request keeps the exact pre-pagination behavior.
+ */
+function parsePagination(query: unknown): ListOptions | undefined {
+  const q = (query ?? {}) as { page?: unknown; limit?: unknown };
+  const page = typeof q.page === 'number' ? q.page : Number(q.page);
+  const limitRaw = typeof q.limit === 'number' ? q.limit : Number(q.limit);
+  if (!Number.isInteger(page) || page < 1) return undefined;
+  if (!Number.isInteger(limitRaw) || limitRaw < 1) return undefined;
+  return { page, limit: Math.min(limitRaw, 100) };
+}
 
 export class InventoryController {
   constructor(
@@ -21,55 +37,13 @@ export class InventoryController {
     private restaurantRepo?: RestaurantRepository
   ) {}
 
-  private async resolveRestaurantId(req: FastifyRequest, options: { mutation?: boolean } = {}): Promise<string> {
-    let restaurantId = req.authContext?.restaurantId;
-    if (!restaurantId && req.authContext?.role === 'super_admin') {
-      const query = (req.query || {}) as any;
-      const body = (req.body || {}) as any;
-      const headers = (req.headers || {}) as any;
-      restaurantId =
-        query?.restaurantId ||
-        body?.restaurantId ||
-        headers?.['x-restaurant-id'];
-
-      // Mutations must never default to an arbitrary tenant (JD-INFO-02): a
-      // super admin without an explicit tenant gets undefined and the caller
-      // rejects the request. Reads may keep the first-active fallback.
-      if (!restaurantId && !options.mutation && this.restaurantRepo) {
-        const all = await this.restaurantRepo.findAll();
-        const active = all.find((r) => r.isActive);
-        if (active) restaurantId = active.id;
-      }
-    }
-
-    if (restaurantId && this.restaurantRepo) {
-      const rest =
-        (await this.restaurantRepo.findById(restaurantId)) ||
-        (await this.restaurantRepo.findBySlug(restaurantId)) ||
-        (await this.restaurantRepo.findBySlug(restaurantId.replace(/^rest-/, ''))) ||
-        (await this.restaurantRepo.findById(restaurantId.replace(/^rest-/, '')));
-      if (rest) {
-        return rest.id;
-      }
-
-      // M7: a mutation must never fall through to a tenant the repository
-      // cannot resolve — that is exactly how orphan rows are written. Reads
-      // keep the raw-id passthrough (and the first-active fallback) above.
-      if (options.mutation) {
-        throw new EntityNotFoundError(`Restaurant '${restaurantId}' not found.`);
-      }
-    }
-
-    return restaurantId || '';
-  }
-
   async list(req: FastifyRequest, reply: FastifyReply) {
-    const restaurantId = await this.resolveRestaurantId(req);
+    const restaurantId = await resolveTenantForRequest(req, { restaurantRepo: this.restaurantRepo });
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to list inventory.');
     }
-    const inventory = await this.listInventoryUseCase.execute(restaurantId);
-    const mapped = inventory.map((item) => ({
+    const options = parsePagination(req.query);
+    const mapItem = (item: any) => ({
       id: item.id,
       restaurantId: item.restaurantId,
       name: item.name,
@@ -82,12 +56,19 @@ export class InventoryController {
       costPerUnit: item.costPerUnit || 0,
       createdAt: item.createdAt,
       updatedAt: item.updatedAt,
-    }));
+    });
+    if (options) {
+      const { items, total } = await this.listInventoryUseCase.execute(restaurantId, options);
+      reply.header('X-Total-Count', String(total));
+      return reply.status(200).send(items.map((item: any) => mapItem(item)));
+    }
+    const inventory = await this.listInventoryUseCase.execute(restaurantId);
+    const mapped = inventory.map((item) => mapItem(item));
     return reply.status(200).send(mapped);
   }
 
   async getById(req: FastifyRequest, reply: FastifyReply) {
-    const restaurantId = await this.resolveRestaurantId(req);
+    const restaurantId = await resolveTenantForRequest(req, { restaurantRepo: this.restaurantRepo });
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to get inventory item.');
     }
@@ -113,7 +94,7 @@ export class InventoryController {
   }
 
   async create(req: FastifyRequest, reply: FastifyReply) {
-    const restaurantId = await this.resolveRestaurantId(req, { mutation: true });
+    const restaurantId = await resolveTenantForRequest(req, { restaurantRepo: this.restaurantRepo }, { mutation: true });
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to create inventory item.');
     }
@@ -139,7 +120,7 @@ export class InventoryController {
   }
 
   async update(req: FastifyRequest, reply: FastifyReply) {
-    const restaurantId = await this.resolveRestaurantId(req, { mutation: true });
+    const restaurantId = await resolveTenantForRequest(req, { restaurantRepo: this.restaurantRepo }, { mutation: true });
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to update inventory item.');
     }
@@ -166,7 +147,7 @@ export class InventoryController {
   }
 
   async updateStock(req: FastifyRequest, reply: FastifyReply) {
-    const restaurantId = await this.resolveRestaurantId(req, { mutation: true });
+    const restaurantId = await resolveTenantForRequest(req, { restaurantRepo: this.restaurantRepo }, { mutation: true });
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to update stock.');
     }
@@ -190,7 +171,7 @@ export class InventoryController {
   }
 
   async delete(req: FastifyRequest, reply: FastifyReply) {
-    const restaurantId = await this.resolveRestaurantId(req, { mutation: true });
+    const restaurantId = await resolveTenantForRequest(req, { restaurantRepo: this.restaurantRepo }, { mutation: true });
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to delete inventory item.');
     }

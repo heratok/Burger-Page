@@ -82,4 +82,52 @@ describe('Rate Limiting Suite', () => {
       await testApp.close();
     }
   });
-});
+
+  it('keys the rate limit on each forwarded client IP when trustProxy is enabled', async () => {
+    const testApp = buildApp(undefined, { trustProxy: true, rateLimit: { max: 5 } });
+    await testApp.ready();
+    try {
+      // Two different X-Forwarded-For clients must NOT share a bucket: each can
+      // burn its full limit (5) without ever hitting 429.
+      for (const client of ['1.2.3.4', '5.6.7.8']) {
+        const statuses: number[] = [];
+        for (let i = 0; i < 5; i++) {
+          const res = await testApp.inject({
+            method: 'POST',
+            url: '/api/users/login',
+            headers: { 'x-forwarded-for': client },
+            payload: { username: `probe-${client}-${i}`, password: 'wrong-password' },
+          });
+          statuses.push(res.statusCode);
+        }
+        expect(statuses).not.toContain(429);
+      }
+    } finally {
+      await testApp.close();
+    }
+  });
+
+  it('ignores X-Forwarded-For and shares one bucket when trustProxy is off (default)', async () => {
+    const testApp = buildApp(undefined, { rateLimit: { max: 5 } });
+    await testApp.ready();
+    try {
+      // Header cannot spoof a fresh bucket: both forwarded values hit the same
+      // socket-IP bucket, so the 6th request overall returns 429.
+      const statuses: number[] = [];
+      for (let i = 0; i < 6; i++) {
+        const spoofedClient = i % 2 === 0 ? '1.2.3.4' : '5.6.7.8';
+        const res = await testApp.inject({
+          method: 'POST',
+          url: '/api/users/login',
+          headers: { 'x-forwarded-for': spoofedClient },
+          payload: { username: `probe-${i}`, password: 'wrong-password' },
+        });
+        statuses.push(res.statusCode);
+      }
+      expect(statuses.slice(0, 5)).not.toContain(429);
+      expect(statuses[5]).toBe(429);
+    } finally {
+      await testApp.close();
+    }
+  });
+});

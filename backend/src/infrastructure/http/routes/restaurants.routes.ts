@@ -1,6 +1,8 @@
 import { FastifyInstance } from 'fastify';
 import { RestaurantController } from '../controllers/RestaurantController.js';
 import { requireSuperAdmin, tryAuth, requireAnyAdmin } from '../middleware/auth.middleware.js';
+import { createRestaurantSchema, updateRestaurantSchema } from '@burger-page/contracts';
+import { jsonSchemaFromZod } from '../zodSchemas.js';
 
 export async function restaurantsRoutes(fastify: FastifyInstance, opts: { controller: RestaurantController }) {
   fastify.get('/', {
@@ -38,24 +40,7 @@ export async function restaurantsRoutes(fastify: FastifyInstance, opts: { contro
       tags: ['Restaurant'],
       summary: 'Create a new restaurant tenant',
       description: 'Registers a new restaurant tenant in the platform.',
-      body: {
-        type: 'object',
-        required: ['name', 'slug'],
-        properties: {
-          id: { type: 'string' },
-          name: { type: 'string' },
-          slug: { type: 'string' },
-          tagline: { type: 'string' },
-          whatsappNumber: { type: 'string' },
-          adminPassword: { type: 'string' },
-          adminUsername: { type: 'string' },
-          primaryColor: { type: 'string' },
-          templateType: { type: 'string', enum: ['burger', 'pizza', 'tacos', 'blank'] },
-          theme: { type: 'string' },
-          categories: { type: 'array', items: { type: 'string' } },
-          config: { type: 'object', additionalProperties: true }
-        }
-      },
+      body: jsonSchemaFromZod(createRestaurantSchema, 'createRestaurantBody'),
       response: {
         201: {
           type: 'object',
@@ -79,6 +64,7 @@ export async function restaurantsRoutes(fastify: FastifyInstance, opts: { contro
   }, opts.controller.create.bind(opts.controller));
 
   fastify.get('/:idOrSlug', {
+    preHandler: [tryAuth],
     schema: {
       tags: ['Restaurant'],
       summary: 'Get restaurant by id or slug',
@@ -97,13 +83,19 @@ export async function restaurantsRoutes(fastify: FastifyInstance, opts: { contro
             slug: { type: 'string' },
             name: { type: 'string' },
             tagline: { type: 'string' },
+            whatsappNumber: { type: 'string' },
+            primaryColor: { type: 'string' },
             theme: { type: 'string' },
             config: { type: 'object', additionalProperties: true },
             openingHours: { type: 'object', additionalProperties: true },
             categories: { type: 'array', items: { type: 'string' } },
+            // A9: operator records are stripped from the public projection.
+            // They stay optional here because an authenticated super admin /
+            // owning tenant admin receives the full record (minus secrets).
             isActive: { type: 'boolean' },
             createdAt: { type: 'string' },
           },
+          // Never declare adminPassword: read paths must not carry it.
           additionalProperties: false
         },
         404: {
@@ -129,7 +121,8 @@ export async function restaurantsRoutes(fastify: FastifyInstance, opts: { contro
           id: { type: 'string' }
         },
         required: ['id']
-      }
+      },
+      body: jsonSchemaFromZod(updateRestaurantSchema, 'updateRestaurantBody'),
     }
   }, opts.controller.update.bind(opts.controller));
 

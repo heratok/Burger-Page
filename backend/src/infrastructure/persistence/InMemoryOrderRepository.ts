@@ -1,6 +1,7 @@
 import { OrderRepository } from '../../domain/ports/out/OrderRepository.js';
 import { Order, OrderStatus } from '../../domain/models/Order.js';
 import { UserRole } from '../../domain/models/User.js';
+import { ListOptions } from '../../domain/ports/out/ListOptions.js';
 import { initialOrders } from './seedData.js';
 import { EntityNotFoundError, InvalidOrderStateError } from '../../domain/errors/DomainErrors.js';
 
@@ -49,8 +50,19 @@ export class InMemoryOrderRepository implements OrderRepository {
     return cloneOrder(order);
   }
 
-  async findByRestaurantId(restaurantId: string): Promise<Order[]> {
-    return Array.from(this.orders.values()).filter((o) => o.restaurantId === restaurantId);
+  async findByRestaurantId(restaurantId: string, options?: ListOptions): Promise<Order[]> {
+    const filtered = Array.from(this.orders.values()).filter((o) => o.restaurantId === restaurantId);
+    const limit = options?.limit;
+    if (typeof limit === 'number' && Number.isInteger(limit) && limit > 0) {
+      const page = options?.page && Number.isInteger(options.page) && options.page >= 1 ? options.page : 1;
+      const start = (page - 1) * limit;
+      return filtered.slice(start, start + limit);
+    }
+    return filtered;
+  }
+
+  async countByRestaurantId(restaurantId: string): Promise<number> {
+    return Array.from(this.orders.values()).filter((o) => o.restaurantId === restaurantId).length;
   }
 
   async save(order: Order): Promise<void> {

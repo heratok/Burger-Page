@@ -23,16 +23,9 @@ import { SqliteOrderRepository } from '../persistence/sqlite/SqliteOrderReposito
 import { SqliteCustomerRepository } from '../persistence/sqlite/SqliteCustomerRepository.js';
 import { SqliteInventoryRepository } from '../persistence/sqlite/SqliteInventoryRepository.js';
 import { SqliteProductAdditionRepository } from '../persistence/sqlite/SqliteProductAdditionRepository.js';
-import { getSupabaseClient } from '../persistence/supabase/SupabaseClient.js';
 import { verifyPgConnection } from '../persistence/postgres/PgClient.js';
-import { SupabaseRestaurantRepository } from '../persistence/supabase/SupabaseRestaurantRepository.js';
-import { SupabaseCategoryRepository } from '../persistence/supabase/SupabaseCategoryRepository.js';
-import { SupabaseProductRepository } from '../persistence/supabase/SupabaseProductRepository.js';
-import { SupabaseOrderRepository } from '../persistence/supabase/SupabaseOrderRepository.js';
-import { SupabaseCustomerRepository } from '../persistence/supabase/SupabaseCustomerRepository.js';
-import { SupabaseInventoryRepository } from '../persistence/supabase/SupabaseInventoryRepository.js';
-import { SupabaseUserRepository } from '../persistence/supabase/SupabaseUserRepository.js';
-import { SupabaseProductAdditionRepository } from '../persistence/supabase/SupabaseProductAdditionRepository.js';
+import { resolveStorageDriver, dataRunsOnPostgres } from '../persistence/driverSelection.js';
+import type { StorageDriver } from '../persistence/driverSelection.js';
 import { InMemoryProductAdditionRepository } from '../persistence/InMemoryProductAdditionRepository.js';
 import { PgRestaurantRepository } from '../persistence/postgres/PgRestaurantRepository.js';
 import { PgCategoryRepository } from '../persistence/postgres/PgCategoryRepository.js';
@@ -125,26 +118,26 @@ export interface AppDependencies {
    *  middlewares by buildApp so sessions are re-checked against storage. */
   userRepo: UserRepository;
   restaurantRepo: RestaurantRepository;
+  /** Exposed so wiring tests/observability can verify the repository the
+   *  selected storage driver instantiates (S5: supabase == postgres == Pg). */
+  orderRepo: OrderRepository;
 }
 
-export type StorageDriver = 'memory' | 'sqlite' | 'supabase' | 'postgres';
+// Re-exported so existing importers of the http surface keep a stable path.
+export type { StorageDriver };
 
 export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppDependencies {
-  let selectedDriver: StorageDriver = driver || (process.env.STORAGE_DRIVER as StorageDriver);
-  if (!selectedDriver && process.env.SUPABASE_URL) {
-    selectedDriver = 'supabase';
-  }
-  if (!selectedDriver) {
-    selectedDriver = 'memory';
-  }
+  const selectedDriver = resolveStorageDriver(driver);
 
   console.log(`\n======================================================`);
   console.log(`📦 [DATABASE] Driver Activo: ${selectedDriver.toUpperCase()}`);
-  if (selectedDriver === 'postgres') {
-    console.log(`🔗 [POSTGRES] app_user (RLS-scoped, sin BYPASSRLS) via DATABASE_URL`);
-  } else if (selectedDriver === 'supabase') {
-    console.log(`🔗 [SUPABASE] URL: ${process.env.SUPABASE_URL}`);
-    console.log(`🔑 [SUPABASE] Key: ${process.env.SUPABASE_KEY ? 'Configurada (***)' : 'FALTANTE'}`);
+  if (dataRunsOnPostgres(selectedDriver)) {
+    // S5: both drivers run every data query through the same pooler role
+    // (app_user, NOBYPASSRLS) with RLS + tenant GUC guards from PgClient.
+    console.log(`🔗 [DATABASE] app_user (RLS-scoped, sin BYPASSRLS) via DATABASE_URL pooler`);
+    if (selectedDriver === 'supabase') {
+      console.log(`📦 [SUPABASE] driver: datos vía pooler PostgreSQL (app_user/RLS); Supabase solo para storage de archivos`);
+    }
   } else if (selectedDriver === 'sqlite') {
     console.log(`💾 [SQLITE] Base de datos: ${dbPath || process.env.DATABASE_PATH || ':memory:'}`);
   } else {
@@ -161,7 +154,19 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
   let inventoryRepo: InventoryRepository;
   let userRepo: UserRepository;
 
-  if (selectedDriver === 'postgres') {
+  if (dataRunsOnPostgres(selectedDriver)) {
+    // S5: the 'supabase' driver no longer talks to Supabase PostgREST with the
+    // service-role key (which bypassed RLS). Both drivers use the same pooler
+    // role (app_user, NOBYPASSRLS) so RLS + tenant GUC guards apply in
+    // production. Supabase remains wired only for file storage (storage.routes).
+    if (!process.env.DATABASE_URL) {
+      throw new Error(
+        `Storage driver '${selectedDriver}' requires DATABASE_URL: point it at the Supabase pooler ` +
+          `connection string with the app_user role (NOBYPASSRLS, RLS-scoped). ` +
+          `Supabase key-based data access (SUPABASE_KEY/SERVICE_ROLE_KEY) is no longer supported. ` +
+          `Set DATABASE_URL before boot.`
+      );
+    }
     restaurantRepo = new PgRestaurantRepository();
     categoryRepo = new PgCategoryRepository();
     productRepo = new PgProductRepository();
@@ -170,16 +175,6 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
     customerRepo = new PgCustomerRepository();
     inventoryRepo = new PgInventoryRepository();
     userRepo = new PgUserRepository();
-  } else if (selectedDriver === 'supabase') {
-    const supabaseClient = getSupabaseClient();
-    restaurantRepo = new SupabaseRestaurantRepository(supabaseClient);
-    categoryRepo = new SupabaseCategoryRepository(supabaseClient);
-    productRepo = new SupabaseProductRepository(supabaseClient);
-    additionRepo = new SupabaseProductAdditionRepository(supabaseClient);
-    orderRepo = new SupabaseOrderRepository(supabaseClient);
-    customerRepo = new SupabaseCustomerRepository(supabaseClient);
-    inventoryRepo = new SupabaseInventoryRepository(supabaseClient);
-    userRepo = new SupabaseUserRepository(supabaseClient);
   } else if (selectedDriver === 'sqlite') {
     const db = createSqliteDatabase(dbPath || process.env.DATABASE_PATH || ':memory:');
     restaurantRepo = new SqliteRestaurantRepository(db);
@@ -303,7 +298,30 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
     ),
     userRepo,
     restaurantRepo,
+    orderRepo,
   };
+}
+
+/**
+ * Resolve the Fastify `trustProxy` setting.
+ *
+ * Explicit `options.trustProxy` always wins. Otherwise parse `TRUST_PROXY`:
+ * "true"/"1" -> true, a positive integer -> that many trusted hops, anything
+ * else or unset -> false. Keeping `false` as the default preserves today's
+ * safe behavior: X-Forwarded-For is ignored, so a client cannot spoof its way
+ * into a fresh rate-limit bucket.
+ */
+function resolveTrustProxy(explicit?: boolean | number): boolean | number {
+  if (explicit !== undefined) return explicit;
+  const raw = process.env.TRUST_PROXY;
+  if (raw === undefined) return false;
+  const value = raw.trim();
+  if (value === 'true' || value === '1') return true;
+  if (/^[0-9]+$/.test(value)) {
+    const hops = Number(value);
+    if (hops > 0) return hops;
+  }
+  return false;
 }
 
 export function buildApp(
@@ -311,6 +329,14 @@ export function buildApp(
   options?: {
     dbPath?: string;
     driver?: StorageDriver;
+    /**
+     * Fastify trustProxy setting. `true` trusts the forwarded client IP from
+     * X-Forwarded-For (safe only when the app is reachable exclusively through
+     * the reverse proxy). A numeric hop count is accepted by the option type
+     * but the vendored fastify build fails CLOSED on it (trusts no hops), so
+     * deployments must use `true`. Defaults to TRUST_PROXY or false.
+     */
+    trustProxy?: boolean | number;
     rateLimit?: {
       /** Global max requests per IP per timeWindow (default 300/min). */
       max?: number;
@@ -343,8 +369,14 @@ export function buildApp(
           },
         };
 
+  const trustProxy = resolveTrustProxy(options?.trustProxy);
+
   const app = fastify({
     logger: loggerConfig,
+    // fastify's public TS type omits `number` (fastify.d.ts), but the runtime
+    // accepts hop counts and this build fails closed on them (trusts no hops).
+    // The runtime value is passed through unchanged; only TS is satisfied here.
+    trustProxy: trustProxy as boolean,
     ...((!isProduction && !isTest) ? { disableRequestLogging: true } : {}),
     ajv: {
       customOptions: {
@@ -449,17 +481,12 @@ export function buildApp(
       },
     },
   }, async (_req, reply) => {
-    // Mirror index.ts driver detection: probe the pool only when the Postgres
-    // driver is actually active. sqlite/memory/supabase keep the static ok
-    // response — their health must not depend on an external DB probe.
-    const selectedDriver = (
-      process.env.STORAGE_DRIVER ||
-      (process.env.SUPABASE_URL ? 'supabase' : (process.env.DATABASE_URL ? 'postgres' : 'memory'))
-    ).toLowerCase();
-    const postgresActive =
-      selectedDriver === 'postgres' ||
-      (selectedDriver !== 'supabase' && selectedDriver !== 'sqlite' && Boolean(process.env.DATABASE_URL));
-    if (!postgresActive) {
+    // Single source of truth for driver selection (D3): probe the pool only
+    // when data actually flows through Postgres. Since S5 the 'supabase'
+    // driver also runs every data query through the pooler (app_user/RLS),
+    // so it probes the pool too; sqlite/memory keep the static ok response.
+    const driver = resolveStorageDriver();
+    if (!dataRunsOnPostgres(driver)) {
       return reply.status(200).send({ status: 'ok' });
     }
 

@@ -1,6 +1,8 @@
 import { FastifyInstance } from 'fastify';
 import { ProductController } from '../controllers/ProductController.js';
 import { requireAuth, tryAuth } from '../middleware/auth.middleware.js';
+import { createProductSchema, updateProductSchema } from '@burger-page/contracts';
+import { jsonSchemaFromZod } from '../zodSchemas.js';
 
 export async function productRoutes(fastify: FastifyInstance, opts: { controller: ProductController }) {
   // 1. List Products (Storefront public with ?restaurantId or ?slug, or Authenticated tenant admin)
@@ -15,6 +17,8 @@ export async function productRoutes(fastify: FastifyInstance, opts: { controller
         properties: {
           restaurantId: { type: 'string' },
           slug: { type: 'string' },
+          page: { type: 'integer', minimum: 1, description: 'Page number (1-based); requires limit' },
+          limit: { type: 'integer', minimum: 1, maximum: 100, description: 'Items per page (bounded 1..100); requires page' },
         },
       },
     },
@@ -44,6 +48,7 @@ export async function productRoutes(fastify: FastifyInstance, opts: { controller
       tags: ['Products'],
       summary: 'Create a new menu product',
       description: 'Add a new burger or item to the authenticated restaurant catalog.',
+      body: jsonSchemaFromZod(createProductSchema, 'createProductBody'),
     },
   }, opts.controller.create.bind(opts.controller));
 
@@ -54,6 +59,7 @@ export async function productRoutes(fastify: FastifyInstance, opts: { controller
       tags: ['Products'],
       summary: 'Update existing product',
       description: 'Modify product price, description, category, or availability for the authenticated restaurant.',
+      body: jsonSchemaFromZod(updateProductSchema, 'updateProductBody'),
       params: {
         type: 'object',
         properties: {

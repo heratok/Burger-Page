@@ -1,5 +1,6 @@
 import { ProductAddition } from '../../../domain/models/ProductAddition.js';
 import { ProductAdditionRepository } from '../../../domain/ports/out/ProductAdditionRepository.js';
+import { ListOptions } from '../../../domain/ports/out/ListOptions.js';
 import { withTenantContext } from './PgClient.js';
 
 function mapRow(row: any): ProductAddition {
@@ -25,13 +26,32 @@ export class PgProductAdditionRepository implements ProductAdditionRepository {
     });
   }
 
-  async findByRestaurantId(restaurantId: string): Promise<ProductAddition[]> {
+  async findByRestaurantId(restaurantId: string, options?: ListOptions): Promise<ProductAddition[]> {
     return withTenantContext({ restaurantId }, async (client) => {
+      const limit = options?.limit;
+      if (typeof limit === 'number' && Number.isInteger(limit) && limit > 0) {
+        const page = options?.page && Number.isInteger(options.page) && options.page >= 1 ? options.page : 1;
+        const { rows } = await client.query(
+          `SELECT * FROM public.product_additions WHERE restaurant_id = $1 ORDER BY display_order ASC, name ASC LIMIT $2 OFFSET $3`,
+          [restaurantId, limit, (page - 1) * limit]
+        );
+        return rows.map(mapRow);
+      }
       const { rows } = await client.query(
         `SELECT * FROM public.product_additions WHERE restaurant_id = $1 ORDER BY display_order ASC, name ASC`,
         [restaurantId]
       );
       return rows.map(mapRow);
+    });
+  }
+
+  async countByRestaurantId(restaurantId: string): Promise<number> {
+    return withTenantContext({ restaurantId }, async (client) => {
+      const { rows } = await client.query(
+        `SELECT COUNT(*)::int AS total FROM public.product_additions WHERE restaurant_id = $1`,
+        [restaurantId]
+      );
+      return Number(rows[0]?.total ?? 0);
     });
   }
 

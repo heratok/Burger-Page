@@ -25,9 +25,7 @@ for (const envPath of envCandidates) {
 }
 
 import { CryptoPasswordHasher } from '../infrastructure/security/CryptoPasswordHasher.js';
-import { SupabaseUserRepository } from '../infrastructure/persistence/supabase/SupabaseUserRepository.js';
 import { PgUserRepository } from '../infrastructure/persistence/postgres/PgUserRepository.js';
-import { getSupabaseClient } from '../infrastructure/persistence/supabase/SupabaseClient.js';
 
 async function main() {
   console.log('\n🔐 === Creador de Super Administrador (Burger-Page) ===\n');
@@ -121,27 +119,9 @@ async function main() {
     }
   }
 
-  // Intentar guardar directamente si las variables de entorno de Supabase existen
-  if (process.env.SUPABASE_URL && (process.env.SUPABASE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY)) {
-    try {
-      console.log('📡 Conectando con Supabase para insertar el usuario...');
-      const client = getSupabaseClient();
-      const userRepo = new SupabaseUserRepository(client);
-
-      await userRepo.save({
-        id: userId,
-        username,
-        passwordHash,
-        role: 'super_admin',
-        createdAt: now,
-      });
-
-      console.log('✅ ¡Super Administrador creado exitosamente en la base de datos de Supabase!');
-      return;
-    } catch (err: any) {
-      console.warn(`⚠️ No se pudo insertar directamente en Supabase: ${err.message}`);
-    }
-  }
+  // S5: the service-role Supabase fallback was removed — data access now goes
+  // exclusively through the pooler with the app_user (NOBYPASSRLS/RLS) role.
+  // Operators without DATABASE_URL can still use the SQL snippet below.
 
   console.log('📋 Puedes copiar y pegar esta consulta SQL directamente en el SQL Editor de Supabase:\n');
   console.log('--------------------------------------------------------------------------------');

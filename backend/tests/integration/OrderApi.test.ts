@@ -286,6 +286,50 @@ describe('Order API', () => {
     expect(created.customer.telefono).toBe('3009876543');
   });
 
+  it('GET /api/orders supports bounded pagination (?page&limit) with X-Total-Count and stays backward compatible without params', async () => {
+    // Seed at least two more orders for the tenant so the page contracts hold.
+    for (let i = 0; i < 2; i++) {
+      const createRes = await app.inject({
+        method: 'POST',
+        url: '/api/orders',
+        payload: {
+          restaurantId: 'burger-craft',
+          customerId: `pag-customer-${i}`,
+          items: [{ productId, quantity: 1, additions: [] }],
+          paymentMethod: 'Efectivo',
+          paymentAmount: 20000,
+        },
+      });
+      expect(createRes.statusCode).toBe(201);
+    }
+
+    // Without params: exact pre-pagination behavior, full array, no header.
+    const allRes = await app.inject({
+      method: 'GET',
+      url: '/api/orders',
+      headers: { authorization: `Bearer ${authToken}` },
+    });
+    expect(allRes.statusCode).toBe(200);
+    const allOrders = allRes.json();
+    expect(Array.isArray(allOrders)).toBe(true);
+    expect(allOrders.length).toBeGreaterThanOrEqual(2);
+
+    // With ?page=1&limit=1: one item and a header equal to the tenant total.
+    const pageRes = await app.inject({
+      method: 'GET',
+      url: '/api/orders?page=1&limit=1',
+      headers: { authorization: `Bearer ${authToken}` },
+    });
+    expect(pageRes.statusCode).toBe(200);
+    const pageBody = pageRes.json();
+    expect(Array.isArray(pageBody)).toBe(true);
+    expect(pageBody).toHaveLength(1);
+    expect(pageRes.headers['x-total-count']).toBe(String(allOrders.length));
+
+    // The single returned item is the first element of the full list.
+    expect(pageBody[0].id).toBe(allOrders[0].id);
+  });
+
   it('PATCH /api/orders/:id/status should update status to valid state for authenticated tenant', async () => {
     // Create an order first
     const createRes = await app.inject({

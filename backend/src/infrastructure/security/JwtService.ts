@@ -8,6 +8,11 @@ export interface JwtPayload {
   restaurantId?: string;
   /** Narrow-purpose tokens (e.g. 'sse' for the EventSource stream). */
   scope?: string;
+  /** Single-value issuer/audience claims: strict equality, prevents cross-context reuse. */
+  iss?: string;
+  aud?: string;
+  /** Optional not-before; when present, tokens are rejected until it is reached. */
+  nbf?: number;
   iat: number;
   exp: number;
 }
@@ -19,6 +24,9 @@ export interface JwtPayload {
 export const FALLBACK_DEV_SECRET = 'burger-page-secure-jwt-secret-key-change-in-prod';
 
 const MAX_IAT_SKEW_SECONDS = 300;
+const MAX_EXP_SKEW_SECONDS = 30;
+const ISSUER = 'burger-page';
+const AUDIENCE = 'burger-page-api';
 
 export class JwtService {
   /**
@@ -79,6 +87,8 @@ export class JwtService {
       role: user.role,
       restaurantId: user.restaurantId,
       scope: user.scope,
+      iss: ISSUER,
+      aud: AUDIENCE,
       iat: now,
       exp: now + expiresInSeconds,
     };
@@ -114,10 +124,27 @@ export class JwtService {
     const payload = JSON.parse(this.base64UrlDecode(payloadEncoded)) as Partial<JwtPayload>;
     const now = Math.floor(Date.now() / 1000);
 
+    if (typeof payload.sub !== 'string' || payload.sub.length === 0) {
+      throw new Error('Token is missing required sub claim');
+    }
+    if (payload.iss !== ISSUER) {
+      throw new Error('Token issuer mismatch');
+    }
+    if (payload.aud !== AUDIENCE) {
+      throw new Error('Token audience mismatch');
+    }
+    if (
+      payload.nbf !== undefined &&
+      typeof payload.nbf === 'number' &&
+      Number.isFinite(payload.nbf) &&
+      now + MAX_EXP_SKEW_SECONDS < payload.nbf
+    ) {
+      throw new Error('Token is not yet valid');
+    }
     if (typeof payload.exp !== 'number' || !Number.isFinite(payload.exp)) {
       throw new Error('Token is missing required exp claim');
     }
-    if (payload.exp < now) {
+    if (payload.exp + MAX_EXP_SKEW_SECONDS < now) {
       throw new Error('Token has expired');
     }
     if (typeof payload.iat !== 'number' || !Number.isFinite(payload.iat)) {

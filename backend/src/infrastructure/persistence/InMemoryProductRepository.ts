@@ -1,5 +1,6 @@
 import { ProductRepository } from '../../domain/ports/out/ProductRepository.js';
 import { Product } from '../../domain/models/Product.js';
+import { ListOptions } from '../../domain/ports/out/ListOptions.js';
 import { initialProducts } from './seedData.js';
 
 export class InMemoryProductRepository implements ProductRepository {
@@ -18,10 +19,19 @@ export class InMemoryProductRepository implements ProductRepository {
     return { ...product };
   }
 
-  async findByRestaurantId(restaurantId: string): Promise<Product[]> {
-    return Array.from(this.products.values())
-      .filter((p) => p.restaurantId === restaurantId)
-      .map((p) => ({ ...p }));
+  async findByRestaurantId(restaurantId: string, options?: ListOptions): Promise<Product[]> {
+    const filtered = Array.from(this.products.values()).filter((p) => p.restaurantId === restaurantId);
+    const limit = options?.limit;
+    if (typeof limit === 'number' && Number.isInteger(limit) && limit > 0) {
+      const page = options?.page && Number.isInteger(options.page) && options.page >= 1 ? options.page : 1;
+      const start = (page - 1) * limit;
+      return filtered.slice(start, start + limit).map((p) => ({ ...p }));
+    }
+    return filtered.map((p) => ({ ...p }));
+  }
+
+  async countByRestaurantId(restaurantId: string): Promise<number> {
+    return Array.from(this.products.values()).filter((p) => p.restaurantId === restaurantId).length;
   }
 
   async save(product: Product): Promise<void> {

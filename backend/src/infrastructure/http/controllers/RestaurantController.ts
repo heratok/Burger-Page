@@ -7,6 +7,7 @@ import { UpdateRestaurantCategoriesUseCase } from '../../../application/use-case
 import { UpdateRestaurantUseCase } from '../../../application/use-cases/UpdateRestaurantUseCase.js';
 import { createRestaurantSchema, updateRestaurantCategoriesSchema, updateRestaurantSchema } from '@burger-page/contracts';
 import { ValidationError } from '../../../domain/errors/DomainErrors.js';
+import { omitAdminPassword } from '../../../domain/models/Restaurant.js';
 
 /**
  * A9: storefront-only projection of a tenant for the public landing.
@@ -96,7 +97,22 @@ export class RestaurantController {
     const params = (req.params || {}) as { slug?: string; idOrSlug?: string };
     const identifier = params.idOrSlug || params.slug || 'burger-craft';
     const restaurant = await this.getRestaurantUseCase.execute(identifier);
-    return reply.status(200).send(restaurant);
+
+    // A9: a public detail lookup must not leak operator records (isActive,
+    // createdAt) or the internal config. The full tenant record is reserved
+    // for super admins and for staff whose tenant matches the resolved
+    // restaurant (by id OR slug). Everyone else gets the storefront
+    // projection. adminPassword is stripped unconditionally on the full path.
+    const auth = req.authContext;
+    const isSuperAdmin = auth?.role === 'super_admin';
+    const isOwnTenant =
+      !!auth?.restaurantId &&
+      (restaurant.id === auth.restaurantId || restaurant.slug === auth.restaurantId);
+
+    if (isSuperAdmin || isOwnTenant) {
+      return reply.status(200).send(omitAdminPassword(restaurant));
+    }
+    return reply.status(200).send(redactPublic(restaurant));
   }
 
   async delete(req: FastifyRequest, reply: FastifyReply) {
@@ -187,7 +203,7 @@ export class RestaurantController {
     if (!parsed.success) {
       throw new ValidationError(parsed.error.message);
     }
-    const updated = await this.updateRestaurantUseCase.execute(params.id, parsed.data);
+    const updated = await this.updateRestaurantUseCase.execute(params.id, parsed.data, auth?.role);
     return reply.status(200).send(updated);
   }
 }

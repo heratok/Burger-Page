@@ -5,8 +5,24 @@ import { CreateCustomerUseCase } from '../../../application/use-cases/CreateCust
 import { UpdateCustomerUseCase } from '../../../application/use-cases/UpdateCustomerUseCase.js';
 import { DeleteCustomerUseCase } from '../../../application/use-cases/DeleteCustomerUseCase.js';
 import { RestaurantRepository } from '../../../domain/ports/out/RestaurantRepository.js';
-import { UnauthorizedError, ValidationError, EntityNotFoundError } from '../../../domain/errors/DomainErrors.js';
+import { UnauthorizedError, ValidationError } from '../../../domain/errors/DomainErrors.js';
+import { resolveTenantForRequest } from '../TenantResolver.js';
 import { CreateCustomerDTO, UpdateCustomerDTO } from '../../../application/dtos/index.js';
+import { ListOptions } from '../../../domain/ports/out/ListOptions.js';
+
+/**
+ * Lenient pagination parsing: honored only when BOTH page and limit are
+ * present valid integers (page >= 1, limit clamped 1..100); anything else is
+ * ignored so the request keeps the exact pre-pagination behavior.
+ */
+function parsePagination(query: unknown): ListOptions | undefined {
+  const q = (query ?? {}) as { page?: unknown; limit?: unknown };
+  const page = typeof q.page === 'number' ? q.page : Number(q.page);
+  const limitRaw = typeof q.limit === 'number' ? q.limit : Number(q.limit);
+  if (!Number.isInteger(page) || page < 1) return undefined;
+  if (!Number.isInteger(limitRaw) || limitRaw < 1) return undefined;
+  return { page, limit: Math.min(limitRaw, 100) };
+}
 
 export class CustomerController {
   constructor(
@@ -18,59 +34,23 @@ export class CustomerController {
     private restaurantRepo?: RestaurantRepository
   ) {}
 
-  private async resolveRestaurantId(req: FastifyRequest, options: { mutation?: boolean } = {}): Promise<string> {
-    let restaurantId = req.authContext?.restaurantId;
-    if (!restaurantId && req.authContext?.role === 'super_admin') {
-      const query = (req.query || {}) as any;
-      const body = (req.body || {}) as any;
-      const headers = (req.headers || {}) as any;
-      restaurantId =
-        query?.restaurantId ||
-        body?.restaurantId ||
-        headers?.['x-restaurant-id'];
-
-      // Mutations must never default to an arbitrary tenant (JD-INFO-02): a
-      // super admin without an explicit tenant gets undefined and the caller
-      // rejects the request. Reads may keep the first-active fallback.
-      if (!restaurantId && !options.mutation && this.restaurantRepo) {
-        const all = await this.restaurantRepo.findAll();
-        const active = all.find((r) => r.isActive);
-        if (active) restaurantId = active.id;
-      }
-    }
-
-    if (restaurantId && this.restaurantRepo) {
-      const rest =
-        (await this.restaurantRepo.findById(restaurantId)) ||
-        (await this.restaurantRepo.findBySlug(restaurantId)) ||
-        (await this.restaurantRepo.findBySlug(restaurantId.replace(/^rest-/, ''))) ||
-        (await this.restaurantRepo.findById(restaurantId.replace(/^rest-/, '')));
-      if (rest) {
-        return rest.id;
-      }
-
-      // M7: a mutation must never fall through to a tenant the repository
-      // cannot resolve — that is exactly how orphan rows are written. Reads
-      // keep the raw-id passthrough (and the first-active fallback) above.
-      if (options.mutation) {
-        throw new EntityNotFoundError(`Restaurant '${restaurantId}' not found.`);
-      }
-    }
-
-    return restaurantId || '';
-  }
-
   async list(req: FastifyRequest, reply: FastifyReply) {
-    const restaurantId = await this.resolveRestaurantId(req);
+    const restaurantId = await resolveTenantForRequest(req, { restaurantRepo: this.restaurantRepo });
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to list customers.');
+    }
+    const options = parsePagination(req.query);
+    if (options) {
+      const { items, total } = await this.listCustomersUseCase.execute(restaurantId, options);
+      reply.header('X-Total-Count', String(total));
+      return reply.status(200).send(items);
     }
     const customers = await this.listCustomersUseCase.execute(restaurantId);
     return reply.status(200).send(customers);
   }
 
   async getById(req: FastifyRequest, reply: FastifyReply) {
-    const restaurantId = await this.resolveRestaurantId(req);
+    const restaurantId = await resolveTenantForRequest(req, { restaurantRepo: this.restaurantRepo });
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to view customer details.');
     }
@@ -83,7 +63,7 @@ export class CustomerController {
   }
 
   async create(req: FastifyRequest, reply: FastifyReply) {
-    const restaurantId = await this.resolveRestaurantId(req, { mutation: true });
+    const restaurantId = await resolveTenantForRequest(req, { restaurantRepo: this.restaurantRepo }, { mutation: true });
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to create a customer.');
     }
@@ -96,7 +76,7 @@ export class CustomerController {
   }
 
   async update(req: FastifyRequest, reply: FastifyReply) {
-    const restaurantId = await this.resolveRestaurantId(req, { mutation: true });
+    const restaurantId = await resolveTenantForRequest(req, { restaurantRepo: this.restaurantRepo }, { mutation: true });
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to update a customer.');
     }
@@ -110,7 +90,7 @@ export class CustomerController {
   }
 
   async delete(req: FastifyRequest, reply: FastifyReply) {
-    const restaurantId = await this.resolveRestaurantId(req, { mutation: true });
+    const restaurantId = await resolveTenantForRequest(req, { restaurantRepo: this.restaurantRepo }, { mutation: true });
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to delete a customer.');
     }

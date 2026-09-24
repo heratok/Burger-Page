@@ -3,8 +3,31 @@ import { Order, OrderStatus, OrderItem, OrderItemAddition } from '../../../domai
 import { UserRole } from '../../../domain/models/User.js';
 import { EntityNotFoundError, InvalidOrderStateError } from '../../../domain/errors/DomainErrors.js';
 import { OrderRepository } from '../../../domain/ports/out/OrderRepository.js';
+import { ListOptions } from '../../../domain/ports/out/ListOptions.js';
 import { withTenantContext } from './PgClient.js';
 import type { PoolClient } from 'pg';
+
+function mapAdditionRow(row: any): OrderItemAddition {
+  return {
+    id: row.id,
+    additionId: row.addition_id,
+    additionName: row.addition_name,
+    unitPrice: Number(row.unit_price || 0),
+    quantity: Number(row.quantity || 1),
+  };
+}
+
+function mapItemRow(row: any, additions: OrderItemAddition[]): OrderItem {
+  return {
+    id: row.id,
+    productId: row.product_id,
+    productName: row.product_name,
+    unitPrice: Number(row.unit_price || 0),
+    quantity: Number(row.quantity || 1),
+    observation: row.observation || undefined,
+    additions,
+  };
+}
 
 async function loadItemsWithAdditions(client: PoolClient, orderId: string): Promise<OrderItem[]> {
   const { rows: itemRows } = await client.query(
@@ -19,27 +42,14 @@ async function loadItemsWithAdditions(client: PoolClient, orderId: string): Prom
     [itemIds]
   );
 
-  return itemRows.map((itemRow) => {
-    const additions: OrderItemAddition[] = additionRows
-      .filter((a) => a.order_item_id === itemRow.id)
-      .map((a) => ({
-        id: a.id,
-        additionId: a.addition_id,
-        additionName: a.addition_name,
-        unitPrice: Number(a.unit_price || 0),
-        quantity: Number(a.quantity || 1),
-      }));
+  const additionsByItem = new Map<string, OrderItemAddition[]>();
+  for (const row of additionRows) {
+    const list = additionsByItem.get(row.order_item_id);
+    if (list) list.push(mapAdditionRow(row));
+    else additionsByItem.set(row.order_item_id, [mapAdditionRow(row)]);
+  }
 
-    return {
-      id: itemRow.id,
-      productId: itemRow.product_id,
-      productName: itemRow.product_name,
-      unitPrice: Number(itemRow.unit_price || 0),
-      quantity: Number(itemRow.quantity || 1),
-      observation: itemRow.observation || undefined,
-      additions,
-    };
-  });
+  return itemRows.map((itemRow) => mapItemRow(itemRow, additionsByItem.get(itemRow.id) ?? []));
 }
 
 function mapOrderRow(row: any, items: OrderItem[]): Order {
@@ -86,21 +96,66 @@ export class PgOrderRepository implements OrderRepository {
     });
   }
 
-  async findByRestaurantId(restaurantId: string): Promise<Order[]> {
+  async findByRestaurantId(restaurantId: string, options?: ListOptions): Promise<Order[]> {
     return withTenantContext({ restaurantId }, async (client) => {
-      const { rows } = await client.query(
-        `SELECT o.*, c.name as customer_name, c.phone as customer_phone, c.address as customer_address, c.barrio as customer_barrio
+      // Pagination: limit/offset apply to the ORDERS select only; the batched
+      // items/additions queries below always run over the page's order ids and
+      // never re-add a limit.
+      const limit = options?.limit;
+      let sql = `SELECT o.*, c.name as customer_name, c.phone as customer_phone, c.address as customer_address, c.barrio as customer_barrio
          FROM public.orders o
          LEFT JOIN public.customers c ON o.customer_id = c.id
-         WHERE o.restaurant_id = $1 ORDER BY o.created_at DESC`,
+         WHERE o.restaurant_id = $1 ORDER BY o.created_at DESC`;
+      const params: unknown[] = [restaurantId];
+      if (typeof limit === 'number' && Number.isInteger(limit) && limit > 0) {
+        const page = options?.page && Number.isInteger(options.page) && options.page >= 1 ? options.page : 1;
+        sql += `\n         LIMIT $2 OFFSET $3`;
+        params.push(limit, (page - 1) * limit);
+      }
+      const { rows } = await client.query(sql, params);
+      if (rows.length === 0) return [];
+
+      // N+1 fix: batch items and additions for ALL orders with exactly two
+      // extra queries (1 + 2N roundtrips -> 3 total), group them in JS, and
+      // rebuild each order. Orders keep DESC sort; items/additions stay ASC,
+      // exactly matching the per-order helper's output shape.
+      const orderIds = rows.map((r) => r.id);
+      const { rows: itemRows } = await client.query(
+        `SELECT * FROM public.order_items WHERE order_id = ANY($1::text[]) ORDER BY created_at ASC`,
+        [orderIds]
+      );
+      const itemIds = itemRows.map((r) => r.id);
+      const { rows: additionRows } = await client.query(
+        `SELECT * FROM public.order_item_additions WHERE order_item_id = ANY($1::text[]) ORDER BY created_at ASC`,
+        [itemIds]
+      );
+
+      const additionsByItem = new Map<string, OrderItemAddition[]>();
+      for (const row of additionRows) {
+        const list = additionsByItem.get(row.order_item_id);
+        if (list) list.push(mapAdditionRow(row));
+        else additionsByItem.set(row.order_item_id, [mapAdditionRow(row)]);
+      }
+
+      const itemsByOrder = new Map<string, OrderItem[]>();
+      for (const itemRow of itemRows) {
+        const item = mapItemRow(itemRow, additionsByItem.get(itemRow.id) ?? []);
+        const list = itemsByOrder.get(itemRow.order_id);
+        if (list) list.push(item);
+        else itemsByOrder.set(itemRow.order_id, [item]);
+      }
+
+      return rows.map((row) => mapOrderRow(row, itemsByOrder.get(row.id) ?? []));
+    });
+  }
+
+  async countByRestaurantId(restaurantId: string): Promise<number> {
+    return withTenantContext({ restaurantId }, async (client) => {
+      const { rows } = await client.query(
+        `SELECT COUNT(*)::int AS total FROM public.orders WHERE restaurant_id = $1`,
         [restaurantId]
       );
-      const orders: Order[] = [];
-      for (const row of rows) {
-        const items = await loadItemsWithAdditions(client, row.id);
-        orders.push(mapOrderRow(row, items));
-      }
-      return orders;
+      return Number(rows[0]?.total ?? 0);
     });
   }
 
@@ -239,68 +294,29 @@ export class PgOrderRepository implements OrderRepository {
       const custAddress = cust?.address || cust?.direccion || null;
       const custBarrio = cust?.barrio || null;
 
-      // Check if orders table has customer_name column
-      const { rows: colRows } = await client.query(
-        `SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'orders' AND column_name = 'customer_name'`
+      await client.query(
+        `UPDATE public.orders SET
+           subtotal = $1,
+           delivery_fee = $2,
+           final_total = $3,
+           payment_method = $4,
+           payment_amount = $5,
+           change_amount = $6,
+           comment = $7,
+           status = $8,             updated_at = NOW()           WHERE id = $9 AND restaurant_id = $10`,
+        [
+          order.subtotal,
+          order.deliveryFee,
+          order.finalTotal,
+          order.paymentMethod,
+          order.paymentAmount ?? null,
+          order.changeAmount ?? null,
+          order.comment ?? null,
+          order.status,
+          order.id,
+          restaurantId,
+        ]
       );
-
-      if (colRows.length > 0) {
-        await client.query(
-          `UPDATE public.orders SET
-             customer_name = COALESCE($1, customer_name),
-             customer_phone = COALESCE($2, customer_phone),
-             customer_address = COALESCE($3, customer_address),
-             customer_barrio = COALESCE($4, customer_barrio),
-             subtotal = $5,
-             delivery_fee = $6,
-             final_total = $7,
-             payment_method = $8,
-             payment_amount = $9,
-             change_amount = $10,
-             comment = $11,
-             status = $12,             updated_at = NOW()           WHERE id = $13 AND restaurant_id = $14`,
-          [
-            custName,
-            custPhone,
-            custAddress,
-            custBarrio,
-            order.subtotal,
-            order.deliveryFee,
-            order.finalTotal,
-            order.paymentMethod,
-            order.paymentAmount ?? null,
-            order.changeAmount ?? null,
-            order.comment ?? null,
-            order.status,
-            order.id,
-            restaurantId,
-          ]
-        );
-      } else {
-        await client.query(
-          `UPDATE public.orders SET
-             subtotal = $1,
-             delivery_fee = $2,
-             final_total = $3,
-             payment_method = $4,
-             payment_amount = $5,
-             change_amount = $6,
-             comment = $7,
-             status = $8,             updated_at = NOW()           WHERE id = $9 AND restaurant_id = $10`,
-          [
-            order.subtotal,
-            order.deliveryFee,
-            order.finalTotal,
-            order.paymentMethod,
-            order.paymentAmount ?? null,
-            order.changeAmount ?? null,
-            order.comment ?? null,
-            order.status,
-            order.id,
-            restaurantId,
-          ]
-        );
-      }
 
       // Also update public.customers if order is linked to a customer
       const customerId = order.customerId || existingRows[0].customer_id;

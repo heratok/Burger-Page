@@ -1,6 +1,7 @@
 import { Database } from 'better-sqlite3';
 import { Product } from '../../../domain/models/Product.js';
 import { ProductRepository } from '../../../domain/ports/out/ProductRepository.js';
+import { ListOptions } from '../../../domain/ports/out/ListOptions.js';
 
 export class SqliteProductRepository implements ProductRepository {
   constructor(private db: Database) {}
@@ -36,16 +37,38 @@ export class SqliteProductRepository implements ProductRepository {
     return this.mapRow(row);
   }
 
-  async findByRestaurantId(restaurantId: string): Promise<Product[]> {
-    const rows = this.db
-      .prepare(`
-        SELECT p.*, p.category as category_name
-            FROM products p
-        WHERE p.restaurant_id = ?
-        ORDER BY p.display_order ASC, p.id ASC
-      `)
-      .all(restaurantId) as any[];
+  async findByRestaurantId(restaurantId: string, options?: ListOptions): Promise<Product[]> {
+    const limit = options?.limit;
+    let rows: any[];
+    if (typeof limit === 'number' && Number.isInteger(limit) && limit > 0) {
+      const page = options?.page && Number.isInteger(options.page) && options.page >= 1 ? options.page : 1;
+      rows = this.db
+        .prepare(`
+          SELECT p.*, p.category as category_name
+              FROM products p
+          WHERE p.restaurant_id = ?
+          ORDER BY p.display_order ASC, p.id ASC
+          LIMIT ? OFFSET ?
+        `)
+        .all(restaurantId, limit, (page - 1) * limit) as any[];
+    } else {
+      rows = this.db
+        .prepare(`
+          SELECT p.*, p.category as category_name
+              FROM products p
+          WHERE p.restaurant_id = ?
+          ORDER BY p.display_order ASC, p.id ASC
+        `)
+        .all(restaurantId) as any[];
+    }
     return rows.map((r) => this.mapRow(r));
+  }
+
+  async countByRestaurantId(restaurantId: string): Promise<number> {
+    const row = this.db
+      .prepare('SELECT COUNT(*) AS total FROM products WHERE restaurant_id = ?')
+      .get(restaurantId) as { total: number } | undefined;
+    return Number(row?.total ?? 0);
   }
 
   async save(product: Product): Promise<void> {

@@ -7,7 +7,23 @@ import { DeleteProductAdditionUseCase } from '../../../application/use-cases/Del
 import { RestaurantRepository } from '../../../domain/ports/out/RestaurantRepository.js';
 import { createProductAdditionSchema, updateProductAdditionSchema } from '@burger-page/contracts';
 import { ValidationError, UnauthorizedError, EntityNotFoundError } from '../../../domain/errors/DomainErrors.js';
+import { resolveTenantForRequest } from '../TenantResolver.js';
 import { CreateProductAdditionDTO, UpdateProductAdditionDTO } from '../../../application/dtos/index.js';
+import { ListOptions } from '../../../domain/ports/out/ListOptions.js';
+
+/**
+ * Lenient pagination parsing: honored only when BOTH page and limit are
+ * present valid integers (page >= 1, limit clamped 1..100); anything else is
+ * ignored so the request keeps the exact pre-pagination behavior.
+ */
+function parsePagination(query: unknown): ListOptions | undefined {
+  const q = (query ?? {}) as { page?: unknown; limit?: unknown };
+  const page = typeof q.page === 'number' ? q.page : Number(q.page);
+  const limitRaw = typeof q.limit === 'number' ? q.limit : Number(q.limit);
+  if (!Number.isInteger(page) || page < 1) return undefined;
+  if (!Number.isInteger(limitRaw) || limitRaw < 1) return undefined;
+  return { page, limit: Math.min(limitRaw, 100) };
+}
 
 export class ProductAdditionController {
   constructor(
@@ -61,6 +77,12 @@ export class ProductAdditionController {
       restaurantId = await this.resolveRestaurantId(query);
     }
 
+    const options = parsePagination(req.query);
+    if (options) {
+      const { items, total } = await this.listAdditionsUseCase.execute(restaurantId, query.productId, options);
+      reply.header('X-Total-Count', String(total));
+      return reply.status(200).send(items);
+    }
     const additions = await this.listAdditionsUseCase.execute(restaurantId, query.productId);
     return reply.status(200).send(additions);
   }
@@ -84,43 +106,8 @@ export class ProductAdditionController {
     return reply.status(200).send(addition);
   }
 
-  private async resolveTenantForMutation(req: FastifyRequest, options: { mutation?: boolean } = {}): Promise<string> {
-    let restaurantId = req.authContext?.restaurantId;
-    if (!restaurantId && req.authContext?.role === 'super_admin') {
-      const body = (req.body || {}) as any;
-      const query = (req.query || {}) as any;
-      const headers = (req.headers || {}) as any;
-      restaurantId =
-        body?.restaurantId ||
-        query?.restaurantId ||
-        headers?.['x-restaurant-id'];
-
-      // Mutations must never default to an arbitrary tenant (JD-INFO-02): a
-      // super admin without an explicit tenant gets undefined and the caller
-      // rejects the request. Reads may keep the first-active fallback.
-      if (!restaurantId && !options.mutation && this.restaurantRepo) {
-        const all = await this.restaurantRepo.findAll();
-        const active = all.find((r) => r.isActive);
-        if (active) restaurantId = active.id;
-      }
-    }
-
-    if (restaurantId && this.restaurantRepo) {
-      const rest =
-        (await this.restaurantRepo.findById(restaurantId)) ||
-        (await this.restaurantRepo.findBySlug(restaurantId)) ||
-        (await this.restaurantRepo.findBySlug(restaurantId.replace(/^rest-/, ''))) ||
-        (await this.restaurantRepo.findById(restaurantId.replace(/^rest-/, '')));
-      if (rest) {
-        return rest.id;
-      }
-    }
-
-    return restaurantId || '';
-  }
-
   async create(req: FastifyRequest, reply: FastifyReply) {
-    const restaurantId = await this.resolveTenantForMutation(req, { mutation: true });
+    const restaurantId = await resolveTenantForRequest(req, { restaurantRepo: this.restaurantRepo }, { mutation: true });
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to create a product addition.');
     }
@@ -136,7 +123,7 @@ export class ProductAdditionController {
 
   async update(req: FastifyRequest, reply: FastifyReply) {
     const params = req.params as { id: string };
-    const restaurantId = await this.resolveTenantForMutation(req, { mutation: true });
+    const restaurantId = await resolveTenantForRequest(req, { restaurantRepo: this.restaurantRepo }, { mutation: true });
 
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to update a product addition.');
@@ -153,7 +140,7 @@ export class ProductAdditionController {
 
   async delete(req: FastifyRequest, reply: FastifyReply) {
     const params = req.params as { id: string };
-    const restaurantId = await this.resolveTenantForMutation(req, { mutation: true });
+    const restaurantId = await resolveTenantForRequest(req, { restaurantRepo: this.restaurantRepo }, { mutation: true });
 
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to delete a product addition.');
