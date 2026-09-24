@@ -2,6 +2,7 @@ import { Database } from 'better-sqlite3';
 import { Order, OrderStatus, OrderItem } from '../../../domain/models/Order.js';
 import { UserRole } from '../../../domain/models/User.js';
 import { OrderRepository } from '../../../domain/ports/out/OrderRepository.js';
+import { ListOptions } from '../../../domain/ports/out/ListOptions.js';
 import { EntityNotFoundError, InvalidOrderStateError } from '../../../domain/errors/DomainErrors.js';
 
 export class SqliteOrderRepository implements OrderRepository {
@@ -62,9 +63,25 @@ export class SqliteOrderRepository implements OrderRepository {
     return this.mapToDomain(row);
   }
 
-  async findByRestaurantId(restaurantId: string): Promise<Order[]> {
-    const rows = this.db.prepare('SELECT * FROM orders WHERE restaurant_id = ? ORDER BY created_at DESC').all(restaurantId) as any[];
+  async findByRestaurantId(restaurantId: string, options?: ListOptions): Promise<Order[]> {
+    const limit = options?.limit;
+    let rows: any[];
+    if (typeof limit === 'number' && Number.isInteger(limit) && limit > 0) {
+      const page = options?.page && Number.isInteger(options.page) && options.page >= 1 ? options.page : 1;
+      rows = this.db
+        .prepare('SELECT * FROM orders WHERE restaurant_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?')
+        .all(restaurantId, limit, (page - 1) * limit) as any[];
+    } else {
+      rows = this.db.prepare('SELECT * FROM orders WHERE restaurant_id = ? ORDER BY created_at DESC').all(restaurantId) as any[];
+    }
     return rows.map((row) => this.mapToDomain(row));
+  }
+
+  async countByRestaurantId(restaurantId: string): Promise<number> {
+    const row = this.db
+      .prepare('SELECT COUNT(*) AS total FROM orders WHERE restaurant_id = ?')
+      .get(restaurantId) as { total: number } | undefined;
+    return Number(row?.total ?? 0);
   }
 
   async save(order: Order): Promise<void> {

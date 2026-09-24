@@ -9,6 +9,21 @@ import { createProductAdditionSchema, updateProductAdditionSchema } from '@burge
 import { ValidationError, UnauthorizedError, EntityNotFoundError } from '../../../domain/errors/DomainErrors.js';
 import { resolveTenantForRequest } from '../TenantResolver.js';
 import { CreateProductAdditionDTO, UpdateProductAdditionDTO } from '../../../application/dtos/index.js';
+import { ListOptions } from '../../../domain/ports/out/ListOptions.js';
+
+/**
+ * Lenient pagination parsing: honored only when BOTH page and limit are
+ * present valid integers (page >= 1, limit clamped 1..100); anything else is
+ * ignored so the request keeps the exact pre-pagination behavior.
+ */
+function parsePagination(query: unknown): ListOptions | undefined {
+  const q = (query ?? {}) as { page?: unknown; limit?: unknown };
+  const page = typeof q.page === 'number' ? q.page : Number(q.page);
+  const limitRaw = typeof q.limit === 'number' ? q.limit : Number(q.limit);
+  if (!Number.isInteger(page) || page < 1) return undefined;
+  if (!Number.isInteger(limitRaw) || limitRaw < 1) return undefined;
+  return { page, limit: Math.min(limitRaw, 100) };
+}
 
 export class ProductAdditionController {
   constructor(
@@ -62,6 +77,12 @@ export class ProductAdditionController {
       restaurantId = await this.resolveRestaurantId(query);
     }
 
+    const options = parsePagination(req.query);
+    if (options) {
+      const { items, total } = await this.listAdditionsUseCase.execute(restaurantId, query.productId, options);
+      reply.header('X-Total-Count', String(total));
+      return reply.status(200).send(items);
+    }
     const additions = await this.listAdditionsUseCase.execute(restaurantId, query.productId);
     return reply.status(200).send(additions);
   }

@@ -3,6 +3,7 @@ import { Order, OrderStatus, OrderItem, OrderItemAddition } from '../../../domai
 import { UserRole } from '../../../domain/models/User.js';
 import { EntityNotFoundError, InvalidOrderStateError } from '../../../domain/errors/DomainErrors.js';
 import { OrderRepository } from '../../../domain/ports/out/OrderRepository.js';
+import { ListOptions } from '../../../domain/ports/out/ListOptions.js';
 import { withTenantContext } from './PgClient.js';
 import type { PoolClient } from 'pg';
 
@@ -95,15 +96,23 @@ export class PgOrderRepository implements OrderRepository {
     });
   }
 
-  async findByRestaurantId(restaurantId: string): Promise<Order[]> {
+  async findByRestaurantId(restaurantId: string, options?: ListOptions): Promise<Order[]> {
     return withTenantContext({ restaurantId }, async (client) => {
-      const { rows } = await client.query(
-        `SELECT o.*, c.name as customer_name, c.phone as customer_phone, c.address as customer_address, c.barrio as customer_barrio
+      // Pagination: limit/offset apply to the ORDERS select only; the batched
+      // items/additions queries below always run over the page's order ids and
+      // never re-add a limit.
+      const limit = options?.limit;
+      let sql = `SELECT o.*, c.name as customer_name, c.phone as customer_phone, c.address as customer_address, c.barrio as customer_barrio
          FROM public.orders o
          LEFT JOIN public.customers c ON o.customer_id = c.id
-         WHERE o.restaurant_id = $1 ORDER BY o.created_at DESC`,
-        [restaurantId]
-      );
+         WHERE o.restaurant_id = $1 ORDER BY o.created_at DESC`;
+      const params: unknown[] = [restaurantId];
+      if (typeof limit === 'number' && Number.isInteger(limit) && limit > 0) {
+        const page = options?.page && Number.isInteger(options.page) && options.page >= 1 ? options.page : 1;
+        sql += `\n         LIMIT $2 OFFSET $3`;
+        params.push(limit, (page - 1) * limit);
+      }
+      const { rows } = await client.query(sql, params);
       if (rows.length === 0) return [];
 
       // N+1 fix: batch items and additions for ALL orders with exactly two
@@ -137,6 +146,16 @@ export class PgOrderRepository implements OrderRepository {
       }
 
       return rows.map((row) => mapOrderRow(row, itemsByOrder.get(row.id) ?? []));
+    });
+  }
+
+  async countByRestaurantId(restaurantId: string): Promise<number> {
+    return withTenantContext({ restaurantId }, async (client) => {
+      const { rows } = await client.query(
+        `SELECT COUNT(*)::int AS total FROM public.orders WHERE restaurant_id = $1`,
+        [restaurantId]
+      );
+      return Number(rows[0]?.total ?? 0);
     });
   }
 

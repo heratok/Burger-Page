@@ -1,6 +1,7 @@
 import { Database } from 'better-sqlite3';
 import { Customer } from '../../../domain/models/Customer.js';
 import { CustomerRepository } from '../../../domain/ports/out/CustomerRepository.js';
+import { ListOptions } from '../../../domain/ports/out/ListOptions.js';
 
 export class SqliteCustomerRepository implements CustomerRepository {
   constructor(private db: Database) {}
@@ -28,11 +29,27 @@ export class SqliteCustomerRepository implements CustomerRepository {
     return this.mapToDomain(row);
   }
 
-  async findByRestaurantId(restaurantId: string): Promise<Customer[]> {
-    const rows = this.db
-      .prepare('SELECT * FROM customers WHERE restaurant_id = ? ORDER BY name ASC')
-      .all(restaurantId) as any[];
+  async findByRestaurantId(restaurantId: string, options?: ListOptions): Promise<Customer[]> {
+    const limit = options?.limit;
+    let rows: any[];
+    if (typeof limit === 'number' && Number.isInteger(limit) && limit > 0) {
+      const page = options?.page && Number.isInteger(options.page) && options.page >= 1 ? options.page : 1;
+      rows = this.db
+        .prepare('SELECT * FROM customers WHERE restaurant_id = ? ORDER BY name ASC LIMIT ? OFFSET ?')
+        .all(restaurantId, limit, (page - 1) * limit) as any[];
+    } else {
+      rows = this.db
+        .prepare('SELECT * FROM customers WHERE restaurant_id = ? ORDER BY name ASC')
+        .all(restaurantId) as any[];
+    }
     return rows.map((r) => this.mapToDomain(r));
+  }
+
+  async countByRestaurantId(restaurantId: string): Promise<number> {
+    const row = this.db
+      .prepare('SELECT COUNT(*) AS total FROM customers WHERE restaurant_id = ?')
+      .get(restaurantId) as { total: number } | undefined;
+    return Number(row?.total ?? 0);
   }
 
   async findByPhone(phone: string, restaurantId: string): Promise<Customer | null> {

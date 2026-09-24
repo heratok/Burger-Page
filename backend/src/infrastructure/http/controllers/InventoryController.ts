@@ -10,6 +10,21 @@ import { updateInventoryStockSchema } from '@burger-page/contracts';
 import { UnauthorizedError, ValidationError } from '../../../domain/errors/DomainErrors.js';
 import { resolveTenantForRequest } from '../TenantResolver.js';
 import { CreateInventoryItemDTO, UpdateInventoryItemDTO } from '../../../application/dtos/index.js';
+import { ListOptions } from '../../../domain/ports/out/ListOptions.js';
+
+/**
+ * Lenient pagination parsing: honored only when BOTH page and limit are
+ * present valid integers (page >= 1, limit clamped 1..100); anything else is
+ * ignored so the request keeps the exact pre-pagination behavior.
+ */
+function parsePagination(query: unknown): ListOptions | undefined {
+  const q = (query ?? {}) as { page?: unknown; limit?: unknown };
+  const page = typeof q.page === 'number' ? q.page : Number(q.page);
+  const limitRaw = typeof q.limit === 'number' ? q.limit : Number(q.limit);
+  if (!Number.isInteger(page) || page < 1) return undefined;
+  if (!Number.isInteger(limitRaw) || limitRaw < 1) return undefined;
+  return { page, limit: Math.min(limitRaw, 100) };
+}
 
 export class InventoryController {
   constructor(
@@ -27,8 +42,8 @@ export class InventoryController {
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to list inventory.');
     }
-    const inventory = await this.listInventoryUseCase.execute(restaurantId);
-    const mapped = inventory.map((item) => ({
+    const options = parsePagination(req.query);
+    const mapItem = (item: any) => ({
       id: item.id,
       restaurantId: item.restaurantId,
       name: item.name,
@@ -41,7 +56,14 @@ export class InventoryController {
       costPerUnit: item.costPerUnit || 0,
       createdAt: item.createdAt,
       updatedAt: item.updatedAt,
-    }));
+    });
+    if (options) {
+      const { items, total } = await this.listInventoryUseCase.execute(restaurantId, options);
+      reply.header('X-Total-Count', String(total));
+      return reply.status(200).send(items.map((item: any) => mapItem(item)));
+    }
+    const inventory = await this.listInventoryUseCase.execute(restaurantId);
+    const mapped = inventory.map((item) => mapItem(item));
     return reply.status(200).send(mapped);
   }
 

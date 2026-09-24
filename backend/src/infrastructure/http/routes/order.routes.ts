@@ -16,6 +16,8 @@ export async function orderRoutes(fastify: FastifyInstance, opts: { controller: 
         type: 'object',
         properties: {
           restaurantId: { type: 'string', description: 'Target restaurant identifier for super_admin override' },
+          page: { type: 'integer', minimum: 1, description: 'Page number (1-based); requires limit' },
+          limit: { type: 'integer', minimum: 1, maximum: 100, description: 'Items per page (bounded 1..100); requires page' },
         },
       },
       response: {

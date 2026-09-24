@@ -10,6 +10,21 @@ import { ValidationError, UnauthorizedError, EntityNotFoundError } from '../../.
 import { resolveTenantForRequest } from '../TenantResolver.js';
 import { CreateProductDTO, UpdateProductDTO } from '../../../application/dtos/index.js';
 import { StorageUrlResolver, defaultStorageUrlResolver } from '../../storage/StorageUrlResolver.js';
+import { ListOptions } from '../../../domain/ports/out/ListOptions.js';
+
+/**
+ * Lenient pagination parsing: honored only when BOTH page and limit are
+ * present valid integers (page >= 1, limit clamped 1..100); anything else is
+ * ignored so the request keeps the exact pre-pagination behavior.
+ */
+function parsePagination(query: unknown): ListOptions | undefined {
+  const q = (query ?? {}) as { page?: unknown; limit?: unknown };
+  const page = typeof q.page === 'number' ? q.page : Number(q.page);
+  const limitRaw = typeof q.limit === 'number' ? q.limit : Number(q.limit);
+  if (!Number.isInteger(page) || page < 1) return undefined;
+  if (!Number.isInteger(limitRaw) || limitRaw < 1) return undefined;
+  return { page, limit: Math.min(limitRaw, 100) };
+}
 
 export class ProductController {
   private storageResolver: StorageUrlResolver;
@@ -72,9 +87,15 @@ export class ProductController {
 
   async list(req: FastifyRequest, reply: FastifyReply) {
     const authTenant = req.authContext?.restaurantId;
+    const options = parsePagination(req.query);
 
     if (authTenant) {
       // 1. Catálogo administrativo: devuelve todos los productos del tenant autenticado
+      if (options) {
+        const { items, total } = await this.listProducts.execute(authTenant, false, options);
+        reply.header('X-Total-Count', String(total));
+        return reply.status(200).send(items.map((p) => this.formatProduct(p)));
+      }
       const products = await this.listProducts.execute(authTenant, false);
       return reply.status(200).send(products.map((p) => this.formatProduct(p)));
     }
@@ -86,6 +107,11 @@ export class ProductController {
       restaurantId = await this.resolveRestaurantId(query);
     }
     const isAvailableOnly = req.authContext?.role === 'super_admin' ? false : true;
+    if (options) {
+      const { items, total } = await this.listProducts.execute(restaurantId, isAvailableOnly, options);
+      reply.header('X-Total-Count', String(total));
+      return reply.status(200).send(items.map((p) => this.formatProduct(p)));
+    }
     const products = await this.listProducts.execute(restaurantId, isAvailableOnly);
     return reply.status(200).send(products.map((p) => this.formatProduct(p)));
   }

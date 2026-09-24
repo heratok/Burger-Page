@@ -15,6 +15,8 @@ export async function productRoutes(fastify: FastifyInstance, opts: { controller
         properties: {
           restaurantId: { type: 'string' },
           slug: { type: 'string' },
+          page: { type: 'integer', minimum: 1, description: 'Page number (1-based); requires limit' },
+          limit: { type: 'integer', minimum: 1, maximum: 100, description: 'Items per page (bounded 1..100); requires page' },
         },
       },
     },

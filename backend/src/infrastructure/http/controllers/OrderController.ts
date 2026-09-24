@@ -13,6 +13,21 @@ import { resolveTenantForRequest } from '../TenantResolver.js';
 import { CreateOrderDTO, UpdateOrderStatusDTO, UpdateOrderReceiptDTO, UpdateOrderDTO } from '../../../application/dtos/index.js';
 import { globalOrderEventBus } from '../../events/OrderEventBus.js';
 import { JwtService } from '../../security/JwtService.js';
+import { ListOptions } from '../../../domain/ports/out/ListOptions.js';
+
+/**
+ * Lenient pagination parsing: values are honored only when BOTH are present
+ * and valid integers (page >= 1, limit clamped 1..100). Anything else is
+ * ignored so the request falls back to the exact pre-pagination behavior.
+ */
+function parsePagination(query: unknown): ListOptions | undefined {
+  const q = (query ?? {}) as { page?: unknown; limit?: unknown };
+  const page = typeof q.page === 'number' ? q.page : Number(q.page);
+  const limitRaw = typeof q.limit === 'number' ? q.limit : Number(q.limit);
+  if (!Number.isInteger(page) || page < 1) return undefined;
+  if (!Number.isInteger(limitRaw) || limitRaw < 1) return undefined;
+  return { page, limit: Math.min(limitRaw, 100) };
+}
 
 export class OrderController {
   constructor(
@@ -52,6 +67,12 @@ export class OrderController {
     const restaurantId = await resolveTenantForRequest(req, { restaurantRepo: this.restaurantRepo });
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to list orders.');
+    }
+    const options = parsePagination(req.query);
+    if (options) {
+      const { items, total } = await this.listOrdersUseCase.execute(restaurantId, options);
+      reply.header('X-Total-Count', String(total));
+      return reply.status(200).send(items);
     }
     const orders = await this.listOrdersUseCase.execute(restaurantId);
     return reply.status(200).send(orders);

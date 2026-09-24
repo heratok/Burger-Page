@@ -16,6 +16,8 @@ export async function additionRoutes(fastify: FastifyInstance, opts: { controlle
           restaurantId: { type: 'string' },
           slug: { type: 'string' },
           productId: { type: 'string' },
+          page: { type: 'integer', minimum: 1, description: 'Page number (1-based); requires limit' },
+          limit: { type: 'integer', minimum: 1, maximum: 100, description: 'Items per page (bounded 1..100); requires page' },
         },
       },
     },

@@ -1,6 +1,7 @@
 import { Database } from 'better-sqlite3';
 import { ProductAddition } from '../../../domain/models/ProductAddition.js';
 import { ProductAdditionRepository } from '../../../domain/ports/out/ProductAdditionRepository.js';
+import { ListOptions } from '../../../domain/ports/out/ListOptions.js';
 
 export class SqliteProductAdditionRepository implements ProductAdditionRepository {
   constructor(private db: Database) {}
@@ -25,11 +26,27 @@ export class SqliteProductAdditionRepository implements ProductAdditionRepositor
     return this.mapRow(row);
   }
 
-  async findByRestaurantId(restaurantId: string): Promise<ProductAddition[]> {
-    const rows = this.db
-      .prepare('SELECT * FROM product_additions WHERE restaurant_id = ? ORDER BY display_order ASC, id ASC')
-      .all(restaurantId) as any[];
+  async findByRestaurantId(restaurantId: string, options?: ListOptions): Promise<ProductAddition[]> {
+    const limit = options?.limit;
+    let rows: any[];
+    if (typeof limit === 'number' && Number.isInteger(limit) && limit > 0) {
+      const page = options?.page && Number.isInteger(options.page) && options.page >= 1 ? options.page : 1;
+      rows = this.db
+        .prepare('SELECT * FROM product_additions WHERE restaurant_id = ? ORDER BY display_order ASC, id ASC LIMIT ? OFFSET ?')
+        .all(restaurantId, limit, (page - 1) * limit) as any[];
+    } else {
+      rows = this.db
+        .prepare('SELECT * FROM product_additions WHERE restaurant_id = ? ORDER BY display_order ASC, id ASC')
+        .all(restaurantId) as any[];
+    }
     return rows.map((r) => this.mapRow(r));
+  }
+
+  async countByRestaurantId(restaurantId: string): Promise<number> {
+    const row = this.db
+      .prepare('SELECT COUNT(*) AS total FROM product_additions WHERE restaurant_id = ?')
+      .get(restaurantId) as { total: number } | undefined;
+    return Number(row?.total ?? 0);
   }
 
   async findByProductId(productId: string, restaurantId: string): Promise<ProductAddition[]> {

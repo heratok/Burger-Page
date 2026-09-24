@@ -1,5 +1,6 @@
 import { InventoryRepository } from '../../domain/ports/out/InventoryRepository.js';
 import { Inventory } from '../../domain/models/Inventory.js';
+import { ListOptions } from '../../domain/ports/out/ListOptions.js';
 import { initialInventory } from './seedData.js';
 import { EntityNotFoundError, ValidationError } from '../../domain/errors/DomainErrors.js';
 
@@ -19,10 +20,19 @@ export class InMemoryInventoryRepository implements InventoryRepository {
     return { ...item };
   }
 
-  async findByRestaurantId(restaurantId: string): Promise<Inventory[]> {
-    return Array.from(this.inventoryMap.values())
-      .filter((item) => item.restaurantId === restaurantId)
-      .map((item) => ({ ...item }));
+  async findByRestaurantId(restaurantId: string, options?: ListOptions): Promise<Inventory[]> {
+    const filtered = Array.from(this.inventoryMap.values()).filter((item) => item.restaurantId === restaurantId);
+    const limit = options?.limit;
+    if (typeof limit === 'number' && Number.isInteger(limit) && limit > 0) {
+      const page = options?.page && Number.isInteger(options.page) && options.page >= 1 ? options.page : 1;
+      const start = (page - 1) * limit;
+      return filtered.slice(start, start + limit).map((item) => ({ ...item }));
+    }
+    return filtered.map((item) => ({ ...item }));
+  }
+
+  async countByRestaurantId(restaurantId: string): Promise<number> {
+    return Array.from(this.inventoryMap.values()).filter((item) => item.restaurantId === restaurantId).length;
   }
 
   async save(inventory: Inventory): Promise<void> {
