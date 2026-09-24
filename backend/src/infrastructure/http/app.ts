@@ -24,6 +24,8 @@ import { SqliteCustomerRepository } from '../persistence/sqlite/SqliteCustomerRe
 import { SqliteInventoryRepository } from '../persistence/sqlite/SqliteInventoryRepository.js';
 import { SqliteProductAdditionRepository } from '../persistence/sqlite/SqliteProductAdditionRepository.js';
 import { verifyPgConnection } from '../persistence/postgres/PgClient.js';
+import { resolveStorageDriver, dataRunsOnPostgres } from '../persistence/driverSelection.js';
+import type { StorageDriver } from '../persistence/driverSelection.js';
 import { InMemoryProductAdditionRepository } from '../persistence/InMemoryProductAdditionRepository.js';
 import { PgRestaurantRepository } from '../persistence/postgres/PgRestaurantRepository.js';
 import { PgCategoryRepository } from '../persistence/postgres/PgCategoryRepository.js';
@@ -121,20 +123,15 @@ export interface AppDependencies {
   orderRepo: OrderRepository;
 }
 
-export type StorageDriver = 'memory' | 'sqlite' | 'supabase' | 'postgres';
+// Re-exported so existing importers of the http surface keep a stable path.
+export type { StorageDriver };
 
 export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppDependencies {
-  let selectedDriver: StorageDriver = driver || (process.env.STORAGE_DRIVER as StorageDriver);
-  if (!selectedDriver && process.env.SUPABASE_URL) {
-    selectedDriver = 'supabase';
-  }
-  if (!selectedDriver) {
-    selectedDriver = 'memory';
-  }
+  const selectedDriver = resolveStorageDriver(driver);
 
   console.log(`\n======================================================`);
   console.log(`📦 [DATABASE] Driver Activo: ${selectedDriver.toUpperCase()}`);
-  if (selectedDriver === 'postgres' || selectedDriver === 'supabase') {
+  if (dataRunsOnPostgres(selectedDriver)) {
     // S5: both drivers run every data query through the same pooler role
     // (app_user, NOBYPASSRLS) with RLS + tenant GUC guards from PgClient.
     console.log(`🔗 [DATABASE] app_user (RLS-scoped, sin BYPASSRLS) via DATABASE_URL pooler`);
@@ -157,7 +154,7 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
   let inventoryRepo: InventoryRepository;
   let userRepo: UserRepository;
 
-  if (selectedDriver === 'postgres' || selectedDriver === 'supabase') {
+  if (dataRunsOnPostgres(selectedDriver)) {
     // S5: the 'supabase' driver no longer talks to Supabase PostgREST with the
     // service-role key (which bypassed RLS). Both drivers use the same pooler
     // role (app_user, NOBYPASSRLS) so RLS + tenant GUC guards apply in
@@ -484,19 +481,12 @@ export function buildApp(
       },
     },
   }, async (_req, reply) => {
-    // Mirror index.ts driver detection: probe the pool only when data flows
-    // through Postgres. Since S5 the 'supabase' driver also runs every data
-    // query through the pooler (app_user/RLS), so it probes the pool too;
-    // sqlite/memory keep the static ok response.
-    const selectedDriver = (
-      process.env.STORAGE_DRIVER ||
-      (process.env.SUPABASE_URL ? 'supabase' : (process.env.DATABASE_URL ? 'postgres' : 'memory'))
-    ).toLowerCase();
-    const postgresActive =
-      selectedDriver === 'postgres' ||
-      selectedDriver === 'supabase' ||
-      (selectedDriver !== 'sqlite' && Boolean(process.env.DATABASE_URL));
-    if (!postgresActive) {
+    // Single source of truth for driver selection (D3): probe the pool only
+    // when data actually flows through Postgres. Since S5 the 'supabase'
+    // driver also runs every data query through the pooler (app_user/RLS),
+    // so it probes the pool too; sqlite/memory keep the static ok response.
+    const driver = resolveStorageDriver();
+    if (!dataRunsOnPostgres(driver)) {
       return reply.status(200).send({ status: 'ok' });
     }
 

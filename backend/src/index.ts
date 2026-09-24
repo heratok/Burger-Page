@@ -22,6 +22,7 @@ for (const envPath of envCandidates) {
 }
 
 import { buildApp } from './infrastructure/http/app.js';
+import { resolveStorageDriver, dataRunsOnPostgres } from './infrastructure/persistence/driverSelection.js';
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
 const HOST = process.env.HOST || '0.0.0.0';
@@ -106,12 +107,11 @@ const start = async () => {
     console.log(`🚀 [SERVER] Servidor corriendo en http://${HOST}:${PORT}`);
     console.log(`📚 [DOCS]   Documentación OpenAPI/Scalar en http://${HOST}:${PORT}/docs`);
 
-    const selectedDriver = (
-      process.env.STORAGE_DRIVER ||
-      (process.env.SUPABASE_URL ? 'supabase' : (process.env.DATABASE_URL ? 'postgres' : 'memory'))
-    ).toLowerCase();
+    // Single source of truth for driver selection (D3): probe the pool only
+    // when data flows through Postgres (postgres or supabase, both S5 pooler).
+    const selectedDriver = resolveStorageDriver();
 
-    if (selectedDriver === 'postgres' || (selectedDriver !== 'supabase' && selectedDriver !== 'sqlite' && process.env.DATABASE_URL)) {
+    if (dataRunsOnPostgres(selectedDriver)) {
       try {
         const { verifyPgConnection } = await import('./infrastructure/persistence/postgres/PgClient.js');
         const dbStatus = await verifyPgConnection();
@@ -136,8 +136,6 @@ const start = async () => {
           process.exit(1);
         }
       }
-    } else if (selectedDriver === 'supabase') {
-      console.log(`\n✅ [SUPABASE] Cliente configurado para ${process.env.SUPABASE_URL}\n`);
     } else if (selectedDriver === 'sqlite') {
       console.log(`\n✅ [SQLITE] Base de datos local inicializada correctamente\n`);
     }
