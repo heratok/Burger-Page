@@ -25,6 +25,8 @@ services:
         sync: false
       - key: CORS_ORIGIN
         sync: false
+      # DATABASE_URL is managed in the Render dashboard (app_user RLS role against the
+      # Supabase pooler). Never commit the value. Reference format for the dashboard:
+      # postgresql://app_user.<ref>:<password>@aws-0-us-west-2.pooler.supabase.com:5432/postgres
       - key: DATABASE_URL
         sync: false
-        value: postgresql://app_user.<ref>:<password>@aws-0-us-west-2.pooler.supabase.com:5432/postgres
