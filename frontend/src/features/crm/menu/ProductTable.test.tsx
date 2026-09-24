@@ -44,4 +44,22 @@ describe("ProductTable", () => {
     fireEvent.click(switchBtn)
     expect(onToggleStock).toHaveBeenCalledWith("p-1")
   })
+
+  it("wraps the table in an overflow-x-auto container so touch users can pan wide tables", () => {
+    const { container } = render(
+      <ProductTable
+        products={mockProducts}
+        onToggleStock={vi.fn()}
+        onEditProduct={vi.fn()}
+        onDeleteProduct={vi.fn()}
+      />
+    )
+
+    // The other seven admin tables use this same scroll wrapper. Without it the
+    // table is clipped by the card's overflow-hidden and cannot be panned on a
+    // phone (regression: 2025 menu table wasn't scrollable on mobile).
+    const scrollWrapper = container.querySelector("div.overflow-x-auto")
+    expect(scrollWrapper).not.toBeNull()
+    expect(scrollWrapper?.querySelector("table")).not.toBeNull()
+  })
 })

@@ -26,7 +26,8 @@ export const ProductTable: React.FC<ProductTableProps> = ({
         isDark ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-white"
       }`}
     >
-      <table className="w-full text-left text-xs">
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-xs">
         <thead>
           <tr className={`border-b ${isDark ? "border-slate-800 text-slate-400" : "border-slate-100 text-slate-500"}`}>
             <th className="py-3 px-4 font-semibold">Producto</th>
@@ -111,7 +112,8 @@ export const ProductTable: React.FC<ProductTableProps> = ({
             </tr>
           ))}
         </tbody>
-      </table>
+        </table>
+      </div>
     </div>
   )
 }
