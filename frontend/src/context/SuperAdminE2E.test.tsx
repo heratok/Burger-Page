@@ -247,7 +247,10 @@ describe("SUS-04 - Route-level gating of global SaaS modules in MainRouter", () 
   it("el Super Admin sigue viendo GlobalAnalytics en /admin/metrics", async () => {
     renderAdminRoute("metrics", { role: "super" })
 
-    await screen.findByText(/Métricas & Rendimiento Global SaaS/i)
+    // GlobalAnalytics is React.lazy inside Suspense: the chunk resolves under
+    // jsdom load, so the default findBy* 1s timeout flakes on full-suite runs.
+    // Wait generously for the lazy mount (and its content) to appear.
+    await screen.findByText(/Métricas & Rendimiento Global SaaS/i, undefined, { timeout: 8000 })
     expect(screen.getByText(/Facturación Consolidada/i)).toBeDefined()
     expect(screen.queryByText(/No tienes permisos para acceder a este módulo global/i)).toBeNull()
   })
