@@ -7,6 +7,7 @@ import { DeleteProductAdditionUseCase } from '../../../application/use-cases/Del
 import { RestaurantRepository } from '../../../domain/ports/out/RestaurantRepository.js';
 import { createProductAdditionSchema, updateProductAdditionSchema } from '@burger-page/contracts';
 import { ValidationError, UnauthorizedError, EntityNotFoundError } from '../../../domain/errors/DomainErrors.js';
+import { resolveTenantForRequest } from '../TenantResolver.js';
 import { CreateProductAdditionDTO, UpdateProductAdditionDTO } from '../../../application/dtos/index.js';
 
 export class ProductAdditionController {
@@ -84,43 +85,8 @@ export class ProductAdditionController {
     return reply.status(200).send(addition);
   }
 
-  private async resolveTenantForMutation(req: FastifyRequest, options: { mutation?: boolean } = {}): Promise<string> {
-    let restaurantId = req.authContext?.restaurantId;
-    if (!restaurantId && req.authContext?.role === 'super_admin') {
-      const body = (req.body || {}) as any;
-      const query = (req.query || {}) as any;
-      const headers = (req.headers || {}) as any;
-      restaurantId =
-        body?.restaurantId ||
-        query?.restaurantId ||
-        headers?.['x-restaurant-id'];
-
-      // Mutations must never default to an arbitrary tenant (JD-INFO-02): a
-      // super admin without an explicit tenant gets undefined and the caller
-      // rejects the request. Reads may keep the first-active fallback.
-      if (!restaurantId && !options.mutation && this.restaurantRepo) {
-        const all = await this.restaurantRepo.findAll();
-        const active = all.find((r) => r.isActive);
-        if (active) restaurantId = active.id;
-      }
-    }
-
-    if (restaurantId && this.restaurantRepo) {
-      const rest =
-        (await this.restaurantRepo.findById(restaurantId)) ||
-        (await this.restaurantRepo.findBySlug(restaurantId)) ||
-        (await this.restaurantRepo.findBySlug(restaurantId.replace(/^rest-/, ''))) ||
-        (await this.restaurantRepo.findById(restaurantId.replace(/^rest-/, '')));
-      if (rest) {
-        return rest.id;
-      }
-    }
-
-    return restaurantId || '';
-  }
-
   async create(req: FastifyRequest, reply: FastifyReply) {
-    const restaurantId = await this.resolveTenantForMutation(req, { mutation: true });
+    const restaurantId = await resolveTenantForRequest(req, { restaurantRepo: this.restaurantRepo }, { mutation: true });
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to create a product addition.');
     }
@@ -136,7 +102,7 @@ export class ProductAdditionController {
 
   async update(req: FastifyRequest, reply: FastifyReply) {
     const params = req.params as { id: string };
-    const restaurantId = await this.resolveTenantForMutation(req, { mutation: true });
+    const restaurantId = await resolveTenantForRequest(req, { restaurantRepo: this.restaurantRepo }, { mutation: true });
 
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to update a product addition.');
@@ -153,7 +119,7 @@ export class ProductAdditionController {
 
   async delete(req: FastifyRequest, reply: FastifyReply) {
     const params = req.params as { id: string };
-    const restaurantId = await this.resolveTenantForMutation(req, { mutation: true });
+    const restaurantId = await resolveTenantForRequest(req, { restaurantRepo: this.restaurantRepo }, { mutation: true });
 
     if (!restaurantId) {
       throw new UnauthorizedError('Restaurant context is required to delete a product addition.');
