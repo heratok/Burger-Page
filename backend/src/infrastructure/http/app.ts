@@ -306,11 +306,41 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
   };
 }
 
+/**
+ * Resolve the Fastify `trustProxy` setting.
+ *
+ * Explicit `options.trustProxy` always wins. Otherwise parse `TRUST_PROXY`:
+ * "true"/"1" -> true, a positive integer -> that many trusted hops, anything
+ * else or unset -> false. Keeping `false` as the default preserves today's
+ * safe behavior: X-Forwarded-For is ignored, so a client cannot spoof its way
+ * into a fresh rate-limit bucket.
+ */
+function resolveTrustProxy(explicit?: boolean | number): boolean | number {
+  if (explicit !== undefined) return explicit;
+  const raw = process.env.TRUST_PROXY;
+  if (raw === undefined) return false;
+  const value = raw.trim();
+  if (value === 'true' || value === '1') return true;
+  if (/^[0-9]+$/.test(value)) {
+    const hops = Number(value);
+    if (hops > 0) return hops;
+  }
+  return false;
+}
+
 export function buildApp(
   dependencies?: Partial<AppDependencies>,
   options?: {
     dbPath?: string;
     driver?: StorageDriver;
+    /**
+     * Fastify trustProxy setting. `true` trusts the forwarded client IP from
+     * X-Forwarded-For (safe only when the app is reachable exclusively through
+     * the reverse proxy). A numeric hop count is accepted by the option type
+     * but the vendored fastify build fails CLOSED on it (trusts no hops), so
+     * deployments must use `true`. Defaults to TRUST_PROXY or false.
+     */
+    trustProxy?: boolean | number;
     rateLimit?: {
       /** Global max requests per IP per timeWindow (default 300/min). */
       max?: number;
@@ -343,8 +373,14 @@ export function buildApp(
           },
         };
 
+  const trustProxy = resolveTrustProxy(options?.trustProxy);
+
   const app = fastify({
     logger: loggerConfig,
+    // fastify's public TS type omits `number` (fastify.d.ts), but the runtime
+    // accepts hop counts and this build fails closed on them (trusts no hops).
+    // The runtime value is passed through unchanged; only TS is satisfied here.
+    trustProxy: trustProxy as boolean,
     ...((!isProduction && !isTest) ? { disableRequestLogging: true } : {}),
     ajv: {
       customOptions: {
