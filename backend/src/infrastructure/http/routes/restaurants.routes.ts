@@ -79,6 +79,7 @@ export async function restaurantsRoutes(fastify: FastifyInstance, opts: { contro
   }, opts.controller.create.bind(opts.controller));
 
   fastify.get('/:idOrSlug', {
+    preHandler: [tryAuth],
     schema: {
       tags: ['Restaurant'],
       summary: 'Get restaurant by id or slug',
@@ -97,13 +98,19 @@ export async function restaurantsRoutes(fastify: FastifyInstance, opts: { contro
             slug: { type: 'string' },
             name: { type: 'string' },
             tagline: { type: 'string' },
+            whatsappNumber: { type: 'string' },
+            primaryColor: { type: 'string' },
             theme: { type: 'string' },
             config: { type: 'object', additionalProperties: true },
             openingHours: { type: 'object', additionalProperties: true },
             categories: { type: 'array', items: { type: 'string' } },
+            // A9: operator records are stripped from the public projection.
+            // They stay optional here because an authenticated super admin /
+            // owning tenant admin receives the full record (minus secrets).
             isActive: { type: 'boolean' },
             createdAt: { type: 'string' },
           },
+          // Never declare adminPassword: read paths must not carry it.
           additionalProperties: false
         },
         404: {

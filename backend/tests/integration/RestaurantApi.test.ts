@@ -291,14 +291,24 @@ describe('Restaurant API & Multi-Tenant Security (Integration)', () => {
       expect(body.config.bannerUrl).toBe('https://example.com/craft-banner.webp');
       expect(body.config.primaryColor).toBe('#4F46E5');
 
-      // Verify persistence via GET
+      // Verify persistence via GET — the anonymous detail is now
+      // storefront-projected (A9/S2): logoUrl survives, internal config like
+      // bannerUrl is redacted. The owning staff still sees the full record.
       const getRes = await app.inject({
         method: 'GET',
         url: '/api/restaurants/burger-craft',
       });
       expect(getRes.statusCode).toBe(200);
       expect(getRes.json().config.logoUrl).toBe('https://example.com/craft-logo.webp');
-      expect(getRes.json().config.bannerUrl).toBe('https://example.com/craft-banner.webp');
+      expect(getRes.json().config.bannerUrl).toBeUndefined();
+
+      const staffGet = await app.inject({
+        method: 'GET',
+        url: '/api/restaurants/burger-craft',
+        headers: { authorization: `Bearer ${tokenRestaurantAdmin}` },
+      });
+      expect(staffGet.statusCode).toBe(200);
+      expect(staffGet.json().config.bannerUrl).toBe('https://example.com/craft-banner.webp');
     });
 
     it('PUT /api/restaurants/:id with restaurant_admin updating a different restaurant should return 403 Forbidden', async () => {
@@ -450,6 +460,120 @@ describe('Restaurant API & Multi-Tenant Security (Integration)', () => {
       const deleted = full.find((r: any) => r.slug === 'pizzeria-napoli-test');
       expect(deleted).toBeDefined();
       expect(deleted.isActive).toBe(false);
+    });
+  });
+
+  describe('S2 public detail redaction + S3 role-constrained PUT fields', () => {
+    const tenantSlug = 's2-redaction-tenant';
+
+    it('anonymous GET /api/restaurants/:idOrSlug returns the storefront projection only', async () => {
+      const createRes = await app.inject({
+        method: 'POST',
+        url: '/api/restaurants',
+        headers: { authorization: `Bearer ${tokenSuperAdmin}` },
+        payload: {
+          name: 'S2 Redaction Tenant',
+          slug: tenantSlug,
+          tagline: 'Storefront tagline',
+          whatsappNumber: '573009990099',
+          primaryColor: '#123456',
+          config: {
+            name: 'S2 Storefront',
+            logoUrl: 'https://example.com/logo.webp',
+            deliveryFee: 4.5,
+            currencySymbol: '$',
+            bannerUrl: 'https://example.com/internal-banner.webp',
+          },
+        },
+      });
+      expect(createRes.statusCode).toBe(201);
+
+      const anon = await app.inject({ method: 'GET', url: `/api/restaurants/${tenantSlug}` });
+      expect(anon.statusCode).toBe(200);
+      const body = anon.json();
+
+      // Operator records never leak to the public.
+      expect(body).not.toHaveProperty('isActive');
+      expect(body).not.toHaveProperty('createdAt');
+      expect(body).not.toHaveProperty('adminPassword');
+
+      // Storefront fields survive the projection.
+      expect(body.tagline).toBe('Storefront tagline');
+      expect(body.whatsappNumber).toBe('573009990099');
+      expect(body.primaryColor).toBe('#123456');
+      expect(body.config.logoUrl).toBe('https://example.com/logo.webp');
+      expect(body.config.deliveryFee).toBe(4.5);
+      expect(body.config.currencySymbol).toBe('$');
+
+      // Internal config stays out of the public projection.
+      expect(body.config.bannerUrl).toBeUndefined();
+    });
+
+    it('authed super_admin GET /api/restaurants/:idOrSlug receives the full record (isActive present)', async () => {
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/restaurants/${tenantSlug}`,
+        headers: { authorization: `Bearer ${tokenSuperAdmin}` },
+      });
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.isActive).toBe(true);
+      expect(body.createdAt).toBeDefined();
+      // Internal config is visible to staff, but the one-time password never
+      // leaves through any read path.
+      expect(body.config.bannerUrl).toBe('https://example.com/internal-banner.webp');
+      expect(body).not.toHaveProperty('adminPassword');
+    });
+
+    it('tenant-admin PUT with an EFFECTIVE isActive change is rejected (400 ValidationError)', async () => {
+      const res = await app.inject({
+        method: 'PUT',
+        url: '/api/restaurants/burger-craft',
+        headers: { authorization: `Bearer ${tokenRestaurantAdmin}` },
+        payload: { isActive: false }, // burger-craft is active: true, so this is an effective change
+      });
+      expect(res.statusCode).toBe(400);
+      expect(res.json().detail).toContain('super_admin');
+    });
+
+    it('tenant-admin PUT with adminPassword is rejected (400 ValidationError)', async () => {
+      const res = await app.inject({
+        method: 'PUT',
+        url: '/api/restaurants/burger-craft',
+        headers: { authorization: `Bearer ${tokenRestaurantAdmin}` },
+        payload: { adminPassword: 'fresh-secret-9' },
+      });
+      expect(res.statusCode).toBe(400);
+      expect(res.json().detail).toContain('super_admin');
+    });
+
+    it('tenant-admin PUT sending the UNCHANGED slug is a no-op and succeeds (200, frontend save path)', async () => {
+      const res = await app.inject({
+        method: 'PUT',
+        url: '/api/restaurants/burger-craft',
+        headers: { authorization: `Bearer ${tokenRestaurantAdmin}` },
+        payload: { slug: 'burger-craft' },
+      });
+      expect(res.statusCode).toBe(200);
+      expect(res.json().slug).toBe('burger-craft');
+    });
+
+    it('super_admin PUT with isActive succeeds and persists', async () => {
+      const res = await app.inject({
+        method: 'PUT',
+        url: '/api/restaurants/burger-craft',
+        headers: { authorization: `Bearer ${tokenSuperAdmin}` },
+        payload: { isActive: true },
+      });
+      expect(res.statusCode).toBe(200);
+      expect(res.json().isActive).toBe(true);
+
+      const getRes = await app.inject({
+        method: 'GET',
+        url: '/api/restaurants/burger-craft',
+        headers: { authorization: `Bearer ${tokenSuperAdmin}` },
+      });
+      expect(getRes.json().isActive).toBe(true);
     });
   });
 });

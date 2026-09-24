@@ -6,10 +6,30 @@ import { EntityNotFoundError, ValidationError } from '../../domain/errors/Domain
 export class UpdateRestaurantUseCase {
   constructor(private restaurantRepo: RestaurantRepository) {}
 
-  async execute(id: string, input: UpdateRestaurantInput): Promise<Restaurant> {
+  async execute(id: string, input: UpdateRestaurantInput, actorRole?: string): Promise<Restaurant> {
     const restaurant = (await this.restaurantRepo.findById(id)) || (await this.restaurantRepo.findBySlug(id));
     if (!restaurant) {
       throw new EntityNotFoundError(`Restaurant "${id}" not found`);
+    }
+
+    // S3: slug, isActive and adminPassword are super_admin-only fields. The
+    // guard follows an effective-change rule: the tenant-admin frontend save
+    // path sends slug (and sometimes isActive) on every PUT, so an idempotent
+    // no-op — sending a value equal to the stored one — must keep working.
+    // Only an EFFECTIVE change to slug/isActive is rejected, plus ANY
+    // adminPassword presence (a tenant admin sending the same plaintext
+    // cannot be compared against the stored hash, so credential rotation is
+    // unconditionally super_admin-only).
+    if (actorRole !== 'super_admin') {
+      if (input.slug !== undefined && input.slug.trim().toLowerCase() !== restaurant.slug) {
+        throw new ValidationError('Changing the storefront slug requires super_admin privileges.');
+      }
+      if (input.isActive !== undefined && input.isActive !== restaurant.isActive) {
+        throw new ValidationError('Changing the active state requires super_admin privileges.');
+      }
+      if (input.adminPassword !== undefined) {
+        throw new ValidationError('Rotating the admin password requires super_admin privileges.');
+      }
     }
 
     let slug = restaurant.slug;

@@ -1,9 +1,10 @@
 import { FastifyInstance } from 'fastify';
 import { RestaurantController } from '../controllers/RestaurantController.js';
-import { requireAnyAdmin } from '../middleware/auth.middleware.js';
+import { requireAnyAdmin, tryAuth } from '../middleware/auth.middleware.js';
 
 export async function restaurantRoutes(fastify: FastifyInstance, opts: { controller: RestaurantController }) {
   fastify.get('/', {
+    preHandler: [tryAuth],
     schema: {
       tags: ['Restaurant'],
       summary: 'Get active restaurant details',
@@ -15,6 +16,10 @@ export async function restaurantRoutes(fastify: FastifyInstance, opts: { control
             id: { type: 'string' },
             name: { type: 'string' },
             slug: { type: 'string' },
+            tagline: { type: 'string' },
+            whatsappNumber: { type: 'string' },
+            primaryColor: { type: 'string' },
+            theme: { type: 'string' },
             config: { type: 'object', additionalProperties: true },
             openingHours: { type: 'object', additionalProperties: true },
             categories: { type: 'array', items: { type: 'string' } },
@@ -25,6 +30,7 @@ export async function restaurantRoutes(fastify: FastifyInstance, opts: { control
   }, opts.controller.get.bind(opts.controller));
 
   fastify.get('/:slug', {
+    preHandler: [tryAuth],
     schema: {
       tags: ['Restaurant'],
       summary: 'Get restaurant by slug',
@@ -43,6 +49,10 @@ export async function restaurantRoutes(fastify: FastifyInstance, opts: { control
             id: { type: 'string' },
             name: { type: 'string' },
             slug: { type: 'string' },
+            tagline: { type: 'string' },
+            whatsappNumber: { type: 'string' },
+            primaryColor: { type: 'string' },
+            theme: { type: 'string' },
             config: { type: 'object', additionalProperties: true },
             openingHours: { type: 'object', additionalProperties: true },
             categories: { type: 'array', items: { type: 'string' } },
