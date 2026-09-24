@@ -150,3 +150,80 @@ describe('PgOrderRepository.update (Status Persistence)', () => {
     await expect(repo.updateStatus('ord-1', 'cooking', 'rest-a')).rejects.toBeInstanceOf(EntityNotFoundError);
   });
 });
+
+describe('PgOrderRepository.findByRestaurantId (N+1 batch)', () => {
+  beforeEach(() => {
+    h.queries.length = 0;
+    h.client.query.mockClear?.();
+  });
+
+  it('lists 2+ orders with exactly one items query and one additions query (ANY batch)', async () => {
+    const queries: string[] = [];
+    const params: unknown[][] = [];
+    h.client.query = vi.fn(async (sql: string, p?: unknown[]) => {
+      queries.push(sql);
+      params.push(p ?? []);
+      if (sql.includes('LEFT JOIN public.customers')) {
+        // ORDER BY o.created_at DESC: newest first.
+        return {
+          rows: [
+            { id: 'ord-1', restaurant_id: 'rest-a', status: 'cooking', created_at: '2025-01-02T10:00:00.000Z', customer_id: null, delivery_fee: 0, payment_method: 'Efectivo', payment_amount: null, change_amount: null, subtotal: 0, final_total: 0 },
+            { id: 'ord-2', restaurant_id: 'rest-a', status: 'pending', created_at: '2025-01-01T10:00:00.000Z', customer_id: null, delivery_fee: 0, payment_method: 'Efectivo', payment_amount: null, change_amount: null, subtotal: 0, final_total: 0 },
+          ],
+        };
+      }
+      if (sql.includes('FROM public.order_item_additions')) {
+        return {
+          rows: [
+            { id: 'add-1', order_item_id: 'item-1', addition_id: 'add-prod-1', addition_name: 'Queso', unit_price: 20, quantity: 1, created_at: '2025-01-02T10:00:01.000Z' },
+          ],
+        };
+      }
+      if (sql.includes('FROM public.order_items')) {
+        return {
+          rows: [
+            { id: 'item-1', order_id: 'ord-1', product_id: 'prod-1', product_name: 'Burger', unit_price: 100, quantity: 2, observation: 'sin cebolla', created_at: '2025-01-02T10:00:00.500Z' },
+            { id: 'item-2', order_id: 'ord-2', product_id: 'prod-2', product_name: 'Papas', unit_price: 50, quantity: 1, observation: null, created_at: '2025-01-01T10:00:00.500Z' },
+          ],
+        };
+      }
+      return { rows: [] };
+    });
+
+    const repo = new PgOrderRepository();
+    const orders = await repo.findByRestaurantId('rest-a');
+
+    // N+1 fix: 2 orders must cost 3 roundtrips (orders + 1 items + 1 additions),
+    // not 1 + 2N = 5. The items/additions queries are batched with ANY.
+    expect(queries).toHaveLength(3);
+    expect(queries.filter((q) => q.includes('FROM public.order_items'))).toHaveLength(1);
+    expect(queries.filter((q) => q.includes('FROM public.order_item_additions'))).toHaveLength(1);
+    const itemsQuery = queries.find((q) => q.includes('FROM public.order_items'))!;
+    const additionsQuery = queries.find((q) => q.includes('FROM public.order_item_additions'))!;
+    expect(itemsQuery).toContain('ANY($1::text[])');
+    expect(additionsQuery).toContain('ANY($1::text[])');
+    expect(params[queries.indexOf(itemsQuery)]).toEqual([['ord-1', 'ord-2']]);
+    expect(params[queries.indexOf(additionsQuery)]).toEqual([['item-1', 'item-2']]);
+
+    // Grouping is exact: each order keeps its own items and additions.
+    expect(orders).toHaveLength(2);
+    expect(orders.map((o) => o.id)).toEqual(['ord-1', 'ord-2']); // created_at DESC
+    const cooked = orders[0];
+    expect(cooked.items).toHaveLength(1);
+    expect(cooked.items[0]).toMatchObject({
+      id: 'item-1',
+      productId: 'prod-1',
+      productName: 'Burger',
+      unitPrice: 100,
+      quantity: 2,
+      observation: 'sin cebolla',
+    });
+    expect(cooked.items[0].additions).toEqual([
+      { id: 'add-1', additionId: 'add-prod-1', additionName: 'Queso', unitPrice: 20, quantity: 1 },
+    ]);
+    const pending = orders[1];
+    expect(pending.items).toHaveLength(1);
+    expect(pending.items[0].productName).toBe('Papas');
+    expect(pending.items[0].additions).toEqual([]);
+  });
+});

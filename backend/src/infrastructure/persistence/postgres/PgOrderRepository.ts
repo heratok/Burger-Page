@@ -6,6 +6,28 @@ import { OrderRepository } from '../../../domain/ports/out/OrderRepository.js';
 import { withTenantContext } from './PgClient.js';
 import type { PoolClient } from 'pg';
 
+function mapAdditionRow(row: any): OrderItemAddition {
+  return {
+    id: row.id,
+    additionId: row.addition_id,
+    additionName: row.addition_name,
+    unitPrice: Number(row.unit_price || 0),
+    quantity: Number(row.quantity || 1),
+  };
+}
+
+function mapItemRow(row: any, additions: OrderItemAddition[]): OrderItem {
+  return {
+    id: row.id,
+    productId: row.product_id,
+    productName: row.product_name,
+    unitPrice: Number(row.unit_price || 0),
+    quantity: Number(row.quantity || 1),
+    observation: row.observation || undefined,
+    additions,
+  };
+}
+
 async function loadItemsWithAdditions(client: PoolClient, orderId: string): Promise<OrderItem[]> {
   const { rows: itemRows } = await client.query(
     `SELECT * FROM public.order_items WHERE order_id = $1 ORDER BY created_at ASC`,
@@ -19,27 +41,14 @@ async function loadItemsWithAdditions(client: PoolClient, orderId: string): Prom
     [itemIds]
   );
 
-  return itemRows.map((itemRow) => {
-    const additions: OrderItemAddition[] = additionRows
-      .filter((a) => a.order_item_id === itemRow.id)
-      .map((a) => ({
-        id: a.id,
-        additionId: a.addition_id,
-        additionName: a.addition_name,
-        unitPrice: Number(a.unit_price || 0),
-        quantity: Number(a.quantity || 1),
-      }));
+  const additionsByItem = new Map<string, OrderItemAddition[]>();
+  for (const row of additionRows) {
+    const list = additionsByItem.get(row.order_item_id);
+    if (list) list.push(mapAdditionRow(row));
+    else additionsByItem.set(row.order_item_id, [mapAdditionRow(row)]);
+  }
 
-    return {
-      id: itemRow.id,
-      productId: itemRow.product_id,
-      productName: itemRow.product_name,
-      unitPrice: Number(itemRow.unit_price || 0),
-      quantity: Number(itemRow.quantity || 1),
-      observation: itemRow.observation || undefined,
-      additions,
-    };
-  });
+  return itemRows.map((itemRow) => mapItemRow(itemRow, additionsByItem.get(itemRow.id) ?? []));
 }
 
 function mapOrderRow(row: any, items: OrderItem[]): Order {
@@ -95,12 +104,39 @@ export class PgOrderRepository implements OrderRepository {
          WHERE o.restaurant_id = $1 ORDER BY o.created_at DESC`,
         [restaurantId]
       );
-      const orders: Order[] = [];
-      for (const row of rows) {
-        const items = await loadItemsWithAdditions(client, row.id);
-        orders.push(mapOrderRow(row, items));
+      if (rows.length === 0) return [];
+
+      // N+1 fix: batch items and additions for ALL orders with exactly two
+      // extra queries (1 + 2N roundtrips -> 3 total), group them in JS, and
+      // rebuild each order. Orders keep DESC sort; items/additions stay ASC,
+      // exactly matching the per-order helper's output shape.
+      const orderIds = rows.map((r) => r.id);
+      const { rows: itemRows } = await client.query(
+        `SELECT * FROM public.order_items WHERE order_id = ANY($1::text[]) ORDER BY created_at ASC`,
+        [orderIds]
+      );
+      const itemIds = itemRows.map((r) => r.id);
+      const { rows: additionRows } = await client.query(
+        `SELECT * FROM public.order_item_additions WHERE order_item_id = ANY($1::text[]) ORDER BY created_at ASC`,
+        [itemIds]
+      );
+
+      const additionsByItem = new Map<string, OrderItemAddition[]>();
+      for (const row of additionRows) {
+        const list = additionsByItem.get(row.order_item_id);
+        if (list) list.push(mapAdditionRow(row));
+        else additionsByItem.set(row.order_item_id, [mapAdditionRow(row)]);
       }
-      return orders;
+
+      const itemsByOrder = new Map<string, OrderItem[]>();
+      for (const itemRow of itemRows) {
+        const item = mapItemRow(itemRow, additionsByItem.get(itemRow.id) ?? []);
+        const list = itemsByOrder.get(itemRow.order_id);
+        if (list) list.push(item);
+        else itemsByOrder.set(itemRow.order_id, [item]);
+      }
+
+      return rows.map((row) => mapOrderRow(row, itemsByOrder.get(row.id) ?? []));
     });
   }
 
