@@ -1,6 +1,8 @@
 import { FastifyInstance } from 'fastify';
 import { RestaurantController } from '../controllers/RestaurantController.js';
 import { requireSuperAdmin, tryAuth, requireAnyAdmin } from '../middleware/auth.middleware.js';
+import { createRestaurantSchema, updateRestaurantSchema } from '@burger-page/contracts';
+import { jsonSchemaFromZod } from '../zodSchemas.js';
 
 export async function restaurantsRoutes(fastify: FastifyInstance, opts: { controller: RestaurantController }) {
   fastify.get('/', {
@@ -38,24 +40,7 @@ export async function restaurantsRoutes(fastify: FastifyInstance, opts: { contro
       tags: ['Restaurant'],
       summary: 'Create a new restaurant tenant',
       description: 'Registers a new restaurant tenant in the platform.',
-      body: {
-        type: 'object',
-        required: ['name', 'slug'],
-        properties: {
-          id: { type: 'string' },
-          name: { type: 'string' },
-          slug: { type: 'string' },
-          tagline: { type: 'string' },
-          whatsappNumber: { type: 'string' },
-          adminPassword: { type: 'string' },
-          adminUsername: { type: 'string' },
-          primaryColor: { type: 'string' },
-          templateType: { type: 'string', enum: ['burger', 'pizza', 'tacos', 'blank'] },
-          theme: { type: 'string' },
-          categories: { type: 'array', items: { type: 'string' } },
-          config: { type: 'object', additionalProperties: true }
-        }
-      },
+      body: jsonSchemaFromZod(createRestaurantSchema, 'createRestaurantBody'),
       response: {
         201: {
           type: 'object',
@@ -136,7 +121,8 @@ export async function restaurantsRoutes(fastify: FastifyInstance, opts: { contro
           id: { type: 'string' }
         },
         required: ['id']
-      }
+      },
+      body: jsonSchemaFromZod(updateRestaurantSchema, 'updateRestaurantBody'),
     }
   }, opts.controller.update.bind(opts.controller));
 

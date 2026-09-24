@@ -1,6 +1,8 @@
 import { FastifyInstance } from 'fastify';
 import { ProductAdditionController } from '../controllers/ProductAdditionController.js';
 import { requireAuth, tryAuth } from '../middleware/auth.middleware.js';
+import { createProductAdditionSchema, updateProductAdditionSchema } from '@burger-page/contracts';
+import { jsonSchemaFromZod } from '../zodSchemas.js';
 
 export async function additionRoutes(fastify: FastifyInstance, opts: { controller: ProductAdditionController }) {
   // 1. List Product Additions (Public with ?restaurantId / ?slug, or Authenticated tenant admin; supports ?productId)
@@ -47,6 +49,7 @@ export async function additionRoutes(fastify: FastifyInstance, opts: { controlle
       tags: ['Additions'],
       summary: 'Create product addition',
       description: 'Create a new modifier / extra for the authenticated restaurant.',
+      body: jsonSchemaFromZod(createProductAdditionSchema, 'createAdditionBody'),
       querystring: {
         type: 'object',
         properties: {
@@ -63,6 +66,7 @@ export async function additionRoutes(fastify: FastifyInstance, opts: { controlle
       tags: ['Additions'],
       summary: 'Update product addition',
       description: 'Modify price, name, availability, or association of an existing product addition.',
+      body: jsonSchemaFromZod(updateProductAdditionSchema, 'updateAdditionBody'),
       params: {
         type: 'object',
         properties: {
