@@ -14,7 +14,7 @@ describe('Storage API (Presigned Upload URLs)', () => {
     await app.ready();
 
     adminToken = jwt.generateToken({
-      sub: 'usr_test_admin',
+      id: 'usr_test_admin',
       username: 'admin',
       role: 'restaurant_admin',
       restaurantId: 'burger-craft',
