@@ -33,7 +33,7 @@
     "typecheck:frontend": "npm --prefix frontend run typecheck",
     "typecheck:backend": "npm --prefix backend run typecheck",
     "lint": "npm --prefix frontend run lint",
-    "prepare": "git config core.hooksPath .githooks 2>nul || git config core.hooksPath .githooks || true",
+    "prepare": "git config core.hooksPath .githooks 2>/dev/null || true",
     "preview": "npm --prefix frontend run preview"
   },
   "devDependencies": {
