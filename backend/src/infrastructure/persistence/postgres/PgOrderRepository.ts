@@ -239,68 +239,29 @@ export class PgOrderRepository implements OrderRepository {
       const custAddress = cust?.address || cust?.direccion || null;
       const custBarrio = cust?.barrio || null;
 
-      // Check if orders table has customer_name column
-      const { rows: colRows } = await client.query(
-        `SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'orders' AND column_name = 'customer_name'`
+      await client.query(
+        `UPDATE public.orders SET
+           subtotal = $1,
+           delivery_fee = $2,
+           final_total = $3,
+           payment_method = $4,
+           payment_amount = $5,
+           change_amount = $6,
+           comment = $7,
+           status = $8,             updated_at = NOW()           WHERE id = $9 AND restaurant_id = $10`,
+        [
+          order.subtotal,
+          order.deliveryFee,
+          order.finalTotal,
+          order.paymentMethod,
+          order.paymentAmount ?? null,
+          order.changeAmount ?? null,
+          order.comment ?? null,
+          order.status,
+          order.id,
+          restaurantId,
+        ]
       );
-
-      if (colRows.length > 0) {
-        await client.query(
-          `UPDATE public.orders SET
-             customer_name = COALESCE($1, customer_name),
-             customer_phone = COALESCE($2, customer_phone),
-             customer_address = COALESCE($3, customer_address),
-             customer_barrio = COALESCE($4, customer_barrio),
-             subtotal = $5,
-             delivery_fee = $6,
-             final_total = $7,
-             payment_method = $8,
-             payment_amount = $9,
-             change_amount = $10,
-             comment = $11,
-             status = $12,             updated_at = NOW()           WHERE id = $13 AND restaurant_id = $14`,
-          [
-            custName,
-            custPhone,
-            custAddress,
-            custBarrio,
-            order.subtotal,
-            order.deliveryFee,
-            order.finalTotal,
-            order.paymentMethod,
-            order.paymentAmount ?? null,
-            order.changeAmount ?? null,
-            order.comment ?? null,
-            order.status,
-            order.id,
-            restaurantId,
-          ]
-        );
-      } else {
-        await client.query(
-          `UPDATE public.orders SET
-             subtotal = $1,
-             delivery_fee = $2,
-             final_total = $3,
-             payment_method = $4,
-             payment_amount = $5,
-             change_amount = $6,
-             comment = $7,
-             status = $8,             updated_at = NOW()           WHERE id = $9 AND restaurant_id = $10`,
-          [
-            order.subtotal,
-            order.deliveryFee,
-            order.finalTotal,
-            order.paymentMethod,
-            order.paymentAmount ?? null,
-            order.changeAmount ?? null,
-            order.comment ?? null,
-            order.status,
-            order.id,
-            restaurantId,
-          ]
-        );
-      }
 
       // Also update public.customers if order is linked to a customer
       const customerId = order.customerId || existingRows[0].customer_id;

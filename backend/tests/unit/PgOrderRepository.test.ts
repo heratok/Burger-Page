@@ -49,13 +49,12 @@ describe('PgOrderRepository.update (Status Persistence)', () => {
     return order;
   };
 
-  it('includes status in the UPDATE when customer_name column exists', async () => {
+  it('updates orders without catalog introspection (R2 regression)', async () => {
     // Simulate an existing order row so the repo proceeds to the UPDATE.
     h.client.query = vi.fn(async (sql: string) => {
       h.queries.push(sql);
       if (sql.includes('SELECT * FROM public.orders')) return { rows: [{ id: 'ord-1', customer_id: null }] };
       if (sql.includes('LEFT JOIN public.customers')) return { rows: [{ id: 'ord-1', status: 'cooking', customer_id: null, subtotal: 0, delivery_fee: 0, final_total: 0, payment_method: 'Efectivo' }] };
-      if (sql.includes('information_schema')) return { rows: [{ column_name: 'customer_name' }] };
       if (sql.includes('order_items') || sql.includes('order_item_additions')) return { rows: [] };
       return { rows: [] };
     });
@@ -63,18 +62,22 @@ describe('PgOrderRepository.update (Status Persistence)', () => {
     const repo = new PgOrderRepository();
     await repo.update(baseOrder(), 'rest-a');
 
+    // The orders table has no customer_name column; the update must never
+    // pay a catalog roundtrip to discover it (information_schema query removed).
+    expect(h.queries.some((q) => q.includes('information_schema'))).toBe(false);
+
     const updateSql = h.queries.find((q) => q.includes('UPDATE public.orders SET'));
     expect(updateSql).toBeDefined();
     expect(updateSql).toContain('status');
-    expect(updateSql).toContain('status = $12');
+    expect(updateSql).toContain('status = $8');
+    expect(updateSql).not.toContain('customer_name');
   });
 
-  it('includes status in the UPDATE when customer_name column is missing', async () => {
+  it('includes status in the single UPDATE when an order exists', async () => {
     h.client.query = vi.fn(async (sql: string) => {
       h.queries.push(sql);
       if (sql.includes('SELECT * FROM public.orders')) return { rows: [{ id: 'ord-1', customer_id: null }] };
       if (sql.includes('LEFT JOIN public.customers')) return { rows: [{ id: 'ord-1', status: 'cooking', customer_id: null, subtotal: 0, delivery_fee: 0, final_total: 0, payment_method: 'Efectivo' }] };
-      if (sql.includes('information_schema')) return { rows: [] };
       if (sql.includes('order_items') || sql.includes('order_item_additions')) return { rows: [] };
       return { rows: [] };
     });
@@ -85,6 +88,7 @@ describe('PgOrderRepository.update (Status Persistence)', () => {
     const updateSql = h.queries.find((q) => q.includes('UPDATE public.orders SET'));
     expect(updateSql).toBeDefined();
     expect(updateSql).toContain('status');
+    expect(updateSql).not.toContain('customer_name');
   });
 
   it('passes the 5th expectedStatus arg to the CAS RPC', async () => {
