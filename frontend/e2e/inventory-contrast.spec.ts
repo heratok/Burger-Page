@@ -7,7 +7,12 @@ test.describe('Inventory & Suppliers Theme Contrast E2E Suite', () => {
         version: 2,
         superAdminPassword: 'admin',
         restaurants: [{
-          id: 'rosto',
+          // Canonical backend tenant id (seed: 02_seed.sql maps slug 'rosto'
+          // to rest-1788579266608). The session tenant is bound to the real
+          // backend restaurantId, so the local envelope must use the same id
+          // or the session-bound activeRestaurant resolves to a fresh record
+          // without the fixtures below.
+          id: 'rest-1788579266608',
           slug: 'rosto',
           adminPassword: 'rosto',
           isActive: true,
@@ -24,7 +29,7 @@ test.describe('Inventory & Suppliers Theme Contrast E2E Suite', () => {
           customers: []
         }]
       }));
-      localStorage.setItem('burger_page_active_rest_v2', 'rosto');
+      localStorage.setItem('burger_page_active_rest_v2', 'rest-1788579266608');
       localStorage.setItem('burger_page_admin_theme_v2', 'light');
     });
 
@@ -34,7 +39,7 @@ test.describe('Inventory & Suppliers Theme Contrast E2E Suite', () => {
         contentType: 'application/json',
         body: JSON.stringify([
           {
-            id: 'rosto',
+            id: 'rest-1788579266608',
             slug: 'rosto',
             name: 'Rosto Burger',
             adminPassword: 'rosto',
