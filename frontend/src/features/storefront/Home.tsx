@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
-import { Utensils, Flame, ChevronDown } from "lucide-react"
+import { Utensils, Flame, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react"
 import ProductCard from "./ProductCard"
 import type { MenuItem } from "@/types/restaurant"
 import Navbar from "./Navbar"
@@ -17,6 +17,7 @@ import {
 import { useRestaurant } from "@/context/RestaurantContext"
 import { getFontFamilyClass, getStoreThemeStyles } from "@/features/crm/utils/customizerStyles"
 import { getContrastForeground } from "@/lib/utils"
+import { useHorizontalScroll } from "@/hooks/useHorizontalScroll"
 
 export default function Home() {
   const { products, storeConfig, categories: contextCategories, activeRestaurant } = useRestaurant()
@@ -44,6 +45,18 @@ export default function Home() {
 
   const pillContainerRef = useRef<HTMLDivElement>(null)
   const pillRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
+
+  const {
+    canScrollLeft,
+    canScrollRight,
+    scrollLeft,
+    scrollRight,
+    handleMouseDown,
+    handleMouseMove,
+    handleMouseUp,
+    handleWheel,
+    handleItemClick,
+  } = useHorizontalScroll({ step: 240, externalRef: pillContainerRef })
 
   const toggleCategoryCollapse = (cat: string) => {
     setCollapsedCategories((prev) => {
@@ -320,44 +333,36 @@ export default function Home() {
                   backgroundColor: "color-mix(in srgb, var(--color-bg-base) 92%, transparent)",
                 }}
               >
-                <div
-                  ref={pillContainerRef}
-                  className="flex items-center gap-1.5 overflow-x-auto scroll-smooth [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
-                  aria-label="Categorías del menú"
-                >
-                  <button
-                    ref={(el) => {
-                      if (el) pillRefs.current.set("ALL", el)
-                    }}
-                    type="button"
-                    onClick={() => handleCategoryClick("ALL")}
-                    style={
-                      selectedCategory === "ALL"
-                        ? {
-                            backgroundColor: storeConfig.primaryColor,
-                            color: primaryForeground,
-                            borderColor: storeConfig.primaryColor,
-                          }
-                        : undefined
-                    }
-                    className={`shrink-0 rounded-full px-4 py-1.5 text-xs font-bold transition-all ${
-                      selectedCategory === "ALL"
-                        ? "shadow-sm"
-                        : "border border-border-subtle bg-bg-elevated text-text-primary hover:bg-bg-elevated-2 hover:border-border-strong"
-                    }`}
-                  >
-                    Todos ({products.length})
-                  </button>
-                  {categories.map((cat) => (
+                <div className="relative flex items-center min-w-0">
+                  {canScrollLeft && (
                     <button
-                      key={cat}
+                      type="button"
+                      onClick={scrollLeft}
+                      className="absolute left-0 z-30 flex size-6.5 -translate-x-1 sm:-translate-x-2 items-center justify-center rounded-full bg-bg-elevated/95 shadow-md border border-border-subtle text-text-primary hover:bg-bg-elevated-2 transition-all cursor-pointer"
+                      aria-label="Desplazar categorías hacia la izquierda"
+                    >
+                      <ChevronLeft className="size-3.5" />
+                    </button>
+                  )}
+
+                  <div
+                    ref={pillContainerRef}
+                    onMouseDown={handleMouseDown}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={handleMouseUp}
+                    onWheel={handleWheel}
+                    className="flex flex-1 items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth select-none cursor-grab active:cursor-grabbing py-0.5"
+                    aria-label="Categorías del menú"
+                  >
+                    <button
                       ref={(el) => {
-                        if (el) pillRefs.current.set(cat, el)
+                        if (el) pillRefs.current.set("ALL", el)
                       }}
                       type="button"
-                      onClick={() => handleCategoryClick(cat)}
+                      onClick={() => handleItemClick(() => handleCategoryClick("ALL"))}
                       style={
-                        selectedCategory === cat
+                        selectedCategory === "ALL"
                           ? {
                               backgroundColor: storeConfig.primaryColor,
                               color: primaryForeground,
@@ -365,15 +370,52 @@ export default function Home() {
                             }
                           : undefined
                       }
-                      className={`shrink-0 rounded-full px-4 py-1.5 text-xs font-bold transition-all ${
-                        selectedCategory === cat
+                      className={`shrink-0 whitespace-nowrap rounded-full px-4 py-1.5 text-xs font-bold transition-all ${
+                        selectedCategory === "ALL"
                           ? "shadow-sm"
                           : "border border-border-subtle bg-bg-elevated text-text-primary hover:bg-bg-elevated-2 hover:border-border-strong"
                       }`}
                     >
-                      {cat}
+                      Todos ({products.length})
                     </button>
-                  ))}
+                    {categories.map((cat) => (
+                      <button
+                        key={cat}
+                        ref={(el) => {
+                          if (el) pillRefs.current.set(cat, el)
+                        }}
+                        type="button"
+                        onClick={() => handleItemClick(() => handleCategoryClick(cat))}
+                        style={
+                          selectedCategory === cat
+                            ? {
+                                backgroundColor: storeConfig.primaryColor,
+                                color: primaryForeground,
+                                borderColor: storeConfig.primaryColor,
+                              }
+                            : undefined
+                        }
+                        className={`shrink-0 whitespace-nowrap rounded-full px-4 py-1.5 text-xs font-bold transition-all ${
+                          selectedCategory === cat
+                            ? "shadow-sm"
+                            : "border border-border-subtle bg-bg-elevated text-text-primary hover:bg-bg-elevated-2 hover:border-border-strong"
+                        }`}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+
+                  {canScrollRight && (
+                    <button
+                      type="button"
+                      onClick={scrollRight}
+                      className="absolute right-0 z-30 flex size-6.5 translate-x-1 sm:translate-x-2 items-center justify-center rounded-full bg-bg-elevated/95 shadow-md border border-border-subtle text-text-primary hover:bg-bg-elevated-2 transition-all cursor-pointer"
+                      aria-label="Desplazar categorías hacia la derecha"
+                    >
+                      <ChevronRight className="size-3.5" />
+                    </button>
+                  )}
                 </div>
               </div>
             )}

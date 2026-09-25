@@ -28,10 +28,13 @@ import {
   SlidersHorizontal,
   Upload,
   Image as ImageIcon,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { uploadImageToStorage } from "@/core/storage/supabaseStorage"
+import { useHorizontalScroll } from "@/hooks/useHorizontalScroll"
 
 export interface ManualSaleModalProps {
   isOpen: boolean
@@ -471,6 +474,19 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
   const [selectedItems, setSelectedItems] = useState<CartItem[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("all")
+
+  const {
+    scrollRef: categoryScrollRef,
+    canScrollLeft: canCategoryScrollLeft,
+    canScrollRight: canCategoryScrollRight,
+    scrollLeft: scrollCategoryLeft,
+    scrollRight: scrollCategoryRight,
+    handleMouseDown: handleCategoryMouseDown,
+    handleMouseMove: handleCategoryMouseMove,
+    handleMouseUp: handleCategoryMouseUp,
+    handleWheel: handleCategoryWheel,
+    handleItemClick: handleCategoryItemClick,
+  } = useHorizontalScroll({ step: 180 })
 
   // Additions customization sheet for a specific product
   const [customizingProduct, setCustomizingProduct] = useState<MenuItem | null>(null)
@@ -972,20 +988,52 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
               </div>
 
               {/* Category Pills */}
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-                {categories.map((cat) => {
-                  const isSelected = selectedCategory === cat
-                  return (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() => setSelectedCategory(cat)}
-                      className={`shrink-0 rounded-lg px-3 py-1 text-xs font-semibold capitalize transition-all cursor-pointer ${getCategoryPillClass(isSelected)}`}
-                    >
-                      {cat === "all" ? "Todos Los Productos" : cat}
-                    </button>
-                  )
-                })}
+              <div className="relative flex items-center min-w-0">
+                {canCategoryScrollLeft && (
+                  <button
+                    type="button"
+                    onClick={scrollCategoryLeft}
+                    className="absolute left-0 z-10 flex size-5.5 -translate-x-1.5 items-center justify-center rounded-full bg-white/95 shadow-md border border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:bg-slate-800/95 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700 transition-all cursor-pointer"
+                    aria-label="Desplazar categorías hacia la izquierda"
+                  >
+                    <ChevronLeft className="size-3" />
+                  </button>
+                )}
+
+                <div
+                  ref={categoryScrollRef}
+                  onMouseDown={handleCategoryMouseDown}
+                  onMouseMove={handleCategoryMouseMove}
+                  onMouseUp={handleCategoryMouseUp}
+                  onMouseLeave={handleCategoryMouseUp}
+                  onWheel={handleCategoryWheel}
+                  className="flex flex-1 items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar select-none cursor-grab active:cursor-grabbing scroll-smooth"
+                >
+                  {categories.map((cat) => {
+                    const isSelected = selectedCategory === cat
+                    return (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => handleCategoryItemClick(() => setSelectedCategory(cat))}
+                        className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-1 text-xs font-semibold capitalize transition-all cursor-pointer ${getCategoryPillClass(isSelected)}`}
+                      >
+                        {cat === "all" ? "Todos Los Productos" : cat}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {canCategoryScrollRight && (
+                  <button
+                    type="button"
+                    onClick={scrollCategoryRight}
+                    className="absolute right-0 z-10 flex size-5.5 translate-x-1.5 items-center justify-center rounded-full bg-white/95 shadow-md border border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:bg-slate-800/95 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700 transition-all cursor-pointer"
+                    aria-label="Desplazar categorías hacia la derecha"
+                  >
+                    <ChevronRight className="size-3" />
+                  </button>
+                )}
               </div>
             </div>
 
