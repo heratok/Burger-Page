@@ -18,12 +18,14 @@ const createEmptyTestRepo = () => {
     })),
   }
   adapter.setItem(STORAGE_KEYS.ENVELOPE, JSON.stringify(emptyEnvelope))
+  adapter.setItem(STORAGE_KEYS.ACTIVE_REST, "rest-burger-craft")
   return new TenantRepository(adapter)
 }
 
 const createPopulatedTestRepo = () => {
   const adapter = new InMemoryStorageAdapter()
   adapter.setItem(STORAGE_KEYS.ENVELOPE, JSON.stringify(TEST_STORAGE_ENVELOPE))
+  adapter.setItem(STORAGE_KEYS.ACTIVE_REST, "rest-burger-craft")
   return new TenantRepository(adapter)
 }
 

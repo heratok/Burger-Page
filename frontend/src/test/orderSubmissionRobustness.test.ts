@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
+import { seedBlankActiveTenant } from "@/test/fixtures"
 import React from "react"
 import { renderHook, act } from "@testing-library/react"
 import type { Order } from "@/types/restaurant"
@@ -56,6 +57,7 @@ describe("isNetworkFailure — retryable submission failures (2.2)", () => {
 describe("addOrder / pending retry (2.2, 2.3)", () => {
   beforeEach(() => {
     localStorage.clear()
+    seedBlankActiveTenant()
     sessionStorage.clear()
     vi.useFakeTimers()
   })

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
+import { seedBlankActiveTenant } from "@/test/fixtures"
 import { render, screen, cleanup, fireEvent, waitFor, within } from "@testing-library/react"
 import { RestaurantProvider, useRestaurant } from "@/context/RestaurantContext"
 import CheckoutForm from "./CheckoutForm"
@@ -35,6 +36,7 @@ const mockCartItems: CartItem[] = [
 describe("CheckoutForm - Direct Sale Flow", () => {
   beforeEach(() => {
     localStorage.clear()
+    seedBlankActiveTenant()
     sessionStorage.clear()
     vi.clearAllMocks()
   })

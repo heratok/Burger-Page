@@ -9,6 +9,7 @@ import { TEST_STORAGE_ENVELOPE } from "@/test/fixtures"
 const createTestRepo = () => {
   const adapter = new InMemoryStorageAdapter()
   adapter.setItem(STORAGE_KEYS.ENVELOPE, JSON.stringify(TEST_STORAGE_ENVELOPE))
+  adapter.setItem(STORAGE_KEYS.ACTIVE_REST, "rest-burger-craft")
   return new TenantRepository(adapter)
 }
 
@@ -135,6 +136,7 @@ describe("RestaurantContext (Multi-Tenant & Super Admin)", () => {
   it("purges the whole-tenant envelope and persisted active restaurant from storage on logout (C3)", async () => {
     const adapter = new InMemoryStorageAdapter()
     adapter.setItem(STORAGE_KEYS.ENVELOPE, JSON.stringify(TEST_STORAGE_ENVELOPE))
+    adapter.setItem(STORAGE_KEYS.ACTIVE_REST, "rest-burger-craft")
     adapter.setItem(STORAGE_KEYS.ACTIVE_REST, "rest-pizzeria-napoli")
     const repo = new TenantRepository(adapter)
     const purgeSpy = vi.spyOn(repo, "purgeTenantData")
@@ -173,6 +175,7 @@ describe("RestaurantContext (Multi-Tenant & Super Admin)", () => {
     const adapter = new InMemoryStorageAdapter()
     adapter.setItem(STORAGE_KEYS.ENVELOPE, JSON.stringify(TEST_STORAGE_ENVELOPE))
     adapter.setItem(STORAGE_KEYS.ACTIVE_REST, "rest-burger-craft")
+    adapter.setItem(STORAGE_KEYS.ACTIVE_REST, "rest-burger-craft")
     const repo = new TenantRepository(adapter)
 
     const { apiClient } = await import("@/core/api/apiClient")
@@ -205,6 +208,7 @@ describe("RestaurantContext (Multi-Tenant & Super Admin)", () => {
   it("keeps the persisted active restaurant for guest and super admin sessions (A1)", async () => {
     const adapter = new InMemoryStorageAdapter()
     adapter.setItem(STORAGE_KEYS.ENVELOPE, JSON.stringify(TEST_STORAGE_ENVELOPE))
+    adapter.setItem(STORAGE_KEYS.ACTIVE_REST, "rest-burger-craft")
     adapter.setItem(STORAGE_KEYS.ACTIVE_REST, "rest-tacos-el-rey")
     const repo = new TenantRepository(adapter)
 

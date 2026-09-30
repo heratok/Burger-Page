@@ -1,4 +1,5 @@
 import React from "react"
+import { seedBlankActiveTenant } from "@/test/fixtures"
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { renderHook, act, waitFor } from "@testing-library/react"
 
@@ -56,6 +57,7 @@ const stock = (hook: { result: { current: { inventory: any[] } } }, id: string) 
 describe("InventoryContext (5.2 UI / 5.4)", () => {
   beforeEach(() => {
     localStorage.clear()
+    seedBlankActiveTenant()
     vi.restoreAllMocks()
     vi.mocked(toast.success).mockClear()
     vi.mocked(toast.info).mockClear()

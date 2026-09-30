@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest"
+import { seedBlankActiveTenant } from "@/test/fixtures"
 import { renderHook, act, waitFor } from "@testing-library/react"
 import React from "react"
 import { TenantProvider, useTenant } from "./TenantContext"
@@ -9,6 +10,7 @@ import { DEFAULT_STORE_CONFIG } from "@/constants/themePresets"
 describe("TenantContext - Backend Multi-Tenant Integration", () => {
   beforeEach(() => {
     localStorage.clear()
+    seedBlankActiveTenant()
     sessionStorage.clear()
     vi.clearAllMocks()
   })
@@ -277,6 +279,7 @@ describe("TenantContext - effective tenant derivation and mutation identity (A1/
 
   beforeEach(() => {
     localStorage.clear()
+    seedBlankActiveTenant()
     sessionStorage.clear()
     vi.restoreAllMocks()
   })
@@ -303,7 +306,9 @@ describe("TenantContext - effective tenant derivation and mutation identity (A1/
     await waitFor(() => {
       expect(result.current.effectiveRestaurantId).toBe("rest-session")
     })
-    expect(result.current.activeRestaurantSlug).toBe("alive")
+    // No fallback to another tenant record: until the session tenant loads,
+    // the active record is the neutral placeholder, never the persisted one.
+    expect(result.current.activeRestaurantSlug).toBe("default")
   })
 
   it("blocks a restaurant-bound session from switching to another tenant (M5)", async () => {
@@ -410,6 +415,7 @@ describe("TenantContext.loadRestaurant - never shows another tenant", () => {
 
   beforeEach(() => {
     localStorage.clear()
+    seedBlankActiveTenant()
     sessionStorage.clear()
     vi.restoreAllMocks()
     vi.spyOn(apiClient, "listRestaurants").mockRejectedValue(new Error("no backend in tests"))

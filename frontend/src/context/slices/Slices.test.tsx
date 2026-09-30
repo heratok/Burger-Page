@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest"
+import { seedBlankActiveTenant } from "@/test/fixtures"
 import { renderHook, act, waitFor, render, screen, fireEvent } from "@testing-library/react"
 import React from "react"
 import { UiProvider, useUi } from "./UiContext"
@@ -9,6 +10,7 @@ import { DEFAULT_STORE_CONFIG } from "@/constants/themePresets"
 describe("UiContext Slice", () => {
   beforeEach(() => {
     localStorage.clear()
+    seedBlankActiveTenant()
   })
 
   const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -113,6 +115,7 @@ describe("AuthContext Slice", () => {
 describe("InventoryContext Slice", () => {
   beforeEach(async () => {
     localStorage.clear()
+    seedBlankActiveTenant()
     vi.clearAllMocks()
     const { apiClient } = await import("@/core/api/apiClient")
     vi.spyOn(apiClient, "createInventoryItem").mockResolvedValue({} as any)
@@ -557,6 +560,7 @@ describe("InventoryContext Slice", () => {
 describe("OrderContext Slice", () => {
   beforeEach(() => {
     localStorage.clear()
+    seedBlankActiveTenant()
     vi.clearAllMocks()
   })
 
@@ -1274,6 +1278,7 @@ describe("OrderContext Slice", () => {
 describe("CatalogContext Slice - Storefront Configuration Persistence & Rollback", () => {
   beforeEach(() => {
     localStorage.clear()
+    seedBlankActiveTenant()
     vi.clearAllMocks()
   })
 
@@ -1406,6 +1411,7 @@ describe("CatalogContext Slice - Storefront Configuration Persistence & Rollback
 describe("CatalogContext Slice - Dynamic Category Management", () => {
   beforeEach(async () => {
     localStorage.clear()
+    seedBlankActiveTenant()
     vi.clearAllMocks()
     const { apiClient } = await import("@/core/api/apiClient")
     vi.spyOn(apiClient, "createProduct").mockImplementation(async (data: any) => ({
@@ -1675,7 +1681,7 @@ describe("CatalogContext Slice - Dynamic Category Management", () => {
       name: "Tocineta Crujiente",
       price: 3500,
       isAvailable: true,
-      restaurantId: "rest-default",
+      restaurantId: "rest-burger-craft",
     })
 
     // 2. Update Addition
@@ -1916,6 +1922,7 @@ describe("CatalogContext Slice - Dynamic Category Management", () => {
 describe("TenantContext Slice - Same-Tick Restaurant Creation", () => {
   beforeEach(() => {
     localStorage.clear()
+    seedBlankActiveTenant()
     vi.clearAllMocks()
   })
 
@@ -1996,6 +2003,7 @@ describe("TenantContext Slice - Same-Tick Restaurant Creation", () => {
 describe("TenantContext Slice - One-Time Admin Credentials (SUS-02)", () => {
   beforeEach(() => {
     localStorage.clear()
+    seedBlankActiveTenant()
     vi.clearAllMocks()
   })
 
@@ -2132,6 +2140,7 @@ describe("TenantContext Slice - One-Time Admin Credentials (SUS-02)", () => {
 describe("AdminAuthModal - session comes only from the validated auth.login result (M6)", () => {
   beforeEach(() => {
     localStorage.clear()
+    seedBlankActiveTenant()
     sessionStorage.clear()
     vi.restoreAllMocks()
   })

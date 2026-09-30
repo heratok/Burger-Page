@@ -71,7 +71,7 @@ export class TenantRepository {
     }
   }
 
-  getActiveRestaurantId(defaultId = "rest-burger-craft"): string {
+  getActiveRestaurantId(defaultId = ""): string {
     const saved = this.adapter.getItem(STORAGE_KEYS.ACTIVE_REST)
     return saved || defaultId
   }

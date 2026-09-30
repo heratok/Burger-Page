@@ -10,6 +10,7 @@ function createTestRepo() {
   const adapter = new InMemoryStorageAdapter()
   const repo = new TenantRepository(adapter)
   repo.saveEnvelope(TEST_STORAGE_ENVELOPE)
+  repo.setActiveRestaurantId("rest-burger-craft")
   return repo
 }
 

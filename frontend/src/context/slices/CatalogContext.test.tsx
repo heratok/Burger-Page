@@ -1,4 +1,5 @@
 import React from "react"
+import { seedBlankActiveTenant } from "@/test/fixtures"
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { renderHook, act, waitFor } from "@testing-library/react"
 
@@ -45,6 +46,7 @@ async function setupWithProduct() {
 describe("CatalogContext.toggleProductStock (5.5)", () => {
   beforeEach(() => {
     localStorage.clear()
+    seedBlankActiveTenant()
     vi.restoreAllMocks()
     vi.mocked(toast.info).mockClear()
     vi.mocked(toast.error).mockClear()
