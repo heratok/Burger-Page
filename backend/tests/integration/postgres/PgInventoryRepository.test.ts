@@ -127,7 +127,7 @@ describe('PgInventoryRepository (real Postgres, app_user role)', () => {
     expect(list.map((i) => i.name).sort()).toEqual(['Alpha Item', 'Zeta Item']);
   });
 
-  it('updates an existing inventory item on save (upsert semantics)', async () => {
+  it('updates an existing item on save without overwriting its stock (stock changes only via adjust)', async () => {
     if (!isDbConnected) return;
     const id = `inv-${randomUUID().slice(0, 8)}`;
     await repo.save({
@@ -155,7 +155,7 @@ describe('PgInventoryRepository (real Postgres, app_user role)', () => {
 
     const found = await repo.findById(id, RESTAURANT_A);
     expect(found?.name).toBe('Renamed');
-    expect(found?.quantity).toBe(8);
+    expect(found?.quantity).toBe(5);
     expect(found?.costPerUnit).toBe(1500);
   });
 
