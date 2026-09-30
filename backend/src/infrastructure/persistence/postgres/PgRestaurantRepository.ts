@@ -2,22 +2,24 @@ import { Restaurant, OpeningHours } from '../../../domain/models/Restaurant.js';
 import { RestaurantRepository } from '../../../domain/ports/out/RestaurantRepository.js';
 import { withTenantContext } from './PgClient.js';
 
-function mapRow(row: any): Restaurant {
+export function mapRow(row: any): Restaurant {
   const theme = row.bg_theme || 'dark-charcoal';
   const openTime = row.open_time ? String(row.open_time).substring(0, 5) : '12:00';
   const closeTime = row.close_time ? String(row.close_time).substring(0, 5) : '22:30';
   const openingHours: OpeningHours = { open: openTime, close: closeTime };
 
-  let categories: string[] = ['Hamburguesas', 'Bebidas', 'Acompañamientos'];
-  if (Array.isArray(row.categories) && row.categories.length > 0) {
+  let categories: string[] = [];
+  if (Array.isArray(row.categories)) {
     categories = row.categories;
   } else if (typeof row.categories === 'string') {
     try {
       const parsed = JSON.parse(row.categories);
-      if (Array.isArray(parsed) && parsed.length > 0) {
+      if (Array.isArray(parsed)) {
         categories = parsed;
       }
     } catch {}
+  } else {
+    categories = ['Hamburguesas', 'Bebidas', 'Acompañamientos'];
   }
 
   return {
