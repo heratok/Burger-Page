@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import pg from 'pg';
 import { randomUUID } from 'node:crypto';
 import { PgOrderRepository } from '../../../src/infrastructure/persistence/postgres/PgOrderRepository.js';
+import { ValidationError, EntityNotFoundError } from '../../../src/domain/errors/DomainErrors.js';
 import { Order } from '../../../src/domain/models/Order.js';
 
 const { Pool } = pg;
@@ -320,6 +321,23 @@ describe('PgOrderRepository (real Postgres, app_user role, via create_order_atom
       expect(Number(rows[0].order_number)).toBe(replay.orderNumber);
     });
 
+    it('serializes concurrent saves of the same client_order_id into ONE order (migration 0005)', async () => {
+      if (!isDbConnected) return;
+      const clientOrderId = `cli-race-${randomUUID().slice(0, 8)}`;
+      const attempts = Array.from({ length: 6 }, () => makeOrder(`ord-${randomUUID().slice(0, 8)}`, clientOrderId));
+
+      // Promise.all over independent pooled connections: every save must
+      // resolve (replay), never reject with a 23505 unique violation.
+      await Promise.all(attempts.map((o) => repo.save(o)));
+
+      const { rows } = await adminPool.query(
+        `SELECT id FROM public.orders WHERE restaurant_id = $1 AND client_order_id = $2`,
+        [RESTAURANT_A, clientOrderId]
+      );
+      expect(rows).toHaveLength(1);
+      for (const o of attempts) expect(o.id).toBe(rows[0].id);
+    });
+
     it('creates separate rows for distinct clientOrderIds (SUS-19)', async () => {
       if (!isDbConnected) return;
       const aCid = `cli-a-${randomUUID().slice(0, 8)}`;
@@ -352,6 +370,27 @@ describe('PgOrderRepository (real Postgres, app_user role, via create_order_atom
       );
       expect(found).not.toBeNull();
       expect(rows[0].client_order_id).toBeNull();
+    });
+  });
+
+  describe('create_order_atomic business errors map to domain errors (WU-2.6)', () => {
+    const itemFor = (productId: string) => [{ id: `item-${randomUUID().slice(0, 8)}`, productId, productName: 'x', unitPrice: 0, quantity: 1 }];
+
+    it('maps an unavailable product (P0001) to ValidationError', async () => {
+      if (!isDbConnected) return;
+      const unavailableId = `pgorder-unavail-${randomUUID().slice(0, 8)}`;
+      await adminPool.query(
+        `INSERT INTO public.products (id, restaurant_id, name, price, is_available) VALUES ($1, $2, 'Off', 1000, false)`,
+        [unavailableId, RESTAURANT_A]
+      );
+      const order = new Order(`ord-${randomUUID().slice(0, 8)}`, RESTAURANT_A, undefined, itemFor(unavailableId), 'pending', new Date());
+      await expect(repo.save(order)).rejects.toBeInstanceOf(ValidationError);
+    });
+
+    it('maps an unknown product (P0002) to EntityNotFoundError', async () => {
+      if (!isDbConnected) return;
+      const order = new Order(`ord-${randomUUID().slice(0, 8)}`, RESTAURANT_A, undefined, itemFor('does-not-exist'), 'pending', new Date());
+      await expect(repo.save(order)).rejects.toBeInstanceOf(EntityNotFoundError);
     });
   });
 });

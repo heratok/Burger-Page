@@ -710,6 +710,12 @@ BEGIN
     -- runs before validation and BEFORE the INSERT: no second order_number is
     -- assigned and the order counters are never double-counted.
     IF p_client_order_id IS NOT NULL AND p_client_order_id <> '' THEN
+        -- Serialize concurrent submissions of the same (restaurant, client id):
+        -- the check-then-insert below is otherwise racy and the loser would hit
+        -- uq_orders_client_order_id (23505 -> HTTP 500). The transaction-scoped
+        -- advisory lock makes the second request wait for the first to commit,
+        -- then take the replay branch. Released automatically at COMMIT/ROLLBACK.
+        PERFORM pg_advisory_xact_lock(hashtext('create_order:' || p_restaurant_id || ':' || p_client_order_id));
         SELECT id, order_number, status, restaurant_id, created_at
         INTO v_replay_id, v_replay_order_number, v_replay_status, v_replay_restaurant_id, v_replay_created_at
         FROM public.orders

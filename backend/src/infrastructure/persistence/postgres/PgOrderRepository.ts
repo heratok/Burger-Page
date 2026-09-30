@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { Order, OrderStatus, OrderItem, OrderItemAddition } from '../../../domain/models/Order.js';
 import { UserRole } from '../../../domain/models/User.js';
-import { EntityNotFoundError, InvalidOrderStateError } from '../../../domain/errors/DomainErrors.js';
+import { EntityNotFoundError, InvalidOrderStateError, ValidationError } from '../../../domain/errors/DomainErrors.js';
 import { OrderRepository } from '../../../domain/ports/out/OrderRepository.js';
 import { ListOptions } from '../../../domain/ports/out/ListOptions.js';
 import { withTenantContext } from './PgClient.js';
@@ -78,6 +78,26 @@ function mapOrderRow(row: any, items: OrderItem[]): Order {
     };
   }
   return order;
+}
+
+const CLIENT_ORDER_ID_CONSTRAINT = 'uq_orders_client_order_id';
+
+/**
+ * create_order_atomic raises business rejections with SQLSTATE P0001
+ * (raise_exception: product unavailable, restaurant inactive, minimum order,
+ * cash below total, ...) and P0002 (missing product/addition/restaurant).
+ * These are client errors that can race the use-case pre-checks, so they map
+ * to the same DomainErrors the API already turns into 400/404 instead of 500.
+ * Anything else (tenant mismatch 42501, connectivity, ...) is left untouched.
+ */
+function mapCreateOrderRpcError(err: any): unknown {
+  if (err?.code === 'P0001') return new ValidationError(err.message);
+  if (err?.code === 'P0002') return new EntityNotFoundError(err.message);
+  return err;
+}
+
+function isClientOrderIdViolation(err: any): boolean {
+  return err?.code === '23505' && err?.constraint === CLIENT_ORDER_ID_CONSTRAINT;
 }
 
 export class PgOrderRepository implements OrderRepository {
@@ -172,6 +192,44 @@ export class PgOrderRepository implements OrderRepository {
       })),
     }));
 
+    try {
+      await this.persistViaRpc(order, itemsPayload);
+    } catch (err: any) {
+      // Defense in depth for the concurrent same-client_order_id race: the RPC
+      // serializes with an advisory lock, but if the unique index still trips
+      // (e.g. a DB without migration 0005) the original order is the answer.
+      // The failed transaction is already rolled back, so the lookup runs in a
+      // fresh one.
+      if (isClientOrderIdViolation(err) && order.clientOrderId) {
+        const original = await this.findReplayByClientOrderId(order.restaurantId, order.clientOrderId);
+        if (original) {
+          (order as any).id = original.id;
+          if (original.orderNumber !== undefined) (order as any).orderNumber = original.orderNumber;
+          return;
+        }
+      }
+      throw mapCreateOrderRpcError(err);
+    }
+  }
+
+  private async findReplayByClientOrderId(
+    restaurantId: string,
+    clientOrderId: string
+  ): Promise<{ id: string; orderNumber?: number } | null> {
+    return withTenantContext({ restaurantId }, async (client) => {
+      const { rows } = await client.query(
+        `SELECT id, order_number FROM public.orders WHERE restaurant_id = $1 AND client_order_id = $2`,
+        [restaurantId, clientOrderId]
+      );
+      if (rows.length === 0) return null;
+      return {
+        id: rows[0].id,
+        orderNumber: rows[0].order_number != null ? Number(rows[0].order_number) : undefined,
+      };
+    });
+  }
+
+  private async persistViaRpc(order: Order, itemsPayload: unknown[]): Promise<void> {
     await withTenantContext({ restaurantId: order.restaurantId }, async (client) => {
       const { rows } = await client.query(
         `SELECT * FROM public.create_order_atomic($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
