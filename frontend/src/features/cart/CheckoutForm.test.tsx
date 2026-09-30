@@ -125,6 +125,7 @@ describe("CheckoutForm - Direct Sale Flow", () => {
       expect(decodeURIComponent(callUrl)).toContain("Carlos Pérez")
       expect(decodeURIComponent(callUrl)).toContain("Calle 45 # 12-34")
       expect(decodeURIComponent(callUrl)).toContain("ROSTO CLÁSICA AHUMADA")
+      expect(decodeURIComponent(callUrl)).toContain("Orden: #3131")
       expect(onCloseMock).toHaveBeenCalledTimes(1)
     })
 
@@ -133,6 +134,50 @@ describe("CheckoutForm - Direct Sale Flow", () => {
       expect(toast.success).toHaveBeenCalledTimes(1)
     })
     expect(toast.success).toHaveBeenCalledWith("Orden #3131 registrada", expect.anything())
+
+    windowOpenSpy.mockRestore()
+  })
+
+  it("does not open WhatsApp and does not close form when createOrder rejects", async () => {
+    const windowOpenSpy = vi.spyOn(window, "open").mockImplementation(() => null)
+    const onCloseMock = vi.fn()
+    const { apiClient } = await import("@/core/api/apiClient")
+    vi.spyOn(apiClient, "createOrder").mockRejectedValue(new Error("Pedido mínimo no alcanzado"))
+
+    render(
+      <RestaurantProvider>
+        <CheckoutForm
+          cartItems={mockCartItems}
+          onClose={onCloseMock}
+          onBackToCart={() => {}}
+        />
+      </RestaurantProvider>
+    )
+
+    // Fill form fields
+    fireEvent.change(screen.getByLabelText(/Nombre/i), {
+      target: { value: "Carlos Pérez" },
+    })
+    fireEvent.change(screen.getByLabelText(/Celular/i), {
+      target: { value: "3001234567" },
+    })
+    fireEvent.change(screen.getByLabelText(/Dirección/i), {
+      target: { value: "Calle 45 # 12-34" },
+    })
+    fireEvent.change(screen.getByLabelText(/Barrio/i), {
+      target: { value: "El Poblado" },
+    })
+
+    // Submit form
+    const submitBtn = screen.getByRole("button", { name: /Enviar pedido por WhatsApp/i })
+    fireEvent.click(submitBtn)
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalled()
+    })
+
+    expect(windowOpenSpy).not.toHaveBeenCalled()
+    expect(onCloseMock).not.toHaveBeenCalled()
 
     windowOpenSpy.mockRestore()
   })

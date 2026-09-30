@@ -86,14 +86,12 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
 
   const cambio = calculateChange(total, pagoCon)
 
-  const onSubmit = (values: FormValues) => {
-    const orderId = generateOrderId()
-
+  const onSubmit = async (values: FormValues) => {
     // 1. Register order in CRM context. The outcome toast is owned by
     // addOrder: it confirms only after the server accepts the order, and
     // shows an error (removing the optimistic card) when the server
     // rejects it, so a failed sale is never reported as successful.
-    addOrder({
+    const placedOrder = addOrder({
       customer: {
         nombre: values.nombre,
         telefono: values.telefono,
@@ -111,9 +109,23 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
       status: "pending",
     })
 
+    let orderIdToUse: number = generateOrderId()
+
+    if (placedOrder?.serverPromise) {
+      try {
+        const syncResult = await placedOrder.serverPromise
+        if (syncResult?.adoptedOrderNumber) {
+          orderIdToUse = syncResult.adoptedOrderNumber
+        }
+      } catch {
+        // Server rejected (addOrder already showed error toast and removed optimistic card)
+        return
+      }
+    }
+
     // 2. Build WhatsApp message and open direct chat with restaurant
     const message = buildOrderMessage({
-      orderId,
+      orderId: orderIdToUse,
       customer: {
         nombre: values.nombre,
         telefono: values.telefono,

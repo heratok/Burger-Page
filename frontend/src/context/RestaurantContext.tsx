@@ -16,7 +16,7 @@ import { UiProvider, useUi } from "./slices/UiContext"
 import { TenantProvider, useTenant, type GlobalPlatformStats } from "./slices/TenantContext"
 import { AuthProvider, useAuth } from "./slices/AuthContext"
 import { CatalogProvider, useCatalog } from "./slices/CatalogContext"
-import { OrderProvider, useOrders } from "./slices/OrderContext"
+import { OrderProvider, useOrders, type PlacedOrder } from "./slices/OrderContext"
 import { InventoryProvider, useInventory } from "./slices/InventoryContext"
 import type { InventoryItem, Supplier } from "@/types/restaurant"
 import type { TenantRepository } from "@/core/storage/TenantRepository"
@@ -98,7 +98,7 @@ export interface RestaurantContextType {
   deleteAddition: (id: string) => void
 
   orders: Order[]
-  addOrder: (orderData: Omit<Order, "id" | "orderNumber" | "createdAt" | "updatedAt">) => Order
+  addOrder: (orderData: Omit<Order, "id" | "orderNumber" | "createdAt" | "updatedAt">) => PlacedOrder
   updateOrder: (orderId: string, updates: Partial<Order>) => void
   updateOrderStatus: (orderId: string, newStatus: OrderStatus) => void
   updateOrderReceipt: (orderId: string, receiptUrl: string) => Promise<void>

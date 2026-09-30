@@ -11,9 +11,19 @@ import { toast } from "sonner"
 import { formatCurrency, cleanPhoneNumber } from "@/lib/utils"
 import { nextTempId } from "@/lib/ids"
 
+export interface ServerOrderResult {
+  adoptedOrderNumber: number
+  createdOrder?: any
+  offline?: boolean
+}
+
+export type PlacedOrder = Order & {
+  serverPromise?: Promise<ServerOrderResult>
+}
+
 export interface OrderContextType {
   orders: Order[]
-  addOrder: (orderData: Omit<Order, "id" | "orderNumber" | "createdAt" | "updatedAt">) => Order
+  addOrder: (orderData: Omit<Order, "id" | "orderNumber" | "createdAt" | "updatedAt">) => PlacedOrder
   updateOrder: (orderId: string, updates: Partial<Order>) => void
   updateOrderStatus: (orderId: string, newStatus: OrderStatus) => void
   updateOrderReceipt: (orderId: string, receiptUrl: string) => Promise<void>
@@ -805,14 +815,24 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return lastAttempt.order
       }
 
+      let resolveServer!: (value: ServerOrderResult) => void
+      let rejectServer!: (reason?: any) => void
+      const serverPromise = new Promise<ServerOrderResult>((res, rej) => {
+        resolveServer = res
+        rejectServer = rej
+      })
+      // Attach no-op handler to prevent unhandled rejection if caller does not await serverPromise
+      serverPromise.catch(() => {})
+
       const now = new Date().toISOString()
       const clientOrderId = generateClientOrderId()
-      const newOrder: Order = {
+      const newOrder: PlacedOrder = {
         ...orderData,
         id: nextTempId("ord"),
         orderNumber: generateSecureOrderNumber(),
         createdAt: now,
         updatedAt: now,
+        serverPromise,
       }
       // SUS-19: the correlation id rides on the optimistic Order so the offline
       // retry (attemptPendingOrderSync) rebuilds the input from this same
@@ -844,6 +864,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               toast.success(`Orden #${adoptedOrderNumber} registrada`, {
                 description: `${newOrder.customer.nombre} - ${formatCurrency(newOrder.finalTotal)}`,
               })
+              resolveServer({ adoptedOrderNumber, createdOrder })
               return
             }
             updateActiveRestaurantRecord((current) =>
@@ -852,6 +873,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             toast.success(`Orden #${adoptedOrderNumber} registrada`, {
               description: `${newOrder.customer.nombre} - ${formatCurrency(newOrder.finalTotal)}`,
             })
+            resolveServer({ adoptedOrderNumber, createdOrder })
           })
           .catch((error) => {
             if (isNetworkFailure(error)) {
@@ -872,6 +894,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 ),
               }))
               toast.warning('Sin conexión: la venta quedó guardada localmente y se sincronizará automáticamente')
+              resolveServer({ adoptedOrderNumber: newOrder.orderNumber, offline: true })
               return
             }
             if (import.meta.env?.MODE !== 'test') {
@@ -892,6 +915,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             toast.error(`No se pudo registrar la orden #${newOrder.orderNumber}`, {
               description,
             })
+            rejectServer(error)
           })
       } catch (err) {
         if (import.meta.env?.MODE !== 'test') {
@@ -907,6 +931,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           ),
         }))
         toast.warning('Sin conexión: la venta quedó guardada localmente y se sincronizará automáticamente')
+        resolveServer({ adoptedOrderNumber: newOrder.orderNumber, offline: true })
       }
 
       return newOrder
