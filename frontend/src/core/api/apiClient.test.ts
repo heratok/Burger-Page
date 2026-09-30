@@ -25,6 +25,14 @@ describe('ApiClient', () => {
     })
   }
 
+  it('sends category renames alongside the list in a single PUT', async () => {
+    mockResponse({ categories: ['B'] })
+    await client.updateCategories(['B'], 'slug-1', [{ from: 'A', to: 'B' }])
+    const [url, init] = (globalThis.fetch as any).mock.calls[0]
+    expect(url).toBe('http://localhost:3001/api/restaurant/slug-1/categories')
+    expect(JSON.parse(init.body)).toEqual({ categories: ['B'], renames: [{ from: 'A', to: 'B' }] })
+  })
+
   it('should fetch restaurant', async () => {
     const mockData = { id: 'r1', name: 'Burger' }
     mockResponse(mockData)

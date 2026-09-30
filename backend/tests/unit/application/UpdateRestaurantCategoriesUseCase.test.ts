@@ -323,4 +323,39 @@ describe('UpdateRestaurantCategoriesUseCase', () => {
     expect(productRepo.saveCalls).toHaveLength(0);
     expect(restaurantRepo.saveCalls[0].categories).toEqual([]);
   });
-});
+});
+describe('UpdateRestaurantCategoriesUseCase renames (5.1)', () => {
+  it('renames the category row in place (same id) and never reassigns its products', async () => {
+    const repo = new FakeRestaurantRepository([restaurant({ categories: ['Pizza', 'Burgers'] })]);
+    const cats = new FakeCategoryRepository([
+      { id: 'cat-pizza', restaurantId: 'rest-1', name: 'Pizza', displayOrder: 0, isActive: true },
+      { id: 'cat-burgers', restaurantId: 'rest-1', name: 'Burgers', displayOrder: 1, isActive: true },
+    ]);
+    const products = new FakeProductRepository([
+      { id: 'p1', restaurantId: 'rest-1', name: 'Margherita', category: 'Pizza', categoryId: 'cat-pizza' } as Product,
+    ]);
+    const useCase = new UpdateRestaurantCategoriesUseCase(repo, cats, products);
+
+    await useCase.execute('rest-1', ['Pizzas', 'Burgers'], [{ from: 'pizza', to: 'Pizzas' }]);
+
+    const renamed = cats.saveCalls.filter((c) => c.id === 'cat-pizza');
+    expect(renamed.length).toBeGreaterThan(0);
+    expect(renamed.every((c) => c.name === 'Pizzas' && c.isActive !== false)).toBe(true);
+    expect(cats.saveCalls.every((c) => c.id === 'cat-pizza' || c.id === 'cat-burgers')).toBe(true);
+    expect(cats.saveCalls.some((c) => c.id === 'cat-pizza' && c.isActive === false)).toBe(false);
+    expect(products.saveCalls).toEqual([]);
+  });
+
+  it('ignores a rename whose target name already exists', async () => {
+    const repo = new FakeRestaurantRepository([restaurant({ categories: ['Pizza', 'Burgers'] })]);
+    const cats = new FakeCategoryRepository([
+      { id: 'cat-pizza', restaurantId: 'rest-1', name: 'Pizza', displayOrder: 0, isActive: true },
+      { id: 'cat-burgers', restaurantId: 'rest-1', name: 'Burgers', displayOrder: 1, isActive: true },
+    ]);
+    const useCase = new UpdateRestaurantCategoriesUseCase(repo, cats);
+
+    await useCase.execute('rest-1', ['Pizza', 'Burgers'], [{ from: 'Pizza', to: 'burgers' }]);
+
+    expect(cats.saveCalls.some((c) => c.id === 'cat-pizza' && c.name.toLowerCase() === 'burgers')).toBe(false);
+  });
+});

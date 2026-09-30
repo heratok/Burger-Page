@@ -16,7 +16,7 @@ function mapRow(row: any): Product {
     isAvailable: Boolean(row.is_available),
     isPopular: Boolean(row.is_popular),
     isNew: Boolean(row.is_new),
-    preparationTimeMinutes: row.preparation_time_minutes ? Number(row.preparation_time_minutes) : 15,
+    preparationTimeMinutes: row.preparation_time_minutes != null ? Number(row.preparation_time_minutes) : 15,
     displayOrder: row.display_order ? Number(row.display_order) : 0,
     additions: [],
   };
@@ -104,7 +104,7 @@ export class PgProductRepository implements ProductRepository {
           product.isAvailable,
           product.isPopular || false,
           product.isNew || false,
-          product.preparationTimeMinutes || 15,
+          product.preparationTimeMinutes ?? 15,
           product.displayOrder || 0,
         ]
       );

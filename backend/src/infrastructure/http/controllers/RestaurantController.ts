@@ -161,8 +161,8 @@ export class RestaurantController {
       identifier = params.slug || auth.restaurantId;
     }
 
-    const { categories } = parsed.data;
-    const updated = await this.updateCategoriesUseCase.execute(identifier, categories);
+    const { categories, renames } = parsed.data;
+    const updated = await this.updateCategoriesUseCase.execute(identifier, categories, renames);
     return reply.status(200).send({
       message: 'Restaurant categories updated successfully',
       categories: updated.categories || [],

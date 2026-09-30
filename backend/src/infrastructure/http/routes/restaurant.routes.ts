@@ -80,7 +80,15 @@ export async function restaurantRoutes(fastify: FastifyInstance, opts: { control
         type: 'object',
         required: ['categories'],
         properties: {
-          categories: { type: 'array', items: { type: 'string' } }
+          categories: { type: 'array', items: { type: 'string' } },
+          renames: {
+            type: 'array',
+            items: {
+              type: 'object',
+              required: ['from', 'to'],
+              properties: { from: { type: 'string' }, to: { type: 'string' } }
+            }
+          }
         }
       },
       response: {
@@ -112,7 +120,15 @@ export async function restaurantRoutes(fastify: FastifyInstance, opts: { control
         type: 'object',
         required: ['categories'],
         properties: {
-          categories: { type: 'array', items: { type: 'string' } }
+          categories: { type: 'array', items: { type: 'string' } },
+          renames: {
+            type: 'array',
+            items: {
+              type: 'object',
+              required: ['from', 'to'],
+              properties: { from: { type: 'string' }, to: { type: 'string' } }
+            }
+          }
         }
       },
       response: {

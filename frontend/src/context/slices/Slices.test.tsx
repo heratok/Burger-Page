@@ -1473,10 +1473,16 @@ describe("CatalogContext Slice - Dynamic Category Management", () => {
 
     const updatedOnionRings = result.current.products.find((p) => p.name === "Aros de Cebolla")
     expect(updatedOnionRings?.category).toBe("Aperitivos")
-    expect(updateProductSpy).toHaveBeenCalledWith(
+    // Rename is ONE server operation: no per-product updates, renames in payload.
+    expect(updateProductSpy).not.toHaveBeenCalledWith(
       onionRings?.id,
       { category: "Aperitivos" },
-      expect.any(String)
+      expect.anything()
+    )
+    expect(updateCategoriesSpy).toHaveBeenLastCalledWith(
+      expect.arrayContaining(["Aperitivos"]),
+      expect.any(String),
+      [{ from: "Entradas", to: "Aperitivos" }]
     )
 
     // 3. Add a second category so deleting the first is allowed by rule (ii):

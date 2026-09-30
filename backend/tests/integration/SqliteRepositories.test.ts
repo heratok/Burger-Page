@@ -78,6 +78,23 @@ describe.skipIf(!hasSqliteBinding)('SQLite Persistence Adapter Suite (TDD)', () 
     expect(await productRepo.findById('p-100', 'burger-craft')).toBeNull();
   });
 
+  it('preserves a preparation time of 0 and defaults only when absent (5.7)', async () => {
+    const base: Product = {
+      id: 'p-prep-0',
+      restaurantId: 'burger-craft',
+      name: 'Instant',
+      description: '',
+      price: 1,
+      category: 'Especiales',
+      isAvailable: true,
+      additions: [],
+    };
+    await productRepo.save({ ...base, preparationTimeMinutes: 0 });
+    expect((await productRepo.findById('p-prep-0', 'burger-craft'))?.preparationTimeMinutes).toBe(0);
+    await productRepo.save({ ...base, id: 'p-prep-none', preparationTimeMinutes: undefined });
+    expect((await productRepo.findById('p-prep-none', 'burger-craft'))?.preparationTimeMinutes).toBe(15);
+  });
+
   it('should save, list and delete product additions in SQLite with tenant isolation', async () => {
     const addition = new ProductAddition('add-1', 'burger-craft', 'Extra Bacon', 3000, true);
     await additionRepo.save(addition);

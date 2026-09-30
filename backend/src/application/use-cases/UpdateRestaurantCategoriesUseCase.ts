@@ -5,6 +5,11 @@ import { ProductRepository } from '../../domain/ports/out/ProductRepository.js';
 import { Restaurant } from '../../domain/models/Restaurant.js';
 import { EntityNotFoundError } from '../../domain/errors/DomainErrors.js';
 
+export interface CategoryRename {
+  from: string;
+  to: string;
+}
+
 export class UpdateRestaurantCategoriesUseCase {
   constructor(
     private restaurantRepo: RestaurantRepository,
@@ -12,7 +17,11 @@ export class UpdateRestaurantCategoriesUseCase {
     private productRepo?: ProductRepository
   ) {}
 
-  async execute(identifier: string, categories: string[]): Promise<Restaurant> {
+  async execute(
+    identifier: string,
+    categories: string[],
+    renames: CategoryRename[] = []
+  ): Promise<Restaurant> {
     let restaurant = await this.restaurantRepo.findBySlug(identifier);
     if (!restaurant) {
       restaurant = await this.restaurantRepo.findById(identifier);
@@ -35,6 +44,21 @@ export class UpdateRestaurantCategoriesUseCase {
       try {
         const existing = await this.categoryRepo.findByRestaurantId(restaurant.id);
         const existingByName = new Map(existing.map((c) => [c.name.toLowerCase(), c]));
+
+        // Renames happen IN PLACE on the category row (same id), so products
+        // keep their category_id and follow the new name. A rename whose
+        // target already exists is ignored (names are unique per tenant).
+        for (const { from, to } of renames) {
+          const target = to.trim();
+          const source = existingByName.get(from.trim().toLowerCase());
+          if (!source || !target || existingByName.has(target.toLowerCase())) continue;
+          const renamed = { ...source, name: target };
+          await this.categoryRepo.save(renamed);
+          existingByName.delete(source.name.toLowerCase());
+          existingByName.set(target.toLowerCase(), renamed);
+          const idx = existing.findIndex((c) => c.id === source.id);
+          if (idx >= 0) existing[idx] = renamed;
+        }
 
         for (let i = 0; i < cleanedCategories.length; i++) {
           const name = cleanedCategories[i];

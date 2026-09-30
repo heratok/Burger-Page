@@ -172,11 +172,15 @@ export class ApiClient {
     })
   }
 
-  async updateCategories(categories: string[], slug?: string): Promise<{ categories: string[] }> {
+  async updateCategories(
+    categories: string[],
+    slug?: string,
+    renames?: { from: string; to: string }[]
+  ): Promise<{ categories: string[] }> {
     const endpoint = slug ? `/restaurant/${slug}/categories` : '/restaurant/categories'
     return this.request<{ categories: string[] }>(endpoint, {
       method: 'PUT',
-      body: JSON.stringify({ categories }),
+      body: JSON.stringify(renames && renames.length > 0 ? { categories, renames } : { categories }),
     })
   }
 

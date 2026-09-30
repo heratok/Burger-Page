@@ -296,36 +296,31 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const toggleProductStock = useCallback(
     (id: string) => {
-      let previousProducts: MenuItem[] = []
-      let isNowInStock = false
+      const target = activeRestaurant.products.find((p) => p.id === id)
+      if (!target) return
+      // Computed from current state OUTSIDE any updater (updaters must be pure).
+      const isNowInStock = !target.inStock
 
-      updateActiveRestaurantRecord((current) => {
-        previousProducts = current.products
-        const nextProducts = current.products.map((p) => {
-          if (p.id === id) {
-            isNowInStock = !p.inStock
-            return { ...p, inStock: isNowInStock }
-          }
-          return p
-        })
-        toast.info(`Producto marcado como ${isNowInStock ? "Disponible" : "Agotado"}`)
-        return { ...current, products: nextProducts }
-      })
+      updateActiveRestaurantRecord((current) => ({
+        ...current,
+        products: current.products.map((p) => (p.id === id ? { ...p, inStock: isNowInStock } : p)),
+      }))
+      toast.info(`Producto marcado como ${isNowInStock ? "Disponible" : "Agotado"}`)
 
-      // Sync with backend API
-      apiClient.updateProduct(id, { isAvailable: isNowInStock }).catch((err) => {
+      // Sync with backend API (restaurantId is required for super_admin)
+      apiClient.updateProduct(id, { isAvailable: isNowInStock }, activeRestaurant.id).catch((err) => {
         if (import.meta.env?.MODE !== 'test') {
           console.warn("Could not update product availability in backend API:", err)
         }
-        // Rollback to pre-optimistic snapshot
+        // Roll back only this product's availability, from current state
         updateActiveRestaurantRecord((current) => ({
           ...current,
-          products: previousProducts,
+          products: current.products.map((p) => (p.id === id ? { ...p, inStock: !isNowInStock } : p)),
         }))
         toast.error("Error al actualizar disponibilidad en el servidor")
       })
     },
-    [updateActiveRestaurantRecord]
+    [activeRestaurant.id, activeRestaurant.products, updateActiveRestaurantRecord]
   )
 
   const addAddition = useCallback(
@@ -517,20 +512,12 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }))
       toast.success(`Categoría renombrada a "${trimmedNew}"`)
 
-      // Sync affected products to backend API
-      const affectedProducts = previousProducts.filter(
-        (p) => p.category?.toLowerCase() === oldName.toLowerCase()
-      )
-      for (const prod of affectedProducts) {
-        apiClient.updateProduct(prod.id, { category: trimmedNew }, activeRestaurant.id).catch((err) => {
-          if (import.meta.env?.MODE !== 'test') {
-            console.warn("Could not sync renamed product category to backend API:", err)
-          }
-        })
-      }
-
+      // Single server operation: the backend renames the category row in
+      // place, so its products keep their category (no per-product updates).
       apiClient
-        .updateCategories(nextCategories, activeRestaurant.slug || activeRestaurant.id)
+        .updateCategories(nextCategories, activeRestaurant.slug || activeRestaurant.id, [
+          { from: oldName, to: trimmedNew },
+        ])
         .catch((err) => {
           if (import.meta.env?.MODE !== 'test') {
             console.warn("Could not sync categories to backend API:", err)

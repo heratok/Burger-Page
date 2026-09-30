@@ -19,7 +19,7 @@ export class SqliteProductRepository implements ProductRepository {
       isAvailable: Boolean(row.is_available),
       isPopular: Boolean(row.is_popular),
       isNew: Boolean(row.is_new),
-      preparationTimeMinutes: Number(row.preparation_time_minutes || 15),
+      preparationTimeMinutes: Number(row.preparation_time_minutes ?? 15),
       displayOrder: Number(row.display_order || 0),
       additions: JSON.parse(row.additions || '[]'),
     };
@@ -105,7 +105,7 @@ export class SqliteProductRepository implements ProductRepository {
       product.isAvailable ? 1 : 0,
       product.isPopular ? 1 : 0,
       product.isNew ? 1 : 0,
-      product.preparationTimeMinutes || 15,
+      product.preparationTimeMinutes ?? 15,
       product.displayOrder || 0,
       JSON.stringify(product.additions || [])
     );

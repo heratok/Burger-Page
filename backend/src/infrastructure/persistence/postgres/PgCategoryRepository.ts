@@ -37,7 +37,7 @@ export class PgCategoryRepository implements CategoryRepository {
   async findByName(name: string, restaurantId: string): Promise<Category | null> {
     return withTenantContext({ restaurantId }, async (client) => {
       const { rows } = await client.query(
-        `SELECT * FROM public.categories WHERE restaurant_id = $1 AND name ILIKE $2`,
+        `SELECT * FROM public.categories WHERE restaurant_id = $1 AND LOWER(name) = LOWER($2)`,
         [restaurantId, name]
       );
       return rows[0] ? mapRow(rows[0]) : null;
