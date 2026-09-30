@@ -11,6 +11,7 @@ import { Product } from '../../src/domain/models/Product.js';
 import { ProductAddition } from '../../src/domain/models/ProductAddition.js';
 import { Order } from '../../src/domain/models/Order.js';
 import { Customer } from '../../src/domain/models/Customer.js';
+import { ConflictError } from '../../src/domain/errors/DomainErrors.js';
 import { Restaurant } from '../../src/domain/models/Restaurant.js';
 import { buildDependencies } from '../../src/infrastructure/http/app.js';
 
@@ -174,6 +175,25 @@ describe.skipIf(!hasSqliteBinding)('SQLite Persistence Adapter Suite (TDD)', () 
     const allCustomers = await customerRepo.findByRestaurantId('burger-craft');
     expect(allCustomers.length).toBe(1);
     expect(allCustomers[0].phone).toBe('3151234567');
+  });
+
+  it('rejects duplicate inventory names with ConflictError and keeps stock on edit (5.2)', async () => {
+    const mk = (id: string, name: string, quantity: number) => ({
+      id, restaurantId: 'burger-craft', name, category: 'ingredients' as const, quantity,
+      unit: 'unidades' as const, alertThreshold: 1, minStockAlert: 1, costPerUnit: 1,
+    });
+    await inventoryRepo.save(mk('a', 'Pan', 10));
+    await inventoryRepo.save(mk('b', 'Queso', 20));
+
+    await expect(inventoryRepo.save(mk('c', 'Pan', 99))).rejects.toThrow(ConflictError);
+    await expect(inventoryRepo.save(mk('b', 'Pan', 99))).rejects.toThrow(ConflictError);
+    expect((await inventoryRepo.findById('a', 'burger-craft'))?.quantity).toBe(10);
+    expect((await inventoryRepo.findById('b', 'burger-craft'))?.name).toBe('Queso');
+
+    await inventoryRepo.save({ ...mk('b', 'Queso Suizo', 777) });
+    const edited = await inventoryRepo.findById('b', 'burger-craft');
+    expect(edited?.name).toBe('Queso Suizo');
+    expect(edited?.quantity).toBe(20);
   });
 
   it('should manage inventory items and stock changes in SQLite with strict tenant isolation', async () => {

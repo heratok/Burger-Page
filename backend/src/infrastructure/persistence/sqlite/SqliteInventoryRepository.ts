@@ -1,7 +1,7 @@
 import { Database } from 'better-sqlite3';
 import { Inventory } from '../../../domain/models/Inventory.js';
 import { InventoryRepository } from '../../../domain/ports/out/InventoryRepository.js';
-import { EntityNotFoundError, ValidationError } from '../../../domain/errors/DomainErrors.js';
+import { ConflictError, EntityNotFoundError, ValidationError } from '../../../domain/errors/DomainErrors.js';
 import { ListOptions } from '../../../domain/ports/out/ListOptions.js';
 
 export class SqliteInventoryRepository implements InventoryRepository {
@@ -56,13 +56,18 @@ export class SqliteInventoryRepository implements InventoryRepository {
   }
 
   async save(inventory: Inventory): Promise<void> {
+    const duplicate = this.db
+      .prepare('SELECT id FROM inventory_items WHERE restaurant_id = ? AND name = ? AND id != ?')
+      .get(inventory.restaurantId, inventory.name, inventory.id);
+    if (duplicate) {
+      throw new ConflictError(`An inventory item named '${inventory.name}' already exists.`);
+    }
     const stmt = this.db.prepare(`
       INSERT INTO inventory_items (id, restaurant_id, name, category, current_stock, min_stock_alert, unit, cost_per_unit, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         name = excluded.name,
         category = excluded.category,
-        current_stock = excluded.current_stock,
         min_stock_alert = excluded.min_stock_alert,
         unit = excluded.unit,
         cost_per_unit = excluded.cost_per_unit,

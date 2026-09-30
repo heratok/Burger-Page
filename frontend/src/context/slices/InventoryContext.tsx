@@ -23,6 +23,12 @@ export interface InventoryContextType {
 
 const InventoryContext = createContext<InventoryContextType | undefined>(undefined)
 
+/** Conflicts (409) carry an actionable server message; anything else stays generic. */
+function conflictMessage(err: unknown, fallback: string): string {
+  const e = err as { status?: number; message?: string } | null
+  return e?.status === 409 && e.message ? e.message : fallback
+}
+
 export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { activeRestaurant, updateActiveRestaurantRecord } = useTenant()
   const { session } = useAuth()
@@ -104,14 +110,10 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         id: tempId,
         lastRestockedAt: new Date().toISOString(),
       }
-      let previousInventory: InventoryItem[] = []
-      updateActiveRestaurantRecord((current) => {
-        previousInventory = current.inventory || []
-        return {
-          ...current,
-          inventory: [newItem, ...previousInventory],
-        }
-      })
+      updateActiveRestaurantRecord((current) => ({
+        ...current,
+        inventory: [newItem, ...(current.inventory || [])],
+      }))
       toast.success(`Insumo "${item.name}" agregado al inventario`)
 
       apiClient
@@ -139,11 +141,12 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           if (import.meta.env?.MODE !== 'test') {
             console.warn("Could not persist inventory item to backend API:", err)
           }
+          // Remove only the optimistic item; other concurrent changes stay.
           updateActiveRestaurantRecord((current) => ({
             ...current,
-            inventory: previousInventory,
+            inventory: (current.inventory || []).filter((i) => i.id !== tempId),
           }))
-          toast.error("Error al guardar insumo en el servidor")
+          toast.error(conflictMessage(err, "Error al guardar insumo en el servidor"))
         })
     },
     [activeRestaurant.id, updateActiveRestaurantRecord]
@@ -151,7 +154,14 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const updateInventoryItem = useCallback(
     (id: string, updates: Partial<InventoryItem>) => {
-      const previousInventory = activeRestaurant?.inventory || []
+      // Remember only this item's previous values for the touched fields.
+      const target = (activeRestaurant?.inventory || []).find((i) => i.id === id)
+      const previousFields: Partial<InventoryItem> = {}
+      if (target) {
+        for (const key of Object.keys(updates) as (keyof InventoryItem)[]) {
+          ;(previousFields as Record<string, unknown>)[key] = target[key]
+        }
+      }
 
       updateActiveRestaurantRecord((current) => ({
         ...current,
@@ -175,9 +185,11 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           }
           updateActiveRestaurantRecord((current) => ({
             ...current,
-            inventory: previousInventory,
+            inventory: (current.inventory || []).map((item) =>
+              item.id === id ? { ...item, ...previousFields } : item
+            ),
           }))
-          toast.error("Error al actualizar insumo en el servidor")
+          toast.error(conflictMessage(error, "Error al actualizar insumo en el servidor"))
         })
     },
     [activeRestaurant.id, activeRestaurant.inventory, updateActiveRestaurantRecord]
@@ -215,33 +227,30 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const adjustStock = useCallback(
     (id: string, deltaQuantity: number) => {
-      const previousInventory = activeRestaurant?.inventory || []
+      const target = (activeRestaurant?.inventory || []).find((i) => i.id === id)
+      if (!target) return
+      const round = (n: number) => Number(n.toFixed(2))
+      // Delta actually applied optimistically (the local stock never goes below 0).
+      const newStock = Math.max(0, round(target.currentStock + deltaQuantity))
+      const appliedDelta = round(newStock - target.currentStock)
 
-      updateActiveRestaurantRecord((current) => {
-        let updatedName = ""
-        let newStock = 0
-        const updatedList = (current.inventory || []).map((item) => {
-          if (item.id === id) {
-            updatedName = item.name
-            newStock = Math.max(0, Number((item.currentStock + deltaQuantity).toFixed(2)))
-            return {
-              ...item,
-              currentStock: newStock,
-              lastRestockedAt: deltaQuantity > 0 ? new Date().toISOString() : item.lastRestockedAt,
-            }
-          }
-          return item
-        })
-        if (deltaQuantity > 0) {
-          toast.success(`+${deltaQuantity} añadido a "${updatedName}" (Total: ${newStock})`)
-        } else {
-          toast.info(`${deltaQuantity} descontado de "${updatedName}" (Total: ${newStock})`)
-        }
-        return {
-          ...current,
-          inventory: updatedList,
-        }
-      })
+      updateActiveRestaurantRecord((current) => ({
+        ...current,
+        inventory: (current.inventory || []).map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                currentStock: Math.max(0, round(item.currentStock + deltaQuantity)),
+                lastRestockedAt: deltaQuantity > 0 ? new Date().toISOString() : item.lastRestockedAt,
+              }
+            : item
+        ),
+      }))
+      if (deltaQuantity > 0) {
+        toast.success(`+${deltaQuantity} añadido a "${target.name}" (Total: ${newStock})`)
+      } else {
+        toast.info(`${deltaQuantity} descontado de "${target.name}" (Total: ${newStock})`)
+      }
 
       apiClient
         .updateInventoryStock(id, deltaQuantity, activeRestaurant.id)
@@ -249,9 +258,15 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           if (import.meta.env?.MODE !== 'test') {
             console.warn(`Could not sync adjust stock for ${id} to backend:`, error)
           }
+          // Undo only this adjust, relative to the CURRENT state, so other
+          // accepted adjusts and edits are preserved.
           updateActiveRestaurantRecord((current) => ({
             ...current,
-            inventory: previousInventory,
+            inventory: (current.inventory || []).map((item) =>
+              item.id === id
+                ? { ...item, currentStock: Math.max(0, round(item.currentStock - appliedDelta)) }
+                : item
+            ),
           }))
           toast.error("Error al sincronizar el inventario con el servidor")
         })

@@ -1,6 +1,6 @@
 import { Inventory } from '../../../domain/models/Inventory.js';
 import { InventoryRepository } from '../../../domain/ports/out/InventoryRepository.js';
-import { EntityNotFoundError, ValidationError } from '../../../domain/errors/DomainErrors.js';
+import { ConflictError, EntityNotFoundError, ValidationError } from '../../../domain/errors/DomainErrors.js';
 import { ListOptions } from '../../../domain/ports/out/ListOptions.js';
 import { withTenantContext } from './PgClient.js';
 
@@ -19,6 +19,16 @@ function mapRow(row: any): Inventory {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+const NAME_CONSTRAINT = 'uq_inventory_items_restaurant_name';
+
+function duplicateNameError(inventory: Inventory): ConflictError {
+  return new ConflictError(`An inventory item named '${inventory.name}' already exists.`);
+}
+
+function isDuplicateName(err: any): boolean {
+  return err?.code === '23505' && (!err?.constraint || err.constraint === NAME_CONSTRAINT);
 }
 
 export class PgInventoryRepository implements InventoryRepository {
@@ -64,34 +74,37 @@ export class PgInventoryRepository implements InventoryRepository {
   async save(inventory: Inventory): Promise<void> {
     const minAlert = inventory.minStockAlert ?? inventory.alertThreshold ?? 0;
     await withTenantContext({ restaurantId: inventory.restaurantId }, async (client) => {
+      // Match by id only: a name match must never redirect the write to
+      // another item. Duplicate names surface as ConflictError (unique per tenant).
       const existing = await client.query(
-        `SELECT id FROM public.inventory_items WHERE (id = $1 OR (restaurant_id = $2 AND name = $3))`,
-        [inventory.id, inventory.restaurantId, inventory.name]
+        `SELECT id FROM public.inventory_items WHERE id = $1 AND restaurant_id = $2`,
+        [inventory.id, inventory.restaurantId]
       );
-      if (existing.rows.length > 0) {
-        inventory.id = existing.rows[0].id;
-        await client.query(
-          `UPDATE public.inventory_items SET
-             name = $1,
-             category = $2,
-             current_stock = $3,
-             min_stock_alert = $4,
-             unit = $5,
-             cost_per_unit = $6,
-             updated_at = NOW()
-           WHERE id = $7 AND restaurant_id = $8`,
-          [
-            inventory.name,
-            inventory.category || 'ingredients',
-            inventory.quantity,
-            minAlert,
-            inventory.unit,
-            inventory.costPerUnit || 0,
-            existing.rows[0].id,
-            inventory.restaurantId,
-          ]
-        );
-      } else {
+      try {
+        if (existing.rows.length > 0) {
+          // Stock is never written on edit: it changes only through adjustStock
+          // (atomic delta), so a stale edit cannot overwrite a concurrent adjust.
+          await client.query(
+            `UPDATE public.inventory_items SET
+               name = $1,
+               category = $2,
+               min_stock_alert = $3,
+               unit = $4,
+               cost_per_unit = $5,
+               updated_at = NOW()
+             WHERE id = $6 AND restaurant_id = $7`,
+            [
+              inventory.name,
+              inventory.category || 'ingredients',
+              minAlert,
+              inventory.unit,
+              inventory.costPerUnit || 0,
+              inventory.id,
+              inventory.restaurantId,
+            ]
+          );
+          return;
+        }
         await client.query(
           `INSERT INTO public.inventory_items (id, restaurant_id, name, category, current_stock, min_stock_alert, unit, cost_per_unit)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
@@ -106,6 +119,9 @@ export class PgInventoryRepository implements InventoryRepository {
             inventory.costPerUnit || 0,
           ]
         );
+      } catch (err) {
+        if (isDuplicateName(err)) throw duplicateNameError(inventory);
+        throw err;
       }
     });
   }
