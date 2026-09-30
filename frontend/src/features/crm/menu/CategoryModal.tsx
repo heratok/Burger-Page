@@ -122,6 +122,16 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
                         maxLength={50}
                         value={editCategoryInputValue}
                         onChange={(e) => setEditCategoryInputValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.nativeEvent.isComposing) return
+                          if (e.key === "Enter") {
+                            e.preventDefault()
+                            if (!e.repeat) handleSaveEdit(cat)
+                          } else if (e.key === "Escape") {
+                            e.preventDefault()
+                            setEditingCategoryName(null)
+                          }
+                        }}
                         className="flex-1 rounded-lg border border-indigo-500 bg-white px-2 py-1 text-xs text-slate-900 dark:bg-slate-900 dark:text-white"
                         autoFocus
                       />
