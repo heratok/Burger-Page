@@ -1090,3 +1090,84 @@ describe("OrderContext Pure Reducers & Updaters (TDD Tests)", () => {
       expect(input.changeAmount).toBeUndefined()
     })
   })
+
+describe("buildCreateOrderInput - item notes (flow fix 1.1)", () => {
+  const restaurant = { id: "rest-1", orders: [], customers: [], products: [], additions: [] } as any
+  const orderWithItems = (items: any[]) =>
+    ({
+      id: "order-notes",
+      orderNumber: 1,
+      customer: { nombre: "Ana", telefono: "3001112233", direccion: "", barrio: "" },
+      items,
+      total: 10000,
+      deliveryFee: 0,
+      finalTotal: 10000,
+      metodo: "Efectivo",
+      status: "pending",
+    }) as any
+
+  it("sends the item note as observation on creation", () => {
+    const input = buildCreateOrderInput(
+      restaurant,
+      orderWithItems([
+        { id: "p1", name: "Burger", price: 10000, cantidad: 1, total: 10000, observacion: "sin cebolla", adiciones: [] },
+      ])
+    )
+    expect(input.items[0].observation).toBe("sin cebolla")
+  })
+
+  it("omits observation when the item has no note", () => {
+    const input = buildCreateOrderInput(
+      restaurant,
+      orderWithItems([{ id: "p1", name: "Burger", price: 10000, cantidad: 1, total: 10000, adiciones: [] }])
+    )
+    expect(input.items[0].observation).toBeUndefined()
+  })
+})
+
+describe("handleOrderCreatedEvent - payment data from the payload (flow fix 1.4)", () => {
+  it("uses the payment method, amount, change and comment carried by the event", () => {
+    const current = {
+      id: "rest-1",
+      orders: [],
+      customers: [],
+    } as any
+    const event: OrderEvent = {
+      eventType: "ORDER_CREATED",
+      orderId: "order-pay",
+      orderNumber: 7,
+      status: "pending",
+      timestamp: "2026-08-01T16:00:00.000Z",
+      payload: {
+        customer: { nombre: "Ana", telefono: "3001112233", direccion: "", barrio: "" },
+        items: [{ productName: "Burger", unitPrice: 10000, quantity: 1 }],
+        subtotal: 10000,
+        finalTotal: 10000,
+        paymentMethod: "Transferencia",
+        paymentAmount: 0,
+        changeAmount: 0,
+        comment: "tocar timbre",
+      },
+    }
+    const order = handleOrderCreatedEvent(current, event).orders[0]
+    expect(order.metodo).toBe("Transferencia")
+    expect(order.cambio).toBe(0)
+    expect(order.pagoCon).toBe("0")
+    expect(order.comentario).toBe("tocar timbre")
+  })
+
+  it("does not invent change or amount when the payload carries null values", () => {
+    const current = { id: "rest-1", orders: [], customers: [] } as any
+    const event: any = {
+      eventType: "ORDER_CREATED",
+      orderId: "order-null",
+      status: "pending",
+      timestamp: "2026-08-01T16:00:00.000Z",
+      payload: { items: [], paymentMethod: "Transferencia", paymentAmount: null, changeAmount: null },
+    }
+    const order = handleOrderCreatedEvent(current, event).orders[0]
+    expect(order.metodo).toBe("Transferencia")
+    expect(order.pagoCon).toBeUndefined()
+    expect(order.cambio).toBeUndefined()
+  })
+})

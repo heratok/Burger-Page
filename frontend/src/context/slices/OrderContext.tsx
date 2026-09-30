@@ -240,8 +240,8 @@ export function handleOrderCreatedEvent(current: RestaurantRecord, event: OrderE
     deliveryFee: Number(p.deliveryFee ?? 0),
     finalTotal: Number(p.finalTotal ?? p.total ?? 0),
     metodo: p.paymentMethod || p.metodo || "Efectivo",
-    pagoCon: p.paymentAmount ? String(p.paymentAmount) : p.pagoCon,
-    cambio: p.changeAmount !== undefined ? Number(p.changeAmount) : p.cambio,
+    pagoCon: p.paymentAmount != null ? String(p.paymentAmount) : p.pagoCon,
+    cambio: p.changeAmount != null ? Number(p.changeAmount) : p.cambio,
     comentario: p.comment || p.comentario,
     receiptUrl: p.receiptUrl,
     status: (event.status as OrderStatus) || p.status || "pending",
@@ -539,6 +539,7 @@ function buildCreateOrderItem(item: any, products: any[], additions: any[]) {
   return {
     productId: matchedProduct?.id || item.id || item.name,
     quantity: item.cantidad,
+    observation: item.observacion || undefined,
     additions: (item.adiciones || []).map((a: any) => {
       const matchedAddition = additions?.find(
         (add) =>
