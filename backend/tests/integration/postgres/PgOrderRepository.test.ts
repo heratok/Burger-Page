@@ -393,4 +393,80 @@ describe('PgOrderRepository (real Postgres, app_user role, via create_order_atom
       await expect(repo.save(order)).rejects.toBeInstanceOf(EntityNotFoundError);
     });
   });
+
+  describe('order editing and customers (WU-4)', () => {
+    const newId = (p: string) => `${p}-${randomUUID().slice(0, 8)}`;
+    const itemFor = () => [{ id: newId('item'), productId: PRODUCT_ID, productName: 'ignored', unitPrice: 0, quantity: 1 }];
+
+    const seedCustomer = async (phone: string, name: string, address: string) => {
+      const id = newId('cust');
+      await adminPool.query(
+        `INSERT INTO public.customers (id, restaurant_id, name, phone, address) VALUES ($1, $2, $3, $4, $5)`,
+        [id, RESTAURANT_A, name, phone, address]
+      );
+      return id;
+    };
+
+    it('4.3: stores the contact given in THIS order and reads it instead of the CRM profile', async () => {
+      if (!isDbConnected) return;
+      const custId = await seedCustomer(newId('300'), 'Profile Name', 'Profile street 1');
+      const order = new Order(newId('ord'), RESTAURANT_A, custId, itemFor(), 'pending', new Date());
+      (order as any).customer = { nombre: 'Typed Name', telefono: '3001112222', direccion: 'Typed street 99', barrio: 'Norte' };
+      await repo.save(order);
+
+      const found = await repo.findById(order.id, RESTAURANT_A);
+      expect((found as any).customer).toMatchObject({ nombre: 'Typed Name', direccion: 'Typed street 99', barrio: 'Norte' });
+      const list = await repo.findByRestaurantId(RESTAURANT_A);
+      expect((list.find((o) => o.id === order.id) as any).customer.direccion).toBe('Typed street 99');
+      const { rows } = await adminPool.query(`SELECT address FROM public.customers WHERE id = $1`, [custId]);
+      expect(rows[0].address).toBe('Profile street 1');
+    });
+
+    it('4.3: keeps the contact of an order without a customer row', async () => {
+      if (!isDbConnected) return;
+      const order = new Order(newId('ord'), RESTAURANT_A, undefined, itemFor(), 'pending', new Date());
+      (order as any).customer = { nombre: 'No Link', telefono: '3003334444', direccion: 'Somewhere 5', barrio: '' };
+      await repo.save(order);
+      const found = await repo.findById(order.id, RESTAURANT_A);
+      expect((found as any).customer).toMatchObject({ nombre: 'No Link', telefono: '3003334444', direccion: 'Somewhere 5' });
+    });
+
+    it('4.1: an item edit does not revert a concurrent status change', async () => {
+      if (!isDbConnected) return;
+      const order = new Order(newId('ord'), RESTAURANT_A, undefined, itemFor(), 'pending', new Date());
+      await repo.save(order);
+      const stale = await repo.findById(order.id, RESTAURANT_A); // status: pending
+
+      await repo.updateStatus(order.id, 'cooking', RESTAURANT_A, ACTOR_ID); // concurrent status change
+      await repo.update(stale!, RESTAURANT_A); // edit based on the stale snapshot
+
+      const after = await repo.findById(order.id, RESTAURANT_A);
+      expect(after?.status).toBe('cooking');
+    });
+
+    it('4.2 + 4.4: changing the customer persists customer_id, leaves B profile intact and recomputes BOTH customers', async () => {
+      if (!isDbConnected) return;
+      const custA = await seedCustomer(newId('301'), 'Cust A', 'A street');
+      const custB = await seedCustomer(newId('302'), 'Cust B', 'B street');
+      const order = new Order(newId('ord'), RESTAURANT_A, custA, itemFor(), 'pending', new Date());
+      await repo.save(order);
+
+      const metrics = async (id: string) =>
+        (await adminPool.query(`SELECT total_orders, total_spent::float AS total_spent FROM public.customers WHERE id = $1`, [id])).rows[0];
+      expect((await metrics(custA)).total_orders).toBe(1);
+      expect((await metrics(custB)).total_orders).toBe(0);
+
+      const loaded = (await repo.findById(order.id, RESTAURANT_A))!;
+      (loaded as any).customerId = custB;
+      (loaded as any).customer = { nombre: 'Typed', telefono: '0', direccion: 'Typed street', barrio: 'X' };
+      await repo.update(loaded, RESTAURANT_A);
+
+      const { rows } = await adminPool.query(`SELECT customer_id FROM public.orders WHERE id = $1`, [order.id]);
+      expect(rows[0].customer_id).toBe(custB);
+      const bRow = (await adminPool.query(`SELECT name, address FROM public.customers WHERE id = $1`, [custB])).rows[0];
+      expect(bRow).toEqual({ name: 'Cust B', address: 'B street' });
+      expect(await metrics(custA)).toEqual({ total_orders: 0, total_spent: 0 });
+      expect((await metrics(custB)).total_orders).toBe(1);
+    });
+  });
 });

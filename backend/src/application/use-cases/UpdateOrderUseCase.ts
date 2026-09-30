@@ -6,6 +6,7 @@ import { ProductAdditionRepository } from '../../domain/ports/out/ProductAdditio
 import { CustomerRepository } from '../../domain/ports/out/CustomerRepository.js';
 import { UpdateOrderDTO } from '../dtos/index.js';
 import { EntityNotFoundError, ValidationError } from '../../domain/errors/DomainErrors.js';
+import { UserRole } from '../../domain/models/User.js';
 
 const MAX_ITEM_QUANTITY = 100;
 const MAX_ADDITION_QUANTITY = 10;
@@ -18,10 +19,20 @@ export class UpdateOrderUseCase {
     private readonly customerRepo?: CustomerRepository
   ) {}
 
-  async execute(id: string, dto: UpdateOrderDTO, restaurantId: string): Promise<Order> {
+  async execute(
+    id: string,
+    dto: UpdateOrderDTO,
+    restaurantId: string,
+    actorId?: string,
+    actorRole?: UserRole
+  ): Promise<Order> {
     const { order, resolvedRestId } = await this.findAndValidateOrder(id, restaurantId);
 
     await this.updateCustomerInfo(order, dto.customer, resolvedRestId);
+    // Snapshot BEFORE applyOrderMetadata mutates it: the CAS compares against the
+    // state the domain validated, not the target (same contract as
+    // UpdateOrderStatusUseCase).
+    const previousStatus = order.status;
     this.applyOrderMetadata(order, dto);
 
     if (dto.items !== undefined) {
@@ -29,6 +40,14 @@ export class UpdateOrderUseCase {
     }
 
     this.recalculatePayment(order, dto.paymentAmount);
+
+    // 4.1: orderRepo.update never writes status (it would revert a concurrent
+    // status change with this stale snapshot). A status carried by the payload is
+    // applied through the status path with CAS + actor, before the edit, so a
+    // concurrent change aborts the whole edit instead of being overwritten.
+    if (dto.status !== undefined && dto.status !== previousStatus) {
+      await this.orderRepo.updateStatus(id, dto.status as Order['status'], resolvedRestId, actorId, actorRole, previousStatus);
+    }
 
     const updated = await this.orderRepo.update(order, resolvedRestId);
     return updated || order;
@@ -98,12 +117,19 @@ export class UpdateOrderUseCase {
     if (!this.customerRepo) return;
 
     const rawPhone = customerDto.phone?.trim();
+    const previousCustomerId = order.customerId;
     if (rawPhone) {
       const existingWithPhone = await this.customerRepo.findByPhone(rawPhone, resolvedRestId);
       if (existingWithPhone) {
         (order as any).customerId = existingWithPhone.id;
-        this.applyCustomerFields(existingWithPhone, customerDto);
-        await this.customerRepo.save(existingWithPhone);
+        // 4.2: only the order's OWN customer profile may be edited from an order.
+        // A different customer matched by phone is just linked (customer_id is
+        // persisted by the repository); the typed contact stays on this order's
+        // snapshot and never overwrites that customer's stored profile.
+        if (existingWithPhone.id === previousCustomerId) {
+          this.applyCustomerFields(existingWithPhone, customerDto);
+          await this.customerRepo.save(existingWithPhone);
+        }
         return;
       }
     }

@@ -295,6 +295,13 @@ CREATE TABLE IF NOT EXISTS public.orders (
     comment         TEXT,
     receipt_url     TEXT,
     client_order_id TEXT,
+    -- WU-4 (4.3): snapshot de contacto capturado al crear/editar ESTE pedido.
+    -- Nullable: los pedidos previos se rellenan desde customers en la migración
+    -- 0000000000006 y la lectura hace COALESCE(snapshot, customers).
+    contact_name    TEXT,
+    contact_phone   TEXT,
+    contact_address TEXT,
+    contact_barrio  TEXT,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     -- WU-1b (M2/M3): el customer referenciado debe pertenecer al mismo
@@ -316,6 +323,10 @@ CREATE TABLE IF NOT EXISTS public.orders (
 COMMENT ON TABLE public.orders IS 'Cabecera de venta. subtotal/total_final los calcula la BD (create_order_atomic).';
 COMMENT ON COLUMN public.orders.status IS 'Estado del pedido. Valores = enum del contrato HTTP (no renombrar sin full-stack).';
 COMMENT ON COLUMN public.orders.client_order_id IS 'Idempotencia SUS-19: correlación del cliente; único por (restaurant_id, client_order_id).';
+COMMENT ON COLUMN public.orders.contact_name IS 'Snapshot del nombre de contacto dado en ESTE pedido (prevalece sobre customers.name al leer).';
+COMMENT ON COLUMN public.orders.contact_phone IS 'Snapshot del teléfono de contacto dado en ESTE pedido.';
+COMMENT ON COLUMN public.orders.contact_address IS 'Snapshot de la dirección de entrega dada en ESTE pedido.';
+COMMENT ON COLUMN public.orders.contact_barrio IS 'Snapshot del barrio de entrega dado en ESTE pedido.';
 
 -- 2.7.1 ORDER STATUS HISTORY --------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.order_status_history (
@@ -540,6 +551,7 @@ LANGUAGE plpgsql
 SET search_path = public, pg_temp
 AS $$
 DECLARE
+    v_customer_ids TEXT[];
     v_customer_id TEXT;
     v_restaurant_id TEXT;
     v_total_orders INTEGER;
@@ -551,45 +563,49 @@ BEGIN
     -- COALESCE ran unconditionally and every DELETE on public.orders
     -- raised 'record "new" is not assigned yet').
     -- WU-1b (M2/M3): el agregado se filtra por el restaurante de la orden
-    -- disparadora (fuente OLD/NEW según operación, igual que v_customer_id)
+    -- disparadora (fuente OLD/NEW según operación, igual que los customer ids)
     -- para que las ventas de un tenant jamás recomputen los totales de un
     -- customer de otro tenant, aunque hubiera entrado un link cross-tenant
     -- antes del fix de FKs compuestos.
+    -- WU-4 (4.4): cuando customer_id cambia A -> B (o A -> NULL) se recomputan
+    -- AMBOS clientes; antes solo se recomputaba COALESCE(NEW, OLD) y el
+    -- cliente anterior conservaba totales obsoletos.
     IF TG_OP = 'DELETE' THEN
-        v_customer_id := OLD.customer_id;
+        v_customer_ids := ARRAY[OLD.customer_id];
         v_restaurant_id := OLD.restaurant_id;
     ELSIF TG_OP = 'UPDATE' THEN
-        v_customer_id := COALESCE(NEW.customer_id, OLD.customer_id);
+        v_customer_ids := ARRAY[NEW.customer_id, OLD.customer_id];
         v_restaurant_id := COALESCE(NEW.restaurant_id, OLD.restaurant_id);
     ELSE
-        v_customer_id := NEW.customer_id;
+        v_customer_ids := ARRAY[NEW.customer_id];
         v_restaurant_id := NEW.restaurant_id;
     END IF;
-    IF v_customer_id IS NULL THEN
-        RETURN NEW;
-    END IF;
 
-    SELECT 
-        COUNT(*),
-        COALESCE(SUM(final_total), 0.00),
-        MAX(created_at)
-    INTO 
-        v_total_orders,
-        v_total_spent,
-        v_last_order_date
-    FROM public.orders
-    WHERE customer_id = v_customer_id
-      AND restaurant_id = v_restaurant_id
-      AND status != 'cancelled';
+    FOR v_customer_id IN
+        SELECT DISTINCT c FROM unnest(v_customer_ids) AS c WHERE c IS NOT NULL
+    LOOP
+        SELECT
+            COUNT(*),
+            COALESCE(SUM(final_total), 0.00),
+            MAX(created_at)
+        INTO
+            v_total_orders,
+            v_total_spent,
+            v_last_order_date
+        FROM public.orders
+        WHERE customer_id = v_customer_id
+          AND restaurant_id = v_restaurant_id
+          AND status != 'cancelled';
 
-    UPDATE public.customers
-    SET 
-        total_orders = v_total_orders,
-        total_spent = v_total_spent,
-        last_order_date = v_last_order_date,
-        updated_at = NOW()
-    WHERE id = v_customer_id
-      AND restaurant_id = v_restaurant_id;
+        UPDATE public.customers
+        SET
+            total_orders = v_total_orders,
+            total_spent = v_total_spent,
+            last_order_date = v_last_order_date,
+            updated_at = NOW()
+        WHERE id = v_customer_id
+          AND restaurant_id = v_restaurant_id;
+    END LOOP;
 
     RETURN NEW;
 END;

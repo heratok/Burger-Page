@@ -283,7 +283,9 @@ export class OrderController {
     const updatedOrder = await this.updateOrderUseCase.execute(
       params.id,
       parsed.data as UpdateOrderDTO,
-      restaurantId
+      restaurantId,
+      req.authContext?.userId,
+      req.authContext?.role
     );
 
     // Publish SSE Real-time Event with tenant ID

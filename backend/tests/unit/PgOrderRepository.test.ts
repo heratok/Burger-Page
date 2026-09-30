@@ -68,12 +68,12 @@ describe('PgOrderRepository.update (Status Persistence)', () => {
 
     const updateSql = h.queries.find((q) => q.includes('UPDATE public.orders SET'));
     expect(updateSql).toBeDefined();
-    expect(updateSql).toContain('status');
-    expect(updateSql).toContain('status = $8');
+    // 4.1: an item edit must never write status (status changes only via the status RPC).
+    expect(updateSql).not.toMatch(/\bstatus\s*=/);
     expect(updateSql).not.toContain('customer_name');
   });
 
-  it('includes status in the single UPDATE when an order exists', async () => {
+  it('does not include status in the single UPDATE when an order exists (4.1)', async () => {
     h.client.query = vi.fn(async (sql: string) => {
       h.queries.push(sql);
       if (sql.includes('SELECT * FROM public.orders')) return { rows: [{ id: 'ord-1', customer_id: null }] };
@@ -87,7 +87,7 @@ describe('PgOrderRepository.update (Status Persistence)', () => {
 
     const updateSql = h.queries.find((q) => q.includes('UPDATE public.orders SET'));
     expect(updateSql).toBeDefined();
-    expect(updateSql).toContain('status');
+    expect(updateSql).not.toMatch(/\bstatus\s*=/);
     expect(updateSql).not.toContain('customer_name');
   });
 
@@ -316,5 +316,123 @@ describe('PgOrderRepository.save (RPC error mapping and idempotent race)', () =>
     });
     const repo = new PgOrderRepository();
     await expect(repo.save(makeOrder('cli-y'))).rejects.toMatchObject({ code: '23505' });
+  });
+});
+
+
+describe('PgOrderRepository.update (customer link and contact snapshot, 4.1/4.2/4.3)', () => {
+  const orderWith = (customerId?: string, customer?: Record<string, string>): Order => {
+    const order = new Order('ord-1', 'rest-a', customerId, [], 'cooking', new Date(), 0, 101);
+    if (customer) (order as any).customer = customer;
+    return order;
+  };
+
+  const setup = () => {
+    const calls: { sql: string; params: unknown[] }[] = [];
+    h.client.query = vi.fn(async (sql: string, params: unknown[] = []) => {
+      calls.push({ sql, params });
+      if (sql.includes('SELECT * FROM public.orders')) return { rows: [{ id: 'ord-1', customer_id: 'cust-a' }] };
+      if (sql.includes('LEFT JOIN public.customers')) {
+        return { rows: [{ id: 'ord-1', restaurant_id: 'rest-a', status: 'cooking', customer_id: 'cust-b', subtotal: 0, delivery_fee: 0, final_total: 0, payment_method: 'Efectivo', created_at: new Date() }] };
+      }
+      return { rows: [] };
+    });
+    return calls;
+  };
+
+  it('persists customer_id (never nulls it when absent) in the orders UPDATE', async () => {
+    const calls = setup();
+    await new PgOrderRepository().update(orderWith('cust-b'), 'rest-a');
+    const upd = calls.find((c) => c.sql.includes('UPDATE public.orders SET'))!;
+    expect(upd.sql).toContain('customer_id = COALESCE(');
+    expect(upd.params).toContain('cust-b');
+  });
+
+  it('never rewrites public.customers from the order repository (no profile overwrite)', async () => {
+    const calls = setup();
+    await new PgOrderRepository().update(
+      orderWith('cust-b', { name: 'Given Name', phone: '300', address: 'Some street', barrio: 'X' }),
+      'rest-a'
+    );
+    expect(calls.some((c) => c.sql.includes('UPDATE public.customers'))).toBe(false);
+  });
+
+  it('writes the contact snapshot of THIS order when a customer payload is present', async () => {
+    const calls = setup();
+    await new PgOrderRepository().update(
+      orderWith('cust-b', { name: 'Given Name', phone: '300', address: 'Some street', barrio: 'X' }),
+      'rest-a'
+    );
+    const upd = calls.find((c) => c.sql.includes('UPDATE public.orders SET'))!;
+    expect(upd.sql).toContain('contact_address = COALESCE(');
+    expect(upd.params).toEqual(expect.arrayContaining(['Given Name', '300', 'Some street', 'X']));
+  });
+});
+
+describe('PgOrderRepository reads prefer the order contact snapshot (4.3)', () => {
+  it('findById/findByRestaurantId COALESCE the snapshot over the customer profile', async () => {
+    const queries: string[] = [];
+    h.client.query = vi.fn(async (sql: string) => {
+      queries.push(sql);
+      if (sql.includes('LEFT JOIN public.customers')) {
+        return {
+          rows: [{
+            id: 'ord-1', restaurant_id: 'rest-a', status: 'pending', created_at: new Date(),
+            customer_id: 'cust-a', delivery_fee: 0, payment_method: 'Efectivo',
+            customer_name: 'Snap Name', customer_phone: '300', customer_address: 'Snap street', customer_barrio: 'B',
+          }],
+        };
+      }
+      return { rows: [] };
+    });
+    const repo = new PgOrderRepository();
+    const one = await repo.findById('ord-1', 'rest-a');
+    const list = await repo.findByRestaurantId('rest-a');
+    const joinSql = queries.filter((q) => q.includes('LEFT JOIN public.customers'));
+    expect(joinSql).toHaveLength(2);
+    for (const q of joinSql) {
+      expect(q).toContain('COALESCE(o.contact_address, c.address)');
+      expect(q).toContain('COALESCE(o.contact_name, c.name)');
+      expect(q).toContain('COALESCE(o.contact_phone, c.phone)');
+      expect(q).toContain('COALESCE(o.contact_barrio, c.barrio)');
+    }
+    expect((one as any).customer.direccion).toBe('Snap street');
+    expect((list[0] as any).customer.direccion).toBe('Snap street');
+  });
+});
+
+describe('PgOrderRepository.save writes the contact snapshot for new orders only (4.3)', () => {
+  const makeOrder = (): Order => {
+    const order = new Order(
+      'ord-new', 'rest-a', undefined,
+      [{ id: 'item-1', productId: 'prod-1', productName: 'Burger', unitPrice: 0, quantity: 1 }],
+      'pending', new Date(), 0
+    );
+    (order as any).customer = { nombre: 'Anon', telefono: '3001', direccion: 'Street 1', barrio: 'Centro' };
+    return order;
+  };
+
+  it('issues one snapshot UPDATE in the same transaction after the RPC creates the order', async () => {
+    const calls: { sql: string; params: unknown[] }[] = [];
+    h.client.query = vi.fn(async (sql: string, params: unknown[] = []) => {
+      calls.push({ sql, params });
+      if (sql.includes('create_order_atomic')) return { rows: [{ create_order_atomic: { id: 'ord-new', order_number: 7 } }] };
+      return { rows: [] };
+    });
+    await new PgOrderRepository().save(makeOrder());
+    const snap = calls.find((c) => c.sql.includes('contact_name'))!;
+    expect(snap).toBeDefined();
+    expect(snap.params).toEqual(expect.arrayContaining(['Anon', '3001', 'Street 1', 'Centro', 'ord-new', 'rest-a']));
+  });
+
+  it('does not touch the snapshot on an idempotent replay (RPC returns the original id)', async () => {
+    const calls: string[] = [];
+    h.client.query = vi.fn(async (sql: string) => {
+      calls.push(sql);
+      if (sql.includes('create_order_atomic')) return { rows: [{ create_order_atomic: { id: 'ord-original', order_number: 3 } }] };
+      return { rows: [] };
+    });
+    await new PgOrderRepository().save(makeOrder());
+    expect(calls.some((q) => q.includes('contact_name'))).toBe(false);
   });
 });
