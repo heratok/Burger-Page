@@ -386,9 +386,12 @@ export function syncBackendCustomers(
         (c) => cleanPhoneNumber(c.telefono) === cleanPhone
       )
 
-    const custOrders = nextOrders.filter(
+    const matchedOrders = nextOrders.filter(
       (o) => cleanPhoneNumber(o.customer.telefono) === cleanPhone
     )
+    // Same rule as the DB trigger update_customer_order_metrics: cancelled
+    // orders never count toward orders/spent/last order/loyalty.
+    const custOrders = matchedOrders.filter((o) => o.status !== "cancelled")
     const totalSpent = custOrders.reduce((sum, o) => sum + (o.finalTotal || o.total || 0), 0)
     const totalOrders = custOrders.length
     const lastOrderDate = custOrders[0]?.createdAt || bc.createdAt || new Date().toISOString()
@@ -400,8 +403,10 @@ export function syncBackendCustomers(
       telefono: bc.phone || existing?.telefono || "",
       direccion: bc.address ?? existing?.direccion ?? "",
       barrio: bc.barrio ?? existing?.barrio ?? "",
-      totalOrders: totalOrders || existing?.totalOrders || 0,
-      totalSpent: totalSpent || existing?.totalSpent || 0,
+      // Keep the stored figures only when no order of this customer is loaded at
+      // all; a customer whose loaded orders are all cancelled really has zero.
+      totalOrders: matchedOrders.length > 0 ? totalOrders : existing?.totalOrders || 0,
+      totalSpent: matchedOrders.length > 0 ? totalSpent : existing?.totalSpent || 0,
       lastOrderDate,
       loyaltyTier,
       notes: bc.notes ?? existing?.notes ?? "",
