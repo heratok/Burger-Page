@@ -1,7 +1,8 @@
 -- ============================================================================
 -- BURGER-PAGE — Pure PostgreSQL Canonical Relational Schema
 -- File: database/schema.sql
--- Description: Standard, vendor-neutral PostgreSQL DDL (Postgres 14+).
+-- Description: Standard, vendor-neutral PostgreSQL DDL (Postgres 15+; the
+--              composite tenant FKs use ON DELETE SET NULL (column_list)).
 --              Designed for a trusted backend (Fastify, hexagonal architecture)
 --              using standard 'pg' pool with multi-tenant isolation via
 --              PostgreSQL Row Level Security (RLS) and session-level GUCs.
@@ -1011,37 +1012,21 @@ GRANT USAGE ON SCHEMA public TO app_user;
 -- statement's lock footprint to one table (see the lock discipline note
 -- under section 7).
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.restaurants TO app_user;
-COMMIT;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.restaurant_settings TO app_user;
-COMMIT;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.restaurant_branding TO app_user;
-COMMIT;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.restaurant_hours TO app_user;
-COMMIT;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.categories TO app_user;
-COMMIT;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.products TO app_user;
-COMMIT;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.product_additions TO app_user;
-COMMIT;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.customers TO app_user;
-COMMIT;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.orders TO app_user;
-COMMIT;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.order_items TO app_user;
-COMMIT;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.order_item_additions TO app_user;
-COMMIT;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.order_status_history TO app_user;
-COMMIT;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.suppliers TO app_user;
-COMMIT;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.inventory_items TO app_user;
-COMMIT;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.restaurant_order_counters TO app_user;
-COMMIT;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.users TO app_user;
-COMMIT;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO app_user;
 
 GRANT EXECUTE ON FUNCTION public.adjust_inventory_stock(TEXT, TEXT, NUMERIC) TO app_user;
@@ -1079,67 +1064,52 @@ $$;
 -- 7. ROW LEVEL SECURITY (Multi-Tenant Isolation & Storefront Access)
 --
 -- Lock discipline: DROP/CREATE POLICY and ALTER TABLE ... ROW LEVEL SECURITY
--- take ACCESS EXCLUSIVE table locks. The integration suite re-applies this
--- whole file through a single multi-statement driver query while other test
--- files run DML; server logs proved that in that transport the intermediate
--- COMMITs below are no-ops ("there is no transaction in progress") and do
--- NOT partition the implicit batch transaction — the reapply can hold two
--- tables' ACE locks at once and deadlock against concurrent INSERTs doing
--- foreign-key pre-checks (RowShare on child + parent tables). The real guard
--- lives in the runner: run-postgres-tests.ts executes the postgres suites
--- serially (--fileParallelism=false), so the reapply never overlaps
--- in-flight DML. The COMMITs are kept because they are harmless no-ops in
--- per-statement autocommit contexts (psql -f, docker-entrypoint initdb, the
--- CI schema step).
+-- take ACCESS EXCLUSIVE table locks. This file is ONE atomic unit: it has no
+-- transaction control of its own, so apply it as a single transaction
+-- (`psql -v ON_ERROR_STOP=1 -1 -f 01_schema.sql`, or one multi-statement
+-- driver query); a failure then leaves the database untouched instead of
+-- half-built. The flip side is that a re-apply holds the ACE locks of every
+-- table until the end, so it can deadlock against concurrent DML doing
+-- foreign-key pre-checks (RowShare on child + parent tables). The guard lives
+-- in the runner: run-postgres-tests.ts executes the postgres suites serially
+-- (--fileParallelism=false), so the reapply never overlaps in-flight DML.
+-- docker-entrypoint-initdb.d runs it with plain `psql -f` (autocommit,
+-- non-atomic but on an empty database, which is fine).
+-- Nothing here needs to run outside a transaction (no CREATE INDEX
+-- CONCURRENTLY, no ALTER TYPE ... ADD VALUE).
 -- ============================================================================
 ALTER TABLE public.restaurants               ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.restaurants               FORCE ROW LEVEL SECURITY;
-COMMIT;
 ALTER TABLE public.restaurant_settings       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.restaurant_settings       FORCE ROW LEVEL SECURITY;
-COMMIT;
 ALTER TABLE public.restaurant_branding       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.restaurant_branding       FORCE ROW LEVEL SECURITY;
-COMMIT;
 ALTER TABLE public.restaurant_hours          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.restaurant_hours          FORCE ROW LEVEL SECURITY;
-COMMIT;
 ALTER TABLE public.categories                ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.categories                FORCE ROW LEVEL SECURITY;
-COMMIT;
 ALTER TABLE public.products                  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.products                  FORCE ROW LEVEL SECURITY;
-COMMIT;
 ALTER TABLE public.product_additions         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.product_additions         FORCE ROW LEVEL SECURITY;
-COMMIT;
 ALTER TABLE public.customers                 ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.customers                 FORCE ROW LEVEL SECURITY;
-COMMIT;
 ALTER TABLE public.orders                    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.orders                    FORCE ROW LEVEL SECURITY;
-COMMIT;
 ALTER TABLE public.order_items               ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.order_items               FORCE ROW LEVEL SECURITY;
-COMMIT;
 ALTER TABLE public.order_item_additions      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.order_item_additions      FORCE ROW LEVEL SECURITY;
-COMMIT;
 ALTER TABLE public.order_status_history      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.order_status_history      FORCE ROW LEVEL SECURITY;
-COMMIT;
 ALTER TABLE public.suppliers                 ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.suppliers                 FORCE ROW LEVEL SECURITY;
-COMMIT;
 ALTER TABLE public.inventory_items           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.inventory_items           FORCE ROW LEVEL SECURITY;
-COMMIT;
 ALTER TABLE public.restaurant_order_counters ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.restaurant_order_counters FORCE ROW LEVEL SECURITY;
-COMMIT;
 ALTER TABLE public.users                     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.users                     FORCE ROW LEVEL SECURITY;
-COMMIT;
 
 -- 7.1 Public Read Policies (Storefront Menu & Restaurant Discovery)
 DROP POLICY IF EXISTS "public_read_active_restaurants" ON public.restaurants;
@@ -1147,44 +1117,37 @@ CREATE POLICY "public_read_active_restaurants"
     ON public.restaurants FOR SELECT
     USING (is_active = TRUE);
 
-COMMIT;
 DROP POLICY IF EXISTS "public_read_restaurant_settings" ON public.restaurant_settings;
 CREATE POLICY "public_read_restaurant_settings"
     ON public.restaurant_settings FOR SELECT
     USING (TRUE);
 
-COMMIT;
 DROP POLICY IF EXISTS "public_read_restaurant_branding" ON public.restaurant_branding;
 CREATE POLICY "public_read_restaurant_branding"
     ON public.restaurant_branding FOR SELECT
     USING (TRUE);
 
-COMMIT;
 DROP POLICY IF EXISTS "public_read_restaurant_hours" ON public.restaurant_hours;
 CREATE POLICY "public_read_restaurant_hours"
     ON public.restaurant_hours FOR SELECT
     USING (TRUE);
 
-COMMIT;
 DROP POLICY IF EXISTS "public_read_categories" ON public.categories;
 CREATE POLICY "public_read_categories"
     ON public.categories FOR SELECT
     USING (is_active = TRUE);
 
-COMMIT;
 DROP POLICY IF EXISTS "public_read_available_products" ON public.products;
 CREATE POLICY "public_read_available_products"
     ON public.products FOR SELECT
     USING (is_available = TRUE);
 
-COMMIT;
 DROP POLICY IF EXISTS "public_read_available_additions" ON public.product_additions;
 CREATE POLICY "public_read_available_additions"
     ON public.product_additions FOR SELECT
     USING (is_available = TRUE);
 
 -- 7.2 Multi-Tenant Write & Admin Policies (Optimized with InitPlan caching)
-COMMIT;
     -- Users auth policy: scoped reads.
     --  - Tenant sessions see only their own restaurant's users.
     --  - Super-admin context sees all users.
@@ -1368,7 +1331,6 @@ COMMIT;
             OR (restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), '')))
         );
     
-COMMIT;
 -- Restaurants write isolation
 DROP POLICY IF EXISTS "tenant_isolation_restaurants_write" ON public.restaurants;
 CREATE POLICY "tenant_isolation_restaurants_write" ON public.restaurants
@@ -1376,7 +1338,6 @@ CREATE POLICY "tenant_isolation_restaurants_write" ON public.restaurants
     USING ((id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text))
     WITH CHECK ((id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
 
-COMMIT;
 -- Restaurant Settings isolation
 DROP POLICY IF EXISTS "tenant_isolation_restaurant_settings" ON public.restaurant_settings;
 CREATE POLICY "tenant_isolation_restaurant_settings" ON public.restaurant_settings
@@ -1384,7 +1345,6 @@ CREATE POLICY "tenant_isolation_restaurant_settings" ON public.restaurant_settin
     USING ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text))
     WITH CHECK ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
 
-COMMIT;
 -- Restaurant Branding isolation
 DROP POLICY IF EXISTS "tenant_isolation_restaurant_branding" ON public.restaurant_branding;
 CREATE POLICY "tenant_isolation_restaurant_branding" ON public.restaurant_branding
@@ -1392,7 +1352,6 @@ CREATE POLICY "tenant_isolation_restaurant_branding" ON public.restaurant_brandi
     USING ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text))
     WITH CHECK ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
 
-COMMIT;
 -- Restaurant Hours isolation
 DROP POLICY IF EXISTS "tenant_isolation_restaurant_hours_select" ON public.restaurant_hours;
 CREATE POLICY "tenant_isolation_restaurant_hours_select" ON public.restaurant_hours
@@ -1415,7 +1374,6 @@ CREATE POLICY "tenant_isolation_restaurant_hours_delete" ON public.restaurant_ho
     FOR DELETE
     USING ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
 
-COMMIT;
 -- Categories isolation
 DROP POLICY IF EXISTS "tenant_isolation_categories_select" ON public.categories;
 CREATE POLICY "tenant_isolation_categories_select" ON public.categories
@@ -1438,7 +1396,6 @@ CREATE POLICY "tenant_isolation_categories_delete" ON public.categories
     FOR DELETE
     USING ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
 
-COMMIT;
 -- Products isolation
 DROP POLICY IF EXISTS "tenant_isolation_products_select" ON public.products;
 CREATE POLICY "tenant_isolation_products_select" ON public.products
@@ -1461,7 +1418,6 @@ CREATE POLICY "tenant_isolation_products_delete" ON public.products
     FOR DELETE
     USING ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
 
-COMMIT;
 -- Product Additions isolation
 DROP POLICY IF EXISTS "tenant_isolation_product_additions_select" ON public.product_additions;
 CREATE POLICY "tenant_isolation_product_additions_select" ON public.product_additions
@@ -1484,7 +1440,6 @@ CREATE POLICY "tenant_isolation_product_additions_delete" ON public.product_addi
     FOR DELETE
     USING ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
 
-COMMIT;
 -- Customers isolation
 DROP POLICY IF EXISTS "tenant_isolation_customers" ON public.customers;
 CREATE POLICY "tenant_isolation_customers" ON public.customers
@@ -1492,7 +1447,6 @@ CREATE POLICY "tenant_isolation_customers" ON public.customers
     USING ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text))
     WITH CHECK ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
 
-COMMIT;
 -- Orders isolation
 DROP POLICY IF EXISTS "tenant_isolation_orders" ON public.orders;
 CREATE POLICY "tenant_isolation_orders" ON public.orders
@@ -1500,7 +1454,6 @@ CREATE POLICY "tenant_isolation_orders" ON public.orders
     USING ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text))
     WITH CHECK ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
 
-COMMIT;
 -- Order Items isolation
 DROP POLICY IF EXISTS "tenant_isolation_order_items" ON public.order_items;
 CREATE POLICY "tenant_isolation_order_items" ON public.order_items
@@ -1508,7 +1461,6 @@ CREATE POLICY "tenant_isolation_order_items" ON public.order_items
     USING ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text))
     WITH CHECK ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
 
-COMMIT;
 -- Order Item Additions isolation
 DROP POLICY IF EXISTS "tenant_isolation_order_item_additions" ON public.order_item_additions;
 CREATE POLICY "tenant_isolation_order_item_additions" ON public.order_item_additions
@@ -1516,7 +1468,6 @@ CREATE POLICY "tenant_isolation_order_item_additions" ON public.order_item_addit
     USING ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text))
     WITH CHECK ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
 
-COMMIT;
 -- Order Status History isolation
 DROP POLICY IF EXISTS "tenant_isolation_order_status_history" ON public.order_status_history;
 CREATE POLICY "tenant_isolation_order_status_history" ON public.order_status_history
@@ -1524,7 +1475,6 @@ CREATE POLICY "tenant_isolation_order_status_history" ON public.order_status_his
     USING ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text))
     WITH CHECK ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
 
-COMMIT;
 -- Restaurant Order Counters isolation
 DROP POLICY IF EXISTS "tenant_isolation_restaurant_order_counters" ON public.restaurant_order_counters;
 CREATE POLICY "tenant_isolation_restaurant_order_counters" ON public.restaurant_order_counters
@@ -1532,7 +1482,6 @@ CREATE POLICY "tenant_isolation_restaurant_order_counters" ON public.restaurant_
     USING ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text))
     WITH CHECK ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
 
-COMMIT;
 -- Suppliers isolation
 DROP POLICY IF EXISTS "tenant_isolation_suppliers" ON public.suppliers;
 CREATE POLICY "tenant_isolation_suppliers" ON public.suppliers
@@ -1540,7 +1489,6 @@ CREATE POLICY "tenant_isolation_suppliers" ON public.suppliers
     USING ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text))
     WITH CHECK ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
 
-COMMIT;
 -- Inventory Items isolation
 DROP POLICY IF EXISTS "tenant_isolation_inventory_items" ON public.inventory_items;
 CREATE POLICY "tenant_isolation_inventory_items" ON public.inventory_items

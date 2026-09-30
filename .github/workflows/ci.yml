@@ -57,7 +57,7 @@ jobs:
         run: |
           docker cp ./database/01_schema.sql "${{ job.services.postgres.id }}":/tmp/01_schema.sql
           docker cp ./database/02_seed.sql "${{ job.services.postgres.id }}":/tmp/02_seed.sql
-          docker exec "${{ job.services.postgres.id }}" psql -U postgres -d burger_page_test -v ON_ERROR_STOP=1 -f /tmp/01_schema.sql
+          docker exec "${{ job.services.postgres.id }}" psql -U postgres -d burger_page_test -v ON_ERROR_STOP=1 -1 -f /tmp/01_schema.sql
           docker exec "${{ job.services.postgres.id }}" psql -U postgres -d burger_page_test -v ON_ERROR_STOP=1 -f /tmp/02_seed.sql
 
       - name: Run PostgreSQL integration tests
@@ -113,7 +113,7 @@ jobs:
         run: |
           docker cp ./database/01_schema.sql "${{ job.services.postgres.id }}":/tmp/01_schema.sql
           docker cp ./database/02_seed.sql "${{ job.services.postgres.id }}":/tmp/02_seed.sql
-          docker exec "${{ job.services.postgres.id }}" psql -U postgres -d burger_page_test -v ON_ERROR_STOP=1 -f /tmp/01_schema.sql
+          docker exec "${{ job.services.postgres.id }}" psql -U postgres -d burger_page_test -v ON_ERROR_STOP=1 -1 -f /tmp/01_schema.sql
           docker exec "${{ job.services.postgres.id }}" psql -U postgres -d burger_page_test -v ON_ERROR_STOP=1 -f /tmp/02_seed.sql
 
       # @burger-page/contracts ships compiled JS only via its dist/ folder,

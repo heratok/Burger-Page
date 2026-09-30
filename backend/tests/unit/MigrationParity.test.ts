@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const dbDir = resolve(__dirname, '../../../database');
@@ -35,6 +35,38 @@ describe('migration 0000000000006 parity with the baseline schema', () => {
       expect(baseline).toMatch(new RegExp(`\\b${col}\\s+TEXT,`));
       expect(up).toContain(`ADD COLUMN IF NOT EXISTS ${col}`);
       expect(down).toContain(`DROP COLUMN IF EXISTS ${col}`);
+    }
+  });
+});
+
+describe('schema file structure', () => {
+  const baseline = read('01_schema.sql');
+
+  it('has no transaction control statements so it applies atomically with psql -1', () => {
+    expect(baseline).not.toMatch(/^\s*(BEGIN|COMMIT|ROLLBACK|START TRANSACTION)\s*;/im);
+  });
+
+  it('has no statement that cannot run inside a transaction block', () => {
+    const code = baseline.replace(/^\s*--.*$/gm, '');
+    expect(code).not.toMatch(/CREATE INDEX CONCURRENTLY|ALTER TYPE[^;]*ADD VALUE|CREATE DATABASE|VACUUM\b/i);
+  });
+
+  it('documents the real minimum PostgreSQL version (15+)', () => {
+    expect(baseline).toMatch(/Postgres 15\+/);
+    expect(baseline).not.toMatch(/Postgres 14\+/);
+  });
+
+  it('migrations never open or close their own transaction (node-pg-migrate wraps them)', () => {
+    const dir = resolve(dbDir, 'migrations');
+    for (const file of readdirSync(dir).filter((f) => f.endsWith('.sql'))) {
+      expect(read(`migrations/${file}`), file).not.toMatch(/^\s*(BEGIN|COMMIT|ROLLBACK)\s*;/im);
+    }
+  });
+
+  it('migration files avoid the up/down marker comments node-pg-migrate scans for', () => {
+    const dir = resolve(dbDir, 'migrations');
+    for (const file of readdirSync(dir).filter((f) => f.endsWith('.sql'))) {
+      expect(read(`migrations/${file}`), file).not.toMatch(/^\s*--[\s-]*(up|down)\s+migration/im);
     }
   });
 });
