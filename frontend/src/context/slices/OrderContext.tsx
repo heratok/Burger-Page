@@ -853,15 +853,43 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [effectiveId, session, updateActiveRestaurantRecord])
 
+  // Silent refetch used after an SSE reconnect (no loading flag: staff keep
+  // working while the board is reconciled).
+  const catchUpOrdersRef = useRef<() => Promise<void>>(async () => {})
+  catchUpOrdersRef.current = async () => {
+    const targetRestId = effectiveId
+    if (!targetRestId || !apiClient.hasToken()) return
+    try {
+      const [backendOrders, backendCustomers] = await Promise.all([
+        apiClient.fetchOrders(targetRestId),
+        apiClient.fetchCustomers(targetRestId).catch(() => []),
+      ])
+      updateActiveRestaurantRecord((current) =>
+        syncBackendDataToRestaurant(current, targetRestId, backendOrders, backendCustomers)
+      )
+    } catch (err) {
+      if (import.meta.env?.MODE !== 'test') {
+        console.warn("Could not catch up orders after SSE reconnect:", err)
+      }
+    }
+  }
+
   // Real-time SSE order stream subscription
   useEffect(() => {
     const targetRestId = effectiveId
     if (!targetRestId || !apiClient.hasToken()) return
 
-    const unsubscribe = apiClient.subscribeToOrderStream((event: OrderEvent) => {
-      if (!event || !event.orderId) return
-      updateActiveRestaurantRecord((current) => updateRestaurantOrderState(current, event))
-    }, targetRestId)
+    const unsubscribe = apiClient.subscribeToOrderStream(
+      (event: OrderEvent) => {
+        if (!event || !event.orderId) return
+        updateActiveRestaurantRecord((current) => updateRestaurantOrderState(current, event))
+      },
+      targetRestId,
+      // Events published while the stream was down are lost: catch up silently.
+      () => {
+        void catchUpOrdersRef.current()
+      }
+    )
 
     return () => {
       unsubscribe()
@@ -1060,9 +1088,11 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const updateOrderStatus = useCallback(
     (orderId: string, newStatus: OrderStatus) => {
-      // Snapshot the committed state so a rejected backend transition can
-      // roll the kanban back instead of silently diverging from the server.
-      const previousOrders = activeRestaurant.orders
+      // Remember only THIS order's previous status so a rejected transition
+      // reverts it alone (a whole-list snapshot would wipe SSE-added orders).
+      const previous = activeRestaurant.orders.find((o) => o.id === orderId)
+      const previousStatus = previous?.status
+      const previousUpdatedAt = previous?.updatedAt
 
       updateActiveRestaurantRecord((current) => ({
         ...current,
@@ -1082,7 +1112,13 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         // the kanban never silently diverges from server state.
         updateActiveRestaurantRecord((current) => ({
           ...current,
-          orders: previousOrders,
+          orders: current.orders.map((o) =>
+            // Only undo our own optimistic change: if another update (SSE)
+            // already moved the order elsewhere, leave it alone.
+            o.id === orderId && previousStatus !== undefined && o.status === newStatus
+              ? { ...o, status: previousStatus, updatedAt: previousUpdatedAt ?? o.updatedAt }
+              : o
+          ),
         }))
         toast.error(`No se pudo actualizar la orden a: ${newStatus.toUpperCase()}`)
       })
@@ -1092,6 +1128,10 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const updateOrderReceipt = useCallback(
     async (orderId: string, receiptUrl: string) => {
+      const previous = activeRestaurant.orders.find((o) => o.id === orderId)
+      const previousReceiptUrl = previous?.receiptUrl
+      const previousUpdatedAt = previous?.updatedAt
+
       updateActiveRestaurantRecord((current) => ({
         ...current,
         orders: current.orders.map((o) =>
@@ -1100,17 +1140,28 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             : o
         ),
       }))
-      toast.success("Comprobante adjuntado correctamente")
 
       try {
         await apiClient.updateOrderReceipt(orderId, receiptUrl, activeRestaurant.id)
+        toast.success("Comprobante adjuntado correctamente")
       } catch (error) {
         if (import.meta.env?.MODE !== 'test') {
           console.warn(`Could not sync receipt update for order ${orderId} to backend API:`, error)
         }
+        updateActiveRestaurantRecord((current) => ({
+          ...current,
+          orders: current.orders.map((o) =>
+            o.id === orderId && o.receiptUrl === receiptUrl
+              ? { ...o, receiptUrl: previousReceiptUrl, updatedAt: previousUpdatedAt ?? o.updatedAt }
+              : o
+          ),
+        }))
+        toast.error("No se pudo adjuntar el comprobante")
+        // Callers must know the attach failed (they would otherwise report success).
+        throw error
       }
     },
-    [activeRestaurant.id, updateActiveRestaurantRecord]
+    [activeRestaurant.id, activeRestaurant.orders, updateActiveRestaurantRecord]
   )
 
   const deleteOrder = useCallback(

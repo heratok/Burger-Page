@@ -522,7 +522,11 @@ export class ApiClient {
    * Subscribes to real-time Server-Sent Events (SSE) for live order updates.
    * Returns an unsubscribe function.
    */
-    subscribeToOrderStream(onEvent: (event: OrderEvent) => void, restaurantId?: string): () => void {
+    subscribeToOrderStream(
+    onEvent: (event: OrderEvent) => void,
+    restaurantId?: string,
+    onReconnect?: () => void
+  ): () => void {
     if (typeof EventSource === 'undefined' || !this.token) {
       return () => {}
     }
@@ -531,6 +535,9 @@ export class ApiClient {
     let disposed = false
     let attempt = 0
     let reconnecting = false
+    // True once the stream dropped: the next successful open is a RECONNECT,
+    // and events published during the gap were missed (caller must catch up).
+    let dropped = false
     const MAX_RECONNECT_DELAY_MS = 30_000
 
     const scheduleReconnect = () => {
@@ -574,6 +581,14 @@ export class ApiClient {
         es.addEventListener('open', () => {
           // Successful connection: reset the backoff counter.
           attempt = 0
+          if (dropped) {
+            dropped = false
+            try {
+              onReconnect?.()
+            } catch {
+              // A failing catch-up must never break the stream.
+            }
+          }
         })
 
         es.addEventListener('error', () => {
@@ -583,6 +598,7 @@ export class ApiClient {
           if (eventSource !== es) return
           eventSource = null
           es.close()
+          dropped = true
           scheduleReconnect()
         })
 
@@ -595,6 +611,7 @@ export class ApiClient {
       } catch {
         // No stream token available (backend down or session expired): retry
         // with bounded backoff; the session token must never travel in URLs.
+        dropped = true
         scheduleReconnect()
       }
     }

@@ -361,6 +361,43 @@ describe('ApiClient', () => {
       FakeEventSource.instances = []
     })
 
+    it('notifies onReconnect only when the stream reopens after a drop, never on first connect (5.8)', async () => {
+      vi.useFakeTimers()
+      const client = new ApiClient({ baseUrl: 'http://localhost:3001/api' })
+      client.setToken('session-token')
+      originalEventSource = (globalThis as any).EventSource
+      ;(globalThis as any).EventSource = FakeEventSource
+
+      let tokenCalls = 0
+      ;(globalThis.fetch as any).mockImplementation(async (url: string) => {
+        if (url.includes('/orders/stream-token')) {
+          tokenCalls += 1
+          return { ok: true, status: 200, json: async () => ({ token: `t-${tokenCalls}` }) }
+        }
+        return { ok: false, status: 404, json: async () => ({}) }
+      })
+
+      const onReconnect = vi.fn()
+      const unsub = client.subscribeToOrderStream(() => {}, undefined, onReconnect)
+      await flushMicrotasks()
+
+      FakeEventSource.instances[0].emit('open')
+      expect(onReconnect).not.toHaveBeenCalled()
+
+      FakeEventSource.instances[0].emit('error')
+      await vi.advanceTimersByTimeAsync(1000)
+      await flushMicrotasks()
+      expect(onReconnect).not.toHaveBeenCalled() // not yet open again
+
+      FakeEventSource.instances[1].emit('open')
+      expect(onReconnect).toHaveBeenCalledTimes(1)
+
+      // A later plain open (no drop in between) does not notify again.
+      FakeEventSource.instances[1].emit('open')
+      expect(onReconnect).toHaveBeenCalledTimes(1)
+      unsub()
+    })
+
     it('re-mints a fresh stream token and reopens with bounded backoff after an error', async () => {
       vi.useFakeTimers()
       const client = new ApiClient({ baseUrl: 'http://localhost:3001/api' })
