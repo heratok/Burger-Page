@@ -471,7 +471,7 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
       toast.success(`Categoría "${trimmed}" creada`)
 
       apiClient
-        .updateCategories(nextCategories, activeRestaurant.slug)
+        .updateCategories(nextCategories, activeRestaurant.slug || activeRestaurant.id)
         .catch((err) => {
           if (import.meta.env?.MODE !== 'test') {
             console.warn("Could not sync categories to backend API:", err)
@@ -483,7 +483,7 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
           toast.error("Error al guardar categoría en el servidor")
         })
     },
-    [categories, activeRestaurant.slug, updateActiveRestaurantRecord]
+    [categories, activeRestaurant.slug, activeRestaurant.id, updateActiveRestaurantRecord]
   )
 
   const updateCategory = useCallback(
@@ -515,8 +515,20 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }))
       toast.success(`Categoría renombrada a "${trimmedNew}"`)
 
+      // Sync affected products to backend API
+      const affectedProducts = previousProducts.filter(
+        (p) => p.category?.toLowerCase() === oldName.toLowerCase()
+      )
+      for (const prod of affectedProducts) {
+        apiClient.updateProduct(prod.id, { category: trimmedNew }, activeRestaurant.id).catch((err) => {
+          if (import.meta.env?.MODE !== 'test') {
+            console.warn("Could not sync renamed product category to backend API:", err)
+          }
+        })
+      }
+
       apiClient
-        .updateCategories(nextCategories, activeRestaurant.slug)
+        .updateCategories(nextCategories, activeRestaurant.slug || activeRestaurant.id)
         .catch((err) => {
           if (import.meta.env?.MODE !== 'test') {
             console.warn("Could not sync categories to backend API:", err)
@@ -529,7 +541,7 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
           toast.error("Error al renombrar categoría en el servidor")
         })
     },
-    [categories, activeRestaurant.products, activeRestaurant.slug, updateActiveRestaurantRecord]
+    [categories, activeRestaurant.products, activeRestaurant.slug, activeRestaurant.id, updateActiveRestaurantRecord]
   )
 
   const deleteCategory = useCallback(
@@ -554,8 +566,18 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }))
       toast.success(`Categoría "${categoryName}" eliminada`)
 
+      // Sync affected products to backend API
+      const affectedProducts = previousProducts.filter((p) => p.category === categoryName)
+      for (const prod of affectedProducts) {
+        apiClient.updateProduct(prod.id, { category: fallback }, activeRestaurant.id).catch((err) => {
+          if (import.meta.env?.MODE !== 'test') {
+            console.warn("Could not sync reassigned product to backend API:", err)
+          }
+        })
+      }
+
       apiClient
-        .updateCategories(nextCategories, activeRestaurant.slug)
+        .updateCategories(nextCategories, activeRestaurant.slug || activeRestaurant.id)
         .catch((err) => {
           if (import.meta.env?.MODE !== 'test') {
             console.warn("Could not sync categories to backend API:", err)
@@ -568,7 +590,7 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
           toast.error("Error al eliminar categoría del servidor")
         })
     },
-    [categories, activeRestaurant.products, activeRestaurant.slug, updateActiveRestaurantRecord]
+    [categories, activeRestaurant.products, activeRestaurant.slug, activeRestaurant.id, updateActiveRestaurantRecord]
   )
 
   const value: CatalogContextType = {

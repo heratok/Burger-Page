@@ -1350,6 +1350,7 @@ describe("CatalogContext Slice - Dynamic Category Management", () => {
     const updateCategoriesSpy = vi.spyOn(apiClient, "updateCategories").mockResolvedValue({
       categories: ["Especiales", "Pollo", "Gourmet", "Clásicas", "Entradas"],
     })
+    const updateProductSpy = vi.spyOn(apiClient, "updateProduct").mockResolvedValue({} as any)
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <TenantProvider>
@@ -1385,7 +1386,7 @@ describe("CatalogContext Slice - Dynamic Category Management", () => {
     const onionRings = result.current.products.find((p) => p.name === "Aros de Cebolla")
     expect(onionRings?.category).toBe("Entradas")
 
-    // 2. Rename Category -> Should cascade to product
+    // 2. Rename Category -> Should cascade to product locally and sync to API
     act(() => {
       result.current.updateCategory("Entradas", "Aperitivos")
     })
@@ -1395,8 +1396,13 @@ describe("CatalogContext Slice - Dynamic Category Management", () => {
 
     const updatedOnionRings = result.current.products.find((p) => p.name === "Aros de Cebolla")
     expect(updatedOnionRings?.category).toBe("Aperitivos")
+    expect(updateProductSpy).toHaveBeenCalledWith(
+      onionRings?.id,
+      { category: "Aperitivos" },
+      expect.any(String)
+    )
 
-    // 3. Delete Category -> Should reassign product to fallback category
+    // 3. Delete Category -> Should reassign product to fallback category and sync to API
     act(() => {
       result.current.deleteCategory("Aperitivos")
     })
@@ -1405,6 +1411,11 @@ describe("CatalogContext Slice - Dynamic Category Management", () => {
     const reassignedProduct = result.current.products.find((p) => p.name === "Aros de Cebolla")
     expect(reassignedProduct?.category).not.toBe("Aperitivos")
     expect(result.current.categories).toContain(reassignedProduct?.category)
+    expect(updateProductSpy).toHaveBeenCalledWith(
+      onionRings?.id,
+      { category: reassignedProduct?.category },
+      expect.any(String)
+    )
   })
 
   it("rolls back category addition when apiClient.updateCategories fails on addCategory", async () => {
