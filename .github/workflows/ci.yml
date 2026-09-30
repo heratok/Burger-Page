@@ -13,7 +13,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:17-alpine
         env:
           POSTGRES_DB: burger_page_test
           POSTGRES_USER: postgres
@@ -57,7 +57,7 @@ jobs:
         run: |
           docker cp ./database/01_schema.sql "${{ job.services.postgres.id }}":/tmp/01_schema.sql
           docker cp ./database/02_seed.sql "${{ job.services.postgres.id }}":/tmp/02_seed.sql
-          docker exec "${{ job.services.postgres.id }}" psql -U postgres -d burger_page_test -v ON_ERROR_STOP=1 -f /tmp/01_schema.sql
+          docker exec "${{ job.services.postgres.id }}" psql -U postgres -d burger_page_test -v ON_ERROR_STOP=1 -1 -f /tmp/01_schema.sql
           docker exec "${{ job.services.postgres.id }}" psql -U postgres -d burger_page_test -v ON_ERROR_STOP=1 -f /tmp/02_seed.sql
 
       - name: Run PostgreSQL integration tests
@@ -79,7 +79,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:17-alpine
         env:
           POSTGRES_DB: burger_page_test
           POSTGRES_USER: postgres
@@ -113,7 +113,7 @@ jobs:
         run: |
           docker cp ./database/01_schema.sql "${{ job.services.postgres.id }}":/tmp/01_schema.sql
           docker cp ./database/02_seed.sql "${{ job.services.postgres.id }}":/tmp/02_seed.sql
-          docker exec "${{ job.services.postgres.id }}" psql -U postgres -d burger_page_test -v ON_ERROR_STOP=1 -f /tmp/01_schema.sql
+          docker exec "${{ job.services.postgres.id }}" psql -U postgres -d burger_page_test -v ON_ERROR_STOP=1 -1 -f /tmp/01_schema.sql
           docker exec "${{ job.services.postgres.id }}" psql -U postgres -d burger_page_test -v ON_ERROR_STOP=1 -f /tmp/02_seed.sql
 
       # @burger-page/contracts ships compiled JS only via its dist/ folder,
@@ -141,3 +141,76 @@ jobs:
             frontend/playwright-report/
           if-no-files-found: ignore
           retention-days: 7
+
+  migration-drift:
+    name: Migration drift check (migrations vs 01_schema.sql)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
+
+    steps:
+      # Full history: the script needs the base branch (git show/archive of the
+      # baseline and migrations as they were before this change).
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Ensure psql client is available
+        run: |
+          # Production runs PostgreSQL 17: use a 17 client (PGDG) unless one is present.
+          if ! command -v psql >/dev/null || [ "$(psql -V | sed -E 's/[^0-9]*([0-9]+).*/\1/')" -lt 17 ]; then
+            sudo apt-get update
+            sudo apt-get install -y curl ca-certificates gnupg lsb-release
+            curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /usr/share/keyrings/pgdg.gpg
+            echo "deb [signed-by=/usr/share/keyrings/pgdg.gpg] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+            sudo apt-get update
+            sudo apt-get install -y postgresql-client-17
+            echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
+            export PATH="/usr/lib/postgresql/17/bin:$PATH"
+          fi
+          psql --version
+
+      # Builds a database from the base branch baseline + its migrations,
+      # applies the new migrations, and compares the result with a database
+      # built from the current 01_schema.sql. Also runs every new migration's
+      # down -> up and re-applies its up. Runs node-pg-migrate directly (no
+      # doppler) against the service container.
+      - name: Check migrations against 01_schema.sql
+        env:
+          PG_BASE_URL: postgres://postgres:postgres@localhost:5432
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="origin/${{ github.base_ref }}"
+          elif [ -n "${{ github.event.before }}" ] \
+               && [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ] \
+               && git cat-file -e "${{ github.event.before }}^{commit}" 2>/dev/null; then
+            BASE="${{ github.event.before }}"
+          else
+            BASE="origin/main"
+          fi
+          echo "Comparing against $BASE"
+          bash database/scripts/check-migration-drift.sh "$BASE"

@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import {
@@ -59,7 +59,7 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
     handleSubmit,
     watch,
     setValue,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -85,7 +85,22 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
 
   const cambio = calculateChange(total, pagoCon)
 
+  // Synchronous re-entrancy guard: react-hook-form flips isSubmitting on the
+  // next render, so a second tap in the same tick could still get through.
+  // One submit attempt = one optimistic order = one clientOrderId.
+  const submitInFlightRef = useRef(false)
+
   const onSubmit = async (values: FormValues) => {
+    if (submitInFlightRef.current) return
+    submitInFlightRef.current = true
+    try {
+      await placeOrder(values)
+    } finally {
+      submitInFlightRef.current = false
+    }
+  }
+
+  const placeOrder = async (values: FormValues) => {
     // 1. Register order in CRM context. The outcome toast is owned by
     // addOrder: it confirms only after the server accepts the order, and
     // shows an error (removing the optimistic card) when the server
@@ -353,13 +368,15 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
         <div className="flex flex-col gap-2 pt-2 sm:flex-row">
           <Button
             type="submit"
+            disabled={isSubmitting}
+            aria-busy={isSubmitting}
             variant="default"
             size="lg"
             style={{ backgroundColor: storeConfig.primaryColor, color: primaryForeground }}
             className="h-12 flex-1 text-base font-bold shadow-md cursor-pointer hover:opacity-90"
           >
             <Send data-icon="inline-start" />
-            Enviar pedido por WhatsApp
+            {isSubmitting ? "Enviando pedido..." : "Enviar pedido por WhatsApp"}
           </Button>
           <Button
             type="button"

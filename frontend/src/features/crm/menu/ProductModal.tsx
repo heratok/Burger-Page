@@ -63,7 +63,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
         inStock: editingProduct.inStock,
         isPopular: !!editingProduct.isPopular,
         isNew: !!editingProduct.isNew,
-        preparationTimeMinutes: editingProduct.preparationTimeMinutes || 15,
+        preparationTimeMinutes: editingProduct.preparationTimeMinutes ?? 15,
       })
     } else {
       // With zero categories there is nothing to pick, so open the free-text

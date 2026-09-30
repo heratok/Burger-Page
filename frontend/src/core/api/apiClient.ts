@@ -28,6 +28,24 @@ function mapProductResponse(raw: any): MenuItem {
   }
 }
 
+/**
+ * Client-side ceiling for POST /orders. Past it the request is aborted and the
+ * caller treats the outcome as unknown (the server may have committed): the
+ * sale stays pending and is retried with the SAME clientOrderId (idempotent).
+ */
+export const ORDER_SUBMIT_TIMEOUT_MS = 30_000
+
+/** Best-effort extraction of the human message from an API error body. */
+function extractErrorMessage(body: unknown): string | undefined {
+  if (!body || typeof body !== 'object') return undefined
+  const b = body as Record<string, unknown>
+  for (const key of ['detail', 'message', 'error']) {
+    const v = b[key]
+    if (typeof v === 'string' && v.trim()) return v
+  }
+  return undefined
+}
+
 const AUTH_TOKEN_STORAGE_KEY = 'burger_page_auth_token_v2'
 
 function readStoredToken(): string | null {
@@ -101,7 +119,18 @@ export class ApiClient {
     })
 
     if (!response.ok) {
-      const error: any = new Error(`API Error: ${response.status} ${response.statusText}`)
+      // Surface the server reason (minimum order, cash below total, product
+      // unavailable, ...) instead of a bare "400 Bad Request". The status stays
+      // on the error so callers can classify rejection vs retryable failure.
+      let serverMessage: string | undefined
+      try {
+        serverMessage = extractErrorMessage(await response.json())
+      } catch {
+        // Non-JSON or empty body (e.g. a gateway HTML page): keep the generic text.
+      }
+      const error: any = new Error(
+        serverMessage ?? `API Error: ${response.status} ${response.statusText}`
+      )
       error.status = response.status
       error.statusText = response.statusText
       throw error
@@ -143,11 +172,15 @@ export class ApiClient {
     })
   }
 
-  async updateCategories(categories: string[], slug?: string): Promise<{ categories: string[] }> {
+  async updateCategories(
+    categories: string[],
+    slug?: string,
+    renames?: { from: string; to: string }[]
+  ): Promise<{ categories: string[] }> {
     const endpoint = slug ? `/restaurant/${slug}/categories` : '/restaurant/categories'
     return this.request<{ categories: string[] }>(endpoint, {
       method: 'PUT',
-      body: JSON.stringify({ categories }),
+      body: JSON.stringify(renames && renames.length > 0 ? { categories, renames } : { categories }),
     })
   }
 
@@ -277,10 +310,17 @@ export class ApiClient {
   }
 
   async createOrder(orderInput: CreateOrderInput): Promise<Order> {
-    return this.request<Order>('/orders', {
-      method: 'POST',
-      body: JSON.stringify(orderInput),
-    })
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), ORDER_SUBMIT_TIMEOUT_MS)
+    try {
+      return await this.request<Order>('/orders', {
+        method: 'POST',
+        body: JSON.stringify(orderInput),
+        signal: controller.signal,
+      })
+    } finally {
+      clearTimeout(timer)
+    }
   }
 
   async fetchOrders(restaurantId?: string): Promise<Order[]> {
@@ -482,7 +522,11 @@ export class ApiClient {
    * Subscribes to real-time Server-Sent Events (SSE) for live order updates.
    * Returns an unsubscribe function.
    */
-    subscribeToOrderStream(onEvent: (event: OrderEvent) => void, restaurantId?: string): () => void {
+    subscribeToOrderStream(
+    onEvent: (event: OrderEvent) => void,
+    restaurantId?: string,
+    onReconnect?: () => void
+  ): () => void {
     if (typeof EventSource === 'undefined' || !this.token) {
       return () => {}
     }
@@ -491,6 +535,9 @@ export class ApiClient {
     let disposed = false
     let attempt = 0
     let reconnecting = false
+    // True once the stream dropped: the next successful open is a RECONNECT,
+    // and events published during the gap were missed (caller must catch up).
+    let dropped = false
     const MAX_RECONNECT_DELAY_MS = 30_000
 
     const scheduleReconnect = () => {
@@ -534,6 +581,14 @@ export class ApiClient {
         es.addEventListener('open', () => {
           // Successful connection: reset the backoff counter.
           attempt = 0
+          if (dropped) {
+            dropped = false
+            try {
+              onReconnect?.()
+            } catch {
+              // A failing catch-up must never break the stream.
+            }
+          }
         })
 
         es.addEventListener('error', () => {
@@ -543,6 +598,7 @@ export class ApiClient {
           if (eventSource !== es) return
           eventSource = null
           es.close()
+          dropped = true
           scheduleReconnect()
         })
 
@@ -555,6 +611,7 @@ export class ApiClient {
       } catch {
         // No stream token available (backend down or session expired): retry
         // with bounded backoff; the session token must never travel in URLs.
+        dropped = true
         scheduleReconnect()
       }
     }

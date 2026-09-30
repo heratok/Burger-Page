@@ -128,8 +128,12 @@ export class InMemoryOrderRepository implements OrderRepository {
     if (!existing) {
       throw new EntityNotFoundError(`Order ${order.id} not found for restaurant ${restaurantId}`);
     }
-    this.orders.set(order.id, order);
-    return order;
+    // Like Postgres, an edit never writes the status: it keeps whatever is
+    // persisted (status changes go through updateStatus with its CAS).
+    const merged = cloneOrder(order);
+    merged.status = existing.status;
+    this.orders.set(order.id, merged);
+    return cloneOrder(merged);
   }
 
   clear(): void {

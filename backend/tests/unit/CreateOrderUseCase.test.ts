@@ -472,6 +472,41 @@ describe('CreateOrderUseCase', () => {
     expect(mockCustomerRepo.save).not.toHaveBeenCalled(); // no mutation write
   });
 
+  it('re-reads the existing customer when the create loses a unique-phone race (4.3)', async () => {
+    const mockProduct = { id: 'p1', name: 'Burger', price: 20, isAvailable: true, additions: [], category: 'Food', description: 'Desc', restaurantId: 'burger-craft' };
+    vi.mocked(mockProductRepo.findById).mockResolvedValue(mockProduct as any);
+    const winner = new Customer('cust-winner', 'burger-craft', 'Winner', '5559990000', '', '', '', '', '2026-01-01', '2026-01-01');
+    vi.mocked(mockCustomerRepo.findByPhone).mockResolvedValueOnce(null).mockResolvedValueOnce(winner);
+    vi.mocked(mockCustomerRepo.save).mockRejectedValueOnce(Object.assign(new Error('duplicate key'), { code: '23505' }));
+
+    const order = await useCase.execute({
+      restaurantId: 'burger-craft',
+      items: [{ productId: 'p1', quantity: 1, additions: [] }],
+      customer: { name: 'Racer', phone: '5559990000' },
+    });
+
+    expect(order.customerId).toBe('cust-winner');
+  });
+
+  it('logs a non-race customer failure and still keeps the contact data on the order (4.3)', async () => {
+    const mockProduct = { id: 'p1', name: 'Burger', price: 20, isAvailable: true, additions: [], category: 'Food', description: 'Desc', restaurantId: 'burger-craft' };
+    vi.mocked(mockProductRepo.findById).mockResolvedValue(mockProduct as any);
+    vi.mocked(mockCustomerRepo.findByPhone).mockResolvedValue(null);
+    vi.mocked(mockCustomerRepo.save).mockRejectedValue(new Error('connection reset'));
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const order = await useCase.execute({
+      restaurantId: 'burger-craft',
+      items: [{ productId: 'p1', quantity: 1, additions: [] }],
+      customer: { name: 'Keeps Data', phone: '5550001111', address: 'Calle 5' },
+    });
+
+    expect(order.customerId).toBeUndefined();
+    expect((order as any).customer).toMatchObject({ nombre: 'Keeps Data', telefono: '5550001111', direccion: 'Calle 5' });
+    expect(errSpy).toHaveBeenCalled();
+    errSpy.mockRestore();
+  });
+
   it('gracefully creates order even if customer resolution fails', async () => {
     const mockProduct = { id: 'p1', name: 'Burger', price: 20, isAvailable: true, additions: [], category: 'Food', description: 'Desc', restaurantId: 'burger-craft' };
     vi.mocked(mockProductRepo.findById).mockResolvedValue(mockProduct as any);

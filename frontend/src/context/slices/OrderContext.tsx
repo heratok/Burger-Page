@@ -386,9 +386,12 @@ export function syncBackendCustomers(
         (c) => cleanPhoneNumber(c.telefono) === cleanPhone
       )
 
-    const custOrders = nextOrders.filter(
+    const matchedOrders = nextOrders.filter(
       (o) => cleanPhoneNumber(o.customer.telefono) === cleanPhone
     )
+    // Same rule as the DB trigger update_customer_order_metrics: cancelled
+    // orders never count toward orders/spent/last order/loyalty.
+    const custOrders = matchedOrders.filter((o) => o.status !== "cancelled")
     const totalSpent = custOrders.reduce((sum, o) => sum + (o.finalTotal || o.total || 0), 0)
     const totalOrders = custOrders.length
     const lastOrderDate = custOrders[0]?.createdAt || bc.createdAt || new Date().toISOString()
@@ -400,8 +403,10 @@ export function syncBackendCustomers(
       telefono: bc.phone || existing?.telefono || "",
       direccion: bc.address ?? existing?.direccion ?? "",
       barrio: bc.barrio ?? existing?.barrio ?? "",
-      totalOrders: totalOrders || existing?.totalOrders || 0,
-      totalSpent: totalSpent || existing?.totalSpent || 0,
+      // Keep the stored figures only when no order of this customer is loaded at
+      // all; a customer whose loaded orders are all cancelled really has zero.
+      totalOrders: matchedOrders.length > 0 ? totalOrders : existing?.totalOrders || 0,
+      totalSpent: matchedOrders.length > 0 ? totalSpent : existing?.totalSpent || 0,
       lastOrderDate,
       loyaltyTier,
       notes: bc.notes ?? existing?.notes ?? "",
@@ -485,15 +490,29 @@ export function addOrderToRestaurant(
   }
 }
 
+// Automatic retry of pending (unsynced) orders: bounded exponential backoff so
+// a persistently failing server is never hammered and never retried forever.
+// Delays: 5s, 10s, 20s, 40s, 60s, 60s, ... for at most MAX attempts.
+export const PENDING_RETRY_BASE_MS = 5_000
+export const PENDING_RETRY_MAX_MS = 60_000
+export const MAX_PENDING_RETRY_ATTEMPTS = 8
+
 /**
- * True when an API failure is a connectivity/offline problem (fetch TypeError,
- * 'Failed to fetch', …) rather than a server rejection. Server rejections keep
- * the removal semantics; network failures keep the sale pending local sync
- * (REJ-02).
+ * True when a submission failure leaves the outcome UNKNOWN or temporarily
+ * unavailable, as opposed to a definitive server rejection: connectivity
+ * problems (fetch TypeError, 'Failed to fetch'), client-side abort/timeout,
+ * and HTTP 5xx / 408 (gateway or server failures where the server may already
+ * have committed the order). These keep the sale pending and are retried with
+ * the SAME clientOrderId (the server replays idempotently); 4xx responses are
+ * rejections that keep the removal semantics (REJ-02).
  */
 export function isNetworkFailure(err: unknown): boolean {
   if (!err) return false
   const anyErr = err as any
+  if (typeof anyErr.status === 'number' && (anyErr.status >= 500 || anyErr.status === 408)) {
+    return true
+  }
+  if (anyErr.name === 'AbortError' || anyErr.name === 'TimeoutError') return true
   return !!(
     anyErr.message &&
     (anyErr.message.includes('Failed to fetch') ||
@@ -727,7 +746,9 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const retryPendingOrders = useCallback(async () => {
     const targetRestId = activeRestaurant?.id
-    if (!targetRestId || !apiClient.hasToken()) return
+    // Anonymous storefront orders are retried too: POST /orders is public and
+    // idempotent on clientOrderId, so no session token is required here.
+    if (!targetRestId) return
     if (retryInFlightRef.current) return
     const pendingOrders = activeRestaurant.orders.filter((o) => o.pendingSync)
     if (pendingOrders.length === 0) return
@@ -738,6 +759,52 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       retryInFlightRef.current = false
     }
   }, [activeRestaurant, attemptPendingOrderSync])
+
+  // Timer-driven retry for pending orders (covers anonymous storefront
+  // customers, who never trigger the token-gated refresh-driven retry). Bounded
+  // exponential backoff; an 'online' event retries immediately. After the max
+  // attempts it stops and tells the user once; the order stays pending.
+  const pendingSyncCount = (activeRestaurant?.orders ?? []).filter((o) => o.pendingSync).length
+  const [retryTick, setRetryTick] = useState(0)
+  const retryAttemptsRef = useRef(0)
+  const lastPendingCountRef = useRef(0)
+  useEffect(() => {
+    if (pendingSyncCount === 0) {
+      retryAttemptsRef.current = 0
+      lastPendingCountRef.current = 0
+      return
+    }
+    if (pendingSyncCount > lastPendingCountRef.current) {
+      retryAttemptsRef.current = 0
+    }
+    lastPendingCountRef.current = pendingSyncCount
+    if (retryAttemptsRef.current >= MAX_PENDING_RETRY_ATTEMPTS) return
+
+    const delay = Math.min(
+      PENDING_RETRY_BASE_MS * 2 ** retryAttemptsRef.current,
+      PENDING_RETRY_MAX_MS
+    )
+    const run = async () => {
+      retryAttemptsRef.current += 1
+      await retryPendingOrdersRef.current()
+      if (retryAttemptsRef.current >= MAX_PENDING_RETRY_ATTEMPTS) {
+        toast.warning(
+          'No se pudo sincronizar la orden pendiente. Revisa tu conexión; se reintentará al recargar.'
+        )
+      }
+      setRetryTick((t) => t + 1)
+    }
+    const timer = setTimeout(() => void run(), delay)
+    const onOnline = () => {
+      clearTimeout(timer)
+      void run()
+    }
+    window.addEventListener('online', onOnline)
+    return () => {
+      clearTimeout(timer)
+      window.removeEventListener('online', onOnline)
+    }
+  }, [pendingSyncCount, retryTick])
 
   // Keep the latest retry callback reachable from the mount/refresh effects
   // without re-running them on every restaurant record identity change.
@@ -786,15 +853,43 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [effectiveId, session, updateActiveRestaurantRecord])
 
+  // Silent refetch used after an SSE reconnect (no loading flag: staff keep
+  // working while the board is reconciled).
+  const catchUpOrdersRef = useRef<() => Promise<void>>(async () => {})
+  catchUpOrdersRef.current = async () => {
+    const targetRestId = effectiveId
+    if (!targetRestId || !apiClient.hasToken()) return
+    try {
+      const [backendOrders, backendCustomers] = await Promise.all([
+        apiClient.fetchOrders(targetRestId),
+        apiClient.fetchCustomers(targetRestId).catch(() => []),
+      ])
+      updateActiveRestaurantRecord((current) =>
+        syncBackendDataToRestaurant(current, targetRestId, backendOrders, backendCustomers)
+      )
+    } catch (err) {
+      if (import.meta.env?.MODE !== 'test') {
+        console.warn("Could not catch up orders after SSE reconnect:", err)
+      }
+    }
+  }
+
   // Real-time SSE order stream subscription
   useEffect(() => {
     const targetRestId = effectiveId
     if (!targetRestId || !apiClient.hasToken()) return
 
-    const unsubscribe = apiClient.subscribeToOrderStream((event: OrderEvent) => {
-      if (!event || !event.orderId) return
-      updateActiveRestaurantRecord((current) => updateRestaurantOrderState(current, event))
-    }, targetRestId)
+    const unsubscribe = apiClient.subscribeToOrderStream(
+      (event: OrderEvent) => {
+        if (!event || !event.orderId) return
+        updateActiveRestaurantRecord((current) => updateRestaurantOrderState(current, event))
+      },
+      targetRestId,
+      // Events published while the stream was down are lost: catch up silently.
+      () => {
+        void catchUpOrdersRef.current()
+      }
+    )
 
     return () => {
       unsubscribe()
@@ -993,9 +1088,11 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const updateOrderStatus = useCallback(
     (orderId: string, newStatus: OrderStatus) => {
-      // Snapshot the committed state so a rejected backend transition can
-      // roll the kanban back instead of silently diverging from the server.
-      const previousOrders = activeRestaurant.orders
+      // Remember only THIS order's previous status so a rejected transition
+      // reverts it alone (a whole-list snapshot would wipe SSE-added orders).
+      const previous = activeRestaurant.orders.find((o) => o.id === orderId)
+      const previousStatus = previous?.status
+      const previousUpdatedAt = previous?.updatedAt
 
       updateActiveRestaurantRecord((current) => ({
         ...current,
@@ -1015,7 +1112,13 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         // the kanban never silently diverges from server state.
         updateActiveRestaurantRecord((current) => ({
           ...current,
-          orders: previousOrders,
+          orders: current.orders.map((o) =>
+            // Only undo our own optimistic change: if another update (SSE)
+            // already moved the order elsewhere, leave it alone.
+            o.id === orderId && previousStatus !== undefined && o.status === newStatus
+              ? { ...o, status: previousStatus, updatedAt: previousUpdatedAt ?? o.updatedAt }
+              : o
+          ),
         }))
         toast.error(`No se pudo actualizar la orden a: ${newStatus.toUpperCase()}`)
       })
@@ -1025,6 +1128,10 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const updateOrderReceipt = useCallback(
     async (orderId: string, receiptUrl: string) => {
+      const previous = activeRestaurant.orders.find((o) => o.id === orderId)
+      const previousReceiptUrl = previous?.receiptUrl
+      const previousUpdatedAt = previous?.updatedAt
+
       updateActiveRestaurantRecord((current) => ({
         ...current,
         orders: current.orders.map((o) =>
@@ -1033,17 +1140,28 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             : o
         ),
       }))
-      toast.success("Comprobante adjuntado correctamente")
 
       try {
         await apiClient.updateOrderReceipt(orderId, receiptUrl, activeRestaurant.id)
+        toast.success("Comprobante adjuntado correctamente")
       } catch (error) {
         if (import.meta.env?.MODE !== 'test') {
           console.warn(`Could not sync receipt update for order ${orderId} to backend API:`, error)
         }
+        updateActiveRestaurantRecord((current) => ({
+          ...current,
+          orders: current.orders.map((o) =>
+            o.id === orderId && o.receiptUrl === receiptUrl
+              ? { ...o, receiptUrl: previousReceiptUrl, updatedAt: previousUpdatedAt ?? o.updatedAt }
+              : o
+          ),
+        }))
+        toast.error("No se pudo adjuntar el comprobante")
+        // Callers must know the attach failed (they would otherwise report success).
+        throw error
       }
     },
-    [activeRestaurant.id, updateActiveRestaurantRecord]
+    [activeRestaurant.id, activeRestaurant.orders, updateActiveRestaurantRecord]
   )
 
   const deleteOrder = useCallback(

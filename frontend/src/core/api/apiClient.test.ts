@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { CreateOrderInput } from '@burger-page/contracts'
-import { ApiClient } from './apiClient'
+import { ApiClient, ORDER_SUBMIT_TIMEOUT_MS } from './apiClient'
 
 describe('ApiClient', () => {
   let client: ApiClient
@@ -24,6 +24,14 @@ describe('ApiClient', () => {
       json: async () => data,
     })
   }
+
+  it('sends category renames alongside the list in a single PUT', async () => {
+    mockResponse({ categories: ['B'] })
+    await client.updateCategories(['B'], 'slug-1', [{ from: 'A', to: 'B' }])
+    const [url, init] = (globalThis.fetch as any).mock.calls[0]
+    expect(url).toBe('http://localhost:3001/api/restaurant/slug-1/categories')
+    expect(JSON.parse(init.body)).toEqual({ categories: ['B'], renames: [{ from: 'A', to: 'B' }] })
+  })
 
   it('should fetch restaurant', async () => {
     const mockData = { id: 'r1', name: 'Burger' }
@@ -94,10 +102,13 @@ describe('ApiClient', () => {
     }
     const data = await client.createOrder(newOrder)
     expect(data).toEqual(mockData)
+    // createOrder carries a timeout signal so a hung request becomes a
+    // retryable failure instead of freezing the checkout.
     expect(globalThis.fetch).toHaveBeenCalledWith('http://localhost:3001/api/orders', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newOrder),
+      signal: expect.any(AbortSignal),
     })
   })
 
@@ -130,6 +141,62 @@ describe('ApiClient', () => {
   it('should handle errors', async () => {
     mockResponse(null, false, 404, 'Not Found')
     await expect(client.fetchRestaurant()).rejects.toThrow('API Error: 404 Not Found')
+  })
+
+  describe('error body parsing (2.4)', () => {
+    const errorOf = async (body: any, status = 400, statusText = 'Bad Request') => {
+      mockResponse(body, false, status, statusText)
+      return client.createOrder({ restaurantId: 'r', items: [] } as any).catch((e) => e)
+    }
+
+    it('exposes the RFC7807 detail as the error message and keeps the status', async () => {
+      const err = await errorOf({ title: 'Validation Error', status: 400, detail: 'Subtotal 5000 is below minimum order amount 20000' })
+      expect(err.message).toBe('Subtotal 5000 is below minimum order amount 20000')
+      expect(err.status).toBe(400)
+      expect(err.statusText).toBe('Bad Request')
+    })
+
+    it('falls back to message, then error, then the generic status text', async () => {
+      expect((await errorOf({ message: 'from message' })).message).toBe('from message')
+      expect((await errorOf({ error: 'from error' })).message).toBe('from error')
+      const generic = await errorOf({})
+      expect(generic.message).toBe('API Error: 400 Bad Request')
+      expect(generic.status).toBe(400)
+    })
+
+    it('falls back to the generic message when the body is not JSON', async () => {
+      const fetchMock = globalThis.fetch as any
+      fetchMock.mockResolvedValueOnce({
+        ok: false,
+        status: 502,
+        statusText: 'Bad Gateway',
+        json: async () => {
+          throw new SyntaxError('Unexpected token <')
+        },
+      })
+      const err = await client.createOrder({ restaurantId: 'r', items: [] } as any).catch((e) => e)
+      expect(err.message).toBe('API Error: 502 Bad Gateway')
+      expect(err.status).toBe(502)
+    })
+
+    it('aborts createOrder after the submit timeout so the caller can retry with the same id', async () => {
+      vi.useFakeTimers()
+      try {
+        const fetchMock = globalThis.fetch as any
+        fetchMock.mockImplementationOnce(
+          (_url: string, init: RequestInit) =>
+            new Promise((_res, rej) => {
+              init.signal?.addEventListener('abort', () => rej(Object.assign(new Error('aborted'), { name: 'AbortError' })))
+            })
+        )
+        const p = client.createOrder({ restaurantId: 'r', items: [] } as any).catch((e) => e)
+        await vi.advanceTimersByTimeAsync(ORDER_SUBMIT_TIMEOUT_MS + 1)
+        const err = await p
+        expect(err.name).toBe('AbortError')
+      } finally {
+        vi.useRealTimers()
+      }
+    })
   })
 
   it('should list restaurants', async () => {
@@ -292,6 +359,43 @@ describe('ApiClient', () => {
         (globalThis as any).EventSource = originalEventSource
       }
       FakeEventSource.instances = []
+    })
+
+    it('notifies onReconnect only when the stream reopens after a drop, never on first connect (5.8)', async () => {
+      vi.useFakeTimers()
+      const client = new ApiClient({ baseUrl: 'http://localhost:3001/api' })
+      client.setToken('session-token')
+      originalEventSource = (globalThis as any).EventSource
+      ;(globalThis as any).EventSource = FakeEventSource
+
+      let tokenCalls = 0
+      ;(globalThis.fetch as any).mockImplementation(async (url: string) => {
+        if (url.includes('/orders/stream-token')) {
+          tokenCalls += 1
+          return { ok: true, status: 200, json: async () => ({ token: `t-${tokenCalls}` }) }
+        }
+        return { ok: false, status: 404, json: async () => ({}) }
+      })
+
+      const onReconnect = vi.fn()
+      const unsub = client.subscribeToOrderStream(() => {}, undefined, onReconnect)
+      await flushMicrotasks()
+
+      FakeEventSource.instances[0].emit('open')
+      expect(onReconnect).not.toHaveBeenCalled()
+
+      FakeEventSource.instances[0].emit('error')
+      await vi.advanceTimersByTimeAsync(1000)
+      await flushMicrotasks()
+      expect(onReconnect).not.toHaveBeenCalled() // not yet open again
+
+      FakeEventSource.instances[1].emit('open')
+      expect(onReconnect).toHaveBeenCalledTimes(1)
+
+      // A later plain open (no drop in between) does not notify again.
+      FakeEventSource.instances[1].emit('open')
+      expect(onReconnect).toHaveBeenCalledTimes(1)
+      unsub()
     })
 
     it('re-mints a fresh stream token and reopens with bounded backoff after an error', async () => {

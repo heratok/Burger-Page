@@ -138,7 +138,7 @@ describe('UpdateOrderUseCase (Unit Tests)', () => {
     expect((result as any).changeAmount).toBeUndefined();
   });
 
-  it('updates customer details and syncs existing customer found by phone', async () => {
+  it('links the order to an existing customer found by phone WITHOUT overwriting that profile', async () => {
     const existing = createBaseOrder();
     vi.mocked(mockOrderRepo.findById).mockResolvedValue(existing);
     const existingCust: any = {
@@ -165,13 +165,64 @@ describe('UpdateOrderUseCase (Unit Tests)', () => {
 
     expect(result.customer?.name).toBe('Carlos Alberto');
     expect(result.customer?.address).toBe('Avenida Siempre Viva 123');
-    expect(mockCustomerRepo.save).toHaveBeenCalledWith(
-      expect.objectContaining({
-        id: 'cust-10',
-        name: 'Carlos Alberto',
-        address: 'Avenida Siempre Viva 123',
-      })
+    // 4.2: the order is linked to customer B, but B's stored profile is never overwritten.
+    expect((result as any).customerId).toBe('cust-10');
+    expect(existingCust.name).toBe('Carlos');
+    expect(existingCust.address).toBe('Calle 1');
+    expect(mockCustomerRepo.save).not.toHaveBeenCalled();
+  });
+
+  it('switching A -> B keeps B untouched and does not edit A either', async () => {
+    const existing = createBaseOrder();
+    (existing as any).customerId = 'cust-a';
+    vi.mocked(mockOrderRepo.findById).mockResolvedValue(existing);
+    const custB: any = { id: 'cust-b', name: 'B Name', phone: '3002', address: 'B street', barrio: 'B' };
+    vi.mocked(mockCustomerRepo.findByPhone).mockResolvedValue(custB);
+
+    const result = await useCase.execute(
+      'ord-123',
+      { customer: { name: 'Typed Name', phone: '3002', address: 'Typed street' } },
+      'rest-burger-craft'
     );
+
+    expect((result as any).customerId).toBe('cust-b');
+    expect(custB).toMatchObject({ name: 'B Name', address: 'B street', barrio: 'B' });
+    expect(mockCustomerRepo.save).not.toHaveBeenCalled();
+    expect(mockCustomerRepo.findById).not.toHaveBeenCalled();
+    // The order itself carries what was typed (persisted as the contact snapshot).
+    expect(result.customer?.address).toBe('Typed street');
+  });
+
+  it('edits the order\'s own customer profile when the phone matches that same customer', async () => {
+    const existing = createBaseOrder();
+    (existing as any).customerId = 'cust-a';
+    vi.mocked(mockOrderRepo.findById).mockResolvedValue(existing);
+    const custA: any = { id: 'cust-a', name: 'A', phone: '3001', address: 'Old' };
+    vi.mocked(mockCustomerRepo.findByPhone).mockResolvedValue(custA);
+
+    await useCase.execute('ord-123', { customer: { name: 'A2', phone: '3001', address: 'New' } }, 'rest-burger-craft');
+
+    expect(mockCustomerRepo.save).toHaveBeenCalledWith(expect.objectContaining({ id: 'cust-a', name: 'A2', address: 'New' }));
+  });
+
+  it('status change goes through updateStatus with the validated snapshot as CAS and the actor (4.1)', async () => {
+    const existing = createBaseOrder();
+    vi.mocked(mockOrderRepo.findById).mockResolvedValue(existing);
+
+    await useCase.execute('ord-123', { status: 'cooking', comment: 'x' }, 'rest-burger-craft', 'user-1', 'restaurant_admin');
+
+    expect(mockOrderRepo.updateStatus).toHaveBeenCalledWith(
+      'ord-123', 'cooking', 'rest-burger-craft', 'user-1', 'restaurant_admin', 'pending'
+    );
+  });
+
+  it('does not call updateStatus when the payload has no status (4.1)', async () => {
+    const existing = createBaseOrder();
+    vi.mocked(mockOrderRepo.findById).mockResolvedValue(existing);
+
+    await useCase.execute('ord-123', { comment: 'only a comment' }, 'rest-burger-craft');
+
+    expect(mockOrderRepo.updateStatus).not.toHaveBeenCalled();
   });
 
   it('updates customer details and syncs customer by customerId if phone does not match', async () => {

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PgOrderRepository } from '../../src/infrastructure/persistence/postgres/PgOrderRepository.js';
 import { Order } from '../../src/domain/models/Order.js';
-import { EntityNotFoundError, InvalidOrderStateError } from '../../src/domain/errors/DomainErrors.js';
+import { EntityNotFoundError, InvalidOrderStateError, ValidationError } from '../../src/domain/errors/DomainErrors.js';
 
 // RED round-2 regressions: the Pg update must persist the status column.
 const h = vi.hoisted(() => {
@@ -68,12 +68,12 @@ describe('PgOrderRepository.update (Status Persistence)', () => {
 
     const updateSql = h.queries.find((q) => q.includes('UPDATE public.orders SET'));
     expect(updateSql).toBeDefined();
-    expect(updateSql).toContain('status');
-    expect(updateSql).toContain('status = $8');
+    // 4.1: an item edit must never write status (status changes only via the status RPC).
+    expect(updateSql).not.toMatch(/\bstatus\s*=/);
     expect(updateSql).not.toContain('customer_name');
   });
 
-  it('includes status in the single UPDATE when an order exists', async () => {
+  it('does not include status in the single UPDATE when an order exists (4.1)', async () => {
     h.client.query = vi.fn(async (sql: string) => {
       h.queries.push(sql);
       if (sql.includes('SELECT * FROM public.orders')) return { rows: [{ id: 'ord-1', customer_id: null }] };
@@ -87,7 +87,7 @@ describe('PgOrderRepository.update (Status Persistence)', () => {
 
     const updateSql = h.queries.find((q) => q.includes('UPDATE public.orders SET'));
     expect(updateSql).toBeDefined();
-    expect(updateSql).toContain('status');
+    expect(updateSql).not.toMatch(/\bstatus\s*=/);
     expect(updateSql).not.toContain('customer_name');
   });
 
@@ -225,5 +225,214 @@ describe('PgOrderRepository.findByRestaurantId (N+1 batch)', () => {
     expect(pending.items).toHaveLength(1);
     expect(pending.items[0].productName).toBe('Papas');
     expect(pending.items[0].additions).toEqual([]);
+  });
+});
+describe('PgOrderRepository.save (RPC error mapping and idempotent race)', () => {
+  const makeOrder = (clientOrderId?: string): Order =>
+    new Order(
+      'ord-new',
+      'rest-a',
+      undefined,
+      [{ id: 'item-1', productId: 'prod-1', productName: 'Burger', unitPrice: 0, quantity: 1 }],
+      'pending',
+      new Date(),
+      0,
+      undefined,
+      'Efectivo',
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      clientOrderId
+    );
+
+  const pgError = (code: string, message: string, extra: Record<string, unknown> = {}) =>
+    Object.assign(new Error(message), { code, ...extra });
+
+  it('maps RPC P0001 business errors to ValidationError keeping the message', async () => {
+    h.client.query = vi.fn(async () => {
+      throw pgError('P0001', 'Subtotal 5000 is below minimum order amount 20000');
+    });
+    const repo = new PgOrderRepository();
+    const err = await repo.save(makeOrder('cli-1')).catch((e) => e);
+    expect(err).toBeInstanceOf(ValidationError);
+    expect(err.message).toMatch(/minimum order amount/);
+  });
+
+  it('maps RPC P0002 not-found errors to EntityNotFoundError', async () => {
+    h.client.query = vi.fn(async () => {
+      throw pgError('P0002', 'Product prod-9 does not belong to restaurant rest-a or does not exist');
+    });
+    const repo = new PgOrderRepository();
+    await expect(repo.save(makeOrder())).rejects.toBeInstanceOf(EntityNotFoundError);
+  });
+
+  it('does not remap unrelated pg errors (tenant mismatch stays raw)', async () => {
+    h.client.query = vi.fn(async () => {
+      throw pgError('42501', 'Tenant context mismatch');
+    });
+    const repo = new PgOrderRepository();
+    const err = await repo.save(makeOrder()).catch((e) => e);
+    expect(err).not.toBeInstanceOf(ValidationError);
+    expect(err.code).toBe('42501');
+  });
+
+  it('replays the original order when a concurrent insert hits uq_orders_client_order_id (23505)', async () => {
+    let rpcCalls = 0;
+    h.client.query = vi.fn(async (sql: string) => {
+      if (sql.includes('create_order_atomic')) {
+        rpcCalls++;
+        throw pgError('23505', 'duplicate key value violates unique constraint "uq_orders_client_order_id"', {
+          constraint: 'uq_orders_client_order_id',
+        });
+      }
+      if (sql.includes('client_order_id = $2')) {
+        return { rows: [{ id: 'ord-original', order_number: 42 }] };
+      }
+      return { rows: [] };
+    });
+    const repo = new PgOrderRepository();
+    const order = makeOrder('cli-race');
+    await repo.save(order);
+    expect(rpcCalls).toBe(1);
+    expect(order.id).toBe('ord-original');
+    expect((order as any).orderNumber).toBe(42);
+  });
+
+  it('rethrows the 23505 when no original order can be found for the replay lookup', async () => {
+    h.client.query = vi.fn(async (sql: string) => {
+      if (sql.includes('create_order_atomic')) {
+        throw pgError('23505', 'dup', { constraint: 'uq_orders_client_order_id' });
+      }
+      return { rows: [] };
+    });
+    const repo = new PgOrderRepository();
+    await expect(repo.save(makeOrder('cli-x'))).rejects.toMatchObject({ code: '23505' });
+  });
+
+  it('does not treat other unique violations as a replay', async () => {
+    h.client.query = vi.fn(async () => {
+      throw pgError('23505', 'dup pk', { constraint: 'orders_pkey' });
+    });
+    const repo = new PgOrderRepository();
+    await expect(repo.save(makeOrder('cli-y'))).rejects.toMatchObject({ code: '23505' });
+  });
+});
+
+
+describe('PgOrderRepository.update (customer link and contact snapshot, 4.1/4.2/4.3)', () => {
+  const orderWith = (customerId?: string, customer?: Record<string, string>): Order => {
+    const order = new Order('ord-1', 'rest-a', customerId, [], 'cooking', new Date(), 0, 101);
+    if (customer) (order as any).customer = customer;
+    return order;
+  };
+
+  const setup = () => {
+    const calls: { sql: string; params: unknown[] }[] = [];
+    h.client.query = vi.fn(async (sql: string, params: unknown[] = []) => {
+      calls.push({ sql, params });
+      if (sql.includes('SELECT * FROM public.orders')) return { rows: [{ id: 'ord-1', customer_id: 'cust-a' }] };
+      if (sql.includes('LEFT JOIN public.customers')) {
+        return { rows: [{ id: 'ord-1', restaurant_id: 'rest-a', status: 'cooking', customer_id: 'cust-b', subtotal: 0, delivery_fee: 0, final_total: 0, payment_method: 'Efectivo', created_at: new Date() }] };
+      }
+      return { rows: [] };
+    });
+    return calls;
+  };
+
+  it('persists customer_id (never nulls it when absent) in the orders UPDATE', async () => {
+    const calls = setup();
+    await new PgOrderRepository().update(orderWith('cust-b'), 'rest-a');
+    const upd = calls.find((c) => c.sql.includes('UPDATE public.orders SET'))!;
+    expect(upd.sql).toContain('customer_id = COALESCE(');
+    expect(upd.params).toContain('cust-b');
+  });
+
+  it('never rewrites public.customers from the order repository (no profile overwrite)', async () => {
+    const calls = setup();
+    await new PgOrderRepository().update(
+      orderWith('cust-b', { name: 'Given Name', phone: '300', address: 'Some street', barrio: 'X' }),
+      'rest-a'
+    );
+    expect(calls.some((c) => c.sql.includes('UPDATE public.customers'))).toBe(false);
+  });
+
+  it('writes the contact snapshot of THIS order when a customer payload is present', async () => {
+    const calls = setup();
+    await new PgOrderRepository().update(
+      orderWith('cust-b', { name: 'Given Name', phone: '300', address: 'Some street', barrio: 'X' }),
+      'rest-a'
+    );
+    const upd = calls.find((c) => c.sql.includes('UPDATE public.orders SET'))!;
+    expect(upd.sql).toContain('contact_address = COALESCE(');
+    expect(upd.params).toEqual(expect.arrayContaining(['Given Name', '300', 'Some street', 'X']));
+  });
+});
+
+describe('PgOrderRepository reads prefer the order contact snapshot (4.3)', () => {
+  it('findById/findByRestaurantId COALESCE the snapshot over the customer profile', async () => {
+    const queries: string[] = [];
+    h.client.query = vi.fn(async (sql: string) => {
+      queries.push(sql);
+      if (sql.includes('LEFT JOIN public.customers')) {
+        return {
+          rows: [{
+            id: 'ord-1', restaurant_id: 'rest-a', status: 'pending', created_at: new Date(),
+            customer_id: 'cust-a', delivery_fee: 0, payment_method: 'Efectivo',
+            customer_name: 'Snap Name', customer_phone: '300', customer_address: 'Snap street', customer_barrio: 'B',
+          }],
+        };
+      }
+      return { rows: [] };
+    });
+    const repo = new PgOrderRepository();
+    const one = await repo.findById('ord-1', 'rest-a');
+    const list = await repo.findByRestaurantId('rest-a');
+    const joinSql = queries.filter((q) => q.includes('LEFT JOIN public.customers'));
+    expect(joinSql).toHaveLength(2);
+    for (const q of joinSql) {
+      expect(q).toContain('COALESCE(o.contact_address, c.address)');
+      expect(q).toContain('COALESCE(o.contact_name, c.name)');
+      expect(q).toContain('COALESCE(o.contact_phone, c.phone)');
+      expect(q).toContain('COALESCE(o.contact_barrio, c.barrio)');
+    }
+    expect((one as any).customer.direccion).toBe('Snap street');
+    expect((list[0] as any).customer.direccion).toBe('Snap street');
+  });
+});
+
+describe('PgOrderRepository.save writes the contact snapshot for new orders only (4.3)', () => {
+  const makeOrder = (): Order => {
+    const order = new Order(
+      'ord-new', 'rest-a', undefined,
+      [{ id: 'item-1', productId: 'prod-1', productName: 'Burger', unitPrice: 0, quantity: 1 }],
+      'pending', new Date(), 0
+    );
+    (order as any).customer = { nombre: 'Anon', telefono: '3001', direccion: 'Street 1', barrio: 'Centro' };
+    return order;
+  };
+
+  it('issues one snapshot UPDATE in the same transaction after the RPC creates the order', async () => {
+    const calls: { sql: string; params: unknown[] }[] = [];
+    h.client.query = vi.fn(async (sql: string, params: unknown[] = []) => {
+      calls.push({ sql, params });
+      if (sql.includes('create_order_atomic')) return { rows: [{ create_order_atomic: { id: 'ord-new', order_number: 7 } }] };
+      return { rows: [] };
+    });
+    await new PgOrderRepository().save(makeOrder());
+    const snap = calls.find((c) => c.sql.includes('contact_name'))!;
+    expect(snap).toBeDefined();
+    expect(snap.params).toEqual(expect.arrayContaining(['Anon', '3001', 'Street 1', 'Centro', 'ord-new', 'rest-a']));
+  });
+
+  it('does not touch the snapshot on an idempotent replay (RPC returns the original id)', async () => {
+    const calls: string[] = [];
+    h.client.query = vi.fn(async (sql: string) => {
+      calls.push(sql);
+      if (sql.includes('create_order_atomic')) return { rows: [{ create_order_atomic: { id: 'ord-original', order_number: 3 } }] };
+      return { rows: [] };
+    });
+    await new PgOrderRepository().save(makeOrder());
+    expect(calls.some((q) => q.includes('contact_name'))).toBe(false);
   });
 });

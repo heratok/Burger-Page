@@ -6,7 +6,7 @@ import { UpdateInventoryStockUseCase } from '../../src/application/use-cases/Upd
 import { UpdateInventoryItemUseCase } from '../../src/application/use-cases/UpdateInventoryItemUseCase.js';
 import { DeleteInventoryItemUseCase } from '../../src/application/use-cases/DeleteInventoryItemUseCase.js';
 import { InventoryRepository } from '../../src/domain/ports/out/InventoryRepository.js';
-import { EntityNotFoundError, ValidationError } from '../../src/domain/errors/DomainErrors.js';
+import { ConflictError, EntityNotFoundError, ValidationError } from '../../src/domain/errors/DomainErrors.js';
 import { Inventory } from '../../src/domain/models/Inventory.js';
 
 describe('Inventory Use Cases (Unit)', () => {
@@ -179,6 +179,50 @@ describe('Inventory Use Cases (Unit)', () => {
       expect(updated.name).toBe('Salsa BBQ Ahumada Premium');
       expect(updated.costPerUnit).toBe(14000);
       expect(mockInventoryRepo.save).toHaveBeenCalledWith(item);
+    });
+  });
+
+  describe('UpdateInventoryItemUseCase stock handling (5.2)', () => {
+    const base = (): Inventory => ({
+      id: 'inv-1',
+      restaurantId: 'burger-craft',
+      name: 'Salsa BBQ',
+      category: 'ingredients',
+      quantity: 20,
+      unit: 'litros',
+      minStockAlert: 5,
+      alertThreshold: 5,
+      costPerUnit: 12000,
+    });
+
+    it('applies a requested quantity as an atomic adjust delta, after saving the metadata', async () => {
+      const useCase = new UpdateInventoryItemUseCase(mockInventoryRepo);
+      vi.mocked(mockInventoryRepo.findById).mockResolvedValue(base());
+      vi.mocked(mockInventoryRepo.adjustStock).mockResolvedValue({ ...base(), quantity: 15 });
+
+      const result = await useCase.execute('inv-1', { name: 'Salsa', quantity: 15 }, 'burger-craft');
+
+      expect(mockInventoryRepo.adjustStock).toHaveBeenCalledWith('inv-1', 'burger-craft', -5);
+      const saveOrder = vi.mocked(mockInventoryRepo.save).mock.invocationCallOrder[0];
+      const adjustOrder = vi.mocked(mockInventoryRepo.adjustStock).mock.invocationCallOrder[0];
+      expect(saveOrder).toBeLessThan(adjustOrder);
+      expect(result.quantity).toBe(15);
+    });
+
+    it('does not adjust stock when the quantity is unchanged or omitted', async () => {
+      const useCase = new UpdateInventoryItemUseCase(mockInventoryRepo);
+      vi.mocked(mockInventoryRepo.findById).mockResolvedValue(base());
+      await useCase.execute('inv-1', { name: 'Salsa', quantity: 20 }, 'burger-craft');
+      await useCase.execute('inv-1', { costPerUnit: 1 }, 'burger-craft');
+      expect(mockInventoryRepo.adjustStock).not.toHaveBeenCalled();
+    });
+
+    it('does not touch stock when saving the metadata fails with a conflict', async () => {
+      const useCase = new UpdateInventoryItemUseCase(mockInventoryRepo);
+      vi.mocked(mockInventoryRepo.findById).mockResolvedValue(base());
+      vi.mocked(mockInventoryRepo.save).mockRejectedValue(new ConflictError('dup'));
+      await expect(useCase.execute('inv-1', { name: 'Pan', quantity: 1 }, 'burger-craft')).rejects.toThrow(ConflictError);
+      expect(mockInventoryRepo.adjustStock).not.toHaveBeenCalled();
     });
   });
 

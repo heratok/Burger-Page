@@ -11,6 +11,7 @@ import { Product } from '../../src/domain/models/Product.js';
 import { ProductAddition } from '../../src/domain/models/ProductAddition.js';
 import { Order } from '../../src/domain/models/Order.js';
 import { Customer } from '../../src/domain/models/Customer.js';
+import { ConflictError } from '../../src/domain/errors/DomainErrors.js';
 import { Restaurant } from '../../src/domain/models/Restaurant.js';
 import { buildDependencies } from '../../src/infrastructure/http/app.js';
 
@@ -78,6 +79,23 @@ describe.skipIf(!hasSqliteBinding)('SQLite Persistence Adapter Suite (TDD)', () 
     expect(await productRepo.findById('p-100', 'burger-craft')).toBeNull();
   });
 
+  it('preserves a preparation time of 0 and defaults only when absent (5.7)', async () => {
+    const base: Product = {
+      id: 'p-prep-0',
+      restaurantId: 'burger-craft',
+      name: 'Instant',
+      description: '',
+      price: 1,
+      category: 'Especiales',
+      isAvailable: true,
+      additions: [],
+    };
+    await productRepo.save({ ...base, preparationTimeMinutes: 0 });
+    expect((await productRepo.findById('p-prep-0', 'burger-craft'))?.preparationTimeMinutes).toBe(0);
+    await productRepo.save({ ...base, id: 'p-prep-none', preparationTimeMinutes: undefined });
+    expect((await productRepo.findById('p-prep-none', 'burger-craft'))?.preparationTimeMinutes).toBe(15);
+  });
+
   it('should save, list and delete product additions in SQLite with tenant isolation', async () => {
     const addition = new ProductAddition('add-1', 'burger-craft', 'Extra Bacon', 3000, true);
     await additionRepo.save(addition);
@@ -126,6 +144,22 @@ describe.skipIf(!hasSqliteBinding)('SQLite Persistence Adapter Suite (TDD)', () 
     expect(foreign).toBeNull();
   });
 
+  it('order update never overwrites the persisted status (WU-4 alignment)', async () => {
+    const order = new Order('ord-upd', 'burger-craft', undefined, [], 'pending', new Date(), 1000);
+    await orderRepo.save(order);
+
+    const stale = (await orderRepo.findById('ord-upd', 'burger-craft'))!;
+    await orderRepo.updateStatus('ord-upd', 'cooking', 'burger-craft');
+
+    stale.deliveryFee = 2500;
+    const result = await orderRepo.update(stale, 'burger-craft');
+
+    const persisted = await orderRepo.findById('ord-upd', 'burger-craft');
+    expect(persisted?.deliveryFee).toBe(2500);
+    expect(persisted?.status).toBe('cooking');
+    expect(result.status).toBe('cooking');
+  });
+
   it('should save and retrieve customer buyer profiles in SQLite with strict tenant isolation', async () => {
     const customer = new Customer(
       'cust-777',
@@ -157,6 +191,25 @@ describe.skipIf(!hasSqliteBinding)('SQLite Persistence Adapter Suite (TDD)', () 
     const allCustomers = await customerRepo.findByRestaurantId('burger-craft');
     expect(allCustomers.length).toBe(1);
     expect(allCustomers[0].phone).toBe('3151234567');
+  });
+
+  it('rejects duplicate inventory names with ConflictError and keeps stock on edit (5.2)', async () => {
+    const mk = (id: string, name: string, quantity: number) => ({
+      id, restaurantId: 'burger-craft', name, category: 'ingredients' as const, quantity,
+      unit: 'unidades' as const, alertThreshold: 1, minStockAlert: 1, costPerUnit: 1,
+    });
+    await inventoryRepo.save(mk('a', 'Pan', 10));
+    await inventoryRepo.save(mk('b', 'Queso', 20));
+
+    await expect(inventoryRepo.save(mk('c', 'Pan', 99))).rejects.toThrow(ConflictError);
+    await expect(inventoryRepo.save(mk('b', 'Pan', 99))).rejects.toThrow(ConflictError);
+    expect((await inventoryRepo.findById('a', 'burger-craft'))?.quantity).toBe(10);
+    expect((await inventoryRepo.findById('b', 'burger-craft'))?.name).toBe('Queso');
+
+    await inventoryRepo.save({ ...mk('b', 'Queso Suizo', 777) });
+    const edited = await inventoryRepo.findById('b', 'burger-craft');
+    expect(edited?.name).toBe('Queso Suizo');
+    expect(edited?.quantity).toBe(20);
   });
 
   it('should manage inventory items and stock changes in SQLite with strict tenant isolation', async () => {

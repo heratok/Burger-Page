@@ -63,6 +63,8 @@ describe("AdminLayout - Super Admin Navigation & Global Modules (TDD)", () => {
       adminTab: "dashboard",
       isNotFound: false,
       attemptedSlug: null,
+      loadError: false,
+      retry: vi.fn(),
       navigateTo: navigateToMock,
     })
 

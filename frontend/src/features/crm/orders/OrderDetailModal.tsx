@@ -70,9 +70,13 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
       }
 
       if (onUpdateReceipt) {
-        await onUpdateReceipt(order.id, finalUrl)
+        try {
+          await onUpdateReceipt(order.id, finalUrl)
+        } catch {
+          // The order context already rolled back and reported the failure.
+          return
+        }
       }
-      toast.success("Comprobante adjuntado con éxito")
     } catch {
       toast.error("No se pudo cargar el comprobante")
     } finally {

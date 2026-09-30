@@ -502,6 +502,39 @@ describe("OrderContext Pure Reducers & Updaters (TDD Tests)", () => {
       expect(synced.find((c) => c.id === "bc-silver")?.loyaltyTier).toBe("silver")
     })
 
+    it("excludes cancelled orders from totals, loyalty and last order date (matches DB trigger)", () => {
+      const mk = (id: string, n: number, total: number, status: Order["status"], createdAt: string): Order => ({
+        ...createMockOrder(id, n),
+        customer: { nombre: "Ana", telefono: "3001112233", direccion: "", barrio: "" },
+        finalTotal: total,
+        status,
+        createdAt,
+      })
+      const orders = [
+        mk("o3", 3, 500000, "cancelled", "2026-09-03T10:00:00.000Z"),
+        mk("o2", 2, 30000, "delivered", "2026-09-02T10:00:00.000Z"),
+        mk("o1", 1, 20000, "pending", "2026-09-01T10:00:00.000Z"),
+      ]
+      const synced = syncBackendCustomers([], [{ id: "bc-ana", name: "Ana", phone: "3001112233" }], orders)
+      const ana = synced.find((c) => c.id === "bc-ana")!
+      expect(ana.totalOrders).toBe(2)
+      expect(ana.totalSpent).toBe(50000)
+      expect(ana.loyaltyTier).toBe("bronze")
+      expect(ana.lastOrderDate).toBe("2026-09-02T10:00:00.000Z")
+    })
+
+    it("a customer whose orders are all cancelled has zero totals, not stale ones", () => {
+      const orders = [
+        { ...createMockOrder("oc", 9), customer: { nombre: "Bo", telefono: "3009998877", direccion: "", barrio: "" }, finalTotal: 99000, status: "cancelled" as const },
+      ]
+      const existing: Customer[] = [
+        { id: "bc-bo", nombre: "Bo", telefono: "3009998877", direccion: "", barrio: "", totalOrders: 1, totalSpent: 99000, lastOrderDate: "2026-09-01T00:00:00.000Z", loyaltyTier: "bronze" },
+      ]
+      const synced = syncBackendCustomers(existing, [{ id: "bc-bo", name: "Bo", phone: "3009998877" }], orders)
+      expect(synced[0].totalOrders).toBe(0)
+      expect(synced[0].totalSpent).toBe(0)
+    })
+
     it("matches order customer with existing customer record in syncBackendOrders", () => {
       const currentCustomers: Customer[] = [
         {

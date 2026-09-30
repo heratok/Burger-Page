@@ -34,10 +34,11 @@ export class UpdateInventoryItemUseCase {
       }
       item.unit = dto.unit;
     }
+    let requestedQuantity: number | undefined;
     if (dto.quantity !== undefined) {
       const q = Number(dto.quantity);
       if (isNaN(q) || q < 0) throw new ValidationError('Quantity cannot be negative.');
-      item.quantity = q;
+      requestedQuantity = q;
     }
     if (dto.costPerUnit !== undefined) {
       const c = Number(dto.costPerUnit);
@@ -55,8 +56,16 @@ export class UpdateInventoryItemUseCase {
       item.alertThreshold = a;
     }
 
+    const currentQuantity = item.quantity;
     item.updatedAt = new Date().toISOString();
+    // Metadata first: a duplicate-name conflict must abort before any stock change.
     await this.inventoryRepo.save(item);
+
+    // Stock never travels through save() (a stale edit would overwrite a
+    // concurrent adjust). A requested quantity becomes one atomic delta.
+    if (requestedQuantity !== undefined && requestedQuantity !== currentQuantity) {
+      return this.inventoryRepo.adjustStock(item.id, restaurantId, Number((requestedQuantity - currentQuantity).toFixed(2)));
+    }
     return item;
   }
 }

@@ -73,6 +73,16 @@ export const updateRestaurantCategoriesSchema = z.object({
   // A restaurant may exist with zero categories, so an empty array is valid;
   // individual category names still must not be empty.
   categories: z.array(z.string().min(1, 'Category name cannot be empty')),
+  // Renames are applied in place on the category row so products keep their
+  // category. `to` must also appear in `categories`.
+  renames: z
+    .array(
+      z.object({
+        from: z.string().min(1, 'Category name cannot be empty'),
+        to: z.string().min(1, 'Category name cannot be empty'),
+      })
+    )
+    .optional(),
 });
 export type UpdateRestaurantCategoriesInput = z.infer<typeof updateRestaurantCategoriesSchema>;
 

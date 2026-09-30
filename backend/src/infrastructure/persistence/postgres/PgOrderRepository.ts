@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { Order, OrderStatus, OrderItem, OrderItemAddition } from '../../../domain/models/Order.js';
 import { UserRole } from '../../../domain/models/User.js';
-import { EntityNotFoundError, InvalidOrderStateError } from '../../../domain/errors/DomainErrors.js';
+import { EntityNotFoundError, InvalidOrderStateError, ValidationError } from '../../../domain/errors/DomainErrors.js';
 import { OrderRepository } from '../../../domain/ports/out/OrderRepository.js';
 import { ListOptions } from '../../../domain/ports/out/ListOptions.js';
 import { withTenantContext } from './PgClient.js';
@@ -80,13 +80,67 @@ function mapOrderRow(row: any, items: OrderItem[]): Order {
   return order;
 }
 
+/**
+ * Order + contact projection. The contact the customer gave in THIS order
+ * (orders.contact_* snapshot) wins over the CRM profile, so an anonymous order
+ * from a known phone shows the address typed in that order (SUS-15) and the
+ * contact survives even when no customer row could be linked. Legacy rows are
+ * backfilled by migration 0000000000006; COALESCE covers anything still NULL.
+ */
+const ORDER_WITH_CONTACT_SELECT = `SELECT o.*,
+           COALESCE(o.contact_name, c.name) AS customer_name,
+           COALESCE(o.contact_phone, c.phone) AS customer_phone,
+           COALESCE(o.contact_address, c.address) AS customer_address,
+           COALESCE(o.contact_barrio, c.barrio) AS customer_barrio
+         FROM public.orders o
+         LEFT JOIN public.customers c ON o.customer_id = c.id`;
+
+function contactSnapshot(order: Order): {
+  name: string | null;
+  phone: string | null;
+  address: string | null;
+  barrio: string | null;
+} {
+  const cust = (order as any).customer;
+  const pick = (...values: unknown[]): string | null => {
+    for (const v of values) {
+      if (typeof v === 'string' && v.trim() !== '') return v.trim();
+    }
+    return null;
+  };
+  return {
+    name: pick(cust?.name, cust?.nombre),
+    phone: pick(cust?.phone, cust?.telefono),
+    address: pick(cust?.address, cust?.direccion),
+    barrio: pick(cust?.barrio),
+  };
+}
+
+const CLIENT_ORDER_ID_CONSTRAINT = 'uq_orders_client_order_id';
+
+/**
+ * create_order_atomic raises business rejections with SQLSTATE P0001
+ * (raise_exception: product unavailable, restaurant inactive, minimum order,
+ * cash below total, ...) and P0002 (missing product/addition/restaurant).
+ * These are client errors that can race the use-case pre-checks, so they map
+ * to the same DomainErrors the API already turns into 400/404 instead of 500.
+ * Anything else (tenant mismatch 42501, connectivity, ...) is left untouched.
+ */
+function mapCreateOrderRpcError(err: any): unknown {
+  if (err?.code === 'P0001') return new ValidationError(err.message);
+  if (err?.code === 'P0002') return new EntityNotFoundError(err.message);
+  return err;
+}
+
+function isClientOrderIdViolation(err: any): boolean {
+  return err?.code === '23505' && err?.constraint === CLIENT_ORDER_ID_CONSTRAINT;
+}
+
 export class PgOrderRepository implements OrderRepository {
   async findById(id: string, restaurantId: string): Promise<Order | null> {
     return withTenantContext({ restaurantId }, async (client) => {
       const { rows } = await client.query(
-        `SELECT o.*, c.name as customer_name, c.phone as customer_phone, c.address as customer_address, c.barrio as customer_barrio
-         FROM public.orders o
-         LEFT JOIN public.customers c ON o.customer_id = c.id
+        `${ORDER_WITH_CONTACT_SELECT}
          WHERE o.id = $1 AND o.restaurant_id = $2`,
         [id, restaurantId]
       );
@@ -102,9 +156,7 @@ export class PgOrderRepository implements OrderRepository {
       // items/additions queries below always run over the page's order ids and
       // never re-add a limit.
       const limit = options?.limit;
-      let sql = `SELECT o.*, c.name as customer_name, c.phone as customer_phone, c.address as customer_address, c.barrio as customer_barrio
-         FROM public.orders o
-         LEFT JOIN public.customers c ON o.customer_id = c.id
+      let sql = `${ORDER_WITH_CONTACT_SELECT}
          WHERE o.restaurant_id = $1 ORDER BY o.created_at DESC`;
       const params: unknown[] = [restaurantId];
       if (typeof limit === 'number' && Number.isInteger(limit) && limit > 0) {
@@ -172,6 +224,44 @@ export class PgOrderRepository implements OrderRepository {
       })),
     }));
 
+    try {
+      await this.persistViaRpc(order, itemsPayload);
+    } catch (err: any) {
+      // Defense in depth for the concurrent same-client_order_id race: the RPC
+      // serializes with an advisory lock, but if the unique index still trips
+      // (e.g. a DB without migration 0005) the original order is the answer.
+      // The failed transaction is already rolled back, so the lookup runs in a
+      // fresh one.
+      if (isClientOrderIdViolation(err) && order.clientOrderId) {
+        const original = await this.findReplayByClientOrderId(order.restaurantId, order.clientOrderId);
+        if (original) {
+          (order as any).id = original.id;
+          if (original.orderNumber !== undefined) (order as any).orderNumber = original.orderNumber;
+          return;
+        }
+      }
+      throw mapCreateOrderRpcError(err);
+    }
+  }
+
+  private async findReplayByClientOrderId(
+    restaurantId: string,
+    clientOrderId: string
+  ): Promise<{ id: string; orderNumber?: number } | null> {
+    return withTenantContext({ restaurantId }, async (client) => {
+      const { rows } = await client.query(
+        `SELECT id, order_number FROM public.orders WHERE restaurant_id = $1 AND client_order_id = $2`,
+        [restaurantId, clientOrderId]
+      );
+      if (rows.length === 0) return null;
+      return {
+        id: rows[0].id,
+        orderNumber: rows[0].order_number != null ? Number(rows[0].order_number) : undefined,
+      };
+    });
+  }
+
+  private async persistViaRpc(order: Order, itemsPayload: unknown[]): Promise<void> {
     await withTenantContext({ restaurantId: order.restaurantId }, async (client) => {
       const { rows } = await client.query(
         `SELECT * FROM public.create_order_atomic($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
@@ -200,8 +290,24 @@ export class PgOrderRepository implements OrderRepository {
       // SUS-19 replay: the RPC returned the already-persisted row for this
       // (restaurant_id, client_order_id); adopt its real id so the response
       // references the original order, not a freshly generated phantom id.
+      const isReplay = Boolean(created && created.id && created.id !== order.id);
       if (created && created.id && created.id !== order.id) {
         (order as any).id = created.id;
+      }
+      // 4.3: persist the contact given in THIS order (same transaction) so it is
+      // never lost when the customer row could not be linked, and so reads show
+      // the address typed here instead of the CRM profile. A replay must not
+      // rewrite the snapshot of the original order.
+      if (!isReplay) {
+        const snap = contactSnapshot(order);
+        if (snap.name || snap.phone || snap.address || snap.barrio) {
+          await client.query(
+            `UPDATE public.orders
+                SET contact_name = $1, contact_phone = $2, contact_address = $3, contact_barrio = $4
+              WHERE id = $5 AND restaurant_id = $6`,
+            [snap.name, snap.phone, snap.address, snap.barrio, order.id, order.restaurantId]
+          );
+        }
       }
       if (order.receiptUrl) {
         await client.query(
@@ -287,13 +393,15 @@ export class PgOrderRepository implements OrderRepository {
         throw new EntityNotFoundError(`Order ${order.id} not found for restaurant ${restaurantId}`);
       }
 
-      // Extract customer details if present
-      const cust = (order as any).customer;
-      const custName = cust?.name || cust?.nombre || null;
-      const custPhone = cust?.phone || cust?.telefono || null;
-      const custAddress = cust?.address || cust?.direccion || null;
-      const custBarrio = cust?.barrio || null;
+      const snap = contactSnapshot(order);
 
+      // 4.1: status is NOT written here. An item/payment edit used to overwrite a
+      // concurrent status change with the stale snapshot; status changes go only
+      // through the status RPC (update_order_status_with_actor, with CAS/actor).
+      // 4.2: customer_id is persisted (COALESCE: an edit without a customer never
+      // unlinks the order), and public.customers is never rewritten from here, so
+      // linking an order to customer B cannot overwrite B's stored profile. The
+      // contact typed in this edit is kept as the order's own snapshot.
       await client.query(
         `UPDATE public.orders SET
            subtotal = $1,
@@ -303,7 +411,13 @@ export class PgOrderRepository implements OrderRepository {
            payment_amount = $5,
            change_amount = $6,
            comment = $7,
-           status = $8,             updated_at = NOW()           WHERE id = $9 AND restaurant_id = $10`,
+           customer_id = COALESCE($8, customer_id),
+           contact_name = COALESCE($9, contact_name),
+           contact_phone = COALESCE($10, contact_phone),
+           contact_address = COALESCE($11, contact_address),
+           contact_barrio = COALESCE($12, contact_barrio),
+           updated_at = NOW()
+         WHERE id = $13 AND restaurant_id = $14`,
         [
           order.subtotal,
           order.deliveryFee,
@@ -312,43 +426,15 @@ export class PgOrderRepository implements OrderRepository {
           order.paymentAmount ?? null,
           order.changeAmount ?? null,
           order.comment ?? null,
-          order.status,
+          order.customerId ?? null,
+          snap.name,
+          snap.phone,
+          snap.address,
+          snap.barrio,
           order.id,
           restaurantId,
         ]
       );
-
-      // Also update public.customers if order is linked to a customer
-      const customerId = order.customerId || existingRows[0].customer_id;
-      if (customerId && (custName || custPhone || custAddress || custBarrio)) {
-        try {
-          await client.query(
-            `UPDATE public.customers SET
-               name = COALESCE($1, name),
-               phone = COALESCE($2, phone),
-               address = COALESCE($3, address),
-               barrio = COALESCE($4, barrio),
-               updated_at = NOW()
-             WHERE id = $5 AND restaurant_id = $6`,
-            [custName, custPhone, custAddress, custBarrio, customerId, restaurantId]
-          );
-        } catch {
-          // If updating phone violates unique constraint, update without modifying phone
-          try {
-            await client.query(
-              `UPDATE public.customers SET
-                 name = COALESCE($1, name),
-                 address = COALESCE($2, address),
-                 barrio = COALESCE($3, barrio),
-                 updated_at = NOW()
-               WHERE id = $4 AND restaurant_id = $5`,
-              [custName, custAddress, custBarrio, customerId, restaurantId]
-            );
-          } catch {
-            // Gracefully continue without failing order transaction
-          }
-        }
-      }
 
       // Delete existing order_item_additions & order_items for this order
       const { rows: itemRows } = await client.query(
@@ -430,9 +516,7 @@ export class PgOrderRepository implements OrderRepository {
 
       // Return the reloaded and updated Order domain model
       const { rows: updatedRows } = await client.query(
-        `SELECT o.*, c.name as customer_name, c.phone as customer_phone, c.address as customer_address, c.barrio as customer_barrio
-         FROM public.orders o
-         LEFT JOIN public.customers c ON o.customer_id = c.id
+        `${ORDER_WITH_CONTACT_SELECT}
          WHERE o.id = $1 AND o.restaurant_id = $2`,
         [order.id, restaurantId]
       );

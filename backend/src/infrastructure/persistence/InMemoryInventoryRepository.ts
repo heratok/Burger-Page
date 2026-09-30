@@ -2,7 +2,7 @@ import { InventoryRepository } from '../../domain/ports/out/InventoryRepository.
 import { Inventory } from '../../domain/models/Inventory.js';
 import { ListOptions } from '../../domain/ports/out/ListOptions.js';
 import { initialInventory } from './seedData.js';
-import { EntityNotFoundError, ValidationError } from '../../domain/errors/DomainErrors.js';
+import { ConflictError, EntityNotFoundError, ValidationError } from '../../domain/errors/DomainErrors.js';
 
 export class InMemoryInventoryRepository implements InventoryRepository {
   private inventoryMap: Map<string, Inventory> = new Map();
@@ -36,7 +36,16 @@ export class InMemoryInventoryRepository implements InventoryRepository {
   }
 
   async save(inventory: Inventory): Promise<void> {
-    this.inventoryMap.set(inventory.id, { ...inventory });
+    const duplicate = Array.from(this.inventoryMap.values()).some(
+      (i) => i.restaurantId === inventory.restaurantId && i.name === inventory.name && i.id !== inventory.id
+    );
+    if (duplicate) {
+      throw new ConflictError(`An inventory item named '${inventory.name}' already exists.`);
+    }
+    const existing = this.inventoryMap.get(inventory.id);
+    // Edits never overwrite stock; it changes only through adjustStock.
+    const quantity = existing && existing.restaurantId === inventory.restaurantId ? existing.quantity : inventory.quantity;
+    this.inventoryMap.set(inventory.id, { ...inventory, quantity });
   }
 
   async adjustStock(id: string, restaurantId: string, delta: number): Promise<Inventory> {

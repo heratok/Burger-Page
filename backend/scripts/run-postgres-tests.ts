@@ -55,10 +55,9 @@ async function main() {
     console.log('\n🧪 Running PostgreSQL Integration Test Suite (tests/integration/postgres/)...\n');
     // --fileParallelism=false: PostgresConstraints.test.ts re-applies
     // database/01_schema.sql (DROP/CREATE POLICY = ACCESS EXCLUSIVE locks)
-    // while other files run DML. Server logs proved that with parallel files
-    // the reapply can hold two tables' ACE locks at once (the intermediate
-    // COMMITs in the schema are no-ops in the multi-statement driver
-    // transport) and deadlock against concurrent FK-pre-check INSERTs — a
+    // while other files run DML. The schema is one atomic transaction (no
+    // intermediate COMMITs), so a reapply holds every table's ACE lock until
+    // it ends and can deadlock against concurrent FK-pre-check INSERTs — a
     // flaky failure that moved between suites depending on timing. Running
     // the files serially makes the reapply never overlap in-flight DML.
     testStatus = run('npx', ['vitest', 'run', '--fileParallelism=false', 'tests/integration/postgres/'], {

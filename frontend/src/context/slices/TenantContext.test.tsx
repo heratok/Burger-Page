@@ -402,3 +402,91 @@ describe("TenantContext - effective tenant derivation and mutation identity (A1/
     expect(b?.config.name).toBe("B Renamed")
   })
 })
+
+describe("TenantContext.loadRestaurant - never shows another tenant", () => {
+  const wrapper = ({ children }: { children: React.ReactNode }) => (
+    <TenantProvider>{children}</TenantProvider>
+  )
+
+  beforeEach(() => {
+    localStorage.clear()
+    sessionStorage.clear()
+    vi.restoreAllMocks()
+    vi.spyOn(apiClient, "listRestaurants").mockRejectedValue(new Error("no backend in tests"))
+  })
+
+  it("fetches once, adds the record and activates it without a second fetch", async () => {
+    const fetchSpy = vi.spyOn(apiClient, "fetchRestaurant").mockResolvedValue({
+      id: "rest-new",
+      slug: "new-place",
+      isActive: true,
+      config: { ...DEFAULT_STORE_CONFIG, name: "New Place" },
+    } as any)
+
+    const { result } = renderHook(() => useTenant(), { wrapper })
+    let outcome: string | undefined
+    await act(async () => {
+      outcome = await result.current.loadRestaurant("new-place")
+    })
+
+    expect(outcome).toBe("ok")
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    expect(result.current.activeRestaurant.id).toBe("rest-new")
+    expect(result.current.activeRestaurant.config.name).toBe("New Place")
+  })
+
+  it("returns not-found on 404 and leaves the active tenant untouched", async () => {
+    vi.spyOn(apiClient, "fetchRestaurant").mockRejectedValue(
+      Object.assign(new Error("API Error: 404 Not Found"), { status: 404 })
+    )
+    const { result } = renderHook(() => useTenant(), { wrapper })
+    const before = result.current.activeRestaurant.id
+
+    let outcome: string | undefined
+    await act(async () => {
+      outcome = await result.current.loadRestaurant("ghost")
+    })
+
+    expect(outcome).toBe("not-found")
+    expect(result.current.activeRestaurant.id).toBe(before)
+    expect(result.current.restaurants.some((r) => r.slug === "ghost")).toBe(false)
+  })
+
+  it("returns error on network/5xx failure and does not activate another tenant", async () => {
+    vi.spyOn(apiClient, "fetchRestaurant").mockRejectedValue(new Error("Failed to fetch"))
+    const { result } = renderHook(() => useTenant(), { wrapper })
+    const before = result.current.activeRestaurant.id
+
+    let outcome: string | undefined
+    await act(async () => {
+      outcome = await result.current.loadRestaurant("flaky")
+    })
+
+    expect(outcome).toBe("error")
+    expect(result.current.activeRestaurant.id).toBe(before)
+  })
+
+  it("activates an already-known slug without any fetch", async () => {
+    const fetchSpy = vi.spyOn(apiClient, "fetchRestaurant")
+    const mk = (id: string, slug: string): any => ({
+      id, slug, isActive: true, createdAt: "2026-01-01T00:00:00.000Z",
+      config: { ...DEFAULT_STORE_CONFIG, name: id }, categories: [], products: [],
+      additions: [], orders: [], customers: [], inventory: [], suppliers: [],
+    })
+    localStorage.setItem(
+      "burger_page_platform_v2",
+      JSON.stringify({ version: 2, restaurants: [mk("rest-a", "a-slug"), mk("rest-b", "b-slug")] })
+    )
+    const { result } = renderHook(() => useTenant(), { wrapper })
+    const known = result.current.restaurants[1]
+
+    let outcome: string | undefined
+    await act(async () => {
+      outcome = await result.current.loadRestaurant(known.slug)
+    })
+
+    expect(outcome).toBe("ok")
+    expect(fetchSpy).not.toHaveBeenCalled()
+    expect(result.current.activeRestaurant.id).toBe(known.id)
+  })
+})

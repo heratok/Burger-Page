@@ -1,6 +1,6 @@
 import { FastifyError, FastifyReply, FastifyRequest } from 'fastify';
 import { ZodError } from 'zod';
-import { DomainError, EntityNotFoundError, ValidationError, InvalidOrderStateError, UnauthorizedError } from '../../../domain/errors/DomainErrors.js';
+import { ConflictError, DomainError, EntityNotFoundError, ValidationError, InvalidOrderStateError, UnauthorizedError } from '../../../domain/errors/DomainErrors.js';
 
 export function errorHandler(error: FastifyError | Error, request: FastifyRequest, reply: FastifyReply) {
   // M5: internal messages are only exposed on an explicit opt-in
@@ -16,6 +16,14 @@ export function errorHandler(error: FastifyError | Error, request: FastifyReques
         type: 'https://example.com/probs/not-found',
         title: 'Entity Not Found',
         status: 404,
+        detail: error.message
+      });
+    }
+    if (error instanceof ConflictError) {
+      return reply.status(409).send({
+        type: 'https://example.com/probs/conflict',
+        title: 'Conflict',
+        status: 409,
         detail: error.message
       });
     }

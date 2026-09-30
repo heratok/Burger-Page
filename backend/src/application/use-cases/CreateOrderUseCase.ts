@@ -117,11 +117,11 @@ export class CreateOrderUseCase {
   ): Promise<string | undefined> {
     if (!this.customerRepo) return undefined;
 
-    try {
-      const phone = customerDto.phone?.trim();
-      if (!phone) return undefined;
+    const phone = customerDto.phone?.trim();
+    if (!phone) return undefined;
 
-      let customer = await this.customerRepo.findByPhone(phone, restaurantId);
+    try {
+      const customer = await this.customerRepo.findByPhone(phone, restaurantId);
       if (customer) {
         // SUS-15: anonymous storefront input must never mutate an existing CRM
         // profile (name/address/barrio/updatedAt). Only an authenticated staff
@@ -149,10 +149,26 @@ export class CreateOrderUseCase {
         new Date().toISOString(),
         new Date().toISOString()
       );
-      await this.customerRepo.save(newCustomer);
+      try {
+        await this.customerRepo.save(newCustomer);
+      } catch (saveErr) {
+        // Race: another request created the same (restaurant, phone) between our
+        // lookup and the insert (unique violation). Re-read the winner instead of
+        // losing the link; anything else is not a race and is reported below.
+        const winner = await this.customerRepo.findByPhone(phone, restaurantId);
+        if (winner) return winner.id;
+        throw saveErr;
+      }
       return newCustomer.id;
-    } catch {
-      // Fallback gracefully without blocking order creation
+    } catch (err) {
+      // The sale must not be blocked by a CRM failure, and no contact data is
+      // lost: the order carries its own contact snapshot (orders.contact_*,
+      // written at creation). The failure is logged, not swallowed silently; the
+      // order is just not linked to a customer row.
+      console.error(
+        `[CreateOrder] Could not resolve customer for restaurant '${restaurantId}'; order saved without customer link:`,
+        err
+      );
       return undefined;
     }
   }

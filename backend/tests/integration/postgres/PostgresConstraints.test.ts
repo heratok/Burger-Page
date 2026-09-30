@@ -411,4 +411,127 @@ describe('PostgreSQL Real Instance Integration Suite (Docker)', () => {
       expect(errorOccurred).toBe(true);
     });
   });
+
+  // ─────────────────────────────────────────────────────────
+  // 6. Schema integrity (migration 0000000000007)
+  //    order_items.product_id / order_item_additions.addition_id are
+  //    tenant-scoped FKs; stale overload and duplicate indexes are gone.
+  // ─────────────────────────────────────────────────────────
+  describe('Schema integrity (0000000000007)', () => {
+    const suffix = randomUUID().slice(0, 8);
+    const productA = `prod-a-${suffix}`;
+    const additionA = `add-a-${suffix}`;
+    const orderA = `order-a-${suffix}`;
+    const orderB = `order-b-${suffix}`;
+
+    const insertOrder = (id: string, restaurantId: string) =>
+      pool.query(
+        `INSERT INTO public.orders (id, restaurant_id, status, subtotal, delivery_fee, final_total, payment_method)
+         VALUES ($1, $2, 'pending', 100.00, 10.00, 110.00, 'Efectivo')`,
+        [id, restaurantId]
+      );
+
+    const expectFkViolation = async (run: () => Promise<unknown>) => {
+      let code: string | undefined;
+      try {
+        await run();
+      } catch (err: any) {
+        code = err.code;
+      }
+      expect(code).toBe('23503');
+    };
+
+    beforeAll(async () => {
+      if (!isDbConnected) return;
+      await pool.query(
+        `INSERT INTO public.products (id, restaurant_id, name, price, is_available)
+         VALUES ($1, $2, 'Product A', 10000.00, true)`,
+        [productA, RESTAURANT_A]
+      );
+      await pool.query(
+        `INSERT INTO public.product_additions (id, restaurant_id, name, price)
+         VALUES ($1, $2, 'Addition A', 1000.00)`,
+        [additionA, RESTAURANT_A]
+      );
+      await insertOrder(orderA, RESTAURANT_A);
+      await insertOrder(orderB, RESTAURANT_B);
+    });
+
+    it('rejects an order line in tenant B that references the product of tenant A', async () => {
+      if (!isDbConnected) return;
+      await expectFkViolation(() =>
+        pool.query(
+          `INSERT INTO public.order_items (id, order_id, restaurant_id, product_id, product_name, unit_price, quantity)
+           VALUES ($1, $2, $3, $4, 'Cross Tenant Product', 100.00, 1)`,
+          [`oi-x-${suffix}`, orderB, RESTAURANT_B, productA]
+        )
+      );
+    });
+
+    it('rejects an order item addition in tenant B that references the addition of tenant A', async () => {
+      if (!isDbConnected) return;
+      const itemB = `oi-b-${suffix}`;
+      await pool.query(
+        `INSERT INTO public.order_items (id, order_id, restaurant_id, product_name, unit_price, quantity)
+         VALUES ($1, $2, $3, 'Line B', 100.00, 1)`,
+        [itemB, orderB, RESTAURANT_B]
+      );
+      await expectFkViolation(() =>
+        pool.query(
+          `INSERT INTO public.order_item_additions (id, order_item_id, restaurant_id, addition_id, addition_name, unit_price, quantity)
+           VALUES ($1, $2, $3, $4, 'Cross Tenant Addition', 10.00, 1)`,
+          [`oia-x-${suffix}`, itemB, RESTAURANT_B, additionA]
+        )
+      );
+    });
+
+    it('keeps the sale line and restaurant_id when the product is deleted (SET NULL only product_id)', async () => {
+      if (!isDbConnected) return;
+      const itemId = `oi-a-${suffix}`;
+      await pool.query(
+        `INSERT INTO public.order_items (id, order_id, restaurant_id, product_id, product_name, unit_price, quantity)
+         VALUES ($1, $2, $3, $4, 'Product A', 100.00, 1)`,
+        [itemId, orderA, RESTAURANT_A, productA]
+      );
+      await pool.query(
+        `INSERT INTO public.order_item_additions (id, order_item_id, restaurant_id, addition_id, addition_name, unit_price, quantity)
+         VALUES ($1, $2, $3, $4, 'Addition A', 10.00, 1)`,
+        [`oia-a-${suffix}`, itemId, RESTAURANT_A, additionA]
+      );
+
+      await pool.query('DELETE FROM public.product_additions WHERE id = $1', [additionA]);
+      await pool.query('DELETE FROM public.products WHERE id = $1', [productA]);
+
+      const line = await pool.query(
+        'SELECT product_id, restaurant_id FROM public.order_items WHERE id = $1',
+        [itemId]
+      );
+      expect(line.rows[0]).toEqual({ product_id: null, restaurant_id: RESTAURANT_A });
+      const addition = await pool.query(
+        'SELECT addition_id, restaurant_id FROM public.order_item_additions WHERE id = $1',
+        [`oia-a-${suffix}`]
+      );
+      expect(addition.rows[0]).toEqual({ addition_id: null, restaurant_id: RESTAURANT_A });
+    });
+
+    it('no longer defines the stale 9-arg create_order_atomic overload', async () => {
+      if (!isDbConnected) return;
+      const result = await pool.query(
+        `SELECT pronargs FROM pg_proc
+         WHERE proname = 'create_order_atomic' AND pronamespace = 'public'::regnamespace`
+      );
+      expect(result.rows.map((r) => r.pronargs)).toEqual([10]);
+    });
+
+    it('does not keep indexes that duplicate a unique or composite index', async () => {
+      if (!isDbConnected) return;
+      const result = await pool.query(
+        `SELECT indexname FROM pg_indexes
+         WHERE schemaname = 'public'
+           AND indexname IN ('idx_users_username', 'idx_customers_rest_phone',
+                             'idx_restaurant_hours_rest', 'idx_inventory_items_restaurant')`
+      );
+      expect(result.rows).toEqual([]);
+    });
+  });
 });

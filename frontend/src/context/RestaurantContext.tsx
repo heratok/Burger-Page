@@ -45,6 +45,7 @@ export interface RestaurantContextType {
   activeRestaurantSlug: string
   isSyncing: boolean
   switchRestaurant: (idOrSlug: string) => void
+  loadRestaurant: (idOrSlug: string) => Promise<"ok" | "not-found" | "error">
 
   // Super Admin Directory Actions
   createRestaurant: (data: {
@@ -187,6 +188,7 @@ export const useRestaurant = (): RestaurantContextType => {
     activeRestaurantSlug: tenant.activeRestaurantSlug,
     isSyncing: tenant.isSyncing,
     switchRestaurant: tenant.switchRestaurant,
+    loadRestaurant: tenant.loadRestaurant,
 
     createRestaurant: tenant.createRestaurant,
     updateRestaurant: tenant.updateRestaurant,
