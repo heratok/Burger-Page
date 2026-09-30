@@ -89,7 +89,8 @@ Para backend de desarrollo: `backend/.env` (gitignored) con
 ```bash
 npm run db:migrate:create -- nombre          # crear una migración SQL
 npm run db:migrate                           # aplicar pendientes (DATABASE_URL)
-npm run db:migrate:down                      # revertir la última
+npm run db:migrate:down                      # revertir la última (migrate-down.sh, requiere psql)
+npm run db:baseline                          # marcar las migraciones como aplicadas (up --fake)
 ```
 Detalles: [`database/migrations/README.md`](file:///C:/Users/ASUS/Desktop/Burger-Page/database/migrations/README.md).
 

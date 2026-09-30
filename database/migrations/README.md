@@ -29,9 +29,9 @@ test de idempotencia `PostgresConstraints.test.ts`.
    ```bash
    npm run db:migrate
    ```
-4. **Revertir la última**:
+4. **Revertir la última** (una por ejecución; requiere `psql` en el PATH):
    ```bash
-   npm run db:migrate:down
+   npm run db:migrate:down   # database/scripts/migrate-down.sh
    ```
 
 `node-pg-migrate` crea su tabla de control (`pgmigrations`) en la base objetivo
@@ -65,13 +65,12 @@ Notes on the node-pg-migrate 9 CLI as wired in `package.json`:
 
 - Migrations are recorded by file name without `.sql`, e.g.
   `0000000000007_schema_integrity.up` (the `.up` suffix is part of the name).
-- `npm run db:migrate:down` loads only `*.down.sql` files, whose names
-  (`...x.down`) never match the recorded `...x.up`, so node-pg-migrate reports
-  "Definitions of migrations ... have been deleted". Apply the `.down.sql` by
-  hand with `psql -1 -f` and delete the `...x.up` row from `pgmigrations`
-  (the drift script does exactly that).
-- The CLI has no `baseline` action, so `npm run db:baseline` fails with
-  "Invalid Action"; use `up --fake` to mark migrations as applied.
+- `npm run db:migrate:down` runs `database/scripts/migrate-down.sh`: it reads
+  the last row of `pgmigrations` (`...x.up`), runs `...x.down.sql` and deletes
+  that row in one transaction (`psql -1`). One migration per run; needs
+  `psql` on PATH. node-pg-migrate's own `down` cannot match the `.up` names.
+- The CLI has no `baseline` action: `npm run db:baseline` is `up --fake`, which
+  marks every migration file as applied without running it.
 - Do not write `-- up migration` / `-- down migration` comment lines inside a
   file: the loader uses them as section markers.
 - Never put `BEGIN;`/`COMMIT;` in a migration: node-pg-migrate wraps the run

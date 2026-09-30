@@ -32,7 +32,7 @@
 #          create (drift_migrated / drift_fresh).
 #
 # Local run with Docker:
-#   docker run --rm -d --name drift-pg -p 5432:5432 -e POSTGRES_PASSWORD=postgres postgres:16-alpine
+#   docker run --rm -d --name drift-pg -p 5432:5432 -e POSTGRES_PASSWORD=postgres postgres:17-alpine
 #   database/scripts/check-migration-drift.sh origin/main
 #   docker rm -f drift-pg
 # ============================================================================
@@ -77,10 +77,10 @@ compare() { # compare <label-a> <file-a> <label-b> <file-b> <fatal 1|0> <message
     cat "$TMP/diff.out"
     echo "::endgroup::"
     if [ "$5" = "1" ]; then
-      echo "FAIL: $6" >&2
+      echo "FAIL: expected but NOT true: $6 (see the diff above)" >&2
       fail=1
     else
-      echo "WARNING: $6" >&2
+      echo "WARNING: expected but NOT true: $6 (see the diff above)" >&2
     fi
   fi
 }
