@@ -187,7 +187,6 @@ export class SqliteOrderRepository implements OrderRepository {
     const stmt = this.db.prepare(`
       UPDATE orders SET
         customer_id = ?,
-        status = ?,
         total = ?,
         delivery_fee = ?,
         final_total = ?,
@@ -208,7 +207,6 @@ export class SqliteOrderRepository implements OrderRepository {
 
     stmt.run(
       order.customerId || existing.customerId || null,
-      order.status,
       order.subtotal,
       order.deliveryFee,
       order.finalTotal,

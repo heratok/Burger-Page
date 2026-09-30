@@ -144,6 +144,22 @@ describe.skipIf(!hasSqliteBinding)('SQLite Persistence Adapter Suite (TDD)', () 
     expect(foreign).toBeNull();
   });
 
+  it('order update never overwrites the persisted status (WU-4 alignment)', async () => {
+    const order = new Order('ord-upd', 'burger-craft', undefined, [], 'pending', new Date(), 1000);
+    await orderRepo.save(order);
+
+    const stale = (await orderRepo.findById('ord-upd', 'burger-craft'))!;
+    await orderRepo.updateStatus('ord-upd', 'cooking', 'burger-craft');
+
+    stale.deliveryFee = 2500;
+    const result = await orderRepo.update(stale, 'burger-craft');
+
+    const persisted = await orderRepo.findById('ord-upd', 'burger-craft');
+    expect(persisted?.deliveryFee).toBe(2500);
+    expect(persisted?.status).toBe('cooking');
+    expect(result.status).toBe('cooking');
+  });
+
   it('should save and retrieve customer buyer profiles in SQLite with strict tenant isolation', async () => {
     const customer = new Customer(
       'cust-777',
