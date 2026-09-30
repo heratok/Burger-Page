@@ -235,6 +235,10 @@ CREATE TABLE IF NOT EXISTS public.product_additions (
     display_order INTEGER NOT NULL DEFAULT 0,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    -- Schema integrity (0000000000007): target of the tenant-scoped FK from
+    -- order_item_additions.
+    CONSTRAINT uq_product_additions_id_restaurant
+        UNIQUE (id, restaurant_id),
     CONSTRAINT fk_product_additions_product_restaurant
         FOREIGN KEY (product_id, restaurant_id)
         REFERENCES public.products(id, restaurant_id)
@@ -352,7 +356,7 @@ CREATE TABLE IF NOT EXISTS public.order_items (
     id            TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
     order_id      TEXT NOT NULL,
     restaurant_id TEXT NOT NULL REFERENCES public.restaurants(id) ON DELETE CASCADE,
-    product_id    TEXT REFERENCES public.products(id) ON DELETE SET NULL,
+    product_id    TEXT,
     product_name  TEXT NOT NULL, -- historical snapshot at time of sale
     unit_price    NUMERIC(12, 2) NOT NULL CHECK (unit_price >= 0),
     quantity      INTEGER NOT NULL DEFAULT 1 CHECK (quantity > 0),
@@ -366,7 +370,14 @@ CREATE TABLE IF NOT EXISTS public.order_items (
     CONSTRAINT fk_order_items_order_tenant
         FOREIGN KEY (order_id, restaurant_id)
         REFERENCES public.orders(id, restaurant_id)
-        ON DELETE CASCADE
+        ON DELETE CASCADE,
+    -- Schema integrity (0000000000007): the sold product must belong to the
+    -- same restaurant as the line. SET NULL (PG15+ column list) nulls only
+    -- product_id when the product is deleted; the snapshot keeps the sale.
+    CONSTRAINT fk_order_items_product_tenant
+        FOREIGN KEY (product_id, restaurant_id)
+        REFERENCES public.products(id, restaurant_id)
+        ON DELETE SET NULL (product_id)
 );
 
 COMMENT ON TABLE public.order_items IS 'Líneas de pedido con snapshot histórico del producto vendido.';
@@ -376,7 +387,7 @@ CREATE TABLE IF NOT EXISTS public.order_item_additions (
     id            TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
     order_item_id TEXT NOT NULL,
     restaurant_id TEXT NOT NULL REFERENCES public.restaurants(id) ON DELETE CASCADE,
-    addition_id   TEXT REFERENCES public.product_additions(id) ON DELETE SET NULL,
+    addition_id   TEXT,
     addition_name TEXT NOT NULL, -- historical snapshot
     unit_price    NUMERIC(12, 2) NOT NULL DEFAULT 0.00 CHECK (unit_price >= 0),
     quantity      INTEGER NOT NULL DEFAULT 1 CHECK (quantity > 0),
@@ -386,7 +397,13 @@ CREATE TABLE IF NOT EXISTS public.order_item_additions (
     CONSTRAINT fk_order_item_additions_order_item_tenant
         FOREIGN KEY (order_item_id, restaurant_id)
         REFERENCES public.order_items(id, restaurant_id)
-        ON DELETE CASCADE
+        ON DELETE CASCADE,
+    -- Schema integrity (0000000000007): the addition must belong to the same
+    -- restaurant as the line; SET NULL nulls only addition_id.
+    CONSTRAINT fk_order_item_additions_addition_tenant
+        FOREIGN KEY (addition_id, restaurant_id)
+        REFERENCES public.product_additions(id, restaurant_id)
+        ON DELETE SET NULL (addition_id)
 );
 
 COMMENT ON TABLE public.order_item_additions IS 'Adiciones seleccionadas por línea de pedido (snapshot histórico).';
@@ -980,13 +997,16 @@ $$;
 CREATE UNIQUE INDEX IF NOT EXISTS uq_orders_client_order_id
     ON public.orders (restaurant_id, client_order_id)
     WHERE client_order_id IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_users_username            ON public.users(username);
+-- Not created on purpose (0000000000007 drops them from migrated databases):
+--   idx_users_username             = the users.username UNIQUE index
+--   idx_customers_rest_phone       = uq_customers_restaurant_phone
+--   idx_restaurant_hours_rest      = leading column of uq_restaurant_hours_day
+--   idx_inventory_items_restaurant = leading column of idx_inventory_items_low_stock
 CREATE INDEX IF NOT EXISTS idx_users_restaurant_id       ON public.users(restaurant_id);
 CREATE INDEX IF NOT EXISTS idx_categories_restaurant     ON public.categories(restaurant_id, display_order);
 CREATE INDEX IF NOT EXISTS idx_products_restaurant_cat   ON public.products(restaurant_id, category_id);
 CREATE INDEX IF NOT EXISTS idx_products_available        ON public.products(restaurant_id, is_available);
 CREATE INDEX IF NOT EXISTS idx_additions_restaurant_prod ON public.product_additions(restaurant_id, product_id);
-CREATE INDEX IF NOT EXISTS idx_customers_rest_phone      ON public.customers(restaurant_id, phone);
 CREATE INDEX IF NOT EXISTS idx_orders_rest_created       ON public.orders(restaurant_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_orders_rest_status        ON public.orders(restaurant_id, status);
 CREATE INDEX IF NOT EXISTS idx_orders_customer           ON public.orders(customer_id);
@@ -998,9 +1018,7 @@ CREATE INDEX IF NOT EXISTS idx_order_item_additions_addition ON public.order_ite
 CREATE INDEX IF NOT EXISTS idx_order_item_additions_restaurant ON public.order_item_additions(restaurant_id);
 CREATE INDEX IF NOT EXISTS idx_order_status_history_order ON public.order_status_history(order_id, changed_at DESC);
 CREATE INDEX IF NOT EXISTS idx_order_status_history_restaurant ON public.order_status_history(restaurant_id);
-CREATE INDEX IF NOT EXISTS idx_restaurant_hours_rest     ON public.restaurant_hours(restaurant_id);
 CREATE INDEX IF NOT EXISTS idx_suppliers_restaurant      ON public.suppliers(restaurant_id);
-CREATE INDEX IF NOT EXISTS idx_inventory_items_restaurant ON public.inventory_items(restaurant_id);
 CREATE INDEX IF NOT EXISTS idx_inventory_items_low_stock  ON public.inventory_items(restaurant_id, current_stock);
 
 
