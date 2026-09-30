@@ -182,6 +182,83 @@ describe("CheckoutForm - Direct Sale Flow", () => {
     windowOpenSpy.mockRestore()
   })
 
+  const fillForm = () => {
+    fireEvent.change(screen.getByLabelText(/Nombre/i), { target: { value: "Carlos Pérez" } })
+    fireEvent.change(screen.getByLabelText(/Celular/i), { target: { value: "3001234567" } })
+    fireEvent.change(screen.getByLabelText(/Dirección/i), { target: { value: "Calle 45 # 12-34" } })
+    fireEvent.change(screen.getByLabelText(/Barrio/i), { target: { value: "El Poblado" } })
+  }
+
+  it("disables the submit button while the order is in flight and never sends a second clientOrderId (2.1)", async () => {
+    const windowOpenSpy = vi.spyOn(window, "open").mockImplementation(() => null)
+    const { apiClient } = await import("@/core/api/apiClient")
+    let resolveCreate!: (v: any) => void
+    const createOrderSpy = vi.spyOn(apiClient, "createOrder").mockImplementation(
+      () => new Promise((res) => { resolveCreate = res }) as any
+    )
+
+    render(
+      <RestaurantProvider>
+        <CheckoutForm cartItems={mockCartItems} onClose={() => {}} onBackToCart={() => {}} />
+      </RestaurantProvider>
+    )
+    fillForm()
+
+    const submitBtn = screen.getByRole("button", { name: /Enviar pedido por WhatsApp/i })
+    fireEvent.click(submitBtn)
+    await waitFor(() => expect(createOrderSpy).toHaveBeenCalledTimes(1))
+
+    // In flight: the button is disabled and further taps are ignored, even past
+    // the context double-click window.
+    await waitFor(() => expect((submitBtn as HTMLButtonElement).disabled).toBe(true))
+    fireEvent.click(submitBtn)
+    fireEvent.submit(submitBtn.closest("form") as HTMLFormElement)
+    await new Promise((r) => setTimeout(r, 650))
+    fireEvent.click(submitBtn)
+    expect(createOrderSpy).toHaveBeenCalledTimes(1)
+
+    resolveCreate({ id: "server-dt-1", orderNumber: 1, status: "pending" })
+    await waitFor(() => expect(windowOpenSpy).toHaveBeenCalledTimes(1))
+    windowOpenSpy.mockRestore()
+  })
+
+  it("re-enables the submit button after a server rejection so the customer can fix and retry (2.1)", async () => {
+    const { apiClient } = await import("@/core/api/apiClient")
+    vi.spyOn(apiClient, "createOrder").mockRejectedValue(
+      Object.assign(new Error("Subtotal 5000 is below minimum order amount 20000"), { status: 400 })
+    )
+    render(
+      <RestaurantProvider>
+        <CheckoutForm cartItems={mockCartItems} onClose={() => {}} onBackToCart={() => {}} />
+      </RestaurantProvider>
+    )
+    fillForm()
+    const submitBtn = screen.getByRole("button", { name: /Enviar pedido por WhatsApp/i }) as HTMLButtonElement
+    fireEvent.click(submitBtn)
+    await waitFor(() => expect(toast.error).toHaveBeenCalled())
+    await waitFor(() => expect(submitBtn.disabled).toBe(false))
+  })
+
+  it("opens WhatsApp when the server answers 503 after submit: the sale is pending, not rejected (2.2)", async () => {
+    const windowOpenSpy = vi.spyOn(window, "open").mockImplementation(() => null)
+    const onCloseMock = vi.fn()
+    const { apiClient } = await import("@/core/api/apiClient")
+    vi.spyOn(apiClient, "createOrder").mockRejectedValue(
+      Object.assign(new Error("API Error: 503 Service Unavailable"), { status: 503 })
+    )
+    render(
+      <RestaurantProvider>
+        <CheckoutForm cartItems={mockCartItems} onClose={onCloseMock} onBackToCart={() => {}} />
+      </RestaurantProvider>
+    )
+    fillForm()
+    fireEvent.click(screen.getByRole("button", { name: /Enviar pedido por WhatsApp/i }))
+    await waitFor(() => expect(windowOpenSpy).toHaveBeenCalledTimes(1))
+    expect(onCloseMock).toHaveBeenCalledTimes(1)
+    expect(toast.error).not.toHaveBeenCalled()
+    windowOpenSpy.mockRestore()
+  })
+
   it("includes the delivery fee in the displayed change, summary, and recorded total", async () => {
     // Subtotal 30.000 + delivery fee 5.000 -> total 35.000. Paying 40.000
     // must quote a change of 5.000 (NOT 10.000, which would exclude the fee)

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { CreateOrderInput } from '@burger-page/contracts'
-import { ApiClient } from './apiClient'
+import { ApiClient, ORDER_SUBMIT_TIMEOUT_MS } from './apiClient'
 
 describe('ApiClient', () => {
   let client: ApiClient
@@ -94,10 +94,13 @@ describe('ApiClient', () => {
     }
     const data = await client.createOrder(newOrder)
     expect(data).toEqual(mockData)
+    // createOrder carries a timeout signal so a hung request becomes a
+    // retryable failure instead of freezing the checkout.
     expect(globalThis.fetch).toHaveBeenCalledWith('http://localhost:3001/api/orders', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newOrder),
+      signal: expect.any(AbortSignal),
     })
   })
 
@@ -130,6 +133,62 @@ describe('ApiClient', () => {
   it('should handle errors', async () => {
     mockResponse(null, false, 404, 'Not Found')
     await expect(client.fetchRestaurant()).rejects.toThrow('API Error: 404 Not Found')
+  })
+
+  describe('error body parsing (2.4)', () => {
+    const errorOf = async (body: any, status = 400, statusText = 'Bad Request') => {
+      mockResponse(body, false, status, statusText)
+      return client.createOrder({ restaurantId: 'r', items: [] } as any).catch((e) => e)
+    }
+
+    it('exposes the RFC7807 detail as the error message and keeps the status', async () => {
+      const err = await errorOf({ title: 'Validation Error', status: 400, detail: 'Subtotal 5000 is below minimum order amount 20000' })
+      expect(err.message).toBe('Subtotal 5000 is below minimum order amount 20000')
+      expect(err.status).toBe(400)
+      expect(err.statusText).toBe('Bad Request')
+    })
+
+    it('falls back to message, then error, then the generic status text', async () => {
+      expect((await errorOf({ message: 'from message' })).message).toBe('from message')
+      expect((await errorOf({ error: 'from error' })).message).toBe('from error')
+      const generic = await errorOf({})
+      expect(generic.message).toBe('API Error: 400 Bad Request')
+      expect(generic.status).toBe(400)
+    })
+
+    it('falls back to the generic message when the body is not JSON', async () => {
+      const fetchMock = globalThis.fetch as any
+      fetchMock.mockResolvedValueOnce({
+        ok: false,
+        status: 502,
+        statusText: 'Bad Gateway',
+        json: async () => {
+          throw new SyntaxError('Unexpected token <')
+        },
+      })
+      const err = await client.createOrder({ restaurantId: 'r', items: [] } as any).catch((e) => e)
+      expect(err.message).toBe('API Error: 502 Bad Gateway')
+      expect(err.status).toBe(502)
+    })
+
+    it('aborts createOrder after the submit timeout so the caller can retry with the same id', async () => {
+      vi.useFakeTimers()
+      try {
+        const fetchMock = globalThis.fetch as any
+        fetchMock.mockImplementationOnce(
+          (_url: string, init: RequestInit) =>
+            new Promise((_res, rej) => {
+              init.signal?.addEventListener('abort', () => rej(Object.assign(new Error('aborted'), { name: 'AbortError' })))
+            })
+        )
+        const p = client.createOrder({ restaurantId: 'r', items: [] } as any).catch((e) => e)
+        await vi.advanceTimersByTimeAsync(ORDER_SUBMIT_TIMEOUT_MS + 1)
+        const err = await p
+        expect(err.name).toBe('AbortError')
+      } finally {
+        vi.useRealTimers()
+      }
+    })
   })
 
   it('should list restaurants', async () => {

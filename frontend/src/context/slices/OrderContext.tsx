@@ -485,15 +485,29 @@ export function addOrderToRestaurant(
   }
 }
 
+// Automatic retry of pending (unsynced) orders: bounded exponential backoff so
+// a persistently failing server is never hammered and never retried forever.
+// Delays: 5s, 10s, 20s, 40s, 60s, 60s, ... for at most MAX attempts.
+export const PENDING_RETRY_BASE_MS = 5_000
+export const PENDING_RETRY_MAX_MS = 60_000
+export const MAX_PENDING_RETRY_ATTEMPTS = 8
+
 /**
- * True when an API failure is a connectivity/offline problem (fetch TypeError,
- * 'Failed to fetch', …) rather than a server rejection. Server rejections keep
- * the removal semantics; network failures keep the sale pending local sync
- * (REJ-02).
+ * True when a submission failure leaves the outcome UNKNOWN or temporarily
+ * unavailable, as opposed to a definitive server rejection: connectivity
+ * problems (fetch TypeError, 'Failed to fetch'), client-side abort/timeout,
+ * and HTTP 5xx / 408 (gateway or server failures where the server may already
+ * have committed the order). These keep the sale pending and are retried with
+ * the SAME clientOrderId (the server replays idempotently); 4xx responses are
+ * rejections that keep the removal semantics (REJ-02).
  */
 export function isNetworkFailure(err: unknown): boolean {
   if (!err) return false
   const anyErr = err as any
+  if (typeof anyErr.status === 'number' && (anyErr.status >= 500 || anyErr.status === 408)) {
+    return true
+  }
+  if (anyErr.name === 'AbortError' || anyErr.name === 'TimeoutError') return true
   return !!(
     anyErr.message &&
     (anyErr.message.includes('Failed to fetch') ||
@@ -727,7 +741,9 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const retryPendingOrders = useCallback(async () => {
     const targetRestId = activeRestaurant?.id
-    if (!targetRestId || !apiClient.hasToken()) return
+    // Anonymous storefront orders are retried too: POST /orders is public and
+    // idempotent on clientOrderId, so no session token is required here.
+    if (!targetRestId) return
     if (retryInFlightRef.current) return
     const pendingOrders = activeRestaurant.orders.filter((o) => o.pendingSync)
     if (pendingOrders.length === 0) return
@@ -738,6 +754,52 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       retryInFlightRef.current = false
     }
   }, [activeRestaurant, attemptPendingOrderSync])
+
+  // Timer-driven retry for pending orders (covers anonymous storefront
+  // customers, who never trigger the token-gated refresh-driven retry). Bounded
+  // exponential backoff; an 'online' event retries immediately. After the max
+  // attempts it stops and tells the user once; the order stays pending.
+  const pendingSyncCount = (activeRestaurant?.orders ?? []).filter((o) => o.pendingSync).length
+  const [retryTick, setRetryTick] = useState(0)
+  const retryAttemptsRef = useRef(0)
+  const lastPendingCountRef = useRef(0)
+  useEffect(() => {
+    if (pendingSyncCount === 0) {
+      retryAttemptsRef.current = 0
+      lastPendingCountRef.current = 0
+      return
+    }
+    if (pendingSyncCount > lastPendingCountRef.current) {
+      retryAttemptsRef.current = 0
+    }
+    lastPendingCountRef.current = pendingSyncCount
+    if (retryAttemptsRef.current >= MAX_PENDING_RETRY_ATTEMPTS) return
+
+    const delay = Math.min(
+      PENDING_RETRY_BASE_MS * 2 ** retryAttemptsRef.current,
+      PENDING_RETRY_MAX_MS
+    )
+    const run = async () => {
+      retryAttemptsRef.current += 1
+      await retryPendingOrdersRef.current()
+      if (retryAttemptsRef.current >= MAX_PENDING_RETRY_ATTEMPTS) {
+        toast.warning(
+          'No se pudo sincronizar la orden pendiente. Revisa tu conexión; se reintentará al recargar.'
+        )
+      }
+      setRetryTick((t) => t + 1)
+    }
+    const timer = setTimeout(() => void run(), delay)
+    const onOnline = () => {
+      clearTimeout(timer)
+      void run()
+    }
+    window.addEventListener('online', onOnline)
+    return () => {
+      clearTimeout(timer)
+      window.removeEventListener('online', onOnline)
+    }
+  }, [pendingSyncCount, retryTick])
 
   // Keep the latest retry callback reachable from the mount/refresh effects
   // without re-running them on every restaurant record identity change.
