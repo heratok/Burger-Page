@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from "react"
 import type { RestaurantRecord, AppView, AdminTab } from "@/types/restaurant"
 import { useRestaurant } from "@/context/RestaurantContext"
-import { apiClient } from "@/core/api/apiClient"
 
 export interface RouteResolution {
   view: AppView
@@ -112,6 +111,7 @@ export function useAppRouter() {
   const {
     restaurants,
     switchRestaurant,
+    loadRestaurant,
     setActiveView,
     activeView,
     adminTab,
@@ -119,6 +119,7 @@ export function useAppRouter() {
   } = useRestaurant()
   const [attemptedSlug, setAttemptedSlug] = useState<string | null>(null)
   const [isNotFound, setIsNotFound] = useState(false)
+  const [loadError, setLoadError] = useState(false)
 
   const syncLocation = useCallback(() => {
     const resolution = resolveRoute(window.location.pathname, restaurants)
@@ -126,32 +127,31 @@ export function useAppRouter() {
     if (resolution.isNotFound) {
       const slug = resolution.attemptedSlug
       if (slug && !slug.toLowerCase().startsWith('admin')) {
-        apiClient
-          .fetchRestaurant(slug)
-          .then((restaurant) => {
-            if (restaurant && restaurant.id) {
-              switchRestaurant(restaurant.id)
-              setIsNotFound(false)
-              setAttemptedSlug(null)
-              setActiveView("store")
-            } else {
-              setAttemptedSlug(slug)
-              setIsNotFound(true)
-              setActiveView("not-found")
-            }
-          })
-          .catch(() => {
+        // Single fetch: loadRestaurant registers AND activates the record, so
+        // there is no second fetch that could fail and leave another tenant's
+        // storefront on screen.
+        loadRestaurant(slug).then((outcome) => {
+          if (outcome === "ok") {
+            setIsNotFound(false)
+            setLoadError(false)
+            setAttemptedSlug(null)
+            setActiveView("store")
+          } else {
             setAttemptedSlug(slug)
             setIsNotFound(true)
+            setLoadError(outcome === "error")
             setActiveView("not-found")
-          })
+          }
+        })
         return
       }
       setAttemptedSlug(resolution.attemptedSlug ?? null)
+      setLoadError(false)
       setIsNotFound(true)
       setActiveView("not-found")
     } else {
       setIsNotFound(false)
+      setLoadError(false)
       setAttemptedSlug(null)
       if (resolution.restaurantId) {
         switchRestaurant(resolution.restaurantId)
@@ -161,7 +161,7 @@ export function useAppRouter() {
       }
       setActiveView(resolution.view)
     }
-  }, [restaurants, switchRestaurant, setActiveView, setAdminTab])
+  }, [restaurants, switchRestaurant, loadRestaurant, setActiveView, setAdminTab])
 
   useEffect(() => {
     syncLocation()
@@ -182,6 +182,8 @@ export function useAppRouter() {
     adminTab,
     isNotFound,
     attemptedSlug,
+    loadError,
+    retry: syncLocation,
     navigateTo,
   }
 }

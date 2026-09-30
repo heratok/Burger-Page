@@ -2155,6 +2155,8 @@ describe("AdminAuthModal - session comes only from the validated auth.login resu
       adminTab: "dashboard",
       isNotFound: false,
       attemptedSlug: null,
+      loadError: false,
+      retry: vi.fn(),
       navigateTo: vi.fn(),
     })
 

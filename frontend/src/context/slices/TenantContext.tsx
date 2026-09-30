@@ -21,6 +21,29 @@ export interface GlobalPlatformStats {
   totalCustomers: number
 }
 
+export type LoadRestaurantOutcome = "ok" | "not-found" | "error"
+
+function toRestaurantRecord(fetched: any): RestaurantRecord {
+  return {
+    id: fetched.id,
+    slug: fetched.slug,
+    isActive: fetched.isActive !== undefined ? Boolean(fetched.isActive) : true,
+    createdAt: fetched.createdAt || new Date().toISOString(),
+    categories: fetched.categories || [],
+    config: {
+      ...DEFAULT_STORE_CONFIG,
+      ...(fetched.config || {}),
+      name: fetched.name || fetched.config?.name || DEFAULT_STORE_CONFIG.name,
+    },
+    products: fetched.products || [],
+    additions: fetched.additions || [],
+    orders: fetched.orders || [],
+    customers: fetched.customers || [],
+    inventory: fetched.inventory || [],
+    suppliers: fetched.suppliers || [],
+  }
+}
+
 export interface TenantContextType {
   restaurants: RestaurantRecord[]
   activeRestaurant: RestaurantRecord
@@ -36,6 +59,13 @@ export interface TenantContextType {
   superAdminPassword?: string
   isSyncing: boolean
   switchRestaurant: (idOrSlug: string) => void
+  /**
+   * Resolve a tenant by id/slug (known locally or fetched once from the
+   * backend), register it and make it active. Never falls back to another
+   * tenant: on failure the active tenant is untouched and the outcome tells
+   * the caller to show a not-found or a retryable error state.
+   */
+  loadRestaurant: (idOrSlug: string) => Promise<LoadRestaurantOutcome>
   createRestaurant: (data: {
     name: string
     slug: string
@@ -210,40 +240,61 @@ export const TenantProvider: React.FC<{
           .fetchRestaurant(idOrSlug)
           .then((fetched) => {
             if (fetched && fetched.id) {
-              setEnvelope((prev) => {
-                if (prev.restaurants.some((r) => r.id === fetched.id || r.slug === fetched.slug)) {
-                  return prev
-                }
-                const formatted: RestaurantRecord = {
-                  id: fetched.id,
-                  slug: fetched.slug,
-                  isActive: fetched.isActive !== undefined ? Boolean(fetched.isActive) : true,
-                  createdAt: (fetched as any).createdAt || new Date().toISOString(),
-                  categories: fetched.categories || [],
-                  config: {
-                    ...DEFAULT_STORE_CONFIG,
-                    ...(fetched.config || {}),
-                    name: (fetched as any).name || (fetched.config as any)?.name || DEFAULT_STORE_CONFIG.name,
-                  },
-                  products: (fetched as any).products || [],
-                  additions: (fetched as any).additions || [],
-                  orders: (fetched as any).orders || [],
-                  customers: (fetched as any).customers || [],
-                  inventory: (fetched as any).inventory || [],
-                  suppliers: (fetched as any).suppliers || [],
-                }
-                return {
-                  ...prev,
-                  restaurants: [formatted, ...prev.restaurants],
-                }
-              })
+              const formatted = toRestaurantRecord(fetched)
+              setEnvelope((prev) =>
+                prev.restaurants.some((r) => r.id === fetched.id || r.slug === fetched.slug)
+                  ? prev
+                  : { ...prev, restaurants: [formatted, ...prev.restaurants] }
+              )
               setActiveRestaurantId(fetched.id)
             }
           })
-          .catch(() => {})
+          .catch((err) => {
+            if (import.meta.env?.MODE !== "test") {
+              console.warn("Could not load restaurant from backend API:", err)
+            }
+            toast.error("No se pudo cargar el restaurante. Intentá de nuevo.")
+          })
       }
     },
     [envelope.restaurants, session.role, session.restaurantId]
+  )
+
+  const loadRestaurant = useCallback(
+    async (idOrSlug: string): Promise<LoadRestaurantOutcome> => {
+      const lower = idOrSlug.toLowerCase()
+      const known = envelope.restaurants.find(
+        (r) => r.id === idOrSlug || r.slug.toLowerCase() === lower
+      )
+      if (known) {
+        switchRestaurant(known.id)
+        return "ok"
+      }
+      try {
+        const fetched = await apiClient.fetchRestaurant(idOrSlug)
+        if (!fetched || !fetched.id) return "not-found"
+        // Same guard as switchRestaurant: a restaurant admin never live-switches.
+        if (session.role === "restaurant" && session.restaurantId !== fetched.id) {
+          toast.warning("Solo podés operar tu propio restaurante")
+          return "ok"
+        }
+        const formatted = toRestaurantRecord(fetched)
+        setEnvelope((prev) =>
+          prev.restaurants.some((r) => r.id === fetched.id || r.slug === fetched.slug)
+            ? prev
+            : { ...prev, restaurants: [formatted, ...prev.restaurants] }
+        )
+        setActiveRestaurantId(fetched.id)
+        return "ok"
+      } catch (err) {
+        if (isNotFoundError(err)) return "not-found"
+        if (import.meta.env?.MODE !== "test") {
+          console.warn("Could not load restaurant from backend API:", err)
+        }
+        return "error"
+      }
+    },
+    [envelope.restaurants, session.role, session.restaurantId, switchRestaurant]
   )
 
   const updateActiveRestaurantRecord = useCallback(
@@ -506,6 +557,7 @@ export const TenantProvider: React.FC<{
     superAdminPassword: envelope.superAdminPassword ?? undefined,
     isSyncing,
     switchRestaurant,
+    loadRestaurant,
     createRestaurant,
     updateRestaurant,
     deleteRestaurant,

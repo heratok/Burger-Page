@@ -204,6 +204,8 @@ describe("SUS-04 - Route-level gating of global SaaS modules in MainRouter", () 
       adminTab,
       isNotFound: false,
       attemptedSlug: null,
+      loadError: false,
+      retry: vi.fn(),
       navigateTo: navigateToMock,
     })
     render(

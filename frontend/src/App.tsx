@@ -117,14 +117,14 @@ function GlobalModuleAccessDenied({ onBackToDashboard }: GlobalModuleAccessDenie
 
 export function MainRouter() {
   const { adminTab, session } = useRestaurant()
-  const { activeView, isNotFound, attemptedSlug, navigateTo } = useAppRouter()
+  const { activeView, isNotFound, attemptedSlug, loadError, retry, navigateTo } = useAppRouter()
 
   // 1. Not Found Route
   if (isNotFound && attemptedSlug) {
     return (
       <ErrorBoundary>
         <Suspense fallback={<AdminLoadingFallback />}>
-          <RestaurantNotFound attemptedSlug={attemptedSlug} />
+          <RestaurantNotFound attemptedSlug={attemptedSlug} loadError={loadError} onRetry={retry} />
         </Suspense>
       </ErrorBoundary>
     )
