@@ -222,6 +222,83 @@ describe("InventoryContext Slice", () => {
     expect(updated?.currentStock).toBe(45)
   })
 
+  it("synchronizes addSupplier, updateSupplier, deleteSupplier with apiClient", async () => {
+    const { TenantProvider } = await import("./TenantContext")
+    const { InventoryProvider, useInventory } = await import("./InventoryContext")
+    const { apiClient } = await import("@/core/api/apiClient")
+
+    const createSpy = vi.spyOn(apiClient, "createSupplier").mockResolvedValue({
+      id: "sup-server-1",
+      name: "Carnes SAS",
+      category: "ingredients",
+      contactName: "Carlos",
+      phone: "3001234567",
+    } as any)
+    const updateSpy = vi.spyOn(apiClient, "updateSupplier").mockResolvedValue({
+      id: "sup-server-1",
+      name: "Carnes SAS Actualizada",
+      category: "ingredients",
+      contactName: "Carlos",
+      phone: "3001234567",
+    } as any)
+    const deleteSpy = vi.spyOn(apiClient, "deleteSupplier").mockResolvedValue(undefined as any)
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>
+        <InventoryProvider>{children}</InventoryProvider>
+      </TenantProvider>
+    )
+
+    const { result } = renderHook(() => useInventory(), { wrapper })
+
+    // 1. Add supplier
+    act(() => {
+      result.current.addSupplier({
+        name: "Carnes SAS",
+        category: "ingredients",
+        contactName: "Carlos",
+        phone: "3001234567",
+      })
+    })
+
+    expect(createSpy).toHaveBeenCalledTimes(1)
+    expect(createSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "Carnes SAS",
+        category: "ingredients",
+      }),
+      expect.stringMatching(/^rest-/)
+    )
+
+    // Wait for optimistic card to be updated or adopt id
+    await waitFor(() => {
+      expect(result.current.suppliers.some((s) => s.id === "sup-server-1")).toBe(true)
+    })
+
+    // 2. Update supplier
+    act(() => {
+      result.current.updateSupplier("sup-server-1", {
+        name: "Carnes SAS Actualizada",
+      })
+    })
+
+    expect(updateSpy).toHaveBeenCalledTimes(1)
+    expect(updateSpy).toHaveBeenCalledWith(
+      "sup-server-1",
+      expect.objectContaining({ name: "Carnes SAS Actualizada" }),
+      expect.stringMatching(/^rest-/)
+    )
+
+    // 3. Delete supplier
+    act(() => {
+      result.current.deleteSupplier("sup-server-1")
+    })
+
+    expect(deleteSpy).toHaveBeenCalledTimes(1)
+    expect(deleteSpy).toHaveBeenCalledWith("sup-server-1", expect.stringMatching(/^rest-/))
+    expect(result.current.suppliers.some((s) => s.id === "sup-server-1")).toBe(false)
+  })
+
   it("handles apiClient.updateInventoryStock network errors gracefully without crashing", async () => {
     const { TenantProvider } = await import("./TenantContext")
     const { InventoryProvider, useInventory } = await import("./InventoryContext")

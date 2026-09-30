@@ -219,6 +219,21 @@ export const updateInventoryStockSchema = z.object({
 });
 export type UpdateInventoryStockInput = z.infer<typeof updateInventoryStockSchema>;
 
+export const createSupplierSchema = z.object({
+  id: z.string().optional(),
+  restaurantId: z.string().optional(),
+  name: z.string().min(1, 'Supplier name is required'),
+  category: z.string().optional().default('general'),
+  contactName: z.string().optional().default(''),
+  phone: z.string().optional().default(''),
+  email: z.string().optional().default(''),
+  notes: z.string().optional(),
+});
+export type CreateSupplierInput = z.infer<typeof createSupplierSchema>;
+
+export const updateSupplierSchema = createSupplierSchema.partial();
+export type UpdateSupplierInput = z.infer<typeof updateSupplierSchema>;
+
 // ==========================================
 // REAL-TIME ORDER EVENTS (SSE)
 // ==========================================

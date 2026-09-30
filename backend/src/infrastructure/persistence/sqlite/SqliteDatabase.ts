@@ -98,6 +98,19 @@ export function createSqliteDatabase(dbPath = ':memory:'): Database {
       created_at TEXT,
       updated_at TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS suppliers (
+      id TEXT PRIMARY KEY,
+      restaurant_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      category TEXT DEFAULT 'general',
+      contact_name TEXT DEFAULT '',
+      phone TEXT DEFAULT '',
+      email TEXT DEFAULT '',
+      notes TEXT,
+      created_at TEXT,
+      updated_at TEXT
+    );
   `);
 
   // Defensive migration for the real inventory table: the schema only ever

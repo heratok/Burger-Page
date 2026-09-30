@@ -15,6 +15,7 @@ import { InMemoryOrderRepository } from '../persistence/InMemoryOrderRepository.
 import { InMemoryCustomerRepository } from '../persistence/InMemoryCustomerRepository.js';
 import { InMemoryInventoryRepository } from '../persistence/InMemoryInventoryRepository.js';
 import { InMemoryUserRepository } from '../persistence/InMemoryUserRepository.js';
+import { InMemorySupplierRepository } from '../persistence/InMemorySupplierRepository.js';
 import { createSqliteDatabase } from '../persistence/sqlite/SqliteDatabase.js';
 import { SqliteRestaurantRepository } from '../persistence/sqlite/SqliteRestaurantRepository.js';
 import { SqliteCategoryRepository } from '../persistence/sqlite/SqliteCategoryRepository.js';
@@ -23,6 +24,7 @@ import { SqliteOrderRepository } from '../persistence/sqlite/SqliteOrderReposito
 import { SqliteCustomerRepository } from '../persistence/sqlite/SqliteCustomerRepository.js';
 import { SqliteInventoryRepository } from '../persistence/sqlite/SqliteInventoryRepository.js';
 import { SqliteProductAdditionRepository } from '../persistence/sqlite/SqliteProductAdditionRepository.js';
+import { SqliteSupplierRepository } from '../persistence/sqlite/SqliteSupplierRepository.js';
 import { verifyPgConnection } from '../persistence/postgres/PgClient.js';
 import { resolveStorageDriver, dataRunsOnPostgres } from '../persistence/driverSelection.js';
 import type { StorageDriver } from '../persistence/driverSelection.js';
@@ -35,6 +37,7 @@ import { PgOrderRepository } from '../persistence/postgres/PgOrderRepository.js'
 import { PgCustomerRepository } from '../persistence/postgres/PgCustomerRepository.js';
 import { PgInventoryRepository } from '../persistence/postgres/PgInventoryRepository.js';
 import { PgUserRepository } from '../persistence/postgres/PgUserRepository.js';
+import { PgSupplierRepository } from '../persistence/postgres/PgSupplierRepository.js';
 import { RestaurantRepository } from '../../domain/ports/out/RestaurantRepository.js';
 import { CategoryRepository } from '../../domain/ports/out/CategoryRepository.js';
 import { ProductRepository } from '../../domain/ports/out/ProductRepository.js';
@@ -43,6 +46,7 @@ import { OrderRepository } from '../../domain/ports/out/OrderRepository.js';
 import { CustomerRepository } from '../../domain/ports/out/CustomerRepository.js';
 import { InventoryRepository } from '../../domain/ports/out/InventoryRepository.js';
 import { UserRepository } from '../../domain/ports/out/UserRepository.js';
+import { SupplierRepository } from '../../domain/ports/out/SupplierRepository.js';
 import { PasswordHasher } from '../../domain/ports/out/PasswordHasher.js';
 import { CryptoPasswordHasher } from '../security/CryptoPasswordHasher.js';
 
@@ -86,6 +90,11 @@ import { ListProductAdditionsUseCase } from '../../application/use-cases/ListPro
 import { UpdateProductAdditionUseCase } from '../../application/use-cases/UpdateProductAdditionUseCase.js';
 import { DeleteProductAdditionUseCase } from '../../application/use-cases/DeleteProductAdditionUseCase.js';
 
+import { ListSuppliersUseCase } from '../../application/use-cases/ListSuppliersUseCase.js';
+import { CreateSupplierUseCase } from '../../application/use-cases/CreateSupplierUseCase.js';
+import { UpdateSupplierUseCase } from '../../application/use-cases/UpdateSupplierUseCase.js';
+import { DeleteSupplierUseCase } from '../../application/use-cases/DeleteSupplierUseCase.js';
+
 // Controllers
 import { RestaurantController } from './controllers/RestaurantController.js';
 import { ProductController } from './controllers/ProductController.js';
@@ -94,6 +103,7 @@ import { CustomerController } from './controllers/CustomerController.js';
 import { InventoryController } from './controllers/InventoryController.js';
 import { UserController } from './controllers/UserController.js';
 import { ProductAdditionController } from './controllers/ProductAdditionController.js';
+import { SupplierController } from './controllers/SupplierController.js';
 
 // Routes
 import { restaurantRoutes } from './routes/restaurant.routes.js';
@@ -105,6 +115,7 @@ import { inventoryRoutes } from './routes/inventory.routes.js';
 import { userRoutes } from './routes/user.routes.js';
 import { additionRoutes } from './routes/addition.routes.js';
 import { storageRoutes } from './routes/storage.routes.js';
+import { supplierRoutes } from './routes/supplier.routes.js';
 
 export interface AppDependencies {
   restaurantController: RestaurantController;
@@ -112,6 +123,7 @@ export interface AppDependencies {
   orderController: OrderController;
   customerController: CustomerController;
   inventoryController: InventoryController;
+  supplierController: SupplierController;
   userController: UserController;
   additionController: ProductAdditionController;
   /** Repository-backed JWT revalidation (SUS-14): wired into the auth
@@ -153,6 +165,7 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
   let customerRepo: CustomerRepository;
   let inventoryRepo: InventoryRepository;
   let userRepo: UserRepository;
+  let supplierRepo: SupplierRepository;
 
   if (dataRunsOnPostgres(selectedDriver)) {
     // S5: the 'supabase' driver no longer talks to Supabase PostgREST with the
@@ -175,6 +188,7 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
     customerRepo = new PgCustomerRepository();
     inventoryRepo = new PgInventoryRepository();
     userRepo = new PgUserRepository();
+    supplierRepo = new PgSupplierRepository();
   } else if (selectedDriver === 'sqlite') {
     const db = createSqliteDatabase(dbPath || process.env.DATABASE_PATH || ':memory:');
     restaurantRepo = new SqliteRestaurantRepository(db);
@@ -185,6 +199,7 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
     customerRepo = new SqliteCustomerRepository(db);
     inventoryRepo = new SqliteInventoryRepository(db);
     userRepo = new InMemoryUserRepository();
+    supplierRepo = new SqliteSupplierRepository(db);
   } else {
     restaurantRepo = new InMemoryRestaurantRepository();
     categoryRepo = new InMemoryCategoryRepository();
@@ -194,6 +209,7 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
     customerRepo = new InMemoryCustomerRepository();
     inventoryRepo = new InMemoryInventoryRepository();
     userRepo = new InMemoryUserRepository();
+    supplierRepo = new InMemorySupplierRepository();
   }
 
   // Use Cases
@@ -231,6 +247,11 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
   const updateInventoryStock = new UpdateInventoryStockUseCase(inventoryRepo);
   const updateInventoryItem = new UpdateInventoryItemUseCase(inventoryRepo);
   const deleteInventoryItem = new DeleteInventoryItemUseCase(inventoryRepo);
+
+  const listSuppliers = new ListSuppliersUseCase(supplierRepo);
+  const createSupplier = new CreateSupplierUseCase(supplierRepo);
+  const updateSupplier = new UpdateSupplierUseCase(supplierRepo);
+  const deleteSupplier = new DeleteSupplierUseCase(supplierRepo);
 
   const createUser = new CreateUserUseCase(userRepo, hasher, restaurantRepo);
   const authenticateUser = new AuthenticateUserUseCase(userRepo, hasher);
@@ -285,6 +306,13 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
       createInventoryItem,
       updateInventoryItem,
       deleteInventoryItem,
+      restaurantRepo
+    ),
+    supplierController: new SupplierController(
+      listSuppliers,
+      createSupplier,
+      updateSupplier,
+      deleteSupplier,
       restaurantRepo
     ),
     userController: new UserController(createUser, authenticateUser, listUsersUC),
@@ -564,6 +592,7 @@ export function buildApp(
     api.register(orderRoutes, { prefix: '/orders', controller: deps.orderController });
     api.register(customerRoutes, { prefix: '/customers', controller: deps.customerController });
     api.register(inventoryRoutes, { prefix: '/inventory', controller: deps.inventoryController });
+    api.register(supplierRoutes, { prefix: '/suppliers', controller: deps.supplierController });
     api.register(userRoutes, { prefix: '/users', controller: deps.userController });
     api.register(storageRoutes, { prefix: '/storage' });
   }, { prefix: '/api' });

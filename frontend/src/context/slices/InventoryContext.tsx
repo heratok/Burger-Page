@@ -52,24 +52,30 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     let isCancelled = false
     setIsLoadingInventory(true)
 
-    apiClient
-      .fetchInventory(targetRestId)
-      .then((backendInventory) => {
-        if (isCancelled) return
-        if (Array.isArray(backendInventory)) {
-          updateActiveRestaurantRecord((current) => {
-            if (current.id !== targetRestId) return current
-            return {
-              ...current,
-              inventory: backendInventory,
-            }
-          })
-        }
-      })
-      .catch((err) => {
+    Promise.all([
+      apiClient.fetchInventory(targetRestId).catch((err) => {
         if (import.meta.env?.MODE !== 'test') {
           console.warn("Could not fetch inventory from backend API:", err)
         }
+        return null
+      }),
+      apiClient.fetchSuppliers(targetRestId).catch((err) => {
+        if (import.meta.env?.MODE !== 'test') {
+          console.warn("Could not fetch suppliers from backend API:", err)
+        }
+        return null
+      }),
+    ])
+      .then(([backendInventory, backendSuppliers]) => {
+        if (isCancelled) return
+        updateActiveRestaurantRecord((current) => {
+          if (current.id !== targetRestId) return current
+          return {
+            ...current,
+            ...(Array.isArray(backendInventory) ? { inventory: backendInventory } : {}),
+            ...(Array.isArray(backendSuppliers) ? { suppliers: backendSuppliers } : {}),
+          }
+        })
       })
       .finally(() => {
         if (!isCancelled) {
@@ -255,41 +261,102 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const addSupplier = useCallback(
     (supplier: Omit<Supplier, "id">) => {
+      const tempId = nextTempId("sup")
       const newSup: Supplier = {
         ...supplier,
-        id: nextTempId("sup"),
+        id: tempId,
       }
       updateActiveRestaurantRecord((current) => ({
         ...current,
         suppliers: [newSup, ...(current.suppliers || [])],
       }))
       toast.success(`Proveedor "${supplier.name}" registrado`)
+
+      const targetRestId = activeRestaurant.id
+      apiClient
+        .createSupplier(supplier, targetRestId)
+        .then((created) => {
+          if (created?.id) {
+            updateActiveRestaurantRecord((current) => ({
+              ...current,
+              suppliers: (current.suppliers || []).map((s) =>
+                s.id === tempId ? created : s
+              ),
+            }))
+          }
+        })
+        .catch((err) => {
+          if (import.meta.env?.MODE !== 'test') {
+            console.warn("Could not sync supplier creation to backend API:", err)
+          }
+          updateActiveRestaurantRecord((current) => ({
+            ...current,
+            suppliers: (current.suppliers || []).filter((s) => s.id !== tempId),
+          }))
+          toast.error("Error al registrar proveedor en el servidor")
+        })
     },
-    [updateActiveRestaurantRecord]
+    [activeRestaurant.id, updateActiveRestaurantRecord]
   )
 
   const updateSupplier = useCallback(
     (id: string, updates: Partial<Supplier>) => {
-      updateActiveRestaurantRecord((current) => ({
-        ...current,
-        suppliers: (current.suppliers || []).map((sup) =>
-          sup.id === id ? { ...sup, ...updates } : sup
-        ),
-      }))
+      let previousSuppliers: Supplier[] = []
+      updateActiveRestaurantRecord((current) => {
+        previousSuppliers = current.suppliers || []
+        return {
+          ...current,
+          suppliers: (current.suppliers || []).map((sup) =>
+            sup.id === id ? { ...sup, ...updates } : sup
+          ),
+        }
+      })
       toast.success("Proveedor actualizado")
+
+      const targetRestId = activeRestaurant.id
+      apiClient
+        .updateSupplier(id, updates, targetRestId)
+        .catch((err) => {
+          if (import.meta.env?.MODE !== 'test') {
+            console.warn("Could not sync supplier update to backend API:", err)
+          }
+          updateActiveRestaurantRecord((current) => ({
+            ...current,
+            suppliers: previousSuppliers,
+          }))
+          toast.error("Error al actualizar proveedor en el servidor")
+        })
     },
-    [updateActiveRestaurantRecord]
+    [activeRestaurant.id, updateActiveRestaurantRecord]
   )
 
   const deleteSupplier = useCallback(
     (id: string) => {
-      updateActiveRestaurantRecord((current) => ({
-        ...current,
-        suppliers: (current.suppliers || []).filter((sup) => sup.id !== id),
-      }))
+      let previousSuppliers: Supplier[] = []
+      updateActiveRestaurantRecord((current) => {
+        previousSuppliers = current.suppliers || []
+        return {
+          ...current,
+          suppliers: (current.suppliers || []).filter((sup) => sup.id !== id),
+        }
+      })
       toast.success("Proveedor eliminado")
+
+      const targetRestId = activeRestaurant.id
+      apiClient
+        .deleteSupplier(id, targetRestId)
+        .catch((err) => {
+          if (import.meta.env?.MODE !== 'test') {
+            console.warn("Could not sync supplier deletion to backend API:", err)
+          }
+          updateActiveRestaurantRecord((current) => ({
+            ...current,
+            suppliers: previousSuppliers,
+          }))
+          toast.error("Error al eliminar proveedor en el servidor")
+        })
     },
-    [updateActiveRestaurantRecord]
+    [activeRestaurant.id, updateActiveRestaurantRecord]
   )
 
   const lowStockCount = useMemo(() => {
