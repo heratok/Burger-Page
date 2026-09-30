@@ -196,7 +196,7 @@ test('Storefront cart and WhatsApp checkout flow', async ({ page }, testInfo) =>
 
   // Proceed to checkout form
   await checkoutBtn.click();
-  const submitSale = page.getByRole('button', { name: /Registrar venta/i });
+  const submitSale = page.getByRole('button', { name: /Enviar pedido por WhatsApp|Registrar venta/i });
   await expect(submitSale).toBeVisible({ timeout: 15_000 });
   await shot(page, testInfo, 'checkout');
 

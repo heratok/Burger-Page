@@ -261,7 +261,7 @@ test.describe('Exhaustive Platform E2E Suite - Real DB Persistence (admin & rost
     await barrioField.fill('Rosales');
 
     // Submit order -> Expect 201 Created in DB
-    const submitOrderBtn = customerPage.locator('button[type="submit"]').filter({ hasText: /Registrar venta/i }).first();
+    const submitOrderBtn = customerPage.locator('button[type="submit"]').filter({ hasText: /Enviar pedido por WhatsApp|Registrar venta/i }).first();
     await expect(submitOrderBtn).toBeVisible({ timeout: 10000 });
 
     const [orderResponse] = await Promise.all([

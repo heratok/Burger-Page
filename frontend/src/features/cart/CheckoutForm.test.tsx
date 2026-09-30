@@ -43,7 +43,7 @@ describe("CheckoutForm - Direct Sale Flow", () => {
     cleanup()
   })
 
-  it("renders submit button with 'Registrar venta'", () => {
+  it("renders submit button with 'Enviar pedido por WhatsApp'", () => {
     render(
       <RestaurantProvider>
         <CheckoutForm
@@ -54,12 +54,11 @@ describe("CheckoutForm - Direct Sale Flow", () => {
       </RestaurantProvider>
     )
 
-    const submitBtn = screen.getByRole("button", { name: /Registrar venta/i })
+    const submitBtn = screen.getByRole("button", { name: /Enviar pedido por WhatsApp/i })
     expect(submitBtn).toBeDefined()
-    expect(screen.queryByRole("button", { name: /Enviar pedido por WhatsApp/i })).toBeNull()
   })
 
-  it("submits the sale, registers the order in system, shows toast and closes without opening WhatsApp", async () => {
+  it("submits the sale, registers the order in system, opens WhatsApp with formatted message and closes form", async () => {
     const windowOpenSpy = vi.spyOn(window, "open").mockImplementation(() => null)
     const onCloseMock = vi.fn()
     const { apiClient } = await import("@/core/api/apiClient")
@@ -96,13 +95,11 @@ describe("CheckoutForm - Direct Sale Flow", () => {
     })
 
     // Submit form
-    const submitBtn = screen.getByRole("button", { name: /Registrar venta/i })
+    const submitBtn = screen.getByRole("button", { name: /Enviar pedido por WhatsApp/i })
     fireEvent.click(submitBtn)
 
     // The sale is registered through addOrder with the form payload, the form
-    // closes, and no WhatsApp window opens. CheckoutForm itself never shows a
-    // success toast: the outcome toast is owned by addOrder and only fires
-    // after the server accepts the order.
+    // closes, and WhatsApp window opens with the formatted message.
     await waitFor(() => {
       expect(createOrderSpy).toHaveBeenCalledTimes(1)
       expect(createOrderSpy).toHaveBeenCalledWith(
@@ -118,7 +115,16 @@ describe("CheckoutForm - Direct Sale Flow", () => {
           paymentMethod: "Efectivo",
         })
       )
-      expect(windowOpenSpy).not.toHaveBeenCalled()
+      expect(windowOpenSpy).toHaveBeenCalledTimes(1)
+      expect(windowOpenSpy).toHaveBeenCalledWith(
+        expect.stringContaining("https://wa.me/"),
+        "_blank",
+        "noreferrer"
+      )
+      const callUrl = windowOpenSpy.mock.calls[0][0] as string
+      expect(decodeURIComponent(callUrl)).toContain("Carlos Pérez")
+      expect(decodeURIComponent(callUrl)).toContain("Calle 45 # 12-34")
+      expect(decodeURIComponent(callUrl)).toContain("ROSTO CLÁSICA AHUMADA")
       expect(onCloseMock).toHaveBeenCalledTimes(1)
     })
 
@@ -127,12 +133,6 @@ describe("CheckoutForm - Direct Sale Flow", () => {
       expect(toast.success).toHaveBeenCalledTimes(1)
     })
     expect(toast.success).toHaveBeenCalledWith("Orden #3131 registrada", expect.anything())
-    expect(toast.success).not.toHaveBeenCalledWith(
-      "¡Venta registrada con éxito!",
-      expect.objectContaining({
-        description: expect.stringContaining("Carlos Pérez"),
-      })
-    )
 
     windowOpenSpy.mockRestore()
   })
@@ -207,7 +207,7 @@ describe("CheckoutForm - Direct Sale Flow", () => {
     expect(totalRow).not.toBeNull()
     expect(within(totalRow as HTMLElement).getByText("$35.000")).toBeDefined()
 
-    fireEvent.click(screen.getByRole("button", { name: /Registrar venta/i }))
+    fireEvent.click(screen.getByRole("button", { name: /Enviar pedido por WhatsApp/i }))
 
     // The recorded (optimistic) order carries the same charge shown to the
     // customer: subtotal 30.000, fee 5.000, finalTotal 35.000, cambio 5.000.

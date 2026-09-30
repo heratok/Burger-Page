@@ -11,6 +11,7 @@ import {
   Home,
   MapPin,
   Phone,
+  Send,
   User,
   Wallet,
 } from "lucide-react"
@@ -30,7 +31,12 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/in
 import { Textarea } from "@/components/ui/textarea"
 import CharacterCounter from "@/components/CharacterCounter"
 import { formSchema, LIMITS, type FormValues } from "@/lib/validation"
-import { calculateChange } from "./whatsapp"
+import {
+  calculateChange,
+  buildOrderMessage,
+  buildWhatsAppUrl,
+  generateOrderId,
+} from "./whatsapp"
 import { cartItemToOrderItem, type CartItem } from "./cartEngine"
 import { useRestaurant } from "@/context/RestaurantContext"
 import { formatCurrency, getContrastForeground } from "@/lib/utils"
@@ -81,6 +87,8 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
   const cambio = calculateChange(total, pagoCon)
 
   const onSubmit = (values: FormValues) => {
+    const orderId = generateOrderId()
+
     // 1. Register order in CRM context. The outcome toast is owned by
     // addOrder: it confirms only after the server accepts the order, and
     // shows an error (removing the optimistic card) when the server
@@ -102,6 +110,27 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
       comentario: values.mensaje,
       status: "pending",
     })
+
+    // 2. Build WhatsApp message and open direct chat with restaurant
+    const message = buildOrderMessage({
+      orderId,
+      customer: {
+        nombre: values.nombre,
+        telefono: values.telefono,
+        direccion: values.dir,
+        barrio: values.barrio,
+      },
+      items: cartItems,
+      metodo: values.metodo,
+      pagoCon: values.pagoCon,
+      comentario: values.mensaje,
+      restaurantName: storeConfig.name,
+      deliveryFee: storeConfig.deliveryFee,
+    })
+
+    const targetPhone = storeConfig.whatsappNumber || "573001234567"
+    window.open(buildWhatsAppUrl(targetPhone, message), "_blank", "noreferrer")
+
     onClose()
   }
 
@@ -318,8 +347,8 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
             style={{ backgroundColor: storeConfig.primaryColor, color: primaryForeground }}
             className="h-12 flex-1 text-base font-bold shadow-md cursor-pointer hover:opacity-90"
           >
-            <Check data-icon="inline-start" />
-            Registrar venta
+            <Send data-icon="inline-start" />
+            Enviar pedido por WhatsApp
           </Button>
           <Button
             type="button"
