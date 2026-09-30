@@ -106,6 +106,12 @@ export class OrderController {
       authenticated: isStaffForTarget,
     });
 
+    // An idempotent replay created nothing: republishing ORDER_CREATED (status
+    // pending) would reset the already-advanced card on staff screens.
+    if (order.replayed) {
+      return reply.status(201).send(order);
+    }
+
     // Publish SSE Real-time Event with tenant ID
     globalOrderEventBus.publish({
       eventType: 'ORDER_CREATED',
@@ -126,6 +132,10 @@ export class OrderController {
         subtotal: order.subtotal,
         finalTotal: order.finalTotal,
         total: order.total,
+        paymentMethod: order.paymentMethod,
+        paymentAmount: order.paymentAmount,
+        changeAmount: order.changeAmount,
+        comment: order.comment,
         receiptUrl: order.receiptUrl,
       },
     });

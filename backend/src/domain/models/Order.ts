@@ -42,6 +42,13 @@ export class Order {
     public readonly clientOrderId?: string
   ) {}
 
+  /**
+   * Transient flag (never persisted or serialized): true when the repository
+   * answered a retried create with the already-persisted order for the same
+   * (restaurantId, clientOrderId) instead of creating a new one.
+   */
+  public replayed?: boolean;
+
   public customer?: {
     nombre?: string;
     telefono?: string;

@@ -46,7 +46,11 @@ export class CreateOrderUseCase {
       dto,
     });
 
+    const generatedId = order.id;
     await this.orderRepo.save(order);
+    // SUS-19: repositories adopt the originally persisted identity on an
+    // idempotent replay, so a changed id means nothing new was created.
+    order.replayed = order.id !== generatedId;
     return order;
   }
 

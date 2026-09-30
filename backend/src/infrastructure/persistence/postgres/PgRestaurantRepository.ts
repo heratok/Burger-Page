@@ -48,12 +48,45 @@ export function mapRow(row: any): Restaurant {
       deliveryFee: Number(row.delivery_fee) || 0,
       minOrderAmount: Number(row.min_order_amount) || 0,
       estimatedDeliveryTime: row.estimated_delivery_time || '30 - 45 min',
-      openingHours: `${openTime} - ${closeTime}`,
+      // The admin-edited hours text is the source of truth for display; the
+      // time columns only back it when no text was ever stored.
+      openingHours: row.opening_hours_text || `${openTime} - ${closeTime}`,
       address: row.address || '',
       primaryColor: row.primary_color || '#E63946',
+      primaryHoverColor: row.primary_hover_color || '#F25C69',
       bgTheme: row.bg_theme || 'dark-charcoal',
+      fontFamily: row.font_family || 'sans',
+      cardRadius: row.card_radius || 'md',
+      cardStyle: row.card_style || 'elevated',
+      compactGrid: row.compact_grid ?? false,
+      showBadges: row.show_badges ?? true,
     },
     createdAt: row.created_at || new Date().toISOString(),
+  };
+}
+
+const HOURS_TEXT_PATTERN = /^\s*(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})\s*$/;
+
+function toTimeColumn(hhmm: string): string {
+  const [h, m] = hhmm.split(':');
+  return `${h.padStart(2, '0')}:${m}:00`;
+}
+
+/**
+ * Resolves the open_time/close_time columns. A parseable "HH:MM - HH:MM" hours
+ * text (the value the admin edits) wins so the time columns never contradict
+ * it; a free-form text or no text falls back to the structured hours.
+ */
+function resolveOpeningTimes(restaurant: Restaurant): { openTime: string; closeTime: string } {
+  const match = typeof restaurant.config?.openingHours === 'string'
+    ? HOURS_TEXT_PATTERN.exec(restaurant.config.openingHours)
+    : null;
+  if (match) {
+    return { openTime: toTimeColumn(match[1]), closeTime: toTimeColumn(match[2]) };
+  }
+  return {
+    openTime: restaurant.openingHours?.open ? `${restaurant.openingHours.open}:00` : '12:00:00',
+    closeTime: restaurant.openingHours?.close ? `${restaurant.openingHours.close}:00` : '22:30:00',
   };
 }
 
@@ -124,8 +157,7 @@ export class PgRestaurantRepository implements RestaurantRepository {
       restaurant.id;
     const now = new Date().toISOString();
     const cfg = restaurant.config || {};
-    const openTime = restaurant.openingHours?.open ? `${restaurant.openingHours.open}:00` : '12:00:00';
-    const closeTime = restaurant.openingHours?.close ? `${restaurant.openingHours.close}:00` : '22:30:00';
+    const { openTime, closeTime } = resolveOpeningTimes(restaurant);
 
     // Identidad del tenant (restaurants)
     const identity: Record<string, unknown> = {
