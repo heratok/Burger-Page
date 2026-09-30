@@ -1,32 +1,20 @@
-import { useRestaurant } from "@/context/RestaurantContext"
 import { useAppRouter } from "@/core/router/useAppRouter"
 import {
   Sparkles,
-  ArrowRight,
   MessageSquare,
-  Store,
   TrendingUp,
   Palette,
   ShieldCheck,
   Zap,
   Users,
   QrCode,
-  ExternalLink,
   ShoppingBag,
   Flame,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 export default function LandingPage() {
-  const { restaurants } = useRestaurant()
   const { navigateTo } = useAppRouter()
-
-  const scrollToDemos = () => {
-    const el = document.getElementById("demo-stores")
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth" })
-    }
-  }
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] text-slate-800 selection:bg-orange-500 selection:text-white font-sans antialiased overflow-x-hidden">
@@ -76,13 +64,6 @@ export default function LandingPage() {
             <a href="#how-it-works" className="hover:text-orange-600 transition-colors">
               Cómo Funciona
             </a>
-            <button
-              type="button"
-              onClick={scrollToDemos}
-              className="hover:text-orange-600 transition-colors cursor-pointer"
-            >
-              Restaurantes Demo
-            </button>
           </nav>
 
           {/* Action CTAs */}
@@ -95,15 +76,6 @@ export default function LandingPage() {
             >
               <ShieldCheck className="size-4 text-orange-500" />
               <span>Acceso Administrador</span>
-            </Button>
-
-            <Button
-              type="button"
-              onClick={scrollToDemos}
-              className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-4 py-2 text-xs font-bold text-white shadow-md shadow-orange-500/25 hover:from-orange-600 hover:to-amber-600 cursor-pointer"
-            >
-              <span>Ver Demos</span>
-              <ArrowRight className="size-3.5" />
             </Button>
           </div>
         </div>
@@ -136,15 +108,6 @@ export default function LandingPage() {
 
           {/* Hero CTAs */}
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Button
-              type="button"
-              onClick={scrollToDemos}
-              className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-3.5 text-sm font-bold text-white shadow-xl shadow-orange-500/30 hover:from-orange-600 hover:to-amber-600 cursor-pointer"
-            >
-              <Store className="size-4" />
-              <span>Probar Restaurantes Demo</span>
-            </Button>
-
             <Button
               type="button"
               variant="outline"
@@ -399,109 +362,6 @@ export default function LandingPage() {
       </section>
 
       {/* ======================================================== */}
-      {/* LIVE DEMO RESTAURANTS SHOWCASE                           */}
-      {/* ======================================================== */}
-      <section id="demo-stores" className="py-20 border-t border-slate-200/80 bg-white">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-14">
-            <span className="text-xs font-bold uppercase tracking-widest text-emerald-600">
-              Tiendas en Vivo
-            </span>
-            <h2 className="mt-2 text-2xl sm:text-4xl font-extrabold text-slate-900">
-              Explorá nuestros restaurantes de prueba
-            </h2>
-            <p className="mt-3 text-sm text-slate-600 font-normal">
-              Hacé clic en cualquiera de las tiendas para experimentar cómo vive la compra tu cliente final.
-            </p>
-          </div>
-
-          {restaurants.length === 0 ? (
-            <div className="mx-auto max-w-lg rounded-3xl border border-dashed border-slate-300 bg-slate-50/70 p-10 text-center">
-              <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-orange-500/10 text-orange-600 mb-4">
-                <Store className="size-7" />
-              </div>
-              <h3 className="text-base font-bold text-slate-900">
-                Tu plataforma está lista y limpia
-              </h3>
-              <p className="mt-2 text-xs text-slate-600 leading-relaxed">
-                Aún no hay restaurantes registrados. Accedé al Panel de Administración para crear tu primer restaurante y publicar tu menú online.
-              </p>
-              <Button
-                type="button"
-                onClick={() => navigateTo("/admin")}
-                className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-2.5 text-xs font-bold text-white shadow-md hover:from-orange-600 hover:to-amber-600 cursor-pointer"
-              >
-                <span>Crear Primer Restaurante</span>
-                <ArrowRight className="size-4" />
-              </Button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {restaurants.map((restaurant) => (
-                <div
-                  key={restaurant.id}
-                  className="group relative flex flex-col justify-between rounded-3xl border border-slate-200 bg-slate-50/50 p-6 transition-all duration-200 hover:-translate-y-1 hover:border-orange-300 hover:bg-white hover:shadow-xl"
-                >
-                  <div>
-                    {/* Restaurant Header */}
-                    <div className="flex items-center gap-3 mb-4">
-                      {restaurant.config.logoUrl ? (
-                        <img
-                          src={restaurant.config.logoUrl}
-                          alt={restaurant.config.name}
-                          className="size-12 rounded-2xl object-cover border border-slate-200 shadow-xs"
-                        />
-                      ) : (
-                        <div
-                          style={{ backgroundColor: restaurant.config.primaryColor }}
-                          className="flex size-12 items-center justify-center rounded-2xl text-white font-bold text-lg shadow-sm"
-                        >
-                          {restaurant.config.name.charAt(0)}
-                        </div>
-                      )}
-
-                      <div className="truncate">
-                        <h3 className="font-bold text-base text-slate-900 group-hover:text-orange-600 transition-colors truncate">
-                          {restaurant.config.name}
-                        </h3>
-                        <span className="text-xs text-slate-500 font-mono">
-                          /{restaurant.slug}
-                        </span>
-                      </div>
-                    </div>
-
-                    <p className="text-xs text-slate-600 line-clamp-2 mb-4 leading-relaxed font-normal">
-                      {restaurant.config.tagline || "Menú digital para delivery y pedidos en línea."}
-                    </p>
-
-                    <div className="flex items-center gap-2.5 text-[11px] text-slate-500 mb-6">
-                      <span className="rounded-lg bg-white border border-slate-200 px-2.5 py-1 font-semibold text-slate-700 shadow-2xs">
-                        🍽️ {restaurant.products.length} platos
-                      </span>
-                      <span className="rounded-lg bg-white border border-slate-200 px-2.5 py-1 font-semibold text-slate-700 shadow-2xs">
-                        🛵 {restaurant.config.estimatedDeliveryTime || "30-45 min"}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Open Storefront Button */}
-                  <Button
-                    type="button"
-                    onClick={() => navigateTo(`/${restaurant.slug}`)}
-                    className="w-full flex items-center justify-center gap-2 rounded-2xl py-3 text-xs font-bold text-white shadow-md transition-all hover:opacity-90 cursor-pointer"
-                    style={{ backgroundColor: restaurant.config.primaryColor || "#FF7A21" }}
-                  >
-                    <span>Ver Tienda /{restaurant.slug}</span>
-                    <ExternalLink className="size-3.5" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* ======================================================== */}
       {/* FINAL CTA                                                */}
       {/* ======================================================== */}
       <section className="py-20 border-t border-slate-200/80 bg-[#FAFAFA] text-center">
@@ -552,13 +412,6 @@ export default function LandingPage() {
             <a href="#features" className="hover:text-orange-600 transition-colors">
               Beneficios
             </a>
-            <button
-              type="button"
-              onClick={scrollToDemos}
-              className="hover:text-orange-600 transition-colors cursor-pointer"
-            >
-              Tiendas Demo
-            </button>
           </div>
         </div>
       </footer>

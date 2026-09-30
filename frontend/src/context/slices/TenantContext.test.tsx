@@ -15,8 +15,26 @@ describe("TenantContext - Backend Multi-Tenant Integration", () => {
     vi.clearAllMocks()
   })
 
-  it("calls public restaurants list when there is no auth token (guest)", async () => {
+  it("does not request the private restaurants list when there is no auth token (guest)", async () => {
     vi.spyOn(apiClient, "hasToken").mockReturnValue(false)
+    const listSpy = vi.spyOn(apiClient, "listRestaurants").mockResolvedValue([] as any)
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>{children}</TenantProvider>
+    )
+
+    const { result } = renderHook(() => useTenant(), { wrapper })
+    await act(async () => {
+      await result.current.refreshRestaurants()
+    })
+    await new Promise((r) => setTimeout(r, 50))
+
+    expect(listSpy).not.toHaveBeenCalled()
+    expect(result.current.isSyncing).toBe(false)
+  })
+
+  it("requests the restaurants list when a token is present", async () => {
+    vi.spyOn(apiClient, "hasToken").mockReturnValue(true)
     const listSpy = vi.spyOn(apiClient, "listRestaurants").mockResolvedValue([] as any)
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -28,6 +46,25 @@ describe("TenantContext - Backend Multi-Tenant Integration", () => {
     await waitFor(() => {
       expect(listSpy).toHaveBeenCalled()
     })
+  })
+
+  it("survives a 401 from the list endpoint without touching the session token", async () => {
+    vi.spyOn(apiClient, "hasToken").mockReturnValue(true)
+    const setTokenSpy = vi.spyOn(apiClient, "setToken")
+    const err: any = new Error("API Error: 401 Unauthorized")
+    err.status = 401
+    const listSpy = vi.spyOn(apiClient, "listRestaurants").mockRejectedValue(err)
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>{children}</TenantProvider>
+    )
+
+    const { result } = renderHook(() => useTenant(), { wrapper })
+    await waitFor(() => expect(listSpy).toHaveBeenCalled())
+    await waitFor(() => expect(result.current.isSyncing).toBe(false))
+
+    expect(setTokenSpy).not.toHaveBeenCalled()
+    expect(listSpy).toHaveBeenCalledTimes(1)
   })
 
   it("syncs restaurants from backend API on mount", async () => {
@@ -351,6 +388,7 @@ describe("TenantContext - effective tenant derivation and mutation identity (A1/
       makeRestaurant("rest-gone", "gone", "Gone"),
     ])
     localStorage.setItem("burger_page_active_rest_v2", "rest-gone")
+    vi.spyOn(apiClient, "hasToken").mockReturnValue(true)
     vi.spyOn(apiClient, "listRestaurants").mockResolvedValue([
       { id: "rest-alive", slug: "alive", name: "Alive" },
     ] as any)

@@ -105,6 +105,10 @@ export const TenantProvider: React.FC<{
   })
 
   const refreshRestaurants = useCallback(async () => {
+    // The platform directory is private (admin-only): anonymous visitors
+    // (landing, storefront, not-found, checkout) never request it. Their
+    // tenant comes from the public by-slug lookup instead.
+    if (!apiClient.hasToken()) return
     setIsSyncing(true)
     try {
       const backendRestaurants = await apiClient.listRestaurants()
