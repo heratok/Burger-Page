@@ -98,8 +98,8 @@ items(sort_key, body) AS (
 
     UNION ALL
     -- Default privileges granted in schema public.
-    SELECT '8 defacl ' || da.defaclrole::regrole::text || ' ' || da.defaclobjtype,
-           'defacl ' || da.defaclrole::regrole::text || ' ' || da.defaclobjtype
+    SELECT '8 defacl ' || da.defaclrole::regrole::text || ' ' || da.defaclobjtype::text,
+           'defacl ' || da.defaclrole::regrole::text || ' ' || da.defaclobjtype::text
            || ' ' || COALESCE((SELECT string_agg(x::text, ',' ORDER BY x::text) FROM unnest(da.defaclacl) AS x), '')
     FROM pg_default_acl da
     WHERE da.defaclnamespace = 'public'::regnamespace
