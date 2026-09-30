@@ -46,3 +46,33 @@ prefijado (`YYYYMMDDHHMMSS_*`).
 - No duplicar definiciones del baseline: solo deltas.
 - Probar contra el contenedor de integración:
   `npm run test:integration:postgres` (docker compose levantará postgres-test).
+## Drift check (CI)
+
+CI job `migration-drift` runs `database/scripts/check-migration-drift.sh`: it
+builds a database from the base branch baseline, marks the base migrations as
+applied (`up --fake`), applies the new ones and compares the resulting schema
+with a database built from the current `01_schema.sql`
+(`database/scripts/schema-fingerprint.sql`). It also runs every new
+migration's `.down.sql` then `up` again, and re-applies each `.up.sql`. Run it
+locally against any throwaway PostgreSQL 15+ server:
+
+```bash
+PG_BASE_URL=postgres://postgres:postgres@localhost:5432 \
+  database/scripts/check-migration-drift.sh origin/main
+```
+
+Notes on the node-pg-migrate 9 CLI as wired in `package.json`:
+
+- Migrations are recorded by file name without `.sql`, e.g.
+  `0000000000007_schema_integrity.up` (the `.up` suffix is part of the name).
+- `npm run db:migrate:down` loads only `*.down.sql` files, whose names
+  (`...x.down`) never match the recorded `...x.up`, so node-pg-migrate reports
+  "Definitions of migrations ... have been deleted". Apply the `.down.sql` by
+  hand with `psql -1 -f` and delete the `...x.up` row from `pgmigrations`
+  (the drift script does exactly that).
+- The CLI has no `baseline` action, so `npm run db:baseline` fails with
+  "Invalid Action"; use `up --fake` to mark migrations as applied.
+- Do not write `-- up migration` / `-- down migration` comment lines inside a
+  file: the loader uses them as section markers.
+- Never put `BEGIN;`/`COMMIT;` in a migration: node-pg-migrate wraps the run
+  in a transaction.

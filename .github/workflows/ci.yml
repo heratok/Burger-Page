@@ -141,3 +141,66 @@ jobs:
             frontend/playwright-report/
           if-no-files-found: ignore
           retention-days: 7
+
+  migration-drift:
+    name: Migration drift check (migrations vs 01_schema.sql)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
+
+    steps:
+      # Full history: the script needs the base branch (git show/archive of the
+      # baseline and migrations as they were before this change).
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Ensure psql client is available
+        run: |
+          command -v psql >/dev/null || { sudo apt-get update && sudo apt-get install -y postgresql-client; }
+          psql --version
+
+      # Builds a database from the base branch baseline + its migrations,
+      # applies the new migrations, and compares the result with a database
+      # built from the current 01_schema.sql. Also runs every new migration's
+      # down -> up and re-applies its up. Runs node-pg-migrate directly (no
+      # doppler) against the service container.
+      - name: Check migrations against 01_schema.sql
+        env:
+          PG_BASE_URL: postgres://postgres:postgres@localhost:5432
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="origin/${{ github.base_ref }}"
+          elif [ -n "${{ github.event.before }}" ] \
+               && [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ] \
+               && git cat-file -e "${{ github.event.before }}^{commit}" 2>/dev/null; then
+            BASE="${{ github.event.before }}"
+          else
+            BASE="origin/main"
+          fi
+          echo "Comparing against $BASE"
+          bash database/scripts/check-migration-drift.sh "$BASE"

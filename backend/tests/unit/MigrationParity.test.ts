@@ -164,3 +164,35 @@ describe('schema file structure', () => {
     }
   });
 });
+
+describe('migration drift check wiring', () => {
+  const root = resolve(dbDir, '..');
+  const script = readFileSync(resolve(dbDir, 'scripts/check-migration-drift.sh'), 'utf8');
+  const fingerprint = read('scripts/schema-fingerprint.sql');
+  const ci = readFileSync(resolve(root, '.github/workflows/ci.yml'), 'utf8');
+
+  it('CI runs the drift script on a postgres service with full git history', () => {
+    expect(ci).toContain('migration-drift:');
+    expect(ci).toContain('bash database/scripts/check-migration-drift.sh');
+    expect(ci).toMatch(/fetch-depth: 0/);
+  });
+
+  it('the script uses node-pg-migrate directly (no doppler) with the same ignore pattern as db:migrate', () => {
+    expect(script).not.toMatch(/^\s*doppler\b/m);
+    const pkg = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'));
+    expect(pkg.scripts['db:migrate']).toContain('--ignore-pattern ".*\\.down\\.sql|.*\\.md"');
+    expect(script).toContain("IGNORE_UP='.*\\.down\\.sql|.*\\.md'");
+  });
+
+  it('applies the fresh baseline atomically and marks base migrations with --fake', () => {
+    expect(script).toMatch(/psql_q -1 -f "\$ROOT\/database\/01_schema\.sql"/);
+    expect(script).toContain('--fake');
+  });
+
+  it('the fingerprint covers columns, constraints, indexes, functions, policies and privileges', () => {
+    for (const kind of ['column', 'constraint', 'index', 'trigger', 'policy', 'function', 'acl=', 'defacl']) {
+      expect(fingerprint).toContain(kind);
+    }
+    expect(fingerprint).toContain("'pgmigrations'");
+  });
+});
