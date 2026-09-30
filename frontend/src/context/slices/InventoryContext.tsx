@@ -23,10 +23,14 @@ export interface InventoryContextType {
 
 const InventoryContext = createContext<InventoryContextType | undefined>(undefined)
 
-/** Conflicts (409) carry an actionable server message; anything else stays generic. */
-function conflictMessage(err: unknown, fallback: string): string {
-  const e = err as { status?: number; message?: string } | null
-  return e?.status === 409 && e.message ? e.message : fallback
+/**
+ * A 409 on an inventory write means the name is already taken. The server
+ * detail is English and stable, so the UI maps by status to Spanish instead of
+ * surfacing the raw text; anything else stays generic.
+ */
+function conflictMessage(err: unknown, itemName: string | undefined, fallback: string): string {
+  const e = err as { status?: number } | null
+  return e?.status === 409 && itemName ? `Ya existe un insumo llamado '${itemName}'.` : fallback
 }
 
 export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -146,7 +150,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             ...current,
             inventory: (current.inventory || []).filter((i) => i.id !== tempId),
           }))
-          toast.error(conflictMessage(err, "Error al guardar insumo en el servidor"))
+          toast.error(conflictMessage(err, item.name, "Error al guardar insumo en el servidor"))
         })
     },
     [activeRestaurant.id, updateActiveRestaurantRecord]
@@ -189,7 +193,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
               item.id === id ? { ...item, ...previousFields } : item
             ),
           }))
-          toast.error(conflictMessage(error, "Error al actualizar insumo en el servidor"))
+          toast.error(conflictMessage(error, updates.name ?? target?.name, "Error al actualizar insumo en el servidor"))
         })
     },
     [activeRestaurant.id, activeRestaurant.inventory, updateActiveRestaurantRecord]

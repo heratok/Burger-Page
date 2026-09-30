@@ -115,7 +115,7 @@ describe("InventoryContext (5.2 UI / 5.4)", () => {
     expect(toast.success).toHaveBeenCalledWith('+4 añadido a "Pan" (Total: 14)')
   })
 
-  it("shows the server message when a create is rejected with 409 and removes only the temp item (5.2)", async () => {
+  it("shows a Spanish duplicate-name message when a create is rejected with 409 and removes only the temp item (5.2)", async () => {
     const hook = await setupWithItems()
     const conflict: any = new Error("An inventory item named 'Pan' already exists.")
     conflict.status = 409
@@ -124,13 +124,13 @@ describe("InventoryContext (5.2 UI / 5.4)", () => {
     act(() => {
       hook.result.current.addInventoryItem(newItem("Pan", 1))
     })
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("An inventory item named 'Pan' already exists."))
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Ya existe un insumo llamado 'Pan'."))
     const names = hook.result.current.inventory.map((i) => i.name)
     expect(names.filter((n) => n === "Pan")).toHaveLength(1)
     expect(names).toContain("Queso")
   })
 
-  it("shows the server message and reverts only that item when an update is rejected with 409 (5.2)", async () => {
+  it("shows a Spanish duplicate-name message and reverts only that item when an update is rejected with 409 (5.2)", async () => {
     const hook = await setupWithItems()
     const conflict: any = new Error("An inventory item named 'Queso' already exists.")
     conflict.status = 409
@@ -139,7 +139,7 @@ describe("InventoryContext (5.2 UI / 5.4)", () => {
     act(() => {
       hook.result.current.updateInventoryItem("srv-Pan", { name: "Queso" })
     })
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("An inventory item named 'Queso' already exists."))
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Ya existe un insumo llamado 'Queso'."))
     expect(hook.result.current.inventory.find((i) => i.id === "srv-Pan")?.name).toBe("Pan")
   })
 })
