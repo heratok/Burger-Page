@@ -73,6 +73,8 @@ INSERT INTO public.product_additions (id, restaurant_id, product_id, name, price
 
 -- ============================================================================
 -- CONTADORES DE PEDIDOS (identificadores de demo; 0 = el primer pedido será #1)
+-- DO NOTHING (no DO UPDATE): re-ejecutar el seed jamás debe reiniciar un
+-- contador en uso, o se repetirían order_number ya emitidos.
 -- ============================================================================
-INSERT INTO public.restaurant_order_counters (restaurant_id, last_number) VALUES ('rest-1788579266608', 0) ON CONFLICT (restaurant_id) DO UPDATE SET last_number = EXCLUDED.last_number;
-INSERT INTO public.restaurant_order_counters (restaurant_id, last_number) VALUES ('rest-burger-craft', 0) ON CONFLICT (restaurant_id) DO UPDATE SET last_number = EXCLUDED.last_number;
+INSERT INTO public.restaurant_order_counters (restaurant_id, last_number) VALUES ('rest-1788579266608', 0) ON CONFLICT (restaurant_id) DO NOTHING;
+INSERT INTO public.restaurant_order_counters (restaurant_id, last_number) VALUES ('rest-burger-craft', 0) ON CONFLICT (restaurant_id) DO NOTHING;

@@ -153,4 +153,14 @@ describe('schema file structure', () => {
       expect(read(`migrations/${file}`), file).not.toMatch(/^\s*--[\s-]*(up|down)\s+migration/im);
     }
   });
+
+  it('seed never resets an order counter on re-run', () => {
+    const seed = read('02_seed.sql');
+    const counters = seed.split('\n').filter((l) => l.includes('restaurant_order_counters') && l.startsWith('INSERT'));
+    expect(counters.length).toBeGreaterThan(0);
+    for (const line of counters) {
+      expect(line).toContain('DO NOTHING');
+      expect(line).not.toMatch(/DO UPDATE/i);
+    }
+  });
 });
