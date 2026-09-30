@@ -49,6 +49,25 @@ test.describe('Inventory & Suppliers Theme Contrast E2E Suite', () => {
         ]),
       });
     });
+
+    // The inventory slice hydrates suppliers from the backend and would overwrite
+    // the localStorage fixture with the (empty) live DB list. Serve the supplier
+    // fixture from the same mocked API surface so the contrast test is hermetic.
+    await page.route('**/api/suppliers**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([
+          {
+            id: 'sup-1',
+            name: 'Carnes Premium',
+            contactName: 'Mauricio Restrepo',
+            phone: '573112233445',
+            notes: 'Entrega cortes madurados al vacío los martes y jueves',
+          },
+        ]),
+      });
+    });
   });
 
   test('Supplier notes and details are clearly visible in Light Mode and Dark Mode', async ({ page }) => {

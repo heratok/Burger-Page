@@ -2,11 +2,26 @@ import { Restaurant, OpeningHours } from '../../../domain/models/Restaurant.js';
 import { RestaurantRepository } from '../../../domain/ports/out/RestaurantRepository.js';
 import { withTenantContext } from './PgClient.js';
 
-function mapRow(row: any): Restaurant {
+export function mapRow(row: any): Restaurant {
   const theme = row.bg_theme || 'dark-charcoal';
   const openTime = row.open_time ? String(row.open_time).substring(0, 5) : '12:00';
   const closeTime = row.close_time ? String(row.close_time).substring(0, 5) : '22:30';
   const openingHours: OpeningHours = { open: openTime, close: closeTime };
+
+  let categories: string[] = [];
+  if (Array.isArray(row.categories)) {
+    categories = row.categories;
+  } else if (typeof row.categories === 'string') {
+    try {
+      const parsed = JSON.parse(row.categories);
+      if (Array.isArray(parsed)) {
+        categories = parsed;
+      }
+    } catch {}
+  } else {
+    // No fabricated default: a missing/undecodable categories column yields [].
+    categories = [];
+  }
 
   return {
     id: row.id,
@@ -18,7 +33,7 @@ function mapRow(row: any): Restaurant {
     theme,
     openingHours,
     isActive: row.is_active !== undefined ? Boolean(row.is_active) : true,
-    categories: ['Hamburguesas', 'Bebidas', 'Acompañamientos'],
+    categories,
     config: {
       name: row.name,
       tagline: row.tagline || 'Cocina artesanal',
@@ -49,7 +64,13 @@ const RESTAURANT_READ_COLUMNS = `
          s.estimated_delivery_time, s.opening_hours_text, s.open_time, s.close_time,
          s.announcement_text, s.show_announcement,
          b.logo_url, b.banner_url, b.show_banner, b.primary_color, b.primary_hover_color,
-         b.bg_theme, b.font_family, b.card_radius, b.card_style, b.compact_grid, b.show_badges
+         b.bg_theme, b.font_family, b.card_radius, b.card_style, b.compact_grid, b.show_badges,
+         COALESCE(
+           (SELECT json_agg(c.name ORDER BY c.display_order ASC, c.name ASC)
+            FROM public.categories c
+            WHERE c.restaurant_id = r.id AND c.is_active = true),
+           '[]'::json
+         ) AS categories
   FROM public.restaurants r
   LEFT JOIN public.restaurant_settings s ON s.restaurant_id = r.id
   LEFT JOIN public.restaurant_branding b ON b.restaurant_id = r.id

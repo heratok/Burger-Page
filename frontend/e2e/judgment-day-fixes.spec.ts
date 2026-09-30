@@ -341,8 +341,8 @@ test.describe('Judgment Day Confirmed Severe Fixes E2E Verification Suite', () =
     await page.getByPlaceholder(/Calle 123 #45-67/i).fill('Calle 100 # 15-20');
     await page.getByPlaceholder(/Tu barrio/i).fill('Chicó');
 
-    // Click "Registrar venta"
-    const submitBtn = page.getByRole('button', { name: /Registrar venta/i });
+    // Click "Enviar pedido por WhatsApp"
+    const submitBtn = page.getByRole('button', { name: /Enviar pedido por WhatsApp|Registrar venta/i });
     await expect(submitBtn).toBeVisible();
     await submitBtn.click();
 

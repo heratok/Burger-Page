@@ -31,9 +31,11 @@ export class TenantRepository {
           const migratedRestaurants = parsed.restaurants.map((r) => {
             if (!r.categories || r.categories.length === 0) {
               const fromProducts = Array.from(new Set((r.products || []).map((p) => p.category).filter(Boolean)))
+              // Derive from products, or keep it empty. A category the owner
+              // never created must not be fabricated here.
               return {
                 ...r,
-                categories: fromProducts.length > 0 ? fromProducts : ["Platos Principales"],
+                categories: fromProducts,
               }
             }
             return r

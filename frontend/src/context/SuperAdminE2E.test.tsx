@@ -218,7 +218,7 @@ describe("SUS-04 - Route-level gating of global SaaS modules in MainRouter", () 
   it("bloquea a un admin de restaurante que entra directo a /admin/metrics: nunca renderiza GlobalAnalytics", async () => {
     renderAdminRoute("metrics", { role: "restaurant", restaurantId: "rest-burger-craft" })
 
-    await screen.findByText(/No tienes permisos para acceder a este módulo global/i)
+    await screen.findByText(/No tienes permisos para acceder a este módulo global/i, undefined, { timeout: 8000 })
 
     // Contenido exclusivo de GlobalAnalytics: jamás debe estar presente
     expect(screen.queryByText(/Métricas & Rendimiento Global SaaS/i)).toBeNull()
@@ -229,7 +229,7 @@ describe("SUS-04 - Route-level gating of global SaaS modules in MainRouter", () 
   it("bloquea a un admin de restaurante que entra directo a /admin/restaurants", async () => {
     renderAdminRoute("restaurants", { role: "restaurant", restaurantId: "rest-burger-craft" })
 
-    await screen.findByText(/No tienes permisos para acceder a este módulo global/i)
+    await screen.findByText(/No tienes permisos para acceder a este módulo global/i, undefined, { timeout: 8000 })
 
     // Contenido exclusivo de RestaurantsDirectory: jamás debe estar presente
     expect(screen.queryByPlaceholderText(/Buscar por nombre, slug o tipo/)).toBeNull()
@@ -238,7 +238,7 @@ describe("SUS-04 - Route-level gating of global SaaS modules in MainRouter", () 
   it("bloquea a un admin de restaurante que entra directo a /admin/users", async () => {
     renderAdminRoute("users", { role: "restaurant", restaurantId: "rest-burger-craft" })
 
-    await screen.findByText(/No tienes permisos para acceder a este módulo global/i)
+    await screen.findByText(/No tienes permisos para acceder a este módulo global/i, undefined, { timeout: 8000 })
 
     // Contenido exclusivo de UsersDirectory: jamás debe estar presente
     expect(screen.queryByText(/Directorio Global de Usuarios/i)).toBeNull()

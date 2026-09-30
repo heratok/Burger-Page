@@ -28,7 +28,7 @@ export class PgProductRepository implements ProductRepository {
       const { rows } = await client.query(
         `SELECT p.*, c.name AS category_name
          FROM public.products p
-         LEFT JOIN public.categories c ON c.id = p.category_id
+         LEFT JOIN public.categories c ON c.id = p.category_id AND c.is_active = true
          WHERE p.id = $1 AND p.restaurant_id = $2`,
         [id, restaurantId]
       );
@@ -44,7 +44,7 @@ export class PgProductRepository implements ProductRepository {
         const { rows } = await client.query(
           `SELECT p.*, c.name AS category_name
            FROM public.products p
-           LEFT JOIN public.categories c ON c.id = p.category_id
+           LEFT JOIN public.categories c ON c.id = p.category_id AND c.is_active = true
            WHERE p.restaurant_id = $1
            ORDER BY p.display_order ASC, p.id ASC
            LIMIT $2 OFFSET $3`,
@@ -55,7 +55,7 @@ export class PgProductRepository implements ProductRepository {
       const { rows } = await client.query(
         `SELECT p.*, c.name AS category_name
          FROM public.products p
-         LEFT JOIN public.categories c ON c.id = p.category_id
+         LEFT JOIN public.categories c ON c.id = p.category_id AND c.is_active = true
          WHERE p.restaurant_id = $1
          ORDER BY p.display_order ASC, p.id ASC`,
         [restaurantId]

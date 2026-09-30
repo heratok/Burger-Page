@@ -148,6 +148,13 @@ test.describe('Live DB Multi-Tenant Lifecycle, Mobile Storefront & CRM Persisten
     await prodModal.locator('input[placeholder*="Plato Especial" i]').fill('Trufa Monster Burger');
     await prodModal.locator('input[type="number"]').first().fill('35000');
     await prodModal.locator('textarea').fill('Carne angus seleccionada, queso brie y salsa trufada especial');
+
+    // A newly provisioned tenant starts with zero categories, so the product
+    // modal opens in new-category mode: the owner must name the first category.
+    const prodCategoryInput = prodModal.locator('input[placeholder*="Entradas" i]');
+    if ((await prodCategoryInput.count()) > 0) {
+      await prodCategoryInput.fill('Hamburguesas');
+    }
     
     await prodModal.getByRole('button', { name: /Guardar en Menú/i }).click();
     await expect(prodModal).not.toBeVisible({ timeout: 10000 });

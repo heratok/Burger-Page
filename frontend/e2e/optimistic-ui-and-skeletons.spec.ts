@@ -80,6 +80,12 @@ test.describe('Optimistic UI Updates (Zero-Reload), Skeletons & Real-Time Feedba
     await productModal.locator('input[type="number"]').first().fill('28900');
     await productModal.locator('textarea').fill('Hamburguesa con reactividad instantánea');
 
+    // New restaurants start with zero categories: the owner names the first one.
+    const productCategoryInput = productModal.locator('input[placeholder*="Entradas" i]');
+    if ((await productCategoryInput.count()) > 0) {
+      await productCategoryInput.fill('Hamburguesas');
+    }
+
     await productModal.getByRole('button', { name: /Guardar en Menú/i }).click();
     await expect(productModal).not.toBeVisible({ timeout: 8000 });
 

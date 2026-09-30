@@ -1,13 +1,15 @@
 import { randomUUID } from 'node:crypto';
 import { RestaurantRepository } from '../../domain/ports/out/RestaurantRepository.js';
 import { CategoryRepository } from '../../domain/ports/out/CategoryRepository.js';
+import { ProductRepository } from '../../domain/ports/out/ProductRepository.js';
 import { Restaurant } from '../../domain/models/Restaurant.js';
 import { EntityNotFoundError } from '../../domain/errors/DomainErrors.js';
 
 export class UpdateRestaurantCategoriesUseCase {
   constructor(
     private restaurantRepo: RestaurantRepository,
-    private categoryRepo?: CategoryRepository
+    private categoryRepo?: CategoryRepository,
+    private productRepo?: ProductRepository
   ) {}
 
   async execute(identifier: string, categories: string[]): Promise<Restaurant> {
@@ -63,6 +65,43 @@ export class UpdateRestaurantCategoriesUseCase {
               ...cat,
               isActive: false,
             });
+          }
+        }
+
+        if (this.productRepo) {
+          try {
+            // No fabricated fallback: when the cleaned list is empty there is no
+            // valid reassignment target, so products of deactivated categories
+            // are left untouched instead of being moved to a "General" category.
+            const fallbackName = cleanedCategories[0];
+            if (fallbackName) {
+              const products = await this.productRepo.findByRestaurantId(restaurant.id);
+              const deactivatedIds = new Set(
+                existing.filter((c) => !cleanedSet.has(c.name.toLowerCase())).map((c) => c.id)
+              );
+              const deactivatedNames = new Set(
+                existing.filter((c) => !cleanedSet.has(c.name.toLowerCase())).map((c) => c.name.toLowerCase())
+              );
+              let fallbackCat = existing.find((c) => c.name.toLowerCase() === fallbackName.toLowerCase());
+              if (!fallbackCat) {
+                const allCats = await this.categoryRepo.findByRestaurantId(restaurant.id);
+                fallbackCat = allCats.find((c) => c.name.toLowerCase() === fallbackName.toLowerCase());
+              }
+              for (const prod of products) {
+                if (
+                  (prod.categoryId && deactivatedIds.has(prod.categoryId)) ||
+                  (prod.category && deactivatedNames.has(prod.category.toLowerCase()))
+                ) {
+                  await this.productRepo.save({
+                    ...prod,
+                    categoryId: fallbackCat?.id,
+                    category: fallbackName,
+                  });
+                }
+              }
+            }
+          } catch (err) {
+            console.warn('Could not reassign products of deactivated categories:', err);
           }
         }
       } catch (err) {

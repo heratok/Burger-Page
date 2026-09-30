@@ -80,7 +80,7 @@ describe('Restaurant API & Multi-Tenant Security (Integration)', () => {
     expect(getResponse.json().categories).toEqual(['Entradas', 'Platos Fuertes', 'Bebidas', 'Postres']);
   });
 
-  it('PUT /api/restaurant/categories should return 400 for empty categories array', async () => {
+  it('PUT /api/restaurant/categories should accept an empty array and clear the categories', async () => {
     const response = await app.inject({
       method: 'PUT',
       url: '/api/restaurant/categories',
@@ -90,9 +90,10 @@ describe('Restaurant API & Multi-Tenant Security (Integration)', () => {
       }
     });
 
-    expect(response.statusCode).toBe(400);
+    // A restaurant may exist with zero categories: an empty array is valid.
+    expect(response.statusCode).toBe(200);
     const body = response.json();
-    expect(body.detail || body.message).toBeDefined();
+    expect(body.categories).toEqual([]);
   });
 
   it('GET /api/restaurants without auth should return 200 OK and list restaurants for public visitors', async () => {

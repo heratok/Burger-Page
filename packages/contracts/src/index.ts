@@ -70,7 +70,9 @@ export const restaurantDTOSchema = z.object({
 export type RestaurantDTO = z.infer<typeof restaurantDTOSchema>;
 
 export const updateRestaurantCategoriesSchema = z.object({
-  categories: z.array(z.string().min(1, 'Category name cannot be empty')).min(1, 'At least one category is required'),
+  // A restaurant may exist with zero categories, so an empty array is valid;
+  // individual category names still must not be empty.
+  categories: z.array(z.string().min(1, 'Category name cannot be empty')),
 });
 export type UpdateRestaurantCategoriesInput = z.infer<typeof updateRestaurantCategoriesSchema>;
 
@@ -218,6 +220,21 @@ export const updateInventoryStockSchema = z.object({
   quantityChange: z.number(),
 });
 export type UpdateInventoryStockInput = z.infer<typeof updateInventoryStockSchema>;
+
+export const createSupplierSchema = z.object({
+  id: z.string().optional(),
+  restaurantId: z.string().optional(),
+  name: z.string().min(1, 'Supplier name is required'),
+  category: z.string().optional(),
+  contactName: z.string().optional(),
+  phone: z.string().optional(),
+  email: z.string().optional(),
+  notes: z.string().optional(),
+});
+export type CreateSupplierInput = z.infer<typeof createSupplierSchema>;
+
+export const updateSupplierSchema = createSupplierSchema.partial();
+export type UpdateSupplierInput = z.infer<typeof updateSupplierSchema>;
 
 // ==========================================
 // REAL-TIME ORDER EVENTS (SSE)

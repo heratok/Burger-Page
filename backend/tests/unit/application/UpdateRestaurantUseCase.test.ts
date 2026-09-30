@@ -4,6 +4,9 @@ import { RestaurantRepository } from '../../../src/domain/ports/out/RestaurantRe
 import { Restaurant } from '../../../src/domain/models/Restaurant.js';
 import { EntityNotFoundError, ValidationError } from '../../../src/domain/errors/DomainErrors.js';
 
+import { CategoryRepository } from '../../../src/domain/ports/out/CategoryRepository.js';
+import { Category } from '../../../src/domain/models/Category.js';
+
 // S3: slug, isActive and adminPassword are super_admin-only fields on PUT,
 // enforced with an effective-change rule. The tenant-admin frontend save path
 // sends slug (and sometimes isActive) on every PUT, so an idempotent no-op
@@ -11,6 +14,37 @@ import { EntityNotFoundError, ValidationError } from '../../../src/domain/errors
 // is rejected, and adminPassword is rejected on ANY presence.
 // Hand-rolled fakes (no mocking framework), matching the repo's existing
 // use-case unit test style.
+
+class FakeCategoryRepository implements CategoryRepository {
+  savedCategories: Category[] = [];
+  categories: Category[] = [];
+
+  constructor(initial: Category[] = []) {
+    this.categories = [...initial];
+  }
+
+  async findById(id: string, restaurantId: string): Promise<Category | null> {
+    return this.categories.find((c) => c.id === id && c.restaurantId === restaurantId) ?? null;
+  }
+  async findByRestaurantId(restaurantId: string): Promise<Category[]> {
+    return this.categories.filter((c) => c.restaurantId === restaurantId);
+  }
+  async findByName(name: string, restaurantId: string): Promise<Category | null> {
+    return this.categories.find((c) => c.name.toLowerCase() === name.toLowerCase() && c.restaurantId === restaurantId) ?? null;
+  }
+  async save(category: Category): Promise<void> {
+    this.savedCategories.push(category);
+    const idx = this.categories.findIndex((c) => c.id === category.id);
+    if (idx >= 0) {
+      this.categories[idx] = category;
+    } else {
+      this.categories.push(category);
+    }
+  }
+  async delete(id: string, restaurantId: string): Promise<void> {
+    this.categories = this.categories.filter((c) => !(c.id === id && c.restaurantId === restaurantId));
+  }
+}
 
 class FakeRestaurantRepository implements RestaurantRepository {
   findByIdCalls: string[] = [];
@@ -189,5 +223,23 @@ describe('UpdateRestaurantUseCase', () => {
       useCase.execute('unknown', { slug: 'x' } as any, 'restaurant_admin')
     ).rejects.toThrow(EntityNotFoundError);
     expect(repo.saveCalls).toEqual([]);
+  });
+
+  it('synchronizes categories into CategoryRepository when input.categories is provided', async () => {
+    const repo = new FakeRestaurantRepository([restaurant()]);
+    const catRepo = new FakeCategoryRepository([
+      { id: 'cat-1', restaurantId: 'rest-1', name: 'Pizza', isActive: true, displayOrder: 0 },
+      { id: 'cat-2', restaurantId: 'rest-1', name: 'Bebidas', isActive: true, displayOrder: 1 },
+    ]);
+    const useCase = new UpdateRestaurantUseCase(repo, catRepo);
+
+    await useCase.execute('rest-1', { categories: ['Pizza', 'Postres'] }, 'restaurant_admin');
+
+    // Should have saved 'Pizza' (kept active), 'Postres' (created active), and 'Bebidas' (deactivated)
+    expect(catRepo.savedCategories.length).toBeGreaterThan(0);
+    const activeCats = catRepo.categories.filter((c) => c.isActive);
+    expect(activeCats.map((c) => c.name)).toEqual(['Pizza', 'Postres']);
+    const deactivated = catRepo.categories.filter((c) => !c.isActive);
+    expect(deactivated.map((c) => c.name)).toEqual(['Bebidas']);
   });
 });

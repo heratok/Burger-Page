@@ -5,8 +5,9 @@ import {
   OrderStatus,
   InventoryItem,
   AdditionItem,
+  Supplier,
 } from '@/types/restaurant'
-import type { OrderEvent, CreateOrderInput, UpdateOrderInput, CreateRestaurantInput, UpdateRestaurantInput, CreateCustomerInput, UpdateCustomerInput } from '@burger-page/contracts'
+import type { OrderEvent, CreateOrderInput, UpdateOrderInput, CreateRestaurantInput, UpdateRestaurantInput, CreateCustomerInput, UpdateCustomerInput, CreateSupplierInput, UpdateSupplierInput } from '@burger-page/contracts'
 
 export interface ApiClientConfig {
   baseUrl: string
@@ -374,6 +375,73 @@ export class ApiClient {
     return this.request<InventoryItem>(`/inventory/${itemId}/stock${qs}`, {
       method: 'PATCH',
       body: JSON.stringify({ quantityChange }),
+    })
+  }
+
+  async fetchSuppliers(restaurantId?: string): Promise<Supplier[]> {
+    const qs = restaurantId ? `?restaurantId=${encodeURIComponent(restaurantId)}` : ''
+    const raw = await this.request<any[]>(`/suppliers${qs}`)
+    return Array.isArray(raw)
+      ? raw.map((s) => ({
+          id: s.id,
+          name: s.name,
+          category: s.category || 'general',
+          contactName: s.contactName || s.contact_name || '',
+          phone: s.phone || '',
+          email: s.email || undefined,
+          notes: s.notes || undefined,
+        }))
+      : []
+  }
+
+  async createSupplier(
+    data: CreateSupplierInput & { restaurantId?: string },
+    restaurantId?: string
+  ): Promise<Supplier> {
+    const targetRest = restaurantId || data.restaurantId
+    const qs = targetRest ? `?restaurantId=${encodeURIComponent(targetRest)}` : ''
+    const payload = targetRest && !data.restaurantId ? { ...data, restaurantId: targetRest } : data
+    const raw = await this.request<any>(`/suppliers${qs}`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+    return {
+      id: raw.id,
+      name: raw.name,
+      category: raw.category || 'general',
+      contactName: raw.contactName || raw.contact_name || '',
+      phone: raw.phone || '',
+      email: raw.email || undefined,
+      notes: raw.notes || undefined,
+    }
+  }
+
+  async updateSupplier(
+    id: string,
+    data: UpdateSupplierInput,
+    restaurantId?: string
+  ): Promise<Supplier> {
+    const qs = restaurantId ? `?restaurantId=${encodeURIComponent(restaurantId)}` : ''
+    const payload = restaurantId && !(data as any).restaurantId ? { ...data, restaurantId } : data
+    const raw = await this.request<any>(`/suppliers/${id}${qs}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    })
+    return {
+      id: raw.id,
+      name: raw.name,
+      category: raw.category || 'general',
+      contactName: raw.contactName || raw.contact_name || '',
+      phone: raw.phone || '',
+      email: raw.email || undefined,
+      notes: raw.notes || undefined,
+    }
+  }
+
+  async deleteSupplier(id: string, restaurantId?: string): Promise<void> {
+    const qs = restaurantId ? `?restaurantId=${encodeURIComponent(restaurantId)}` : ''
+    await this.request<void>(`/suppliers/${id}${qs}`, {
+      method: 'DELETE',
     })
   }
 

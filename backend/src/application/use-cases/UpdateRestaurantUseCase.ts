@@ -1,10 +1,15 @@
+import { randomUUID } from 'node:crypto';
 import { RestaurantRepository } from '../../domain/ports/out/RestaurantRepository.js';
+import { CategoryRepository } from '../../domain/ports/out/CategoryRepository.js';
 import { Restaurant, omitAdminPassword } from '../../domain/models/Restaurant.js';
 import { UpdateRestaurantInput } from '@burger-page/contracts';
 import { EntityNotFoundError, ValidationError } from '../../domain/errors/DomainErrors.js';
 
 export class UpdateRestaurantUseCase {
-  constructor(private restaurantRepo: RestaurantRepository) {}
+  constructor(
+    private restaurantRepo: RestaurantRepository,
+    private categoryRepo?: CategoryRepository
+  ) {}
 
   async execute(id: string, input: UpdateRestaurantInput, actorRole?: string): Promise<Restaurant> {
     const restaurant = (await this.restaurantRepo.findById(id)) || (await this.restaurantRepo.findBySlug(id));
@@ -74,6 +79,51 @@ export class UpdateRestaurantUseCase {
     };
 
     await this.restaurantRepo.save(updated);
+
+    if (input.categories !== undefined && this.categoryRepo) {
+      try {
+        const cleanedCategories = Array.from(
+          new Set(input.categories.map((c) => c.trim()).filter((c) => c.length > 0))
+        );
+        const existing = await this.categoryRepo.findByRestaurantId(restaurant.id);
+        const existingByName = new Map(existing.map((c) => [c.name.toLowerCase(), c]));
+
+        for (let i = 0; i < cleanedCategories.length; i++) {
+          const name = cleanedCategories[i];
+          const found = existingByName.get(name.toLowerCase());
+          if (found) {
+            await this.categoryRepo.save({
+              ...found,
+              name,
+              displayOrder: i,
+              isActive: true,
+            });
+          } else {
+            await this.categoryRepo.save({
+              id: `cat_${randomUUID()}`,
+              restaurantId: restaurant.id,
+              name,
+              displayOrder: i,
+              isActive: true,
+            });
+          }
+        }
+
+        // Deactivate categories no longer in cleanedCategories
+        const cleanedSet = new Set(cleanedCategories.map((c) => c.toLowerCase()));
+        for (const cat of existing) {
+          if (!cleanedSet.has(cat.name.toLowerCase()) && cat.isActive) {
+            await this.categoryRepo.save({
+              ...cat,
+              isActive: false,
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('Could not sync categories to CategoryRepository in UpdateRestaurantUseCase:', err);
+      }
+    }
+
     // SUS-20: a provided adminPassword is accepted (update semantics) but must
     // never be echoed back in the response — only the create 201 carries
     // one-time credentials.

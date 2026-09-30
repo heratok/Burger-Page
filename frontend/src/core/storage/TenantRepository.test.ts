@@ -54,6 +54,52 @@ describe("TenantRepository with InMemoryStorageAdapter", () => {
   })
 })
 
+describe("TenantRepository category migration (no fabricated default)", () => {
+  let adapter: InMemoryStorageAdapter
+  let repo: TenantRepository
+
+  beforeEach(() => {
+    adapter = new InMemoryStorageAdapter()
+    repo = new TenantRepository(adapter)
+  })
+
+  it("derives categories from products when the record has none", () => {
+    adapter.setItem(
+      STORAGE_KEYS.ENVELOPE,
+      JSON.stringify({
+        version: 2,
+        restaurants: [
+          {
+            id: "rest-1",
+            slug: "rest-1",
+            products: [
+              { category: "Burgers" },
+              { category: "Bebidas" },
+              { category: "Burgers" },
+            ],
+          },
+        ],
+      })
+    )
+
+    const envelope = repo.loadEnvelope()
+    expect(envelope.restaurants[0].categories).toEqual(["Burgers", "Bebidas"])
+  })
+
+  it("keeps an empty list when there are no categories and no products", () => {
+    adapter.setItem(
+      STORAGE_KEYS.ENVELOPE,
+      JSON.stringify({
+        version: 2,
+        restaurants: [{ id: "rest-1", slug: "rest-1", products: [] }],
+      })
+    )
+
+    const envelope = repo.loadEnvelope()
+    expect(envelope.restaurants[0].categories).toEqual([])
+  })
+})
+
 describe("TenantRepository purgeTenantData (C3 isolation)", () => {
   let adapter: InMemoryStorageAdapter
   let repo: TenantRepository

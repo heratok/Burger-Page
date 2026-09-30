@@ -13,7 +13,7 @@ export class SqliteProductRepository implements ProductRepository {
       name: row.name,
       description: row.description,
       price: Number(row.price),
-      category: row.category_name || row.category || 'General',
+      category: row.category_name || row.category || '',
       categoryId: row.category_id || undefined,
       imageUrl: row.image_url || undefined,
       isAvailable: Boolean(row.is_available),

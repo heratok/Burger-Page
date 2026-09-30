@@ -222,6 +222,83 @@ describe("InventoryContext Slice", () => {
     expect(updated?.currentStock).toBe(45)
   })
 
+  it("synchronizes addSupplier, updateSupplier, deleteSupplier with apiClient", async () => {
+    const { TenantProvider } = await import("./TenantContext")
+    const { InventoryProvider, useInventory } = await import("./InventoryContext")
+    const { apiClient } = await import("@/core/api/apiClient")
+
+    const createSpy = vi.spyOn(apiClient, "createSupplier").mockResolvedValue({
+      id: "sup-server-1",
+      name: "Carnes SAS",
+      category: "ingredients",
+      contactName: "Carlos",
+      phone: "3001234567",
+    } as any)
+    const updateSpy = vi.spyOn(apiClient, "updateSupplier").mockResolvedValue({
+      id: "sup-server-1",
+      name: "Carnes SAS Actualizada",
+      category: "ingredients",
+      contactName: "Carlos",
+      phone: "3001234567",
+    } as any)
+    const deleteSpy = vi.spyOn(apiClient, "deleteSupplier").mockResolvedValue(undefined as any)
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>
+        <InventoryProvider>{children}</InventoryProvider>
+      </TenantProvider>
+    )
+
+    const { result } = renderHook(() => useInventory(), { wrapper })
+
+    // 1. Add supplier
+    act(() => {
+      result.current.addSupplier({
+        name: "Carnes SAS",
+        category: "ingredients",
+        contactName: "Carlos",
+        phone: "3001234567",
+      })
+    })
+
+    expect(createSpy).toHaveBeenCalledTimes(1)
+    expect(createSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "Carnes SAS",
+        category: "ingredients",
+      }),
+      expect.stringMatching(/^rest-/)
+    )
+
+    // Wait for optimistic card to be updated or adopt id
+    await waitFor(() => {
+      expect(result.current.suppliers.some((s) => s.id === "sup-server-1")).toBe(true)
+    })
+
+    // 2. Update supplier
+    act(() => {
+      result.current.updateSupplier("sup-server-1", {
+        name: "Carnes SAS Actualizada",
+      })
+    })
+
+    expect(updateSpy).toHaveBeenCalledTimes(1)
+    expect(updateSpy).toHaveBeenCalledWith(
+      "sup-server-1",
+      expect.objectContaining({ name: "Carnes SAS Actualizada" }),
+      expect.stringMatching(/^rest-/)
+    )
+
+    // 3. Delete supplier
+    act(() => {
+      result.current.deleteSupplier("sup-server-1")
+    })
+
+    expect(deleteSpy).toHaveBeenCalledTimes(1)
+    expect(deleteSpy).toHaveBeenCalledWith("sup-server-1", expect.stringMatching(/^rest-/))
+    expect(result.current.suppliers.some((s) => s.id === "sup-server-1")).toBe(false)
+  })
+
   it("handles apiClient.updateInventoryStock network errors gracefully without crashing", async () => {
     const { TenantProvider } = await import("./TenantContext")
     const { InventoryProvider, useInventory } = await import("./InventoryContext")
@@ -1350,6 +1427,7 @@ describe("CatalogContext Slice - Dynamic Category Management", () => {
     const updateCategoriesSpy = vi.spyOn(apiClient, "updateCategories").mockResolvedValue({
       categories: ["Especiales", "Pollo", "Gourmet", "Clásicas", "Entradas"],
     })
+    const updateProductSpy = vi.spyOn(apiClient, "updateProduct").mockResolvedValue({} as any)
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <TenantProvider>
@@ -1385,7 +1463,7 @@ describe("CatalogContext Slice - Dynamic Category Management", () => {
     const onionRings = result.current.products.find((p) => p.name === "Aros de Cebolla")
     expect(onionRings?.category).toBe("Entradas")
 
-    // 2. Rename Category -> Should cascade to product
+    // 2. Rename Category -> Should cascade to product locally and sync to API
     act(() => {
       result.current.updateCategory("Entradas", "Aperitivos")
     })
@@ -1395,16 +1473,34 @@ describe("CatalogContext Slice - Dynamic Category Management", () => {
 
     const updatedOnionRings = result.current.products.find((p) => p.name === "Aros de Cebolla")
     expect(updatedOnionRings?.category).toBe("Aperitivos")
+    expect(updateProductSpy).toHaveBeenCalledWith(
+      onionRings?.id,
+      { category: "Aperitivos" },
+      expect.any(String)
+    )
 
-    // 3. Delete Category -> Should reassign product to fallback category
+    // 3. Add a second category so deleting the first is allowed by rule (ii):
+    //    the LAST category cannot be deleted while it has products assigned.
+    act(() => {
+      result.current.addCategory("Bebidas")
+    })
+
+    expect(result.current.categories).toContain("Bebidas")
+
+    // 4. Delete Category -> Should reassign product to the remaining category and sync to API
     act(() => {
       result.current.deleteCategory("Aperitivos")
     })
 
     expect(result.current.categories).not.toContain("Aperitivos")
     const reassignedProduct = result.current.products.find((p) => p.name === "Aros de Cebolla")
-    expect(reassignedProduct?.category).not.toBe("Aperitivos")
+    expect(reassignedProduct?.category).toBe("Bebidas")
     expect(result.current.categories).toContain(reassignedProduct?.category)
+    expect(updateProductSpy).toHaveBeenCalledWith(
+      onionRings?.id,
+      { category: "Bebidas" },
+      expect.any(String)
+    )
   })
 
   it("rolls back category addition when apiClient.updateCategories fails on addCategory", async () => {
@@ -1510,6 +1606,14 @@ describe("CatalogContext Slice - Dynamic Category Management", () => {
 
     expect(result.current.categories).toContain("Salsas Especiales")
 
+    // A second category keeps the deletion legal under rule (ii) so the failed
+    // API sync (not the last-category guard) is what triggers the rollback.
+    act(() => {
+      result.current.addCategory("Extras")
+    })
+
+    expect(result.current.categories).toContain("Extras")
+
     // Now fail deleteCategory
     updateCategoriesSpy.mockRejectedValueOnce(new Error("Delete Failed"))
 
@@ -1519,6 +1623,7 @@ describe("CatalogContext Slice - Dynamic Category Management", () => {
 
     await waitFor(() => {
       expect(result.current.categories).toContain("Salsas Especiales")
+      expect(result.current.categories).toContain("Extras")
       const product = result.current.products.find((p) => p.name === "Salsa Picante Habanero")
       expect(product?.category).toBe("Salsas Especiales")
     })
@@ -1665,6 +1770,140 @@ describe("CatalogContext Slice - Dynamic Category Management", () => {
     )
     expect(swappedA?.id).toBe("server-PA")
     expect(swappedB?.id).toBe("server-PB")
+  })
+
+  it("blocks deleting the last category while it still has products (rule ii)", async () => {
+    const { TenantProvider } = await import("./TenantContext")
+    const { CatalogProvider, useCatalog } = await import("./CatalogContext")
+    const { apiClient } = await import("@/core/api/apiClient")
+    const { toast } = await import("sonner")
+
+    const updateCategoriesSpy = vi
+      .spyOn(apiClient, "updateCategories")
+      .mockResolvedValue({ categories: [] })
+    const errorSpy = vi.spyOn(toast, "error")
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>
+        <CatalogProvider>{children}</CatalogProvider>
+      </TenantProvider>
+    )
+
+    const { result } = renderHook(() => useCatalog(), { wrapper })
+
+    act(() => {
+      result.current.addCategory("Única")
+    })
+    act(() => {
+      result.current.addProduct({
+        name: "Muzzarella",
+        price: 10000,
+        category: "Única",
+        src: "",
+        description: "Pizza clásica",
+        inStock: true,
+      })
+    })
+
+    // Only the delete call is under test now.
+    updateCategoriesSpy.mockClear()
+
+    act(() => {
+      result.current.deleteCategory("Única")
+    })
+
+    // Nothing changed and the backend was never asked to persist an empty list.
+    expect(result.current.categories).toContain("Única")
+    expect(updateCategoriesSpy).not.toHaveBeenCalled()
+    expect(errorSpy).toHaveBeenCalledWith(
+      "No se puede eliminar la última categoría porque tiene productos asignados. Mové o eliminá esos productos primero."
+    )
+  })
+
+  it("allows deleting the last category when it has no products, leaving the list empty", async () => {
+    const { TenantProvider } = await import("./TenantContext")
+    const { CatalogProvider, useCatalog } = await import("./CatalogContext")
+    const { apiClient } = await import("@/core/api/apiClient")
+
+    const updateCategoriesSpy = vi
+      .spyOn(apiClient, "updateCategories")
+      .mockResolvedValue({ categories: [] })
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>
+        <CatalogProvider>{children}</CatalogProvider>
+      </TenantProvider>
+    )
+
+    const { result } = renderHook(() => useCatalog(), { wrapper })
+
+    act(() => {
+      result.current.addCategory("Sola")
+    })
+    expect(result.current.categories).toEqual(["Sola"])
+
+    act(() => {
+      result.current.deleteCategory("Sola")
+    })
+
+    // A restaurant with zero categories is now a valid state.
+    expect(result.current.categories).toEqual([])
+    expect(updateCategoriesSpy).toHaveBeenLastCalledWith([], expect.any(String))
+  })
+
+  it("shares ONE category list between products, the modal and the delete guard", async () => {
+    const { TenantProvider } = await import("./TenantContext")
+    const { CatalogProvider, useCatalog } = await import("./CatalogContext")
+    const { apiClient } = await import("@/core/api/apiClient")
+
+    vi.spyOn(apiClient, "updateCategories").mockResolvedValue({ categories: [] })
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>
+        <CatalogProvider>{children}</CatalogProvider>
+      </TenantProvider>
+    )
+
+    const { result } = renderHook(() => useCatalog(), { wrapper })
+
+    act(() => {
+      result.current.addCategory("Bebidas")
+    })
+    act(() => {
+      result.current.addProduct({
+        name: "Burger Clásica",
+        price: 9000,
+        category: "Burgers",
+        src: "",
+        description: "Carne",
+        inStock: true,
+      })
+    })
+    act(() => {
+      result.current.addProduct({
+        name: "Burger Doble",
+        price: 12000,
+        category: "Burgers",
+        src: "",
+        description: "Doble carne",
+        inStock: true,
+      })
+    })
+
+    // "Burgers" is product-only (never stored as a category) yet the union
+    // surfaces it exactly once — the same list the modal and filter receive.
+    expect(result.current.categories).toEqual(["Bebidas", "Burgers"])
+    expect(result.current.categories.filter((c) => c === "Burgers")).toHaveLength(1)
+
+    // The delete guard validates that same list: a product-only category is
+    // deletable when it is not the last one, without a false "at least one
+    // category" error.
+    act(() => {
+      result.current.deleteCategory("Burgers")
+    })
+
+    expect(result.current.categories).not.toContain("Burgers")
+    expect(result.current.categories).toEqual(["Bebidas"])
   })
 })
 
