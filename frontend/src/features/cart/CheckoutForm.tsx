@@ -4,7 +4,6 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import {
   ArrowLeft,
   Banknote,
-  Check,
   ChevronDown,
   CircleAlert,
   CreditCard,
