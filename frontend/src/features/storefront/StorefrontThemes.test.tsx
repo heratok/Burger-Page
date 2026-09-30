@@ -1,7 +1,9 @@
-import { describe, it, expect } from "vitest"
+import { describe, it, expect, beforeEach, afterEach } from "vitest"
 import { render, screen } from "@testing-library/react"
 import { RestaurantProvider, useRestaurant } from "@/context/RestaurantContext"
 import Home from "@/features/storefront/Home"
+import { STORAGE_KEYS } from "@/core/storage/TenantRepository"
+import { TEST_STORAGE_ENVELOPE } from "@/test/fixtures"
 import React, { useEffect } from "react"
 
 const StoreTester: React.FC<{ targetSlug: string }> = ({ targetSlug }) => {
@@ -18,6 +20,17 @@ const StoreTester: React.FC<{ targetSlug: string }> = ({ targetSlug }) => {
 }
 
 describe("Storefront Multi-Theme Rendering & Contrast", () => {
+  beforeEach(() => {
+    // Seed real tenant data: a storefront with a menu must render its category
+    // bar. (A restaurant with zero categories legitimately renders none, so the
+    // fixture — not a fabricated default — is what keeps this bar visible.)
+    localStorage.setItem(STORAGE_KEYS.ENVELOPE, JSON.stringify(TEST_STORAGE_ENVELOPE))
+  })
+
+  afterEach(() => {
+    localStorage.clear()
+  })
+
   it("renders Tacos El Rey (Clean White theme) with high-contrast visible category buttons", async () => {
     render(
       <RestaurantProvider>

@@ -289,4 +289,38 @@ describe('UpdateRestaurantCategoriesUseCase', () => {
       categoryId: 'cat-1',
     });
   });
+
+  it('does not reassign products when the cleaned category list is empty (no fabricated fallback)', async () => {
+    const restaurantRepo = new FakeRestaurantRepository([restaurant()]);
+    const categoryRepo = new FakeCategoryRepository([
+      { id: 'cat-1', restaurantId: 'rest-1', name: 'Pizza', displayOrder: 0, isActive: true },
+    ]);
+    const productRepo = new FakeProductRepository([
+      {
+        id: 'prod-1',
+        restaurantId: 'rest-1',
+        name: 'Margarita',
+        description: 'Pizza',
+        price: 15000,
+        category: 'Pizza',
+        categoryId: 'cat-1',
+        isAvailable: true,
+        isPopular: false,
+        isNew: false,
+        preparationTimeMinutes: 15,
+        displayOrder: 0,
+        additions: [],
+      },
+    ]);
+
+    const useCase = new UpdateRestaurantCategoriesUseCase(restaurantRepo, categoryRepo, productRepo);
+
+    await useCase.execute('mi-restaurante', []);
+
+    // With no remaining category there is no valid reassignment target, so the
+    // product keeps its (now deactivated) category instead of being moved to a
+    // fabricated "General".
+    expect(productRepo.saveCalls).toHaveLength(0);
+    expect(restaurantRepo.saveCalls[0].categories).toEqual([]);
+  });
 });

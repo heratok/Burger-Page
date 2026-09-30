@@ -96,7 +96,10 @@ export const TenantProvider: React.FC<{
               slug: br.slug,
               isActive: br.isActive !== undefined ? Boolean(br.isActive) : true,
               createdAt: br.createdAt || local?.createdAt || new Date().toISOString(),
-              categories: br.categories && br.categories.length > 0 ? br.categories : local?.categories || ['General'],
+              // Zero categories is a valid persisted state: when the backend
+              // sends a list (even []), it wins over stale local storage. Only
+              // fall back to local when the backend omitted categories entirely.
+              categories: Array.isArray(br.categories) ? br.categories : local?.categories ?? [],
               config: {
                 ...DEFAULT_STORE_CONFIG,
                 ...(local?.config || {}),
@@ -216,7 +219,7 @@ export const TenantProvider: React.FC<{
                   slug: fetched.slug,
                   isActive: fetched.isActive !== undefined ? Boolean(fetched.isActive) : true,
                   createdAt: (fetched as any).createdAt || new Date().toISOString(),
-                  categories: fetched.categories && fetched.categories.length > 0 ? fetched.categories : ['Hamburguesas', 'Bebidas', 'Acompañamientos'],
+                  categories: fetched.categories || [],
                   config: {
                     ...DEFAULT_STORE_CONFIG,
                     ...(fetched.config || {}),
@@ -258,7 +261,7 @@ export const TenantProvider: React.FC<{
             isActive: true,
             createdAt: new Date().toISOString(),
             config: DEFAULT_STORE_CONFIG,
-            categories: ["Platos Principales"],
+            categories: [],
             products: [],
             additions: [],
             orders: [],
@@ -320,7 +323,7 @@ export const TenantProvider: React.FC<{
           whatsappNumber: data.whatsappNumber,
           primaryColor: data.primaryColor || DEFAULT_STORE_CONFIG.primaryColor,
         },
-        categories: ["General"],
+        categories: [],
         products: [],
         additions: [],
         orders: [],
@@ -345,7 +348,7 @@ export const TenantProvider: React.FC<{
           adminPassword: data.adminPassword,
           primaryColor: data.primaryColor,
           templateType: data.templateType,
-          categories: ["General"],
+          categories: [],
           config: newRecord.config,
         })
         .then(async (created) => {

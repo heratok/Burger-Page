@@ -70,7 +70,9 @@ export const restaurantDTOSchema = z.object({
 export type RestaurantDTO = z.infer<typeof restaurantDTOSchema>;
 
 export const updateRestaurantCategoriesSchema = z.object({
-  categories: z.array(z.string().min(1, 'Category name cannot be empty')).min(1, 'At least one category is required'),
+  // A restaurant may exist with zero categories, so an empty array is valid;
+  // individual category names still must not be empty.
+  categories: z.array(z.string().min(1, 'Category name cannot be empty')),
 });
 export type UpdateRestaurantCategoriesInput = z.infer<typeof updateRestaurantCategoriesSchema>;
 

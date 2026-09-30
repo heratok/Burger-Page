@@ -19,7 +19,8 @@ export function mapRow(row: any): Restaurant {
       }
     } catch {}
   } else {
-    categories = ['Hamburguesas', 'Bebidas', 'Acompañamientos'];
+    // No fabricated default: a missing/undecodable categories column yields [].
+    categories = [];
   }
 
   return {

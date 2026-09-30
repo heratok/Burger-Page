@@ -38,7 +38,7 @@ describe('PgRestaurantRepository mapRow', () => {
     expect(restaurant.categories).toEqual(['Tacos', 'Bebidas']);
   });
 
-  it('falls back to default categories only when row.categories is null or undefined', () => {
+  it('yields an empty list (no fabricated default) when row.categories is null or undefined', () => {
     const row = {
       id: 'rest-null',
       slug: 'rest-null',
@@ -47,6 +47,6 @@ describe('PgRestaurantRepository mapRow', () => {
     };
 
     const restaurant = mapRow(row);
-    expect(restaurant.categories).toEqual(['Hamburguesas', 'Bebidas', 'Acompañamientos']);
+    expect(restaurant.categories).toEqual([]);
   });
 });

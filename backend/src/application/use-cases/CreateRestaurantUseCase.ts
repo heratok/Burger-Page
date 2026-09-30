@@ -55,7 +55,7 @@ export class CreateRestaurantUseCase {
       },
       openingHours: { open: '12:00', close: '22:30' },
       isActive: true,
-      categories: input.categories && input.categories.length > 0 ? input.categories : ['General'],
+      categories: input.categories ?? [],
       createdAt: new Date().toISOString(),
     };
 

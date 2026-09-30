@@ -32,7 +32,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   const [productForm, setProductForm] = useState({
     name: "",
     price: 26000,
-    category: categories[0] || "Platos Principales",
+    category: categories[0] ?? "",
     src: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800&auto=format&fit=crop&q=80",
     description: "",
     inStock: true,
@@ -66,11 +66,13 @@ export const ProductModal: React.FC<ProductModalProps> = ({
         preparationTimeMinutes: editingProduct.preparationTimeMinutes || 15,
       })
     } else {
-      setIsCustomCategoryInput(false)
+      // With zero categories there is nothing to pick, so open the free-text
+      // category input directly: the owner creates the first category.
+      setIsCustomCategoryInput(categories.length === 0)
       setProductForm({
         name: "",
         price: 26000,
-        category: categories[0] || "Platos Principales",
+        category: categories[0] ?? "",
         src: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800&auto=format&fit=crop&q=80",
         description: "",
         inStock: true,

@@ -134,4 +134,41 @@ describe("ProductModal", () => {
       "Formato no compatible. Por favor sube una imagen JPG, PNG, WebP o AVIF."
     )
   })
+
+  it("opens in new-category input mode when the restaurant has zero categories", () => {
+    render(
+      <ProductModal
+        isOpen={true}
+        editingProduct={null}
+        categories={[]}
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+      />
+    )
+
+    // No existing categories: the owner must be able to type the first one.
+    expect(screen.getByPlaceholderText(/Entradas, Postres, Bebidas/i)).toBeDefined()
+  })
+
+  it("requires the owner to type a category when none exists", async () => {
+    const onSave = vi.fn()
+    render(
+      <ProductModal
+        isOpen={true}
+        editingProduct={null}
+        categories={[]}
+        onClose={vi.fn()}
+        onSave={onSave}
+      />
+    )
+
+    const nameInput = screen.getByPlaceholderText(/Plato Especial/i)
+    fireEvent.change(nameInput, { target: { value: "Super Burger" } })
+
+    const submitBtn = screen.getByRole("button", { name: /Guardar en Menú/i })
+    fireEvent.submit(submitBtn.closest("form") || submitBtn)
+
+    expect(toast.error).toHaveBeenCalledWith("Debes seleccionar una categoría válida")
+    expect(onSave).not.toHaveBeenCalled()
+  })
 })

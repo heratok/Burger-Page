@@ -63,7 +63,7 @@ describe("TenantContext - Backend Multi-Tenant Integration", () => {
       slug: "burgers-and-co",
       name: "Burgers & Co",
       tagline: "Best burgers in town",
-      categories: ["General"],
+      categories: [],
     } as any)
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -89,6 +89,96 @@ describe("TenantContext - Backend Multi-Tenant Integration", () => {
     )
 
     expect(result.current.restaurants.some((r) => r.slug === "burgers-and-co")).toBe(true)
+  })
+
+  it("creates a restaurant with zero categories and sends no fabricated default to the API", async () => {
+    vi.spyOn(apiClient, "hasToken").mockReturnValue(true)
+    vi.spyOn(apiClient, "listRestaurants").mockResolvedValue([])
+    const createSpy = vi.spyOn(apiClient, "createRestaurant").mockImplementation(
+      async (payload: any) =>
+        ({
+          id: "rest-zero-cats",
+          slug: payload.slug,
+          name: payload.name,
+          categories: payload.categories,
+        }) as any
+    )
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>{children}</TenantProvider>
+    )
+
+    const { result } = renderHook(() => useTenant(), { wrapper })
+
+    act(() => {
+      result.current.createRestaurant({
+        name: "Zero Cats",
+        slug: "zero-cats",
+        tagline: "Sin categorías",
+        whatsappNumber: "573001234567",
+      })
+    })
+
+    const created = result.current.restaurants.find((r) => r.slug === "zero-cats")
+    expect(created?.categories).toEqual([])
+    expect(createSpy).toHaveBeenCalledWith(expect.objectContaining({ categories: [] }))
+  })
+
+  it("hydrates a backend restaurant with no categories as an empty list (no fabricated default)", async () => {
+    vi.spyOn(apiClient, "hasToken").mockReturnValue(true)
+    vi.spyOn(apiClient, "listRestaurants").mockResolvedValue([
+      { id: "rest-empty", slug: "empty-cats", name: "Empty Cats", categories: [] },
+    ] as any)
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>{children}</TenantProvider>
+    )
+
+    const { result } = renderHook(() => useTenant(), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.restaurants.some((r) => r.slug === "empty-cats")).toBe(true)
+    })
+
+    const hydrated = result.current.restaurants.find((r) => r.slug === "empty-cats")
+    expect(hydrated?.categories).toEqual([])
+  })
+
+  it("lets a backend empty category list overwrite stale local categories (regression)", async () => {
+    // Stale local storage still holds a category the owner already deleted.
+    localStorage.setItem(
+      "burger_page_platform_v2",
+      JSON.stringify({
+        version: 2,
+        restaurants: [
+          {
+            id: "rest-empty",
+            slug: "empty-cats",
+            isActive: true,
+            config: { name: "Empty Cats", tagline: "Sin categorías" },
+            categories: ["Vieja"],
+            products: [],
+          },
+        ],
+      })
+    )
+
+    vi.spyOn(apiClient, "hasToken").mockReturnValue(true)
+    vi.spyOn(apiClient, "listRestaurants").mockResolvedValue([
+      { id: "rest-empty", slug: "empty-cats", name: "Empty Cats", categories: [] },
+    ] as any)
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>{children}</TenantProvider>
+    )
+
+    const { result } = renderHook(() => useTenant(), { wrapper })
+
+    await waitFor(() => {
+      const r = result.current.restaurants.find((x) => x.slug === "empty-cats")
+      // Backend [] is authoritative: the stale "Vieja" must not come back.
+      expect(r?.categories).toEqual([])
+    })
   })
 
   it("calls backend delete endpoint when deleteRestaurant is called", async () => {
@@ -178,7 +268,7 @@ describe("TenantContext - effective tenant derivation and mutation identity (A1/
     isActive: true,
     createdAt: "2026-01-01T00:00:00.000Z",
     config: { ...DEFAULT_STORE_CONFIG, name },
-    categories: ["General"],
+    categories: [],
     products: [],
     additions: [],
     orders: [],

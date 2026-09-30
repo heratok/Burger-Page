@@ -441,13 +441,15 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
     [activeRestaurant?.id, updateActiveRestaurantRecord]
   )
 
+  // The category list is the UNION of owner-created categories and the
+  // categories present on products, deduplicated. This is the exact set the
+  // modal, the filter (useMenuFilter) and deleteCategory's guard all see, so
+  // they can never disagree. It may legitimately be empty (a restaurant with
+  // zero categories): no default is fabricated here.
   const categories = useMemo(() => {
-    const rawList = activeRestaurant.categories && activeRestaurant.categories.length > 0
-      ? activeRestaurant.categories
-      : Array.from(new Set(activeRestaurant.products.map((p) => p.category).filter(Boolean)))
-    
-    // Always ensure at least default categories if empty
-    return rawList.length > 0 ? rawList : ["Platos Principales"]
+    const stored = activeRestaurant.categories || []
+    const fromProducts = activeRestaurant.products.map((p) => p.category).filter(Boolean)
+    return Array.from(new Set([...stored, ...fromProducts]))
   }, [activeRestaurant.categories, activeRestaurant.products])
 
   const addCategory = useCallback(
@@ -546,18 +548,27 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const deleteCategory = useCallback(
     (categoryName: string) => {
-      if (categories.length <= 1) {
-        toast.error("El restaurante debe tener al menos una categoría")
+      // Rule (ii): the LAST category cannot be deleted while it still has
+      // products assigned. If it has none, deletion is allowed and the list
+      // may become empty. The guard validates the SAME union list the UI shows.
+      const hasProducts = activeRestaurant.products.some((p) => p.category === categoryName)
+      if (categories.length <= 1 && hasProducts) {
+        toast.error(
+          "No se puede eliminar la última categoría porque tiene productos asignados. Mové o eliminá esos productos primero."
+        )
         return
       }
       const previousCategories = categories
       const previousProducts = activeRestaurant.products || []
 
       const nextCategories = categories.filter((c) => c !== categoryName)
-      const fallback = nextCategories[0] || "General"
-      const nextProducts = previousProducts.map((p) =>
-        p.category === categoryName ? { ...p, category: fallback } : p
-      )
+      // No fabricated fallback: only reassign products when a target exists.
+      const fallback = nextCategories[0]
+      const nextProducts = fallback
+        ? previousProducts.map((p) =>
+            p.category === categoryName ? { ...p, category: fallback } : p
+          )
+        : previousProducts
 
       updateActiveRestaurantRecord((current) => ({
         ...current,
@@ -566,14 +577,16 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }))
       toast.success(`Categoría "${categoryName}" eliminada`)
 
-      // Sync affected products to backend API
-      const affectedProducts = previousProducts.filter((p) => p.category === categoryName)
-      for (const prod of affectedProducts) {
-        apiClient.updateProduct(prod.id, { category: fallback }, activeRestaurant.id).catch((err) => {
-          if (import.meta.env?.MODE !== 'test') {
-            console.warn("Could not sync reassigned product to backend API:", err)
-          }
-        })
+      // Sync affected products to backend API (only when a reassignment target exists)
+      if (fallback) {
+        const affectedProducts = previousProducts.filter((p) => p.category === categoryName)
+        for (const prod of affectedProducts) {
+          apiClient.updateProduct(prod.id, { category: fallback }, activeRestaurant.id).catch((err) => {
+            if (import.meta.env?.MODE !== 'test') {
+              console.warn("Could not sync reassigned product to backend API:", err)
+            }
+          })
+        }
       }
 
       apiClient

@@ -36,6 +36,27 @@ describe('CreateRestaurantUseCase (Security Hardening)', () => {
     expect((mockRestaurantRepo.save as any).mock.calls[0][0].id).toBe(result.id);
   });
 
+  it('creates a restaurant with zero categories when none are provided (no fabricated default)', async () => {
+    const result = await useCase.execute({ name: 'Rosto', slug: 'rosto' } as any);
+
+    // No layer fabricates a "General" category: the owner creates categories.
+    expect(result.categories).toEqual([]);
+    expect((mockRestaurantRepo.save as any).mock.calls[0][0].categories).toEqual([]);
+    // Nothing to persist as a Category row either.
+    expect(mockCategoryRepo.save).not.toHaveBeenCalled();
+  });
+
+  it('preserves explicitly provided categories instead of replacing them', async () => {
+    const result = await useCase.execute({
+      name: 'Rosto',
+      slug: 'rosto',
+      categories: ['Pizza', 'Bebidas'],
+    } as any);
+
+    expect(result.categories).toEqual(['Pizza', 'Bebidas']);
+    expect(mockCategoryRepo.save).toHaveBeenCalledTimes(2);
+  });
+
   it('generates a random admin password instead of the public default', async () => {
     const result = await useCase.execute({ name: 'Rosto', slug: 'rosto' } as any);
 
