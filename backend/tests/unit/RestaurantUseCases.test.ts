@@ -59,6 +59,30 @@ describe('SUS-20 read paths never expose adminPassword (Seam C)', () => {
     expect(result[0].isActive).toBe(true);
   });
 
+  it('enriches restaurants with active categories from CategoryRepository', async () => {
+    (repo.findAll as any).mockResolvedValue([
+      restaurantWithSecret('rest-1', { categories: ['Default'] }),
+      restaurantWithSecret('rest-2', { categories: ['Default'] }),
+    ]);
+    const categoryRepo = {
+      findByRestaurantId: vi.fn().mockImplementation(async (id: string) => {
+        if (id === 'rest-1') {
+          return [
+            { name: 'Pizzas', isActive: true },
+            { name: 'Bebidas', isActive: true },
+            { name: 'Oculta', isActive: false },
+          ];
+        }
+        return [];
+      }),
+    } as unknown as CategoryRepository;
+
+    const result = await new ListRestaurantsUseCase(repo, categoryRepo).execute();
+
+    expect(result[0].categories).toEqual(['Pizzas', 'Bebidas']);
+    expect(result[1].categories).toEqual(['Default']);
+  });
+
   it('get responses contain no adminPassword (id fallback path)', async () => {
     (repo.findBySlug as any).mockResolvedValue(null);
     (repo.findById as any).mockResolvedValue(restaurantWithSecret('rest-1'));

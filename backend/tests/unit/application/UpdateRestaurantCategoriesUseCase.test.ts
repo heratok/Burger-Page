@@ -2,8 +2,10 @@ import { describe, it, expect } from 'vitest';
 import { UpdateRestaurantCategoriesUseCase } from '../../../src/application/use-cases/UpdateRestaurantCategoriesUseCase.js';
 import { RestaurantRepository } from '../../../src/domain/ports/out/RestaurantRepository.js';
 import { CategoryRepository } from '../../../src/domain/ports/out/CategoryRepository.js';
+import { ProductRepository } from '../../../src/domain/ports/out/ProductRepository.js';
 import { Restaurant } from '../../../src/domain/models/Restaurant.js';
 import { Category } from '../../../src/domain/models/Category.js';
+import { Product } from '../../../src/domain/models/Product.js';
 import { EntityNotFoundError } from '../../../src/domain/errors/DomainErrors.js';
 
 // Hand-rolled fakes (no mocking framework) for the restaurant categories use
@@ -61,6 +63,32 @@ class FakeCategoryRepository implements CategoryRepository {
 
   async save(category: Category): Promise<void> {
     this.saveCalls.push(category);
+  }
+
+  async delete(): Promise<void> {}
+}
+
+class FakeProductRepository implements ProductRepository {
+  findByRestaurantIdCalls: string[] = [];
+  saveCalls: Product[] = [];
+
+  constructor(private readonly products: Product[] = []) {}
+
+  async findById(): Promise<Product | null> {
+    return null;
+  }
+
+  async findByRestaurantId(restaurantId: string): Promise<Product[]> {
+    this.findByRestaurantIdCalls.push(restaurantId);
+    return [...this.products];
+  }
+
+  async countByRestaurantId(): Promise<number> {
+    return this.products.length;
+  }
+
+  async save(product: Product): Promise<void> {
+    this.saveCalls.push(product);
   }
 
   async delete(): Promise<void> {}
@@ -209,4 +237,56 @@ describe('UpdateRestaurantCategoriesUseCase', () => {
     });
     expect(result.categories).toEqual([]);
   });
-});
+
+  it('reassigns products belonging to deactivated categories to the fallback category', async () => {
+    const restaurantRepo = new FakeRestaurantRepository([restaurant()]);
+    const categoryRepo = new FakeCategoryRepository([
+      { id: 'cat-1', restaurantId: 'rest-1', name: 'Pizza', displayOrder: 0, isActive: true },
+      { id: 'cat-2', restaurantId: 'rest-1', name: 'Postres', displayOrder: 1, isActive: true },
+    ]);
+    const productRepo = new FakeProductRepository([
+      {
+        id: 'prod-1',
+        restaurantId: 'rest-1',
+        name: 'Tiramisu',
+        description: 'Dulce',
+        price: 5000,
+        category: 'Postres',
+        categoryId: 'cat-2',
+        isAvailable: true,
+        isPopular: false,
+        isNew: false,
+        preparationTimeMinutes: 10,
+        displayOrder: 0,
+        additions: [],
+      },
+      {
+        id: 'prod-2',
+        restaurantId: 'rest-1',
+        name: 'Margarita',
+        description: 'Pizza',
+        price: 15000,
+        category: 'Pizza',
+        categoryId: 'cat-1',
+        isAvailable: true,
+        isPopular: false,
+        isNew: false,
+        preparationTimeMinutes: 15,
+        displayOrder: 0,
+        additions: [],
+      },
+    ]);
+
+    const useCase = new UpdateRestaurantCategoriesUseCase(restaurantRepo, categoryRepo, productRepo);
+
+    await useCase.execute('mi-restaurante', ['Pizza']);
+
+    // 'Postres' was deactivated, so prod-1 should be reassigned to fallback category ('Pizza', cat-1)
+    expect(productRepo.saveCalls).toHaveLength(1);
+    expect(productRepo.saveCalls[0]).toMatchObject({
+      id: 'prod-1',
+      category: 'Pizza',
+      categoryId: 'cat-1',
+    });
+  });
+});
