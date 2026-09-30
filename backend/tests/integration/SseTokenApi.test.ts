@@ -100,13 +100,13 @@ describe('SSE & Token Hardening Suite', () => {
     await prodApp.ready();
     const evil = await prodApp.inject({
       method: 'GET',
-      url: '/api/restaurants',
+      url: '/api/restaurant',
       headers: { origin: 'https://evil.example.com' },
     });
     expect(evil.statusCode).toBeGreaterThanOrEqual(400);
     const allowed = await prodApp.inject({
       method: 'GET',
-      url: '/api/restaurants',
+      url: '/api/restaurant',
       headers: { origin: 'http://localhost:5173' },
     });
     expect(allowed.statusCode).toBe(200);

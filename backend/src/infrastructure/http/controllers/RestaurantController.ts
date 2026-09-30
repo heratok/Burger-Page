@@ -68,19 +68,9 @@ export class RestaurantController {
       return reply.status(200).send(restaurant ? [restaurant] : []);
     }
 
+    // The route guard (requireAnyAdmin) only lets super_admin through here:
+    // the platform directory is private, so there is no public projection.
     const restaurants = await this.listRestaurantsUseCase.execute();
-
-    // A9: the public directory is a landing page by design, but it must never
-    // leak tenant operators' internal records. Only authenticated staff sees
-    // the full detail (restaurant_admin returned their own tenant above);
-    // anonymous/guest/customer callers get storefront fields only and
-    // deactivated tenants are removed from the visible list.
-    if (auth?.role !== 'super_admin') {
-      return reply
-        .status(200)
-        .send(restaurants.filter((r) => r.isActive !== false).map((r) => redactPublic(r)));
-    }
-
     return reply.status(200).send(restaurants);
   }
 

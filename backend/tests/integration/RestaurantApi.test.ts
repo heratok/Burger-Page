@@ -96,15 +96,43 @@ describe('Restaurant API & Multi-Tenant Security (Integration)', () => {
     expect(body.categories).toEqual([]);
   });
 
-  it('GET /api/restaurants without auth should return 200 OK and list restaurants for public visitors', async () => {
+  it('GET /api/restaurants without auth returns 401 (the platform directory is private)', async () => {
     const response = await app.inject({
       method: 'GET',
       url: '/api/restaurants'
     });
 
-    expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.payload);
-    expect(Array.isArray(body)).toBe(true);
+    expect(response.statusCode).toBe(401);
+  });
+
+  it('GET /api/restaurants with a customer token returns 403 (not tenant staff)', async () => {
+    const tokenCustomer = jwtService.generateToken({
+      id: 'usr-customer-list',
+      username: 'customer_list',
+      role: 'customer',
+    } as any);
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/restaurants',
+      headers: { authorization: `Bearer ${tokenCustomer}` },
+    });
+
+    expect(response.statusCode).toBe(403);
+  });
+
+  it('anonymous single-restaurant lookups stay public via every storefront route', async () => {
+    for (const url of [
+      '/api/restaurants/burger-craft',
+      '/api/restaurant/burger-craft',
+      '/api/restaurant',
+    ]) {
+      const res = await app.inject({ method: 'GET', url });
+      expect(res.statusCode, url).toBe(200);
+      const body = res.json();
+      expect(body.slug, url).toBeDefined();
+      expect(body, url).not.toHaveProperty('isActive');
+      expect(body, url).not.toHaveProperty('adminPassword');
+    }
   });
 
   it('GET /api/restaurants with restaurant_admin token returns ONLY their own restaurant (tenant-scoped)', async () => {
@@ -425,32 +453,19 @@ describe('Restaurant API & Multi-Tenant Security (Integration)', () => {
     });
   });
 
-  describe('GET /api/restaurants public directory redaction (A9)', () => {
-    it('anonymous list keeps storefront fields but strips operator fields and filters deactivated tenants', async () => {
+  describe('GET /api/restaurants is closed to anonymous callers', () => {
+    it('rejects anonymous callers, including a bogus token, while super admin still sees inactive tenants', async () => {
       // 'pizzeria-napoli-test' was soft-deleted by the delete test above.
       const anonRes = await app.inject({ method: 'GET', url: '/api/restaurants' });
-      expect(anonRes.statusCode).toBe(200);
-      const publicList = anonRes.json();
-      expect(Array.isArray(publicList)).toBe(true);
-      expect(publicList.length).toBeGreaterThan(0);
+      expect(anonRes.statusCode).toBe(401);
 
-      // Landing still receives the storefront identity fields.
-      for (const r of publicList) {
-        expect(r.id).toBeDefined();
-        expect(r.slug).toBeDefined();
-        expect(r.name).toBeDefined();
-      }
+      const bogusRes = await app.inject({
+        method: 'GET',
+        url: '/api/restaurants',
+        headers: { authorization: 'Bearer not-a-real-token' },
+      });
+      expect(bogusRes.statusCode).toBe(401);
 
-      // Operator records never leak anonymously.
-      for (const r of publicList) {
-        expect(r).not.toHaveProperty('isActive');
-        expect(r).not.toHaveProperty('createdAt');
-      }
-
-      // Deactivated tenants are filtered OUT of the public directory.
-      expect(publicList.some((r: any) => r.slug === 'pizzeria-napoli-test')).toBe(false);
-
-      // Super admin still sees the full detail for the same data.
       const superRes = await app.inject({
         method: 'GET',
         url: '/api/restaurants',
