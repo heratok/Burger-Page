@@ -156,10 +156,10 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     (id: string, updates: Partial<InventoryItem>) => {
       // Remember only this item's previous values for the touched fields.
       const target = (activeRestaurant?.inventory || []).find((i) => i.id === id)
-      const previousFields: Partial<InventoryItem> = {}
+      const previousFields: Record<string, unknown> = {}
       if (target) {
         for (const key of Object.keys(updates) as (keyof InventoryItem)[]) {
-          ;(previousFields as Record<string, unknown>)[key] = target[key]
+          previousFields[key] = target[key]
         }
       }
 
