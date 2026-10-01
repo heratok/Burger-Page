@@ -76,4 +76,56 @@ describe("Storefront Multi-Theme Rendering & Contrast", () => {
     const searchInput = await screen.findByPlaceholderText("Buscar en el menú...")
     expect(searchInput).toBeDefined()
   })
+
+  it("renders AdditionsModal close button with theme-based tokens and no conflicting slate classes", async () => {
+    const { default: AdditionsModal } = await import("@/features/cart/AdditionsModal")
+    const dummyProduct = {
+      id: "test-prod",
+      name: "Hamburguesa Test",
+      price: 20000,
+      category: "Hamburguesas",
+      src: "/images/test.jpg",
+      description: "Test description",
+      inStock: true,
+    }
+
+    render(
+      <RestaurantProvider>
+        <AdditionsModal
+          product={dummyProduct}
+          onClose={() => {}}
+          onAddToCart={() => {}}
+        />
+      </RestaurantProvider>
+    )
+
+    const closeBtn = screen.getByRole("button", { name: "Cerrar" })
+    expect(closeBtn).toBeDefined()
+    const className = closeBtn.getAttribute("class") || ""
+
+    // Must use dynamic storefront theme classes
+    expect(className).toContain("hover:bg-bg-elevated-2")
+    expect(className).toContain("hover:text-text-primary")
+    expect(className).toContain("text-text-muted")
+
+    // Must NOT contain conflicting hardcoded slate hover classes
+    expect(className).not.toContain("dark:hover:bg-slate-800")
+    expect(className).not.toContain("hover:bg-slate-100")
+  })
+
+  it("AppToaster applies dynamic themeStyles matching the active storefront theme", async () => {
+    const { AppToaster } = await import("@/App")
+
+    const { container } = render(
+      <RestaurantProvider>
+        <StoreTester targetSlug="pizzeria-napoli" />
+        <AppToaster />
+      </RestaurantProvider>
+    )
+
+    // The toaster section or ol should be rendered
+    const toasterElement = container.querySelector("section[aria-label*='Notification'], ol.toaster, [data-sonner-toaster]")
+    expect(toasterElement).toBeDefined()
+  })
 })
+

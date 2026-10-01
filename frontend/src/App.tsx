@@ -10,6 +10,7 @@ import {
 import { Toaster } from "@/components/ui/sonner"
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary"
 import { Button } from "@/components/ui/button"
+import { getStoreThemeStyles } from "@/features/crm/utils/customizerStyles"
 
 // Code-split backoffice features from public storefront for minimal initial bundle size
 const Home = lazy(() => import("@/features/storefront/Home"))
@@ -202,12 +203,50 @@ export function MainRouter() {
   )
 }
 
+export function AppToaster() {
+  const { activeView, adminTheme, storeConfig } = useRestaurant()
+
+  let sonnerTheme: "light" | "dark" = "dark"
+  let themeStyles: React.CSSProperties | undefined
+
+  if (activeView === "admin") {
+    sonnerTheme = adminTheme === "dark" ? "dark" : "light"
+    themeStyles =
+      adminTheme === "dark"
+        ? ({
+            "--color-bg-elevated": "#0E1322",
+            "--color-text-primary": "#F8FAFC",
+            "--color-border-subtle": "#1E293B",
+          } as React.CSSProperties)
+        : ({
+            "--color-bg-elevated": "#FFFFFF",
+            "--color-text-primary": "#0F172A",
+            "--color-border-subtle": "#E2E8F0",
+          } as React.CSSProperties)
+  } else {
+    const isDarkTheme =
+      storeConfig.bgTheme === "dark-charcoal" || storeConfig.bgTheme === "deep-midnight"
+    sonnerTheme = isDarkTheme ? "dark" : "light"
+    themeStyles = getStoreThemeStyles(storeConfig.bgTheme, storeConfig.primaryColor)
+  }
+
+  return (
+    <Toaster
+      theme={sonnerTheme}
+      themeStyles={themeStyles}
+      position="top-right"
+      richColors
+      closeButton
+    />
+  )
+}
+
 export default function App() {
   return (
     <ErrorBoundary>
       <RestaurantProvider>
         <MainRouter />
-        <Toaster position="top-right" richColors closeButton />
+        <AppToaster />
       </RestaurantProvider>
     </ErrorBoundary>
   )

@@ -826,6 +826,32 @@ textarea::placeholder {
   .bg-accent-soft {
     background-color: var(--color-accent-soft, rgba(255, 122, 33, 0.12)) !important;
   }
+
+  /* Interactive hover & active pseudo-class overrides to prevent Tailwind v4 static inlining */
+  .hover\:bg-bg-elevated:hover {
+    background-color: var(--color-bg-elevated) !important;
+  }
+  .hover\:bg-bg-elevated-2:hover {
+    background-color: var(--color-bg-elevated-2) !important;
+  }
+  .active\:bg-bg-elevated-2:active {
+    background-color: var(--color-bg-elevated-2) !important;
+  }
+  .hover\:text-text-primary:hover {
+    color: var(--color-text-primary) !important;
+  }
+  .hover\:text-text-secondary:hover {
+    color: var(--color-text-secondary) !important;
+  }
+  .hover\:text-text-muted:hover {
+    color: var(--color-text-muted) !important;
+  }
+  .hover\:border-border-subtle:hover {
+    border-color: var(--color-border-subtle) !important;
+  }
+  .hover\:border-border-strong:hover {
+    border-color: var(--color-border-strong) !important;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
