@@ -124,9 +124,14 @@ export class UpdateRestaurantUseCase {
       }
     }
 
+    // Respond with what was actually persisted: the adapter derives stored
+    // fields (e.g. openingHours from the "HH:MM - HH:MM" config text), so the
+    // in-memory merge can be stale.
+    const persisted = (await this.restaurantRepo.findById(restaurant.id)) ?? updated;
+
     // SUS-20: a provided adminPassword is accepted (update semantics) but must
     // never be echoed back in the response — only the create 201 carries
     // one-time credentials.
-    return omitAdminPassword(updated);
+    return omitAdminPassword(persisted);
   }
 }
