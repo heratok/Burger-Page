@@ -1,6 +1,6 @@
 -- ============================================================================
 -- BURGER-PAGE — Pure PostgreSQL Canonical Relational Schema
--- File: database/schema.sql
+-- File: database/01_schema.sql
 -- Description: Standard, vendor-neutral PostgreSQL DDL (Postgres 15+; the
 --              composite tenant FKs use ON DELETE SET NULL (column_list)).
 --              Designed for a trusted backend (Fastify, hexagonal architecture)
@@ -394,7 +394,7 @@ CREATE TABLE IF NOT EXISTS public.order_status_history (
         CHECK (id ~ '^[A-Za-z0-9_-]{1,64}$')
 );
 
-COMMENT ON TABLE public.order_status_history IS 'Auditoría inmutable de transiciones de estado (insert/update automáticos).';
+COMMENT ON TABLE public.order_status_history IS 'Auditoría append-only de transiciones de estado: solo la inserta el trigger de orders; app_user no puede actualizar ni borrar (el borrado de una orden la elimina en cascada).';
 
 -- 2.8 ORDER ITEMS (Line Items — Fully Normalized) ----------------------------
 CREATE TABLE IF NOT EXISTS public.order_items (

@@ -2,6 +2,24 @@
 -- 0000000000008_db_hardening.up.sql
 -- Database hardening from the schema audit (mirrors database/01_schema.sql):
 --   T2  update_customer_order_metrics locks the customer row before aggregating.
+--   T3  STABLE RLS helper functions (app_current_restaurant_id, app_is_super_admin)
+--       and every tenant policy rewritten to use them.
+--   T4  Public reads scoped to the declared restaurant slug (app.restaurant_slug);
+--       no public read on products/additions.
+--   T5  order_status_history is append-only for app_user (+ BEFORE UPDATE guard).
+--   T6  Restaurant FKs of orders/order_items/order_item_additions/
+--       order_status_history become ON DELETE RESTRICT.
+--   T7  restaurant_hours dropped; opening_hours_text dropped after a safe backfill
+--       (aborts when it would lose information).
+--   T8  Optional text: '' becomes NULL and the '' defaults are dropped.
+--   T9  CHECK orders.final_total = subtotal + delivery_fee.
+--   T10 CHECK id format ^[A-Za-z0-9_-]{1,64}$ on every table's id primary key.
+--
+-- (T1, the app_user password reset, and T12, stale comments, only touch the
+-- baseline file: no database change is needed.)
+--
+-- Every "-- ── T<n>." section marker below is relied on by the integration
+-- tests that run a single section against a scratch database.
 --
 -- Runs on LIVE data. node-pg-migrate wraps it in a transaction: any failure
 -- rolls everything back and leaves the database untouched. Idempotent.
@@ -405,6 +423,8 @@ CREATE TRIGGER trg_order_status_history_immutable
     BEFORE UPDATE ON public.order_status_history
     FOR EACH ROW EXECUTE FUNCTION public.guard_order_status_history_immutable();
 
+COMMENT ON TABLE public.order_status_history IS 'Auditoría append-only de transiciones de estado: solo la inserta el trigger de orders; app_user no puede actualizar ni borrar (el borrado de una orden la elimina en cascada).';
+
 -- ── T6. Sales and audit history survive a restaurant delete (RESTRICT) ──────
 -- Existing rows already satisfy the old FKs, so the new ones are added NOT
 -- VALID and validated (SHARE UPDATE EXCLUSIVE only). Skipped when already RESTRICT.
@@ -521,6 +541,8 @@ END
 $$;
 
 ALTER TABLE public.restaurant_settings DROP COLUMN IF EXISTS opening_hours_text;
+
+COMMENT ON COLUMN public.restaurant_settings.open_time IS 'Hora de apertura del restaurante (fuente única del horario junto con close_time).';
 
 -- ── T8. Optional text: '' becomes NULL, '' defaults dropped ───────────────────
 UPDATE public.customers SET email = NULLIF(email, '') WHERE email = '';

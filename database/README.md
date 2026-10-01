@@ -1,7 +1,7 @@
 # Burger-Page — Database (PostgreSQL Canonical)
 
 Este directorio contiene la definición canónica y datos demo para PostgreSQL
-(versión 14 en adelante), desacoplada de dependencias o herramientas propietarias.
+(versión 15 en adelante), desacoplada de dependencias o herramientas propietarias.
 
 ---
 
@@ -9,7 +9,7 @@ Este directorio contiene la definición canónica y datos demo para PostgreSQL
 
 * **[`01_schema.sql`](file:///C:/Users/ASUS/Desktop/Burger-Page/database/01_schema.sql)**: Esquema canónico DDL (baseline):
   - Rol de aplicación `app_user` (aislamiento RLS estricto, sin BYPASSRLS).
-  - 14 tablas relacionales (`restaurants`, `orders`, `products`, ...).
+  - 15 tablas relacionales (`restaurants`, `orders`, `products`, ...).
   - Índices compuestos y de rendimiento.
   - Funciones PL/pgSQL atómicas (`create_order_atomic`, `update_order_status_with_actor`, `adjust_inventory_stock`).
   - Triggers automáticos (`updated_at`, contadores atómicos, auditoría de estado, métricas de clientes).

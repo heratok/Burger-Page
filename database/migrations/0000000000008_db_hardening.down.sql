@@ -45,6 +45,7 @@ UPDATE public.suppliers SET email = COALESCE(email, '') WHERE email IS NULL;
 -- The text is rebuilt from the times (the only data that survived); rows whose
 -- times are NULL keep a NULL text, then the 0007 default is restored.
 ALTER TABLE public.restaurant_settings ADD COLUMN IF NOT EXISTS opening_hours_text TEXT;
+COMMENT ON COLUMN public.restaurant_settings.open_time IS 'Horario general de apertura (por defecto); horarios_restaurante lo pisa por día.';
 
 UPDATE public.restaurant_settings
 SET opening_hours_text = to_char(open_time, 'HH24:MI') || ' - ' || to_char(close_time, 'HH24:MI')
@@ -131,6 +132,7 @@ ALTER TABLE public.order_status_history VALIDATE CONSTRAINT order_status_history
 DROP TRIGGER IF EXISTS trg_order_status_history_immutable ON public.order_status_history;
 DROP FUNCTION IF EXISTS public.guard_order_status_history_immutable();
 GRANT UPDATE, DELETE ON public.order_status_history TO app_user;
+COMMENT ON TABLE public.order_status_history IS 'Auditoría inmutable de transiciones de estado (insert/update automáticos).';
 
 -- ── T4. Blanket public reads back ────────────────────────────────────────────
 DROP POLICY IF EXISTS "public_read_active_restaurants" ON public.restaurants;

@@ -366,6 +366,22 @@ describe('schema file structure', () => {
     expect(code).not.toMatch(/CREATE INDEX CONCURRENTLY|ALTER TYPE[^;]*ADD VALUE|CREATE DATABASE|VACUUM\b/i);
   });
 
+  it('has no stale header or table references in its comments (db-hardening-0008 T12)', () => {
+    expect(baseline).toContain('-- File: database/01_schema.sql');
+    expect(baseline).not.toContain('File: database/schema.sql');
+    expect(baseline).not.toContain('horarios_restaurante');
+    expect(baseline).not.toMatch(/restaurant_hours/);
+    expect(baseline).toMatch(/COMMENT ON TABLE public\.order_status_history IS '[^']*append-only/i);
+  });
+
+  it('the database README states the real minimum version and table count', () => {
+    const readme = read('README.md');
+    expect(readme).toMatch(/versión 15 en adelante/);
+    expect(readme).not.toMatch(/versión 14/);
+    const tables = [...baseline.matchAll(/CREATE TABLE IF NOT EXISTS public\.(\w+)/g)].length;
+    expect(readme).toContain(`${tables} tablas relacionales`);
+  });
+
   it('documents the real minimum PostgreSQL version (15+)', () => {
     expect(baseline).toMatch(/Postgres 15\+/);
     expect(baseline).not.toMatch(/Postgres 14\+/);
