@@ -197,27 +197,6 @@ CREATE POLICY "tenant_isolation_restaurant_branding" ON public.restaurant_brandi
     USING ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()))
     WITH CHECK ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()));
 
-DROP POLICY IF EXISTS "tenant_isolation_restaurant_hours_select" ON public.restaurant_hours;
-CREATE POLICY "tenant_isolation_restaurant_hours_select" ON public.restaurant_hours
-    FOR SELECT
-    USING ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()));
-
-DROP POLICY IF EXISTS "tenant_isolation_restaurant_hours_write" ON public.restaurant_hours;
-CREATE POLICY "tenant_isolation_restaurant_hours_write" ON public.restaurant_hours
-    FOR INSERT
-    WITH CHECK ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()));
-
-DROP POLICY IF EXISTS "tenant_isolation_restaurant_hours_update" ON public.restaurant_hours;
-CREATE POLICY "tenant_isolation_restaurant_hours_update" ON public.restaurant_hours
-    FOR UPDATE
-    USING ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()))
-    WITH CHECK ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()));
-
-DROP POLICY IF EXISTS "tenant_isolation_restaurant_hours_delete" ON public.restaurant_hours;
-CREATE POLICY "tenant_isolation_restaurant_hours_delete" ON public.restaurant_hours
-    FOR DELETE
-    USING ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()));
-
 DROP POLICY IF EXISTS "tenant_isolation_categories_select" ON public.categories;
 CREATE POLICY "tenant_isolation_categories_select" ON public.categories
     FOR SELECT
@@ -455,3 +434,90 @@ ALTER TABLE public.orders VALIDATE CONSTRAINT orders_restaurant_id_fkey;
 ALTER TABLE public.order_items VALIDATE CONSTRAINT order_items_restaurant_id_fkey;
 ALTER TABLE public.order_item_additions VALIDATE CONSTRAINT order_item_additions_restaurant_id_fkey;
 ALTER TABLE public.order_status_history VALIDATE CONSTRAINT order_status_history_restaurant_id_fkey;
+
+-- ── T7. Hours: open_time/close_time become the single source ────────────────
+-- 7a. restaurant_hours (per-weekday detail) is not used by the application. It
+--     is dropped only when empty: rows would be silent data loss, so the
+--     migration aborts instead and the operator decides what to do with them.
+DO $$
+DECLARE
+    v_rows BIGINT;
+BEGIN
+    IF to_regclass('public.restaurant_hours') IS NOT NULL THEN
+        EXECUTE 'SELECT COUNT(*) FROM public.restaurant_hours' INTO v_rows;
+        IF v_rows > 0 THEN
+            RAISE EXCEPTION
+                'Cannot drop public.restaurant_hours: it still holds % row(s). Nothing was changed. Export or delete them, then re-run the migration.',
+                v_rows
+                USING ERRCODE = '23000';
+        END IF;
+    END IF;
+END
+$$;
+
+DROP TABLE IF EXISTS public.restaurant_hours;
+
+-- 7b. opening_hours_text -> open_time/close_time. Where a time is NULL and the
+--     text is a valid "HH:MM - HH:MM" range, the times are backfilled from it.
+--     Afterwards every non-NULL text must say the same as the times (formatting
+--     differences such as "9:00 -  22:30" are fine); anything else (free-form
+--     text, or a range that contradicts the times) would be lost with the
+--     column, so the migration aborts with the offending restaurant ids.
+DO $$
+DECLARE
+    v_mismatch BIGINT;
+    v_ids      TEXT;
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'restaurant_settings'
+          AND column_name = 'opening_hours_text'
+    ) THEN
+        UPDATE public.restaurant_settings s
+        SET open_time  = COALESCE(s.open_time,  p.parts[1]::time),
+            close_time = COALESCE(s.close_time, p.parts[2]::time)
+        FROM (
+            SELECT rs.restaurant_id, m.parts
+            FROM public.restaurant_settings rs
+            CROSS JOIN LATERAL regexp_match(
+                rs.opening_hours_text,
+                '^\s*((?:[01]?\d|2[0-3]):[0-5]\d)\s*-\s*((?:[01]?\d|2[0-3]):[0-5]\d)\s*$'
+            ) AS m(parts)
+            WHERE rs.opening_hours_text IS NOT NULL
+              AND (rs.open_time IS NULL OR rs.close_time IS NULL)
+        ) p
+        WHERE s.restaurant_id = p.restaurant_id
+          AND p.parts IS NOT NULL;
+
+        SELECT COUNT(*), string_agg(restaurant_id, ', ' ORDER BY restaurant_id)
+        INTO v_mismatch, v_ids
+        FROM (
+            SELECT rs.restaurant_id
+            FROM public.restaurant_settings rs
+            LEFT JOIN LATERAL regexp_match(
+                rs.opening_hours_text,
+                '^\s*((?:[01]?\d|2[0-3]):[0-5]\d)\s*-\s*((?:[01]?\d|2[0-3]):[0-5]\d)\s*$'
+            ) AS m(parts) ON TRUE
+            WHERE rs.opening_hours_text IS NOT NULL
+              AND NOT (
+                  rs.open_time IS NOT NULL
+                  AND rs.close_time IS NOT NULL
+                  AND m.parts IS NOT NULL
+                  AND lpad(m.parts[1], 5, '0') = to_char(rs.open_time, 'HH24:MI')
+                  AND lpad(m.parts[2], 5, '0') = to_char(rs.close_time, 'HH24:MI')
+              )
+            LIMIT 20
+        ) bad;
+
+        IF v_mismatch > 0 THEN
+            RAISE EXCEPTION
+                'Cannot drop restaurant_settings.opening_hours_text: restaurant_id(s) % have an opening_hours_text that differs from open_time/close_time and would be lost. Nothing was changed. Align the text with the times (or clear it) and re-run the migration.',
+                v_ids
+                USING ERRCODE = '23000';
+        END IF;
+    END IF;
+END
+$$;
+
+ALTER TABLE public.restaurant_settings DROP COLUMN IF EXISTS opening_hours_text;

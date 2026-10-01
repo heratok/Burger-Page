@@ -36,10 +36,14 @@ import {
   buildOrderMessage,
   buildWhatsAppUrl,
   generateOrderId,
+  isMobileDevice,
 } from "./whatsapp"
 import { cartItemToOrderItem, type CartItem } from "./cartEngine"
 import { useRestaurant } from "@/context/RestaurantContext"
 import { formatCurrency, getContrastForeground } from "@/lib/utils"
+
+const PENDING_TAB_HTML =
+  "<!doctype html><title>Preparando tu pedido…</title><p style=\"font-family:sans-serif;text-align:center;margin-top:3rem\">Preparando tu pedido…</p>"
 
 const METODOS = [
   { value: "Efectivo", Icon: Banknote },
@@ -110,6 +114,32 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
   }
 
   const placeOrder = async (values: FormValues) => {
+    // 0. Without a configured WhatsApp number the order could not be delivered
+    // to the restaurant: refuse before registering anything.
+    const targetPhone = storeConfig.whatsappNumber?.trim()
+    if (!targetPhone) {
+      toast.error("Este restaurante aún no tiene WhatsApp configurado. Intenta más tarde.")
+      return
+    }
+
+    // Desktop: open the tab NOW, while the submit gesture is still active.
+    // Awaiting the network first loses transient user activation and popup
+    // blockers silently drop the tab. Mobile navigates the same tab instead.
+    let pendingTab: Window | null = null
+    if (!isMobileDevice()) {
+      pendingTab = window.open("", "_blank")
+      if (pendingTab) {
+        pendingTab.opener = null
+        try {
+          pendingTab.document.open()
+          pendingTab.document.write(PENDING_TAB_HTML)
+          pendingTab.document.close()
+        } catch {
+          // Placeholder is cosmetic; the tab is navigated to WhatsApp anyway.
+        }
+      }
+    }
+
     // 1. Register order in CRM context. The outcome toast is owned by
     // addOrder: it confirms only after the server accepts the order, and
     // shows an error (removing the optimistic card) when the server
@@ -142,6 +172,7 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
         }
       } catch {
         // Server rejected (addOrder already showed error toast and removed optimistic card)
+        pendingTab?.close()
         return
       }
     }
@@ -163,8 +194,12 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
       deliveryFee: storeConfig.deliveryFee,
     })
 
-    const targetPhone = storeConfig.whatsappNumber || "573001234567"
-    window.open(buildWhatsAppUrl(targetPhone, message), "_blank", "noreferrer")
+    const whatsAppUrl = buildWhatsAppUrl(targetPhone, message)
+    if (pendingTab) {
+      pendingTab.location.href = whatsAppUrl
+    } else {
+      window.location.assign(whatsAppUrl)
+    }
 
     onClose()
   }

@@ -255,6 +255,28 @@ describe('migration 0000000000008 (db hardening) parity with the baseline schema
       expect(down).toContain('ON DELETE CASCADE');
     });
   });
+
+  describe('T7 hours consolidation', () => {
+    it('baseline no longer declares restaurant_hours nor opening_hours_text', () => {
+      expect(baseline).not.toMatch(/public\.restaurant_hours/);
+      expect(baseline).not.toMatch(/opening_hours_text/);
+      expect(baseline).not.toContain('horarios_restaurante');
+    });
+
+    it('up backfills the times, aborts on a lossy text, then drops the column and the table', () => {
+      expect(up).toMatch(/UPDATE public\.restaurant_settings/);
+      expect(up).toMatch(/RAISE EXCEPTION[\s\S]*opening_hours_text/);
+      expect(up).toContain('DROP COLUMN IF EXISTS opening_hours_text');
+      expect(up).toContain('DROP TABLE IF EXISTS public.restaurant_hours');
+    });
+
+    it('down re-adds the column and recreates the table', () => {
+      expect(down).toContain('ADD COLUMN IF NOT EXISTS opening_hours_text');
+      expect(down).toContain('CREATE TABLE IF NOT EXISTS public.restaurant_hours');
+      expect(down).toContain('uq_restaurant_hours_day');
+      expect(down).toContain('chk_hours_consistent');
+    });
+  });
 });
 
 describe('schema file structure', () => {

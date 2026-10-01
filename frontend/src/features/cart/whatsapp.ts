@@ -139,3 +139,14 @@ export function buildWhatsAppUrl(phone: string, message: string): string {
   const cleanPhone = formatWhatsAppPhone(phone)
   return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
 }
+
+/**
+ * True on phones and tablets (including iPadOS, which reports a desktop Mac
+ * user agent). Used to pick same-tab navigation, which opens the WhatsApp app
+ * and is never popup-blocked.
+ */
+export function isMobileDevice(): boolean {
+  if (typeof navigator === "undefined") return false
+  if (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent ?? "")) return true
+  return navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1
+}

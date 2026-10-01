@@ -6,6 +6,64 @@
 
 SET LOCAL lock_timeout = '15s';
 
+-- ── T7. restaurant_hours and opening_hours_text back ────────────────────────
+-- The text is rebuilt from the times (the only data that survived); rows whose
+-- times are NULL keep a NULL text, then the 0007 default is restored.
+ALTER TABLE public.restaurant_settings ADD COLUMN IF NOT EXISTS opening_hours_text TEXT;
+
+UPDATE public.restaurant_settings
+SET opening_hours_text = to_char(open_time, 'HH24:MI') || ' - ' || to_char(close_time, 'HH24:MI')
+WHERE opening_hours_text IS NULL
+  AND open_time IS NOT NULL
+  AND close_time IS NOT NULL;
+
+ALTER TABLE public.restaurant_settings ALTER COLUMN opening_hours_text SET DEFAULT '12:00 - 22:30';
+
+CREATE TABLE IF NOT EXISTS public.restaurant_hours (
+    id             TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    restaurant_id  TEXT NOT NULL REFERENCES public.restaurants(id) ON DELETE CASCADE,
+    day_of_week    SMALLINT NOT NULL CHECK (day_of_week BETWEEN 0 AND 6), -- 0=Sunday
+    open_time      TIME,
+    close_time     TIME,
+    is_closed      BOOLEAN NOT NULL DEFAULT FALSE,
+    CONSTRAINT uq_restaurant_hours_day
+        UNIQUE (restaurant_id, day_of_week),
+    CONSTRAINT chk_hours_consistent
+        CHECK (is_closed OR (open_time IS NOT NULL AND close_time IS NOT NULL))
+);
+
+COMMENT ON TABLE public.restaurant_hours IS 'Horarios por día de la semana (0=Domingo..6=Sábado).';
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.restaurant_hours TO app_user;
+ALTER TABLE public.restaurant_hours ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.restaurant_hours FORCE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "public_read_restaurant_hours" ON public.restaurant_hours;
+CREATE POLICY "public_read_restaurant_hours"
+    ON public.restaurant_hours FOR SELECT
+    USING (TRUE);
+
+DROP POLICY IF EXISTS "tenant_isolation_restaurant_hours_select" ON public.restaurant_hours;
+CREATE POLICY "tenant_isolation_restaurant_hours_select" ON public.restaurant_hours
+    FOR SELECT
+    USING ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
+
+DROP POLICY IF EXISTS "tenant_isolation_restaurant_hours_write" ON public.restaurant_hours;
+CREATE POLICY "tenant_isolation_restaurant_hours_write" ON public.restaurant_hours
+    FOR INSERT
+    WITH CHECK ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
+
+DROP POLICY IF EXISTS "tenant_isolation_restaurant_hours_update" ON public.restaurant_hours;
+CREATE POLICY "tenant_isolation_restaurant_hours_update" ON public.restaurant_hours
+    FOR UPDATE
+    USING ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text))
+    WITH CHECK ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
+
+DROP POLICY IF EXISTS "tenant_isolation_restaurant_hours_delete" ON public.restaurant_hours;
+CREATE POLICY "tenant_isolation_restaurant_hours_delete" ON public.restaurant_hours
+    FOR DELETE
+    USING ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
+
 -- ── T6. Restaurant FKs back to ON DELETE CASCADE ────────────────────────────
 DO $$
 DECLARE
@@ -139,27 +197,6 @@ CREATE POLICY "tenant_isolation_restaurant_branding" ON public.restaurant_brandi
     FOR ALL
     USING ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text))
     WITH CHECK ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
-
-DROP POLICY IF EXISTS "tenant_isolation_restaurant_hours_select" ON public.restaurant_hours;
-CREATE POLICY "tenant_isolation_restaurant_hours_select" ON public.restaurant_hours
-    FOR SELECT
-    USING ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
-
-DROP POLICY IF EXISTS "tenant_isolation_restaurant_hours_write" ON public.restaurant_hours;
-CREATE POLICY "tenant_isolation_restaurant_hours_write" ON public.restaurant_hours
-    FOR INSERT
-    WITH CHECK ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
-
-DROP POLICY IF EXISTS "tenant_isolation_restaurant_hours_update" ON public.restaurant_hours;
-CREATE POLICY "tenant_isolation_restaurant_hours_update" ON public.restaurant_hours
-    FOR UPDATE
-    USING ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text))
-    WITH CHECK ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
-
-DROP POLICY IF EXISTS "tenant_isolation_restaurant_hours_delete" ON public.restaurant_hours;
-CREATE POLICY "tenant_isolation_restaurant_hours_delete" ON public.restaurant_hours
-    FOR DELETE
-    USING ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
 
 DROP POLICY IF EXISTS "tenant_isolation_categories_select" ON public.categories;
 CREATE POLICY "tenant_isolation_categories_select" ON public.categories

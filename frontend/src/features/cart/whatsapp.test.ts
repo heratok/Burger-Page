@@ -1,10 +1,11 @@
-import { describe, it, expect } from "vitest"
+import { describe, it, expect, vi, afterEach } from "vitest"
 import {
   buildOrderMessage,
   calculateChange,
   formatCOP,
   generateOrderId,
   buildWhatsAppUrl,
+  isMobileDevice,
 } from "./whatsapp"
 import type { CartItem } from "./cartEngine"
 
@@ -66,5 +67,53 @@ describe("WhatsApp module in features/cart", () => {
   it("creates a valid WhatsApp wa.me url", () => {
     const url = buildWhatsAppUrl("573001234567", "Hola test")
     expect(url).toBe("https://wa.me/573001234567?text=Hola%20test")
+  })
+})
+
+describe("isMobileDevice", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  const stubNavigator = (nav: Partial<Navigator>) => vi.stubGlobal("navigator", nav)
+
+  it.each([
+    ["Android", "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 Mobile Safari/537.36"],
+    ["iPhone", "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15"],
+    ["iPad", "Mozilla/5.0 (iPad; CPU OS 16_0 like Mac OS X) AppleWebKit/605.1.15"],
+    ["iPod", "Mozilla/5.0 (iPod touch; CPU iPhone OS 15_0 like Mac OS X)"],
+    ["generic Mobile", "Mozilla/5.0 (Mobile; rv:109.0) Gecko/109.0 Firefox/115.0"],
+  ])("detects %s user agents", (_name, userAgent) => {
+    stubNavigator({ userAgent, platform: "Linux armv8l", maxTouchPoints: 5 })
+    expect(isMobileDevice()).toBe(true)
+  })
+
+  it("detects iPadOS that reports a desktop Mac user agent", () => {
+    stubNavigator({
+      userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Safari/605.1.15",
+      platform: "MacIntel",
+      maxTouchPoints: 5,
+    })
+    expect(isMobileDevice()).toBe(true)
+  })
+
+  it("treats a real desktop Mac and Windows as desktop", () => {
+    stubNavigator({
+      userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Safari/605.1.15",
+      platform: "MacIntel",
+      maxTouchPoints: 0,
+    })
+    expect(isMobileDevice()).toBe(false)
+    stubNavigator({
+      userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0 Safari/537.36",
+      platform: "Win32",
+      maxTouchPoints: 0,
+    })
+    expect(isMobileDevice()).toBe(false)
+  })
+
+  it("returns false when navigator is unavailable", () => {
+    vi.stubGlobal("navigator", undefined)
+    expect(isMobileDevice()).toBe(false)
   })
 })

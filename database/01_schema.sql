@@ -123,9 +123,9 @@ COMMENT ON COLUMN public.restaurants.is_active IS 'Restaurante visible y operati
 
 -- 2.1.1 RESTAURANT SETTINGS (Configuración operativa 1:1) -------------------
 -- Operación comercial del tenant: moneda, delivery, mínimos, horarios por
--- defecto y anuncios. open_time/close_time son el horario GENERAL resumido
--- para la vitrina; horarios_restaurante (2.1.3) es el detalle por día de la
--- semana y tiene precedencia cuando existe (patrón default + overrides).
+-- defecto y anuncios. open_time/close_time son la ÚNICA fuente del horario de
+-- atención (db-hardening-0008): el texto "HH:MM - HH:MM" del contrato HTTP se
+-- deriva de ellos y no se almacena aparte.
 CREATE TABLE IF NOT EXISTS public.restaurant_settings (
     restaurant_id           TEXT PRIMARY KEY REFERENCES public.restaurants(id) ON DELETE CASCADE,
     currency                TEXT NOT NULL DEFAULT 'COP',
@@ -133,7 +133,6 @@ CREATE TABLE IF NOT EXISTS public.restaurant_settings (
     delivery_fee            NUMERIC(12, 2) NOT NULL DEFAULT 0.00 CHECK (delivery_fee >= 0),
     min_order_amount        NUMERIC(12, 2) NOT NULL DEFAULT 0.00 CHECK (min_order_amount >= 0),
     estimated_delivery_time TEXT DEFAULT '30 - 45 min',
-    opening_hours_text      TEXT DEFAULT '12:00 - 22:30',
     open_time               TIME DEFAULT '12:00',
     close_time              TIME DEFAULT '22:30',
     announcement_text       TEXT,
@@ -144,7 +143,7 @@ CREATE TABLE IF NOT EXISTS public.restaurant_settings (
 
 COMMENT ON TABLE public.restaurant_settings IS 'Configuración operativa 1:1 del restaurante (3NF: identidad ≠ configuración).';
 COMMENT ON COLUMN public.restaurant_settings.delivery_fee IS 'Cargo de envío por defecto en la moneda del restaurante (>= 0).';
-COMMENT ON COLUMN public.restaurant_settings.open_time IS 'Horario general de apertura (por defecto); horarios_restaurante lo pisa por día.';
+COMMENT ON COLUMN public.restaurant_settings.open_time IS 'Hora de apertura del restaurante (fuente única del horario junto con close_time).';
 
 -- 2.1.2 RESTAURANT BRANDING (Identidad visual 1:1) ---------------------------
 -- Tema, marca y assets. Solo URLs (nunca binarios): los archivos viven en
@@ -172,22 +171,6 @@ CREATE TABLE IF NOT EXISTS public.restaurant_branding (
 
 COMMENT ON TABLE public.restaurant_branding IS 'Identidad visual 1:1 del restaurante. URL de assets; tema, fuente, radios y estilos de UI.';
 COMMENT ON COLUMN public.restaurant_branding.logo_url IS 'URL al storage de objetos (nunca binario en BD).';
-
--- 2.1.3 RESTAURANT HOURS -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS public.restaurant_hours (
-    id             TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-    restaurant_id  TEXT NOT NULL REFERENCES public.restaurants(id) ON DELETE CASCADE,
-    day_of_week    SMALLINT NOT NULL CHECK (day_of_week BETWEEN 0 AND 6), -- 0=Sunday
-    open_time      TIME,
-    close_time     TIME,
-    is_closed      BOOLEAN NOT NULL DEFAULT FALSE,
-    CONSTRAINT uq_restaurant_hours_day
-        UNIQUE (restaurant_id, day_of_week),
-    CONSTRAINT chk_hours_consistent
-        CHECK (is_closed OR (open_time IS NOT NULL AND close_time IS NOT NULL))
-);
-
-COMMENT ON TABLE public.restaurant_hours IS 'Horarios por día de la semana (0=Domingo..6=Sábado).';
 
 -- 2.2 USERS (Authentication & Role-Based Access Control) -----------------------
 CREATE TABLE IF NOT EXISTS public.users (
@@ -1074,7 +1057,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_orders_client_order_id
 -- Not created on purpose (0000000000007 drops them from migrated databases):
 --   idx_users_username             = the users.username UNIQUE index
 --   idx_customers_rest_phone       = uq_customers_restaurant_phone
---   idx_restaurant_hours_rest      = leading column of uq_restaurant_hours_day
 --   idx_inventory_items_restaurant = leading column of idx_inventory_items_low_stock
 CREATE INDEX IF NOT EXISTS idx_users_restaurant_id       ON public.users(restaurant_id);
 CREATE INDEX IF NOT EXISTS idx_categories_restaurant     ON public.categories(restaurant_id, display_order);
@@ -1106,7 +1088,6 @@ GRANT USAGE ON SCHEMA public TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.restaurants TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.restaurant_settings TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.restaurant_branding TO app_user;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.restaurant_hours TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.categories TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.products TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.product_additions TO app_user;
@@ -1196,8 +1177,6 @@ ALTER TABLE public.restaurant_settings       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.restaurant_settings       FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.restaurant_branding       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.restaurant_branding       FORCE ROW LEVEL SECURITY;
-ALTER TABLE public.restaurant_hours          ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.restaurant_hours          FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.categories                ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.categories                FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.products                  ENABLE ROW LEVEL SECURITY;
@@ -1267,11 +1246,6 @@ CREATE POLICY "public_read_restaurant_branding"
               AND r.slug = (SELECT public.app_current_restaurant_slug())
         )
     );
-
-DROP POLICY IF EXISTS "public_read_restaurant_hours" ON public.restaurant_hours;
-CREATE POLICY "public_read_restaurant_hours"
-    ON public.restaurant_hours FOR SELECT
-    USING (TRUE);
 
 DROP POLICY IF EXISTS "public_read_categories" ON public.categories;
 CREATE POLICY "public_read_categories"
@@ -1496,28 +1470,6 @@ CREATE POLICY "tenant_isolation_restaurant_branding" ON public.restaurant_brandi
     FOR ALL
     USING ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()))
     WITH CHECK ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()));
-
--- Restaurant Hours isolation
-DROP POLICY IF EXISTS "tenant_isolation_restaurant_hours_select" ON public.restaurant_hours;
-CREATE POLICY "tenant_isolation_restaurant_hours_select" ON public.restaurant_hours
-    FOR SELECT
-    USING ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()));
-
-DROP POLICY IF EXISTS "tenant_isolation_restaurant_hours_write" ON public.restaurant_hours;
-CREATE POLICY "tenant_isolation_restaurant_hours_write" ON public.restaurant_hours
-    FOR INSERT
-    WITH CHECK ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()));
-
-DROP POLICY IF EXISTS "tenant_isolation_restaurant_hours_update" ON public.restaurant_hours;
-CREATE POLICY "tenant_isolation_restaurant_hours_update" ON public.restaurant_hours
-    FOR UPDATE
-    USING ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()))
-    WITH CHECK ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()));
-
-DROP POLICY IF EXISTS "tenant_isolation_restaurant_hours_delete" ON public.restaurant_hours;
-CREATE POLICY "tenant_isolation_restaurant_hours_delete" ON public.restaurant_hours
-    FOR DELETE
-    USING ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()));
 
 -- Categories isolation
 DROP POLICY IF EXISTS "tenant_isolation_categories_select" ON public.categories;
