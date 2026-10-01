@@ -89,3 +89,75 @@ export function closedMessage(reason: ClosedReason): string {
     ? "Este restaurante tiene los pedidos en pausa en este momento."
     : "Este restaurante se encuentra fuera del horario de atención."
 }
+
+/** Returns true if closing time is strictly earlier than opening time (spans across midnight). */
+export function isOvernightRange(open: string, close: string): boolean {
+  if (!open || !close) return false
+  return open !== close && close < open
+}
+
+/** Weekday numbers in standard index (1 = Lunes .. 5 = Viernes). */
+export const WEEKDAY_NUMBERS = [1, 2, 3, 4, 5] as const
+
+/** Weekend numbers in standard index (6 = Sábado, 0 = Domingo). */
+export const WEEKEND_NUMBERS = [6, 0] as const
+
+/** Copies a reference day's first range to all weekdays (Lun–Vie), preserving weekends. */
+export function copyRangeToWeekdays(schedule: WeeklySchedule, sourceDayOfWeek: number = 1): WeeklySchedule {
+  const [first] = rangesForDay(schedule, sourceDayOfWeek)
+  const nonWeekdays = schedule.filter((r) => !(WEEKDAY_NUMBERS as readonly number[]).includes(r.dayOfWeek))
+  if (!first) {
+    return nonWeekdays
+  }
+  const weekdayRanges: WeeklySchedule = WEEKDAY_NUMBERS.map((d) => ({
+    dayOfWeek: d,
+    open: first.open,
+    close: first.close,
+  }))
+  return [...nonWeekdays, ...weekdayRanges]
+}
+
+/** Copies a reference day's first range across the weekend (Sáb–Dom), preserving weekdays. */
+export function copyRangeToWeekend(schedule: WeeklySchedule, sourceDayOfWeek: number = 6): WeeklySchedule {
+  const [first] = rangesForDay(schedule, sourceDayOfWeek)
+  const nonWeekend = schedule.filter((r) => !(WEEKEND_NUMBERS as readonly number[]).includes(r.dayOfWeek))
+  if (!first) {
+    return nonWeekend
+  }
+  const weekendRanges: WeeklySchedule = WEEKEND_NUMBERS.map((d) => ({
+    dayOfWeek: d,
+    open: first.open,
+    close: first.close,
+  }))
+  return [...nonWeekend, ...weekendRanges]
+}
+
+/** Returns true if opening and closing times are identical (spans a full 24-hour day in the domain model). */
+export function is24HourRange(open: string, close: string): boolean {
+  if (!open || !close) return false
+  return open === close
+}
+
+/** Sets a day's first range to 24 hours (00:00-00:00), preserving any extra ranges. */
+export function setDay24Hours(schedule: WeeklySchedule, day: number): WeeklySchedule {
+  const [, ...extras] = rangesForDay(schedule, day)
+  const otherDays = schedule.filter((r) => r.dayOfWeek !== day)
+  return [...otherDays, { dayOfWeek: day, open: "00:00", close: "00:00" }, ...extras]
+}
+
+/** Sets a day's first range to custom opening and closing hours, preserving any extra ranges. */
+export function setDayCustomHours(
+  schedule: WeeklySchedule,
+  day: number,
+  open: string = "12:00",
+  close: string = "22:30"
+): WeeklySchedule {
+  const [, ...extras] = rangesForDay(schedule, day)
+  const otherDays = schedule.filter((r) => r.dayOfWeek !== day)
+  return [...otherDays, { dayOfWeek: day, open, close }, ...extras]
+}
+
+/** Sets all 7 days to 24 hours (00:00-00:00). */
+export function setAll24Hours(): WeeklySchedule {
+  return DAY_DISPLAY_ORDER.map((day) => ({ dayOfWeek: day, open: "00:00", close: "00:00" }))
+}
