@@ -90,6 +90,35 @@ describe("CheckoutForm - Direct Sale Flow", () => {
     expect(submitBtn).toBeDefined()
   })
 
+  describe("field errors", () => {
+    const renderForm = () =>
+      render(
+        <RestaurantProvider>
+          <CheckoutForm cartItems={mockCartItems} onClose={() => {}} onBackToCart={() => {}} />
+        </RestaurantProvider>
+      )
+
+    it("renders no error element or icon under fields that have no error", () => {
+      const { container } = renderForm()
+      expect(container.querySelectorAll('[data-slot="field-error"]').length).toBe(0)
+      expect(screen.queryAllByRole("alert").length).toBe(0)
+      expect(container.querySelectorAll("svg[class~='mt-0.5']").length).toBe(0)
+    })
+
+    it("shows the icon and message only under the invalid fields after a failed submit", async () => {
+      const { container } = renderForm()
+      fireEvent.click(screen.getByRole("button", { name: /Enviar pedido por WhatsApp/i }))
+      await waitFor(() => {
+        expect(container.querySelectorAll('[data-slot="field-error"]').length).toBeGreaterThan(0)
+      })
+      const alerts = container.querySelectorAll('[data-slot="field-error"]')
+      alerts.forEach((alert) => {
+        expect((alert.textContent ?? "").trim().length).toBeGreaterThan(0)
+        expect(alert.querySelector('svg[data-icon="inline-start"]')).not.toBeNull()
+      })
+    })
+  })
+
   it("desktop: opens the tab synchronously before the server answers, then navigates it to WhatsApp and closes the form", async () => {
     const fakeTab = makeFakeTab()
     const windowOpenSpy = vi.spyOn(window, "open").mockImplementation(() => fakeTab as unknown as Window)

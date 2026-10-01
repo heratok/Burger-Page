@@ -250,10 +250,12 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
                 {...register("nombre")}
               />
             </InputGroup>
-            <FieldError className="flex items-start gap-1.5">
-              <CircleAlert className="mt-0.5 size-3.5 shrink-0" data-icon="inline-start" aria-hidden="true" />
-              {errors.nombre?.message}
-            </FieldError>
+            {errors.nombre && (
+              <FieldError className="flex items-start gap-1.5">
+                <CircleAlert className="mt-0.5 size-3.5 shrink-0" data-icon="inline-start" aria-hidden="true" />
+                {errors.nombre.message}
+              </FieldError>
+            )}
           </Field>
 
           <Field>
@@ -275,10 +277,12 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
                 {...register("telefono")}
               />
             </InputGroup>
-            <FieldError className="flex items-start gap-1.5">
-              <CircleAlert className="mt-0.5 size-3.5 shrink-0" data-icon="inline-start" aria-hidden="true" />
-              {errors.telefono?.message}
-            </FieldError>
+            {errors.telefono && (
+              <FieldError className="flex items-start gap-1.5">
+                <CircleAlert className="mt-0.5 size-3.5 shrink-0" data-icon="inline-start" aria-hidden="true" />
+                {errors.telefono.message}
+              </FieldError>
+            )}
           </Field>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -300,10 +304,12 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
                   {...register("dir")}
                 />
               </InputGroup>
-              <FieldError className="flex items-start gap-1.5">
-                <CircleAlert className="mt-0.5 size-3.5 shrink-0" data-icon="inline-start" aria-hidden="true" />
-                {errors.dir?.message}
-              </FieldError>
+              {errors.dir && (
+                <FieldError className="flex items-start gap-1.5">
+                  <CircleAlert className="mt-0.5 size-3.5 shrink-0" data-icon="inline-start" aria-hidden="true" />
+                  {errors.dir.message}
+                </FieldError>
+              )}
             </Field>
 
             <Field>
@@ -324,10 +330,12 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
                 {...register("barrio")}
               />
               </InputGroup>
-              <FieldError className="flex items-start gap-1.5">
-                <CircleAlert className="mt-0.5 size-3.5 shrink-0" data-icon="inline-start" aria-hidden="true" />
-                {errors.barrio?.message}
-              </FieldError>
+              {errors.barrio && (
+                <FieldError className="flex items-start gap-1.5">
+                  <CircleAlert className="mt-0.5 size-3.5 shrink-0" data-icon="inline-start" aria-hidden="true" />
+                  {errors.barrio.message}
+                </FieldError>
+              )}
             </Field>
           </div>
 
