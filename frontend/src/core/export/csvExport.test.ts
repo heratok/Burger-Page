@@ -144,6 +144,31 @@ describe("Report Generators & Cash Closeout Math", () => {
       expect(csv).toContain("61000")
       expect(csv).toContain("Efectivo")
     })
+
+    it("exports the table of a salon sale in its own column, with legacy orders falling back to their old text", () => {
+      const salon: Order = {
+        ...mockOrders[0],
+        id: "ord-salon",
+        orderNumber: 201,
+        customer: { nombre: "Cliente Salón", telefono: "N/A", direccion: "Salón", barrio: "Local" },
+        tableId: "tbl_4",
+        tableLabel: "Mesa 4",
+      }
+      const legacy: Order = {
+        ...mockOrders[0],
+        id: "ord-legacy",
+        orderNumber: 202,
+        customer: { nombre: "Mesa 8", telefono: "N/A", direccion: "Salón - Mesa 8", barrio: "Local" },
+      }
+      const lines = generateSalesCsv([salon, legacy, mockOrders[0]]).split("\r\n")
+
+      const mesaIndex = lines[0].split(",").indexOf("Mesa")
+      expect(mesaIndex).toBeGreaterThan(-1)
+      const cell = (line: string) => line.split(",")[mesaIndex].replace(/^"|"$/g, "")
+      expect(cell(lines[1])).toBe("Mesa 4")
+      expect(cell(lines[2])).toBe("Mesa 8")
+      expect(cell(lines[3])).toBe("")
+    })
   })
 
   describe("generateCustomersCsv", () => {

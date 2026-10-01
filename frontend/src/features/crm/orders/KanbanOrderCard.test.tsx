@@ -35,6 +35,18 @@ const mockOrder: Order = {
   updatedAt: new Date().toISOString(),
 }
 
+const tableOrder: Order = {
+  ...mockOrder,
+  customer: { ...mockOrder.customer, nombre: "Cliente Salón", direccion: "Salón", barrio: "Local" },
+  tableId: "tbl_4",
+  tableLabel: "Mesa 4",
+}
+
+const legacyTableOrder: Order = {
+  ...mockOrder,
+  customer: { ...mockOrder.customer, nombre: "Mesa 8", direccion: "Salón - Mesa 8", barrio: "Local" },
+}
+
 describe("KanbanOrderCard", () => {
   afterEach(() => {
     cleanup()
@@ -115,5 +127,18 @@ describe("KanbanOrderCard", () => {
     const deliveredBtn = screen.getByRole("button", { name: /Entregado/i })
     fireEvent.click(deliveredBtn)
     expect(onUpdateStatus).toHaveBeenCalledWith("ord-1", "delivered")
+  })
+
+  it("shows the salon table instead of barrio and address", () => {
+    render(<KanbanOrderCard order={tableOrder} onViewDetails={vi.fn()} onUpdateStatus={vi.fn()} onWhatsApp={vi.fn()} />)
+
+    expect(screen.getByText("Salón · Mesa 4")).toBeDefined()
+    expect(screen.queryByText(/Local - Salón/)).toBeNull()
+  })
+
+  it("shows the table text of a legacy order registered before tables existed", () => {
+    render(<KanbanOrderCard order={legacyTableOrder} onViewDetails={vi.fn()} onUpdateStatus={vi.fn()} onWhatsApp={vi.fn()} />)
+
+    expect(screen.getByText("Salón · Mesa 8")).toBeDefined()
   })
 })

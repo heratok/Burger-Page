@@ -51,6 +51,52 @@ describe("OrdersKanban Component (TDD Tests)", () => {
     expect(select).toBeDefined()
   })
 
+  it("finds an order by the name of its table", () => {
+    const envelope = {
+      ...TEST_STORAGE_ENVELOPE,
+      restaurants: TEST_STORAGE_ENVELOPE.restaurants.map((r, index) =>
+        index === 0
+          ? {
+              ...r,
+              orders: [
+                {
+                  id: "ord-table-search",
+                  orderNumber: 9001,
+                  customer: { nombre: "Cliente Salón", telefono: "N/A", direccion: "Salón", barrio: "Local" },
+                  items: [],
+                  total: 1000,
+                  deliveryFee: 0,
+                  finalTotal: 1000,
+                  metodo: "Efectivo" as const,
+                  status: "pending" as const,
+                  tableId: "tbl_1",
+                  tableLabel: "Terraza Zeta",
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                },
+              ],
+            }
+          : r
+      ),
+    }
+    const adapter = new InMemoryStorageAdapter()
+    adapter.setItem(STORAGE_KEYS.ENVELOPE, JSON.stringify(envelope))
+    adapter.setItem(STORAGE_KEYS.ACTIVE_REST, envelope.restaurants[0].id)
+
+    render(
+      <RestaurantProvider repository={new TenantRepository(adapter)}>
+        <OrdersKanban />
+      </RestaurantProvider>
+    )
+    const searchInput = screen.getByPlaceholderText(/Buscar por # orden, cliente/i)
+
+    fireEvent.change(searchInput, { target: { value: "terraza zeta" } })
+    expect(screen.getByText("#9001")).toBeDefined()
+
+    fireEvent.change(searchInput, { target: { value: "no existe esa mesa" } })
+    expect(screen.queryByText("#9001")).toBeNull()
+  })
+
   it("toggles between feed and kanban view modes", () => {
     render(
       <RestaurantProvider repository={createPopulatedTestRepo()}>

@@ -240,6 +240,11 @@ describe("StorefrontCustomizer & Subcomponents (TDD Modularization)", () => {
       const pedidosTab = screen.getByRole("button", { name: /Pedidos/i })
       fireEvent.click(pedidosTab)
       expect(screen.getByText("Información Comercial, Pedidos & Domicilios")).toBeDefined()
+
+      // Navigate to "Mesas" tab
+      const mesasTab = screen.getByRole("button", { name: /Mesas/i })
+      fireEvent.click(mesasTab)
+      expect(screen.getByText("Mesas del salón")).toBeDefined()
     })
   })
 })

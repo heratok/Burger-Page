@@ -1,5 +1,6 @@
 import type { Order, Customer, InventoryItem, Supplier } from "@/types/restaurant"
 import { buildCsvString, type CsvColumn } from "./csvExport"
+import { getOrderTableLabel } from "@/features/crm/tables/orderTable"
 
 export interface CashCloseoutReport {
   dateRangeLabel: string
@@ -83,6 +84,7 @@ export function generateSalesCsv(orders: Order[]): string {
     },
     { header: "Cliente", accessor: (o) => o.customer?.nombre || "Anónimo" },
     { header: "Teléfono", accessor: (o) => o.customer?.telefono || "" },
+    { header: "Mesa", accessor: (o) => (o.customer ? getOrderTableLabel(o) : undefined) || "" },
     { header: "Dirección", accessor: (o) => o.customer?.direccion || "" },
     { header: "Barrio", accessor: (o) => o.customer?.barrio || "" },
     {

@@ -1,6 +1,6 @@
 import React from "react"
 import { useRestaurant } from "@/context/RestaurantContext"
-import { Palette, RotateCcw, Save, Sparkles, ImageIcon, Sliders, DollarSign } from "lucide-react"
+import { Palette, RotateCcw, Save, Sparkles, ImageIcon, Sliders, DollarSign, LayoutGrid } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useCustomizerDraft } from "./hooks/useCustomizerDraft"
 import {
@@ -9,6 +9,7 @@ import {
   CustomizerColorsSection,
   CustomizerLayoutSection,
   CustomizerBusinessSection,
+  CustomizerTablesSection,
   CustomizerLivePreview,
 } from "./customizer"
 
@@ -18,6 +19,7 @@ const CUSTOMIZER_TABS = [
   { id: "colors", label: "Colores", icon: Palette, iconClass: "text-rose-500" },
   { id: "uiux", label: "Diseño", icon: Sliders, iconClass: "text-emerald-500" },
   { id: "business", label: "Pedidos", icon: DollarSign, iconClass: "text-amber-500" },
+  { id: "tables", label: "Mesas", icon: LayoutGrid, iconClass: "text-sky-500" },
 ] as const
 
 export const StorefrontCustomizer: React.FC = () => {
@@ -91,7 +93,7 @@ export const StorefrontCustomizer: React.FC = () => {
         {/* LEFT COLUMN: Controls & Settings */}
         <div className="space-y-5 lg:col-span-5">
           {/* Section Navigation Tabs */}
-          <div className="grid grid-cols-5 rounded-xl bg-slate-100 p-1 dark:bg-slate-800 border dark:border-slate-700 text-xs font-semibold gap-1">
+          <div className="grid grid-cols-6 rounded-xl bg-slate-100 p-1 dark:bg-slate-800 border dark:border-slate-700 text-xs font-semibold gap-1">
             {CUSTOMIZER_TABS.map((tab) => {
               const Icon = tab.icon
               const isActive = activeSection === tab.id
@@ -121,6 +123,7 @@ export const StorefrontCustomizer: React.FC = () => {
           {activeSection === "colors" && <CustomizerColorsSection draft={draft} setDraft={setDraft} isDark={isDark} />}
           {activeSection === "uiux" && <CustomizerLayoutSection draft={draft} setDraft={setDraft} isDark={isDark} />}
           {activeSection === "business" && <CustomizerBusinessSection draft={draft} setDraft={setDraft} isDark={isDark} />}
+          {activeSection === "tables" && <CustomizerTablesSection restaurantId={activeRestaurant?.id} isDark={isDark} />}
         </div>
 
         {/* RIGHT COLUMN: Interactive Live Simulator Preview */}

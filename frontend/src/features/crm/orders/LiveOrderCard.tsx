@@ -14,6 +14,7 @@ import {
   Pencil,
 } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
+import { getOrderLocationText } from "@/features/crm/tables/orderTable"
 
 export interface LiveOrderCardProps {
   order: Order
@@ -131,7 +132,7 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
             <div className="mt-1 flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 truncate">
               <MapPin className="size-3.5 shrink-0 text-slate-400" />
               <span className="truncate">
-                {order.customer.barrio} — {order.customer.direccion}
+                {getOrderLocationText(order, " — ")}
               </span>
             </div>
           </div>

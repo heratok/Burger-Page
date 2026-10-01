@@ -27,6 +27,7 @@ import { Select } from "@/components/ui/select"
 import { formatCurrency, formatWhatsAppPhone } from "@/lib/utils"
 import { resolveModalOrder } from "@/lib/orderMatching"
 import { KanbanOrderCard, LiveOrderCard, OrderDetailModal } from "./orders"
+import { getOrderTableLabel } from "@/features/crm/tables/orderTable"
 
 export const OrdersKanban: React.FC = () => {
   const {
@@ -94,6 +95,7 @@ export const OrdersKanban: React.FC = () => {
         (ord.orderNumber != null && ord.orderNumber.toString().includes(term)) ||
         Boolean(ord.customer?.nombre?.toLowerCase().includes(term)) ||
         Boolean(ord.customer?.direccion?.toLowerCase().includes(term)) ||
+        Boolean(getOrderTableLabel(ord)?.toLowerCase().includes(term)) ||
         Boolean(ord.customer?.barrio?.toLowerCase().includes(term))
 
       const matchMethod = methodFilter === "ALL" || ord.metodo === methodFilter

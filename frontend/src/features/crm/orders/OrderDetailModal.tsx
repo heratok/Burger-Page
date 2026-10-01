@@ -6,6 +6,7 @@ import { formatCurrency } from "@/lib/utils"
 import { uploadImageToStorage } from "@/core/storage/supabaseStorage"
 import { toast } from "sonner"
 import { calculateLineItemTotal } from "@/features/cart/cartEngine"
+import { getOrderTableLabel } from "@/features/crm/tables/orderTable"
 
 export interface OrderDetailModalProps {
   order: Order | null
@@ -156,7 +157,9 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
           <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
             <MapPin className="size-3.5 text-slate-400" />
             <span>
-              {order.customer.direccion}, Barrio {order.customer.barrio}
+              {getOrderTableLabel(order)
+                ? `Salón · ${getOrderTableLabel(order)}`
+                : `${order.customer.direccion}, Barrio ${order.customer.barrio}`}
             </span>
           </div>
           {order.comentario && (

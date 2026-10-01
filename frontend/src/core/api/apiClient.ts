@@ -6,11 +6,21 @@ import {
   InventoryItem,
   AdditionItem,
   Supplier,
+  RestaurantTable,
 } from '@/types/restaurant'
 import type { OrderEvent, CreateOrderInput, UpdateOrderInput, CreateRestaurantInput, UpdateRestaurantInput, CreateCustomerInput, UpdateCustomerInput, CreateSupplierInput, UpdateSupplierInput } from '@burger-page/contracts'
 
 export interface ApiClientConfig {
   baseUrl: string
+}
+
+function mapTableResponse(raw: any): RestaurantTable {
+  return {
+    id: raw.id,
+    name: raw.name,
+    sortOrder: Number(raw.sortOrder ?? 0),
+    isActive: raw.isActive !== undefined ? Boolean(raw.isActive) : true,
+  }
 }
 
 function mapProductResponse(raw: any): MenuItem {
@@ -416,6 +426,48 @@ export class ApiClient {
       method: 'PATCH',
       body: JSON.stringify({ quantityChange }),
     })
+  }
+
+  async fetchTables(restaurantId?: string): Promise<RestaurantTable[]> {
+    const qs = restaurantId ? `?restaurantId=${encodeURIComponent(restaurantId)}` : ''
+    const raw = await this.request<any[]>(`/tables${qs}`)
+    return Array.isArray(raw) ? raw.map(mapTableResponse) : []
+  }
+
+  async createTable(name: string, restaurantId?: string): Promise<RestaurantTable> {
+    const qs = restaurantId ? `?restaurantId=${encodeURIComponent(restaurantId)}` : ''
+    const raw = await this.request<any>(`/tables${qs}`, {
+      method: 'POST',
+      body: JSON.stringify(restaurantId ? { name, restaurantId } : { name }),
+    })
+    return mapTableResponse(raw)
+  }
+
+  async updateTable(
+    id: string,
+    data: { name?: string; isActive?: boolean },
+    restaurantId?: string
+  ): Promise<RestaurantTable> {
+    const qs = restaurantId ? `?restaurantId=${encodeURIComponent(restaurantId)}` : ''
+    const raw = await this.request<any>(`/tables/${id}${qs}`, {
+      method: 'PUT',
+      body: JSON.stringify(restaurantId ? { ...data, restaurantId } : data),
+    })
+    return mapTableResponse(raw)
+  }
+
+  async reorderTables(ids: string[], restaurantId?: string): Promise<RestaurantTable[]> {
+    const qs = restaurantId ? `?restaurantId=${encodeURIComponent(restaurantId)}` : ''
+    const raw = await this.request<any[]>(`/tables/order${qs}`, {
+      method: 'PUT',
+      body: JSON.stringify(restaurantId ? { ids, restaurantId } : { ids }),
+    })
+    return Array.isArray(raw) ? raw.map(mapTableResponse) : []
+  }
+
+  async deleteTable(id: string, restaurantId?: string): Promise<void> {
+    const qs = restaurantId ? `?restaurantId=${encodeURIComponent(restaurantId)}` : ''
+    await this.request<void>(`/tables/${id}${qs}`, { method: 'DELETE' })
   }
 
   async fetchSuppliers(restaurantId?: string): Promise<Supplier[]> {

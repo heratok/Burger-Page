@@ -34,6 +34,18 @@ const mockOrder: Order = {
   updatedAt: new Date().toISOString(),
 }
 
+const tableOrder: Order = {
+  ...mockOrder,
+  customer: { ...mockOrder.customer, nombre: "Cliente Salón", direccion: "Salón", barrio: "Local" },
+  tableId: "tbl_4",
+  tableLabel: "Mesa 4",
+}
+
+const legacyTableOrder: Order = {
+  ...mockOrder,
+  customer: { ...mockOrder.customer, nombre: "Mesa 8", direccion: "Salón - Mesa 8", barrio: "Local" },
+}
+
 describe("OrderDetailModal", () => {
   afterEach(() => {
     cleanup()
@@ -203,5 +215,35 @@ describe("OrderDetailModal", () => {
 
     expect(screen.queryByRole("button", { name: /Editar venta/i })).toBeNull()
   })
-})
 
+  it("shows the salon table in the detail", () => {
+    render(
+      <OrderDetailModal
+        order={tableOrder}
+        isOpen={true}
+        onClose={vi.fn()}
+        onUpdateStatus={vi.fn()}
+        onDeleteOrder={vi.fn()}
+        onWhatsApp={vi.fn()}
+      />
+    )
+
+    expect(screen.getByText("Salón · Mesa 4")).toBeDefined()
+    expect(screen.queryByText(/Barrio Local/)).toBeNull()
+  })
+
+  it("shows the table text of a legacy order", () => {
+    render(
+      <OrderDetailModal
+        order={legacyTableOrder}
+        isOpen={true}
+        onClose={vi.fn()}
+        onUpdateStatus={vi.fn()}
+        onDeleteOrder={vi.fn()}
+        onWhatsApp={vi.fn()}
+      />
+    )
+
+    expect(screen.getByText("Salón · Mesa 8")).toBeDefined()
+  })
+})

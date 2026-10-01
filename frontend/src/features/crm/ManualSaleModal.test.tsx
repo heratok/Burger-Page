@@ -372,13 +372,12 @@ describe("ManualSaleModal - Point of Sale (POS) Component", () => {
       </RestaurantProvider>
     )
 
-    // Switch to Mesa / Salón
+    // Switch to Mesa / Salón: tables are picked, never typed
     const mesaBtn = screen.getByRole("button", { name: /Mesa \/ Salón/i })
     fireEvent.click(mesaBtn)
-    expect(screen.getByText(/Número de Mesa/i)).toBeDefined()
-    const tableInput = screen.getByPlaceholderText(/Ej: 3, Terraza 1/i)
-    fireEvent.change(tableInput, { target: { value: "5" } })
-    expect(tableInput).toBeDefined()
+    expect(screen.getByText("Mesa *")).toBeDefined()
+    expect(screen.queryByText(/Número de Mesa/i)).toBeNull()
+    expect(screen.queryByPlaceholderText(/Ej: 3, Terraza 1/i)).toBeNull()
 
     // Switch to Domicilio
     const deliveryBtn = screen.getByRole("button", { name: /Domicilio/i })
@@ -392,34 +391,260 @@ describe("ManualSaleModal - Point of Sale (POS) Component", () => {
     expect(screen.getByPlaceholderText(/Cliente Mostrador/i)).toBeDefined()
   })
 
-  it("prepopulates table number when editing a salon/mesa order", () => {
-    const mockMesaOrder = {
-      id: "ord-mesa-1",
-      orderNumber: 54322,
-      customer: {
-        nombre: "Mesa 8",
-        telefono: "N/A",
-        direccion: "Salón - Mesa 8",
-        barrio: "Local",
-      },
-      items: [],
-      total: 10000,
-      deliveryFee: 0,
-      finalTotal: 10000,
-      metodo: "Efectivo" as const,
-      status: "pending" as const,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+  describe("Mesa / Salón with restaurant tables", () => {
+    const tableList = [
+      { id: "tbl_1", name: "Mesa 1", sortOrder: 0, isActive: true },
+      { id: "tbl_2", name: "Mesa 2", sortOrder: 1, isActive: true },
+      { id: "tbl_off", name: "Mesa apagada", sortOrder: 2, isActive: false },
+    ]
+
+    const mockBackend = async (tables = tableList) => {
+      const { apiClient } = await import("@/core/api/apiClient")
+      vi.spyOn(apiClient, "hasToken").mockReturnValue(true)
+      vi.spyOn(apiClient, "fetchTables").mockResolvedValue(tables)
+      const createOrder = vi.spyOn(apiClient, "createOrder").mockResolvedValue({
+        id: "server-mesa-1",
+        orderNumber: 7001,
+        status: "pending",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as any)
+      const updateOrder = vi.spyOn(apiClient, "updateOrder").mockResolvedValue({
+        id: "ord-mesa-edit",
+        orderNumber: 54322,
+        status: "pending",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as any)
+      return { apiClient, createOrder, updateOrder }
     }
 
-    render(
-      <RestaurantProvider repository={createTestRepo()}>
-        <ManualSaleModal isOpen={true} onClose={() => {}} orderToEdit={mockMesaOrder} />
-      </RestaurantProvider>
-    )
+    const openMesaSale = async () => {
+      fireEvent.click(screen.getAllByRole("button", { name: /Agregar/i })[0])
+      fireEvent.click(screen.getByRole("button", { name: /Mesa \/ Salón/i }))
+      await screen.findByRole("button", { name: /^Mesa 1/ })
+    }
 
-    const tableInput = screen.getByDisplayValue("8")
-    expect(tableInput).toBeDefined()
+    afterEach(() => {
+      vi.restoreAllMocks()
+    })
+
+    it("shows the active tables as a grid and hides the inactive ones", async () => {
+      await mockBackend()
+      render(
+        <RestaurantProvider repository={createTestRepo()}>
+          <ManualSaleModal isOpen={true} onClose={() => {}} />
+        </RestaurantProvider>
+      )
+
+      fireEvent.click(screen.getByRole("button", { name: /Mesa \/ Salón/i }))
+
+      expect(await screen.findByRole("button", { name: /^Mesa 1/ })).toBeDefined()
+      expect(screen.getByRole("button", { name: /^Mesa 2/ })).toBeDefined()
+      expect(screen.queryByRole("button", { name: /Mesa apagada/ })).toBeNull()
+    })
+
+    it("requires picking a table before registering a salon sale", async () => {
+      const { createOrder } = await mockBackend()
+      render(
+        <RestaurantProvider repository={createTestRepo()}>
+          <ManualSaleModal isOpen={true} onClose={() => {}} />
+        </RestaurantProvider>
+      )
+      await openMesaSale()
+
+      fireEvent.click(screen.getByRole("button", { name: /Registrar Venta/i }))
+
+      await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Seleccioná la mesa de la venta de salón"))
+      expect(createOrder).not.toHaveBeenCalled()
+    })
+
+    it("sends tableId and keeps the table out of the customer name and address", async () => {
+      const { createOrder } = await mockBackend()
+      render(
+        <RestaurantProvider repository={createTestRepo()}>
+          <ManualSaleModal isOpen={true} onClose={() => {}} />
+        </RestaurantProvider>
+      )
+      await openMesaSale()
+
+      fireEvent.click(screen.getByRole("button", { name: /^Mesa 2/ }))
+      fireEvent.click(screen.getByRole("button", { name: /Registrar Venta/i }))
+
+      await waitFor(() => expect(createOrder).toHaveBeenCalledTimes(1))
+      const input = createOrder.mock.calls[0][0] as any
+      expect(input.tableId).toBe("tbl_2")
+      expect(input.customer.address).toBe("Salón")
+      expect(input.customer.name).toBe("Cliente Salón")
+      expect(JSON.stringify(input.customer)).not.toMatch(/Mesa 2/)
+    })
+
+    it("marks a table with an order in progress as occupied but still selectable", async () => {
+      await mockBackend()
+      const envelope = {
+        ...TEST_STORAGE_ENVELOPE,
+        restaurants: TEST_STORAGE_ENVELOPE.restaurants.map((r) =>
+          r.id === "rest-burger-craft"
+            ? {
+                ...r,
+                orders: [
+                  {
+                    id: "ord-busy",
+                    orderNumber: 1,
+                    customer: { nombre: "Cliente Salón", telefono: "N/A", direccion: "Salón", barrio: "Local" },
+                    items: [],
+                    total: 0,
+                    deliveryFee: 0,
+                    finalTotal: 0,
+                    metodo: "Efectivo" as const,
+                    status: "cooking" as const,
+                    tableId: "tbl_1",
+                    tableLabel: "Mesa 1",
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                  },
+                  {
+                    id: "ord-done",
+                    orderNumber: 2,
+                    customer: { nombre: "Cliente Salón", telefono: "N/A", direccion: "Salón", barrio: "Local" },
+                    items: [],
+                    total: 0,
+                    deliveryFee: 0,
+                    finalTotal: 0,
+                    metodo: "Efectivo" as const,
+                    status: "delivered" as const,
+                    tableId: "tbl_2",
+                    tableLabel: "Mesa 2",
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                  },
+                ],
+              }
+            : r
+        ),
+      }
+      const adapter = new InMemoryStorageAdapter()
+      adapter.setItem(STORAGE_KEYS.ENVELOPE, JSON.stringify(envelope))
+      adapter.setItem(STORAGE_KEYS.ACTIVE_REST, "rest-burger-craft")
+
+      render(
+        <RestaurantProvider repository={new TenantRepository(adapter)}>
+          <ManualSaleModal isOpen={true} onClose={() => {}} />
+        </RestaurantProvider>
+      )
+      fireEvent.click(screen.getByRole("button", { name: /Mesa \/ Salón/i }))
+
+      const busy = await screen.findByRole("button", { name: /Mesa 1.*Ocupada/ })
+      expect(busy).toBeDefined()
+      expect(screen.getAllByText("Ocupada")).toHaveLength(1)
+      fireEvent.click(busy)
+      expect(busy.getAttribute("aria-pressed")).toBe("true")
+    })
+
+    it("creates a table inline with '+ Nueva mesa' and selects it for the sale", async () => {
+      const { apiClient, createOrder } = await mockBackend()
+      const createTable = vi
+        .spyOn(apiClient, "createTable")
+        .mockResolvedValue({ id: "tbl_new", name: "Mesa 30", sortOrder: 9, isActive: true })
+      render(
+        <RestaurantProvider repository={createTestRepo()}>
+          <ManualSaleModal isOpen={true} onClose={() => {}} />
+        </RestaurantProvider>
+      )
+      await openMesaSale()
+
+      fireEvent.click(screen.getByRole("button", { name: /\+ Nueva mesa/i }))
+      fireEvent.change(screen.getByLabelText(/Nombre de la nueva mesa/i), { target: { value: "Mesa 30" } })
+      fireEvent.click(screen.getByRole("button", { name: /^Crear$/i }))
+
+      await waitFor(() => expect(createTable).toHaveBeenCalledWith("Mesa 30", expect.any(String)))
+      const created = await screen.findByRole("button", { name: /^Mesa 30/ })
+      expect(created.getAttribute("aria-pressed")).toBe("true")
+      fireEvent.click(screen.getByRole("button", { name: /Registrar Venta/i }))
+      await waitFor(() => expect(createOrder).toHaveBeenCalled())
+      expect((createOrder.mock.calls[0][0] as any).tableId).toBe("tbl_new")
+    })
+
+    it("shows an empty state that points to Personalizar → Mesas when the restaurant has no tables", async () => {
+      await mockBackend([])
+      const onClose = vi.fn()
+      render(
+        <RestaurantProvider repository={createTestRepo()}>
+          <ManualSaleModal isOpen={true} onClose={onClose} />
+        </RestaurantProvider>
+      )
+
+      fireEvent.click(screen.getByRole("button", { name: /Mesa \/ Salón/i }))
+      expect(await screen.findByText(/No hay mesas activas/i)).toBeDefined()
+      fireEvent.click(screen.getByRole("button", { name: /Personalizar → Mesas/i }))
+
+      expect(onClose).toHaveBeenCalled()
+    })
+
+    it("preselects the table of the order being edited and sends it back on save", async () => {
+      const { updateOrder } = await mockBackend()
+      const orderToEdit = {
+        id: "ord-mesa-edit",
+        orderNumber: 54322,
+        customer: { nombre: "Cliente Salón", telefono: "N/A", direccion: "Salón", barrio: "Local" },
+        items: [
+          { id: "i1", name: "Hamburguesa Clásica", price: 20000, cantidad: 1, total: 20000, adiciones: [] },
+        ],
+        total: 20000,
+        deliveryFee: 0,
+        finalTotal: 20000,
+        metodo: "Efectivo" as const,
+        status: "pending" as const,
+        tableId: "tbl_2",
+        tableLabel: "Mesa 2",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+      render(
+        <RestaurantProvider repository={createTestRepo()}>
+          <ManualSaleModal isOpen={true} onClose={() => {}} orderToEdit={orderToEdit} />
+        </RestaurantProvider>
+      )
+
+      const selected = await screen.findByRole("button", { name: /^Mesa 2/ })
+      expect(selected.getAttribute("aria-pressed")).toBe("true")
+      fireEvent.click(screen.getByRole("button", { name: /Guardar cambios/i }))
+
+      await waitFor(() => expect(updateOrder).toHaveBeenCalled())
+      expect((updateOrder.mock.calls[0][1] as any).tableId).toBe("tbl_2")
+    })
+
+    it("keeps the legacy table text of an old order and never invents a table id on save", async () => {
+      const { updateOrder } = await mockBackend()
+      const legacyOrder = {
+        id: "ord-mesa-edit",
+        orderNumber: 54322,
+        customer: { nombre: "Mesa 8", telefono: "N/A", direccion: "Salón - Mesa 8", barrio: "Local" },
+        items: [
+          { id: "i1", name: "Hamburguesa Clásica", price: 20000, cantidad: 1, total: 20000, adiciones: [] },
+        ],
+        total: 20000,
+        deliveryFee: 0,
+        finalTotal: 20000,
+        metodo: "Efectivo" as const,
+        status: "pending" as const,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+      render(
+        <RestaurantProvider repository={createTestRepo()}>
+          <ManualSaleModal isOpen={true} onClose={() => {}} orderToEdit={legacyOrder} />
+        </RestaurantProvider>
+      )
+
+      expect(await screen.findByText(/Registrada antes de las mesas/i)).toBeDefined()
+      fireEvent.click(screen.getByRole("button", { name: /Guardar cambios/i }))
+
+      await waitFor(() => expect(updateOrder).toHaveBeenCalled())
+      const sent = updateOrder.mock.calls[0][1] as any
+      expect(sent.tableId).toBeNull()
+      expect(sent.customer.address).toBe("Salón - Mesa 8")
+      expect(sent.customer.name).toBe("Mesa 8")
+    })
   })
 })
-
