@@ -197,6 +197,31 @@ CREATE TABLE IF NOT EXISTS public.restaurant_opening_hours (
 COMMENT ON TABLE public.restaurant_opening_hours IS 'Horario de atención semanal: un rango por fila; sin filas el día está cerrado; close_time <= open_time cruza la medianoche.';
 COMMENT ON COLUMN public.restaurant_opening_hours.day_of_week IS '0 = Domingo ... 6 = Sábado.';
 
+-- 2.1.4 RESTAURANT TABLES (Mesas del salón) ----------------------------------
+-- Mesas que el dueño administra y que una venta "Mesa / Salón" selecciona.
+-- Configuración, no historial: se borra en cascada con el restaurante. El
+-- nombre es único por restaurante sin distinguir mayúsculas (índice abajo).
+CREATE TABLE IF NOT EXISTS public.restaurant_tables (
+    id            TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    restaurant_id TEXT NOT NULL REFERENCES public.restaurants(id) ON DELETE CASCADE,
+    name          TEXT NOT NULL,
+    sort_order    INTEGER NOT NULL DEFAULT 0,
+    is_active     BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT chk_restaurant_tables_id_format
+        CHECK (id ~ '^[A-Za-z0-9_-]{1,64}$'),
+    CONSTRAINT chk_restaurant_tables_name
+        CHECK (char_length(btrim(name)) BETWEEN 1 AND 40),
+    CONSTRAINT uq_restaurant_tables_id_restaurant
+        UNIQUE (id, restaurant_id)
+);
+
+COMMENT ON TABLE public.restaurant_tables IS 'Mesas del salón de un restaurante. Configuración: se borra en cascada con el restaurante; borrar una mesa no borra pedidos (orders.table_id pasa a NULL y table_label conserva el nombre).';
+COMMENT ON COLUMN public.restaurant_tables.name IS 'Nombre visible (p. ej. "Mesa 4", "Terraza 2"); único por restaurante sin distinguir mayúsculas.';
+COMMENT ON COLUMN public.restaurant_tables.sort_order IS 'Posición en la lista y en el selector de venta (menor primero).';
+COMMENT ON COLUMN public.restaurant_tables.is_active IS 'false oculta la mesa del selector de venta sin borrar su historial.';
+
 -- 2.2 USERS (Authentication & Role-Based Access Control) -----------------------
 CREATE TABLE IF NOT EXISTS public.users (
     id            TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -362,6 +387,11 @@ CREATE TABLE IF NOT EXISTS public.orders (
     contact_phone   TEXT,
     contact_address TEXT,
     contact_barrio  TEXT,
+    -- Mesa de una venta "Mesa / Salón": table_id apunta a restaurant_tables
+    -- (mismo restaurante, ver fk_orders_table_tenant); table_label es el
+    -- snapshot del nombre y sobrevive a renombrar o borrar la mesa.
+    table_id        TEXT,
+    table_label     TEXT,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     -- WU-1b (M2/M3): el customer referenciado debe pertenecer al mismo
@@ -376,6 +406,12 @@ CREATE TABLE IF NOT EXISTS public.orders (
         -- (comportamiento previo); un SET NULL sin lista anularía también
         -- restaurant_id y fallaría por NOT NULL con órdenes existentes.
         ON DELETE SET NULL (customer_id),
+    -- La mesa debe ser del mismo restaurante; borrar la mesa anula SOLO
+    -- table_id (column list PG15+) y table_label conserva el nombre.
+    CONSTRAINT fk_orders_table_tenant
+        FOREIGN KEY (table_id, restaurant_id)
+        REFERENCES public.restaurant_tables(id, restaurant_id)
+        ON DELETE SET NULL (table_id),
     CONSTRAINT uq_orders_restaurant_order_number
         UNIQUE (restaurant_id, order_number),
     -- db-hardening-0008: the stored total is always subtotal + delivery_fee
@@ -398,6 +434,8 @@ COMMENT ON COLUMN public.orders.contact_name IS 'Snapshot del nombre de contacto
 COMMENT ON COLUMN public.orders.contact_phone IS 'Snapshot del teléfono de contacto dado en ESTE pedido.';
 COMMENT ON COLUMN public.orders.contact_address IS 'Snapshot de la dirección de entrega dada en ESTE pedido.';
 COMMENT ON COLUMN public.orders.contact_barrio IS 'Snapshot del barrio de entrega dado en ESTE pedido.';
+COMMENT ON COLUMN public.orders.table_id IS 'Mesa donde se tomó la venta de salón (NULL si no aplica o si la mesa se borró).';
+COMMENT ON COLUMN public.orders.table_label IS 'Snapshot del nombre de la mesa al vender: el historial lo conserva aunque la mesa se renombre o se borre.';
 
 -- 2.7.1 ORDER STATUS HISTORY --------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.order_status_history (
@@ -569,6 +607,11 @@ CREATE TRIGGER trg_product_additions_updated_at
 DROP TRIGGER IF EXISTS trg_customers_updated_at ON public.customers;
 CREATE TRIGGER trg_customers_updated_at
     BEFORE UPDATE ON public.customers
+    FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+DROP TRIGGER IF EXISTS trg_restaurant_tables_updated_at ON public.restaurant_tables;
+CREATE TRIGGER trg_restaurant_tables_updated_at
+    BEFORE UPDATE ON public.restaurant_tables
     FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
 DROP TRIGGER IF EXISTS trg_orders_updated_at ON public.orders;
@@ -1119,6 +1162,9 @@ CREATE INDEX IF NOT EXISTS idx_additions_restaurant_prod ON public.product_addit
 CREATE INDEX IF NOT EXISTS idx_orders_rest_created       ON public.orders(restaurant_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_orders_rest_status        ON public.orders(restaurant_id, status);
 CREATE INDEX IF NOT EXISTS idx_orders_customer           ON public.orders(customer_id);
+CREATE INDEX IF NOT EXISTS idx_orders_table              ON public.orders(table_id) WHERE table_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_restaurant_tables_name ON public.restaurant_tables(restaurant_id, lower(btrim(name)));
+CREATE INDEX IF NOT EXISTS idx_restaurant_tables_order   ON public.restaurant_tables(restaurant_id, sort_order);
 CREATE INDEX IF NOT EXISTS idx_order_items_order_id      ON public.order_items(order_id);
 CREATE INDEX IF NOT EXISTS idx_order_items_product_id    ON public.order_items(product_id);
 CREATE INDEX IF NOT EXISTS idx_order_items_restaurant    ON public.order_items(restaurant_id);
@@ -1142,6 +1188,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.restaurants TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.restaurant_settings TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.restaurant_branding TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.restaurant_opening_hours TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.restaurant_tables TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.categories TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.products TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.product_additions TO app_user;
@@ -1233,6 +1280,8 @@ ALTER TABLE public.restaurant_branding       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.restaurant_branding       FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.restaurant_opening_hours  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.restaurant_opening_hours  FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.restaurant_tables         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.restaurant_tables         FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.categories                ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.categories                FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.products                  ENABLE ROW LEVEL SECURITY;
@@ -1544,6 +1593,13 @@ CREATE POLICY "tenant_isolation_restaurant_branding" ON public.restaurant_brandi
 -- Restaurant Opening Hours isolation
 DROP POLICY IF EXISTS "tenant_isolation_restaurant_opening_hours" ON public.restaurant_opening_hours;
 CREATE POLICY "tenant_isolation_restaurant_opening_hours" ON public.restaurant_opening_hours
+    FOR ALL
+    USING ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()))
+    WITH CHECK ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()));
+
+-- Restaurant Tables isolation (staff only: no public read)
+DROP POLICY IF EXISTS "tenant_isolation_restaurant_tables" ON public.restaurant_tables;
+CREATE POLICY "tenant_isolation_restaurant_tables" ON public.restaurant_tables
     FOR ALL
     USING ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()))
     WITH CHECK ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()));
