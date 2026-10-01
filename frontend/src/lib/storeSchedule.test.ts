@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest"
+import type { WeeklySchedule } from "@burger-page/contracts"
 import {
   DAY_DISPLAY_ORDER,
   DAY_NAMES,
@@ -9,6 +10,9 @@ import {
   formatRanges,
   describeNextOpening,
   closedMessage,
+  isOvernightRange,
+  copyRangeToWeekdays,
+  copyRangeToWeekend,
 } from "./storeSchedule"
 import { DEFAULT_STORE_CONFIG } from "@/constants/themePresets"
 
@@ -85,6 +89,49 @@ describe("storeSchedule helpers", () => {
     it("joins several ranges and shows Cerrado for an empty day", () => {
       expect(formatRanges(rangesForDay(schedule, 1))).toBe("09:00 - 14:00, 18:00 - 22:00")
       expect(formatRanges([])).toBe("Cerrado")
+    })
+  })
+
+  describe("isOvernightRange", () => {
+    it("detects when close time is strictly earlier than open time", () => {
+      expect(isOvernightRange("20:00", "02:00")).toBe(true)
+      expect(isOvernightRange("23:30", "04:00")).toBe(true)
+      expect(isOvernightRange("09:00", "18:00")).toBe(false)
+      expect(isOvernightRange("00:00", "00:00")).toBe(false) // 24h is not overnight crossing
+      expect(isOvernightRange("12:00", "12:00")).toBe(false)
+    })
+  })
+
+  describe("copyRangeToWeekdays and copyRangeToWeekend shortcuts", () => {
+    const baseSchedule: WeeklySchedule = [
+      { dayOfWeek: 1, open: "09:00", close: "18:00" },
+      { dayOfWeek: 6, open: "13:00", close: "02:00" },
+      { dayOfWeek: 0, open: "14:00", close: "20:00" },
+    ]
+
+    it("copies Monday hours across all weekdays (Lun-Vie) preserving weekend", () => {
+      const result = copyRangeToWeekdays(baseSchedule, 1)
+      const weekdays = [1, 2, 3, 4, 5]
+      for (const d of weekdays) {
+        expect(result.filter((r) => r.dayOfWeek === d)).toEqual([
+          { dayOfWeek: d, open: "09:00", close: "18:00" },
+        ])
+      }
+      // Weekend is untouched
+      expect(result.find((r) => r.dayOfWeek === 6)).toEqual({ dayOfWeek: 6, open: "13:00", close: "02:00" })
+      expect(result.find((r) => r.dayOfWeek === 0)).toEqual({ dayOfWeek: 0, open: "14:00", close: "20:00" })
+    })
+
+    it("copies Saturday hours across the weekend (Sab-Dom) preserving weekdays", () => {
+      const result = copyRangeToWeekend(baseSchedule, 6)
+      expect(result.filter((r) => r.dayOfWeek === 6)).toEqual([
+        { dayOfWeek: 6, open: "13:00", close: "02:00" },
+      ])
+      expect(result.filter((r) => r.dayOfWeek === 0)).toEqual([
+        { dayOfWeek: 0, open: "13:00", close: "02:00" },
+      ])
+      // Monday is untouched
+      expect(result.find((r) => r.dayOfWeek === 1)).toEqual({ dayOfWeek: 1, open: "09:00", close: "18:00" })
     })
   })
 })

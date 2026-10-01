@@ -101,4 +101,50 @@ describe("WeeklyScheduleEditor", () => {
     render(<WeeklyScheduleEditor schedule={week()} onChange={vi.fn()} />)
     expect(screen.getByText(/20:00 - 02:00/)).toBeDefined()
   })
+
+  it("shows an overnight indicator when a day closes past midnight", () => {
+    const schedule: WeeklySchedule = [
+      { dayOfWeek: 5, open: "20:00", close: "02:00" },
+    ]
+    render(<WeeklyScheduleEditor schedule={schedule} onChange={vi.fn()} />)
+    const r = within(row("Viernes"))
+    expect(r.getByText(/\+1 día|cierra al día siguiente/i)).toBeDefined()
+  })
+
+  it("copies Monday hours to all weekdays with the 'Lun–Vie igual' shortcut", () => {
+    const onChange = vi.fn()
+    const schedule: WeeklySchedule = [
+      { dayOfWeek: 1, open: "10:00", close: "20:00" },
+      { dayOfWeek: 6, open: "14:00", close: "23:00" },
+    ]
+    render(<WeeklyScheduleEditor schedule={schedule} onChange={onChange} />)
+    fireEvent.click(screen.getByRole("button", { name: /Lun–Vie igual/i }))
+    const next = onChange.mock.calls[0][0] as WeeklySchedule
+    const weekdays = [1, 2, 3, 4, 5]
+    for (const d of weekdays) {
+      expect(next.filter((r) => r.dayOfWeek === d)).toEqual([
+        { dayOfWeek: d, open: "10:00", close: "20:00" },
+      ])
+    }
+    expect(next.find((r) => r.dayOfWeek === 6)).toEqual({ dayOfWeek: 6, open: "14:00", close: "23:00" })
+  })
+
+  it("copies Saturday hours to Sunday with the 'Fin de semana' shortcut", () => {
+    const onChange = vi.fn()
+    const schedule: WeeklySchedule = [
+      { dayOfWeek: 1, open: "10:00", close: "20:00" },
+      { dayOfWeek: 6, open: "14:00", close: "01:00" },
+      { dayOfWeek: 0, open: "12:00", close: "18:00" },
+    ]
+    render(<WeeklyScheduleEditor schedule={schedule} onChange={onChange} />)
+    fireEvent.click(screen.getByRole("button", { name: /Fin de semana/i }))
+    const next = onChange.mock.calls[0][0] as WeeklySchedule
+    expect(next.filter((r) => r.dayOfWeek === 6)).toEqual([
+      { dayOfWeek: 6, open: "14:00", close: "01:00" },
+    ])
+    expect(next.filter((r) => r.dayOfWeek === 0)).toEqual([
+      { dayOfWeek: 0, open: "14:00", close: "01:00" },
+    ])
+    expect(next.find((r) => r.dayOfWeek === 1)).toEqual({ dayOfWeek: 1, open: "10:00", close: "20:00" })
+  })
 })
