@@ -436,4 +436,49 @@ describe('RLS tenant isolation (write policies, app_user role)', () => {
       expect(rows[0].status).toBe('delivered');
     });
   });
+
+  describe('RLS helper functions (db-hardening-0008 T3)', () => {
+    it('app_current_restaurant_id() / app_is_super_admin() mirror the session GUCs', async () => {
+      if (!isDbConnected) return;
+      const none = await asTenant(null, null, (c) =>
+        c.query('SELECT public.app_current_restaurant_id() AS rid, public.app_is_super_admin() AS sa')
+      );
+      expect(none.rows[0]).toEqual({ rid: null, sa: false });
+
+      const tenant = await asTenant(RESTAURANT_A, null, (c) =>
+        c.query('SELECT public.app_current_restaurant_id() AS rid, public.app_is_super_admin() AS sa')
+      );
+      expect(tenant.rows[0]).toEqual({ rid: RESTAURANT_A, sa: false });
+
+      const admin = await asTenant(null, 'super_admin', (c) =>
+        c.query('SELECT public.app_current_restaurant_id() AS rid, public.app_is_super_admin() AS sa')
+      );
+      expect(admin.rows[0]).toEqual({ rid: null, sa: true });
+    });
+
+    it('helpers are STABLE (InitPlan-cacheable)', async () => {
+      if (!isDbConnected) return;
+      const { rows } = await adminPool.query(
+        `SELECT proname, provolatile FROM pg_proc
+         WHERE pronamespace = 'public'::regnamespace
+           AND proname IN ('app_current_restaurant_id', 'app_is_super_admin')`
+      );
+      expect(rows).toHaveLength(2);
+      for (const r of rows) expect(r.provolatile).toBe('s');
+    });
+
+    it('every tenant_isolation_* policy goes through the helpers instead of raw current_setting', async () => {
+      if (!isDbConnected) return;
+      const { rows } = await adminPool.query(
+        `SELECT policyname, COALESCE(qual, '') || ' ' || COALESCE(with_check, '') AS expr
+         FROM pg_policies
+         WHERE schemaname = 'public' AND policyname LIKE 'tenant_isolation_%'`
+      );
+      expect(rows.length).toBeGreaterThan(20);
+      for (const r of rows) {
+        expect(r.expr, r.policyname).not.toContain('current_setting');
+        expect(r.expr, r.policyname).toMatch(/app_current_restaurant_id|app_is_super_admin/);
+      }
+    });
+  });
 });

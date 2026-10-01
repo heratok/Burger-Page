@@ -136,6 +136,48 @@ describe('migration 0000000000008 (db hardening) parity with the baseline schema
       );
     });
   });
+  describe('T3 RLS helper functions', () => {
+    const norm = (sql?: string) => sql?.replace(/\s+/g, ' ');
+    const policyStatements = (sql: string) =>
+      [...sql.matchAll(/CREATE POLICY "([^"]+)" ON public\.(\w+)[\s\S]*?;\n/g)].map((m) => ({ name: m[1], table: m[2], sql: m[0] }));
+
+    it('defines STABLE app_current_restaurant_id() and app_is_super_admin() identically in baseline and up', () => {
+      for (const fn of ['app_current_restaurant_id', 'app_is_super_admin']) {
+        const body = extractFunction(baseline, fn);
+        expect(body).toMatch(/\bSTABLE\b/);
+        expect(extractFunction(up, fn)).toBe(body);
+      }
+    });
+
+    it('baseline tenant policies read the tenant only through the helpers', () => {
+      const tenant = policyStatements(baseline).filter(
+        (p) => p.name.startsWith('tenant_isolation_') || p.name === 'users_select_for_auth'
+      );
+      expect(tenant.length).toBeGreaterThan(20);
+      for (const p of tenant) {
+        expect(p.sql, p.name).not.toMatch(/current_setting/);
+        expect(p.sql, p.name).toContain('(SELECT public.app_current_restaurant_id())');
+      }
+    });
+
+    it('up recreates every rewritten tenant policy exactly as the baseline declares it', () => {
+      const upPolicies = new Map(policyStatements(up).map((p) => [p.name, p.sql]));
+      const tenant = policyStatements(baseline).filter(
+        (p) => p.name.startsWith('tenant_isolation_') || p.name === 'users_select_for_auth'
+      );
+      for (const p of tenant) {
+        expect(norm(upPolicies.get(p.name)), p.name).toBe(norm(p.sql));
+      }
+    });
+
+    it('down restores the inline current_setting policies', () => {
+      const downPolicies = policyStatements(down);
+      expect(downPolicies.length).toBeGreaterThan(20);
+      for (const p of downPolicies) {
+        expect(p.sql, p.name).toContain("current_setting('app.");
+      }
+    });
+  });
 });
 
 describe('schema file structure', () => {

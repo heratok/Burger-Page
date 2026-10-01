@@ -61,6 +61,29 @@ BEGIN
 END;
 $$;
 
+-- RLS helper functions (db-hardening-0008): the tenant and the platform-admin
+-- role of the session, read from the GUCs PgClient.withTenantContext sets with
+-- SET LOCAL. Policies call them as (SELECT public.fn()) so the planner
+-- evaluates each one once per query (InitPlan) instead of once per row.
+-- STABLE is what makes that caching legal.
+CREATE OR REPLACE FUNCTION public.app_current_restaurant_id()
+RETURNS TEXT
+LANGUAGE sql
+STABLE
+SET search_path = pg_catalog, pg_temp
+AS $$
+    SELECT NULLIF(current_setting('app.restaurant_id', true), '');
+$$;
+
+CREATE OR REPLACE FUNCTION public.app_is_super_admin()
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SET search_path = pg_catalog, pg_temp
+AS $$
+    SELECT COALESCE(NULLIF(current_setting('app.actor_role', true), '') = 'super_admin', FALSE);
+$$;
+
 
 -- ============================================================================
 -- 2. RELATIONAL TABLES
@@ -1060,6 +1083,21 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.restaurant_order_counters TO app_
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.users TO app_user;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO app_user;
 
+-- RLS helpers: read-only GUC lookups, no data access. PUBLIC keeps its default
+-- EXECUTE on purpose: a session of another role (e.g. Supabase anon) must get an
+-- empty result from the policies, not a permission error. The explicit grants
+-- document the roles that rely on them.
+GRANT EXECUTE ON FUNCTION public.app_current_restaurant_id() TO app_user;
+GRANT EXECUTE ON FUNCTION public.app_is_super_admin() TO app_user;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+        EXECUTE 'GRANT EXECUTE ON FUNCTION public.app_current_restaurant_id() TO service_role';
+        EXECUTE 'GRANT EXECUTE ON FUNCTION public.app_is_super_admin() TO service_role';
+    END IF;
+END;
+$$;
+
 GRANT EXECUTE ON FUNCTION public.adjust_inventory_stock(TEXT, TEXT, NUMERIC) TO app_user;
 GRANT EXECUTE ON FUNCTION public.create_order_atomic(TEXT, TEXT, TEXT, TEXT, NUMERIC, NUMERIC, TEXT, JSONB, NUMERIC, TEXT) TO app_user;
 -- M1/C2: the hardened signature is the 5-arg one (p_expected_status CAS); the
@@ -1194,10 +1232,10 @@ CREATE POLICY "public_read_available_additions"
     CREATE POLICY "users_select_for_auth" ON public.users
         FOR SELECT
         USING (
-            ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text)
+            (SELECT public.app_is_super_admin())
             OR (
-                (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), '')) IS NOT NULL
-                AND restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))
+                (SELECT public.app_current_restaurant_id()) IS NOT NULL
+                AND restaurant_id = (SELECT public.app_current_restaurant_id())
             )
         );
     
@@ -1296,9 +1334,9 @@ CREATE POLICY "public_read_available_additions"
     CREATE POLICY "tenant_isolation_users_write" ON public.users
         FOR INSERT
         WITH CHECK (
-            ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text)
+            (SELECT public.app_is_super_admin())
             OR (
-                restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))
+                restaurant_id = (SELECT public.app_current_restaurant_id())
                 AND role <> 'super_admin'::text
             )
         );
@@ -1321,9 +1359,9 @@ CREATE POLICY "public_read_available_additions"
             FOR UPDATE
             USING (TRUE)
             WITH CHECK (
-                ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text)
+                (SELECT public.app_is_super_admin())
                 OR (
-                    restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))
+                    restaurant_id = (SELECT public.app_current_restaurant_id())
                     AND role <> 'super_admin'::text
                 )
             );
@@ -1358,171 +1396,171 @@ CREATE POLICY "public_read_available_additions"
     CREATE POLICY "tenant_isolation_users_delete" ON public.users
         FOR DELETE
         USING (
-            ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text)
-            OR (restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), '')))
+            (SELECT public.app_is_super_admin())
+            OR (restaurant_id = (SELECT public.app_current_restaurant_id()))
         );
     
 -- Restaurants write isolation
 DROP POLICY IF EXISTS "tenant_isolation_restaurants_write" ON public.restaurants;
 CREATE POLICY "tenant_isolation_restaurants_write" ON public.restaurants
     FOR ALL
-    USING ((id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text))
-    WITH CHECK ((id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
+    USING ((id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()))
+    WITH CHECK ((id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()));
 
 -- Restaurant Settings isolation
 DROP POLICY IF EXISTS "tenant_isolation_restaurant_settings" ON public.restaurant_settings;
 CREATE POLICY "tenant_isolation_restaurant_settings" ON public.restaurant_settings
     FOR ALL
-    USING ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text))
-    WITH CHECK ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
+    USING ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()))
+    WITH CHECK ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()));
 
 -- Restaurant Branding isolation
 DROP POLICY IF EXISTS "tenant_isolation_restaurant_branding" ON public.restaurant_branding;
 CREATE POLICY "tenant_isolation_restaurant_branding" ON public.restaurant_branding
     FOR ALL
-    USING ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text))
-    WITH CHECK ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
+    USING ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()))
+    WITH CHECK ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()));
 
 -- Restaurant Hours isolation
 DROP POLICY IF EXISTS "tenant_isolation_restaurant_hours_select" ON public.restaurant_hours;
 CREATE POLICY "tenant_isolation_restaurant_hours_select" ON public.restaurant_hours
     FOR SELECT
-    USING ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
+    USING ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()));
 
 DROP POLICY IF EXISTS "tenant_isolation_restaurant_hours_write" ON public.restaurant_hours;
 CREATE POLICY "tenant_isolation_restaurant_hours_write" ON public.restaurant_hours
     FOR INSERT
-    WITH CHECK ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
+    WITH CHECK ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()));
 
 DROP POLICY IF EXISTS "tenant_isolation_restaurant_hours_update" ON public.restaurant_hours;
 CREATE POLICY "tenant_isolation_restaurant_hours_update" ON public.restaurant_hours
     FOR UPDATE
-    USING ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text))
-    WITH CHECK ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
+    USING ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()))
+    WITH CHECK ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()));
 
 DROP POLICY IF EXISTS "tenant_isolation_restaurant_hours_delete" ON public.restaurant_hours;
 CREATE POLICY "tenant_isolation_restaurant_hours_delete" ON public.restaurant_hours
     FOR DELETE
-    USING ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
+    USING ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()));
 
 -- Categories isolation
 DROP POLICY IF EXISTS "tenant_isolation_categories_select" ON public.categories;
 CREATE POLICY "tenant_isolation_categories_select" ON public.categories
     FOR SELECT
-    USING ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
+    USING ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()));
 
 DROP POLICY IF EXISTS "tenant_isolation_categories_write" ON public.categories;
 CREATE POLICY "tenant_isolation_categories_write" ON public.categories
     FOR INSERT
-    WITH CHECK ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
+    WITH CHECK ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()));
 
 DROP POLICY IF EXISTS "tenant_isolation_categories_update" ON public.categories;
 CREATE POLICY "tenant_isolation_categories_update" ON public.categories
     FOR UPDATE
-    USING ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text))
-    WITH CHECK ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
+    USING ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()))
+    WITH CHECK ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()));
 
 DROP POLICY IF EXISTS "tenant_isolation_categories_delete" ON public.categories;
 CREATE POLICY "tenant_isolation_categories_delete" ON public.categories
     FOR DELETE
-    USING ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
+    USING ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()));
 
 -- Products isolation
 DROP POLICY IF EXISTS "tenant_isolation_products_select" ON public.products;
 CREATE POLICY "tenant_isolation_products_select" ON public.products
     FOR SELECT
-    USING ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
+    USING ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()));
 
 DROP POLICY IF EXISTS "tenant_isolation_products_write" ON public.products;
 CREATE POLICY "tenant_isolation_products_write" ON public.products
     FOR INSERT
-    WITH CHECK ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
+    WITH CHECK ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()));
 
 DROP POLICY IF EXISTS "tenant_isolation_products_update" ON public.products;
 CREATE POLICY "tenant_isolation_products_update" ON public.products
     FOR UPDATE
-    USING ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text))
-    WITH CHECK ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
+    USING ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()))
+    WITH CHECK ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()));
 
 DROP POLICY IF EXISTS "tenant_isolation_products_delete" ON public.products;
 CREATE POLICY "tenant_isolation_products_delete" ON public.products
     FOR DELETE
-    USING ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
+    USING ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()));
 
 -- Product Additions isolation
 DROP POLICY IF EXISTS "tenant_isolation_product_additions_select" ON public.product_additions;
 CREATE POLICY "tenant_isolation_product_additions_select" ON public.product_additions
     FOR SELECT
-    USING ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
+    USING ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()));
 
 DROP POLICY IF EXISTS "tenant_isolation_product_additions_write" ON public.product_additions;
 CREATE POLICY "tenant_isolation_product_additions_write" ON public.product_additions
     FOR INSERT
-    WITH CHECK ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
+    WITH CHECK ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()));
 
 DROP POLICY IF EXISTS "tenant_isolation_product_additions_update" ON public.product_additions;
 CREATE POLICY "tenant_isolation_product_additions_update" ON public.product_additions
     FOR UPDATE
-    USING ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text))
-    WITH CHECK ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
+    USING ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()))
+    WITH CHECK ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()));
 
 DROP POLICY IF EXISTS "tenant_isolation_product_additions_delete" ON public.product_additions;
 CREATE POLICY "tenant_isolation_product_additions_delete" ON public.product_additions
     FOR DELETE
-    USING ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
+    USING ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()));
 
 -- Customers isolation
 DROP POLICY IF EXISTS "tenant_isolation_customers" ON public.customers;
 CREATE POLICY "tenant_isolation_customers" ON public.customers
     FOR ALL
-    USING ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text))
-    WITH CHECK ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
+    USING ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()))
+    WITH CHECK ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()));
 
 -- Orders isolation
 DROP POLICY IF EXISTS "tenant_isolation_orders" ON public.orders;
 CREATE POLICY "tenant_isolation_orders" ON public.orders
     FOR ALL
-    USING ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text))
-    WITH CHECK ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
+    USING ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()))
+    WITH CHECK ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()));
 
 -- Order Items isolation
 DROP POLICY IF EXISTS "tenant_isolation_order_items" ON public.order_items;
 CREATE POLICY "tenant_isolation_order_items" ON public.order_items
     FOR ALL
-    USING ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text))
-    WITH CHECK ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
+    USING ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()))
+    WITH CHECK ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()));
 
 -- Order Item Additions isolation
 DROP POLICY IF EXISTS "tenant_isolation_order_item_additions" ON public.order_item_additions;
 CREATE POLICY "tenant_isolation_order_item_additions" ON public.order_item_additions
     FOR ALL
-    USING ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text))
-    WITH CHECK ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
+    USING ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()))
+    WITH CHECK ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()));
 
 -- Order Status History isolation
 DROP POLICY IF EXISTS "tenant_isolation_order_status_history" ON public.order_status_history;
 CREATE POLICY "tenant_isolation_order_status_history" ON public.order_status_history
     FOR ALL
-    USING ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text))
-    WITH CHECK ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
+    USING ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()))
+    WITH CHECK ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()));
 
 -- Restaurant Order Counters isolation
 DROP POLICY IF EXISTS "tenant_isolation_restaurant_order_counters" ON public.restaurant_order_counters;
 CREATE POLICY "tenant_isolation_restaurant_order_counters" ON public.restaurant_order_counters
     FOR ALL
-    USING ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text))
-    WITH CHECK ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
+    USING ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()))
+    WITH CHECK ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()));
 
 -- Suppliers isolation
 DROP POLICY IF EXISTS "tenant_isolation_suppliers" ON public.suppliers;
 CREATE POLICY "tenant_isolation_suppliers" ON public.suppliers
     FOR ALL
-    USING ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text))
-    WITH CHECK ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
+    USING ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()))
+    WITH CHECK ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()));
 
 -- Inventory Items isolation
 DROP POLICY IF EXISTS "tenant_isolation_inventory_items" ON public.inventory_items;
 CREATE POLICY "tenant_isolation_inventory_items" ON public.inventory_items
     FOR ALL
-    USING ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text))
-    WITH CHECK ((restaurant_id = (SELECT NULLIF(current_setting('app.restaurant_id'::text, true), ''))) OR ((SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'super_admin'::text));
+    USING ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()))
+    WITH CHECK ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()));

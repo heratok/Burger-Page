@@ -109,7 +109,8 @@ DATABASE_URL=postgres://app_user:tu_password_segura_aqui@localhost:5432/burger_p
 * **Rol de conexión (`app_user`)**: sin `BYPASSRLS`. Acceso restringido por contexto de tenant.
 * **Aislamiento por transacción**: cada query/transacción establece `SET LOCAL app.restaurant_id = $1`
   (y `app.actor_role` para escalas de privilegio) vía `PgClient.withTenantContext`.
-* **Políticas InitPlan**: las políticas RLS usan `(SELECT current_setting('app.restaurant_id', true))`
-  para evaluar el tenant una sola vez por consulta.
+* **Políticas InitPlan**: las políticas RLS usan `(SELECT public.app_current_restaurant_id())` y
+  `(SELECT public.app_is_super_admin())` (funciones `STABLE` que leen los GUC `app.restaurant_id` /
+  `app.actor_role`) para evaluar el tenant una sola vez por consulta.
 * **`users`**: FORCE RLS + lecturas de autenticación solo por las funciones
   SECURITY DEFINER `look_up_user_for_auth*` (search_path endurecido, sin PUBLIC).
