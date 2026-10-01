@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { ID_PREFIX, isValidId, newId } from '../../domain/shared/newId.js';
 import { Order, OrderItem, OrderItemAddition } from '../../domain/models/Order.js';
 import { OrderRepository } from '../../domain/ports/out/OrderRepository.js';
 import { ProductRepository } from '../../domain/ports/out/ProductRepository.js';
@@ -226,7 +226,7 @@ export class UpdateOrderUseCase {
     );
 
     return {
-      id: (itemDto as any).id || `ord_item_${randomUUID()}`,
+      id: this.resolveClientId((itemDto as any).id, ID_PREFIX.orderItem),
       productId: resolvedProductId,
       productName,
       unitPrice,
@@ -301,6 +301,19 @@ export class UpdateOrderUseCase {
     return additions;
   }
 
+  /**
+   * Keeps a client-supplied line id (an existing line being edited) when it
+   * satisfies the database id format; mints one when absent; rejects anything
+   * else instead of letting the database CHECK surface as a 500.
+   */
+  private resolveClientId(raw: unknown, prefix: string): string {
+    if (raw === undefined || raw === null || raw === '') return newId(prefix);
+    if (!isValidId(raw)) {
+      throw new ValidationError('Order line ids must be 1-64 characters: letters, digits, "_" or "-"');
+    }
+    return raw;
+  }
+
   private async resolveAddition(
     rawAdd: any,
     resolvedRestId: string,
@@ -338,7 +351,7 @@ export class UpdateOrderUseCase {
     }
 
     return {
-      id: rawAdd.id || `ord_add_${randomUUID()}`,
+      id: this.resolveClientId(rawAdd.id, ID_PREFIX.orderAddition),
       additionId,
       additionName,
       unitPrice,

@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { ID_PREFIX, newId } from '../../domain/shared/newId.js';
 import { Order, OrderItem, OrderItemAddition, PaymentMethod } from '../../domain/models/Order.js';
 import { Customer } from '../../domain/models/Customer.js';
 import { Restaurant } from '../../domain/models/Restaurant.js';
@@ -138,7 +138,7 @@ export class CreateOrderUseCase {
       }
 
       const newCustomer = new Customer(
-        `cust_${randomUUID()}`,
+        newId(ID_PREFIX.customer),
         restaurantId,
         customerDto.name?.trim() || '',
         phone,
@@ -216,7 +216,7 @@ export class CreateOrderUseCase {
     const lineItemTotal = (verifiedProductPrice + additionsTotal) * itemDto.quantity;
 
     const item: OrderItem = {
-      id: `ord_item_${randomUUID()}`,
+      id: newId(ID_PREFIX.orderItem),
       productId: product.id,
       productName: product.name,
       unitPrice: verifiedProductPrice,
@@ -305,7 +305,7 @@ export class CreateOrderUseCase {
 
     return {
       addition: {
-        id: `ord_add_${randomUUID()}`,
+        id: newId(ID_PREFIX.orderAddition),
         additionId: addition.id,
         additionName: addition.name,
         unitPrice: verifiedAdditionPrice,
@@ -376,7 +376,7 @@ export class CreateOrderUseCase {
   }): Order {
     const { restaurantId, customerId, items, deliveryFee, payment, dto } = params;
     const order = new Order(
-      `ord_${randomUUID()}`,
+      newId(ID_PREFIX.order),
       restaurantId,
       customerId,
       items,

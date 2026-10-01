@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { ID_PREFIX, isValidId, newId } from '../../domain/shared/newId.js';
 import { SupplierRepository } from '../../domain/ports/out/SupplierRepository.js';
 import { Supplier } from '../../domain/models/Supplier.js';
 import { CreateSupplierInput } from '@burger-page/contracts';
@@ -13,9 +13,13 @@ export class CreateSupplierUseCase {
       throw new ValidationError('Supplier name is required');
     }
 
+    if (input.id !== undefined && !isValidId(input.id)) {
+      throw new ValidationError('Supplier id must be 1-64 characters: letters, digits, "_" or "-"');
+    }
+
     const now = new Date().toISOString();
     const supplier: Supplier = {
-      id: input.id || `sup-${randomUUID()}`,
+      id: input.id ?? newId(ID_PREFIX.supplier),
       restaurantId,
       name: trimmedName,
       category: input.category?.trim() || 'general',

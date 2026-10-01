@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { ID_PREFIX, newId } from '../../domain/shared/newId.js';
 import { RestaurantRepository } from '../../domain/ports/out/RestaurantRepository.js';
 import { CategoryRepository } from '../../domain/ports/out/CategoryRepository.js';
 import { ProductRepository } from '../../domain/ports/out/ProductRepository.js';
@@ -72,7 +72,7 @@ export class UpdateRestaurantCategoriesUseCase {
             });
           } else {
             await this.categoryRepo.save({
-              id: `cat_${randomUUID()}`,
+              id: newId(ID_PREFIX.category),
               restaurantId: restaurant.id,
               name,
               displayOrder: i,

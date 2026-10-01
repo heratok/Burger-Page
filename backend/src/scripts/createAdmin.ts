@@ -1,6 +1,6 @@
 import readline from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
-import { randomUUID } from 'node:crypto';
+import { ID_PREFIX, newId } from '../domain/shared/newId.js';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 
@@ -57,7 +57,7 @@ async function main() {
 
   const hasher = new CryptoPasswordHasher();
   const passwordHash = await hasher.hash(password);
-  const userId = `usr_${randomUUID()}`;
+  const userId = newId(ID_PREFIX.user);
   const now = new Date().toISOString();
 
   console.log('\n⚙️  Generando credenciales y hash criptográfico (scrypt)...');

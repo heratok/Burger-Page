@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { ID_PREFIX, newId } from '../../domain/shared/newId.js';
 import { UserRepository } from '../../domain/ports/out/UserRepository.js';
 import { PasswordHasher } from '../../domain/ports/out/PasswordHasher.js';
 import { RestaurantRepository } from '../../domain/ports/out/RestaurantRepository.js';
@@ -41,7 +41,7 @@ export class CreateUserUseCase {
     const passwordHash = await this.hasher.hash(dto.password);
 
     const user: User = {
-      id: randomUUID(),
+      id: newId(ID_PREFIX.user),
       username,
       passwordHash,
       role: dto.role,
