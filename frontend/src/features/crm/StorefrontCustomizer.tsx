@@ -93,7 +93,11 @@ export const StorefrontCustomizer: React.FC = () => {
         {/* LEFT COLUMN: Controls & Settings */}
         <div className="space-y-5 lg:col-span-5">
           {/* Section Navigation Tabs */}
-          <div className="grid grid-cols-6 rounded-xl bg-slate-100 p-1 dark:bg-slate-800 border dark:border-slate-700 text-xs font-semibold gap-1">
+          <div
+            role="tablist"
+            aria-label="Secciones del personalizador"
+            className="grid grid-cols-3 gap-1 rounded-xl border bg-slate-100 p-1 text-xs font-semibold dark:border-slate-700 dark:bg-slate-800"
+          >
             {CUSTOMIZER_TABS.map((tab) => {
               const Icon = tab.icon
               const isActive = activeSection === tab.id
@@ -101,21 +105,26 @@ export const StorefrontCustomizer: React.FC = () => {
                 <button
                   key={tab.id}
                   type="button"
+                  role="tab"
+                  id={`customizer-tab-${tab.id}`}
+                  aria-selected={isActive}
+                  aria-controls="customizer-tabpanel"
                   onClick={() => setActiveSection(tab.id)}
-                  className={`rounded-lg py-2 px-1 transition-all text-center flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer ${
+                  className={`flex min-h-10 items-center justify-center gap-1.5 rounded-lg px-1.5 py-2 text-center whitespace-nowrap transition-all cursor-pointer ${
                     isActive
                       ? "bg-white text-indigo-700 shadow-xs dark:bg-slate-700 dark:text-white font-bold"
                       : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
                   }`}
                 >
                   <Icon className={`size-3.5 ${tab.iconClass} shrink-0`} />
-                  <span className="truncate">{tab.label}</span>
+                  <span>{tab.label}</span>
                 </button>
               )
             })}
           </div>
 
           {/* Active Section Content */}
+          <div role="tabpanel" id="customizer-tabpanel" aria-labelledby={`customizer-tab-${activeSection}`}>
           {activeSection === "templates" && <CustomizerPresetsSection draft={draft} setDraft={setDraft} isDark={isDark} />}
           {activeSection === "branding" && (
             <CustomizerBrandingSection draft={draft} setDraft={setDraft} restaurantId={activeRestaurant?.id} isDark={isDark} />
@@ -124,6 +133,7 @@ export const StorefrontCustomizer: React.FC = () => {
           {activeSection === "uiux" && <CustomizerLayoutSection draft={draft} setDraft={setDraft} isDark={isDark} />}
           {activeSection === "business" && <CustomizerBusinessSection draft={draft} setDraft={setDraft} isDark={isDark} />}
           {activeSection === "tables" && <CustomizerTablesSection restaurantId={activeRestaurant?.id} isDark={isDark} />}
+          </div>
         </div>
 
         {/* RIGHT COLUMN: Interactive Live Simulator Preview */}

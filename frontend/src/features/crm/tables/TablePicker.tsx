@@ -45,7 +45,7 @@ export function TablePicker({
   }
 
   const handleCreate = async () => {
-    const name = newName.trim()
+    const name = newName.replace(/\s+/g, " ").trim()
     if (!name || isSaving) return
     setIsSaving(true)
     const created = await onCreateTable(name)

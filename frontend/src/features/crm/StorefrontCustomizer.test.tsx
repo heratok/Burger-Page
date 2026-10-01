@@ -221,33 +221,38 @@ describe("StorefrontCustomizer & Subcomponents (TDD Modularization)", () => {
       )
 
       // Initial active tab: Estilos (templates)
+      expect(screen.getByRole("tablist", { name: /Secciones del personalizador/i })).toBeDefined()
+      expect(screen.getAllByRole("tab")).toHaveLength(6)
+      expect(screen.getByRole("tab", { name: /Estilos/i }).getAttribute("aria-selected")).toBe("true")
       expect(screen.getByText("Personalizador Visual de Tienda")).toBeDefined()
       expect(screen.getByText("Estilos Listos en 1 Clic")).toBeDefined()
 
       // Navigate to "Marca" tab
-      const marcaTab = screen.getByRole("button", { name: /Marca/i })
+      const marcaTab = screen.getByRole("tab", { name: /Marca/i })
       fireEvent.click(marcaTab)
       expect(screen.getByText("Identidad Visual & Fotos")).toBeDefined()
 
       // Navigate to "Colores" tab
-      const coloresTab = screen.getByRole("button", { name: /Colores/i })
+      const coloresTab = screen.getByRole("tab", { name: /Colores/i })
       fireEvent.click(coloresTab)
       expect(screen.getByText("Color de Acento de la Tienda")).toBeDefined()
 
       // Navigate to "Diseño" tab
-      const disenoTab = screen.getByRole("button", { name: /Diseño/i })
+      const disenoTab = screen.getByRole("tab", { name: /Diseño/i })
       fireEvent.click(disenoTab)
       expect(screen.getByText("Tipografía de la Carta")).toBeDefined()
 
       // Navigate to "Pedidos" tab
-      const pedidosTab = screen.getByRole("button", { name: /Pedidos/i })
+      const pedidosTab = screen.getByRole("tab", { name: /Pedidos/i })
       fireEvent.click(pedidosTab)
       expect(screen.getByText("Información Comercial, Pedidos & Domicilios")).toBeDefined()
 
       // Navigate to "Mesas" tab
-      const mesasTab = screen.getByRole("button", { name: /Mesas/i })
+      const mesasTab = screen.getByRole("tab", { name: /Mesas/i })
       fireEvent.click(mesasTab)
       expect(screen.getByText("Mesas del salón")).toBeDefined()
+      expect(screen.getByRole("tab", { name: /Mesas/i }).getAttribute("aria-selected")).toBe("true")
+      expect(screen.getByRole("tab", { name: /Estilos/i }).getAttribute("aria-selected")).toBe("false")
     })
   })
 })
