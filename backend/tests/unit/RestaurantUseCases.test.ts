@@ -126,6 +126,11 @@ describe('SUS-20 update responses never echo adminPassword (Seam D)', () => {
 
   beforeEach(() => {
     repo = mockRepo();
+    // The use case re-reads the persisted row after save: make save persist
+    // what it receives, as the real adapters do.
+    (repo.save as any).mockImplementation(async (saved: unknown) => {
+      (repo.findById as any).mockResolvedValue(saved);
+    });
   });
 
   it('does not echo a newly provided adminPassword while keeping update semantics', async () => {

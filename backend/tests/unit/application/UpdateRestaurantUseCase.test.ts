@@ -69,9 +69,31 @@ class FakeRestaurantRepository implements RestaurantRepository {
 
   async save(restaurant: Restaurant): Promise<void> {
     this.saveCalls.push(restaurant);
+    const idx = this.restaurants.findIndex((r) => r.id === restaurant.id);
+    const stored = this.toStored(restaurant);
+    if (idx >= 0) {
+      this.restaurants[idx] = stored;
+    } else {
+      this.restaurants.push(stored);
+    }
   }
 
   async delete(): Promise<void> {}
+
+  /** Hook for fakes that, like the Pg adapter, normalize what they persist. */
+  protected toStored(restaurant: Restaurant): Restaurant {
+    return restaurant;
+  }
+}
+
+// Mirrors PgRestaurantRepository: open_time/close_time are the single stored
+// source, derived from a parseable "HH:MM - HH:MM" config.openingHours text.
+class HoursNormalizingRestaurantRepository extends FakeRestaurantRepository {
+  protected toStored(restaurant: Restaurant): Restaurant {
+    const text = restaurant.config?.openingHours;
+    const match = typeof text === 'string' ? /^(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})$/.exec(text) : null;
+    return match ? { ...restaurant, openingHours: { open: match[1], close: match[2] } } : restaurant;
+  }
 }
 
 function restaurant(overrides: Partial<Restaurant> = {}): Restaurant {
@@ -241,5 +263,16 @@ describe('UpdateRestaurantUseCase', () => {
     expect(activeCats.map((c) => c.name)).toEqual(['Pizza', 'Postres']);
     const deactivated = catRepo.categories.filter((c) => !c.isActive);
     expect(deactivated.map((c) => c.name)).toEqual(['Bebidas']);
+  });
+
+  it('returns the persisted restaurant, so derived openingHours match the saved hours text', async () => {
+    const repo = new HoursNormalizingRestaurantRepository([restaurant()]);
+    const useCase = new UpdateRestaurantUseCase(repo);
+
+    const result = await useCase.execute('rest-1', { config: { openingHours: '11:00 - 23:00' } }, 'restaurant_admin');
+
+    expect(result.config?.openingHours).toBe('11:00 - 23:00');
+    expect(result.openingHours).toEqual({ open: '11:00', close: '23:00' });
+    expect(result).not.toHaveProperty('adminPassword');
   });
 });
