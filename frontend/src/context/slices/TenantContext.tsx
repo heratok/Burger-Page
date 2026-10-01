@@ -274,11 +274,13 @@ export const TenantProvider: React.FC<{
       // by direct /slug navigation nor via the fetch fallback below). Only their
       // own session-bound restaurant is allowed; guests (storefront/landing) and
       // super admins keep the full switcher behavior.
-      if (session.role === "restaurant" && session.restaurantId) {
-        if (!target || target.id !== session.restaurantId) {
-          toast.warning("Solo podés operar tu propio restaurante")
-          return
-        }
+      // The own tenant may not be in the local envelope yet (first visit, cleared
+      // storage, list still in flight): that is NOT a foreign request. It is
+      // fetched below and only a record that resolves to ANOTHER tenant warns.
+      const ownId = session.role === "restaurant" ? session.restaurantId : undefined
+      if (ownId && target && target.id !== ownId) {
+        toast.warning("Solo podés operar tu propio restaurante")
+        return
       }
       if (target) {
         setActiveRestaurantId(target.id)
@@ -287,6 +289,10 @@ export const TenantProvider: React.FC<{
           .fetchRestaurant(idOrSlug)
           .then((fetched) => {
             if (fetched && fetched.id) {
+              if (ownId && fetched.id !== ownId) {
+                toast.warning("Solo podés operar tu propio restaurante")
+                return
+              }
               const formatted = toRestaurantRecord(fetched)
               setEnvelope((prev) =>
                 prev.restaurants.some((r) => r.id === fetched.id || r.slug === fetched.slug)
