@@ -4,6 +4,7 @@ import {
   nextOpening,
   isValidTimeOfDay,
   isValidTimeZone,
+  localDayOfWeek,
   weeklyScheduleSchema,
   type WeeklySchedule,
 } from './schedule.js';
@@ -207,5 +208,15 @@ describe('validators', () => {
     expect(weeklyScheduleSchema.safeParse([{ dayOfWeek: 1.5, open: '12:00', close: '22:30' }]).success).toBe(false);
     expect(weeklyScheduleSchema.safeParse([{ dayOfWeek: 1, open: '25:00', close: '22:30' }]).success).toBe(false);
     expect(weeklyScheduleSchema.safeParse([{ dayOfWeek: 1, open: '12:00', close: 'late' }]).success).toBe(false);
+  });
+});
+
+describe('localDayOfWeek', () => {
+  it('returns the weekday of the instant in the given timezone (0 = Sunday)', () => {
+    // 2026-10-06T03:00Z is Tuesday in UTC, Monday 22:00 in Bogota
+    const instant = new Date('2026-10-06T03:00:00Z');
+    expect(localDayOfWeek(instant, UTC)).toBe(2);
+    expect(localDayOfWeek(instant, BOGOTA)).toBe(1);
+    expect(localDayOfWeek(bogota(4, '12:00'), BOGOTA)).toBe(0);
   });
 });

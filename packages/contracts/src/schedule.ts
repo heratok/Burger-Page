@@ -119,3 +119,8 @@ export function nextOpening(schedule: WeeklySchedule, now: Date, timeZone: strin
 
   return best ? best.value : null;
 }
+
+/** Weekday (0 = Sunday) of `now` in the restaurant's `timeZone`. */
+export function localDayOfWeek(now: Date, timeZone: string): number {
+  return localClock(now, timeZone).dayOfWeek;
+}
