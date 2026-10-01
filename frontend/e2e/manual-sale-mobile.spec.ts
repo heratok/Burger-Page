@@ -34,6 +34,17 @@ test.describe('Manual Sale POS Modal - Mobile & Desktop Responsiveness with Addi
       localStorage.setItem('burger_page_active_rest_v2', 'rest-burger-craft');
     });
 
+    // Salon tables are server data now: the "Mesa / Salón" sale picks one from this list.
+    await page.route('**/api/tables**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([
+          { id: 'tbl_mock_4', restaurantId: 'rest-burger-craft', name: 'Mesa 4', sortOrder: 0, isActive: true },
+        ]),
+      });
+    });
+
     await page.route('**/api/users/login', async (route) => {
       await route.fulfill({
         status: 200,
@@ -237,7 +248,7 @@ test.describe('Manual Sale POS Modal - Mobile & Desktop Responsiveness with Addi
 
     // Select Mesa service
     await page.getByRole('button', { name: /Mesa/i }).click();
-    await page.getByPlaceholder(/Ej: 3, Terraza 1/i).fill('Mesa 4');
+    await page.getByRole('button', { name: /^Mesa 4/ }).click();
 
     // Submit sale
     const submitBtn = page.getByRole('button', { name: /Registrar Venta/i });
