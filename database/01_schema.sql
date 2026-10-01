@@ -115,7 +115,9 @@ CREATE TABLE IF NOT EXISTS public.restaurants (
     address                 TEXT,
     is_active               BOOLEAN NOT NULL DEFAULT TRUE,
     created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT chk_restaurants_id_format
+        CHECK (id ~ '^[A-Za-z0-9_-]{1,64}$')
 );
 
 COMMENT ON TABLE public.restaurants IS 'Tenants: identidad y ciclo de vida del restaurante. Config/branding viven en restaurant_settings / restaurant_branding (1:1).';
@@ -184,7 +186,9 @@ CREATE TABLE IF NOT EXISTS public.users (
     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT chk_restaurant_admin_has_restaurant
-        CHECK (role != 'restaurant_admin' OR restaurant_id IS NOT NULL)
+        CHECK (role != 'restaurant_admin' OR restaurant_id IS NOT NULL),
+    CONSTRAINT chk_users_id_format
+        CHECK (id ~ '^[A-Za-z0-9_-]{1,64}$')
 );
 
 COMMENT ON TABLE public.users IS 'Empleados/administradores. rol super_admin es de plataforma (restaurant_id NULL).';
@@ -204,7 +208,9 @@ CREATE TABLE IF NOT EXISTS public.categories (
         UNIQUE (restaurant_id, name),
     -- WU-1b (M2/M3): target del FK compuesto tenant-scoped de products.
     CONSTRAINT uq_categories_id_restaurant
-        UNIQUE (id, restaurant_id)
+        UNIQUE (id, restaurant_id),
+    CONSTRAINT chk_categories_id_format
+        CHECK (id ~ '^[A-Za-z0-9_-]{1,64}$')
 );
 
 COMMENT ON TABLE public.categories IS 'Secciones del menú por restaurante.';
@@ -236,7 +242,9 @@ CREATE TABLE IF NOT EXISTS public.products (
         -- PG15+ column list: anula SOLO category_id al borrar la categoría
         -- (comportamiento previo); un SET NULL sin lista anularía también
         -- restaurant_id y fallaría por NOT NULL con productos existentes.
-        ON DELETE SET NULL (category_id)
+        ON DELETE SET NULL (category_id),
+    CONSTRAINT chk_products_id_format
+        CHECK (id ~ '^[A-Za-z0-9_-]{1,64}$')
 );
 
 COMMENT ON TABLE public.products IS 'Ítems del menú. La categoría se resuelve por category_id (JOIN a categories); nunca se duplica el nombre.';
@@ -260,7 +268,9 @@ CREATE TABLE IF NOT EXISTS public.product_additions (
     CONSTRAINT fk_product_additions_product_restaurant
         FOREIGN KEY (product_id, restaurant_id)
         REFERENCES public.products(id, restaurant_id)
-        ON DELETE CASCADE
+        ON DELETE CASCADE,
+    CONSTRAINT chk_product_additions_id_format
+        CHECK (id ~ '^[A-Za-z0-9_-]{1,64}$')
 );
 
 COMMENT ON TABLE public.product_additions IS 'Extras/modificadores. product_id NULL = aplica a todo el restaurante.';
@@ -286,7 +296,9 @@ CREATE TABLE IF NOT EXISTS public.customers (
     CONSTRAINT uq_customers_restaurant_phone
         UNIQUE (restaurant_id, phone),
     CONSTRAINT uq_customers_id_restaurant
-        UNIQUE (id, restaurant_id)
+        UNIQUE (id, restaurant_id),
+    CONSTRAINT chk_customers_id_format
+        CHECK (id ~ '^[A-Za-z0-9_-]{1,64}$')
 );
 
 -- db-hardening-0008: optional text (email, address, barrio) is NULL when absent,
@@ -346,7 +358,9 @@ CREATE TABLE IF NOT EXISTS public.orders (
     -- db-hardening-0008: the stored total is always subtotal + delivery_fee
     -- (create_order_atomic and PgOrderRepository.update both write it that way).
     CONSTRAINT chk_orders_final_total
-        CHECK (final_total = subtotal + delivery_fee)
+        CHECK (final_total = subtotal + delivery_fee),
+    CONSTRAINT chk_orders_id_format
+        CHECK (id ~ '^[A-Za-z0-9_-]{1,64}$')
 );
 
 -- db-hardening-0008: orders, order_items, order_item_additions and
@@ -375,7 +389,9 @@ CREATE TABLE IF NOT EXISTS public.order_status_history (
     CONSTRAINT fk_order_status_history_order_tenant
         FOREIGN KEY (order_id, restaurant_id)
         REFERENCES public.orders(id, restaurant_id)
-        ON DELETE CASCADE
+        ON DELETE CASCADE,
+    CONSTRAINT chk_order_status_history_id_format
+        CHECK (id ~ '^[A-Za-z0-9_-]{1,64}$')
 );
 
 COMMENT ON TABLE public.order_status_history IS 'Auditoría inmutable de transiciones de estado (insert/update automáticos).';
@@ -406,7 +422,9 @@ CREATE TABLE IF NOT EXISTS public.order_items (
     CONSTRAINT fk_order_items_product_tenant
         FOREIGN KEY (product_id, restaurant_id)
         REFERENCES public.products(id, restaurant_id)
-        ON DELETE SET NULL (product_id)
+        ON DELETE SET NULL (product_id),
+    CONSTRAINT chk_order_items_id_format
+        CHECK (id ~ '^[A-Za-z0-9_-]{1,64}$')
 );
 
 COMMENT ON TABLE public.order_items IS 'Líneas de pedido con snapshot histórico del producto vendido.';
@@ -432,7 +450,9 @@ CREATE TABLE IF NOT EXISTS public.order_item_additions (
     CONSTRAINT fk_order_item_additions_addition_tenant
         FOREIGN KEY (addition_id, restaurant_id)
         REFERENCES public.product_additions(id, restaurant_id)
-        ON DELETE SET NULL (addition_id)
+        ON DELETE SET NULL (addition_id),
+    CONSTRAINT chk_order_item_additions_id_format
+        CHECK (id ~ '^[A-Za-z0-9_-]{1,64}$')
 );
 
 COMMENT ON TABLE public.order_item_additions IS 'Adiciones seleccionadas por línea de pedido (snapshot histórico).';
@@ -450,7 +470,9 @@ CREATE TABLE IF NOT EXISTS public.suppliers (
     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT uq_suppliers_id_restaurant
-        UNIQUE (id, restaurant_id)
+        UNIQUE (id, restaurant_id),
+    CONSTRAINT chk_suppliers_id_format
+        CHECK (id ~ '^[A-Za-z0-9_-]{1,64}$')
 );
 
 COMMENT ON TABLE public.suppliers IS 'Proveedores de insumos por restaurante.';
@@ -472,7 +494,9 @@ CREATE TABLE IF NOT EXISTS public.inventory_items (
     CONSTRAINT uq_inventory_items_restaurant_name
         UNIQUE (restaurant_id, name),
     CONSTRAINT uq_inventory_items_id_restaurant
-        UNIQUE (id, restaurant_id)
+        UNIQUE (id, restaurant_id),
+    CONSTRAINT chk_inventory_items_id_format
+        CHECK (id ~ '^[A-Za-z0-9_-]{1,64}$')
 );
 
 COMMENT ON TABLE public.inventory_items IS 'Inventario en unidades de compra (kg, litros, paquetes...).';

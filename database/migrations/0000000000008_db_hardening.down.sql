@@ -6,6 +6,18 @@
 
 SET LOCAL lock_timeout = '15s';
 
+-- ── T10. Primary key id format CHECKs removed ───────────────────────────────
+DO $$
+DECLARE
+    t TEXT;
+BEGIN
+    FOREACH t IN ARRAY ARRAY['restaurants', 'users', 'categories', 'products', 'product_additions', 'customers', 'orders', 'order_status_history', 'order_items', 'order_item_additions', 'suppliers', 'inventory_items']
+    LOOP
+        EXECUTE format('ALTER TABLE public.%I DROP CONSTRAINT IF EXISTS %I', t, format('chk_%s_id_format', t));
+    END LOOP;
+END
+$$;
+
 -- ── T9. orders total consistency CHECK removed ───────────────────────────────
 ALTER TABLE public.orders DROP CONSTRAINT IF EXISTS chk_orders_final_total;
 

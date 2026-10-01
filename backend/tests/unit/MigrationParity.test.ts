@@ -320,6 +320,32 @@ describe('migration 0000000000008 (db hardening) parity with the baseline schema
       expect(down).toContain('DROP CONSTRAINT IF EXISTS chk_orders_final_total');
     });
   });
+
+  describe('T10 primary key id format CHECK', () => {
+    const tables = [
+      'restaurants', 'users', 'categories', 'products', 'product_additions', 'customers', 'orders',
+      'order_status_history', 'order_items', 'order_item_additions', 'suppliers', 'inventory_items',
+    ];
+
+    it.each(tables)('baseline declares chk_%s_id_format on the id primary key', (table) => {
+      const body = baseline.match(new RegExp(`CREATE TABLE IF NOT EXISTS public\\.${table} \\(([\\s\\S]*?)\\n\\);`))![1];
+      expect(body.replace(/\s+/g, ' ')).toContain(
+        `CONSTRAINT chk_${table}_id_format CHECK (id ~ '^[A-Za-z0-9_-]{1,64}$')`
+      );
+    });
+
+    it('up covers every table (NOT VALID + VALIDATE, aborting on offending ids) and down drops them', () => {
+      for (const table of tables) {
+        expect(up).toContain(`'${table}'`);
+        expect(down).toContain(`'${table}'`);
+      }
+      expect(up).toContain("'^[A-Za-z0-9_-]{1,64}$'");
+      expect(up).toContain('NOT VALID');
+      expect(up).toContain('VALIDATE CONSTRAINT');
+      expect(up).toMatch(/RAISE EXCEPTION/);
+      expect(down).toContain('DROP CONSTRAINT IF EXISTS');
+    });
+  });
 });
 
 describe('schema file structure', () => {

@@ -70,7 +70,7 @@ describe('orders.final_total = subtotal + delivery_fee (db-hardening-0008 T9)', 
     const orderId = `tot-rpc-${randomUUID().slice(0, 8)}`;
     const items = JSON.stringify([{ id: `${orderId}-i1`, product_id: productId, quantity: 3 }]);
     for (const fee of [null, 0, 3.25]) {
-      const id = fee === null ? orderId : `${orderId}-${fee}`;
+      const id = fee === null ? orderId : `${orderId}-f${String(fee).replace(".", "p")}`;
       await pool.query(
         `SELECT public.create_order_atomic($1, $2, NULL, 'Efectivo', NULL, NULL, NULL, $3::jsonb, $4, NULL)`,
         [id, RESTAURANT, items.replace(`${orderId}-i1`, `${id}-i1`), fee]

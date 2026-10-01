@@ -576,3 +576,55 @@ END
 $$;
 
 ALTER TABLE public.orders VALIDATE CONSTRAINT chk_orders_final_total;
+
+-- ── T10. Primary key id format: ^[A-Za-z0-9_-]{1,64}$ ───────────────────────
+-- ids are TEXT everywhere; this keeps them short, URL-safe and free of
+-- whitespace/control characters. Existing rows are checked first: the migration
+-- aborts naming the table and a sample of offending ids instead of rewriting
+-- keys that other rows (and clients) reference. Constraints are added NOT VALID
+-- and validated afterwards.
+DO $$
+DECLARE
+    t        TEXT;
+    v_bad    BIGINT;
+    v_sample TEXT;
+BEGIN
+    FOREACH t IN ARRAY ARRAY['restaurants', 'users', 'categories', 'products', 'product_additions', 'customers', 'orders', 'order_status_history', 'order_items', 'order_item_additions', 'suppliers', 'inventory_items']
+    LOOP
+        IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint
+            WHERE conname = format('chk_%s_id_format', t)
+              AND conrelid = format('public.%I', t)::regclass
+        ) THEN
+            EXECUTE format(
+                'SELECT COUNT(*), string_agg(quote_literal(id), '', '' ORDER BY id) FROM (SELECT id FROM public.%I WHERE id !~ ''^[A-Za-z0-9_-]{1,64}$'' ORDER BY id LIMIT 5) s',
+                t
+            ) INTO v_bad, v_sample;
+            IF v_bad > 0 THEN
+                RAISE EXCEPTION
+                    'Cannot add chk_%_id_format: public.% has ids that do not match ^[A-Za-z0-9_-]{1,64}$ (sample: %). Nothing was changed. Fix or re-key those rows and re-run the migration.',
+                    t, t, v_sample
+                    USING ERRCODE = '23514';
+            END IF;
+
+            EXECUTE format(
+                'ALTER TABLE public.%I ADD CONSTRAINT %I CHECK (id ~ ''^[A-Za-z0-9_-]{1,64}$'') NOT VALID',
+                t, format('chk_%s_id_format', t)
+            );
+        END IF;
+    END LOOP;
+END
+$$;
+
+ALTER TABLE public.restaurants VALIDATE CONSTRAINT chk_restaurants_id_format;
+ALTER TABLE public.users VALIDATE CONSTRAINT chk_users_id_format;
+ALTER TABLE public.categories VALIDATE CONSTRAINT chk_categories_id_format;
+ALTER TABLE public.products VALIDATE CONSTRAINT chk_products_id_format;
+ALTER TABLE public.product_additions VALIDATE CONSTRAINT chk_product_additions_id_format;
+ALTER TABLE public.customers VALIDATE CONSTRAINT chk_customers_id_format;
+ALTER TABLE public.orders VALIDATE CONSTRAINT chk_orders_id_format;
+ALTER TABLE public.order_status_history VALIDATE CONSTRAINT chk_order_status_history_id_format;
+ALTER TABLE public.order_items VALIDATE CONSTRAINT chk_order_items_id_format;
+ALTER TABLE public.order_item_additions VALIDATE CONSTRAINT chk_order_item_additions_id_format;
+ALTER TABLE public.suppliers VALIDATE CONSTRAINT chk_suppliers_id_format;
+ALTER TABLE public.inventory_items VALIDATE CONSTRAINT chk_inventory_items_id_format;
