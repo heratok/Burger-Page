@@ -6,6 +6,11 @@
 
 SET LOCAL lock_timeout = '15s';
 
+-- ── T5. order_status_history writable again ─────────────────────────────────
+DROP TRIGGER IF EXISTS trg_order_status_history_immutable ON public.order_status_history;
+DROP FUNCTION IF EXISTS public.guard_order_status_history_immutable();
+GRANT UPDATE, DELETE ON public.order_status_history TO app_user;
+
 -- ── T4. Blanket public reads back ────────────────────────────────────────────
 DROP POLICY IF EXISTS "public_read_active_restaurants" ON public.restaurants;
 CREATE POLICY "public_read_active_restaurants"

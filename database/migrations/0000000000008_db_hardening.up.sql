@@ -406,3 +406,22 @@ CREATE POLICY "public_read_categories"
               AND r.slug = (SELECT public.app_current_restaurant_slug())
         )
     );
+
+-- ── T5. order_status_history is append-only for app_user ────────────────────
+REVOKE UPDATE, DELETE ON public.order_status_history FROM app_user;
+
+CREATE OR REPLACE FUNCTION public.guard_order_status_history_immutable()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+    RAISE EXCEPTION 'order_status_history is append-only: rows cannot be updated'
+        USING ERRCODE = '42501';
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_order_status_history_immutable ON public.order_status_history;
+CREATE TRIGGER trg_order_status_history_immutable
+    BEFORE UPDATE ON public.order_status_history
+    FOR EACH ROW EXECUTE FUNCTION public.guard_order_status_history_immutable();

@@ -212,6 +212,31 @@ describe('migration 0000000000008 (db hardening) parity with the baseline schema
       expect(extractFunction(up, 'app_current_restaurant_slug')).toBe(body);
     });
   });
+
+  describe('T5 append-only order_status_history', () => {
+    it('baseline grants app_user only SELECT and INSERT on the history table', () => {
+      expect(baseline).toMatch(/GRANT SELECT, INSERT ON public\.order_status_history TO app_user;/);
+      expect(baseline).not.toMatch(/GRANT [A-Z, ]*(UPDATE|DELETE)[A-Z, ]* ON public\.order_status_history/);
+    });
+
+    it('up revokes UPDATE and DELETE, down grants them back', () => {
+      expect(up).toMatch(/REVOKE UPDATE, DELETE ON public\.order_status_history FROM app_user;/);
+      expect(down).toMatch(/GRANT UPDATE, DELETE ON public\.order_status_history TO app_user;/);
+    });
+
+    it('declares the BEFORE UPDATE guard identically in baseline and up, and drops it in down', () => {
+      const fn = extractFunction(baseline, 'guard_order_status_history_immutable');
+      expect(fn).toContain("ERRCODE = '42501'");
+      expect(extractFunction(up, 'guard_order_status_history_immutable')).toBe(fn);
+      for (const sql of [baseline, up]) {
+        expect(sql.replace(/\s+/g, ' ')).toContain(
+          'CREATE TRIGGER trg_order_status_history_immutable BEFORE UPDATE ON public.order_status_history FOR EACH ROW EXECUTE FUNCTION public.guard_order_status_history_immutable();'
+        );
+      }
+      expect(down).toContain('DROP TRIGGER IF EXISTS trg_order_status_history_immutable');
+      expect(down).toContain('DROP FUNCTION IF EXISTS public.guard_order_status_history_immutable()');
+    });
+  });
 });
 
 describe('schema file structure', () => {

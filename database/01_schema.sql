@@ -597,6 +597,27 @@ CREATE TRIGGER trg_orders_log_status
     AFTER INSERT OR UPDATE ON public.orders
     FOR EACH ROW EXECUTE FUNCTION public.log_order_status_change();
 
+-- 3.2b Append-only audit trail (db-hardening-0008): history rows are only ever
+-- inserted by log_order_status_change. app_user has no UPDATE/DELETE privilege
+-- (section 6) and this trigger rejects UPDATE for any other role too. Deleting
+-- an order still cascades into its history: referential actions run as the
+-- table owner, so the revoked DELETE privilege does not apply to them.
+CREATE OR REPLACE FUNCTION public.guard_order_status_history_immutable()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+    RAISE EXCEPTION 'order_status_history is append-only: rows cannot be updated'
+        USING ERRCODE = '42501';
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_order_status_history_immutable ON public.order_status_history;
+CREATE TRIGGER trg_order_status_history_immutable
+    BEFORE UPDATE ON public.order_status_history
+    FOR EACH ROW EXECUTE FUNCTION public.guard_order_status_history_immutable();
+
 -- 3.3 Atomic Customer Order Metrics Trigger -----------------------------------
 CREATE OR REPLACE FUNCTION public.update_customer_order_metrics()
 RETURNS TRIGGER
@@ -1088,7 +1109,10 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.customers TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.orders TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.order_items TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.order_item_additions TO app_user;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.order_status_history TO app_user;
+-- Append-only audit trail: no UPDATE/DELETE for app_user (see 3.2b). The REVOKE
+-- keeps a re-apply over an older database consistent.
+GRANT SELECT, INSERT ON public.order_status_history TO app_user;
+REVOKE UPDATE, DELETE ON public.order_status_history FROM app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.suppliers TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.inventory_items TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.restaurant_order_counters TO app_user;
