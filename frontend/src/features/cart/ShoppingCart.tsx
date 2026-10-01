@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button"
 import EmptyCart from "./EmptyCart"
 import type { CartItem } from "./cartEngine"
 import { useRestaurant } from "@/context/RestaurantContext"
+import { useStoreOpenStatus } from "@/hooks/useStoreOpenStatus"
+import { closedMessage } from "@/lib/storeSchedule"
 import { formatCurrency, getContrastForeground } from "@/lib/utils"
 import { resolveImageUrl } from "@/core/storage/supabaseStorage"
 
@@ -41,6 +43,8 @@ function ShoppingCart({
   const minOrderAmount = Number(storeConfig.minOrderAmount || 0)
   const isBelowMinOrder = minOrderAmount > 0 && subtotal < minOrderAmount
   const amountNeeded = isBelowMinOrder ? minOrderAmount - subtotal : 0
+
+  const { isOpen, reason: closedReason } = useStoreOpenStatus(storeConfig)
 
   const deleteItem = (i: number) => {
     onDeleteCart(items.filter((_, index) => index !== i))
@@ -170,6 +174,15 @@ function ShoppingCart({
         className="fixed right-0 bottom-0 left-0 z-30 border-t backdrop-blur-md"
       >
         <div className="mx-auto flex max-w-(--container) flex-col gap-3 px-4 py-3 md:px-6 lg:px-8">
+          {closedReason && (
+            <div
+              role="alert"
+              className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-xs font-medium text-amber-700 dark:text-amber-300"
+            >
+              <AlertTriangle className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              <span>{closedMessage(closedReason)}</span>
+            </div>
+          )}
           {isBelowMinOrder && (
             <div
               role="alert"
@@ -209,7 +222,7 @@ function ShoppingCart({
                 type="button"
                 variant="default"
                 size="lg"
-                disabled={isBelowMinOrder || items.length === 0}
+                disabled={isBelowMinOrder || !isOpen || items.length === 0}
                 onClick={handleCheckout}
                 style={{
                   backgroundColor: storeConfig.primaryColor,

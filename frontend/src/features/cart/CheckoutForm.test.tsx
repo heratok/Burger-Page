@@ -516,6 +516,72 @@ describe("CheckoutForm - Direct Sale Flow", () => {
     expect(submitBtn.disabled).toBe(true)
   })
 
+
+  describe("opening hours", () => {
+    function seedConfig(config: Record<string, unknown>) {
+      const blank = {
+        id: "rest-burger-craft",
+        slug: "burger-craft",
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        config,
+        categories: [],
+        products: [],
+        additions: [],
+        orders: [],
+        customers: [],
+        inventory: [],
+        suppliers: [],
+      }
+      localStorage.setItem("burger_page_platform_v2", JSON.stringify({ version: 2, restaurants: [blank] }))
+      localStorage.setItem("burger_page_active_rest_v2", "rest-burger-craft")
+    }
+
+    const renderCheckout = () =>
+      render(
+        <RestaurantProvider>
+          <CheckoutForm cartItems={mockCartItems} onClose={() => {}} onBackToCart={() => {}} />
+        </RestaurantProvider>
+      )
+
+    it("shows the closed warning and disables submit outside the schedule", () => {
+      seedConfig({ schedule: [], timezone: "America/Bogota", ordersPaused: false })
+      renderCheckout()
+      expect(screen.getByText("Este restaurante se encuentra fuera del horario de atención.")).toBeDefined()
+      expect((screen.getByRole("button", { name: /Enviar pedido por WhatsApp/i }) as HTMLButtonElement).disabled).toBe(true)
+    })
+
+    it("shows the paused variant when orders are paused", () => {
+      seedConfig({ ordersPaused: true })
+      renderCheckout()
+      expect(screen.getByText("Este restaurante tiene los pedidos en pausa en este momento.")).toBeDefined()
+    })
+
+    it("an early submit while closed toasts and never creates the order", async () => {
+      seedConfig({ schedule: [], timezone: "America/Bogota", ordersPaused: false })
+      const { apiClient } = await import("@/core/api/apiClient")
+      const createOrderSpy = vi.spyOn(apiClient, "createOrder")
+      renderCheckout()
+
+      fireEvent.change(screen.getByLabelText(/Nombre/i), { target: { value: "Carlos Pérez" } })
+      fireEvent.change(screen.getByLabelText(/Celular/i), { target: { value: "3001234567" } })
+      fireEvent.change(screen.getByLabelText(/Dirección/i), { target: { value: "Calle 45 # 12-34" } })
+      fireEvent.change(screen.getByLabelText(/Barrio/i), { target: { value: "El Poblado" } })
+      fireEvent.submit(screen.getByRole("button", { name: /Enviar pedido por WhatsApp/i }).closest("form")!)
+
+      await waitFor(() => {
+        expect(toast.error).toHaveBeenCalledWith("Este restaurante se encuentra fuera del horario de atención.")
+      })
+      expect(createOrderSpy).not.toHaveBeenCalled()
+    })
+
+    it("a config without schedule fields (legacy record) stays open", () => {
+      seedConfig({})
+      renderCheckout()
+      expect(screen.queryByText(/fuera del horario/)).toBeNull()
+    })
+  })
+
   it("blocks order submission and triggers error toast if onSubmit is called while below minimum order", async () => {
     const blank = {
       id: "rest-burger-craft",

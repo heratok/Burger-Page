@@ -96,3 +96,54 @@ describe("ShoppingCart - Min Order Validation", () => {
     expect(confirmBtn.disabled).toBe(false)
   })
 })
+
+describe("ShoppingCart - Opening hours", () => {
+  beforeEach(() => {
+    localStorage.clear()
+    sessionStorage.clear()
+    vi.clearAllMocks()
+  })
+  afterEach(cleanup)
+
+  function seedWith(overrides: Partial<RestaurantRecord["config"]>) {
+    seedTenantWithMinOrder(0)
+    const env = JSON.parse(localStorage.getItem("burger_page_platform_v2")!)
+    env.restaurants[0].config = { ...env.restaurants[0].config, ...overrides }
+    localStorage.setItem("burger_page_platform_v2", JSON.stringify(env))
+  }
+
+  const renderCart = () =>
+    render(
+      <RestaurantProvider>
+        <ShoppingCart
+          items={[mockItem]}
+          onClose={() => {}}
+          onCloseCart={() => {}}
+          onOpenCheckout={() => {}}
+          onDeleteCart={() => {}}
+          onEditItem={() => {}}
+        />
+      </RestaurantProvider>
+    )
+
+  it("blocks Confirmar orden with the closed message when outside the schedule", () => {
+    seedWith({ schedule: [] })
+    renderCart()
+    expect(screen.getByText("Este restaurante se encuentra fuera del horario de atención.")).toBeDefined()
+    expect((screen.getByRole("button", { name: /Confirmar orden/i }) as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it("blocks Confirmar orden with the paused message when orders are paused", () => {
+    seedWith({ ordersPaused: true })
+    renderCart()
+    expect(screen.getByText("Este restaurante tiene los pedidos en pausa en este momento.")).toBeDefined()
+    expect((screen.getByRole("button", { name: /Confirmar orden/i }) as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it("does not block an open store", () => {
+    seedWith({})
+    renderCart()
+    expect(screen.queryByText(/fuera del horario/)).toBeNull()
+    expect((screen.getByRole("button", { name: /Confirmar orden/i }) as HTMLButtonElement).disabled).toBe(false)
+  })
+})

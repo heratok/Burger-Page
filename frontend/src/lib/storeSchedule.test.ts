@@ -7,6 +7,8 @@ import {
   splitConfigForApi,
   rangesForDay,
   formatRanges,
+  describeNextOpening,
+  closedMessage,
 } from "./storeSchedule"
 import { DEFAULT_STORE_CONFIG } from "@/constants/themePresets"
 
@@ -84,5 +86,22 @@ describe("storeSchedule helpers", () => {
       expect(formatRanges(rangesForDay(schedule, 1))).toBe("09:00 - 14:00, 18:00 - 22:00")
       expect(formatRanges([])).toBe("Cerrado")
     })
+  })
+})
+
+describe("describeNextOpening / closedMessage", () => {
+  it("says hoy and mañana for the next two days", () => {
+    expect(describeNextOpening({ dayOfWeek: 1, time: "12:00", daysAhead: 0 })).toBe("Abrimos hoy a las 12:00")
+    expect(describeNextOpening({ dayOfWeek: 2, time: "09:30", daysAhead: 1 })).toBe("Abrimos mañana a las 09:30")
+  })
+  it("names the weekday otherwise", () => {
+    expect(describeNextOpening({ dayOfWeek: 5, time: "18:00", daysAhead: 4 })).toBe("Abrimos el viernes a las 18:00")
+  })
+  it("has no sentence when there is no next opening", () => {
+    expect(describeNextOpening(null)).toBeNull()
+  })
+  it("builds the checkout block message per reason", () => {
+    expect(closedMessage("closed")).toBe("Este restaurante se encuentra fuera del horario de atención.")
+    expect(closedMessage("paused")).toBe("Este restaurante tiene los pedidos en pausa en este momento.")
   })
 })

@@ -1,4 +1,4 @@
-import type { OpeningRange, WeeklySchedule } from "@burger-page/contracts"
+import type { NextOpening, OpeningRange, WeeklySchedule } from "@burger-page/contracts"
 import type { StorefrontConfig } from "@/types/restaurant"
 
 /** Display order of the week: Monday first, Sunday (0) last. */
@@ -71,4 +71,21 @@ export function rangesForDay(schedule: WeeklySchedule, dayOfWeek: number): Openi
 export function formatRanges(ranges: OpeningRange[]): string {
   if (ranges.length === 0) return "Cerrado"
   return ranges.map((r) => (r.open === r.close ? "24 horas" : `${r.open} - ${r.close}`)).join(", ")
+}
+
+export type ClosedReason = "closed" | "paused"
+
+/** "Abrimos hoy a las 12:00" / "mañana" / "el viernes"; null when the store never opens. */
+export function describeNextOpening(next: NextOpening | null): string | null {
+  if (!next) return null
+  const when =
+    next.daysAhead === 0 ? "hoy" : next.daysAhead === 1 ? "mañana" : `el ${DAY_NAMES[next.dayOfWeek].toLowerCase()}`
+  return `Abrimos ${when} a las ${next.time}`
+}
+
+/** Block message shown in the cart and checkout while the store cannot take orders. */
+export function closedMessage(reason: ClosedReason): string {
+  return reason === "paused"
+    ? "Este restaurante tiene los pedidos en pausa en este momento."
+    : "Este restaurante se encuentra fuera del horario de atención."
 }

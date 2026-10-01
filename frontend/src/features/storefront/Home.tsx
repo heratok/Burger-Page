@@ -14,6 +14,7 @@ import {
   useCart,
   type CartItem,
 } from "@/features/cart"
+import { StoreStatus } from "./StoreStatus"
 import { useRestaurant } from "@/context/RestaurantContext"
 import { getFontFamilyClass, getStoreThemeStyles } from "@/features/crm/utils/customizerStyles"
 import { getContrastForeground } from "@/lib/utils"
@@ -315,6 +316,10 @@ export default function Home() {
                 </p>
               </div>
             )}
+
+            <div className="flex justify-center sm:justify-start">
+              <StoreStatus config={storeConfig} />
+            </div>
 
             {/* Search Input */}
             <div className="flex justify-center sm:justify-start">

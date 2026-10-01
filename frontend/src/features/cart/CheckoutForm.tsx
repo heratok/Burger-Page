@@ -40,6 +40,8 @@ import {
 } from "./whatsapp"
 import { cartItemToOrderItem, type CartItem } from "./cartEngine"
 import { useRestaurant } from "@/context/RestaurantContext"
+import { useStoreOpenStatus } from "@/hooks/useStoreOpenStatus"
+import { closedMessage } from "@/lib/storeSchedule"
 import { formatCurrency, getContrastForeground } from "@/lib/utils"
 
 const PENDING_TAB_HTML =
@@ -91,6 +93,7 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
   const minOrderAmount = Number(storeConfig.minOrderAmount || 0)
   const isBelowMinOrder = minOrderAmount > 0 && subtotal < minOrderAmount
   const amountNeeded = isBelowMinOrder ? minOrderAmount - subtotal : 0
+  const { isOpen, reason: closedReason } = useStoreOpenStatus(storeConfig)
 
   const cambio = calculateChange(total, pagoCon)
 
@@ -100,6 +103,10 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
   const submitInFlightRef = useRef(false)
 
   const onSubmit = async (values: FormValues) => {
+    if (closedReason) {
+      toast.error(closedMessage(closedReason))
+      return
+    }
     if (isBelowMinOrder) {
       toast.error(`El pedido mínimo es de ${formatCurrency(minOrderAmount)} (faltan ${formatCurrency(amountNeeded)}).`)
       return
@@ -409,6 +416,16 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
           </Field>
         </FieldGroup>
 
+        {closedReason && (
+          <div
+            role="alert"
+            className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-sm font-medium text-amber-700 dark:text-amber-300"
+          >
+            <CircleAlert className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+            <span>{closedMessage(closedReason)}</span>
+          </div>
+        )}
+
         {isBelowMinOrder && (
           <div
             role="alert"
@@ -424,7 +441,7 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
         <div className="flex flex-col gap-2 pt-2 sm:flex-row">
           <Button
             type="submit"
-            disabled={isSubmitting || isBelowMinOrder}
+            disabled={isSubmitting || isBelowMinOrder || !isOpen}
             aria-busy={isSubmitting}
             variant="default"
             size="lg"

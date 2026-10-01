@@ -1278,3 +1278,17 @@ describe("formatUserFacingOrderError", () => {
     expect(formatUserFacingOrderError("Error desconocido")).toBe("Error desconocido")
   })
 })
+
+describe("formatUserFacingOrderError - opening hours", () => {
+  it("maps the closed-restaurant 400 to a friendly message", () => {
+    expect(formatUserFacingOrderError("El restaurante 'Burger Craft' está fuera del horario de atención.")).toBe(
+      "El restaurante se encuentra fuera del horario de atención. Intenta de nuevo cuando esté abierto."
+    )
+  })
+
+  it("maps the paused-restaurant 400 to a friendly message", () => {
+    expect(formatUserFacingOrderError("El restaurante 'Burger Craft' tiene los pedidos en pausa.")).toBe(
+      "El restaurante tiene los pedidos en pausa en este momento. Intenta de nuevo más tarde."
+    )
+  })
+})
