@@ -613,4 +613,143 @@ describe('RLS tenant isolation (write policies, app_user role)', () => {
       }
     });
   });
+  describe('restaurant_opening_hours (store-opening-hours T2)', () => {
+    const OFF = `rls-oh-off-${randomUUID().slice(0, 8)}`;
+    const row = (suffix: string) => `oh_rls_${suffix}_${randomUUID().slice(0, 8)}`;
+    const seeded: Record<string, string> = {};
+
+    beforeAll(async () => {
+      if (!isDbConnected) return;
+      await adminPool.query(
+        `INSERT INTO public.restaurants (id, slug, name, is_active) VALUES ($1, $1, 'RLS Hours Inactive', false)
+         ON CONFLICT (id) DO UPDATE SET is_active = false`,
+        [OFF]
+      );
+      for (const [key, restaurantId] of [['a', RESTAURANT_A], ['b', RESTAURANT_B], ['off', OFF]] as const) {
+        seeded[key] = row(key);
+        await adminPool.query(
+          `INSERT INTO public.restaurant_opening_hours (id, restaurant_id, day_of_week, open_time, close_time)
+           VALUES ($1, $2, 1, '12:00', '22:30')`,
+          [seeded[key], restaurantId]
+        );
+      }
+    });
+
+    afterAll(async () => {
+      if (isDbConnected) await adminPool.query(`DELETE FROM public.restaurants WHERE id = $1`, [OFF]);
+    });
+
+    const hourIds = async (c: pg.PoolClient) =>
+      (await c.query(`SELECT id FROM public.restaurant_opening_hours WHERE id = ANY($1)`, [Object.values(seeded)])).rows
+        .map((r) => r.id)
+        .sort();
+
+    it('an anonymous session (no tenant, no slug) reads nothing', async () => {
+      if (!isDbConnected) return;
+      expect(await asTenant(null, null, hourIds)).toEqual([]);
+    });
+
+    it('a declared slug exposes only the active restaurant with that slug', async () => {
+      if (!isDbConnected) return;
+      expect(await asTenant(null, null, hourIds, RESTAURANT_A)).toEqual([seeded.a]);
+      expect(await asTenant(null, null, hourIds, OFF)).toEqual([]);
+    });
+
+    it('a declared slug never allows writes', async () => {
+      if (!isDbConnected) return;
+      await expect(
+        asTenant(
+          null,
+          null,
+          (c) =>
+            c.query(
+              `INSERT INTO public.restaurant_opening_hours (id, restaurant_id, day_of_week, open_time, close_time)
+               VALUES ($1, $2, 2, '10:00', '11:00')`,
+              [row('anon'), RESTAURANT_A]
+            ),
+          RESTAURANT_A
+        )
+      ).rejects.toMatchObject({ code: '42501' });
+    });
+
+    it('a tenant only sees its own rows, whatever slug was declared', async () => {
+      if (!isDbConnected) return;
+      expect(await asTenant(RESTAURANT_A, null, hourIds)).toEqual([seeded.a]);
+      expect(await asTenant(RESTAURANT_B, null, hourIds, RESTAURANT_A)).toEqual([seeded.b]);
+    });
+
+    it('a tenant can replace its own schedule but not write into another tenant', async () => {
+      if (!isDbConnected) return;
+      const mine = row('mine');
+      await asTenant(RESTAURANT_A, null, async (c) => {
+        await c.query(
+          `INSERT INTO public.restaurant_opening_hours (id, restaurant_id, day_of_week, open_time, close_time)
+           VALUES ($1, $2, 2, '10:00', '11:00')`,
+          [mine, RESTAURANT_A]
+        );
+        await c.query(`UPDATE public.restaurant_opening_hours SET close_time = '12:00' WHERE id = $1`, [mine]);
+        await c.query(`DELETE FROM public.restaurant_opening_hours WHERE id = $1`, [mine]);
+      });
+
+      await expect(
+        asTenant(RESTAURANT_A, null, (c) =>
+          c.query(
+            `INSERT INTO public.restaurant_opening_hours (id, restaurant_id, day_of_week, open_time, close_time)
+             VALUES ($1, $2, 3, '10:00', '11:00')`,
+            [row('cross'), RESTAURANT_B]
+          )
+        )
+      ).rejects.toMatchObject({ code: '42501' });
+
+      const touched = await asTenant(RESTAURANT_A, null, async (c) => ({
+        updated: (await c.query(`UPDATE public.restaurant_opening_hours SET close_time = '23:00' WHERE id = $1`, [seeded.b])).rowCount,
+        deleted: (await c.query(`DELETE FROM public.restaurant_opening_hours WHERE id = $1`, [seeded.b])).rowCount,
+      }));
+      expect(touched).toEqual({ updated: 0, deleted: 0 });
+    });
+
+    it('a super admin reads every tenant', async () => {
+      if (!isDbConnected) return;
+      expect(await asTenant(null, 'super_admin', hourIds)).toEqual([seeded.a, seeded.b, seeded.off].sort());
+    });
+
+    it('rejects a weekday outside 0-6, a malformed id and a duplicated range', async () => {
+      if (!isDbConnected) return;
+      const insert = (id: string, day: number) =>
+        adminPool.query(
+          `INSERT INTO public.restaurant_opening_hours (id, restaurant_id, day_of_week, open_time, close_time)
+           VALUES ($1, $2, $3, '12:00', '22:30')`,
+          [id, RESTAURANT_A, day]
+        );
+      await expect(insert(row('d7'), 7)).rejects.toMatchObject({ code: '23514' });
+      await expect(insert(row('dneg'), -1)).rejects.toMatchObject({ code: '23514' });
+      await expect(insert('bad id', 2)).rejects.toMatchObject({ code: '23514', constraint: 'chk_restaurant_opening_hours_id_format' });
+      await expect(insert(row('dup'), 1)).rejects.toMatchObject({ code: '23505', constraint: 'uq_restaurant_opening_hours_range' });
+    });
+
+    it('deleting the restaurant removes its schedule (config, not financial history)', async () => {
+      if (!isDbConnected) return;
+      const id = `rls-oh-del-${randomUUID().slice(0, 8)}`;
+      await adminPool.query(`INSERT INTO public.restaurants (id, slug, name) VALUES ($1, $1, 'Gone')`, [id]);
+      await adminPool.query(
+        `INSERT INTO public.restaurant_opening_hours (id, restaurant_id, day_of_week, open_time, close_time)
+         VALUES ($1, $2, 0, '08:00', '09:00')`,
+        [row('del'), id]
+      );
+      await adminPool.query(`DELETE FROM public.restaurants WHERE id = $1`, [id]);
+      const { rowCount } = await adminPool.query(`SELECT 1 FROM public.restaurant_opening_hours WHERE restaurant_id = $1`, [id]);
+      expect(rowCount).toBe(0);
+    });
+
+    it('new restaurants fall back to the Bogota timezone and unpaused orders', async () => {
+      if (!isDbConnected) return;
+      await adminPool.query(`INSERT INTO public.restaurant_settings (restaurant_id) VALUES ($1) ON CONFLICT DO NOTHING`, [RESTAURANT_A]);
+      const { rows } = await adminPool.query(
+        `SELECT timezone, orders_paused FROM public.restaurant_settings WHERE restaurant_id = $1`,
+        [RESTAURANT_A]
+      );
+      expect(rows[0]).toEqual({ timezone: 'America/Bogota', orders_paused: false });
+    });
+  });
+
 });

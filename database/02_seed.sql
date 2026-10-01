@@ -26,8 +26,19 @@ INSERT INTO public.restaurants (id, slug, name, tagline, whatsapp_number, addres
 -- ============================================================================
 -- RESTAURANT SETTINGS (configuración operativa 1:1)
 -- ============================================================================
-INSERT INTO public.restaurant_settings (restaurant_id, currency, currency_symbol, delivery_fee, min_order_amount, estimated_delivery_time, open_time, close_time, announcement_text, show_announcement, created_at, updated_at) VALUES ('rest-1788579266608', 'COP', '$', '5000.00', '20000.00', '30 - 45 min', '12:00', '22:30', NULL, TRUE, '2025-01-15T10:00:00.000Z', '2025-01-15T10:00:00.000Z') ON CONFLICT (restaurant_id) DO NOTHING;
-INSERT INTO public.restaurant_settings (restaurant_id, currency, currency_symbol, delivery_fee, min_order_amount, estimated_delivery_time, open_time, close_time, announcement_text, show_announcement, created_at, updated_at) VALUES ('rest-burger-craft', 'COP', '$', '5000.00', '0.00', '30 - 45 min', '12:00', '22:30', NULL, TRUE, '2025-01-15T10:00:00.000Z', '2025-01-15T10:00:00.000Z') ON CONFLICT (restaurant_id) DO NOTHING;
+INSERT INTO public.restaurant_settings (restaurant_id, currency, currency_symbol, delivery_fee, min_order_amount, estimated_delivery_time, announcement_text, show_announcement, created_at, updated_at) VALUES ('rest-1788579266608', 'COP', '$', '5000.00', '20000.00', '30 - 45 min', NULL, TRUE, '2025-01-15T10:00:00.000Z', '2025-01-15T10:00:00.000Z') ON CONFLICT (restaurant_id) DO NOTHING;
+INSERT INTO public.restaurant_settings (restaurant_id, currency, currency_symbol, delivery_fee, min_order_amount, estimated_delivery_time, announcement_text, show_announcement, created_at, updated_at) VALUES ('rest-burger-craft', 'COP', '$', '5000.00', '0.00', '30 - 45 min', NULL, TRUE, '2025-01-15T10:00:00.000Z', '2025-01-15T10:00:00.000Z') ON CONFLICT (restaurant_id) DO NOTHING;
+
+-- ============================================================================
+-- RESTAURANT OPENING HOURS (horario semanal)
+-- Demo: abierto las 24 h todos los días (00:00 - 00:00 cruza al día siguiente)
+-- para que el desarrollo local y los tests E2E no dependan del reloj.
+-- ============================================================================
+INSERT INTO public.restaurant_opening_hours (id, restaurant_id, day_of_week, open_time, close_time)
+SELECT 'oh-' || r.id || '-' || d, r.id, d, '00:00', '00:00'
+FROM (VALUES ('rest-1788579266608'), ('rest-burger-craft')) AS r(id)
+CROSS JOIN generate_series(0, 6) AS d
+ON CONFLICT DO NOTHING;
 
 -- ============================================================================
 -- RESTAURANT BRANDING (identidad visual 1:1)

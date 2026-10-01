@@ -19,3 +19,7 @@ export function migrationSection(file: string, id: string): string {
 
 export const upSection = (id: string) => migrationSection('0000000000008_db_hardening.up.sql', id);
 export const downSection = (id: string) => migrationSection('0000000000008_db_hardening.down.sql', id);
+
+/** Sections of migration 0009 (store opening hours). */
+export const up0009Section = (id: string) => migrationSection('0000000000009_store_opening_hours.up.sql', id);
+export const down0009Section = (id: string) => migrationSection('0000000000009_store_opening_hours.down.sql', id);
