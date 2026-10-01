@@ -217,13 +217,17 @@ export const TEST_STORAGE_ENVELOPE: StorageEnvelopeV2 = {
  * tenant that actually exists. Tests that start from empty localStorage and
  * exercise tenant-scoped state seed a blank record as the active restaurant.
  */
-export function seedBlankActiveTenant(id = "rest-burger-craft", slug = "burger-craft"): void {
+export function seedBlankActiveTenant(
+  id = "rest-burger-craft",
+  slug = "burger-craft",
+  configOverrides: Partial<RestaurantRecord["config"]> = {},
+): void {
   const blank: RestaurantRecord = {
     id,
     slug,
     isActive: true,
     createdAt: new Date().toISOString(),
-    config: DEFAULT_STORE_CONFIG,
+    config: { ...DEFAULT_STORE_CONFIG, ...configOverrides },
     categories: [],
     products: [],
     additions: [],

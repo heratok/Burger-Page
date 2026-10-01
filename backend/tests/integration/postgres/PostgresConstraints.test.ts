@@ -42,6 +42,11 @@ describe('PostgreSQL Real Instance Integration Suite (Docker)', () => {
   afterAll(async () => {
     if (pool && isDbConnected) {
       // Clean up test data
+      // Orders first: restaurant FKs on sales tables are ON DELETE RESTRICT.
+      await pool.query(`DELETE FROM public.orders WHERE restaurant_id IN ($1, $2)`, [
+        RESTAURANT_A,
+        RESTAURANT_B,
+      ]);
       await pool.query(`DELETE FROM public.restaurants WHERE id IN ($1, $2)`, [
         RESTAURANT_A,
         RESTAURANT_B,

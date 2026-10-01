@@ -1,4 +1,5 @@
-import { randomUUID, randomBytes } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
+import { ID_PREFIX, newId } from '../../domain/shared/newId.js';
 import { RestaurantRepository } from '../../domain/ports/out/RestaurantRepository.js';
 import { CategoryRepository } from '../../domain/ports/out/CategoryRepository.js';
 import { UserRepository } from '../../domain/ports/out/UserRepository.js';
@@ -34,7 +35,7 @@ export class CreateRestaurantUseCase {
 
     // Server-owned identity: client-supplied ids are never trusted
         // (a malicious or stale id could overwrite an existing tenant via upsert).
-        const restaurantId = `rest-${randomUUID()}`;
+        const restaurantId = newId(ID_PREFIX.restaurant);
     const newRestaurant: Restaurant = {
       id: restaurantId,
       slug: cleanSlug,
@@ -65,7 +66,7 @@ export class CreateRestaurantUseCase {
       try {
         for (let i = 0; i < newRestaurant.categories.length; i++) {
           await this.categoryRepo.save({
-            id: `cat_${randomUUID()}`,
+            id: newId(ID_PREFIX.category),
             restaurantId,
             name: newRestaurant.categories[i],
             displayOrder: i,
@@ -95,7 +96,7 @@ export class CreateRestaurantUseCase {
           throw new ValidationError(`Username "${adminUsername}" already exists`);
         }
         const adminUser: User = {
-          id: randomUUID(),
+          id: newId(ID_PREFIX.user),
           username: adminUsername,
           passwordHash: await this.hasher.hash(newRestaurant.adminPassword ?? ''),
           role: 'restaurant_admin',

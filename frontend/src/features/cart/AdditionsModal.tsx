@@ -137,16 +137,14 @@ export default function AdditionsModal({
               {formatCurrency(product.price)}
             </p>
           </div>
-          <Button
+          <button
             type="button"
-            variant="ghost"
-            size="icon-sm"
             onClick={onClose}
             aria-label="Cerrar"
-            className="size-9 sm:size-11 shrink-0 rounded-full text-text-muted hover:bg-bg-elevated-2 hover:text-text-primary"
+            className="group/button inline-flex size-9 sm:size-11 shrink-0 items-center justify-center rounded-full border border-transparent bg-transparent text-text-muted transition-all outline-none select-none hover:bg-bg-elevated-2 hover:text-text-primary active:scale-95 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 cursor-pointer"
           >
-            <X />
-          </Button>
+            <X className="size-4 sm:size-5" />
+          </button>
         </header>
 
         <div

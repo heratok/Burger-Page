@@ -32,7 +32,7 @@ describe('CreateRestaurantUseCase (Security Hardening)', () => {
     } as any);
 
     expect(result.id).not.toBe('rest-existing-tenant');
-    expect(result.id).toMatch(/^rest-/);
+    expect(result.id).toMatch(/^rest_/);
     expect((mockRestaurantRepo.save as any).mock.calls[0][0].id).toBe(result.id);
   });
 
@@ -151,7 +151,7 @@ describe('CreateRestaurantUseCase (Security Hardening)', () => {
   it('keeps creating the tenant when userRepo is not injected (backward-compatible)', async () => {
     const result = await useCase.execute({ name: 'Rosto', slug: 'rosto' } as any);
 
-    expect(result.id).toMatch(/^rest-/);
+    expect(result.id).toMatch(/^rest_/);
     expect(result.adminPassword).toBeDefined();
   });
 
@@ -174,7 +174,7 @@ describe('CreateRestaurantUseCase (Security Hardening)', () => {
 
     const result = await useCaseWithUsers.execute({ name: 'Rosto', slug: 'rosto' } as any);
 
-    expect(result.id).toMatch(/^rest-/);
+    expect(result.id).toMatch(/^rest_/);
     expect(result.adminPassword).toBeDefined();
     expect(warnSpy).toHaveBeenCalled();
     warnSpy.mockRestore();
@@ -213,7 +213,7 @@ describe('CreateRestaurantUseCase (Security Hardening)', () => {
 
     // SUS-02 contract is preserved: the tenant is still created and the
     // response still carries the one-time credentials for a manual retry...
-    expect(result.id).toMatch(/^rest-/);
+    expect(result.id).toMatch(/^rest_/);
     expect(result.adminPassword).toBe('custom-secret-42');
     // ...but the colliding user was never saved, and the secondary failure
     // reported through the existing warn path.

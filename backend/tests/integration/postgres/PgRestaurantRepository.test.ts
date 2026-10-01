@@ -74,4 +74,62 @@ describe('PgRestaurantRepository (real Postgres, app_user role)', () => {
     await repo.hardDelete?.(RESTAURANT_ID);
     expect(await repo.findById(RESTAURANT_ID)).toBeNull();
   });
+
+  describe('financial history is protected from restaurant deletion (db-hardening-0008 T6)', () => {
+    const FIN_ID = `pgrest-fin-${randomUUID().slice(0, 8)}`;
+    const ORDER_ID = `pgrest-ord-${randomUUID().slice(0, 8)}`;
+    const ITEM_ID = `pgrest-item-${randomUUID().slice(0, 8)}`;
+
+    async function seedFinancialHistory() {
+      await adminPool.query(
+        `INSERT INTO public.restaurants (id, slug, name, is_active) VALUES ($1, $1, 'Fin Test', true) ON CONFLICT (id) DO NOTHING`,
+        [FIN_ID]
+      );
+      await adminPool.query(
+        `INSERT INTO public.orders (id, restaurant_id, subtotal, delivery_fee, final_total) VALUES ($1, $2, 10, 0, 10)`,
+        [ORDER_ID, FIN_ID]
+      );
+      await adminPool.query(
+        `INSERT INTO public.order_items (id, order_id, restaurant_id, product_name, unit_price, quantity)
+         VALUES ($1, $2, $3, 'Burger', 10, 1)`,
+        [ITEM_ID, ORDER_ID, FIN_ID]
+      );
+    }
+
+    it.each([
+      'orders_restaurant_id_fkey',
+      'order_items_restaurant_id_fkey',
+      'order_item_additions_restaurant_id_fkey',
+      'order_status_history_restaurant_id_fkey',
+    ])('%s is ON DELETE RESTRICT', async (name) => {
+      if (!isDbConnected) return;
+      const { rows } = await adminPool.query(`SELECT confdeltype FROM pg_constraint WHERE conname = $1`, [name]);
+      expect(rows).toEqual([{ confdeltype: 'r' }]);
+    });
+
+    it('a raw restaurant delete is refused while orders exist (no silent cascade of sales)', async () => {
+      if (!isDbConnected) return;
+      await seedFinancialHistory();
+      try {
+        await expect(adminPool.query(`DELETE FROM public.restaurants WHERE id = $1`, [FIN_ID])).rejects.toMatchObject({
+          code: '23503',
+        });
+        expect((await adminPool.query(`SELECT 1 FROM public.orders WHERE id = $1`, [ORDER_ID])).rowCount).toBe(1);
+        expect((await adminPool.query(`SELECT 1 FROM public.order_status_history WHERE order_id = $1`, [ORDER_ID])).rowCount).toBe(1);
+      } finally {
+        await adminPool.query(`DELETE FROM public.orders WHERE restaurant_id = $1`, [FIN_ID]);
+        await adminPool.query(`DELETE FROM public.restaurants WHERE id = $1`, [FIN_ID]);
+      }
+    });
+
+    it('hardDelete still removes a restaurant together with its orders, items and history', async () => {
+      if (!isDbConnected) return;
+      await seedFinancialHistory();
+      await repo.hardDelete?.(FIN_ID);
+      for (const table of ['restaurants', 'orders', 'order_items', 'order_status_history']) {
+        const col = table === 'restaurants' ? 'id' : 'restaurant_id';
+        expect((await adminPool.query(`SELECT 1 FROM public.${table} WHERE ${col} = $1`, [FIN_ID])).rowCount, table).toBe(0);
+      }
+    });
+  });
 });

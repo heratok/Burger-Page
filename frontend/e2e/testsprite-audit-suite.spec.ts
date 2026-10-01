@@ -15,20 +15,23 @@ test.describe('TestSprite Audit & Resolution Suite', () => {
     // TC002: Catalog must not show "No encontramos resultados"
     await expect(page.getByText('No encontramos resultados')).not.toBeVisible({ timeout: 10000 });
     
-    // Find first product card
-    const productCard = page.getByRole('button', { name: /Agregar .* al carrito/i }).first();
-    await expect(productCard).toBeVisible({ timeout: 10000 });
-    await productCard.click();
-
-    // Customization dialog: Click "+ Agregar · $..."
+    // rosto's seeded minimum order is $20.000 and checkout stays disabled
+    // below it, so add two "Doble Carne" ($18.000 each) to clear the minimum.
+    const productCard = page.getByRole('button', { name: /Agregar Doble Carne al carrito/i }).first();
     const dialogAddBtn = page.getByRole('button', { name: /Agregar · \$/i });
-    await expect(dialogAddBtn).toBeVisible({ timeout: 10000 });
-    await dialogAddBtn.click();
+    for (let i = 0; i < 2; i++) {
+      await expect(productCard).toBeVisible({ timeout: 10000 });
+      await productCard.click();
+      // Customization dialog: Click "+ Agregar · $..."
+      await expect(dialogAddBtn).toBeVisible({ timeout: 10000 });
+      await dialogAddBtn.click();
+      await expect(dialogAddBtn).not.toBeVisible({ timeout: 10000 });
+    }
 
-    // Open Cart: Cart button now shows 1 product
+    // Open Cart: Cart button now shows 2 products
     const cartBtn = page.getByRole('button', { name: /Ver orden/i });
     await expect(cartBtn).toBeVisible({ timeout: 10000 });
-    await expect(cartBtn).toHaveAttribute('aria-label', /1 producto/i);
+    await expect(cartBtn).toHaveAttribute('aria-label', /2 productos/i);
     await cartBtn.click();
 
     // Step to checkout

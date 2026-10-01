@@ -3,17 +3,21 @@ import { mapRow, PgRestaurantRepository } from '../../../src/infrastructure/pers
 
 const h = vi.hoisted(() => {
   const calls: { sql: string; values: unknown[] }[] = [];
+  const contexts: Record<string, unknown>[] = [];
   const client = {
     query: async (sql: string, values: unknown[] = []) => {
       calls.push({ sql, values });
       return { rows: [] };
     },
   };
-  return { calls, client };
+  return { calls, contexts, client };
 });
 
 vi.mock('../../../src/infrastructure/persistence/postgres/PgClient.js', () => ({
-  withTenantContext: async (_ctx: unknown, cb: (c: unknown) => Promise<unknown>) => cb(h.client),
+  withTenantContext: async (ctx: Record<string, unknown>, cb: (c: unknown) => Promise<unknown>) => {
+    h.contexts.push(ctx);
+    return cb(h.client);
+  },
 }));
 
 describe('PgRestaurantRepository mapRow', () => {
@@ -66,24 +70,28 @@ describe('PgRestaurantRepository mapRow', () => {
   });
 });
 
-describe('PgRestaurantRepository mapRow - opening hours text (flow fix 1.2)', () => {
-  it('returns opening_hours_text as config.openingHours', () => {
+describe('PgRestaurantRepository mapRow - opening hours derived from the time columns (db-hardening-0008 T7)', () => {
+  it('derives config.openingHours from open_time/close_time', () => {
+    const r = mapRow({
+      id: 'r', slug: 'r', name: 'R',
+      open_time: '09:00:00', close_time: '21:15:00',
+    });
+    expect(r.config.openingHours).toBe('09:00 - 21:15');
+    expect(r.openingHours).toEqual({ open: '09:00', close: '21:15' });
+  });
+
+  it('ignores a legacy opening_hours_text key: the time columns are the single source', () => {
     const r = mapRow({
       id: 'r', slug: 'r', name: 'R',
       opening_hours_text: 'Lun-Vie 8am - 10pm',
       open_time: '12:00:00', close_time: '22:30:00',
     });
-    expect(r.config.openingHours).toBe('Lun-Vie 8am - 10pm');
-    // the structured hours still come from the time columns
-    expect(r.openingHours).toEqual({ open: '12:00', close: '22:30' });
+    expect(r.config.openingHours).toBe('12:00 - 22:30');
   });
 
-  it('falls back to "open - close" when the text is null', () => {
-    const r = mapRow({
-      id: 'r', slug: 'r', name: 'R',
-      opening_hours_text: null, open_time: '09:00:00', close_time: '21:15:00',
-    });
-    expect(r.config.openingHours).toBe('09:00 - 21:15');
+  it('falls back to the default hours when the time columns are null', () => {
+    const r = mapRow({ id: 'r', slug: 'r', name: 'R', open_time: null, close_time: null });
+    expect(r.config.openingHours).toBe('12:00 - 22:30');
   });
 });
 
@@ -139,25 +147,32 @@ describe('PgRestaurantRepository.save - hours and branding round-trip', () => {
     config,
   });
 
-  it('keeps open_time/close_time consistent with a parseable hours text', async () => {
+  it('parses a "HH:MM - HH:MM" hours text into open_time/close_time and never writes a text column', async () => {
     await new PgRestaurantRepository().save(baseRestaurant({ openingHours: '08:00 - 23:15' }) as any);
     const settings = valuesFor('public.restaurant_settings');
-    expect(settings.opening_hours_text).toBe('08:00 - 23:15');
+    expect(settings).not.toHaveProperty('opening_hours_text');
     expect(settings.open_time).toBe('08:00:00');
     expect(settings.close_time).toBe('23:15:00');
   });
 
-  it('keeps the structured times when the text is free-form', async () => {
+  it('keeps the structured times when the text is free-form (the text is not stored)', async () => {
     await new PgRestaurantRepository().save(baseRestaurant({ openingHours: 'Lun-Vie 8am - 10pm' }) as any);
     const settings = valuesFor('public.restaurant_settings');
-    expect(settings.opening_hours_text).toBe('Lun-Vie 8am - 10pm');
+    expect(settings).not.toHaveProperty('opening_hours_text');
     expect(settings.open_time).toBe('12:00:00');
     expect(settings.close_time).toBe('22:30:00');
   });
 
-  it('round-trips branding and hours text: save -> mapRow', async () => {
+  it('does not select the dropped opening_hours_text column when reading', async () => {
+    h.calls.length = 0;
+    await new PgRestaurantRepository().findBySlug('r1');
+    expect(h.calls[0].sql).not.toContain('opening_hours_text');
+    expect(h.calls[0].sql).toContain('s.open_time');
+  });
+
+  it('round-trips branding and hours: save -> mapRow', async () => {
     const config = {
-      openingHours: 'Lun-Vie 8am - 10pm',
+      openingHours: '12:00 - 22:30',
       primaryHoverColor: '#AABBCC', fontFamily: 'mono', cardRadius: 'lg',
       cardStyle: 'minimal', compactGrid: true, showBadges: false,
     };
@@ -166,5 +181,13 @@ describe('PgRestaurantRepository.save - hours and branding round-trip', () => {
     const branding = valuesFor('public.restaurant_branding');
     const restored = mapRow({ id: 'r1', slug: 'r1', name: 'R1', ...settings, ...branding });
     expect(restored.config).toMatchObject(config);
+  });
+});
+
+describe('PgRestaurantRepository.findBySlug - slug-scoped public read (db-hardening-0008 T4)', () => {
+  it('declares the slug in the tenant context, without tenant id or admin role', async () => {
+    h.contexts.length = 0;
+    await new PgRestaurantRepository().findBySlug('burger-house');
+    expect(h.contexts).toEqual([{ restaurantId: null, restaurantSlug: 'burger-house' }]);
   });
 });

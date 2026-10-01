@@ -16,19 +16,6 @@ describe('migration 0000000000006 parity with the baseline schema', () => {
   const baseline = read('01_schema.sql');
   const up = read('migrations/0000000000006_order_contact_snapshot_and_metrics.up.sql');
   const down = read('migrations/0000000000006_order_contact_snapshot_and_metrics.down.sql');
-  const previous = read('migrations/0000000000004_composite_tenant_fks.up.sql');
-
-  it('redefines update_customer_order_metrics byte-identically in baseline and up', () => {
-    expect(extractFunction(up, 'update_customer_order_metrics')).toBe(
-      extractFunction(baseline, 'update_customer_order_metrics')
-    );
-  });
-
-  it('down restores the body that 0000000000004 introduced', () => {
-    expect(extractFunction(down, 'update_customer_order_metrics')).toBe(
-      extractFunction(previous, 'update_customer_order_metrics')
-    );
-  });
 
   it('declares the same nullable snapshot columns in baseline and migration', () => {
     for (const col of ['contact_name', 'contact_phone', 'contact_address', 'contact_barrio']) {
@@ -123,8 +110,252 @@ describe('migration 0000000000007 (schema integrity) parity with the baseline sc
   });
 });
 
+describe('migration 0000000000008 (db hardening) parity with the baseline schema', () => {
+  const baseline = read('01_schema.sql');
+  const up = read('migrations/0000000000008_db_hardening.up.sql');
+  const down = read('migrations/0000000000008_db_hardening.down.sql');
+  const migration6 = read('migrations/0000000000006_order_contact_snapshot_and_metrics.up.sql');
+
+  describe('T2 customer metrics row lock', () => {
+    it('redefines update_customer_order_metrics byte-identically in baseline and up', () => {
+      expect(extractFunction(up, 'update_customer_order_metrics')).toBe(
+        extractFunction(baseline, 'update_customer_order_metrics')
+      );
+    });
+
+    it('locks the customer row before aggregating', () => {
+      const body = extractFunction(baseline, 'update_customer_order_metrics');
+      const lock = body.indexOf('FOR UPDATE');
+      expect(lock).toBeGreaterThan(-1);
+      expect(lock).toBeLessThan(body.indexOf('COUNT(*)'));
+    });
+
+    it('down restores the body that 0000000000006 introduced', () => {
+      expect(extractFunction(down, 'update_customer_order_metrics')).toBe(
+        extractFunction(migration6, 'update_customer_order_metrics')
+      );
+    });
+  });
+  describe('T3 RLS helper functions', () => {
+    const norm = (sql?: string) => sql?.replace(/\s+/g, ' ');
+    const policyStatements = (sql: string) =>
+      [...sql.matchAll(/CREATE POLICY "([^"]+)" ON public\.(\w+)[\s\S]*?;\n/g)].map((m) => ({ name: m[1], table: m[2], sql: m[0] }));
+
+    it('defines STABLE app_current_restaurant_id() and app_is_super_admin() identically in baseline and up', () => {
+      for (const fn of ['app_current_restaurant_id', 'app_is_super_admin']) {
+        const body = extractFunction(baseline, fn);
+        expect(body).toMatch(/\bSTABLE\b/);
+        expect(extractFunction(up, fn)).toBe(body);
+      }
+    });
+
+    it('baseline tenant policies read the tenant only through the helpers', () => {
+      const tenant = policyStatements(baseline).filter(
+        (p) => p.name.startsWith('tenant_isolation_') || p.name === 'users_select_for_auth'
+      );
+      expect(tenant.length).toBeGreaterThan(20);
+      for (const p of tenant) {
+        expect(p.sql, p.name).not.toMatch(/current_setting/);
+        expect(p.sql, p.name).toContain('(SELECT public.app_current_restaurant_id())');
+      }
+    });
+
+    it('up recreates every rewritten tenant policy exactly as the baseline declares it', () => {
+      const upPolicies = new Map(policyStatements(up).map((p) => [p.name, p.sql]));
+      const tenant = policyStatements(baseline).filter(
+        (p) => p.name.startsWith('tenant_isolation_') || p.name === 'users_select_for_auth'
+      );
+      for (const p of tenant) {
+        expect(norm(upPolicies.get(p.name)), p.name).toBe(norm(p.sql));
+      }
+    });
+
+    it('down restores the inline current_setting policies', () => {
+      const downPolicies = policyStatements(down);
+      expect(downPolicies.length).toBeGreaterThan(20);
+      for (const p of downPolicies) {
+        expect(p.sql, p.name).toContain("current_setting('app.");
+      }
+    });
+  });
+
+  describe('T4 slug-scoped public reads', () => {
+    const policyNames = (sql: string) => [...sql.matchAll(/CREATE POLICY "([^"]+)"/g)].map((m) => m[1]);
+
+    it('drops the blanket public read on products and additions (baseline and up; down recreates them)', () => {
+      for (const name of ['public_read_available_products', 'public_read_available_additions']) {
+        expect(policyNames(baseline)).not.toContain(name);
+        expect(up).toContain(`DROP POLICY IF EXISTS "${name}"`);
+        expect(policyNames(up)).not.toContain(name);
+        expect(policyNames(down)).toContain(name);
+      }
+    });
+
+    it.each([
+      'public_read_active_restaurants',
+      'public_read_restaurant_settings',
+      'public_read_restaurant_branding',
+      'public_read_categories',
+    ])('%s only applies without tenant context, without super_admin and for the declared slug', (name) => {
+      const grab = (sql: string) => sql.match(new RegExp(`CREATE POLICY "${name}"[\\s\\S]*?;\\n`))![0].replace(/\s+/g, ' ');
+      const def = grab(baseline);
+      expect(def).toContain('(SELECT public.app_current_restaurant_id()) IS NULL');
+      expect(def).toContain('NOT (SELECT public.app_is_super_admin())');
+      expect(def).toContain('(SELECT public.app_current_restaurant_slug())');
+      expect(grab(up)).toBe(def);
+      expect(grab(down)).not.toContain('app_current_restaurant_slug');
+    });
+
+    it('defines STABLE app_current_restaurant_slug() identically in baseline and up', () => {
+      const body = extractFunction(baseline, 'app_current_restaurant_slug');
+      expect(body).toMatch(/\bSTABLE\b/);
+      expect(extractFunction(up, 'app_current_restaurant_slug')).toBe(body);
+    });
+  });
+
+  describe('T5 append-only order_status_history', () => {
+    it('baseline grants app_user only SELECT and INSERT on the history table', () => {
+      expect(baseline).toMatch(/GRANT SELECT, INSERT ON public\.order_status_history TO app_user;/);
+      expect(baseline).not.toMatch(/GRANT [A-Z, ]*(UPDATE|DELETE)[A-Z, ]* ON public\.order_status_history/);
+    });
+
+    it('up revokes UPDATE and DELETE, down grants them back', () => {
+      expect(up).toMatch(/REVOKE UPDATE, DELETE ON public\.order_status_history FROM app_user;/);
+      expect(down).toMatch(/GRANT UPDATE, DELETE ON public\.order_status_history TO app_user;/);
+    });
+
+    it('declares the BEFORE UPDATE guard identically in baseline and up, and drops it in down', () => {
+      const fn = extractFunction(baseline, 'guard_order_status_history_immutable');
+      expect(fn).toContain("ERRCODE = '42501'");
+      expect(extractFunction(up, 'guard_order_status_history_immutable')).toBe(fn);
+      for (const sql of [baseline, up]) {
+        expect(sql.replace(/\s+/g, ' ')).toContain(
+          'CREATE TRIGGER trg_order_status_history_immutable BEFORE UPDATE ON public.order_status_history FOR EACH ROW EXECUTE FUNCTION public.guard_order_status_history_immutable();'
+        );
+      }
+      expect(down).toContain('DROP TRIGGER IF EXISTS trg_order_status_history_immutable');
+      expect(down).toContain('DROP FUNCTION IF EXISTS public.guard_order_status_history_immutable()');
+    });
+  });
+
+  describe('T6 restaurant FKs on financial tables are RESTRICT', () => {
+    const tables = ['orders', 'order_items', 'order_item_additions', 'order_status_history'];
+
+    it.each(tables)('baseline declares %s.restaurant_id ON DELETE RESTRICT', (table) => {
+      const body = baseline.match(new RegExp(`CREATE TABLE IF NOT EXISTS public\\.${table} \\(([\\s\\S]*?)\\n\\);`))![1];
+      expect(body).toMatch(/restaurant_id\s+TEXT NOT NULL REFERENCES public\.restaurants\(id\) ON DELETE RESTRICT/);
+    });
+
+    it.each(tables)('up swaps %s_restaurant_id_fkey to RESTRICT (NOT VALID + VALIDATE) and down restores CASCADE', (table) => {
+      expect(up).toContain(`'${table}'`);
+      expect(up).toContain('ON DELETE RESTRICT');
+      expect(up).toContain('NOT VALID');
+      expect(up).toContain('VALIDATE CONSTRAINT');
+      expect(down).toContain(`'${table}'`);
+      expect(down).toContain('ON DELETE CASCADE');
+    });
+  });
+
+  describe('T7 hours consolidation', () => {
+    it('baseline no longer declares restaurant_hours nor opening_hours_text', () => {
+      expect(baseline).not.toMatch(/public\.restaurant_hours/);
+      expect(baseline).not.toMatch(/opening_hours_text/);
+      expect(baseline).not.toContain('horarios_restaurante');
+    });
+
+    it('up backfills the times, aborts on a lossy text, then drops the column and the table', () => {
+      expect(up).toMatch(/UPDATE public\.restaurant_settings/);
+      expect(up).toMatch(/RAISE EXCEPTION[\s\S]*opening_hours_text/);
+      expect(up).toContain('DROP COLUMN IF EXISTS opening_hours_text');
+      expect(up).toContain('DROP TABLE IF EXISTS public.restaurant_hours');
+    });
+
+    it('down re-adds the column and recreates the table', () => {
+      expect(down).toContain('ADD COLUMN IF NOT EXISTS opening_hours_text');
+      expect(down).toContain('CREATE TABLE IF NOT EXISTS public.restaurant_hours');
+      expect(down).toContain('uq_restaurant_hours_day');
+      expect(down).toContain('chk_hours_consistent');
+    });
+  });
+
+  describe("T8 optional text columns: '' -> NULL", () => {
+    const cols = [
+      ['customers', 'email'],
+      ['customers', 'address'],
+      ['customers', 'barrio'],
+      ['products', 'description'],
+      ['suppliers', 'contact_name'],
+      ['suppliers', 'phone'],
+      ['suppliers', 'email'],
+    ];
+
+    it.each(cols)("baseline declares %s.%s without an empty-string default", (table, column) => {
+      const body = baseline.match(new RegExp(`CREATE TABLE IF NOT EXISTS public\\.${table} \\(([\\s\\S]*?)\\n\\);`))![1];
+      const line = body.split('\n').find((l) => new RegExp(`^\\s+${column}\\s`).test(l))!;
+      expect(line).toBeDefined();
+      expect(line).not.toMatch(/DEFAULT\s+''/);
+    });
+
+    it.each(cols)("up converts %s.%s '' to NULL and drops the default; down restores both", (table, column) => {
+      expect(up).toMatch(new RegExp(`ALTER TABLE public\\.${table}[\\s\\S]*?ALTER COLUMN ${column} DROP DEFAULT`));
+      expect(up).toMatch(new RegExp(`UPDATE public\\.${table}[\\s\\S]*?${column} = NULLIF\\(${column}, ''\\)`));
+      expect(down).toMatch(new RegExp(`ALTER COLUMN ${column} SET DEFAULT ''`));
+      expect(down).toMatch(new RegExp(`${column} = COALESCE\\(${column}, ''\\)`));
+    });
+  });
+
+  describe('T9 orders total consistency CHECK', () => {
+    it('baseline declares chk_orders_final_total on orders', () => {
+      const body = baseline.match(/CREATE TABLE IF NOT EXISTS public\.orders \(([\s\S]*?)\n\);/)![1];
+      expect(body.replace(/\s+/g, ' ')).toContain(
+        'CONSTRAINT chk_orders_final_total CHECK (final_total = subtotal + delivery_fee)'
+      );
+    });
+
+    it('up adds it NOT VALID, validates it and aborts loudly on violating rows; down drops it', () => {
+      const flat = up.replace(/\s+/g, ' ');
+      expect(flat).toContain('ADD CONSTRAINT chk_orders_final_total CHECK (final_total = subtotal + delivery_fee) NOT VALID');
+      expect(up).toContain('VALIDATE CONSTRAINT chk_orders_final_total');
+      expect(up).toMatch(/RAISE EXCEPTION[\s\S]*chk_orders_final_total/);
+      expect(down).toContain('DROP CONSTRAINT IF EXISTS chk_orders_final_total');
+    });
+  });
+
+  describe('T10 primary key id format CHECK', () => {
+    const tables = [
+      'restaurants', 'users', 'categories', 'products', 'product_additions', 'customers', 'orders',
+      'order_status_history', 'order_items', 'order_item_additions', 'suppliers', 'inventory_items',
+    ];
+
+    it.each(tables)('baseline declares chk_%s_id_format on the id primary key', (table) => {
+      const body = baseline.match(new RegExp(`CREATE TABLE IF NOT EXISTS public\\.${table} \\(([\\s\\S]*?)\\n\\);`))![1];
+      expect(body.replace(/\s+/g, ' ')).toContain(
+        `CONSTRAINT chk_${table}_id_format CHECK (id ~ '^[A-Za-z0-9_-]{1,64}$')`
+      );
+    });
+
+    it('up covers every table (NOT VALID + VALIDATE, aborting on offending ids) and down drops them', () => {
+      for (const table of tables) {
+        expect(up).toContain(`'${table}'`);
+        expect(down).toContain(`'${table}'`);
+      }
+      expect(up).toContain("'^[A-Za-z0-9_-]{1,64}$'");
+      expect(up).toContain('NOT VALID');
+      expect(up).toContain('VALIDATE CONSTRAINT');
+      expect(up).toMatch(/RAISE EXCEPTION/);
+      expect(down).toContain('DROP CONSTRAINT IF EXISTS');
+    });
+  });
+});
+
 describe('schema file structure', () => {
   const baseline = read('01_schema.sql');
+
+  it('never resets the app_user password when the role already exists (re-apply safe)', () => {
+    const code = baseline.replace(/^\s*--.*$/gm, '');
+    expect(code).not.toMatch(/ALTER ROLE app_user[^;]*PASSWORD/i);
+    expect(code).toMatch(/CREATE ROLE app_user[^;]*PASSWORD 'app_user_test_only'/);
+  });
 
   it('has no transaction control statements so it applies atomically with psql -1', () => {
     expect(baseline).not.toMatch(/^\s*(BEGIN|COMMIT|ROLLBACK|START TRANSACTION)\s*;/im);
@@ -133,6 +364,22 @@ describe('schema file structure', () => {
   it('has no statement that cannot run inside a transaction block', () => {
     const code = baseline.replace(/^\s*--.*$/gm, '');
     expect(code).not.toMatch(/CREATE INDEX CONCURRENTLY|ALTER TYPE[^;]*ADD VALUE|CREATE DATABASE|VACUUM\b/i);
+  });
+
+  it('has no stale header or table references in its comments (db-hardening-0008 T12)', () => {
+    expect(baseline).toContain('-- File: database/01_schema.sql');
+    expect(baseline).not.toContain('File: database/schema.sql');
+    expect(baseline).not.toContain('horarios_restaurante');
+    expect(baseline).not.toMatch(/restaurant_hours/);
+    expect(baseline).toMatch(/COMMENT ON TABLE public\.order_status_history IS '[^']*append-only/i);
+  });
+
+  it('the database README states the real minimum version and table count', () => {
+    const readme = read('README.md');
+    expect(readme).toMatch(/versión 15 en adelante/);
+    expect(readme).not.toMatch(/versión 14/);
+    const tables = [...baseline.matchAll(/CREATE TABLE IF NOT EXISTS public\.(\w+)/g)].length;
+    expect(readme).toContain(`${tables} tablas relacionales`);
   });
 
   it('documents the real minimum PostgreSQL version (15+)', () => {

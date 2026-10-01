@@ -48,9 +48,9 @@ export function mapRow(row: any): Restaurant {
       deliveryFee: Number(row.delivery_fee) || 0,
       minOrderAmount: Number(row.min_order_amount) || 0,
       estimatedDeliveryTime: row.estimated_delivery_time || '30 - 45 min',
-      // The admin-edited hours text is the source of truth for display; the
-      // time columns only back it when no text was ever stored.
-      openingHours: row.opening_hours_text || `${openTime} - ${closeTime}`,
+      // The HTTP contract exposes the hours as a "HH:MM - HH:MM" string; it is
+      // derived from open_time/close_time, the single stored source.
+      openingHours: `${openTime} - ${closeTime}`,
       address: row.address || '',
       primaryColor: row.primary_color || '#E63946',
       primaryHoverColor: row.primary_hover_color || '#F25C69',
@@ -73,9 +73,10 @@ function toTimeColumn(hhmm: string): string {
 }
 
 /**
- * Resolves the open_time/close_time columns. A parseable "HH:MM - HH:MM" hours
- * text (the value the admin edits) wins so the time columns never contradict
- * it; a free-form text or no text falls back to the structured hours.
+ * Resolves the open_time/close_time columns, the single stored source of the
+ * opening hours. A parseable "HH:MM - HH:MM" hours text (the value the admin
+ * edits) wins over the structured hours; a free-form text or no text falls
+ * back to the structured hours (free-form text is not stored anywhere).
  */
 function resolveOpeningTimes(restaurant: Restaurant): { openTime: string; closeTime: string } {
   const match = typeof restaurant.config?.openingHours === 'string'
@@ -94,7 +95,7 @@ const RESTAURANT_READ_COLUMNS = `
   SELECT r.id, r.slug, r.name, r.tagline, r.whatsapp_number, r.address, r.is_active,
          r.created_at,
          s.currency, s.currency_symbol, s.delivery_fee, s.min_order_amount,
-         s.estimated_delivery_time, s.opening_hours_text, s.open_time, s.close_time,
+         s.estimated_delivery_time, s.open_time, s.close_time,
          s.announcement_text, s.show_announcement,
          b.logo_url, b.banner_url, b.show_banner, b.primary_color, b.primary_hover_color,
          b.bg_theme, b.font_family, b.card_radius, b.card_style, b.compact_grid, b.show_badges,
@@ -113,9 +114,10 @@ const RESTAURANT_READ_COLUMNS = `
 // context exists yet to scope by (a restaurant is the tenant root), so they
 // run as actorRole 'super_admin' to preserve today's unrestricted
 // service_role behavior. findBySlug is the public storefront lookup and
-// deliberately runs with NO super_admin escape hatch, relying only on the
-// public_read_active_restaurants policy (is_active = true) — an inactive
-// restaurant must stay invisible to a storefront slug lookup.
+// deliberately runs with NO super_admin escape hatch: it declares the slug
+// (app.restaurant_slug) and relies only on the slug-scoped public read
+// policies, which expose just the ACTIVE restaurant with that slug — an
+// inactive restaurant must stay invisible, and the session cannot list others.
 export class PgRestaurantRepository implements RestaurantRepository {
   async findById(id: string): Promise<Restaurant | null> {
     return withTenantContext({ restaurantId: null, actorRole: 'super_admin' }, async (client) => {
@@ -125,7 +127,7 @@ export class PgRestaurantRepository implements RestaurantRepository {
   }
 
   async findBySlug(slug: string): Promise<Restaurant | null> {
-    return withTenantContext({ restaurantId: null }, async (client) => {
+    return withTenantContext({ restaurantId: null, restaurantSlug: slug }, async (client) => {
       const { rows } = await client.query(`${RESTAURANT_READ_COLUMNS} WHERE r.slug = $1`, [slug]);
       return rows[0] ? mapRow(rows[0]) : null;
     });
@@ -181,7 +183,6 @@ export class PgRestaurantRepository implements RestaurantRepository {
     if (cfg.deliveryFee !== undefined) settings.delivery_fee = cfg.deliveryFee;
     if (cfg.minOrderAmount !== undefined) settings.min_order_amount = cfg.minOrderAmount;
     if (cfg.estimatedDeliveryTime !== undefined) settings.estimated_delivery_time = cfg.estimatedDeliveryTime;
-    if (cfg.openingHours !== undefined) settings.opening_hours_text = cfg.openingHours;
     settings.open_time = openTime;
     settings.close_time = closeTime;
     if (cfg.announcementText !== undefined) settings.announcement_text = cfg.announcementText || null;
@@ -219,21 +220,12 @@ export class PgRestaurantRepository implements RestaurantRepository {
 
   async hardDelete(id: string): Promise<void> {
     await withTenantContext({ restaurantId: id, actorRole: 'super_admin' }, async (client) => {
-      const { rows: orderRows } = await client.query(`SELECT id FROM public.orders WHERE restaurant_id = $1`, [id]);
-      const orderIds = orderRows.map((o) => o.id);
-      if (orderIds.length > 0) {
-        const { rows: itemRows } = await client.query(
-          `SELECT id FROM public.order_items WHERE order_id = ANY($1::text[])`,
-          [orderIds]
-        );
-        const itemIds = itemRows.map((i) => i.id);
-        if (itemIds.length > 0) {
-          await client.query(`DELETE FROM public.order_item_additions WHERE order_item_id = ANY($1::text[])`, [itemIds]);
-        }
-        await client.query(`DELETE FROM public.order_items WHERE order_id = ANY($1::text[])`, [orderIds]);
-        await client.query(`DELETE FROM public.orders WHERE restaurant_id = $1`, [id]);
-      }
-
+      // The restaurant FKs of orders/order_items/order_item_additions/
+      // order_status_history are ON DELETE RESTRICT, so the orders go first;
+      // their items, additions and status history follow through the order
+      // FK cascades (referential actions run as table owner, so the append-only
+      // grants on order_status_history do not block them).
+      await client.query(`DELETE FROM public.orders WHERE restaurant_id = $1`, [id]);
       await client.query(`DELETE FROM public.users WHERE restaurant_id = $1`, [id]);
       await client.query(`DELETE FROM public.products WHERE restaurant_id = $1`, [id]);
       await client.query(`DELETE FROM public.customers WHERE restaurant_id = $1`, [id]);

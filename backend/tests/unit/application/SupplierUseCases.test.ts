@@ -125,4 +125,22 @@ describe('Supplier Use Cases', () => {
       EntityNotFoundError
     );
   });
+
+  describe('supplier ids (db-hardening-0008 T11)', () => {
+    it('generates <prefix>_<uuidv7> ids that match the database id format', async () => {
+      const created = await createUseCase.execute('rest-1', { name: 'Proveedor' } as any);
+      expect(created.id).toMatch(/^sup_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    });
+
+    it('keeps a client-supplied id that satisfies the id format', async () => {
+      const created = await createUseCase.execute('rest-1', { id: 'sup-custom_1', name: 'Proveedor' } as any);
+      expect(created.id).toBe('sup-custom_1');
+    });
+
+    it('rejects a client-supplied id the database would refuse', async () => {
+      await expect(createUseCase.execute('rest-1', { id: 'bad id.with/chars', name: 'Proveedor' } as any)).rejects.toBeInstanceOf(
+        ValidationError
+      );
+    });
+  });
 });

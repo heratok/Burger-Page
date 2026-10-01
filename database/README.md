@@ -1,7 +1,7 @@
 # Burger-Page — Database (PostgreSQL Canonical)
 
 Este directorio contiene la definición canónica y datos demo para PostgreSQL
-(versión 14 en adelante), desacoplada de dependencias o herramientas propietarias.
+(versión 15 en adelante), desacoplada de dependencias o herramientas propietarias.
 
 ---
 
@@ -9,7 +9,7 @@ Este directorio contiene la definición canónica y datos demo para PostgreSQL
 
 * **[`01_schema.sql`](file:///C:/Users/ASUS/Desktop/Burger-Page/database/01_schema.sql)**: Esquema canónico DDL (baseline):
   - Rol de aplicación `app_user` (aislamiento RLS estricto, sin BYPASSRLS).
-  - 14 tablas relacionales (`restaurants`, `orders`, `products`, ...).
+  - 15 tablas relacionales (`restaurants`, `orders`, `products`, ...).
   - Índices compuestos y de rendimiento.
   - Funciones PL/pgSQL atómicas (`create_order_atomic`, `update_order_status_with_actor`, `adjust_inventory_stock`).
   - Triggers automáticos (`updated_at`, contadores atómicos, auditoría de estado, métricas de clientes).
@@ -46,6 +46,8 @@ npm run db:migrate
 > ```sql
 > ALTER ROLE app_user WITH PASSWORD 'tu_password_segura_aqui';
 > ```
+> Re-aplicar `01_schema.sql` **no** resetea la contraseña de un `app_user` ya existente
+> (solo se fija al crear el rol).
 
 ### 2. Desarrollo local / Testing (Docker)
 ```bash
@@ -107,7 +109,12 @@ DATABASE_URL=postgres://app_user:tu_password_segura_aqui@localhost:5432/burger_p
 * **Rol de conexión (`app_user`)**: sin `BYPASSRLS`. Acceso restringido por contexto de tenant.
 * **Aislamiento por transacción**: cada query/transacción establece `SET LOCAL app.restaurant_id = $1`
   (y `app.actor_role` para escalas de privilegio) vía `PgClient.withTenantContext`.
-* **Políticas InitPlan**: las políticas RLS usan `(SELECT current_setting('app.restaurant_id', true))`
-  para evaluar el tenant una sola vez por consulta.
+* **Políticas InitPlan**: las políticas RLS usan `(SELECT public.app_current_restaurant_id())` y
+  `(SELECT public.app_is_super_admin())` (funciones `STABLE` que leen los GUC `app.restaurant_id` /
+  `app.actor_role`) para evaluar el tenant una sola vez por consulta.
+* **Lecturas públicas**: solo la resolución de la vitrina por slug. `PgRestaurantRepository.findBySlug`
+  declara `app.restaurant_slug` y las políticas `public_read_*` exponen únicamente el restaurante
+  **activo** con ese slug (y su configuración, marca y categorías activas) a sesiones sin tenant ni
+  `super_admin`. Productos y adiciones no tienen lectura pública: se leen con el contexto del tenant.
 * **`users`**: FORCE RLS + lecturas de autenticación solo por las funciones
   SECURITY DEFINER `look_up_user_for_auth*` (search_path endurecido, sin PUBLIC).

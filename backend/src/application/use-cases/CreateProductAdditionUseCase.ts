@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { ID_PREFIX, newId } from '../../domain/shared/newId.js';
 import { ProductAdditionRepository } from '../../domain/ports/out/ProductAdditionRepository.js';
 import { ProductRepository } from '../../domain/ports/out/ProductRepository.js';
 import { ProductAddition } from '../../domain/models/ProductAddition.js';
@@ -34,7 +34,7 @@ export class CreateProductAdditionUseCase {
     }
 
     const addition = new ProductAddition(
-      `add_${randomUUID()}`,
+      newId(ID_PREFIX.addition),
       restaurantId,
       dto.name.trim(),
       Number(dto.price),

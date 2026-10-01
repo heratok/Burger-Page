@@ -98,7 +98,7 @@ export class PgProductRepository implements ProductRepository {
           product.restaurantId,
           product.categoryId || null,
           product.name,
-          product.description,
+          product.description || null,
           product.price,
           product.imageUrl || null,
           product.isAvailable,

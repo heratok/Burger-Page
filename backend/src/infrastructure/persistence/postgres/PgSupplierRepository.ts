@@ -56,9 +56,10 @@ export class PgSupplierRepository implements SupplierRepository {
           supplier.restaurantId,
           supplier.name,
           supplier.category || 'general',
-          supplier.contactName || '',
-          supplier.phone || '',
-          supplier.email || '',
+          // Empty optional text is stored as NULL (db-hardening-0008).
+          supplier.contactName || null,
+          supplier.phone || null,
+          supplier.email || null,
           supplier.notes || null,
           supplier.createdAt || null,
         ]

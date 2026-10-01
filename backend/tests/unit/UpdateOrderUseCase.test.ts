@@ -324,6 +324,35 @@ describe('UpdateOrderUseCase (Unit Tests)', () => {
     expect(result.items[0].observation).toBe('Bien crujientes');
   });
 
+  describe('order item ids (db-hardening-0008 T11)', () => {
+    const friesItem = (extra: Record<string, unknown> = {}) => ({
+      productId: 'prod-fries',
+      quantity: 1,
+      ...extra,
+    });
+
+    beforeEach(() => {
+      vi.mocked(mockOrderRepo.findById).mockResolvedValue(createBaseOrder());
+      vi.mocked(mockProductRepo.findById).mockResolvedValue({ id: 'prod-fries', name: 'Papas', price: 12000 } as any);
+    });
+
+    it('mints <prefix>_<uuidv7> ids for new items', async () => {
+      const result = await useCase.execute('ord-123', { items: [friesItem()] }, 'rest-burger-craft');
+      expect(result.items[0].id).toMatch(/^ord_item_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    });
+
+    it('keeps a client-supplied item id that satisfies the id format', async () => {
+      const result = await useCase.execute('ord-123', { items: [friesItem({ id: 'item-1' })] }, 'rest-burger-craft');
+      expect(result.items[0].id).toBe('item-1');
+    });
+
+    it('rejects a client-supplied item id the database would refuse', async () => {
+      await expect(
+        useCase.execute('ord-123', { items: [friesItem({ id: 'bad id/with.chars' })] }, 'rest-burger-craft')
+      ).rejects.toThrow(ValidationError);
+    });
+  });
+
   it('resolves product by name in allProducts list when findById returns null', async () => {
     const existing = createBaseOrder();
     vi.mocked(mockOrderRepo.findById).mockResolvedValue(existing);

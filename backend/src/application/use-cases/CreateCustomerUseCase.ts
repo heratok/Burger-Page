@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { ID_PREFIX, newId } from '../../domain/shared/newId.js';
 import { CustomerRepository } from '../../domain/ports/out/CustomerRepository.js';
 import { Customer } from '../../domain/models/Customer.js';
 import { CreateCustomerDTO } from '../dtos/index.js';
@@ -34,7 +34,7 @@ export class CreateCustomerUseCase {
     }
 
     const customer = new Customer(
-      `cust_${randomUUID()}`,
+      newId(ID_PREFIX.customer),
       restaurantId,
       dto.name.trim(),
       trimmedPhone,

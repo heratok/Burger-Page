@@ -1,6 +1,7 @@
 import { useRef, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
+import { toast } from "sonner"
 import {
   ArrowLeft,
   Banknote,
@@ -35,10 +36,14 @@ import {
   buildOrderMessage,
   buildWhatsAppUrl,
   generateOrderId,
+  isMobileDevice,
 } from "./whatsapp"
 import { cartItemToOrderItem, type CartItem } from "./cartEngine"
 import { useRestaurant } from "@/context/RestaurantContext"
 import { formatCurrency, getContrastForeground } from "@/lib/utils"
+
+const PENDING_TAB_HTML =
+  "<!doctype html><title>Preparando tu pedido…</title><p style=\"font-family:sans-serif;text-align:center;margin-top:3rem\">Preparando tu pedido…</p>"
 
 const METODOS = [
   { value: "Efectivo", Icon: Banknote },
@@ -83,6 +88,10 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
   const deliveryFee = cartItems.length > 0 ? (storeConfig.deliveryFee ?? 0) : 0
   const total = subtotal + deliveryFee
 
+  const minOrderAmount = Number(storeConfig.minOrderAmount || 0)
+  const isBelowMinOrder = minOrderAmount > 0 && subtotal < minOrderAmount
+  const amountNeeded = isBelowMinOrder ? minOrderAmount - subtotal : 0
+
   const cambio = calculateChange(total, pagoCon)
 
   // Synchronous re-entrancy guard: react-hook-form flips isSubmitting on the
@@ -91,6 +100,10 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
   const submitInFlightRef = useRef(false)
 
   const onSubmit = async (values: FormValues) => {
+    if (isBelowMinOrder) {
+      toast.error(`El pedido mínimo es de ${formatCurrency(minOrderAmount)} (faltan ${formatCurrency(amountNeeded)}).`)
+      return
+    }
     if (submitInFlightRef.current) return
     submitInFlightRef.current = true
     try {
@@ -101,6 +114,32 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
   }
 
   const placeOrder = async (values: FormValues) => {
+    // 0. Without a configured WhatsApp number the order could not be delivered
+    // to the restaurant: refuse before registering anything.
+    const targetPhone = storeConfig.whatsappNumber?.trim()
+    if (!targetPhone) {
+      toast.error("Este restaurante aún no tiene WhatsApp configurado. Intenta más tarde.")
+      return
+    }
+
+    // Desktop: open the tab NOW, while the submit gesture is still active.
+    // Awaiting the network first loses transient user activation and popup
+    // blockers silently drop the tab. Mobile navigates the same tab instead.
+    let pendingTab: Window | null = null
+    if (!isMobileDevice()) {
+      pendingTab = window.open("", "_blank")
+      if (pendingTab) {
+        pendingTab.opener = null
+        try {
+          pendingTab.document.open()
+          pendingTab.document.write(PENDING_TAB_HTML)
+          pendingTab.document.close()
+        } catch {
+          // Placeholder is cosmetic; the tab is navigated to WhatsApp anyway.
+        }
+      }
+    }
+
     // 1. Register order in CRM context. The outcome toast is owned by
     // addOrder: it confirms only after the server accepts the order, and
     // shows an error (removing the optimistic card) when the server
@@ -133,6 +172,7 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
         }
       } catch {
         // Server rejected (addOrder already showed error toast and removed optimistic card)
+        pendingTab?.close()
         return
       }
     }
@@ -154,8 +194,12 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
       deliveryFee: storeConfig.deliveryFee,
     })
 
-    const targetPhone = storeConfig.whatsappNumber || "573001234567"
-    window.open(buildWhatsAppUrl(targetPhone, message), "_blank", "noreferrer")
+    const whatsAppUrl = buildWhatsAppUrl(targetPhone, message)
+    if (pendingTab) {
+      pendingTab.location.href = whatsAppUrl
+    } else {
+      window.location.assign(whatsAppUrl)
+    }
 
     onClose()
   }
@@ -365,15 +409,27 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
           </Field>
         </FieldGroup>
 
+        {isBelowMinOrder && (
+          <div
+            role="alert"
+            className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-sm font-medium text-amber-700 dark:text-amber-300"
+          >
+            <CircleAlert className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+            <span>
+              El pedido mínimo es de {formatCurrency(minOrderAmount)} (faltan {formatCurrency(amountNeeded)}).
+            </span>
+          </div>
+        )}
+
         <div className="flex flex-col gap-2 pt-2 sm:flex-row">
           <Button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || isBelowMinOrder}
             aria-busy={isSubmitting}
             variant="default"
             size="lg"
             style={{ backgroundColor: storeConfig.primaryColor, color: primaryForeground }}
-            className="h-12 flex-1 text-base font-bold shadow-md cursor-pointer hover:opacity-90"
+            className="h-12 flex-1 text-base font-bold shadow-md cursor-pointer hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Send data-icon="inline-start" />
             {isSubmitting ? "Enviando pedido..." : "Enviar pedido por WhatsApp"}

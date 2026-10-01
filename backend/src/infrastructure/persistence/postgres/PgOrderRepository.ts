@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { ID_PREFIX, newId } from '../../../domain/shared/newId.js';
 import { Order, OrderStatus, OrderItem, OrderItemAddition } from '../../../domain/models/Order.js';
 import { UserRole } from '../../../domain/models/User.js';
 import { EntityNotFoundError, InvalidOrderStateError, ValidationError } from '../../../domain/errors/DomainErrors.js';
@@ -213,12 +213,12 @@ export class PgOrderRepository implements OrderRepository {
 
   async save(order: Order): Promise<void> {
     const itemsPayload = order.items.map((item) => ({
-      id: item.id || `item_${Date.now()}_${randomBytes(4).toString('hex')}`,
+      id: item.id || newId(ID_PREFIX.orderItem),
       product_id: item.productId,
       quantity: item.quantity,
       observation: item.observation || null,
       additions: (item.additions || []).map((add) => ({
-        id: add.id || `add_${Date.now()}_${randomBytes(4).toString('hex')}`,
+        id: add.id || newId(ID_PREFIX.orderAddition),
         addition_id: add.additionId,
         quantity: add.quantity || 1,
       })),
@@ -452,7 +452,7 @@ export class PgOrderRepository implements OrderRepository {
 
       // Re-insert the updated items and their additions
       for (const item of order.items) {
-        const itemId = item.id || `ord_item_${Date.now()}_${randomBytes(4).toString('hex')}`;
+        const itemId = item.id || newId(ID_PREFIX.orderItem);
 
         // Verify product_id foreign key or resolve by name
         let validProductId: string | null = null;
@@ -483,7 +483,7 @@ export class PgOrderRepository implements OrderRepository {
 
         if (item.additions && item.additions.length > 0) {
           for (const add of item.additions) {
-            const addId = add.id || `ord_add_${Date.now()}_${randomBytes(4).toString('hex')}`;
+            const addId = add.id || newId(ID_PREFIX.orderAddition);
 
             // Verify addition_id foreign key or resolve by name
             let validAdditionId: string | null = null;

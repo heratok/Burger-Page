@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { ID_PREFIX, newId } from '../../domain/shared/newId.js';
 import { ProductRepository } from '../../domain/ports/out/ProductRepository.js';
 import { CategoryRepository } from '../../domain/ports/out/CategoryRepository.js';
 import { ProductAdditionRepository } from '../../domain/ports/out/ProductAdditionRepository.js';
@@ -39,7 +39,7 @@ export class CreateProductUseCase {
     } else if (resolvedCategoryName) {
       let category = await this.categoryRepo.findByName(resolvedCategoryName, restaurantId);
       if (!category) {
-        category = { id: `cat_${randomUUID()}`, restaurantId, name: resolvedCategoryName, isActive: true };
+        category = { id: newId(ID_PREFIX.category), restaurantId, name: resolvedCategoryName, isActive: true };
         await this.categoryRepo.save(category);
       }
       if (category.isActive === false) {
@@ -62,7 +62,7 @@ export class CreateProductUseCase {
     }
 
     const product: Product = {
-      id: `prod_${randomUUID()}`,
+      id: newId(ID_PREFIX.product),
       restaurantId,
       name: dto.name.trim(),
       description: dto.description || '',

@@ -86,13 +86,19 @@ export async function verifyPgConnection(): Promise<{
 
 export interface TenantContext {
   restaurantId: string | null;
+  /**
+   * Public slug the anonymous storefront lookup declares (app.restaurant_slug).
+   * Only meaningful with restaurantId null and no actorRole: the public read
+   * policies expose just the active restaurant with this slug.
+   */
+  restaurantSlug?: string;
   actorRole?: 'super_admin' | 'restaurant_admin';
   actor?: string;
 }
 
 /**
- * Runs fn inside a transaction with app.restaurant_id / app.actor_role /
- * app.actor set via SET LOCAL (transaction-scoped) on a client checked out
+ * Runs fn inside a transaction with app.restaurant_id / app.restaurant_slug /
+ * app.actor_role / app.actor set via SET LOCAL (transaction-scoped) on a client checked out
  * for the duration of the call.
  *
  * SET LOCAL only, never plain SET: the pool reuses physical connections
@@ -118,6 +124,7 @@ export async function withTenantContext<T>(
     // no-context state deterministic on fresh and reused pooled connections
     // alike.
     await client.query("SELECT set_config('app.restaurant_id', $1, true)", [context.restaurantId ?? '']);
+    await client.query("SELECT set_config('app.restaurant_slug', $1, true)", [context.restaurantSlug ?? '']);
     await client.query("SELECT set_config('app.actor_role', $1, true)", [context.actorRole ?? '']);
     await client.query("SELECT set_config('app.actor', $1, true)", [context.actor ?? '']);
     const result = await fn(client);

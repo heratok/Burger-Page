@@ -1,18 +1,15 @@
 import { Toaster as Sonner, type ToasterProps } from "sonner"
 import { CircleCheckIcon, InfoIcon, TriangleAlertIcon, OctagonXIcon, Loader2Icon } from "lucide-react"
 
-const Toaster = ({ theme, ...props }: ToasterProps) => {
+export interface ToasterComponentProps extends ToasterProps {
+  themeStyles?: React.CSSProperties
+}
+
+const Toaster = ({ theme, themeStyles, ...props }: ToasterComponentProps) => {
   return (
     <Sonner
       theme={theme}
       className="toaster group"
-      toastOptions={{
-        style: {
-          backgroundColor: "var(--color-bg-elevated)",
-          color: "var(--color-text-primary)",
-          borderColor: "var(--color-border-subtle)",
-        },
-      }}
       icons={{
         success: (
           <CircleCheckIcon className="size-4" />
@@ -32,10 +29,12 @@ const Toaster = ({ theme, ...props }: ToasterProps) => {
       }}
       style={
         {
-          "--normal-bg": "var(--color-bg-elevated)",
-          "--normal-text": "var(--color-text-primary)",
-          "--normal-border": "var(--color-border-subtle)",
-          "--border-radius": "var(--radius-lg)",
+          ...themeStyles,
+          "--normal-bg": "var(--color-bg-elevated, #212529)",
+          "--normal-text": "var(--color-text-primary, #F5F5F7)",
+          "--normal-border": "var(--color-border-subtle, #2D3138)",
+          "--border-radius": "var(--radius-lg, 16px)",
+          ...props.style,
         } as React.CSSProperties
       }
       {...props}

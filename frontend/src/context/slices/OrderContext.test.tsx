@@ -18,6 +18,7 @@ import {
   updateRestaurantOrderState,
   syncBackendOrders,
   syncBackendCustomers,
+  formatUserFacingOrderError,
   OrderProvider,
   useOrders,
 } from "./OrderContext"
@@ -1209,5 +1210,71 @@ describe("handleOrderCreatedEvent - payment data from the payload (flow fix 1.4)
     expect(order.metodo).toBe("Transferencia")
     expect(order.pagoCon).toBeUndefined()
     expect(order.cambio).toBeUndefined()
+  })
+})
+
+describe("formatUserFacingOrderError", () => {
+  it("maps minimum order error messages to user-facing Spanish", () => {
+    expect(
+      formatUserFacingOrderError("The order subtotal (10000) is below the minimum required for Burger Craft (15000).")
+    ).toBe("El monto del pedido no alcanza el pedido mínimo requerido por el restaurante.")
+
+    expect(
+      formatUserFacingOrderError("El subtotal del pedido (10000) es inferior al mínimo requerido por Burger Craft (15000).")
+    ).toBe("El monto del pedido no alcanza el pedido mínimo requerido por el restaurante.")
+  })
+
+  it("maps unavailable or missing product errors to user-facing Spanish", () => {
+    expect(
+      formatUserFacingOrderError("Product is currently not available.")
+    ).toBe("Uno de los productos seleccionados ya no está disponible.")
+
+    expect(
+      formatUserFacingOrderError("Product not found or not available for this restaurant.")
+    ).toBe("Uno de los productos seleccionados ya no está disponible.")
+
+    expect(
+      formatUserFacingOrderError("Producto no encontrado o no disponible para este restaurante.")
+    ).toBe("Uno de los productos seleccionados ya no está disponible.")
+  })
+
+  it("maps unavailable or missing addition errors to user-facing Spanish", () => {
+    expect(
+      formatUserFacingOrderError("Addition is currently not available.")
+    ).toBe("Una de las adiciones seleccionadas ya no está disponible.")
+
+    expect(
+      formatUserFacingOrderError("Addition not found for this restaurant.")
+    ).toBe("Una de las adiciones seleccionadas ya no está disponible.")
+
+    expect(
+      formatUserFacingOrderError("La adición 'Extra Queso' no aplica para el producto 'Burger'.")
+    ).toBe("Una de las adiciones seleccionadas ya no está disponible.")
+  })
+
+  it("maps cash payment below total errors to user-facing Spanish", () => {
+    expect(
+      formatUserFacingOrderError("Payment amount (10000) is less than final total (20000).")
+    ).toBe("El monto en efectivo ingresado es menor al total a pagar.")
+
+    expect(
+      formatUserFacingOrderError("El monto de pago (10000) es menor al total a pagar (20000).")
+    ).toBe("El monto en efectivo ingresado es menor al total a pagar.")
+  })
+
+  it("maps inactive restaurant errors to user-facing Spanish", () => {
+    expect(
+      formatUserFacingOrderError("Restaurant 'Burger Craft' is currently inactive.")
+    ).toBe("El restaurante no está recibiendo pedidos en este momento.")
+
+    expect(
+      formatUserFacingOrderError("El restaurante 'Burger Craft' no está activo actualmente.")
+    ).toBe("El restaurante no está recibiendo pedidos en este momento.")
+  })
+
+  it("returns fallback when message is missing or empty, or original message when unrecognized", () => {
+    expect(formatUserFacingOrderError(undefined)).toBe("El servidor no está disponible en este momento")
+    expect(formatUserFacingOrderError("")).toBe("El servidor no está disponible en este momento")
+    expect(formatUserFacingOrderError("Error desconocido")).toBe("Error desconocido")
   })
 })

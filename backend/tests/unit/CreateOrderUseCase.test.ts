@@ -149,7 +149,7 @@ describe('CreateOrderUseCase', () => {
     await expect(useCase.execute({
       restaurantId: 'burger-craft',
       items: [{ productId: 'p-foreign', quantity: 1, additions: [] }]
-    })).rejects.toThrow('Product not found or not available for this restaurant.');
+    })).rejects.toThrow('Producto no encontrado o no disponible para este restaurante.');
   });
 
   it('should reject if addition belongs to another tenant with a non-revealing error (M8)', async () => {
@@ -163,7 +163,7 @@ describe('CreateOrderUseCase', () => {
     await expect(useCase.execute({
       restaurantId: 'burger-craft',
       items: [{ productId: 'p1', quantity: 1, additions: [{ additionId: 'add-foreign', quantity: 1 }] }]
-    })).rejects.toThrow('Addition not found for this restaurant.');
+    })).rejects.toThrow('Adición no encontrada para este restaurante.');
   });
 
   it('should reject if customer belongs to another tenant with a non-revealing error (M8)', async () => {

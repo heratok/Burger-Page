@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { ID_PREFIX, newId } from '../../domain/shared/newId.js';
 import { InventoryRepository } from '../../domain/ports/out/InventoryRepository.js';
 import { Inventory, InventoryCategory, InventoryUnit } from '../../domain/models/Inventory.js';
 import { CreateInventoryItemDTO } from '../dtos/index.js';
@@ -48,7 +48,7 @@ export class CreateInventoryItemUseCase {
     }
 
     const item: Inventory = {
-      id: `inv_${randomUUID()}`,
+      id: newId(ID_PREFIX.inventory),
       restaurantId,
       name: dto.name.trim(),
       category: dto.category,
