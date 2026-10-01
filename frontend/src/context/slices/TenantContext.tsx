@@ -87,6 +87,8 @@ export interface TenantContextType {
   deleteRestaurant: (id: string) => Promise<void>
   updateActiveRestaurantRecord: (updater: (current: RestaurantRecord) => RestaurantRecord) => void
   refreshRestaurants: () => Promise<void>
+  /** Storefront polling: refresh schedule, timezone and pause from the public endpoint (silent on failure). */
+  refreshStoreStatus: () => Promise<void>
   globalStats: GlobalPlatformStats
 }
 
@@ -185,6 +187,42 @@ export const TenantProvider: React.FC<{
   useEffect(() => {
     refreshRestaurants()
   }, [refreshRestaurants, session])
+
+  // Storefront-only refresh of the schedule, timezone and pause flag from the
+  // public by-slug endpoint, so customers on other devices see a pause or a new
+  // schedule without reloading. Merges ONLY those fields (cart, catalog and the
+  // rest of the config are untouched), keeps the same envelope reference when
+  // nothing changed (no re-render, no localStorage write), and is silent on
+  // failure so the last known data keeps working.
+  const refreshStoreStatus = useCallback(async (): Promise<void> => {
+    const current = envelope.restaurants.find((r) => r.id === effectiveRestaurantId)
+    if (!current?.slug) return
+    try {
+      const fetched = await apiClient.fetchRestaurant(current.slug)
+      if (!fetched || fetched.id !== current.id) return
+      const next = scheduleFieldsFromApi(fetched as any)
+      setEnvelope((prev) => {
+        const target = prev.restaurants.find((r) => r.id === current.id)
+        if (!target) return prev
+        const cfg = target.config
+        if (
+          JSON.stringify(cfg.schedule) === JSON.stringify(next.schedule) &&
+          cfg.timezone === next.timezone &&
+          Boolean(cfg.ordersPaused) === next.ordersPaused
+        ) {
+          return prev
+        }
+        return {
+          ...prev,
+          restaurants: prev.restaurants.map((r) =>
+            r.id === current.id ? { ...r, config: { ...r.config, ...next } } : r
+          ),
+        }
+      })
+    } catch {
+      // Silent: keep the last known schedule.
+    }
+  }, [envelope.restaurants, effectiveRestaurantId])
 
   // Cross-tab synchronization via storage event
   useEffect(() => {
@@ -576,6 +614,7 @@ export const TenantProvider: React.FC<{
     deleteRestaurant,
     updateActiveRestaurantRecord,
     refreshRestaurants,
+    refreshStoreStatus,
     globalStats,
   }
 

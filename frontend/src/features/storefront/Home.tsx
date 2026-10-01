@@ -16,6 +16,7 @@ import {
 } from "@/features/cart"
 import { StoreStatus } from "./StoreStatus"
 import { useStoreOpenStatus } from "@/hooks/useStoreOpenStatus"
+import { useStoreStatusRefresh } from "@/hooks/useStoreStatusRefresh"
 import { closedMessage } from "@/lib/storeSchedule"
 import { useRestaurant } from "@/context/RestaurantContext"
 import { getFontFamilyClass, getStoreThemeStyles } from "@/features/crm/utils/customizerStyles"
@@ -23,7 +24,8 @@ import { getContrastForeground } from "@/lib/utils"
 import { useHorizontalScroll } from "@/hooks/useHorizontalScroll"
 
 export default function Home() {
-  const { products, storeConfig, categories: contextCategories, activeRestaurant } = useRestaurant()
+  const { products, storeConfig, categories: contextCategories, activeRestaurant, refreshStoreStatus } = useRestaurant()
+  useStoreStatusRefresh(refreshStoreStatus)
   const openStatus = useStoreOpenStatus(storeConfig)
   const {
     cartItems,

@@ -557,4 +557,85 @@ describe("TenantContext.loadRestaurant - never shows another tenant", () => {
     expect(fetchSpy).not.toHaveBeenCalled()
     expect(result.current.activeRestaurant.id).toBe(known.id)
   })
+
+  describe("refreshStoreStatus", () => {
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>{children}</TenantProvider>
+    )
+
+    it("updates only schedule, timezone and pause of the active restaurant", async () => {
+      vi.spyOn(apiClient, "hasToken").mockReturnValue(false)
+      const fetchSpy = vi.spyOn(apiClient, "fetchRestaurant").mockResolvedValue({
+        id: "rest-burger-craft",
+        slug: "burger-craft",
+        name: "Changed name must be ignored",
+        config: { primaryColor: "#000000" },
+        schedule: [{ dayOfWeek: 1, open: "10:00", close: "12:00" }],
+        timezone: "America/Mexico_City",
+        ordersPaused: true,
+        products: [{ id: "x" }],
+      } as any)
+
+      const { result } = renderHook(() => useTenant(), { wrapper })
+      const before = result.current.activeRestaurant
+      await act(async () => {
+        await result.current.refreshStoreStatus()
+      })
+
+      expect(fetchSpy).toHaveBeenCalledWith("burger-craft")
+      const after = result.current.activeRestaurant
+      expect(after.config.ordersPaused).toBe(true)
+      expect(after.config.timezone).toBe("America/Mexico_City")
+      expect(after.config.schedule).toEqual([{ dayOfWeek: 1, open: "10:00", close: "12:00" }])
+      expect(after.config.name).toBe(before.config.name)
+      expect(after.config.primaryColor).toBe(before.config.primaryColor)
+      expect(after.products).toBe(before.products)
+    })
+
+    it("keeps the same state reference when nothing changed", async () => {
+      vi.spyOn(apiClient, "hasToken").mockReturnValue(false)
+      vi.spyOn(apiClient, "fetchRestaurant").mockResolvedValue({
+        id: "rest-burger-craft",
+        slug: "burger-craft",
+        schedule: DEFAULT_STORE_CONFIG.schedule,
+        timezone: DEFAULT_STORE_CONFIG.timezone,
+        ordersPaused: false,
+      } as any)
+
+      const { result } = renderHook(() => useTenant(), { wrapper })
+      const before = result.current.activeRestaurant
+      await act(async () => {
+        await result.current.refreshStoreStatus()
+      })
+      expect(result.current.activeRestaurant).toBe(before)
+    })
+
+    it("is silent and keeps the last known data when the refresh fails", async () => {
+      vi.spyOn(apiClient, "hasToken").mockReturnValue(false)
+      vi.spyOn(apiClient, "fetchRestaurant").mockRejectedValue(new Error("network"))
+
+      const { result } = renderHook(() => useTenant(), { wrapper })
+      const before = result.current.activeRestaurant
+      await act(async () => {
+        await expect(result.current.refreshStoreStatus()).resolves.toBeUndefined()
+      })
+      expect(result.current.activeRestaurant).toBe(before)
+    })
+
+    it("ignores a response that belongs to another restaurant", async () => {
+      vi.spyOn(apiClient, "hasToken").mockReturnValue(false)
+      vi.spyOn(apiClient, "fetchRestaurant").mockResolvedValue({
+        id: "rest-other",
+        slug: "other",
+        ordersPaused: true,
+      } as any)
+
+      const { result } = renderHook(() => useTenant(), { wrapper })
+      const before = result.current.activeRestaurant
+      await act(async () => {
+        await result.current.refreshStoreStatus()
+      })
+      expect(result.current.activeRestaurant).toBe(before)
+    })
+  })
 })

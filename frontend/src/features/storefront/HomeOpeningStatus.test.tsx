@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
 import { render, screen, cleanup, fireEvent } from "@testing-library/react"
 import { RestaurantProvider } from "@/context/RestaurantContext"
 import Home from "@/features/storefront/Home"
+import { apiClient } from "@/core/api/apiClient"
 import { seedBlankActiveTenant, TEST_PRODUCTS } from "@/test/fixtures"
 
 function seedWithProducts(overrides = {}) {
@@ -68,5 +69,31 @@ describe("Home - opening status", () => {
     )
     await screen.findByPlaceholderText("Buscar en el menú...")
     expect(screen.getAllByRole("button", { name: /Agregar .* al carrito/ }).length).toBeGreaterThan(0)
+  })
+
+  it("picks up a pause made on another device when the tab becomes visible, without losing UI state", async () => {
+    seedWithProducts()
+    const fetchSpy = vi.spyOn(apiClient, "fetchRestaurant").mockResolvedValue({
+      id: "rest-burger-craft",
+      slug: "burger-craft",
+      ordersPaused: true,
+    } as any)
+    render(
+      <RestaurantProvider>
+        <Home />
+      </RestaurantProvider>
+    )
+    const search = (await screen.findByPlaceholderText("Buscar en el menú...")) as HTMLInputElement
+    fireEvent.change(search, { target: { value: "a" } })
+    expect(screen.getByText("Abierto")).toBeDefined()
+
+    document.dispatchEvent(new Event("visibilitychange"))
+
+    await screen.findByText("Pedidos en pausa")
+    expect(fetchSpy).toHaveBeenCalledWith("burger-craft")
+    expect(screen.queryByText("Abierto")).toBeNull()
+    expect(
+      (screen.getByPlaceholderText("Buscar en el menú...") as HTMLInputElement).value
+    ).toBe("a")
   })
 })
