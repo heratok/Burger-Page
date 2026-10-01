@@ -355,4 +355,104 @@ describe("CheckoutForm - Direct Sale Flow", () => {
 
     windowOpenSpy.mockRestore()
   })
+
+  it("displays min order warning and disables submit button when subtotal is below minimum", () => {
+    const blank = {
+      id: "rest-burger-craft",
+      slug: "burger-craft",
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      config: {
+        minOrderAmount: 80000,
+      },
+      categories: [],
+      products: [],
+      additions: [],
+      orders: [],
+      customers: [],
+      inventory: [],
+      suppliers: [],
+    }
+    localStorage.setItem(
+      "burger_page_platform_v2",
+      JSON.stringify({ version: 2, restaurants: [blank] })
+    )
+    localStorage.setItem("burger_page_active_rest_v2", "rest-burger-craft")
+
+    render(
+      <RestaurantProvider>
+        <CheckoutForm
+          cartItems={mockCartItems}
+          onClose={() => {}}
+          onBackToCart={() => {}}
+        />
+      </RestaurantProvider>
+    )
+
+    const alert = screen.getByText(/El pedido mínimo es de \$80\.000 \(faltan \$24\.000\)\./i)
+    expect(alert).toBeDefined()
+
+    const submitBtn = screen.getByRole("button", { name: /Enviar pedido por WhatsApp/i }) as HTMLButtonElement
+    expect(submitBtn.disabled).toBe(true)
+  })
+
+  it("blocks order submission and triggers error toast if onSubmit is called while below minimum order", async () => {
+    const blank = {
+      id: "rest-burger-craft",
+      slug: "burger-craft",
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      config: {
+        minOrderAmount: 80000,
+      },
+      categories: [],
+      products: [],
+      additions: [],
+      orders: [],
+      customers: [],
+      inventory: [],
+      suppliers: [],
+    }
+    localStorage.setItem(
+      "burger_page_platform_v2",
+      JSON.stringify({ version: 2, restaurants: [blank] })
+    )
+    localStorage.setItem("burger_page_active_rest_v2", "rest-burger-craft")
+
+    const { apiClient } = await import("@/core/api/apiClient")
+    const createOrderSpy = vi.spyOn(apiClient, "createOrder")
+
+    render(
+      <RestaurantProvider>
+        <CheckoutForm
+          cartItems={mockCartItems}
+          onClose={() => {}}
+          onBackToCart={() => {}}
+        />
+      </RestaurantProvider>
+    )
+
+    fireEvent.change(screen.getByLabelText(/Nombre/i), {
+      target: { value: "Carlos Pérez" },
+    })
+    fireEvent.change(screen.getByLabelText(/Celular/i), {
+      target: { value: "3001234567" },
+    })
+    fireEvent.change(screen.getByLabelText(/Dirección/i), {
+      target: { value: "Calle 45 # 12-34" },
+    })
+    fireEvent.change(screen.getByLabelText(/Barrio/i), {
+      target: { value: "El Poblado" },
+    })
+
+    const submitBtn = screen.getByRole("button", { name: /Enviar pedido por WhatsApp/i })
+    fireEvent.submit(submitBtn.closest("form")!)
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(
+        expect.stringContaining("El pedido mínimo es de $80.000 (faltan $24.000).")
+      )
+    })
+    expect(createOrderSpy).not.toHaveBeenCalled()
+  })
 })

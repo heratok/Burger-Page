@@ -522,6 +522,59 @@ export function isNetworkFailure(err: unknown): boolean {
 }
 
 /**
+ * Maps raw backend/domain error messages into friendly, user-facing Spanish copy.
+ */
+export function formatUserFacingOrderError(rawMessage?: string): string {
+  if (!rawMessage || typeof rawMessage !== 'string' || !rawMessage.trim()) {
+    return 'El servidor no está disponible en este momento'
+  }
+  const msg = rawMessage.toLowerCase()
+
+  if (
+    msg.includes('below the minimum required') ||
+    msg.includes('inferior al mínimo') ||
+    (msg.includes('subtotal') && (msg.includes('minimum') || msg.includes('mínimo') || msg.includes('requerido')))
+  ) {
+    return 'El monto del pedido no alcanza el pedido mínimo requerido por el restaurante.'
+  }
+
+  if (
+    msg.includes('product is currently not available') ||
+    msg.includes('not found or not available') ||
+    msg.includes('producto no encontrado') ||
+    (msg.includes('producto') && (msg.includes('no está disponible') || msg.includes('no disponible')))
+  ) {
+    return 'Uno de los productos seleccionados ya no está disponible.'
+  }
+
+  if (
+    msg.includes('addition is currently not available') ||
+    msg.includes('addition not found') ||
+    msg.includes('adición no encontrada') ||
+    (msg.includes('adición') && (msg.includes('no está disponible') || msg.includes('no disponible') || msg.includes('no aplica'))) ||
+    msg.includes('not applicable to product')
+  ) {
+    return 'Una de las adiciones seleccionadas ya no está disponible.'
+  }
+
+  if (
+    (msg.includes('payment amount') && msg.includes('less than final total')) ||
+    (msg.includes('monto') && (msg.includes('menor al total') || msg.includes('menor que el total')))
+  ) {
+    return 'El monto en efectivo ingresado es menor al total a pagar.'
+  }
+
+  if (
+    (msg.includes('restaurant') && msg.includes('inactive')) ||
+    (msg.includes('restaurante') && (msg.includes('no está activo') || msg.includes('inactivo')))
+  ) {
+    return 'El restaurante no está recibiendo pedidos en este momento.'
+  }
+
+  return rawMessage
+}
+
+/**
  * Adopts the server identity of a created order onto its optimistic temp card:
  * drops the ORDER_CREATED SSE duplicate (same server id), matches by the stable
  * temp id, and clears pendingSync when the card was held pending (REJ-02). If a
@@ -733,11 +786,11 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           orders: current.orders.filter((o) => o.id !== order.id),
         }))
         const err = error as any
+        const description = formatUserFacingOrderError(
+          err && typeof err.message === 'string' ? err.message : undefined
+        )
         toast.error(`No se pudo registrar la orden #${order.orderNumber}`, {
-          description:
-            err && typeof err.message === 'string'
-              ? err.message
-              : 'El servidor no está disponible en este momento',
+          description,
         })
       }
     },
@@ -1004,10 +1057,9 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               orders: current.orders.filter((o) => o.id !== newOrder.id),
             }))
             const err = error as any
-            const description =
-              err && typeof err.message === 'string'
-                ? err.message
-                : 'El servidor no está disponible en este momento'
+            const description = formatUserFacingOrderError(
+              err && typeof err.message === 'string' ? err.message : undefined
+            )
             toast.error(`No se pudo registrar la orden #${newOrder.orderNumber}`, {
               description,
             })

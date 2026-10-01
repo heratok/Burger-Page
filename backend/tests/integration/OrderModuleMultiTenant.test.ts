@@ -146,7 +146,7 @@ describe('Order Module Multi-Tenant & Security Suite', () => {
     });
 
     expect(res.statusCode).toBe(400);
-    expect(res.json().detail).toMatch(/less than final total/i);
+    expect(res.json().detail).toMatch(/(less than final total|menor al total a pagar)/i);
   });
 
   it('ignora precios manipulados enviados en el body y calcula precio real desde BD', async () => {

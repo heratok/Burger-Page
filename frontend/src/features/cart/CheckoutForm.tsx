@@ -1,6 +1,7 @@
 import { useRef, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
+import { toast } from "sonner"
 import {
   ArrowLeft,
   Banknote,
@@ -83,6 +84,10 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
   const deliveryFee = cartItems.length > 0 ? (storeConfig.deliveryFee ?? 0) : 0
   const total = subtotal + deliveryFee
 
+  const minOrderAmount = Number(storeConfig.minOrderAmount || 0)
+  const isBelowMinOrder = minOrderAmount > 0 && subtotal < minOrderAmount
+  const amountNeeded = isBelowMinOrder ? minOrderAmount - subtotal : 0
+
   const cambio = calculateChange(total, pagoCon)
 
   // Synchronous re-entrancy guard: react-hook-form flips isSubmitting on the
@@ -91,6 +96,10 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
   const submitInFlightRef = useRef(false)
 
   const onSubmit = async (values: FormValues) => {
+    if (isBelowMinOrder) {
+      toast.error(`El pedido mínimo es de ${formatCurrency(minOrderAmount)} (faltan ${formatCurrency(amountNeeded)}).`)
+      return
+    }
     if (submitInFlightRef.current) return
     submitInFlightRef.current = true
     try {
@@ -365,15 +374,27 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
           </Field>
         </FieldGroup>
 
+        {isBelowMinOrder && (
+          <div
+            role="alert"
+            className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-sm font-medium text-amber-700 dark:text-amber-300"
+          >
+            <CircleAlert className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+            <span>
+              El pedido mínimo es de {formatCurrency(minOrderAmount)} (faltan {formatCurrency(amountNeeded)}).
+            </span>
+          </div>
+        )}
+
         <div className="flex flex-col gap-2 pt-2 sm:flex-row">
           <Button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || isBelowMinOrder}
             aria-busy={isSubmitting}
             variant="default"
             size="lg"
             style={{ backgroundColor: storeConfig.primaryColor, color: primaryForeground }}
-            className="h-12 flex-1 text-base font-bold shadow-md cursor-pointer hover:opacity-90"
+            className="h-12 flex-1 text-base font-bold shadow-md cursor-pointer hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Send data-icon="inline-start" />
             {isSubmitting ? "Enviando pedido..." : "Enviar pedido por WhatsApp"}

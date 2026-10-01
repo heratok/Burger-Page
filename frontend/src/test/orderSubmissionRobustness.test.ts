@@ -118,7 +118,7 @@ describe("addOrder / pending retry (2.2, 2.3)", () => {
     await flush()
     expect(result.current.orders).toHaveLength(0)
     expect(errorSpy).toHaveBeenCalledWith(expect.any(String), {
-      description: "Subtotal 5000 is below minimum order amount 20000",
+      description: "El monto del pedido no alcanza el pedido mínimo requerido por el restaurante.",
     })
   })
 

@@ -1,4 +1,4 @@
-import { Pencil, Trash2, ArrowLeft } from "lucide-react"
+import { Pencil, Trash2, ArrowLeft, AlertTriangle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import EmptyCart from "./EmptyCart"
 import type { CartItem } from "./cartEngine"
@@ -37,6 +37,10 @@ function ShoppingCart({
   const subtotal = items.reduce((acc, item) => acc + item.total, 0)
   const deliveryFee = items.length > 0 ? (storeConfig.deliveryFee ?? 0) : 0
   const total = subtotal + deliveryFee
+
+  const minOrderAmount = Number(storeConfig.minOrderAmount || 0)
+  const isBelowMinOrder = minOrderAmount > 0 && subtotal < minOrderAmount
+  const amountNeeded = isBelowMinOrder ? minOrderAmount - subtotal : 0
 
   const deleteItem = (i: number) => {
     onDeleteCart(items.filter((_, index) => index !== i))
@@ -165,58 +169,72 @@ function ShoppingCart({
         }}
         className="fixed right-0 bottom-0 left-0 z-30 border-t backdrop-blur-md"
       >
-        <div className="mx-auto flex max-w-(--container) flex-col items-stretch gap-3 px-4 py-3 sm:flex-row sm:items-center md:px-6 lg:px-8">
-          <div className="flex flex-1 items-center justify-between sm:flex-col sm:items-start sm:justify-center">
-            {deliveryFee > 0 && (
+        <div className="mx-auto flex max-w-(--container) flex-col gap-3 px-4 py-3 md:px-6 lg:px-8">
+          {isBelowMinOrder && (
+            <div
+              role="alert"
+              className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-xs font-medium text-amber-700 dark:text-amber-300"
+            >
+              <AlertTriangle className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              <span>
+                El pedido mínimo es de {formatCurrency(minOrderAmount)}. Te faltan {formatCurrency(amountNeeded)} para poder ordenar.
+              </span>
+            </div>
+          )}
+          <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
+            <div className="flex flex-1 items-center justify-between sm:flex-col sm:items-start sm:justify-center">
+              {deliveryFee > 0 && (
+                <span
+                  style={{ color: "var(--color-text-muted)" }}
+                  className="text-xs tracking-wide uppercase font-semibold"
+                >
+                  Domicilio / Envío {formatCurrency(deliveryFee)}
+                </span>
+              )}
               <span
                 style={{ color: "var(--color-text-muted)" }}
                 className="text-xs tracking-wide uppercase font-semibold"
               >
-                Domicilio / Envío {formatCurrency(deliveryFee)}
+                Total
               </span>
-            )}
-            <span
-              style={{ color: "var(--color-text-muted)" }}
-              className="text-xs tracking-wide uppercase font-semibold"
-            >
-              Total
-            </span>
-            <span
-              style={{ color: storeConfig.primaryColor }}
-              className="text-xl font-black"
-            >
-              {formatCurrency(total)}
-            </span>
-          </div>
-          <div className="flex gap-2 sm:flex-row-reverse">
-            <Button
-              type="button"
-              variant="default"
-              size="lg"
-              onClick={handleCheckout}
-              style={{
-                backgroundColor: storeConfig.primaryColor,
-                color: getContrastForeground(storeConfig.primaryColor),
-              }}
-              className="h-12 flex-1 sm:flex-none font-bold shadow-md cursor-pointer hover:opacity-90"
-            >
-              Confirmar orden
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="lg"
-              onClick={handleBackToMenu}
-              style={{
-                backgroundColor: "var(--color-bg-elevated)",
-                borderColor: "var(--color-border-subtle)",
-                color: "var(--color-text-primary)",
-              }}
-              className="h-12 flex-1 sm:flex-none font-bold cursor-pointer hover:bg-bg-elevated-2"
-            >
-              <ArrowLeft data-icon="inline-start" />
-              Seguir comprando
-            </Button>
+              <span
+                style={{ color: storeConfig.primaryColor }}
+                className="text-xl font-black"
+              >
+                {formatCurrency(total)}
+              </span>
+            </div>
+            <div className="flex gap-2 sm:flex-row-reverse">
+              <Button
+                type="button"
+                variant="default"
+                size="lg"
+                disabled={isBelowMinOrder || items.length === 0}
+                onClick={handleCheckout}
+                style={{
+                  backgroundColor: storeConfig.primaryColor,
+                  color: getContrastForeground(storeConfig.primaryColor),
+                }}
+                className="h-12 flex-1 sm:flex-none font-bold shadow-md cursor-pointer hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Confirmar orden
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                onClick={handleBackToMenu}
+                style={{
+                  backgroundColor: "var(--color-bg-elevated)",
+                  borderColor: "var(--color-border-subtle)",
+                  color: "var(--color-text-primary)",
+                }}
+                className="h-12 flex-1 sm:flex-none font-bold cursor-pointer hover:bg-bg-elevated-2"
+              >
+                <ArrowLeft data-icon="inline-start" />
+                Seguir comprando
+              </Button>
+            </div>
           </div>
         </div>
       </div>
