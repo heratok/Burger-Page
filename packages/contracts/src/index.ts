@@ -202,6 +202,9 @@ export const createOrderSchema = z.object({
   changeAmount: z.number().nonnegative().optional(),
   comment: z.string().optional(),
   receiptUrl: z.string().optional(),
+  // Staff "Mesa / Salón" sales only: the restaurant table the sale was taken on.
+  // The public storefront never sends it (the API rejects it for guests).
+  tableId: z.string().min(1).max(64).optional(),
   // SUS-19: client-generated correlation id for idempotent order creation.
   // The frontend generates one per sale attempt and reuses it on offline
   // retries; the server replays (returns) an order already persisted for the
@@ -228,6 +231,8 @@ export const updateOrderSchema = z.object({
   paymentAmount: z.number().nonnegative().optional(),
   changeAmount: z.number().nonnegative().optional(),
   comment: z.string().optional(),
+  // null detaches the order from its table.
+  tableId: z.string().min(1).max(64).nullable().optional(),
   status: orderStatusEnum.optional(),
 });
 export type UpdateOrderInput = z.infer<typeof updateOrderSchema>;
@@ -255,6 +260,29 @@ export type CreateSupplierInput = z.infer<typeof createSupplierSchema>;
 
 export const updateSupplierSchema = createSupplierSchema.partial();
 export type UpdateSupplierInput = z.infer<typeof updateSupplierSchema>;
+
+// ==========================================
+// RESTAURANT TABLES (Mesa / Salón)
+// ==========================================
+
+export const MAX_TABLE_NAME_LENGTH = 40;
+
+export const createRestaurantTableSchema = z.object({
+  id: z.string().optional(),
+  restaurantId: z.string().optional(),
+  name: z.string().trim().min(1, 'Table name is required').max(MAX_TABLE_NAME_LENGTH, `Table name cannot exceed ${MAX_TABLE_NAME_LENGTH} characters`),
+  isActive: z.boolean().optional(),
+});
+export type CreateRestaurantTableInput = z.infer<typeof createRestaurantTableSchema>;
+
+export const updateRestaurantTableSchema = createRestaurantTableSchema.omit({ id: true }).partial();
+export type UpdateRestaurantTableInput = z.infer<typeof updateRestaurantTableSchema>;
+
+export const reorderRestaurantTablesSchema = z.object({
+  restaurantId: z.string().optional(),
+  ids: z.array(z.string().min(1)).max(500),
+});
+export type ReorderRestaurantTablesInput = z.infer<typeof reorderRestaurantTablesSchema>;
 
 // ==========================================
 // REAL-TIME ORDER EVENTS (SSE)

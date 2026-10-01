@@ -48,6 +48,13 @@ export class SqliteOrderRepository implements OrderRepository {
     } catch {
       // Column already exists
     }
+    for (const column of ['table_id', 'table_label']) {
+      try {
+        this.db.exec(`ALTER TABLE orders ADD COLUMN ${column} TEXT;`);
+      } catch {
+        // Column already exists
+      }
+    }
     // SUS-19: unique (restaurant_id, client_order_id) so a retried save can
     // never insert a duplicate sale. SQLite UNIQUE treats NULLs as distinct,
     // so legacy/unknown flows (client_order_id IS NULL) stay unconstrained.
@@ -105,9 +112,10 @@ export class SqliteOrderRepository implements OrderRepository {
     const stmt = this.db.prepare(`
       INSERT INTO orders (
         id, restaurant_id, order_number, customer_id, status, total, delivery_fee, final_total,
-        payment_method, payment_amount, change_amount, comment, receipt_url, client_order_id, items, created_at, updated_at
+        payment_method, payment_amount, change_amount, comment, receipt_url, client_order_id, items, created_at, updated_at,
+        table_id, table_label
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         status = excluded.status,
         total = excluded.total,
@@ -139,7 +147,9 @@ export class SqliteOrderRepository implements OrderRepository {
       order.clientOrderId || null,
       JSON.stringify(order.items),
       order.createdAt.toISOString(),
-      now
+      now,
+      order.tableId ?? null,
+      order.tableLabel ?? null
     );
   }
 
@@ -197,6 +207,8 @@ export class SqliteOrderRepository implements OrderRepository {
         receipt_url = ?,
         items = ?,
         customer = ?,
+        table_id = ?,
+        table_label = ?,
         updated_at = ?
       WHERE id = ? AND restaurant_id = ?
     `);
@@ -217,6 +229,8 @@ export class SqliteOrderRepository implements OrderRepository {
       order.receiptUrl ?? null,
       JSON.stringify(order.items),
       customerPayload,
+      order.tableId ?? null,
+      order.tableLabel ?? null,
       now,
       order.id,
       restaurantId
@@ -243,6 +257,8 @@ export class SqliteOrderRepository implements OrderRepository {
       row.receipt_url || undefined,
       row.client_order_id || undefined
     );
+    if (row.table_id) order.tableId = row.table_id;
+    if (row.table_label) order.tableLabel = row.table_label;
     if (row.customer) {
       try {
         order.customer = JSON.parse(row.customer);

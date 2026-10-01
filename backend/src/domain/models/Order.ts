@@ -49,6 +49,14 @@ export class Order {
    */
   public replayed?: boolean;
 
+  /**
+   * Staff "Mesa / Salón" sales: the restaurant table the sale was taken on and
+   * a snapshot of its name. tableId is cleared when the table is deleted;
+   * tableLabel stays so history keeps the name.
+   */
+  public tableId?: string;
+  public tableLabel?: string;
+
   public customer?: {
     nombre?: string;
     telefono?: string;
@@ -115,6 +123,8 @@ export class Order {
       changeAmount: this.changeAmount,
       comment: this.comment,
       receiptUrl: this.receiptUrl,
+      tableId: this.tableId,
+      tableLabel: this.tableLabel,
     };
   }
 }

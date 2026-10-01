@@ -60,6 +60,8 @@ export interface CreateOrderDTO {
   changeAmount?: number;
   comment?: string;
   receiptUrl?: string;
+  /** Staff sales only; the storefront (unauthenticated) must not send it. */
+  tableId?: string;
 }
 
 export interface UpdateOrderStatusDTO {
@@ -79,6 +81,8 @@ export interface UpdateOrderDTO {
   changeAmount?: number;
   comment?: string;
   receiptUrl?: string;
+  /** null detaches the order from its table. */
+  tableId?: string | null;
   status?: 'pending' | 'cooking' | 'delivering' | 'delivered' | 'cancelled';
 }
 

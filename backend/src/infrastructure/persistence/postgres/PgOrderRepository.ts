@@ -69,6 +69,9 @@ function mapOrderRow(row: any, items: OrderItem[]): Order {
     row.receipt_url || undefined,
     row.client_order_id || undefined
   );
+  // The label is a snapshot: it outlives the table (table_id becomes NULL on delete).
+  if (row.table_id) order.tableId = row.table_id;
+  if (row.table_label) order.tableLabel = row.table_label;
   if (row.customer_name) {
     (order as any).customer = {
       nombre: row.customer_name,
@@ -309,6 +312,13 @@ export class PgOrderRepository implements OrderRepository {
           );
         }
       }
+      // Mesa / Salón: the FK (table_id, restaurant_id) rejects a table of another tenant.
+      if (!isReplay && order.tableId) {
+        await client.query(
+          `UPDATE public.orders SET table_id = $1, table_label = $2 WHERE id = $3 AND restaurant_id = $4`,
+          [order.tableId, order.tableLabel ?? null, order.id, order.restaurantId]
+        );
+      }
       if (order.receiptUrl) {
         await client.query(
           `UPDATE public.orders SET receipt_url = $1, updated_at = NOW() WHERE id = $2 AND restaurant_id = $3`,
@@ -416,6 +426,8 @@ export class PgOrderRepository implements OrderRepository {
            contact_phone = COALESCE($10, contact_phone),
            contact_address = COALESCE($11, contact_address),
            contact_barrio = COALESCE($12, contact_barrio),
+           table_id = $15,
+           table_label = $16,
            updated_at = NOW()
          WHERE id = $13 AND restaurant_id = $14`,
         [
@@ -433,6 +445,8 @@ export class PgOrderRepository implements OrderRepository {
           snap.barrio,
           order.id,
           restaurantId,
+          order.tableId ?? null,
+          order.tableLabel ?? null,
         ]
       );
 

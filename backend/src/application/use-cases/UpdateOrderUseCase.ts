@@ -4,6 +4,8 @@ import { OrderRepository } from '../../domain/ports/out/OrderRepository.js';
 import { ProductRepository } from '../../domain/ports/out/ProductRepository.js';
 import { ProductAdditionRepository } from '../../domain/ports/out/ProductAdditionRepository.js';
 import { CustomerRepository } from '../../domain/ports/out/CustomerRepository.js';
+import { RestaurantTableRepository } from '../../domain/ports/out/RestaurantTableRepository.js';
+import { resolveOrderTable } from './resolveOrderTable.js';
 import { UpdateOrderDTO } from '../dtos/index.js';
 import { EntityNotFoundError, ValidationError } from '../../domain/errors/DomainErrors.js';
 import { UserRole } from '../../domain/models/User.js';
@@ -16,7 +18,8 @@ export class UpdateOrderUseCase {
     private readonly orderRepo: OrderRepository,
     private readonly productRepo?: ProductRepository,
     private readonly additionRepo?: ProductAdditionRepository,
-    private readonly customerRepo?: CustomerRepository
+    private readonly customerRepo?: CustomerRepository,
+    private readonly tableRepo?: RestaurantTableRepository
   ) {}
 
   async execute(
@@ -28,6 +31,7 @@ export class UpdateOrderUseCase {
   ): Promise<Order> {
     const { order, resolvedRestId } = await this.findAndValidateOrder(id, restaurantId);
 
+    await this.applyTable(order, dto.tableId, resolvedRestId);
     await this.updateCustomerInfo(order, dto.customer, resolvedRestId);
     // Snapshot BEFORE applyOrderMetadata mutates it: the CAS compares against the
     // state the domain validated, not the target (same contract as
@@ -51,6 +55,24 @@ export class UpdateOrderUseCase {
 
     const updated = await this.orderRepo.update(order, resolvedRestId);
     return updated || order;
+  }
+
+  /**
+   * undefined leaves the table alone, null detaches it, an id attaches/moves it
+   * (validated in the order's restaurant, active). Re-sending the table the
+   * order already sits on is a no-op even if it was deactivated since.
+   */
+  private async applyTable(order: Order, tableId: string | null | undefined, restaurantId: string): Promise<void> {
+    if (tableId === undefined) return;
+    if (tableId === null) {
+      order.tableId = undefined;
+      order.tableLabel = undefined;
+      return;
+    }
+    if (tableId === order.tableId) return;
+    const table = await resolveOrderTable(this.tableRepo, tableId, restaurantId);
+    order.tableId = table.id;
+    order.tableLabel = table.name;
   }
 
   private async findAndValidateOrder(
