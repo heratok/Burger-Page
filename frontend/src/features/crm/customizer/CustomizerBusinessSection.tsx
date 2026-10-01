@@ -1,6 +1,9 @@
 import React from "react"
 import type { StorefrontConfig } from "@/types/restaurant"
 import { DollarSign } from "lucide-react"
+import { Switch } from "@/components/ui/switch"
+import { TIMEZONE_OPTIONS } from "@/constants/timezones"
+import { WeeklyScheduleEditor } from "./WeeklyScheduleEditor"
 
 export interface CustomizerBusinessSectionProps {
   draft: StorefrontConfig
@@ -102,17 +105,43 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
         </div>
       </div>
 
-      <div>
-        <label className="font-semibold block mb-1 text-slate-800 dark:text-slate-200">
-          Horario de Atención
-        </label>
-        <input
-          type="text"
-          maxLength={100}
-          value={draft.openingHours}
-          onChange={(e) => setDraft((prev) => ({ ...prev, openingHours: e.target.value }))}
-          placeholder="Mar - Dom: 12:00 PM - 10:30 PM"
-          className="w-full rounded-xl border p-2.5 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white"
+      <div className="space-y-3">
+        <h4 className="font-semibold text-slate-800 dark:text-slate-200">Horario de Atención</h4>
+        <WeeklyScheduleEditor
+          schedule={draft.schedule}
+          onChange={(schedule) => setDraft((prev) => ({ ...prev, schedule }))}
+        />
+
+        <div>
+          <label htmlFor="business-timezone" className="font-semibold block mb-1 text-slate-800 dark:text-slate-200">
+            Zona horaria
+          </label>
+          <select
+            id="business-timezone"
+            value={draft.timezone}
+            onChange={(e) => setDraft((prev) => ({ ...prev, timezone: e.target.value }))}
+            className="w-full rounded-xl border p-2.5 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white"
+          >
+            {!TIMEZONE_OPTIONS.some((tz) => tz.value === draft.timezone) && (
+              <option value={draft.timezone}>{draft.timezone}</option>
+            )}
+            {TIMEZONE_OPTIONS.map((tz) => (
+              <option key={tz.value} value={tz.value}>
+                {tz.label}
+              </option>
+            ))}
+          </select>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+            El horario se interpreta en la hora local de esta zona.
+          </p>
+        </div>
+
+        <Switch
+          checked={draft.ordersPaused}
+          onCheckedChange={(checked) => setDraft((prev) => ({ ...prev, ordersPaused: checked }))}
+          aria-label="Pausar pedidos"
+          label="Pausar pedidos"
+          description="Bloquea los pedidos de clientes ahora mismo, sin importar el horario. Tú puedes seguir registrando ventas."
         />
       </div>
 

@@ -1,5 +1,7 @@
 // Restaurant & CRM Domain Types
 
+import type { WeeklySchedule } from "@burger-page/contracts"
+
 export type CardStyle = "elevated" | "bordered" | "glass" | "minimal"
 export type CardRadius = "sm" | "md" | "lg" | "full"
 export type StoreBgTheme = "dark-charcoal" | "deep-midnight" | "warm-cream" | "clean-white"
@@ -19,7 +21,12 @@ export interface StorefrontConfig {
   deliveryFee: number
   minOrderAmount: number
   estimatedDeliveryTime: string
-  openingHours: string
+  /** Weekly opening ranges (restaurant timezone). Empty = always closed. */
+  schedule: WeeklySchedule
+  /** IANA timezone the schedule is read in. */
+  timezone: string
+  /** Manual "pause orders" switch: blocks public checkout regardless of the schedule. */
+  ordersPaused: boolean
   address: string
 
   // Theme & UI/UX Customization

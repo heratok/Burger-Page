@@ -1,4 +1,5 @@
 import type { StorefrontConfig } from "@/types/restaurant"
+import { ALWAYS_OPEN_SCHEDULE, DEFAULT_TIMEZONE } from "@/lib/storeSchedule"
 
 export const DEFAULT_STORE_CONFIG: StorefrontConfig = {
   name: "Mi Restaurante",
@@ -14,7 +15,10 @@ export const DEFAULT_STORE_CONFIG: StorefrontConfig = {
   deliveryFee: 5000,
   minOrderAmount: 20000,
   estimatedDeliveryTime: "30 - 45 min",
-  openingHours: "12:00 - 22:30",
+  // Open 24/7 by default (the pre-schedule behavior): owners opt in to hours.
+  schedule: ALWAYS_OPEN_SCHEDULE,
+  timezone: DEFAULT_TIMEZONE,
+  ordersPaused: false,
   address: "",
 
   // Theme & UI/UX Customization

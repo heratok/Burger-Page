@@ -479,6 +479,30 @@ describe("TenantContext.loadRestaurant - never shows another tenant", () => {
     expect(result.current.activeRestaurant.config.name).toBe("New Place")
   })
 
+  it("maps the schedule, timezone and ordersPaused of the public payload into the config", async () => {
+    const schedule = [{ dayOfWeek: 2, open: "10:00", close: "22:00" }]
+    vi.spyOn(apiClient, "fetchRestaurant").mockResolvedValue({
+      id: "rest-sched",
+      slug: "sched-place",
+      isActive: true,
+      schedule,
+      timezone: "America/Mexico_City",
+      ordersPaused: true,
+      config: { name: "Sched", openingHours: "10:00 - 22:00" },
+    } as any)
+
+    const { result } = renderHook(() => useTenant(), { wrapper })
+    await act(async () => {
+      await result.current.loadRestaurant("sched-place")
+    })
+
+    const config = result.current.activeRestaurant.config
+    expect(config.schedule).toEqual(schedule)
+    expect(config.timezone).toBe("America/Mexico_City")
+    expect(config.ordersPaused).toBe(true)
+    expect("openingHours" in config).toBe(false)
+  })
+
   it("returns not-found on 404 and leaves the active tenant untouched", async () => {
     vi.spyOn(apiClient, "fetchRestaurant").mockRejectedValue(
       Object.assign(new Error("API Error: 404 Not Found"), { status: 404 })

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react"
 import type {
   RestaurantRecord,
+  StorefrontConfig,
   StorageEnvelopeV2,
 } from "@/types/restaurant"
 import { DEFAULT_STORE_CONFIG } from "@/constants/themePresets"
@@ -10,6 +11,7 @@ import {
 } from "@/core/storage/TenantRepository"
 import { apiClient, isNotFoundError } from "@/core/api/apiClient"
 import { useAuth } from "./AuthContext"
+import { splitConfigForApi, scheduleFieldsFromApi } from "@/lib/storeSchedule"
 import { toast } from "sonner"
 import { nextTempId } from "@/lib/ids"
 
@@ -23,6 +25,12 @@ export interface GlobalPlatformStats {
 
 export type LoadRestaurantOutcome = "ok" | "not-found" | "error"
 
+/** Merges the public/admin payload into a storefront config: schedule fields come from the top level, the legacy text is dropped. */
+function configFromApi(fetched: any, base: StorefrontConfig): StorefrontConfig {
+  const { openingHours: _legacyText, ...config } = (fetched.config || {}) as Record<string, unknown>
+  return { ...base, ...config, ...scheduleFieldsFromApi({ ...base, ...fetched }) } as StorefrontConfig
+}
+
 function toRestaurantRecord(fetched: any): RestaurantRecord {
   return {
     id: fetched.id,
@@ -31,8 +39,7 @@ function toRestaurantRecord(fetched: any): RestaurantRecord {
     createdAt: fetched.createdAt || new Date().toISOString(),
     categories: fetched.categories || [],
     config: {
-      ...DEFAULT_STORE_CONFIG,
-      ...(fetched.config || {}),
+      ...configFromApi(fetched, DEFAULT_STORE_CONFIG),
       name: fetched.name || fetched.config?.name || DEFAULT_STORE_CONFIG.name,
     },
     products: fetched.products || [],
@@ -135,9 +142,7 @@ export const TenantProvider: React.FC<{
               // fall back to local when the backend omitted categories entirely.
               categories: Array.isArray(br.categories) ? br.categories : local?.categories ?? [],
               config: {
-                ...DEFAULT_STORE_CONFIG,
-                ...(local?.config || {}),
-                ...(br.config || {}),
+                ...configFromApi(br, { ...DEFAULT_STORE_CONFIG, ...(local?.config || {}) }),
                 name: br.name || br.config?.name || local?.config?.name || DEFAULT_STORE_CONFIG.name,
                 tagline: br.tagline || br.config?.tagline || local?.config?.tagline || DEFAULT_STORE_CONFIG.tagline,
               },
@@ -486,7 +491,9 @@ export const TenantProvider: React.FC<{
           primaryColor: updates.config?.primaryColor || target?.config?.primaryColor,
           theme: updates.config?.bgTheme || target?.config?.bgTheme,
           isActive: updates.isActive,
-          config: updates.config || target?.config,
+          ...(updates.config
+            ? splitConfigForApi(updates.config)
+            : { config: splitConfigForApi(target?.config ?? {}).config }),
           categories: updates.categories || target?.categories,
         })
       } catch (err) {

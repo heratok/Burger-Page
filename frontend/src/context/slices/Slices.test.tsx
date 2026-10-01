@@ -5,6 +5,7 @@ import React from "react"
 import { UiProvider, useUi } from "./UiContext"
 import { AuthProvider, useAuth } from "./AuthContext"
 import { DEFAULT_STORE_CONFIG } from "@/constants/themePresets"
+import { splitConfigForApi } from "@/lib/storeSchedule"
 
 
 describe("UiContext Slice", () => {
@@ -1317,6 +1318,62 @@ describe("CatalogContext Slice - Storefront Configuration Persistence & Rollback
     )
   })
 
+  it("sends the schedule fields at the top level of the PUT payload, not inside config", async () => {
+    const { TenantProvider } = await import("./TenantContext")
+    const { CatalogProvider, useCatalog } = await import("./CatalogContext")
+    const { apiClient } = await import("@/core/api/apiClient")
+
+    const updateRestaurantSpy = vi.spyOn(apiClient, "updateRestaurant").mockResolvedValue({} as any)
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>
+        <CatalogProvider>{children}</CatalogProvider>
+      </TenantProvider>
+    )
+    const { result } = renderHook(() => useCatalog(), { wrapper })
+
+    const schedule = [{ dayOfWeek: 1, open: "09:00", close: "18:00" }]
+    act(() => {
+      result.current.updateStoreConfig({ tagline: "t", schedule, timezone: "America/Lima", ordersPaused: true })
+    })
+
+    expect(updateRestaurantSpy).toHaveBeenCalledWith(expect.any(String), {
+      config: { tagline: "t" },
+      schedule,
+      timezone: "America/Lima",
+      ordersPaused: true,
+    })
+    expect(result.current.storeConfig.ordersPaused).toBe(true)
+  })
+
+  it("resetStoreConfig restores the design but keeps the opening hours and the pause", async () => {
+    const { TenantProvider } = await import("./TenantContext")
+    const { CatalogProvider, useCatalog } = await import("./CatalogContext")
+    const { apiClient } = await import("@/core/api/apiClient")
+
+    const updateRestaurantSpy = vi.spyOn(apiClient, "updateRestaurant").mockResolvedValue({} as any)
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>
+        <CatalogProvider>{children}</CatalogProvider>
+      </TenantProvider>
+    )
+    const { result } = renderHook(() => useCatalog(), { wrapper })
+
+    const schedule = [{ dayOfWeek: 1, open: "09:00", close: "18:00" }]
+    act(() => {
+      result.current.updateStoreConfig({ tagline: "x", schedule, ordersPaused: true })
+    })
+    act(() => {
+      result.current.resetStoreConfig()
+    })
+
+    expect(result.current.storeConfig.tagline).toBe(DEFAULT_STORE_CONFIG.tagline)
+    expect(result.current.storeConfig.schedule).toEqual(schedule)
+    expect(result.current.storeConfig.ordersPaused).toBe(true)
+    const payload = updateRestaurantSpy.mock.lastCall?.[1] as Record<string, unknown>
+    expect(payload).not.toHaveProperty("schedule")
+    expect(payload).not.toHaveProperty("ordersPaused")
+  })
+
   it("rolls back storeConfig when apiClient.updateRestaurant fails on updateStoreConfig", async () => {
     const { TenantProvider } = await import("./TenantContext")
     const { CatalogProvider, useCatalog } = await import("./CatalogContext")
@@ -1370,7 +1427,7 @@ describe("CatalogContext Slice - Storefront Configuration Persistence & Rollback
     expect(updateRestaurantSpy).toHaveBeenLastCalledWith(
       expect.any(String),
       expect.objectContaining({
-        config: DEFAULT_STORE_CONFIG,
+        config: splitConfigForApi(DEFAULT_STORE_CONFIG).config,
       })
     )
   })

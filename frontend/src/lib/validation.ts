@@ -82,7 +82,6 @@ export const ADMIN_LIMITS = {
     whatsapp: { min: 7, max: 20 },
     address: { max: 150 },
     announcement: { max: 150 },
-    openingHours: { max: 100 },
     deliveryTime: { max: 50 },
     deliveryFee: { min: 0, max: 10_000_000 },
     minOrderAmount: { min: 0, max: 10_000_000 },
