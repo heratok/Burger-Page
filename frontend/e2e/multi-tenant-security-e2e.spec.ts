@@ -2,6 +2,10 @@ import { test, expect } from '@playwright/test';
 import { TEST_RESTAURANT } from './test-fixture';
 
 const API_BASE = 'http://localhost:3001/api';
+// Inventory names are unique per tenant: every call yields a fresh suffix so
+// repeated tests (or leftovers from earlier runs) never collide.
+let uniqueCounter = 0;
+const uniqueSuffix = () => `${Date.now().toString(36)}-${uniqueCounter++}`;
 
 test.describe('Playwright Full Multi-Tenant & Security E2E Suite', () => {
   let tokenTenantA: string;
@@ -9,6 +13,8 @@ test.describe('Playwright Full Multi-Tenant & Security E2E Suite', () => {
   let tenantAId: string;
   let tenantBId: string;
   let _superAdminToken: string;
+  // Inventory items created by tests, removed in afterAll so the tenant is left as found.
+  const createdInventoryIds: string[] = [];
 
   test.beforeAll(async ({ request }) => {
     // 1. Authenticate as Tenant A admin (Burger Craft)
@@ -36,6 +42,14 @@ test.describe('Playwright Full Multi-Tenant & Security E2E Suite', () => {
     expect(loginSuper.status()).toBe(200);
     const bodySuper = await loginSuper.json();
     _superAdminToken = bodySuper.token;
+  });
+
+  test.afterAll(async ({ request }) => {
+    for (const id of createdInventoryIds) {
+      await request.delete(`${API_BASE}/inventory/${id}`, {
+        headers: { Authorization: `Bearer ${tokenTenantA}` },
+      });
+    }
   });
 
   // ==========================================================================
@@ -197,7 +211,7 @@ test.describe('Playwright Full Multi-Tenant & Security E2E Suite', () => {
       const createRes = await request.post(`${API_BASE}/inventory`, {
         headers: { Authorization: `Bearer ${tokenTenantA}` },
         data: {
-          name: 'Queso Gouda Holandés',
+          name: `Queso Gouda Holandés ${uniqueSuffix()}`,
           category: 'ingredients',
           quantity: 40,
           unit: 'kg',
@@ -209,6 +223,7 @@ test.describe('Playwright Full Multi-Tenant & Security E2E Suite', () => {
       expect(createRes.status()).toBe(201);
       const item = await createRes.json();
       inventoryAId = item.id;
+      createdInventoryIds.push(item.id);
       expect(item.restaurantId).toBe(tenantAId);
       expect(item.quantity).toBe(40);
       expect(item.costPerUnit).toBe(32000);
@@ -404,7 +419,7 @@ test.describe('Playwright Full Multi-Tenant & Security E2E Suite', () => {
         headers: { Authorization: `Bearer ${tokenTenantA}` },
         data: {
           restaurantId: tenantBId, // Spoof Tenant B
-          name: 'Spoof Insumo',
+          name: `Spoof Insumo ${uniqueSuffix()}`,
           category: 'ingredients',
           unit: 'kg',
           quantity: 10,
@@ -412,6 +427,7 @@ test.describe('Playwright Full Multi-Tenant & Security E2E Suite', () => {
       });
       expect(invRes.status()).toBe(201);
       const inv = await invRes.json();
+      createdInventoryIds.push(inv.id);
       expect(inv.restaurantId).toBe(tenantAId); // ENFORCED FROM JWT!
     });
   });
