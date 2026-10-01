@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { TEST_RESTAURANT } from './test-fixture';
 
 test.describe('Admin Routing, Tenant Management & Storefront Category Filter E2E Suite', () => {
   test.beforeEach(async ({ page }) => {
@@ -46,7 +47,7 @@ test.describe('Admin Routing, Tenant Management & Storefront Category Filter E2E
   });
 
   test('TC019 Flow: Storefront category filter restricts catalog items to selected category', async ({ page }) => {
-    await page.goto('/rosto');
+    await page.goto(`/${TEST_RESTAURANT.slug}`);
     await page.waitForLoadState('domcontentloaded');
 
     const burgersBtn = page.getByRole('button', { name: 'Hamburguesas', exact: true });

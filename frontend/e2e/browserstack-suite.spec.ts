@@ -10,6 +10,7 @@
  *   TEST_RESTO_USER  / TEST_RESTO_PASS  (restaurant admin)
  */
 import { test as base, expect, type Browser, type Page } from '@playwright/test';
+import { TEST_RESTAURANT } from './test-fixture';
 
 /**
  * Per-test BrowserStack page fixture.
@@ -55,7 +56,7 @@ const SUPER_USER = process.env.TEST_SUPER_USER;
 const SUPER_PASS = process.env.TEST_SUPER_PASS;
 const RESTO_USER = process.env.TEST_RESTO_USER;
 const RESTO_PASS = process.env.TEST_RESTO_PASS;
-const TENANT_SLUG = process.env.TEST_TENANT_SLUG ?? 'rosto';
+const TENANT_SLUG = process.env.TEST_TENANT_SLUG ?? TEST_RESTAURANT.slug;
 
 // BrowserStack credentials are optional: without them the whole suite is
 // skipped (0 tests run) instead of failing the local/CI run.
@@ -270,7 +271,7 @@ test('Restaurant admin: storefront bridge (Ver Tienda) opens the tenant store', 
   await expect(page).toHaveURL(/\/admin\/dashboard/, { timeout: 30_000 });
 
   await openSidebarAndClick(page, 'Ver Tienda');
-  // Expected: the storefront of the tenant bound to this admin (rosto)
+  // Expected: the storefront of the tenant bound to this admin
   await expect(page).toHaveURL(new RegExp(`/${TENANT_SLUG}`), { timeout: 20_000 });
   await expect(page.getByRole('button', { name: /Ver orden/i }).first()).toBeVisible({ timeout: 20_000 });
   await shot(page, testInfo, 'storefront-from-admin');

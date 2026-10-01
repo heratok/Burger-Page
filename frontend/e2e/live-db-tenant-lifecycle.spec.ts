@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { TEST_RESTAURANT } from './test-fixture';
 
 test.describe('Live DB Multi-Tenant Lifecycle, Mobile Storefront & CRM Persistence', () => {
   const timestamp = Date.now().toString().slice(-5);
@@ -98,7 +99,7 @@ test.describe('Live DB Multi-Tenant Lifecycle, Mobile Storefront & CRM Persisten
     await expect(userModal).toBeVisible();
 
     // Fill Create User Form
-    await userModal.locator('input[placeholder*="admin_rosto" i]').fill(testUsername);
+    await userModal.locator('input[placeholder*="admin_" i]').fill(testUsername);
     await userModal.locator('input[type="password"]').fill(testPassword);
 
     // Select restaurant in modal dropdown
@@ -311,7 +312,7 @@ test.describe('Live DB Multi-Tenant Lifecycle, Mobile Storefront & CRM Persisten
 
     // Strict safety check: Never delete default or production tenants
     expect(testRestSlug).toMatch(/^e2e-fusion-\d+$/);
-    expect(testRestSlug).not.toBe('rosto');
+    expect(testRestSlug).not.toBe(TEST_RESTAURANT.slug);
     expect(testRestSlug).not.toBe('craft-staging');
     expect(testRestSlug).not.toBe('burger-craft');
 

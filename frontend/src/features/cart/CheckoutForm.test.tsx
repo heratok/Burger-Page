@@ -48,8 +48,8 @@ function OrdersProbe() {
 
 const mockCartItems: CartItem[] = [
   {
-    id: "prod-rosto-1",
-    name: "Rosto Clásica Ahumada",
+    id: "prod_test_clasica",
+    name: "Clásica Ahumada",
     price: 28000,
     cantidad: 2,
     total: 56000,
@@ -186,7 +186,7 @@ describe("CheckoutForm - Direct Sale Flow", () => {
             address: "Calle 45 # 12-34",
             barrio: "El Poblado",
           },
-          items: [{ productId: "prod-rosto-1", quantity: 2, additions: [] }],
+          items: [{ productId: "prod_test_clasica", quantity: 2, additions: [] }],
           deliveryFee: 5000,
           paymentMethod: "Efectivo",
         })
@@ -195,7 +195,7 @@ describe("CheckoutForm - Direct Sale Flow", () => {
       const callUrl = fakeTab.location.href
       expect(decodeURIComponent(callUrl)).toContain("Carlos Pérez")
       expect(decodeURIComponent(callUrl)).toContain("Calle 45 # 12-34")
-      expect(decodeURIComponent(callUrl)).toContain("ROSTO CLÁSICA AHUMADA")
+      expect(decodeURIComponent(callUrl)).toContain("CLÁSICA AHUMADA")
       expect(decodeURIComponent(callUrl)).toContain("Orden: #3131")
       expect(onCloseMock).toHaveBeenCalledTimes(1)
     })
@@ -418,8 +418,8 @@ describe("CheckoutForm - Direct Sale Flow", () => {
     // and the recorded order must match the displayed charge.
     const cartItems: CartItem[] = [
       {
-        id: "prod-rosto-1",
-        name: "Rosto Clásica Ahumada",
+        id: "prod_test_clasica",
+        name: "Clásica Ahumada",
         price: 30000,
         cantidad: 1,
         total: 30000,

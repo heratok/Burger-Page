@@ -19,7 +19,7 @@ const week = (open: string, close: string) =>
 describe('CreateRestaurantUseCase - opening schedule (store-opening-hours T2)', () => {
   it('starts every new restaurant open 12:00-22:30 on all 7 days, in Bogota, not paused', async () => {
     const r = repo();
-    const created = await new CreateRestaurantUseCase(r).execute({ name: 'Rosto', slug: 'rosto' });
+    const created = await new CreateRestaurantUseCase(r).execute({ name: 'Tienda de Pruebas', slug: 'tienda-pruebas' });
 
     expect(created.schedule).toEqual(week('12:00', '22:30'));
     expect(created.timezone).toBe('America/Bogota');
@@ -31,8 +31,8 @@ describe('CreateRestaurantUseCase - opening schedule (store-opening-hours T2)', 
     const r = repo();
     const schedule = [{ dayOfWeek: 5, open: '18:00', close: '02:00' }];
     const created = await new CreateRestaurantUseCase(r).execute({
-      name: 'Rosto',
-      slug: 'rosto',
+      name: 'Tienda de Pruebas',
+      slug: 'tienda-pruebas',
       schedule,
       timezone: 'America/Mexico_City',
       ordersPaused: true,
@@ -45,8 +45,8 @@ describe('CreateRestaurantUseCase - opening schedule (store-opening-hours T2)', 
 
   it('applies a legacy "HH:MM - HH:MM" config.openingHours text to every weekday when no schedule is given', async () => {
     const created = await new CreateRestaurantUseCase(repo()).execute({
-      name: 'Rosto',
-      slug: 'rosto',
+      name: 'Tienda de Pruebas',
+      slug: 'tienda-pruebas',
       config: { openingHours: '09:30 - 21:00' },
     });
     expect(created.schedule).toEqual(week('09:30', '21:00'));

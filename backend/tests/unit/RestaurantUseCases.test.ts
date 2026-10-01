@@ -16,7 +16,7 @@ function restaurantWithSecret(id: string, overrides: Partial<Restaurant> = {}): 
   return {
     id,
     slug: `slug-${id}`,
-    name: 'Rosto',
+    name: 'Tienda de Pruebas',
     adminPassword: 'top-secret-42',
     theme: 'dark-charcoal',
     openingHours: { open: '12:00', close: '22:30' },
@@ -55,7 +55,7 @@ describe('SUS-20 read paths never expose adminPassword (Seam C)', () => {
       expect((r as any).adminPassword).toBeUndefined();
     }
     // Redaction must not strip legitimate fields.
-    expect(result[0].name).toBe('Rosto');
+    expect(result[0].name).toBe('Tienda de Pruebas');
     expect(result[0].isActive).toBe(true);
   });
 
@@ -91,7 +91,7 @@ describe('SUS-20 read paths never expose adminPassword (Seam C)', () => {
 
     expect(result.id).toBe('rest-1');
     expect((result as any).adminPassword).toBeUndefined();
-    expect(result.name).toBe('Rosto');
+    expect(result.name).toBe('Tienda de Pruebas');
   });
 
   it('TRIANGULATE: get with category enrichment is also redacted', async () => {
@@ -113,7 +113,7 @@ describe('SUS-20 read paths never expose adminPassword (Seam C)', () => {
       undefined as unknown as CategoryRepository
     );
 
-    const created = await useCase.execute({ name: 'Rosto', slug: 'rosto' } as any);
+    const created = await useCase.execute({ name: 'Tienda de Pruebas', slug: 'tienda-pruebas' } as any);
 
     expect(created.adminPassword).toBeDefined();
     expect((created as any).adminUsername).toBeDefined();
@@ -143,7 +143,7 @@ describe('SUS-20 update responses never echo adminPassword (Seam D)', () => {
     const updated = await new UpdateRestaurantUseCase(repo).execute(
       'rest-1',
       {
-        name: 'Rosto V2',
+        name: 'Tienda V2',
         adminPassword: 'fresh-secret-7',
       } as any,
       'super_admin'
@@ -152,7 +152,7 @@ describe('SUS-20 update responses never echo adminPassword (Seam D)', () => {
     // Response is redacted: the plaintext never leaves the server again.
     expect((updated as any).adminPassword).toBeUndefined();
     // Update semantics are preserved: fields apply and the change is saved.
-    expect(updated.name).toBe('Rosto V2');
+    expect(updated.name).toBe('Tienda V2');
     expect(repo.save).toHaveBeenCalledTimes(1);
   });
 

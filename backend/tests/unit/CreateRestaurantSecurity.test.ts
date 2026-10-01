@@ -26,8 +26,8 @@ describe('CreateRestaurantUseCase (Security Hardening)', () => {
 
   it('ignores client-supplied id and generates a server-side one', async () => {
     const result = await useCase.execute({
-      name: 'Rosto',
-      slug: 'rosto',
+      name: 'Burger Test',
+      slug: 'burger-test',
       id: 'rest-existing-tenant',
     } as any);
 
@@ -37,7 +37,7 @@ describe('CreateRestaurantUseCase (Security Hardening)', () => {
   });
 
   it('creates a restaurant with zero categories when none are provided (no fabricated default)', async () => {
-    const result = await useCase.execute({ name: 'Rosto', slug: 'rosto' } as any);
+    const result = await useCase.execute({ name: 'Burger Test', slug: 'burger-test' } as any);
 
     // No layer fabricates a "General" category: the owner creates categories.
     expect(result.categories).toEqual([]);
@@ -48,8 +48,8 @@ describe('CreateRestaurantUseCase (Security Hardening)', () => {
 
   it('preserves explicitly provided categories instead of replacing them', async () => {
     const result = await useCase.execute({
-      name: 'Rosto',
-      slug: 'rosto',
+      name: 'Burger Test',
+      slug: 'burger-test',
       categories: ['Pizza', 'Bebidas'],
     } as any);
 
@@ -58,7 +58,7 @@ describe('CreateRestaurantUseCase (Security Hardening)', () => {
   });
 
   it('generates a random admin password instead of the public default', async () => {
-    const result = await useCase.execute({ name: 'Rosto', slug: 'rosto' } as any);
+    const result = await useCase.execute({ name: 'Burger Test', slug: 'burger-test' } as any);
 
     expect(result.adminPassword).toBeDefined();
     expect(result.adminPassword).not.toBe('admin123');
@@ -67,8 +67,8 @@ describe('CreateRestaurantUseCase (Security Hardening)', () => {
 
   it('keeps an explicit admin password only when the caller provides one', async () => {
     const result = await useCase.execute({
-      name: 'Rosto',
-      slug: 'rosto',
+      name: 'Burger Test',
+      slug: 'burger-test',
       adminPassword: 'custom-secret-42',
     } as any);
 
@@ -92,14 +92,14 @@ describe('CreateRestaurantUseCase (Security Hardening)', () => {
     );
 
     const result = await useCaseWithUsers.execute({
-      name: 'Rosto',
-      slug: 'rosto',
+      name: 'Burger Test',
+      slug: 'burger-test',
       adminPassword: 'custom-secret-42',
     } as any);
 
     expect(mockUserRepo.save).toHaveBeenCalledTimes(1);
     const [savedUser, actorRole] = mockUserRepo.save.mock.calls[0];
-    expect(savedUser.username).toBe('admin_rosto');
+    expect(savedUser.username).toBe('admin_burger-test');
     expect(savedUser.role).toBe('restaurant_admin');
     expect(savedUser.restaurantId).toBe(result.id);
     expect(savedUser.isActive).toBe(true);
@@ -111,7 +111,7 @@ describe('CreateRestaurantUseCase (Security Hardening)', () => {
     expect(actorRole).toBe('super_admin');
     // The entity still carries the one-time credentials for the caller
     expect(result.adminPassword).toBe('custom-secret-42');
-    expect((result as any).adminUsername).toBe('admin_rosto');
+    expect((result as any).adminUsername).toBe('admin_burger-test');
   });
 
   it('uses a caller-provided adminUsername and forwards an explicit caller role (SUS-02/SUS-03)', async () => {
@@ -132,8 +132,8 @@ describe('CreateRestaurantUseCase (Security Hardening)', () => {
 
     const result = await useCaseWithUsers.execute(
       {
-        name: 'Rosto',
-        slug: 'rosto',
+        name: 'Burger Test',
+        slug: 'burger-test',
         adminUsername: '  gerente  ',
       } as any,
       'restaurant_admin'
@@ -149,7 +149,7 @@ describe('CreateRestaurantUseCase (Security Hardening)', () => {
   });
 
   it('keeps creating the tenant when userRepo is not injected (backward-compatible)', async () => {
-    const result = await useCase.execute({ name: 'Rosto', slug: 'rosto' } as any);
+    const result = await useCase.execute({ name: 'Burger Test', slug: 'burger-test' } as any);
 
     expect(result.id).toMatch(/^rest_/);
     expect(result.adminPassword).toBeDefined();
@@ -172,7 +172,7 @@ describe('CreateRestaurantUseCase (Security Hardening)', () => {
       mockHasher
     );
 
-    const result = await useCaseWithUsers.execute({ name: 'Rosto', slug: 'rosto' } as any);
+    const result = await useCaseWithUsers.execute({ name: 'Burger Test', slug: 'burger-test' } as any);
 
     expect(result.id).toMatch(/^rest_/);
     expect(result.adminPassword).toBeDefined();
@@ -205,8 +205,8 @@ describe('CreateRestaurantUseCase (Security Hardening)', () => {
     );
 
     const result = await useCaseWithUsers.execute({
-      name: 'Rosto',
-      slug: 'rosto',
+      name: 'Burger Test',
+      slug: 'burger-test',
       adminUsername: 'admin',
       adminPassword: 'custom-secret-42',
     } as any);
@@ -237,7 +237,7 @@ describe('Public restaurant API (Response Shape)', () => {
       method: 'POST',
       url: '/api/restaurants',
       headers: { authorization: `Bearer ${token}` },
-      payload: { name: 'Rosto Test', slug: 'rosto-sec' },
+      payload: { name: 'Burger Test', slug: 'burger-test-sec' },
     });
     expect(created.statusCode).toBe(201);
     const createdBody = created.json();

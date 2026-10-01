@@ -156,11 +156,11 @@ export const initialUsers: User[] = [
     createdAt: new Date().toISOString(),
   },
   {
-    id: 'user-admin-rosto',
-    username: 'admin_rosto',
-    passwordHash: '32bd7035a7dae04f396caaac0738bfc9:7c39ae0ae432afba20fd04ef23c891ada873f0cad06bdf85d5f885c29f65bf1bae7e957a15facf432e6649789eedb9e1549e1ffb8257fe684d544627f6fb081f',
+    id: 'user-admin-pruebas',
+    username: 'admin_pruebas',
+    passwordHash: '08297cbb4fc3c575c62e6903653b34ed:9533dbdfe69af75eb99fb468edfd04859bdabfecad7694d2fc233f5ee4b68c0180189d7d235de7023c2cfe1d15d415d86cc83b39e539cc5d8f2a9ff487978191',
     role: 'restaurant_admin',
-    restaurantId: 'rosto',
+    restaurantId: 'rest_e2e_fixture',
     createdAt: new Date().toISOString(),
   }
 ];

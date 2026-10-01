@@ -1,8 +1,9 @@
 import { test, expect, type APIRequestContext } from '@playwright/test';
+import { TEST_RESTAURANT } from './test-fixture';
 
 /**
  * Closed-store behaviour (store-opening-hours). These tests mutate the shared
- * seed restaurant `rosto`, which every other spec assumes is open 24/7, so:
+ * seed test restaurant, which every other spec assumes is open 24/7, so:
  *  - the suite runs serially (the project already uses workers: 1; serial mode
  *    additionally guards against local `--workers` overrides and fullyParallel),
  *  - afterEach ALWAYS restores open 24/7, unpaused, America/Bogota.
@@ -10,13 +11,13 @@ import { test, expect, type APIRequestContext } from '@playwright/test';
 test.describe.configure({ mode: 'serial' });
 
 const API_BASE = 'http://localhost:3001/api';
-const SLUG = 'rosto';
+const SLUG = TEST_RESTAURANT.slug;
 const TIMEZONE = 'America/Bogota';
 const ALWAYS_OPEN = [0, 1, 2, 3, 4, 5, 6].map((dayOfWeek) => ({ dayOfWeek, open: '00:00', close: '00:00' }));
 
 async function login(request: APIRequestContext) {
   const res = await request.post(`${API_BASE}/users/login`, {
-    data: { username: 'rosto', password: 'rosto0502' },
+    data: { username: TEST_RESTAURANT.username, password: TEST_RESTAURANT.password },
   });
   expect(res.status()).toBe(200);
   const { token, user } = await res.json();
@@ -47,7 +48,7 @@ async function publicOrder(request: APIRequestContext, quantity = 2) {
   return request.post(`${API_BASE}/orders`, {
     data: {
       restaurantId: SLUG,
-      items: [{ productId: 'prod_rosto_clasica', quantity, additions: [] }],
+      items: [{ productId: TEST_RESTAURANT.products.clasica, quantity, additions: [] }],
     },
   });
 }

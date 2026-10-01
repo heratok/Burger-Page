@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { TEST_RESTAURANT } from './test-fixture';
 
 const API_BASE = 'http://localhost:3001/api';
 
@@ -19,9 +20,9 @@ test.describe('Playwright Full Multi-Tenant & Security E2E Suite', () => {
     tokenTenantA = bodyA.token;
     tenantAId = bodyA.user.restaurantId;
 
-    // 2. Authenticate as Tenant B admin (Rosto)
+    // 2. Authenticate as Tenant B admin (Test Restaurant)
     const loginB = await request.post(`${API_BASE}/users/login`, {
-      data: { username: 'admin_rosto', password: 'rosto' }
+      data: { username: TEST_RESTAURANT.username, password: TEST_RESTAURANT.password }
     });
     expect(loginB.status()).toBe(200);
     const bodyB = await loginB.json();
@@ -305,7 +306,7 @@ test.describe('Playwright Full Multi-Tenant & Security E2E Suite', () => {
       const prodBRes = await request.post(`${API_BASE}/products`, {
         headers: { Authorization: `Bearer ${tokenTenantB}` },
         data: {
-          name: 'Rosto Special Burger',
+          name: 'Special Test Burger',
           price: 30000,
           category: 'Hamburguesas',
           isAvailable: true,

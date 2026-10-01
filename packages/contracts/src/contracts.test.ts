@@ -78,7 +78,7 @@ describe('@burger-page/contracts', () => {
 });
 
 describe('restaurant schedule contracts', () => {
-  const base = { name: 'Rosto', slug: 'rosto' };
+  const base = { name: 'Tienda de Pruebas', slug: 'tienda-pruebas' };
 
   it('accepts schedule, timezone and ordersPaused on create/update', () => {
     const payload = {
@@ -101,8 +101,8 @@ describe('restaurant schedule contracts', () => {
   it('restaurantDTOSchema carries schedule, timezone and ordersPaused', () => {
     const parsed = restaurantDTOSchema.parse({
       id: 'rest_1',
-      slug: 'rosto',
-      name: 'Rosto',
+      slug: 'tienda-pruebas',
+      name: 'Tienda de Pruebas',
       schedule: [{ dayOfWeek: 0, open: '12:00', close: '22:30' }],
       timezone: 'America/Bogota',
       ordersPaused: false,

@@ -22,7 +22,7 @@ describe('CreateOrderUseCase - opening hours guard (store-opening-hours T3)', ()
     restaurant = {
       id: 'rest-1',
       slug: 'rest-1',
-      name: 'Rosto',
+      name: 'Tienda de Pruebas',
       isActive: true,
       timezone: 'America/Bogota',
       ordersPaused: false,
@@ -75,7 +75,7 @@ describe('CreateOrderUseCase - opening hours guard (store-opening-hours T3)', ()
   it('rejects a public order outside the hours with a recognizable message', async () => {
     now = at(5, '23:00');
     const err = await expectRejected(ORDER_CLOSED_ERROR_FRAGMENT);
-    expect(err.message).toBe("El restaurante 'Rosto' está fuera del horario de atención.");
+    expect(err.message).toBe("El restaurante 'Tienda de Pruebas' está fuera del horario de atención.");
   });
 
   it('rejects on a weekday without ranges (closed day)', async () => {
@@ -91,7 +91,7 @@ describe('CreateOrderUseCase - opening hours guard (store-opening-hours T3)', ()
   it('rejects while orders are paused even though the schedule is open', async () => {
     restaurant.ordersPaused = true;
     const err = await expectRejected(ORDER_PAUSED_ERROR_FRAGMENT);
-    expect(err.message).toBe("El restaurante 'Rosto' tiene los pedidos en pausa.");
+    expect(err.message).toBe("El restaurante 'Tienda de Pruebas' tiene los pedidos en pausa.");
   });
 
   it('reports the pause when the restaurant is both paused and closed', async () => {

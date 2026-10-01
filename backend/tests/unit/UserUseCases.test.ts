@@ -42,7 +42,7 @@ describe('User Use Cases', () => {
     };
 
     mockRestaurantRepo = {
-      findById: vi.fn().mockResolvedValue({ id: 'rosto', name: 'Rosto Burger', slug: 'rosto', isActive: true, config: {} }),
+      findById: vi.fn().mockResolvedValue({ id: 'tienda-pruebas', name: 'Tienda de Pruebas', slug: 'tienda-pruebas', isActive: true, config: {} }),
       findBySlug: vi.fn(),
       findAll: vi.fn(),
       save: vi.fn(),
@@ -59,16 +59,16 @@ describe('User Use Cases', () => {
       vi.mocked(mockUserRepo.findByUsername).mockResolvedValue(null);
 
       const result = await useCase.execute({
-        username: 'admin_rosto',
+        username: 'admin_pruebas',
         password: 'securePass123',
         role: 'restaurant_admin',
-        restaurantId: 'rosto',
+        restaurantId: 'tienda-pruebas',
       });
 
       expect(result.id).toBeDefined();
-      expect(result.username).toBe('admin_rosto');
+      expect(result.username).toBe('admin_pruebas');
       expect(result.role).toBe('restaurant_admin');
-      expect(result.restaurantId).toBe('rosto');
+      expect(result.restaurantId).toBe('tienda-pruebas');
       expect(result.passwordHash).toBe('hashed_password');
       expect(mockHasher.hash).toHaveBeenCalledWith('securePass123');
       expect(mockUserRepo.save).toHaveBeenCalledWith(result, undefined);
@@ -148,20 +148,20 @@ describe('User Use Cases', () => {
       const useCase = new CreateUserUseCase(mockUserRepo, mockHasher, mockRestaurantRepo);
       const existingUser: User = {
         id: 'u1',
-        username: 'admin_rosto',
+        username: 'admin_pruebas',
         passwordHash: 'hashed',
         role: 'restaurant_admin',
-        restaurantId: 'rosto',
+        restaurantId: 'tienda-pruebas',
         createdAt: new Date().toISOString(),
       };
       vi.mocked(mockUserRepo.findByUsername).mockResolvedValue(existingUser);
 
       await expect(
         useCase.execute({
-          username: 'admin_rosto',
+          username: 'admin_pruebas',
           password: 'securePass123',
           role: 'restaurant_admin',
-          restaurantId: 'rosto',
+          restaurantId: 'tienda-pruebas',
         })
       ).rejects.toThrow(ValidationError);
     });
@@ -172,16 +172,16 @@ describe('User Use Cases', () => {
 
       await useCase.execute(
         {
-          username: 'admin_rosto',
+          username: 'admin_pruebas',
           password: 'securePass123',
           role: 'restaurant_admin',
-          restaurantId: 'rosto',
+          restaurantId: 'tienda-pruebas',
         },
         'super_admin'
       );
 
       expect(mockUserRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({ username: 'admin_rosto', role: 'restaurant_admin' }),
+        expect.objectContaining({ username: 'admin_pruebas', role: 'restaurant_admin' }),
         'super_admin'
       );
     });
@@ -208,10 +208,10 @@ describe('User Use Cases', () => {
   describe('AuthenticateUserUseCase', () => {
     const storedUser: User = {
       id: 'u1',
-      username: 'admin_rosto',
+      username: 'admin_pruebas',
       passwordHash: 'hashed_password',
       role: 'restaurant_admin',
-      restaurantId: 'rosto',
+      restaurantId: 'tienda-pruebas',
       createdAt: new Date().toISOString(),
     };
 
@@ -220,13 +220,13 @@ describe('User Use Cases', () => {
       vi.mocked(mockUserRepo.findByUsername).mockResolvedValue(storedUser);
       vi.mocked(mockHasher.verify).mockResolvedValue(true);
 
-      const result = await useCase.execute('admin_rosto', 'securePass123');
+      const result = await useCase.execute('admin_pruebas', 'securePass123');
 
       expect(result.success).toBe(true);
       expect(result.user).toBeDefined();
-      expect(result.user!.username).toBe('admin_rosto');
+      expect(result.user!.username).toBe('admin_pruebas');
       expect(result.user!.role).toBe('restaurant_admin');
-      expect(result.user!.restaurantId).toBe('rosto');
+      expect(result.user!.restaurantId).toBe('tienda-pruebas');
       expect((result.user as any).passwordHash).toBeUndefined();
       expect(mockHasher.verify).toHaveBeenCalledWith('securePass123', 'hashed_password');
     });
@@ -237,7 +237,7 @@ describe('User Use Cases', () => {
           vi.mocked(mockHasher.verify).mockResolvedValue(true);
 
           await expect(
-            useCase.execute('admin_rosto', 'securePass123')
+            useCase.execute('admin_pruebas', 'securePass123')
           ).rejects.toThrow(UnauthorizedError);
           // Deactivated users must not reach the password check path.
           expect(mockHasher.verify).not.toHaveBeenCalled();
@@ -258,23 +258,23 @@ describe('User Use Cases', () => {
       vi.mocked(mockHasher.verify).mockResolvedValue(false);
 
       await expect(
-        useCase.execute('admin_rosto', 'wrongPassword')
+        useCase.execute('admin_pruebas', 'wrongPassword')
       ).rejects.toThrow(UnauthorizedError);
     });
 
-    it('should authenticate with restaurant alias without admin_ prefix (e.g. rosto -> admin_rosto)', async () => {
+    it('should authenticate with restaurant alias without admin_ prefix (e.g. pruebas -> admin_pruebas)', async () => {
       const useCase = new AuthenticateUserUseCase(mockUserRepo, mockHasher);
       vi.mocked(mockUserRepo.findByUsername).mockImplementation(async (u) => {
-        if (u === 'admin_rosto') return storedUser;
+        if (u === 'admin_pruebas') return storedUser;
         return null;
       });
       vi.mocked(mockHasher.verify).mockResolvedValue(true);
 
-      const result = await useCase.execute('rosto', 'securePass123');
+      const result = await useCase.execute('pruebas', 'securePass123');
 
       expect(result.success).toBe(true);
-      expect(result.user?.username).toBe('admin_rosto');
-      expect(result.user?.restaurantId).toBe('rosto');
+      expect(result.user?.username).toBe('admin_pruebas');
+      expect(result.user?.restaurantId).toBe('tienda-pruebas');
     });
 
     it('should authenticate with restaurantId fallback when username matches restaurantId', async () => {
@@ -283,27 +283,27 @@ describe('User Use Cases', () => {
       vi.mocked(mockUserRepo.findByRestaurantId).mockResolvedValue([storedUser]);
       vi.mocked(mockHasher.verify).mockResolvedValue(true);
 
-      const result = await useCase.execute('rosto', 'securePass123');
+      const result = await useCase.execute('tienda-pruebas', 'securePass123');
 
       expect(result.success).toBe(true);
-      expect(result.user?.username).toBe('admin_rosto');
-      expect(result.user?.restaurantId).toBe('rosto');
+      expect(result.user?.username).toBe('admin_pruebas');
+      expect(result.user?.restaurantId).toBe('tienda-pruebas');
     });
 
-    it('should authenticate with restaurantId fallback when username has rest- prefix (e.g. rest-rosto)', async () => {
+    it('should authenticate with restaurantId fallback when username has rest- prefix (e.g. rest-tienda-pruebas)', async () => {
       const useCase = new AuthenticateUserUseCase(mockUserRepo, mockHasher);
       vi.mocked(mockUserRepo.findByUsername).mockResolvedValue(null);
       vi.mocked(mockUserRepo.findByRestaurantId).mockImplementation(async (rId) => {
-        if (rId === 'rosto') return [storedUser];
+        if (rId === 'tienda-pruebas') return [storedUser];
         return [];
       });
       vi.mocked(mockHasher.verify).mockResolvedValue(true);
 
-      const result = await useCase.execute('rest-rosto', 'securePass123');
+      const result = await useCase.execute('rest-tienda-pruebas', 'securePass123');
 
       expect(result.success).toBe(true);
-      expect(result.user?.username).toBe('admin_rosto');
-      expect(result.user?.restaurantId).toBe('rosto');
+      expect(result.user?.username).toBe('admin_pruebas');
+      expect(result.user?.restaurantId).toBe('tienda-pruebas');
     });
   });
 
@@ -321,10 +321,10 @@ describe('User Use Cases', () => {
       },
       {
         id: 'u2',
-        username: 'admin_rosto',
+        username: 'admin_pruebas',
         passwordHash: 'h2',
         role: 'restaurant_admin',
-        restaurantId: 'rosto',
+        restaurantId: 'tienda-pruebas',
         createdAt: new Date().toISOString(),
       },
     ];
@@ -363,11 +363,11 @@ describe('User Use Cases', () => {
       const useCase = new ListUsersUseCase(mockUserRepo);
       vi.mocked(mockUserRepo.findByRestaurantId).mockResolvedValue([users[1]]);
 
-      const result = await useCase.execute('rosto');
+      const result = await useCase.execute('tienda-pruebas');
 
       expect(result).toHaveLength(1);
-      expect(result[0].username).toBe('admin_rosto');
-      expect(mockUserRepo.findByRestaurantId).toHaveBeenCalledWith('rosto');
+      expect(result[0].username).toBe('admin_pruebas');
+      expect(mockUserRepo.findByRestaurantId).toHaveBeenCalledWith('tienda-pruebas');
     });
   });
 
@@ -377,10 +377,10 @@ describe('User Use Cases', () => {
   describe('PgUserRepository actor-role propagation', () => {
     const user = (): User => ({
       id: 'u1',
-      username: 'admin_rosto',
+      username: 'admin_pruebas',
       passwordHash: 'hashed',
       role: 'restaurant_admin',
-      restaurantId: 'rosto',
+      restaurantId: 'tienda-pruebas',
       createdAt: new Date().toISOString(),
     });
 
@@ -393,7 +393,7 @@ describe('User Use Cases', () => {
 
       await repo.save(user(), 'super_admin');
 
-      expect(pgCtx.contexts[0]).toEqual({ restaurantId: 'rosto', actorRole: 'super_admin' });
+      expect(pgCtx.contexts[0]).toEqual({ restaurantId: 'tienda-pruebas', actorRole: 'super_admin' });
     });
 
     it('save without actorRole omits app.actor_role from the tenant context', async () => {
@@ -401,7 +401,7 @@ describe('User Use Cases', () => {
 
       await repo.save(user());
 
-      expect(pgCtx.contexts[0]).toEqual({ restaurantId: 'rosto' });
+      expect(pgCtx.contexts[0]).toEqual({ restaurantId: 'tienda-pruebas' });
     });
 
     it('findAll with actorRole super_admin passes it into the tenant context', async () => {

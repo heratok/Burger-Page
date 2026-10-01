@@ -1,9 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { TEST_RESTAURANT } from './test-fixture';
 
 test.describe('Storefront & Admin Category Horizontal Scroll E2E Suite', () => {
   test('Storefront Category Bar: single-row horizontal scroll on desktop with drag & chevrons', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 720 });
-    await page.goto('/rosto');
+    await page.goto(`/${TEST_RESTAURANT.slug}`);
     await page.waitForLoadState('domcontentloaded');
 
     // Category bar container must be visible
@@ -41,7 +42,7 @@ test.describe('Storefront & Admin Category Horizontal Scroll E2E Suite', () => {
 
   test('Storefront Category Bar: mobile viewport (360x740) keeps single-row height and zero page overflow', async ({ page }) => {
     await page.setViewportSize({ width: 360, height: 740 });
-    await page.goto('/rosto');
+    await page.goto(`/${TEST_RESTAURANT.slug}`);
     await page.waitForLoadState('domcontentloaded');
 
     const categoryBar = page.locator('div[aria-label="Categorías del menú"]');

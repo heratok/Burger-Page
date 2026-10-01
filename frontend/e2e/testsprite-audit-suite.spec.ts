@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { TEST_RESTAURANT } from './test-fixture';
 
 test.describe('TestSprite Audit & Resolution Suite', () => {
   test.beforeEach(async ({ page }) => {
@@ -8,14 +9,14 @@ test.describe('TestSprite Audit & Resolution Suite', () => {
     });
   });
 
-  test('TC002 & TC001: Browse /rosto storefront catalog and place an order', async ({ page }) => {
-    await page.goto('/rosto');
+  test('TC002 & TC001: Browse test restaurant storefront catalog and place an order', async ({ page }) => {
+    await page.goto(`/${TEST_RESTAURANT.slug}`);
     await page.waitForLoadState('domcontentloaded');
 
     // TC002: Catalog must not show "No encontramos resultados"
     await expect(page.getByText('No encontramos resultados')).not.toBeVisible({ timeout: 10000 });
     
-    // rosto's seeded minimum order is $20.000 and checkout stays disabled
+    // The seeded minimum order is $20.000 and checkout stays disabled
     // below it, so add two "Doble Carne" ($18.000 each) to clear the minimum.
     const productCard = page.getByRole('button', { name: /Agregar Doble Carne al carrito/i }).first();
     const dialogAddBtn = page.getByRole('button', { name: /Agregar · \$/i });

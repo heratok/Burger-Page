@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { TEST_RESTAURANT } from './test-fixture';
 
 const VIEWPORTS = [
   { name: 'Mobile Narrow (320px)', width: 320, height: 640 },
@@ -13,7 +14,7 @@ for (const vp of VIEWPORTS) {
 
     test(`verifies layout, no horizontal overflow, and collapse/expand at ${vp.width}px`, async ({ page }) => {
       // Navigate to active tenant storefront route
-      await page.goto('/rosto');
+      await page.goto(`/${TEST_RESTAURANT.slug}`);
 
       // Wait for catalog and products to load
       const catalog = page.locator('#storefront-catalog');

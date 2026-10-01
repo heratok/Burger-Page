@@ -1,11 +1,12 @@
 import { test, expect } from '@playwright/test';
+import { TEST_RESTAURANT } from './test-fixture';
 
-test.describe('Additions & DB Persistence Suite (admin & rosto)', () => {
+test.describe('Additions & DB Persistence Suite (admin & test restaurant)', () => {
   test.setTimeout(90000);
 
   test('Super Admin & Restaurant Admin can create, load, update, and delete additions with real DB persistence', async ({ browser }) => {
     // -----------------------------------------------------------------------
-    // PART 1: RESTAURANT ADMIN (rosto / rosto0502)
+    // PART 1: RESTAURANT ADMIN (admin_pruebas)
     // -----------------------------------------------------------------------
     const restoContext = await browser.newContext({
       baseURL: 'http://localhost:5173',
@@ -19,10 +20,10 @@ test.describe('Additions & DB Persistence Suite (admin & rosto)', () => {
     // Fill login form
     const userField = restoPage.locator('input[type="text"]').first();
     await expect(userField).toBeVisible({ timeout: 15000 });
-    await userField.fill('rosto');
+    await userField.fill(TEST_RESTAURANT.username);
 
     const passField = restoPage.locator('input[type="password"]').first();
-    await passField.fill('rosto0502');
+    await passField.fill(TEST_RESTAURANT.password);
 
     await Promise.all([
       restoPage.waitForResponse(resp => resp.url().includes('/api/users/login') && resp.status() === 200),
@@ -42,8 +43,8 @@ test.describe('Additions & DB Persistence Suite (admin & rosto)', () => {
     // Verify existing additions are loaded from DB (fixture demo determinista)
     await expect(restoPage.getByText(/queso extra/i).first()).toBeVisible({ timeout: 15000 });
 
-    // 1.4 Create a new addition as rosto
-    const uniqueAdditionName = `Papas Rosto E2E ${Date.now().toString().slice(-4)}`;
+    // 1.4 Create a new addition
+    const uniqueAdditionName = `Papas Test E2E ${Date.now().toString().slice(-4)}`;
     const addAdditionBtn = restoPage.getByRole('button', { name: /Añadir Adicional/i });
     await expect(addAdditionBtn).toBeVisible();
     await addAdditionBtn.click();
@@ -64,7 +65,7 @@ test.describe('Additions & DB Persistence Suite (admin & rosto)', () => {
     const createdBody = await createResponse.json();
     expect(createdBody.name).toBe(uniqueAdditionName);
     expect(createdBody.price).toBe(3500);
-    expect(createdBody.restaurantId).toBe('rest-1788579266608');
+    expect(createdBody.restaurantId).toBe(TEST_RESTAURANT.id);
 
     // Check visible on page heading
     await expect(restoPage.getByRole('heading', { name: uniqueAdditionName })).toBeVisible({ timeout: 10000 });
@@ -125,10 +126,10 @@ test.describe('Additions & DB Persistence Suite (admin & rosto)', () => {
     // Super admin is redirected to /admin/restaurants
     await expect(superPage).toHaveURL(/\/admin\/restaurants/, { timeout: 15000 });
 
-    // Manage 'rosto'
-    const manageRostoBtn = superPage.getByRole('button', { name: /Administrar/i }).first();
-    await expect(manageRostoBtn).toBeVisible({ timeout: 15000 });
-    await manageRostoBtn.click();
+    // Manage test restaurant
+    const manageTestRestBtn = superPage.getByRole('button', { name: /Administrar/i }).first();
+    await expect(manageTestRestBtn).toBeVisible({ timeout: 15000 });
+    await manageTestRestBtn.click();
 
     // Go to Menú & Carta tab
     const superMenuTab = superPage.getByRole('button', { name: /Menú & Carta/i });
@@ -159,7 +160,7 @@ test.describe('Additions & DB Persistence Suite (admin & rosto)', () => {
     const superCreatedBody = await superCreateResponse.json();
     expect(superCreatedBody.name).toBe(superAdditionName);
     expect(superCreatedBody.price).toBe(2000);
-    expect(superCreatedBody.restaurantId).toBe('rest-1788579266608');
+    expect(superCreatedBody.restaurantId).toBe(TEST_RESTAURANT.id);
 
     await expect(superPage.getByRole('heading', { name: superAdditionName })).toBeVisible({ timeout: 10000 });
 

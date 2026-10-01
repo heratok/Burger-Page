@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import path from 'node:path';
+import { TEST_RESTAURANT } from './test-fixture';
 
 const ARTIFACT_DIR = 'C:/Users/hecto/.gemini/antigravity-cli/brain/dce1fd27-a78b-49ab-be07-793a91bddc9d';
 
@@ -7,7 +8,7 @@ test.describe('Cart and AdditionsModal Responsive at 320x568', () => {
   test.use({ viewport: { width: 320, height: 568 } });
 
   test('handles 200-char observation without card overflow and edits cleanly in modal', async ({ page }) => {
-    await page.goto('/rosto');
+    await page.goto(`/${TEST_RESTAURANT.slug}`);
 
     // Wait for catalog to load
     const catalog = page.locator('#storefront-catalog');

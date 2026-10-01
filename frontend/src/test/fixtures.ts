@@ -186,14 +186,14 @@ export const TEST_RESTAURANTS: RestaurantRecord[] = [
     customers: [],
   },
   {
-    id: "rest-rosto",
-    slug: "rosto",
-    adminPassword: "rosto",
+    id: "rest_e2e_fixture",
+    slug: "tienda-pruebas",
+    adminPassword: "admin_pruebas",
     isActive: true,
     createdAt: "2026-08-15T12:00:00.000Z",
     config: {
       ...DEFAULT_STORE_CONFIG,
-      name: "Rosto",
+      name: "Tienda de Pruebas",
       tagline: "Sabor artesanal",
     },
     categories: ["Hamburguesas", "Parrilla"],

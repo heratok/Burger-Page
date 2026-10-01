@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { TEST_RESTAURANT } from './test-fixture';
 
 test.describe('Optimistic UI Updates (Zero-Reload), Skeletons & Real-Time Feedback', () => {
   test('Zero-Reload Lifecycle: Super Admin instant creation, status toggle, CRM menu mutation & instant deletion', async ({ page }) => {
@@ -115,7 +116,7 @@ test.describe('Optimistic UI Updates (Zero-Reload), Skeletons & Real-Time Feedba
 
     // Safety assertion
     expect(testRestSlug).toMatch(/^e2e-optimistic-\d+$/);
-    expect(testRestSlug).not.toBe('rosto');
+    expect(testRestSlug).not.toBe(TEST_RESTAURANT.slug);
     expect(testRestSlug).not.toBe('craft-staging');
 
     // Search and delete test restaurant
