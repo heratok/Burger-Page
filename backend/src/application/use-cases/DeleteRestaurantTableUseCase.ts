@@ -8,7 +8,7 @@ export class DeleteRestaurantTableUseCase {
   async execute(id: string, restaurantId: string): Promise<void> {
     const existing = await this.tableRepo.findById(id, restaurantId);
     if (!existing) {
-      throw new EntityNotFoundError(`Table "${id}" not found`);
+      throw new EntityNotFoundError('Mesa no encontrada.');
     }
     await this.tableRepo.delete(id, restaurantId);
   }

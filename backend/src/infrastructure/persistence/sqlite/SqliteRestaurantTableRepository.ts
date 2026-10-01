@@ -37,7 +37,7 @@ export class SqliteRestaurantTableRepository implements RestaurantTableRepositor
       .prepare('SELECT id FROM restaurant_tables WHERE restaurant_id = ? AND lower(trim(name)) = lower(trim(?)) AND id != ?')
       .get(table.restaurantId, table.name, table.id);
     if (duplicate) {
-      throw new ConflictError(`A table named '${table.name}' already exists.`);
+      throw new ConflictError(`Ya existe una mesa llamada '${table.name}'.`);
     }
     this.db
       .prepare(`

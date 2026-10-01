@@ -9,14 +9,14 @@ export interface CreateRestaurantTableInput {
   isActive?: boolean;
 }
 
-/** Trims and validates a table name; shared by create and update. */
+/** Trims, collapses inner whitespace and validates a table name; shared by create and update. */
 export function validateTableName(raw: string | undefined): string {
-  const name = raw?.trim();
+  const name = raw?.replace(/\s+/g, ' ').trim();
   if (!name) {
-    throw new ValidationError('Table name is required');
+    throw new ValidationError('El nombre de la mesa es obligatorio');
   }
   if (name.length > MAX_TABLE_NAME_LENGTH) {
-    throw new ValidationError(`Table name cannot exceed ${MAX_TABLE_NAME_LENGTH} characters`);
+    throw new ValidationError(`El nombre de la mesa no puede superar ${MAX_TABLE_NAME_LENGTH} caracteres`);
   }
   return name;
 }
@@ -27,7 +27,7 @@ export class CreateRestaurantTableUseCase {
   async execute(restaurantId: string, input: CreateRestaurantTableInput): Promise<RestaurantTable> {
     const name = validateTableName(input.name);
     if (input.id !== undefined && !isValidId(input.id)) {
-      throw new ValidationError('Table id must be 1-64 characters: letters, digits, "_" or "-"');
+      throw new ValidationError('El id de la mesa debe tener de 1 a 64 caracteres: letras, dígitos, "_" o "-"');
     }
 
     // New tables go to the end of the list.

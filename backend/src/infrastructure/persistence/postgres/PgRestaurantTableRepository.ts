@@ -54,7 +54,7 @@ export class PgRestaurantTableRepository implements RestaurantTableRepository {
       });
     } catch (err: any) {
       if (err?.code === '23505' && (!err?.constraint || err.constraint === NAME_INDEX)) {
-        throw new ConflictError(`A table named '${table.name}' already exists.`);
+        throw new ConflictError(`Ya existe una mesa llamada '${table.name}'.`);
       }
       throw err;
     }

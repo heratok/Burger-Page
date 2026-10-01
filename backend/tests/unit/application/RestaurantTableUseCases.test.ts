@@ -49,6 +49,27 @@ describe('restaurant table use cases', () => {
       await expect(create.execute('rest-2', { name: 'Mesa 1' })).resolves.toMatchObject({ restaurantId: 'rest-2' });
     });
 
+    it('collapses inner whitespace so "mesa  1" is the same table as "mesa 1"', async () => {
+      const a = await create.execute('rest-1', { name: '  Mesa   1 ' });
+      expect(a.name).toBe('Mesa 1');
+
+      await expect(create.execute('rest-1', { name: 'mesa  1' })).rejects.toBeInstanceOf(ConflictError);
+      await expect(create.execute('rest-1', { name: 'mesa\t 1' })).rejects.toBeInstanceOf(ConflictError);
+    });
+
+    it('reports a duplicate name in Spanish', async () => {
+      await create.execute('rest-1', { name: 'Mesa 1' });
+
+      await expect(create.execute('rest-1', { name: 'mesa 1' })).rejects.toThrow("Ya existe una mesa llamada 'mesa 1'.");
+    });
+
+    it('reports validation errors in Spanish', async () => {
+      await expect(create.execute('rest-1', { name: '  ' })).rejects.toThrow('El nombre de la mesa es obligatorio');
+      await expect(create.execute('rest-1', { name: 'x'.repeat(41) })).rejects.toThrow(
+        'El nombre de la mesa no puede superar 40 caracteres'
+      );
+    });
+
     it('rejects an invalid explicit id', async () => {
       await expect(create.execute('rest-1', { name: 'Mesa 1', id: 'bad id!' })).rejects.toBeInstanceOf(ValidationError);
     });
@@ -82,6 +103,20 @@ describe('restaurant table use cases', () => {
 
       await expect(update.execute(a.id, 'rest-1', { name: '' })).rejects.toBeInstanceOf(ValidationError);
       await expect(update.execute(a.id, 'rest-1', { name: 'MESA 2' })).rejects.toBeInstanceOf(ConflictError);
+    });
+
+    it('normalizes the new name on rename and rejects an inner-space duplicate', async () => {
+      const a = await create.execute('rest-1', { name: 'Mesa 1' });
+      await create.execute('rest-1', { name: 'Mesa 2' });
+
+      const renamed = await update.execute(a.id, 'rest-1', { name: '  Terraza   9 ' });
+      expect(renamed.name).toBe('Terraza 9');
+      await expect(update.execute(a.id, 'rest-1', { name: 'mesa   2' })).rejects.toBeInstanceOf(ConflictError);
+    });
+
+    it('reports a missing table in Spanish', async () => {
+      await expect(update.execute('nope', 'rest-1', { name: 'X' })).rejects.toThrow('Mesa no encontrada.');
+      await expect(remove.execute('nope', 'rest-1')).rejects.toThrow('Mesa no encontrada.');
     });
 
     it('is not found for a table of another restaurant (cross-tenant)', async () => {

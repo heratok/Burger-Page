@@ -13,7 +13,7 @@ export async function resolveOrderTable(
   restaurantId: string
 ): Promise<RestaurantTable> {
   if (!tableRepo) {
-    throw new ValidationError('Tables are not available for this restaurant.');
+    throw new ValidationError('Las mesas no están disponibles para este restaurante.');
   }
   const table = await tableRepo.findById(tableId, restaurantId);
   if (!table || table.restaurantId !== restaurantId) {

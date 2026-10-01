@@ -80,7 +80,10 @@ describe('Restaurant tables API', () => {
     expect((await createTable(tokenTenant, 'x'.repeat(41))).statusCode).toBe(400);
 
     expect((await createTable(tokenTenant, 'Mesa Dup')).statusCode).toBe(201);
-    expect((await createTable(tokenTenant, 'mesa dup')).statusCode).toBe(409);
+    const dup = await createTable(tokenTenant, 'mesa dup');
+    expect(dup.statusCode).toBe(409);
+    expect(JSON.parse(dup.body).detail).toContain("Ya existe una mesa llamada 'mesa dup'.");
+    expect((await createTable(tokenTenant, 'mesa   dup')).statusCode).toBe(409);
   });
 
   it('isolates tenants: another restaurant cannot list, rename or delete the table', async () => {

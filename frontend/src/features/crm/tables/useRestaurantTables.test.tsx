@@ -70,7 +70,7 @@ describe("useRestaurantTables", () => {
 
   it("reports a rejected create with the server message and returns null", async () => {
     vi.spyOn(apiClient, "fetchTables").mockResolvedValue([])
-    vi.spyOn(apiClient, "createTable").mockRejectedValue(new Error("A table named 'Mesa 1' already exists."))
+    vi.spyOn(apiClient, "createTable").mockRejectedValue(new Error("Ya existe una mesa llamada 'Mesa 1'."))
     const errorToast = vi.spyOn(toast, "error").mockImplementation((() => "") as any)
     const { result } = renderHook(() => useRestaurantTables("rest-1"))
     await waitFor(() => expect(result.current.isLoading).toBe(false))
@@ -81,7 +81,7 @@ describe("useRestaurantTables", () => {
     })
 
     expect(created).toBeNull()
-    expect(errorToast).toHaveBeenCalledWith(expect.stringContaining("already exists"))
+    expect(errorToast).toHaveBeenCalledWith(expect.stringContaining("Ya existe"))
   })
 
   it("renames and toggles a table in place", async () => {

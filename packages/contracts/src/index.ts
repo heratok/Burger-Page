@@ -270,7 +270,7 @@ export const MAX_TABLE_NAME_LENGTH = 40;
 export const createRestaurantTableSchema = z.object({
   id: z.string().optional(),
   restaurantId: z.string().optional(),
-  name: z.string().trim().min(1, 'Table name is required').max(MAX_TABLE_NAME_LENGTH, `Table name cannot exceed ${MAX_TABLE_NAME_LENGTH} characters`),
+  name: z.string().trim().min(1, 'El nombre de la mesa es obligatorio').max(MAX_TABLE_NAME_LENGTH, `El nombre de la mesa no puede superar ${MAX_TABLE_NAME_LENGTH} caracteres`),
   isActive: z.boolean().optional(),
 });
 export type CreateRestaurantTableInput = z.infer<typeof createRestaurantTableSchema>;

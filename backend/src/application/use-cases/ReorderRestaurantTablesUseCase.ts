@@ -14,11 +14,11 @@ export class ReorderRestaurantTablesUseCase {
     const byId = new Map(current.map((t) => [t.id, t]));
 
     if (new Set(orderedIds).size !== orderedIds.length) {
-      throw new ValidationError('Table ids must not repeat');
+      throw new ValidationError('Los ids de las mesas no pueden repetirse');
     }
     for (const id of orderedIds) {
       if (!byId.has(id)) {
-        throw new ValidationError(`Table "${id}" does not belong to this restaurant`);
+        throw new ValidationError('La mesa no pertenece a este restaurante');
       }
     }
 

@@ -2,7 +2,7 @@ import { RestaurantTableRepository } from '../../domain/ports/out/RestaurantTabl
 import { RestaurantTable } from '../../domain/models/RestaurantTable.js';
 import { ConflictError } from '../../domain/errors/DomainErrors.js';
 
-export const normalizeTableName = (name: string): string => name.trim().toLowerCase();
+export const normalizeTableName = (name: string): string => name.replace(/\s+/g, ' ').trim().toLowerCase();
 
 export class InMemoryRestaurantTableRepository implements RestaurantTableRepository {
   private tables: Map<string, RestaurantTable> = new Map();
@@ -30,7 +30,7 @@ export class InMemoryRestaurantTableRepository implements RestaurantTableReposit
       (t) => t.restaurantId === table.restaurantId && t.id !== table.id && normalizeTableName(t.name) === wanted
     );
     if (duplicate) {
-      throw new ConflictError(`A table named '${table.name}' already exists.`);
+      throw new ConflictError(`Ya existe una mesa llamada '${table.name}'.`);
     }
     this.tables.set(table.id, { ...table });
   }

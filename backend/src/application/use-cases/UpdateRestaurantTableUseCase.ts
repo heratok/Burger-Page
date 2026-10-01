@@ -14,7 +14,7 @@ export class UpdateRestaurantTableUseCase {
   async execute(id: string, restaurantId: string, input: UpdateRestaurantTableInput): Promise<RestaurantTable> {
     const existing = await this.tableRepo.findById(id, restaurantId);
     if (!existing) {
-      throw new EntityNotFoundError(`Table "${id}" not found`);
+      throw new EntityNotFoundError('Mesa no encontrada.');
     }
 
     const updated: RestaurantTable = {
