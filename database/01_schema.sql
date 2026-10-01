@@ -41,9 +41,9 @@ DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'app_user') THEN
         CREATE ROLE app_user LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE PASSWORD 'app_user_test_only';
-    ELSE
-        ALTER ROLE app_user WITH PASSWORD 'app_user_test_only';
     END IF;
+    -- An existing role is left untouched on purpose: re-applying this file must
+    -- never reset a production password back to the dev/CI one.
 END $$;
 
 

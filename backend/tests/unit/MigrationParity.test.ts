@@ -126,6 +126,12 @@ describe('migration 0000000000007 (schema integrity) parity with the baseline sc
 describe('schema file structure', () => {
   const baseline = read('01_schema.sql');
 
+  it('never resets the app_user password when the role already exists (re-apply safe)', () => {
+    const code = baseline.replace(/^\s*--.*$/gm, '');
+    expect(code).not.toMatch(/ALTER ROLE app_user[^;]*PASSWORD/i);
+    expect(code).toMatch(/CREATE ROLE app_user[^;]*PASSWORD 'app_user_test_only'/);
+  });
+
   it('has no transaction control statements so it applies atomically with psql -1', () => {
     expect(baseline).not.toMatch(/^\s*(BEGIN|COMMIT|ROLLBACK|START TRANSACTION)\s*;/im);
   });

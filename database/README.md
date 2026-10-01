@@ -46,6 +46,8 @@ npm run db:migrate
 > ```sql
 > ALTER ROLE app_user WITH PASSWORD 'tu_password_segura_aqui';
 > ```
+> Re-aplicar `01_schema.sql` **no** resetea la contraseña de un `app_user` ya existente
+> (solo se fija al crear el rol).
 
 ### 2. Desarrollo local / Testing (Docker)
 ```bash
