@@ -128,13 +128,13 @@ async function openSidebarAndClick(page: Page, label: string) {
 
 // ---------- 1. Public landing ----------
 
-test('Landing page renders, is responsive and links to tenants', async ({ page }, testInfo) => {
+test('Landing page renders and is responsive', async ({ page }, testInfo) => {
   await page.goto('/');
   await expect(page.getByRole('heading').first()).toBeVisible({ timeout: 30_000 });
   await expectNoHorizontalOverflow(page);
 
   const hasLandingText = await page
-    .getByText(/Gestión Centralizada|Restaurantes Demo|FoodOS/i)
+    .getByText(/Gestión Centralizada|FoodOS/i)
     .first()
     .isVisible()
     .catch(() => false);

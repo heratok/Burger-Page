@@ -31,7 +31,8 @@ describe("TenantRepository with InMemoryStorageAdapter", () => {
   })
 
   it("persists and retrieves active restaurant ID", () => {
-    expect(repo.getActiveRestaurantId()).toBe("rest-burger-craft")
+    expect(repo.getActiveRestaurantId()).toBe("")
+    expect(repo.getActiveRestaurantId("rest-x")).toBe("rest-x")
 
     repo.setActiveRestaurantId("pizzeria-napoli")
     expect(repo.getActiveRestaurantId()).toBe("pizzeria-napoli")

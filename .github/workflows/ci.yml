@@ -73,9 +73,16 @@ jobs:
         run: npm run build
 
   e2e:
-    name: Playwright E2E (Postgres)
+    name: Playwright E2E (Postgres) ${{ matrix.shard }}/3
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # The suite runs with workers: 1 because specs share one database. Sharding
+    # gives each shard its own runner and its own Postgres service, so shards
+    # never share state and the wall-clock time drops roughly by the shard count.
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
 
     services:
       postgres:
@@ -121,11 +128,27 @@ jobs:
       - name: Build shared contracts
         run: npm --prefix packages/contracts run build
 
+      - name: Resolve Playwright version
+        id: playwright-version
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
+
       - name: Install Playwright Chromium
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium
 
-      - name: Run Playwright E2E suite against live Postgres
-        run: npm --prefix frontend run test:e2e
+      - name: Install Playwright system dependencies
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      - name: Run Playwright E2E suite against live Postgres (shard ${{ matrix.shard }}/3)
+        run: npm --prefix frontend run test:e2e -- --shard=${{ matrix.shard }}/3
         env:
           STORAGE_DRIVER: postgres
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/burger_page_test
@@ -135,7 +158,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report-${{ github.run_number }}
+          name: playwright-report-${{ github.run_number }}-shard-${{ matrix.shard }}
           path: |
             frontend/test-results/
             frontend/playwright-report/

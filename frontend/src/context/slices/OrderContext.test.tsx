@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import { seedBlankActiveTenant } from "@/test/fixtures"
 import React from "react"
 import { renderHook, act } from "@testing-library/react"
 import type { RestaurantRecord, Order, Customer } from "@/types/restaurant"
@@ -22,6 +23,11 @@ import {
 } from "./OrderContext"
 
 describe("OrderContext Pure Reducers & Updaters (TDD Tests)", () => {
+  beforeEach(() => {
+    localStorage.clear()
+    seedBlankActiveTenant()
+  })
+
   const createMockRestaurant = (orders: Order[] = [], customers: Customer[] = []): RestaurantRecord => ({
     id: "rest-burger-craft",
     slug: "burger-craft",
@@ -969,6 +975,7 @@ describe("OrderContext Pure Reducers & Updaters (TDD Tests)", () => {
     // into the mount-retry assertions.
     beforeEach(() => {
       localStorage.clear()
+      seedBlankActiveTenant()
     })
 
     const createOrderParams: Omit<Order, "id" | "orderNumber" | "createdAt" | "updatedAt"> = {

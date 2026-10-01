@@ -1,4 +1,5 @@
 import React from "react"
+import { seedBlankActiveTenant } from "@/test/fixtures"
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { renderHook, act, waitFor } from "@testing-library/react"
 import { TenantProvider, useTenant } from "./TenantContext"
@@ -26,6 +27,7 @@ const mockInitialRestaurants = [
 describe("TenantContext Optimistic Updates & Rollback", () => {
   beforeEach(() => {
     localStorage.clear()
+    seedBlankActiveTenant()
     sessionStorage.clear()
     vi.restoreAllMocks()
   })
@@ -138,6 +140,7 @@ describe("TenantContext Optimistic Updates & Rollback", () => {
 describe("CatalogContext Additions Optimistic Updates & Rollback", () => {
   beforeEach(() => {
     localStorage.clear()
+    seedBlankActiveTenant()
     sessionStorage.clear()
     vi.restoreAllMocks()
     vi.spyOn(apiClient, "hasToken").mockReturnValue(true)
@@ -379,6 +382,7 @@ describe("CatalogContext Additions Optimistic Updates & Rollback", () => {
 describe("InventoryContext Optimistic Updates & Rollback", () => {
   beforeEach(() => {
     localStorage.clear()
+    seedBlankActiveTenant()
     sessionStorage.clear()
     vi.restoreAllMocks()
     vi.spyOn(apiClient, "hasToken").mockReturnValue(true)

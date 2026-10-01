@@ -95,16 +95,20 @@ export const TenantProvider: React.FC<{
   const [isSyncing, setIsSyncing] = useState<boolean>(false)
 
   const [activeRestaurantId, setActiveRestaurantId] = useState<string>(() => {
-    const saved = repository.getActiveRestaurantId(
-      envelope.restaurants[0]?.id || "rest-burger-craft"
-    )
+    // No fabricated default tenant: an unknown/absent saved id stays empty
+    // until a real tenant is selected (slug route, session or switcher).
+    const saved = repository.getActiveRestaurantId("")
     if (envelope.restaurants.some((r) => r.id === saved || r.slug === saved)) {
       return saved
     }
-    return envelope.restaurants[0]?.id || "rest-burger-craft"
+    return ""
   })
 
   const refreshRestaurants = useCallback(async () => {
+    // The platform directory is private (admin-only): anonymous visitors
+    // (landing, storefront, not-found, checkout) never request it. Their
+    // tenant comes from the public by-slug lookup instead.
+    if (!apiClient.hasToken()) return
     setIsSyncing(true)
     try {
       const backendRestaurants = await apiClient.listRestaurants()
@@ -201,7 +205,7 @@ export const TenantProvider: React.FC<{
     const found =
       envelope.restaurants.find(
         (r) => r.id === effectiveRestaurantId || r.slug === effectiveRestaurantId
-      ) || envelope.restaurants[0]
+      )
 
     return (
       found || {
@@ -304,7 +308,9 @@ export const TenantProvider: React.FC<{
         // target is a stub/unknown id (e.g. the record vanished after a backend
         // refresh), create a NEW record with id targetId instead of silently
         // redirecting the write to prev.restaurants[0] (another tenant's record).
-        const targetId = effectiveRestaurantId || prev.restaurants[0]?.id || "rest-burger-craft"
+        const targetId = effectiveRestaurantId
+        // No active tenant yet: there is nothing to mutate (never guess one).
+        if (!targetId) return prev
         const target =
           prev.restaurants.find((r) => r.id === targetId) || {
             id: targetId,

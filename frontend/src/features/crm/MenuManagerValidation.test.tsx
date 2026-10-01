@@ -10,6 +10,7 @@ import { TEST_STORAGE_ENVELOPE } from '@/test/fixtures';
 const createTestRepo = () => {
   const adapter = new InMemoryStorageAdapter();
   adapter.setItem(STORAGE_KEYS.ENVELOPE, JSON.stringify(TEST_STORAGE_ENVELOPE));
+  adapter.setItem(STORAGE_KEYS.ACTIVE_REST, "rest-burger-craft");
   return new TenantRepository(adapter);
 };
 

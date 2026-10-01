@@ -52,12 +52,19 @@ test.describe('TestSprite Audit & Resolution Suite', () => {
     }
   });
 
-  test('TC009: Tiendas Demo displays registered restaurants', async ({ page }) => {
+  test('TC009: landing does not expose the private restaurant directory', async ({ page }) => {
+    const listCalls: string[] = [];
+    page.on('request', (req) => {
+      if (/\/api\/restaurants\/?(\?.*)?$/.test(req.url())) listCalls.push(req.url());
+    });
+
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
 
-    await expect(page.getByText('Aún no hay restaurantes registrados')).not.toBeVisible({ timeout: 10000 });
-    await expect(page.getByRole('heading', { name: 'rosto' })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Acceso Administrador').first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Tiendas en Vivo')).toHaveCount(0);
+    await expect(page.getByText('Aún no hay restaurantes registrados')).toHaveCount(0);
+    expect(listCalls).toEqual([]);
   });
 
   test('TC023: Admin login rejects invalid credentials with error notification', async ({ page }) => {

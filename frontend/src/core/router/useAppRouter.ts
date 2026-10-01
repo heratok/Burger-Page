@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import type { RestaurantRecord, AppView, AdminTab } from "@/types/restaurant"
 import { useRestaurant } from "@/context/RestaurantContext"
 
@@ -120,17 +120,33 @@ export function useAppRouter() {
   const [attemptedSlug, setAttemptedSlug] = useState<string | null>(null)
   const [isNotFound, setIsNotFound] = useState(false)
   const [loadError, setLoadError] = useState(false)
+  // A 404 is an authoritative answer: provider/state churn that re-runs the
+  // effect must not re-request a slug already known to be missing. Explicit
+  // user actions (retry, navigation, popstate) pass `force` to look again.
+  const notFoundSlugRef = useRef<string | null>(null)
+  const inFlightSlugRef = useRef<string | null>(null)
 
-  const syncLocation = useCallback(() => {
+  const syncLocation = useCallback((force = false) => {
     const resolution = resolveRoute(window.location.pathname, restaurants)
 
     if (resolution.isNotFound) {
       const slug = resolution.attemptedSlug
       if (slug && !slug.toLowerCase().startsWith('admin')) {
+        if (!force && inFlightSlugRef.current === slug) return
+        if (!force && notFoundSlugRef.current === slug) {
+          setAttemptedSlug(slug)
+          setLoadError(false)
+          setIsNotFound(true)
+          setActiveView("not-found")
+          return
+        }
+        inFlightSlugRef.current = slug
         // Single fetch: loadRestaurant registers AND activates the record, so
         // there is no second fetch that could fail and leave another tenant's
         // storefront on screen.
         loadRestaurant(slug).then((outcome) => {
+          inFlightSlugRef.current = null
+          notFoundSlugRef.current = outcome === "not-found" ? slug : null
           if (outcome === "ok") {
             setIsNotFound(false)
             setLoadError(false)
@@ -150,6 +166,7 @@ export function useAppRouter() {
       setIsNotFound(true)
       setActiveView("not-found")
     } else {
+      notFoundSlugRef.current = null
       setIsNotFound(false)
       setLoadError(false)
       setAttemptedSlug(null)
@@ -165,14 +182,15 @@ export function useAppRouter() {
 
   useEffect(() => {
     syncLocation()
-    window.addEventListener("popstate", syncLocation)
-    return () => window.removeEventListener("popstate", syncLocation)
+    const onPopState = () => syncLocation(true)
+    window.addEventListener("popstate", onPopState)
+    return () => window.removeEventListener("popstate", onPopState)
   }, [syncLocation])
 
   const navigateTo = useCallback(
     (path: string) => {
       window.history.pushState({}, "", path)
-      syncLocation()
+      syncLocation(true)
     },
     [syncLocation]
   )
@@ -183,7 +201,7 @@ export function useAppRouter() {
     isNotFound,
     attemptedSlug,
     loadError,
-    retry: syncLocation,
+    retry: () => syncLocation(true),
     navigateTo,
   }
 }

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import { seedBlankActiveTenant } from "@/test/fixtures"
 import React from "react"
 import { renderHook, act, waitFor } from "@testing-library/react"
 import type { OrderEvent } from "@burger-page/contracts"
@@ -56,6 +57,7 @@ const statusOf = (hook: { result: { current: { orders: any[] } } }, id: string) 
 describe("OrderContext rollbacks and SSE catch-up (5.3, 5.6, 5.8)", () => {
   beforeEach(() => {
     localStorage.clear()
+    seedBlankActiveTenant()
     vi.restoreAllMocks()
     vi.mocked(toast.success).mockClear()
     vi.mocked(toast.error).mockClear()

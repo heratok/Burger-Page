@@ -96,6 +96,7 @@ describe("Tenant credentials never persist (SUS-20)", () => {
     )
     // A hostile or regression-prone backend response may still include the
     // field; the client must never adopt it into the envelope.
+    vi.spyOn(apiClient, "hasToken").mockReturnValue(true)
     vi.spyOn(apiClient, "listRestaurants").mockResolvedValue([
       {
         id: "rest-refresh-1",

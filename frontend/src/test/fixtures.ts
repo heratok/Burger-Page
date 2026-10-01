@@ -211,3 +211,30 @@ export const TEST_STORAGE_ENVELOPE: StorageEnvelopeV2 = {
   superAdminPassword: "admin",
   restaurants: TEST_RESTAURANTS,
 }
+
+/**
+ * The app no longer fabricates a default tenant: mutations need an active
+ * tenant that actually exists. Tests that start from empty localStorage and
+ * exercise tenant-scoped state seed a blank record as the active restaurant.
+ */
+export function seedBlankActiveTenant(id = "rest-burger-craft", slug = "burger-craft"): void {
+  const blank: RestaurantRecord = {
+    id,
+    slug,
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    config: DEFAULT_STORE_CONFIG,
+    categories: [],
+    products: [],
+    additions: [],
+    orders: [],
+    customers: [],
+    inventory: [],
+    suppliers: [],
+  }
+  localStorage.setItem(
+    "burger_page_platform_v2",
+    JSON.stringify({ version: 2, restaurants: [blank] })
+  )
+  localStorage.setItem("burger_page_active_rest_v2", id)
+}

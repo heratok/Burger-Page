@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import { seedBlankActiveTenant } from "@/test/fixtures"
 import React from "react"
 import { renderHook, act } from "@testing-library/react"
 import type { RestaurantRecord, Order } from "@/types/restaurant"
@@ -109,6 +110,7 @@ describe("buildCreateOrderInput — clientOrderId (SUS-19)", () => {
 describe("addOrder — one clientOrderId per sale attempt (SUS-19)", () => {
   beforeEach(() => {
     localStorage.clear()
+    seedBlankActiveTenant()
   })
 
   it("dedupes a double invocation of the same sale: one card, one createOrder call, same clientOrderId", async () => {

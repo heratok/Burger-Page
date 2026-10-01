@@ -6,11 +6,11 @@ import { jsonSchemaFromZod } from '../zodSchemas.js';
 
 export async function restaurantsRoutes(fastify: FastifyInstance, opts: { controller: RestaurantController }) {
   fastify.get('/', {
-    preHandler: [tryAuth],
+    preHandler: [requireAnyAdmin],
     schema: {
       tags: ['Restaurant'],
       summary: 'List restaurants',
-      description: 'Super admins list all tenants; restaurant admins only see their own tenant.',
+      description: 'Private. Anonymous callers get 401. Super admins list all tenants; restaurant admins only see their own tenant.',
       response: {
         200: {
           type: 'array',
