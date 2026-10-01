@@ -27,6 +27,10 @@ describe('CreateOrderUseCase', () => {
     isActive: true,
     deliveryFee: 5,
     minOrderAmount: 15,
+    // Open around the clock: these tests are about pricing, not opening hours.
+    timezone: 'America/Bogota',
+    ordersPaused: false,
+    schedule: [0, 1, 2, 3, 4, 5, 6].map((dayOfWeek) => ({ dayOfWeek, open: '00:00', close: '00:00' })),
   };
 
   beforeEach(() => {

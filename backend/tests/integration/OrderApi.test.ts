@@ -477,4 +477,61 @@ describe('Order API', () => {
     expect(updated.id).toBe(order.id);
     expect(updated.receiptUrl).toBe('https://example.com/post-sale-receipt.webp');
   });
+  describe('opening hours guard on POST /api/orders (store-opening-hours T3)', () => {
+    const alwaysOpen = [0, 1, 2, 3, 4, 5, 6].map((dayOfWeek) => ({ dayOfWeek, open: '00:00', close: '00:00' }));
+    const setRestaurant = (payload: Record<string, unknown>) =>
+      app.inject({
+        method: 'PUT',
+        url: '/api/restaurants/burger-craft',
+        headers: { authorization: `Bearer ${authToken}` },
+        payload: payload as any,
+      });
+    const order = (headers: Record<string, string> = {}) =>
+      app.inject({
+        method: 'POST',
+        url: '/api/orders',
+        headers,
+        payload: { restaurantId: 'burger-craft', items: [{ productId, quantity: 1, additions: [] }] },
+      });
+
+    afterAll(async () => {
+      await setRestaurant({ schedule: alwaysOpen, ordersPaused: false });
+    });
+
+    it('a public order outside the opening hours returns 400 with a recognizable detail', async () => {
+      expect((await setRestaurant({ schedule: [] })).statusCode).toBe(200); // closed every day
+
+      const res = await order();
+
+      expect(res.statusCode).toBe(400);
+      expect(res.json()).toMatchObject({
+        status: 400,
+        detail: "El restaurante 'Burger Craft' está fuera del horario de atención.",
+      });
+    });
+
+    it('a public order while orders are paused returns 400 even if the schedule is open', async () => {
+      expect((await setRestaurant({ schedule: alwaysOpen, ordersPaused: true })).statusCode).toBe(200);
+
+      const res = await order();
+
+      expect(res.statusCode).toBe(400);
+      expect(res.json().detail).toBe("El restaurante 'Burger Craft' tiene los pedidos en pausa.");
+    });
+
+    it('authenticated staff manual sales still work while closed and paused', async () => {
+      expect((await setRestaurant({ schedule: [], ordersPaused: true })).statusCode).toBe(200);
+
+      const res = await order({ authorization: `Bearer ${authToken}` });
+
+      expect(res.statusCode).toBe(201);
+    });
+
+    it('public orders are accepted again once the restaurant is open and unpaused', async () => {
+      expect((await setRestaurant({ schedule: alwaysOpen, ordersPaused: false })).statusCode).toBe(200);
+
+      expect((await order()).statusCode).toBe(201);
+    });
+  });
+
 });

@@ -124,3 +124,10 @@ export function nextOpening(schedule: WeeklySchedule, now: Date, timeZone: strin
 export function localDayOfWeek(now: Date, timeZone: string): number {
   return localClock(now, timeZone).dayOfWeek;
 }
+
+// Fragments of the 400 messages the backend returns when a public order is
+// rejected because the restaurant is closed or has paused its orders. The
+// messages are built from (and the frontend matches on) these constants so the
+// two sides cannot drift.
+export const ORDER_CLOSED_ERROR_FRAGMENT = 'fuera del horario de atención';
+export const ORDER_PAUSED_ERROR_FRAGMENT = 'pedidos en pausa';
