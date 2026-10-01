@@ -24,6 +24,12 @@ function redactPublic(restaurant: any): any {
     whatsappNumber: restaurant.whatsappNumber,
     primaryColor: restaurant.primaryColor,
     theme: restaurant.theme,
+    // Weekly schedule (source of truth), the timezone it is read in and the
+    // manual pause switch drive the storefront open/closed state. openingHours
+    // is the legacy single-range view derived from the schedule.
+    schedule: restaurant.schedule,
+    timezone: restaurant.timezone,
+    ordersPaused: restaurant.ordersPaused,
     openingHours: restaurant.openingHours,
     categories: restaurant.categories,
     config: {

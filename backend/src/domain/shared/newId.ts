@@ -30,6 +30,7 @@ export const ID_PREFIX = {
   orderAddition: 'ord_add',
   supplier: 'sup',
   inventory: 'inv',
+  openingHours: 'oh',
 } as const;
 
 const PREFIX_PATTERN = /^[a-z][a-z0-9_]*$/;

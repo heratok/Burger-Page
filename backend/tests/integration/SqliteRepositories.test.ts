@@ -249,7 +249,9 @@ describe.skipIf(!hasSqliteBinding)('SQLite Persistence Adapter Suite (TDD)', () 
       name: 'Burger Craft',
       slug: 'burger-craft',
       theme: 'dark-charcoal',
-      openingHours: { open: '10:00', close: '22:00' },
+      schedule: [0, 1, 2, 3, 4, 5, 6].map((dayOfWeek) => ({ dayOfWeek, open: '10:00', close: '22:00' })),
+      timezone: 'America/Bogota',
+      ordersPaused: false,
       isActive: true,
     };
 
@@ -258,7 +260,9 @@ describe.skipIf(!hasSqliteBinding)('SQLite Persistence Adapter Suite (TDD)', () 
       name: 'Tacos El Rey',
       slug: 'tacos-el-rey',
       theme: 'fiesta-red',
-      openingHours: { open: '11:00', close: '23:00' },
+      schedule: [0, 1, 2, 3, 4, 5, 6].map((dayOfWeek) => ({ dayOfWeek, open: '11:00', close: '23:00' })),
+      timezone: 'America/Mexico_City',
+      ordersPaused: true,
       isActive: true,
     };
 
@@ -274,6 +278,9 @@ describe.skipIf(!hasSqliteBinding)('SQLite Persistence Adapter Suite (TDD)', () 
     expect(retrievedById1?.slug).toBe('burger-craft');
     expect(retrievedById1?.name).toBe('Burger Craft');
     expect(retrievedById1?.theme).toBe('dark-charcoal');
+    expect(retrievedById1?.schedule).toEqual([0, 1, 2, 3, 4, 5, 6].map((dayOfWeek) => ({ dayOfWeek, open: '10:00', close: '22:00' })));
+    expect(retrievedById1?.timezone).toBe('America/Bogota');
+    expect(retrievedById1?.ordersPaused).toBe(false);
     expect(retrievedById1?.openingHours).toEqual({ open: '10:00', close: '22:00' });
 
     expect(retrievedById2).not.toBeNull();
@@ -281,6 +288,9 @@ describe.skipIf(!hasSqliteBinding)('SQLite Persistence Adapter Suite (TDD)', () 
     expect(retrievedById2?.slug).toBe('tacos-el-rey');
     expect(retrievedById2?.name).toBe('Tacos El Rey');
     expect(retrievedById2?.theme).toBe('fiesta-red');
+    expect(retrievedById2?.schedule).toEqual([0, 1, 2, 3, 4, 5, 6].map((dayOfWeek) => ({ dayOfWeek, open: '11:00', close: '23:00' })));
+    expect(retrievedById2?.timezone).toBe('America/Mexico_City');
+    expect(retrievedById2?.ordersPaused).toBe(true);
     expect(retrievedById2?.openingHours).toEqual({ open: '11:00', close: '23:00' });
 
     // Verify both can be retrieved by slug
@@ -302,7 +312,7 @@ describe.skipIf(!hasSqliteBinding)('SQLite Persistence Adapter Suite (TDD)', () 
       ...restaurant1,
       name: 'Burger Craft Artisanal',
       theme: 'midnight-gold',
-      openingHours: { open: '12:00', close: '23:30' },
+      schedule: [{ dayOfWeek: 2, open: '12:00', close: '23:30' }],
     };
 
     await restaurantRepo.save(updated1);
@@ -315,6 +325,7 @@ describe.skipIf(!hasSqliteBinding)('SQLite Persistence Adapter Suite (TDD)', () 
     // Tenant 1 updated properly
     expect(refreshed1?.name).toBe('Burger Craft Artisanal');
     expect(refreshed1?.theme).toBe('midnight-gold');
+    expect(refreshed1?.schedule).toEqual([{ dayOfWeek: 2, open: '12:00', close: '23:30' }]);
     expect(refreshed1?.openingHours).toEqual({ open: '12:00', close: '23:30' });
     expect(refreshedSlug1?.name).toBe('Burger Craft Artisanal');
 
@@ -322,7 +333,7 @@ describe.skipIf(!hasSqliteBinding)('SQLite Persistence Adapter Suite (TDD)', () 
     expect(refreshed2?.name).toBe('Tacos El Rey');
     expect(refreshed2?.slug).toBe('tacos-el-rey');
     expect(refreshed2?.theme).toBe('fiesta-red');
-    expect(refreshed2?.openingHours).toEqual({ open: '11:00', close: '23:00' });
+    expect(refreshed2?.schedule).toEqual([0, 1, 2, 3, 4, 5, 6].map((dayOfWeek) => ({ dayOfWeek, open: '11:00', close: '23:00' })));
     expect(refreshedSlug2?.name).toBe('Tacos El Rey');
   });
 
@@ -331,7 +342,9 @@ describe.skipIf(!hasSqliteBinding)('SQLite Persistence Adapter Suite (TDD)', () 
       id: 'rest-pizza',
       name: 'Pizza Di Napoli',
       theme: 'italian-green',
-      openingHours: { open: '12:00', close: '23:00' },
+      schedule: [0, 1, 2, 3, 4, 5, 6].map((dayOfWeek) => ({ dayOfWeek, open: '12:00', close: '23:00' })),
+      timezone: 'America/Bogota',
+      ordersPaused: false,
       isActive: true,
     };
 

@@ -4,13 +4,24 @@ import { Product } from '../../domain/models/Product.js';
 import { Order, OrderItem } from '../../domain/models/Order.js';
 import { Customer } from '../../domain/models/Customer.js';
 import { Inventory } from '../../domain/models/Inventory.js';
+import { DEFAULT_TIMEZONE, alwaysOpenSchedule, legacyOpeningHours } from '../../domain/shared/restaurantSchedule.js';
+
+// Demo tenants are open around the clock so tests and local dev never depend
+// on the wall clock now that the public order endpoint enforces opening hours.
+const seedSchedule = alwaysOpenSchedule();
+const seedHours = {
+  schedule: seedSchedule,
+  timezone: DEFAULT_TIMEZONE,
+  ordersPaused: false,
+  openingHours: legacyOpeningHours(seedSchedule, DEFAULT_TIMEZONE),
+};
 
 export const defaultRestaurant: Restaurant = {
   id: 'burger-craft',
   slug: 'burger-craft',
   name: 'Burger Craft',
   theme: 'dark',
-  openingHours: { open: '10:00', close: '22:00' },
+  ...seedHours,
   isActive: true,
   categories: ['Burgers', 'Sides', 'Bebidas'],
 };
@@ -35,7 +46,7 @@ export const multiTenantSeedRestaurants: Restaurant[] = [
       primaryColor: '#E11D48',
       bgTheme: '#0B1220',
     },
-    openingHours: { open: '10:00', close: '22:00' },
+    ...seedHours,
     isActive: true,
     categories: ['General'],
     createdAt: new Date().toISOString(),
@@ -54,7 +65,7 @@ export const multiTenantSeedRestaurants: Restaurant[] = [
       primaryColor: '#2563EB',
       bgTheme: '#0B1220',
     },
-    openingHours: { open: '10:00', close: '22:00' },
+    ...seedHours,
     isActive: true,
     categories: ['General'],
     createdAt: new Date().toISOString(),

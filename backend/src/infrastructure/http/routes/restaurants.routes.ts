@@ -24,6 +24,19 @@ export async function restaurantsRoutes(fastify: FastifyInstance, opts: { contro
               theme: { type: 'string' },
               config: { type: 'object', additionalProperties: true },
               openingHours: { type: 'object', additionalProperties: true },
+              schedule: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    dayOfWeek: { type: 'integer' },
+                    open: { type: 'string' },
+                    close: { type: 'string' },
+                  },
+                },
+              },
+              timezone: { type: 'string' },
+              ordersPaused: { type: 'boolean' },
               categories: { type: 'array', items: { type: 'string' } },
               isActive: { type: 'boolean' },
               createdAt: { type: 'string' },
@@ -54,6 +67,19 @@ export async function restaurantsRoutes(fastify: FastifyInstance, opts: { contro
             adminPassword: { type: 'string' },
             config: { type: 'object', additionalProperties: true },
             openingHours: { type: 'object', additionalProperties: true },
+            schedule: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  dayOfWeek: { type: 'integer' },
+                  open: { type: 'string' },
+                  close: { type: 'string' },
+                },
+              },
+            },
+            timezone: { type: 'string' },
+            ordersPaused: { type: 'boolean' },
             categories: { type: 'array', items: { type: 'string' } },
             isActive: { type: 'boolean' },
             createdAt: { type: 'string' },
@@ -88,6 +114,19 @@ export async function restaurantsRoutes(fastify: FastifyInstance, opts: { contro
             theme: { type: 'string' },
             config: { type: 'object', additionalProperties: true },
             openingHours: { type: 'object', additionalProperties: true },
+            schedule: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  dayOfWeek: { type: 'integer' },
+                  open: { type: 'string' },
+                  close: { type: 'string' },
+                },
+              },
+            },
+            timezone: { type: 'string' },
+            ordersPaused: { type: 'boolean' },
             categories: { type: 'array', items: { type: 'string' } },
             // A9: operator records are stripped from the public projection.
             // They stay optional here because an authenticated super admin /

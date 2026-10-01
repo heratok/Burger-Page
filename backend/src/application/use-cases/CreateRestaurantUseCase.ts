@@ -8,6 +8,14 @@ import { Restaurant } from '../../domain/models/Restaurant.js';
 import { User, UserRole } from '../../domain/models/User.js';
 import { CreateRestaurantInput } from '@burger-page/contracts';
 import { ValidationError } from '../../domain/errors/DomainErrors.js';
+import {
+  DEFAULT_TIMEZONE,
+  assertValidSchedule,
+  assertValidTimezone,
+  defaultWeeklySchedule,
+  legacyOpeningHours,
+  scheduleFromLegacyHoursText,
+} from '../../domain/shared/restaurantSchedule.js';
 
 export class CreateRestaurantUseCase {
   constructor(
@@ -33,6 +41,14 @@ export class CreateRestaurantUseCase {
       throw new ValidationError(`Restaurant with slug "${cleanSlug}" already exists`);
     }
 
+    // The weekly schedule is the stored source of the hours: an explicit one
+    // wins, then a legacy "HH:MM - HH:MM" config text, then the default.
+    const timezone = input.timezone ?? DEFAULT_TIMEZONE;
+    assertValidTimezone(timezone);
+    if (input.schedule !== undefined) assertValidSchedule(input.schedule);
+    const schedule =
+      input.schedule ?? scheduleFromLegacyHoursText(input.config?.openingHours) ?? defaultWeeklySchedule();
+
     // Server-owned identity: client-supplied ids are never trusted
         // (a malicious or stale id could overwrite an existing tenant via upsert).
         const restaurantId = newId(ID_PREFIX.restaurant);
@@ -54,7 +70,10 @@ export class CreateRestaurantUseCase {
         primaryColor: input.primaryColor || '#FF7A21',
         bgTheme: input.theme || 'dark-charcoal',
       },
-      openingHours: { open: '12:00', close: '22:30' },
+      schedule,
+      timezone,
+      ordersPaused: input.ordersPaused ?? false,
+      openingHours: legacyOpeningHours(schedule, timezone),
       isActive: true,
       categories: input.categories ?? [],
       createdAt: new Date().toISOString(),

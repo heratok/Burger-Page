@@ -22,6 +22,19 @@ export async function restaurantRoutes(fastify: FastifyInstance, opts: { control
             theme: { type: 'string' },
             config: { type: 'object', additionalProperties: true },
             openingHours: { type: 'object', additionalProperties: true },
+            schedule: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  dayOfWeek: { type: 'integer' },
+                  open: { type: 'string' },
+                  close: { type: 'string' },
+                },
+              },
+            },
+            timezone: { type: 'string' },
+            ordersPaused: { type: 'boolean' },
             categories: { type: 'array', items: { type: 'string' } },
           }
         }
@@ -55,6 +68,19 @@ export async function restaurantRoutes(fastify: FastifyInstance, opts: { control
             theme: { type: 'string' },
             config: { type: 'object', additionalProperties: true },
             openingHours: { type: 'object', additionalProperties: true },
+            schedule: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  dayOfWeek: { type: 'integer' },
+                  open: { type: 'string' },
+                  close: { type: 'string' },
+                },
+              },
+            },
+            timezone: { type: 'string' },
+            ordersPaused: { type: 'boolean' },
             categories: { type: 'array', items: { type: 'string' } },
           }
         },

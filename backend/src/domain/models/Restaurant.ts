@@ -1,3 +1,6 @@
+import type { WeeklySchedule } from '@burger-page/contracts';
+
+/** Legacy single-range view, derived from the weekly schedule (read-only). */
 export interface OpeningHours {
   open: string;
   close: string;
@@ -15,7 +18,14 @@ export interface Restaurant {
   deliveryFee?: number;
   minOrderAmount?: number;
   config?: any;
-  openingHours: OpeningHours;
+  /** Weekly opening ranges in `timezone`; a weekday with no range is closed. */
+  schedule: WeeklySchedule;
+  /** IANA timezone the schedule is read in. */
+  timezone: string;
+  /** Manual switch: the storefront stops taking orders regardless of the schedule. */
+  ordersPaused: boolean;
+  /** Derived from `schedule` (today's first range); undefined when it is empty. */
+  openingHours?: OpeningHours;
   isActive: boolean;
   categories?: string[];
   createdAt?: string;

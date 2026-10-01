@@ -6,6 +6,7 @@ import { EntityNotFoundError, ValidationError } from '../../../src/domain/errors
 
 import { CategoryRepository } from '../../../src/domain/ports/out/CategoryRepository.js';
 import { Category } from '../../../src/domain/models/Category.js';
+import { legacyHoursText, legacyOpeningHours } from '../../../src/domain/shared/restaurantSchedule.js';
 
 // S3: slug, isActive and adminPassword are super_admin-only fields on PUT,
 // enforced with an effective-change rule. The tenant-admin frontend save path
@@ -86,15 +87,22 @@ class FakeRestaurantRepository implements RestaurantRepository {
   }
 }
 
-// Mirrors PgRestaurantRepository: open_time/close_time are the single stored
-// source, derived from a parseable "HH:MM - HH:MM" config.openingHours text.
+// Mirrors PgRestaurantRepository: the weekly schedule is the single stored
+// source and the legacy openingHours / config.openingHours text are derived
+// from it on read (the config text is never persisted).
 class HoursNormalizingRestaurantRepository extends FakeRestaurantRepository {
   protected toStored(restaurant: Restaurant): Restaurant {
-    const text = restaurant.config?.openingHours;
-    const match = typeof text === 'string' ? /^(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})$/.exec(text) : null;
-    return match ? { ...restaurant, openingHours: { open: match[1], close: match[2] } } : restaurant;
+    const openingHours = legacyOpeningHours(restaurant.schedule, restaurant.timezone);
+    return {
+      ...restaurant,
+      openingHours,
+      config: { ...restaurant.config, openingHours: legacyHoursText(openingHours) },
+    };
   }
 }
+
+const allWeek = (open: string, close: string) =>
+  [0, 1, 2, 3, 4, 5, 6].map((dayOfWeek) => ({ dayOfWeek, open, close }));
 
 function restaurant(overrides: Partial<Restaurant> = {}): Restaurant {
   return {
@@ -102,7 +110,9 @@ function restaurant(overrides: Partial<Restaurant> = {}): Restaurant {
     slug: 'mi-restaurante',
     name: 'Mi Restaurante',
     theme: 'light',
-    openingHours: { open: '09:00', close: '22:00' },
+    schedule: allWeek('09:00', '22:00'),
+    timezone: 'America/Bogota',
+    ordersPaused: false,
     isActive: true,
     categories: ['Pizza'],
     ...overrides,
@@ -265,14 +275,139 @@ describe('UpdateRestaurantUseCase', () => {
     expect(deactivated.map((c) => c.name)).toEqual(['Bebidas']);
   });
 
-  it('returns the persisted restaurant, so derived openingHours match the saved hours text', async () => {
+  it('returns the persisted restaurant, so derived openingHours match the saved schedule', async () => {
     const repo = new HoursNormalizingRestaurantRepository([restaurant()]);
     const useCase = new UpdateRestaurantUseCase(repo);
 
-    const result = await useCase.execute('rest-1', { config: { openingHours: '11:00 - 23:00' } }, 'restaurant_admin');
+    const result = await useCase.execute(
+      'rest-1',
+      { schedule: allWeek('11:00', '23:00') },
+      'restaurant_admin'
+    );
 
     expect(result.config?.openingHours).toBe('11:00 - 23:00');
     expect(result.openingHours).toEqual({ open: '11:00', close: '23:00' });
     expect(result).not.toHaveProperty('adminPassword');
+  });
+
+  describe('schedule, timezone and ordersPaused (store-opening-hours T2)', () => {
+    const weekly = [
+      { dayOfWeek: 1, open: '12:00', close: '14:00' },
+      { dayOfWeek: 1, open: '19:00', close: '02:00' },
+    ];
+
+    it('lets a tenant admin change schedule, timezone and the paused flag, and saves them', async () => {
+      const repo = new HoursNormalizingRestaurantRepository([restaurant()]);
+      const useCase = new UpdateRestaurantUseCase(repo);
+
+      const result = await useCase.execute(
+        'rest-1',
+        { schedule: weekly, timezone: 'America/Mexico_City', ordersPaused: true },
+        'restaurant_admin'
+      );
+
+      expect(repo.saveCalls[0].schedule).toEqual(weekly);
+      expect(repo.saveCalls[0].timezone).toBe('America/Mexico_City');
+      expect(repo.saveCalls[0].ordersPaused).toBe(true);
+      expect(result.schedule).toEqual(weekly);
+      expect(result.ordersPaused).toBe(true);
+    });
+
+    it('keeps the stored schedule, timezone and paused flag on a partial update', async () => {
+      const repo = new FakeRestaurantRepository([restaurant({ ordersPaused: true, timezone: 'America/Lima' })]);
+      const useCase = new UpdateRestaurantUseCase(repo);
+
+      await useCase.execute('rest-1', { name: 'Renamed' }, 'restaurant_admin');
+
+      expect(repo.saveCalls[0].schedule).toEqual(allWeek('09:00', '22:00'));
+      expect(repo.saveCalls[0].timezone).toBe('America/Lima');
+      expect(repo.saveCalls[0].ordersPaused).toBe(true);
+    });
+
+    it('can clear the schedule (closed every day) and unpause', async () => {
+      const repo = new FakeRestaurantRepository([restaurant({ ordersPaused: true })]);
+      const useCase = new UpdateRestaurantUseCase(repo);
+
+      await useCase.execute('rest-1', { schedule: [], ordersPaused: false }, 'restaurant_admin');
+
+      expect(repo.saveCalls[0].schedule).toEqual([]);
+      expect(repo.saveCalls[0].ordersPaused).toBe(false);
+    });
+
+    it('rejects an invalid timezone, weekday, time or duplicated range without saving', async () => {
+      const repo = new FakeRestaurantRepository([restaurant()]);
+      const useCase = new UpdateRestaurantUseCase(repo);
+
+      await expect(useCase.execute('rest-1', { timezone: 'Mars/Olympus' }, 'restaurant_admin')).rejects.toThrow(ValidationError);
+      await expect(
+        useCase.execute('rest-1', { schedule: [{ dayOfWeek: 8, open: '09:00', close: '17:00' }] }, 'restaurant_admin')
+      ).rejects.toThrow(ValidationError);
+      await expect(
+        useCase.execute('rest-1', { schedule: [{ dayOfWeek: 1, open: '9am', close: '17:00' }] }, 'restaurant_admin')
+      ).rejects.toThrow(ValidationError);
+      await expect(
+        useCase.execute(
+          'rest-1',
+          {
+            schedule: [
+              { dayOfWeek: 1, open: '09:00', close: '12:00' },
+              { dayOfWeek: 1, open: '09:00', close: '15:00' },
+            ],
+          },
+          'restaurant_admin'
+        )
+      ).rejects.toThrow(ValidationError);
+      expect(repo.saveCalls).toHaveLength(0);
+    });
+
+    describe('legacy config.openingHours text from an older admin client', () => {
+      it('a parseable "HH:MM - HH:MM" text different from the current hours applies to every weekday', async () => {
+        const repo = new HoursNormalizingRestaurantRepository([restaurant()]);
+        const useCase = new UpdateRestaurantUseCase(repo);
+
+        const result = await useCase.execute('rest-1', { config: { openingHours: '11:00 - 23:00' } }, 'restaurant_admin');
+
+        expect(repo.saveCalls[0].schedule).toEqual(allWeek('11:00', '23:00'));
+        expect(result.config?.openingHours).toBe('11:00 - 23:00');
+        expect(result.openingHours).toEqual({ open: '11:00', close: '23:00' });
+      });
+
+      it('echoing the derived text (full-config save) never overwrites a weekly schedule', async () => {
+        const weeklySchedule = [
+          { dayOfWeek: 1, open: '09:00', close: '17:00' },
+          { dayOfWeek: 5, open: '18:00', close: '23:00' },
+        ];
+        const stored = restaurant({ schedule: weeklySchedule });
+        const repo = new HoursNormalizingRestaurantRepository([stored]);
+        const useCase = new UpdateRestaurantUseCase(repo);
+        const current = await repo.findById('rest-1');
+
+        await useCase.execute('rest-1', { config: { openingHours: current?.config?.openingHours } }, 'restaurant_admin');
+
+        expect(repo.saveCalls[0].schedule).toEqual(weeklySchedule);
+      });
+
+      it('an explicit schedule wins over a legacy text sent in the same request', async () => {
+        const repo = new HoursNormalizingRestaurantRepository([restaurant()]);
+        const useCase = new UpdateRestaurantUseCase(repo);
+
+        await useCase.execute(
+          'rest-1',
+          { schedule: weekly, config: { openingHours: '08:00 - 20:00' } },
+          'restaurant_admin'
+        );
+
+        expect(repo.saveCalls[0].schedule).toEqual(weekly);
+      });
+
+      it('a free-form text is ignored and keeps the stored schedule', async () => {
+        const repo = new FakeRestaurantRepository([restaurant()]);
+        const useCase = new UpdateRestaurantUseCase(repo);
+
+        await useCase.execute('rest-1', { config: { openingHours: 'Mar - Dom: 12:00 PM - 10:30 PM' } }, 'restaurant_admin');
+
+        expect(repo.saveCalls[0].schedule).toEqual(allWeek('09:00', '22:00'));
+      });
+    });
   });
 });

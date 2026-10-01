@@ -24,6 +24,7 @@ for (const envPath of envCandidates) {
   }
 }
 
+import { DEFAULT_TIMEZONE, everyDaySchedule } from '../domain/shared/restaurantSchedule.js';
 import { CryptoPasswordHasher } from '../infrastructure/security/CryptoPasswordHasher.js';
 import { PgUserRepository } from '../infrastructure/persistence/postgres/PgUserRepository.js';
 
@@ -86,7 +87,9 @@ async function main() {
             name: dynamicName,
             isActive: true,
             theme: 'burger',
-            openingHours: { open: '10:00', close: '22:00' },
+            schedule: everyDaySchedule('10:00', '22:00'),
+            timezone: DEFAULT_TIMEZONE,
+            ordersPaused: false,
             categories: ['Hamburguesas', 'Bebidas', 'Acompañamientos'],
           });
           console.log(`🏢 Restaurante ${restaurantId} (${dynamicSlug}) creado automáticamente.`);
