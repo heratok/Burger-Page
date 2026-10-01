@@ -6,6 +6,9 @@
 
 SET LOCAL lock_timeout = '15s';
 
+-- ── T9. orders total consistency CHECK removed ───────────────────────────────
+ALTER TABLE public.orders DROP CONSTRAINT IF EXISTS chk_orders_final_total;
+
 -- ── T8. '' defaults back, NULL becomes '' again ─────────────────────────────
 ALTER TABLE public.customers
     ALTER COLUMN email SET DEFAULT '',

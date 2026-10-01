@@ -342,7 +342,11 @@ CREATE TABLE IF NOT EXISTS public.orders (
         -- restaurant_id y fallaría por NOT NULL con órdenes existentes.
         ON DELETE SET NULL (customer_id),
     CONSTRAINT uq_orders_restaurant_order_number
-        UNIQUE (restaurant_id, order_number)
+        UNIQUE (restaurant_id, order_number),
+    -- db-hardening-0008: the stored total is always subtotal + delivery_fee
+    -- (create_order_atomic and PgOrderRepository.update both write it that way).
+    CONSTRAINT chk_orders_final_total
+        CHECK (final_total = subtotal + delivery_fee)
 );
 
 -- db-hardening-0008: orders, order_items, order_item_additions and

@@ -541,3 +541,38 @@ ALTER TABLE public.suppliers
     ALTER COLUMN contact_name DROP DEFAULT,
     ALTER COLUMN phone DROP DEFAULT,
     ALTER COLUMN email DROP DEFAULT;
+
+-- ── T9. orders: final_total = subtotal + delivery_fee ────────────────────────
+-- Added NOT VALID, then validated. Existing rows that break the invariant make
+-- the migration abort with their count instead of being rewritten silently:
+--   SELECT id, subtotal, delivery_fee, final_total FROM public.orders
+--    WHERE final_total <> subtotal + delivery_fee;
+DO $$
+DECLARE
+    v_bad BIGINT;
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'chk_orders_final_total'
+          AND conrelid = 'public.orders'::regclass
+    ) THEN
+        SELECT COUNT(*) INTO v_bad
+        FROM public.orders
+        WHERE final_total <> subtotal + delivery_fee;
+
+        IF v_bad > 0 THEN
+            RAISE EXCEPTION
+                'Cannot add chk_orders_final_total: % order(s) have final_total <> subtotal + delivery_fee. Nothing was changed. Inspect them with the query in the header of this section (0000000000008_db_hardening.up.sql), fix the rows and re-run.',
+                v_bad
+                USING ERRCODE = '23514';
+        END IF;
+
+        ALTER TABLE public.orders
+            ADD CONSTRAINT chk_orders_final_total
+            CHECK (final_total = subtotal + delivery_fee)
+            NOT VALID;
+    END IF;
+END
+$$;
+
+ALTER TABLE public.orders VALIDATE CONSTRAINT chk_orders_final_total;

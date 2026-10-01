@@ -303,6 +303,23 @@ describe('migration 0000000000008 (db hardening) parity with the baseline schema
       expect(down).toMatch(new RegExp(`${column} = COALESCE\\(${column}, ''\\)`));
     });
   });
+
+  describe('T9 orders total consistency CHECK', () => {
+    it('baseline declares chk_orders_final_total on orders', () => {
+      const body = baseline.match(/CREATE TABLE IF NOT EXISTS public\.orders \(([\s\S]*?)\n\);/)![1];
+      expect(body.replace(/\s+/g, ' ')).toContain(
+        'CONSTRAINT chk_orders_final_total CHECK (final_total = subtotal + delivery_fee)'
+      );
+    });
+
+    it('up adds it NOT VALID, validates it and aborts loudly on violating rows; down drops it', () => {
+      const flat = up.replace(/\s+/g, ' ');
+      expect(flat).toContain('ADD CONSTRAINT chk_orders_final_total CHECK (final_total = subtotal + delivery_fee) NOT VALID');
+      expect(up).toContain('VALIDATE CONSTRAINT chk_orders_final_total');
+      expect(up).toMatch(/RAISE EXCEPTION[\s\S]*chk_orders_final_total/);
+      expect(down).toContain('DROP CONSTRAINT IF EXISTS chk_orders_final_total');
+    });
+  });
 });
 
 describe('schema file structure', () => {
