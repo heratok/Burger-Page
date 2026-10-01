@@ -178,6 +178,40 @@ describe('migration 0000000000008 (db hardening) parity with the baseline schema
       }
     });
   });
+
+  describe('T4 slug-scoped public reads', () => {
+    const policyNames = (sql: string) => [...sql.matchAll(/CREATE POLICY "([^"]+)"/g)].map((m) => m[1]);
+
+    it('drops the blanket public read on products and additions (baseline and up; down recreates them)', () => {
+      for (const name of ['public_read_available_products', 'public_read_available_additions']) {
+        expect(policyNames(baseline)).not.toContain(name);
+        expect(up).toContain(`DROP POLICY IF EXISTS "${name}"`);
+        expect(policyNames(up)).not.toContain(name);
+        expect(policyNames(down)).toContain(name);
+      }
+    });
+
+    it.each([
+      'public_read_active_restaurants',
+      'public_read_restaurant_settings',
+      'public_read_restaurant_branding',
+      'public_read_categories',
+    ])('%s only applies without tenant context, without super_admin and for the declared slug', (name) => {
+      const grab = (sql: string) => sql.match(new RegExp(`CREATE POLICY "${name}"[\\s\\S]*?;\\n`))![0].replace(/\s+/g, ' ');
+      const def = grab(baseline);
+      expect(def).toContain('(SELECT public.app_current_restaurant_id()) IS NULL');
+      expect(def).toContain('NOT (SELECT public.app_is_super_admin())');
+      expect(def).toContain('(SELECT public.app_current_restaurant_slug())');
+      expect(grab(up)).toBe(def);
+      expect(grab(down)).not.toContain('app_current_restaurant_slug');
+    });
+
+    it('defines STABLE app_current_restaurant_slug() identically in baseline and up', () => {
+      const body = extractFunction(baseline, 'app_current_restaurant_slug');
+      expect(body).toMatch(/\bSTABLE\b/);
+      expect(extractFunction(up, 'app_current_restaurant_slug')).toBe(body);
+    });
+  });
 });
 
 describe('schema file structure', () => {

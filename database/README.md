@@ -112,5 +112,9 @@ DATABASE_URL=postgres://app_user:tu_password_segura_aqui@localhost:5432/burger_p
 * **Políticas InitPlan**: las políticas RLS usan `(SELECT public.app_current_restaurant_id())` y
   `(SELECT public.app_is_super_admin())` (funciones `STABLE` que leen los GUC `app.restaurant_id` /
   `app.actor_role`) para evaluar el tenant una sola vez por consulta.
+* **Lecturas públicas**: solo la resolución de la vitrina por slug. `PgRestaurantRepository.findBySlug`
+  declara `app.restaurant_slug` y las políticas `public_read_*` exponen únicamente el restaurante
+  **activo** con ese slug (y su configuración, marca y categorías activas) a sesiones sin tenant ni
+  `super_admin`. Productos y adiciones no tienen lectura pública: se leen con el contexto del tenant.
 * **`users`**: FORCE RLS + lecturas de autenticación solo por las funciones
   SECURITY DEFINER `look_up_user_for_auth*` (search_path endurecido, sin PUBLIC).

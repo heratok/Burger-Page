@@ -6,6 +6,39 @@
 
 SET LOCAL lock_timeout = '15s';
 
+-- ── T4. Blanket public reads back ────────────────────────────────────────────
+DROP POLICY IF EXISTS "public_read_active_restaurants" ON public.restaurants;
+CREATE POLICY "public_read_active_restaurants"
+    ON public.restaurants FOR SELECT
+    USING (is_active = TRUE);
+
+DROP POLICY IF EXISTS "public_read_restaurant_settings" ON public.restaurant_settings;
+CREATE POLICY "public_read_restaurant_settings"
+    ON public.restaurant_settings FOR SELECT
+    USING (TRUE);
+
+DROP POLICY IF EXISTS "public_read_restaurant_branding" ON public.restaurant_branding;
+CREATE POLICY "public_read_restaurant_branding"
+    ON public.restaurant_branding FOR SELECT
+    USING (TRUE);
+
+DROP POLICY IF EXISTS "public_read_categories" ON public.categories;
+CREATE POLICY "public_read_categories"
+    ON public.categories FOR SELECT
+    USING (is_active = TRUE);
+
+DROP POLICY IF EXISTS "public_read_available_products" ON public.products;
+CREATE POLICY "public_read_available_products"
+    ON public.products FOR SELECT
+    USING (is_available = TRUE);
+
+DROP POLICY IF EXISTS "public_read_available_additions" ON public.product_additions;
+CREATE POLICY "public_read_available_additions"
+    ON public.product_additions FOR SELECT
+    USING (is_available = TRUE);
+
+DROP FUNCTION IF EXISTS public.app_current_restaurant_slug();
+
 -- ── T3. Inline current_setting policies back, helpers out ───────────────────
 
 DROP POLICY IF EXISTS "users_select_for_auth" ON public.users;

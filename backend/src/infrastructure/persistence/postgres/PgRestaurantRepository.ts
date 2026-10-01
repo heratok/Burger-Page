@@ -113,9 +113,10 @@ const RESTAURANT_READ_COLUMNS = `
 // context exists yet to scope by (a restaurant is the tenant root), so they
 // run as actorRole 'super_admin' to preserve today's unrestricted
 // service_role behavior. findBySlug is the public storefront lookup and
-// deliberately runs with NO super_admin escape hatch, relying only on the
-// public_read_active_restaurants policy (is_active = true) — an inactive
-// restaurant must stay invisible to a storefront slug lookup.
+// deliberately runs with NO super_admin escape hatch: it declares the slug
+// (app.restaurant_slug) and relies only on the slug-scoped public read
+// policies, which expose just the ACTIVE restaurant with that slug — an
+// inactive restaurant must stay invisible, and the session cannot list others.
 export class PgRestaurantRepository implements RestaurantRepository {
   async findById(id: string): Promise<Restaurant | null> {
     return withTenantContext({ restaurantId: null, actorRole: 'super_admin' }, async (client) => {
@@ -125,7 +126,7 @@ export class PgRestaurantRepository implements RestaurantRepository {
   }
 
   async findBySlug(slug: string): Promise<Restaurant | null> {
-    return withTenantContext({ restaurantId: null }, async (client) => {
+    return withTenantContext({ restaurantId: null, restaurantSlug: slug }, async (client) => {
       const { rows } = await client.query(`${RESTAURANT_READ_COLUMNS} WHERE r.slug = $1`, [slug]);
       return rows[0] ? mapRow(rows[0]) : null;
     });

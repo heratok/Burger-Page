@@ -328,3 +328,81 @@ CREATE POLICY "tenant_isolation_inventory_items" ON public.inventory_items
     FOR ALL
     USING ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()))
     WITH CHECK ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()));
+
+-- ── T4. Slug-scoped public reads ─────────────────────────────────────────────
+-- Slug the storefront declares (PgClient.withTenantContext restaurantSlug) for
+-- the one anonymous lookup that has no tenant yet: resolving a restaurant by its
+-- public slug. Only the public read policies below look at it.
+CREATE OR REPLACE FUNCTION public.app_current_restaurant_slug()
+RETURNS TEXT
+LANGUAGE sql
+STABLE
+SET search_path = pg_catalog, pg_temp
+AS $$
+    SELECT NULLIF(current_setting('app.restaurant_slug', true), '');
+$$;
+
+GRANT EXECUTE ON FUNCTION public.app_current_restaurant_slug() TO app_user;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+        EXECUTE 'GRANT EXECUTE ON FUNCTION public.app_current_restaurant_slug() TO service_role';
+    END IF;
+END;
+$$;
+
+DROP POLICY IF EXISTS "public_read_available_products" ON public.products;
+DROP POLICY IF EXISTS "public_read_available_additions" ON public.product_additions;
+
+DROP POLICY IF EXISTS "public_read_active_restaurants" ON public.restaurants;
+CREATE POLICY "public_read_active_restaurants"
+    ON public.restaurants FOR SELECT
+    USING (
+        is_active = TRUE
+        AND (SELECT public.app_current_restaurant_id()) IS NULL
+        AND NOT (SELECT public.app_is_super_admin())
+        AND slug = (SELECT public.app_current_restaurant_slug())
+    );
+
+DROP POLICY IF EXISTS "public_read_restaurant_settings" ON public.restaurant_settings;
+CREATE POLICY "public_read_restaurant_settings"
+    ON public.restaurant_settings FOR SELECT
+    USING (
+        (SELECT public.app_current_restaurant_id()) IS NULL
+        AND NOT (SELECT public.app_is_super_admin())
+        AND EXISTS (
+            SELECT 1 FROM public.restaurants r
+            WHERE r.id = restaurant_settings.restaurant_id
+              AND r.is_active = TRUE
+              AND r.slug = (SELECT public.app_current_restaurant_slug())
+        )
+    );
+
+DROP POLICY IF EXISTS "public_read_restaurant_branding" ON public.restaurant_branding;
+CREATE POLICY "public_read_restaurant_branding"
+    ON public.restaurant_branding FOR SELECT
+    USING (
+        (SELECT public.app_current_restaurant_id()) IS NULL
+        AND NOT (SELECT public.app_is_super_admin())
+        AND EXISTS (
+            SELECT 1 FROM public.restaurants r
+            WHERE r.id = restaurant_branding.restaurant_id
+              AND r.is_active = TRUE
+              AND r.slug = (SELECT public.app_current_restaurant_slug())
+        )
+    );
+
+DROP POLICY IF EXISTS "public_read_categories" ON public.categories;
+CREATE POLICY "public_read_categories"
+    ON public.categories FOR SELECT
+    USING (
+        is_active = TRUE
+        AND (SELECT public.app_current_restaurant_id()) IS NULL
+        AND NOT (SELECT public.app_is_super_admin())
+        AND EXISTS (
+            SELECT 1 FROM public.restaurants r
+            WHERE r.id = categories.restaurant_id
+              AND r.is_active = TRUE
+              AND r.slug = (SELECT public.app_current_restaurant_slug())
+        )
+    );

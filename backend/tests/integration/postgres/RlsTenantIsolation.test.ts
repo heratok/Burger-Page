@@ -29,11 +29,15 @@ describe('RLS tenant isolation (write policies, app_user role)', () => {
   async function asTenant<T>(
     restaurantId: string | null,
     actorRole: 'super_admin' | null,
-    fn: (client: pg.PoolClient) => Promise<T>
+    fn: (client: pg.PoolClient) => Promise<T>,
+    restaurantSlug: string | null = null
   ): Promise<T> {
     const client = await appPool.connect();
     try {
       await client.query('BEGIN');
+      if (restaurantSlug !== null) {
+        await client.query("SELECT set_config('app.restaurant_slug', $1, true)", [restaurantSlug]);
+      }
       if (restaurantId !== null) {
         await client.query("SELECT set_config('app.restaurant_id', $1, true)", [restaurantId]);
       }
@@ -478,6 +482,134 @@ describe('RLS tenant isolation (write policies, app_user role)', () => {
       for (const r of rows) {
         expect(r.expr, r.policyname).not.toContain('current_setting');
         expect(r.expr, r.policyname).toMatch(/app_current_restaurant_id|app_is_super_admin/);
+      }
+    });
+  });
+
+  describe('public reads are slug-scoped (db-hardening-0008 T4)', () => {
+    const INACTIVE = `rls-rest-off-${randomUUID().slice(0, 8)}`;
+    const PROD_A = `rls-prod-a-${randomUUID().slice(0, 8)}`;
+    const PROD_B = `rls-prod-b-${randomUUID().slice(0, 8)}`;
+    const ADD_A = `rls-add-a-${randomUUID().slice(0, 8)}`;
+    const CAT_A = `rls-cat-a-${randomUUID().slice(0, 8)}`;
+    const CAT_A_OFF = `rls-cat-a-off-${randomUUID().slice(0, 8)}`;
+    const CAT_B = `rls-cat-b-${randomUUID().slice(0, 8)}`;
+
+    beforeAll(async () => {
+      if (!isDbConnected) return;
+      await adminPool.query(
+        `INSERT INTO public.restaurants (id, slug, name, is_active) VALUES ($1, $1, 'RLS Inactive', false)
+         ON CONFLICT (id) DO UPDATE SET is_active = false`,
+        [INACTIVE]
+      );
+      for (const id of [RESTAURANT_A, RESTAURANT_B, INACTIVE]) {
+        await adminPool.query(`INSERT INTO public.restaurant_settings (restaurant_id) VALUES ($1) ON CONFLICT DO NOTHING`, [id]);
+        await adminPool.query(`INSERT INTO public.restaurant_branding (restaurant_id) VALUES ($1) ON CONFLICT DO NOTHING`, [id]);
+      }
+      await adminPool.query(
+        `INSERT INTO public.categories (id, restaurant_id, name, is_active) VALUES
+           ($1, $4, 'Cat A', true), ($2, $4, 'Cat A off', false), ($3, $5, 'Cat B', true)`,
+        [CAT_A, CAT_A_OFF, CAT_B, RESTAURANT_A, RESTAURANT_B]
+      );
+      await adminPool.query(
+        `INSERT INTO public.products (id, restaurant_id, name, price, is_available) VALUES
+           ($1, $3, 'Prod A', 10, true), ($2, $4, 'Prod B', 10, true)`,
+        [PROD_A, PROD_B, RESTAURANT_A, RESTAURANT_B]
+      );
+      await adminPool.query(
+        `INSERT INTO public.product_additions (id, restaurant_id, name, price, is_available) VALUES ($1, $2, 'Add A', 1, true)`,
+        [ADD_A, RESTAURANT_A]
+      );
+    });
+
+    afterAll(async () => {
+      if (isDbConnected) {
+        await adminPool.query(`DELETE FROM public.restaurants WHERE id = $1`, [INACTIVE]);
+      }
+    });
+
+    const ids = (r: pg.QueryResult) => r.rows.map((x) => x.id ?? x.restaurant_id).sort();
+
+    it('an anonymous session (no tenant, no slug) cannot list restaurants', async () => {
+      if (!isDbConnected) return;
+      const r = await asTenant(null, null, (c) => c.query(`SELECT id FROM public.restaurants`));
+      expect(r.rowCount).toBe(0);
+    });
+
+    it('an anonymous session cannot read products, additions, categories, settings or branding of any tenant', async () => {
+      if (!isDbConnected) return;
+      await asTenant(null, null, async (c) => {
+        for (const table of ['products', 'product_additions', 'categories', 'restaurant_settings', 'restaurant_branding']) {
+          const r = await c.query(`SELECT 1 FROM public.${table}`);
+          expect(r.rowCount, table).toBe(0);
+        }
+      });
+    });
+
+    it('a declared slug without tenant context exposes only that active restaurant, its settings, branding and active categories', async () => {
+      if (!isDbConnected) return;
+      await asTenant(
+        null,
+        null,
+        async (c) => {
+          expect(ids(await c.query(`SELECT id FROM public.restaurants`))).toEqual([RESTAURANT_A]);
+          expect(ids(await c.query(`SELECT restaurant_id FROM public.restaurant_settings`))).toEqual([RESTAURANT_A]);
+          expect(ids(await c.query(`SELECT restaurant_id FROM public.restaurant_branding`))).toEqual([RESTAURANT_A]);
+          expect(ids(await c.query(`SELECT id FROM public.categories`))).toEqual([CAT_A]);
+          // products/additions stay private to their tenant context
+          expect((await c.query(`SELECT 1 FROM public.products`)).rowCount).toBe(0);
+          expect((await c.query(`SELECT 1 FROM public.product_additions`)).rowCount).toBe(0);
+        },
+        RESTAURANT_A
+      );
+    });
+
+    it('a declared slug of an inactive restaurant exposes nothing', async () => {
+      if (!isDbConnected) return;
+      await asTenant(
+        null,
+        null,
+        async (c) => {
+          expect((await c.query(`SELECT 1 FROM public.restaurants`)).rowCount).toBe(0);
+          expect((await c.query(`SELECT 1 FROM public.restaurant_settings`)).rowCount).toBe(0);
+          expect((await c.query(`SELECT 1 FROM public.restaurant_branding`)).rowCount).toBe(0);
+        },
+        INACTIVE
+      );
+    });
+
+    it('the slug declaration is ignored once a tenant context exists', async () => {
+      if (!isDbConnected) return;
+      await asTenant(
+        RESTAURANT_B,
+        null,
+        async (c) => {
+          expect(ids(await c.query(`SELECT id FROM public.restaurants`))).toEqual([RESTAURANT_B]);
+        },
+        RESTAURANT_A
+      );
+    });
+
+    it('tenant A cannot read tenant B products, additions, categories or settings', async () => {
+      if (!isDbConnected) return;
+      await asTenant(RESTAURANT_A, null, async (c) => {
+        expect(ids(await c.query(`SELECT id FROM public.products WHERE id IN ($1, $2)`, [PROD_A, PROD_B]))).toEqual([PROD_A]);
+        expect(ids(await c.query(`SELECT id FROM public.categories WHERE id IN ($1, $2)`, [CAT_A, CAT_B]))).toEqual([CAT_A]);
+        expect(
+          ids(await c.query(`SELECT restaurant_id FROM public.restaurant_settings WHERE restaurant_id IN ($1, $2)`, [RESTAURANT_A, RESTAURANT_B]))
+        ).toEqual([RESTAURANT_A]);
+        expect((await c.query(`SELECT 1 FROM public.restaurants WHERE id = $1`, [RESTAURANT_B])).rowCount).toBe(0);
+      });
+    });
+
+    it('unavailable products stay readable by their own tenant (admin catalog)', async () => {
+      if (!isDbConnected) return;
+      await adminPool.query(`UPDATE public.products SET is_available = false WHERE id = $1`, [PROD_A]);
+      try {
+        const r = await asTenant(RESTAURANT_A, null, (c) => c.query(`SELECT id FROM public.products WHERE id = $1`, [PROD_A]));
+        expect(r.rowCount).toBe(1);
+      } finally {
+        await adminPool.query(`UPDATE public.products SET is_available = true WHERE id = $1`, [PROD_A]);
       }
     });
   });

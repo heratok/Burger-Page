@@ -84,6 +84,18 @@ AS $$
     SELECT COALESCE(NULLIF(current_setting('app.actor_role', true), '') = 'super_admin', FALSE);
 $$;
 
+-- Slug the storefront declares (PgClient.withTenantContext restaurantSlug) for
+-- the one anonymous lookup that has no tenant yet: resolving a restaurant by its
+-- public slug. Only the public read policies below look at it.
+CREATE OR REPLACE FUNCTION public.app_current_restaurant_slug()
+RETURNS TEXT
+LANGUAGE sql
+STABLE
+SET search_path = pg_catalog, pg_temp
+AS $$
+    SELECT NULLIF(current_setting('app.restaurant_slug', true), '');
+$$;
+
 
 -- ============================================================================
 -- 2. RELATIONAL TABLES
@@ -1089,11 +1101,13 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE O
 -- document the roles that rely on them.
 GRANT EXECUTE ON FUNCTION public.app_current_restaurant_id() TO app_user;
 GRANT EXECUTE ON FUNCTION public.app_is_super_admin() TO app_user;
+GRANT EXECUTE ON FUNCTION public.app_current_restaurant_slug() TO app_user;
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
         EXECUTE 'GRANT EXECUTE ON FUNCTION public.app_current_restaurant_id() TO service_role';
         EXECUTE 'GRANT EXECUTE ON FUNCTION public.app_is_super_admin() TO service_role';
+        EXECUTE 'GRANT EXECUTE ON FUNCTION public.app_current_restaurant_slug() TO service_role';
     END IF;
 END;
 $$;
@@ -1180,21 +1194,50 @@ ALTER TABLE public.restaurant_order_counters FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.users                     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.users                     FORCE ROW LEVEL SECURITY;
 
--- 7.1 Public Read Policies (Storefront Menu & Restaurant Discovery)
+-- 7.1 Public Read Policies (Storefront Restaurant Resolution)
+-- db-hardening-0008: public reads are no longer "any session sees every active
+-- tenant". They apply ONLY to a session with no tenant context and no
+-- super_admin role (the anonymous slug lookup) and ONLY to the one ACTIVE
+-- restaurant whose slug the session declared in app.restaurant_slug. Products
+-- and additions have no public policy: the storefront reads them under the
+-- tenant context of the resolved restaurant (tenant_isolation_* policies).
 DROP POLICY IF EXISTS "public_read_active_restaurants" ON public.restaurants;
 CREATE POLICY "public_read_active_restaurants"
     ON public.restaurants FOR SELECT
-    USING (is_active = TRUE);
+    USING (
+        is_active = TRUE
+        AND (SELECT public.app_current_restaurant_id()) IS NULL
+        AND NOT (SELECT public.app_is_super_admin())
+        AND slug = (SELECT public.app_current_restaurant_slug())
+    );
 
 DROP POLICY IF EXISTS "public_read_restaurant_settings" ON public.restaurant_settings;
 CREATE POLICY "public_read_restaurant_settings"
     ON public.restaurant_settings FOR SELECT
-    USING (TRUE);
+    USING (
+        (SELECT public.app_current_restaurant_id()) IS NULL
+        AND NOT (SELECT public.app_is_super_admin())
+        AND EXISTS (
+            SELECT 1 FROM public.restaurants r
+            WHERE r.id = restaurant_settings.restaurant_id
+              AND r.is_active = TRUE
+              AND r.slug = (SELECT public.app_current_restaurant_slug())
+        )
+    );
 
 DROP POLICY IF EXISTS "public_read_restaurant_branding" ON public.restaurant_branding;
 CREATE POLICY "public_read_restaurant_branding"
     ON public.restaurant_branding FOR SELECT
-    USING (TRUE);
+    USING (
+        (SELECT public.app_current_restaurant_id()) IS NULL
+        AND NOT (SELECT public.app_is_super_admin())
+        AND EXISTS (
+            SELECT 1 FROM public.restaurants r
+            WHERE r.id = restaurant_branding.restaurant_id
+              AND r.is_active = TRUE
+              AND r.slug = (SELECT public.app_current_restaurant_slug())
+        )
+    );
 
 DROP POLICY IF EXISTS "public_read_restaurant_hours" ON public.restaurant_hours;
 CREATE POLICY "public_read_restaurant_hours"
@@ -1204,17 +1247,21 @@ CREATE POLICY "public_read_restaurant_hours"
 DROP POLICY IF EXISTS "public_read_categories" ON public.categories;
 CREATE POLICY "public_read_categories"
     ON public.categories FOR SELECT
-    USING (is_active = TRUE);
+    USING (
+        is_active = TRUE
+        AND (SELECT public.app_current_restaurant_id()) IS NULL
+        AND NOT (SELECT public.app_is_super_admin())
+        AND EXISTS (
+            SELECT 1 FROM public.restaurants r
+            WHERE r.id = categories.restaurant_id
+              AND r.is_active = TRUE
+              AND r.slug = (SELECT public.app_current_restaurant_slug())
+        )
+    );
 
+-- Removed policies (kept as DROP so a re-apply over an older database closes them).
 DROP POLICY IF EXISTS "public_read_available_products" ON public.products;
-CREATE POLICY "public_read_available_products"
-    ON public.products FOR SELECT
-    USING (is_available = TRUE);
-
 DROP POLICY IF EXISTS "public_read_available_additions" ON public.product_additions;
-CREATE POLICY "public_read_available_additions"
-    ON public.product_additions FOR SELECT
-    USING (is_available = TRUE);
 
 -- 7.2 Multi-Tenant Write & Admin Policies (Optimized with InitPlan caching)
     -- Users auth policy: scoped reads.

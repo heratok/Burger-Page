@@ -3,17 +3,21 @@ import { mapRow, PgRestaurantRepository } from '../../../src/infrastructure/pers
 
 const h = vi.hoisted(() => {
   const calls: { sql: string; values: unknown[] }[] = [];
+  const contexts: Record<string, unknown>[] = [];
   const client = {
     query: async (sql: string, values: unknown[] = []) => {
       calls.push({ sql, values });
       return { rows: [] };
     },
   };
-  return { calls, client };
+  return { calls, contexts, client };
 });
 
 vi.mock('../../../src/infrastructure/persistence/postgres/PgClient.js', () => ({
-  withTenantContext: async (_ctx: unknown, cb: (c: unknown) => Promise<unknown>) => cb(h.client),
+  withTenantContext: async (ctx: Record<string, unknown>, cb: (c: unknown) => Promise<unknown>) => {
+    h.contexts.push(ctx);
+    return cb(h.client);
+  },
 }));
 
 describe('PgRestaurantRepository mapRow', () => {
@@ -166,5 +170,13 @@ describe('PgRestaurantRepository.save - hours and branding round-trip', () => {
     const branding = valuesFor('public.restaurant_branding');
     const restored = mapRow({ id: 'r1', slug: 'r1', name: 'R1', ...settings, ...branding });
     expect(restored.config).toMatchObject(config);
+  });
+});
+
+describe('PgRestaurantRepository.findBySlug - slug-scoped public read (db-hardening-0008 T4)', () => {
+  it('declares the slug in the tenant context, without tenant id or admin role', async () => {
+    h.contexts.length = 0;
+    await new PgRestaurantRepository().findBySlug('burger-house');
+    expect(h.contexts).toEqual([{ restaurantId: null, restaurantSlug: 'burger-house' }]);
   });
 });
