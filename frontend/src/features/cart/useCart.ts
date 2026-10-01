@@ -19,6 +19,20 @@ export interface UseCartOptions {
   ttlMs?: number
   onItemRemoved?: (item: CartItem, reason: "out_of_stock" | "deleted") => void
   onPriceUpdated?: (item: CartItem, oldPrice: number, newPrice: number) => void
+  /**
+   * False while the store is closed or paused: adding items, or editing one so
+   * it grows, is ignored. Removing and shrinking items always stays allowed.
+   */
+  acceptsNewItems?: boolean
+}
+
+/** True when `next` asks for more units of the dish or of any addition than `prev`. */
+function growsCartItem(prev: CartItem, next: CartItem): boolean {
+  if (next.cantidad > prev.cantidad) return true
+  return next.adiciones.some((ad) => {
+    const before = prev.adiciones.find((a) => a.name === ad.name)?.cantidad ?? 0
+    return ad.cantidad > before
+  })
 }
 
 export function getCartStorageKey(restaurantId?: string): string {
@@ -96,6 +110,7 @@ export function useCart({
   ttlMs = DEFAULT_CART_TTL_MS,
   onItemRemoved,
   onPriceUpdated,
+  acceptsNewItems = true,
 }: UseCartOptions = {}) {
   const storageKey = useMemo(() => getCartStorageKey(restaurantId), [restaurantId])
 
@@ -214,16 +229,22 @@ export function useCart({
 
   const addToCart = useCallback(
     (item: CartItem) => {
+      if (!acceptsNewItems) return
       setCartItems((prev) => [...prev, item])
     },
-    [setCartItems]
+    [setCartItems, acceptsNewItems]
   )
 
   const updateCartItem = useCallback(
     (index: number, updatedItem: CartItem) => {
-      setCartItems((prev) => prev.map((item, i) => (i === index ? updatedItem : item)))
+      setCartItems((prev) =>
+        prev.map((item, i) => {
+          if (i !== index) return item
+          return !acceptsNewItems && growsCartItem(item, updatedItem) ? item : updatedItem
+        })
+      )
     },
-    [setCartItems]
+    [setCartItems, acceptsNewItems]
   )
 
   const removeCartItem = useCallback(

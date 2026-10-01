@@ -1,16 +1,18 @@
 import React from "react"
 import { ChevronDown } from "lucide-react"
-import { useStoreOpenStatus } from "@/hooks/useStoreOpenStatus"
+import type { StoreOpenStatus } from "@/hooks/useStoreOpenStatus"
 import { DAY_DISPLAY_ORDER, DAY_NAMES, describeNextOpening, formatRanges, rangesForDay } from "@/lib/storeSchedule"
 import type { StorefrontConfig } from "@/types/restaurant"
 
 interface StoreStatusProps {
-  config: Pick<StorefrontConfig, "schedule" | "timezone" | "ordersPaused">
+  config: Pick<StorefrontConfig, "schedule">
+  /** Single source of the open state, computed once by the parent. */
+  status: StoreOpenStatus
 }
 
 /** Abierto/Cerrado badge, next opening or pause notice, and the collapsible weekly hours. */
-export const StoreStatus: React.FC<StoreStatusProps> = ({ config }) => {
-  const { isOpen, reason, next } = useStoreOpenStatus(config)
+export const StoreStatus: React.FC<StoreStatusProps> = ({ config, status }) => {
+  const { isOpen, reason, next } = status
   const detail = reason === "paused" ? "Pedidos en pausa" : describeNextOpening(next)
 
   return (
@@ -32,6 +34,11 @@ export const StoreStatus: React.FC<StoreStatusProps> = ({ config }) => {
         {detail && (
           <span style={{ color: "var(--color-text-secondary)" }} className="font-medium">
             {detail}
+          </span>
+        )}
+        {!isOpen && (
+          <span style={{ color: "var(--color-text-secondary)" }} className="basis-full text-center font-normal sm:text-left">
+            Puedes ver el menú, pero no puedes agregar productos al carrito por ahora.
           </span>
         )}
       </div>

@@ -244,3 +244,58 @@ describe("useCart hook - Multi-Tenant Persistence & Catalog Revalidation", () =>
     expect(localStorage.getItem(getCartStorageKey("rest-craft"))).toBeNull()
   })
 })
+
+describe("useCart hook - closed store guard", () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  it("ignores addToCart while the store does not accept new items", () => {
+    const { result } = renderHook(() =>
+      useCart({ restaurantId: "rest-closed", acceptsNewItems: false })
+    )
+    act(() => result.current.addToCart(mockCartItemA))
+    expect(result.current.cartItems).toEqual([])
+  })
+
+  it("keeps existing items and still allows removing them while closed", () => {
+    const { result, rerender } = renderHook(
+      ({ open }) => useCart({ restaurantId: "rest-closed2", acceptsNewItems: open }),
+      { initialProps: { open: true } }
+    )
+    act(() => result.current.addToCart(mockCartItemA))
+    act(() => result.current.addToCart(mockCartItemB))
+    rerender({ open: false })
+    expect(result.current.cartItems).toHaveLength(2)
+    act(() => result.current.removeCartItem(0))
+    expect(result.current.cartItems).toEqual([mockCartItemB])
+  })
+
+  it("blocks updates that increase quantity or additions while closed, allows decreases", () => {
+    const withAddition: CartItem = {
+      ...mockCartItemA,
+      adiciones: [{ id: "a1", name: "Queso", price: 2000, cantidad: 1 }],
+      total: 52000,
+    }
+    const { result, rerender } = renderHook(
+      ({ open }) => useCart({ restaurantId: "rest-closed3", acceptsNewItems: open }),
+      { initialProps: { open: true } }
+    )
+    act(() => result.current.addToCart(withAddition))
+    rerender({ open: false })
+
+    act(() => result.current.updateCartItem(0, { ...withAddition, cantidad: 3, total: 77000 }))
+    expect(result.current.cartItems[0].cantidad).toBe(2)
+
+    act(() =>
+      result.current.updateCartItem(0, {
+        ...withAddition,
+        adiciones: [{ id: "a1", name: "Queso", price: 2000, cantidad: 2 }],
+      })
+    )
+    expect(result.current.cartItems[0].adiciones[0].cantidad).toBe(1)
+
+    act(() => result.current.updateCartItem(0, { ...withAddition, cantidad: 1, total: 27000 }))
+    expect(result.current.cartItems[0].cantidad).toBe(1)
+  })
+})

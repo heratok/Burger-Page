@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { render, screen, cleanup, within, act } from "@testing-library/react"
 import { StoreStatus } from "./StoreStatus"
+import { useStoreOpenStatus } from "@/hooks/useStoreOpenStatus"
 import type { WeeklySchedule } from "@burger-page/contracts"
 
 // 2026-10-05 is a Monday; 15:00Z is 10:00 in Bogota.
@@ -10,6 +11,12 @@ const schedule: WeeklySchedule = [
   { dayOfWeek: 3, open: "20:00", close: "02:00" },
 ]
 const config = { schedule, timezone: "America/Bogota", ordersPaused: false }
+
+function Harness({ config }: { config: StoreStatusConfig }) {
+  const status = useStoreOpenStatus(config)
+  return <StoreStatus config={config} status={status} />
+}
+type StoreStatusConfig = typeof config
 
 describe("StoreStatus", () => {
   beforeEach(() => {
@@ -22,14 +29,23 @@ describe("StoreStatus", () => {
   })
 
   it("shows Cerrado with the next opening while closed", () => {
-    render(<StoreStatus config={config} />)
+    render(<Harness config={config} />)
     const status = screen.getByRole("status")
     expect(within(status).getByText("Cerrado")).toBeDefined()
     expect(within(status).getByText("Abrimos hoy a las 12:00")).toBeDefined()
   })
 
+  it("explains the browse-only mode once while closed, and not while open", () => {
+    const { unmount } = render(<Harness config={config} />)
+    expect(screen.getAllByText(/no puedes agregar productos/i)).toHaveLength(1)
+    unmount()
+    vi.setSystemTime(new Date("2026-10-05T18:00:00Z"))
+    render(<Harness config={config} />)
+    expect(screen.queryByText(/no puedes agregar productos/i)).toBeNull()
+  })
+
   it("flips to Abierto on its own when the clock crosses the opening time", () => {
-    render(<StoreStatus config={config} />)
+    render(<Harness config={config} />)
     act(() => {
       vi.advanceTimersByTime(2 * 60 * 60 * 1000 + 60 * 1000)
     })
@@ -39,7 +55,7 @@ describe("StoreStatus", () => {
   })
 
   it("shows the pause instead of the next opening", () => {
-    render(<StoreStatus config={{ ...config, ordersPaused: true }} />)
+    render(<Harness config={{ ...config, ordersPaused: true }} />)
     const status = screen.getByRole("status")
     expect(within(status).getByText("Cerrado")).toBeDefined()
     expect(within(status).getByText("Pedidos en pausa")).toBeDefined()
@@ -47,7 +63,7 @@ describe("StoreStatus", () => {
   })
 
   it("lists the week with Spanish day names, joined ranges and Cerrado on empty days", () => {
-    render(<StoreStatus config={config} />)
+    render(<Harness config={config} />)
     const list = screen.getByRole("list", { name: "Horarios de atención" })
     const items = within(list).getAllByRole("listitem")
     expect(items).toHaveLength(7)
@@ -59,7 +75,7 @@ describe("StoreStatus", () => {
   })
 
   it("the hours list is collapsible", () => {
-    render(<StoreStatus config={config} />)
+    render(<Harness config={config} />)
     expect(screen.getByText("Horarios de atención", { selector: "summary" })).toBeDefined()
   })
 })

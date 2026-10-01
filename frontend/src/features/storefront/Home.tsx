@@ -15,6 +15,8 @@ import {
   type CartItem,
 } from "@/features/cart"
 import { StoreStatus } from "./StoreStatus"
+import { useStoreOpenStatus } from "@/hooks/useStoreOpenStatus"
+import { closedMessage } from "@/lib/storeSchedule"
 import { useRestaurant } from "@/context/RestaurantContext"
 import { getFontFamilyClass, getStoreThemeStyles } from "@/features/crm/utils/customizerStyles"
 import { getContrastForeground } from "@/lib/utils"
@@ -22,6 +24,7 @@ import { useHorizontalScroll } from "@/hooks/useHorizontalScroll"
 
 export default function Home() {
   const { products, storeConfig, categories: contextCategories, activeRestaurant } = useRestaurant()
+  const openStatus = useStoreOpenStatus(storeConfig)
   const {
     cartItems,
     totalCart,
@@ -32,6 +35,7 @@ export default function Home() {
   } = useCart({
     restaurantId: activeRestaurant?.id || activeRestaurant?.slug,
     products,
+    acceptsNewItems: openStatus.isOpen,
   })
 
   const [isAdditionsModalOpen, setIsAdditionsModalOpen] = useState(false)
@@ -113,6 +117,10 @@ export default function Home() {
   }, [products, contextCategories])
 
   const handleAddToCart = (cartItem: CartItem) => {
+    if (!openStatus.isOpen && editingIndex === null) {
+      toast.error(openStatus.reason ? closedMessage(openStatus.reason) : "Cerrado")
+      return
+    }
     if (editingIndex !== null) {
       updateCartItem(editingIndex, cartItem)
       setEditingIndex(null)
@@ -318,7 +326,7 @@ export default function Home() {
             )}
 
             <div className="flex justify-center sm:justify-start">
-              <StoreStatus config={storeConfig} />
+              <StoreStatus config={storeConfig} status={openStatus} />
             </div>
 
             {/* Search Input */}
@@ -500,6 +508,7 @@ export default function Home() {
                               <ProductCard
                                 product={product}
                                 onSelectProduct={() => handleProductClick(product)}
+                                closed={!openStatus.isOpen}
                               />
                             </div>
                           ))}
@@ -527,6 +536,7 @@ export default function Home() {
           onAddToCart={handleAddToCart}
           onClose={handleCloseModal}
           product={selectedProduct}
+          closed={!openStatus.isOpen}
           editing={editingIndex !== null}
           initial={editingIndex !== null ? cartItems[editingIndex] : undefined}
         />
