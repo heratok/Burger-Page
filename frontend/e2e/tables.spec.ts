@@ -60,7 +60,7 @@ test.describe('Restaurant tables: Personalizar → Mesas and Mesa / Salón sales
     await loginAsAdmin(page);
 
     await page.locator('aside button, nav button').filter({ hasText: /Personalizar/i }).first().click();
-    await page.getByRole('button', { name: /^Mesas$/ }).click();
+    await page.getByRole('tab', { name: /^Mesas$/ }).click();
     await expect(page.getByText('Mesas del salón')).toBeVisible();
 
     for (const name of [tableA, tableB]) {
@@ -82,7 +82,7 @@ test.describe('Restaurant tables: Personalizar → Mesas and Mesa / Salón sales
     // The tables survive a reload (server-side data).
     await page.reload();
     await page.locator('aside button, nav button').filter({ hasText: /Personalizar/i }).first().click();
-    await page.getByRole('button', { name: /^Mesas$/ }).click();
+    await page.getByRole('tab', { name: /^Mesas$/ }).click();
     await expect(page.getByText(tableA, { exact: true })).toBeVisible({ timeout: 10000 });
   });
 
@@ -133,6 +133,61 @@ test.describe('Restaurant tables: Personalizar → Mesas and Mesa / Salón sales
       timeout: 10000,
     });
     await expect(second.getByRole('button', { name: new RegExp(`^${tableB}`) })).not.toContainText('Ocupada');
+  });
+
+  test('"+ Nueva mesa" in the sale modal creates the table inline (click and Enter) without leaving the modal', async ({
+    page,
+  }) => {
+    test.setTimeout(90000);
+    await loginAsAdmin(page);
+
+    await page.locator('aside button, nav button').filter({ hasText: /Pedidos en Vivo/i }).first().click();
+    await page.getByRole('button', { name: /Nueva Venta/i }).first().click();
+    const modal = page.locator('div.fixed.inset-0').filter({ hasText: /Punto de Venta/i }).first();
+    await expect(modal).toBeVisible();
+
+    const addProduct = modal.getByRole('button', { name: /Agregar/i }).first();
+    await addProduct.click();
+    await addProduct.click();
+    await modal.getByRole('button', { name: /Mesa \/ Salón/i }).click();
+
+    const urlBefore = page.url();
+    const postTable = () =>
+      page.waitForResponse((res) => res.url().includes('/api/tables') && res.request().method() === 'POST');
+    // A nested <form> used to navigate the page to /admin/orders? and lose the modal.
+    expect(await modal.locator('form form').count()).toBe(0);
+
+    const created: string[] = [];
+    for (const variant of ['click', 'enter'] as const) {
+      const name = `E2E ${suffix} inline ${variant}`;
+      await modal.getByRole('button', { name: '+ Nueva mesa' }).click();
+      const input = modal.getByLabel('Nombre de la nueva mesa');
+      await input.fill(name);
+      const response = postTable();
+      if (variant === 'click') {
+        await modal.getByRole('button', { name: 'Crear', exact: true }).click();
+      } else {
+        await input.press('Enter');
+      }
+      expect((await response).status()).toBe(201);
+      created.push(name);
+
+      expect(page.url()).toBe(urlBefore);
+      await expect(modal).toBeVisible();
+      await expect(modal.getByRole('button', { name: new RegExp(`^${name}`) })).toHaveAttribute('aria-pressed', 'true');
+    }
+
+    // Complete the sale with the last created table.
+    const orderResponse = page.waitForResponse(
+      (res) => res.url().endsWith('/api/orders') && res.request().method() === 'POST'
+    );
+    await modal.getByRole('button', { name: /Registrar Venta/i }).click();
+    const res = await orderResponse;
+    expect(res.status()).toBe(201);
+    const order = await res.json();
+    createdOrderIds.push(order.id);
+    expect(order.tableLabel).toBe(created[1]);
+    expect(order.tableId).toMatch(/^tbl_/);
   });
 
   test('the API rejects a table of another restaurant, a guest tableId and cross-tenant changes', async ({ request }) => {
