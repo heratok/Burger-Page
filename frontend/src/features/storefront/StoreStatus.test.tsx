@@ -87,4 +87,11 @@ describe("StoreStatus", () => {
     expect(hours.className).toMatch(/mx-auto/)
     expect(screen.getByText(/no puedes agregar productos/i).className).toMatch(/text-center/)
   })
+
+  it("renders a record that predates the schedule (no schedule field) as open 24/7 without crashing", () => {
+    const legacy = {} as Parameters<typeof StoreStatus>[0]["config"]
+    render(<Harness config={legacy as unknown as StoreStatusConfig} />)
+    expect(within(screen.getByRole("status")).getByText("Abierto")).toBeDefined()
+    expect(screen.getByRole("list", { name: "Horarios de atención" })).toBeDefined()
+  })
 })

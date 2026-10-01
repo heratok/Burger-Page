@@ -1,11 +1,12 @@
 import React from "react"
 import { ChevronDown } from "lucide-react"
 import type { StoreOpenStatus } from "@/hooks/useStoreOpenStatus"
-import { DAY_DISPLAY_ORDER, DAY_NAMES, describeNextOpening, formatRanges, rangesForDay } from "@/lib/storeSchedule"
+import { ALWAYS_OPEN_SCHEDULE, DAY_DISPLAY_ORDER, DAY_NAMES, describeNextOpening, formatRanges, rangesForDay } from "@/lib/storeSchedule"
 import type { StorefrontConfig } from "@/types/restaurant"
 
 interface StoreStatusProps {
-  config: Pick<StorefrontConfig, "schedule">
+  /** Records saved before the schedule existed have none: they read as open 24/7. */
+  config: Partial<Pick<StorefrontConfig, "schedule">>
   /** Single source of the open state, computed once by the parent. */
   status: StoreOpenStatus
 }
@@ -13,6 +14,7 @@ interface StoreStatusProps {
 /** Abierto/Cerrado badge, next opening or pause notice, and the collapsible weekly hours. */
 export const StoreStatus: React.FC<StoreStatusProps> = ({ config, status }) => {
   const { isOpen, reason, next } = status
+  const schedule = config.schedule ?? ALWAYS_OPEN_SCHEDULE
   const detail = reason === "paused" ? "Pedidos en pausa" : describeNextOpening(next)
 
   return (
@@ -59,7 +61,7 @@ export const StoreStatus: React.FC<StoreStatusProps> = ({ config, status }) => {
               className="flex justify-between gap-4"
             >
               <span className="font-semibold">{DAY_NAMES[day]}</span>
-              <span>{formatRanges(rangesForDay(config.schedule, day))}</span>
+              <span>{formatRanges(rangesForDay(schedule, day))}</span>
             </li>
           ))}
         </ul>
