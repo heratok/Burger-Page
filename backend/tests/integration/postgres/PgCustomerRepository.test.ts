@@ -125,4 +125,18 @@ describe('PgCustomerRepository (real Postgres, app_user role)', () => {
     await repo.delete(id, RESTAURANT_A);
     expect(await repo.findById(id, RESTAURANT_A)).toBeNull();
   });
+
+  it("stores empty optional contact fields as NULL and still maps them to '' (db-hardening-0008 T8)", async () => {
+    if (!isDbConnected) return;
+    const id = `cust-${randomUUID().slice(0, 8)}`;
+    await repo.save(new Customer(id, RESTAURANT_A, 'Sin Datos', '3007777777', '', '', '', ''));
+
+    const raw = await adminPool.query(`SELECT email, address, barrio FROM public.customers WHERE id = $1`, [id]);
+    expect(raw.rows[0]).toEqual({ email: null, address: null, barrio: null });
+
+    const found = await repo.findById(id, RESTAURANT_A);
+    expect(found?.email).toBe('');
+    expect(found?.address).toBe('');
+    expect(found?.barrio).toBe('');
+  });
 });

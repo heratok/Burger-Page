@@ -521,3 +521,23 @@ END
 $$;
 
 ALTER TABLE public.restaurant_settings DROP COLUMN IF EXISTS opening_hours_text;
+
+-- ── T8. Optional text: '' becomes NULL, '' defaults dropped ───────────────────
+UPDATE public.customers SET email = NULLIF(email, '') WHERE email = '';
+UPDATE public.customers SET address = NULLIF(address, '') WHERE address = '';
+UPDATE public.customers SET barrio = NULLIF(barrio, '') WHERE barrio = '';
+UPDATE public.products SET description = NULLIF(description, '') WHERE description = '';
+UPDATE public.suppliers SET contact_name = NULLIF(contact_name, '') WHERE contact_name = '';
+UPDATE public.suppliers SET phone = NULLIF(phone, '') WHERE phone = '';
+UPDATE public.suppliers SET email = NULLIF(email, '') WHERE email = '';
+
+ALTER TABLE public.customers
+    ALTER COLUMN email DROP DEFAULT,
+    ALTER COLUMN address DROP DEFAULT,
+    ALTER COLUMN barrio DROP DEFAULT;
+ALTER TABLE public.products
+    ALTER COLUMN description DROP DEFAULT;
+ALTER TABLE public.suppliers
+    ALTER COLUMN contact_name DROP DEFAULT,
+    ALTER COLUMN phone DROP DEFAULT,
+    ALTER COLUMN email DROP DEFAULT;

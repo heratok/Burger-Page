@@ -6,6 +6,26 @@
 
 SET LOCAL lock_timeout = '15s';
 
+-- ── T8. '' defaults back, NULL becomes '' again ─────────────────────────────
+ALTER TABLE public.customers
+    ALTER COLUMN email SET DEFAULT '',
+    ALTER COLUMN address SET DEFAULT '',
+    ALTER COLUMN barrio SET DEFAULT '';
+ALTER TABLE public.products
+    ALTER COLUMN description SET DEFAULT '';
+ALTER TABLE public.suppliers
+    ALTER COLUMN contact_name SET DEFAULT '',
+    ALTER COLUMN phone SET DEFAULT '',
+    ALTER COLUMN email SET DEFAULT '';
+
+UPDATE public.customers SET email = COALESCE(email, '') WHERE email IS NULL;
+UPDATE public.customers SET address = COALESCE(address, '') WHERE address IS NULL;
+UPDATE public.customers SET barrio = COALESCE(barrio, '') WHERE barrio IS NULL;
+UPDATE public.products SET description = COALESCE(description, '') WHERE description IS NULL;
+UPDATE public.suppliers SET contact_name = COALESCE(contact_name, '') WHERE contact_name IS NULL;
+UPDATE public.suppliers SET phone = COALESCE(phone, '') WHERE phone IS NULL;
+UPDATE public.suppliers SET email = COALESCE(email, '') WHERE email IS NULL;
+
 -- ── T7. restaurant_hours and opening_hours_text back ────────────────────────
 -- The text is rebuilt from the times (the only data that survived); rows whose
 -- times are NULL keep a NULL text, then the 0007 default is restored.

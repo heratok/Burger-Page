@@ -86,10 +86,12 @@ export class PgCustomerRepository implements CustomerRepository {
           customer.restaurantId,
           customer.name,
           customer.phone,
-          customer.address || '',
-          customer.barrio || '',
+          // Empty optional text is stored as NULL (db-hardening-0008); mapRow
+          // maps NULL back to '' for the domain.
+          customer.address || null,
+          customer.barrio || null,
           customer.notes || '',
-          customer.email || '',
+          customer.email || null,
         ]
       );
     });

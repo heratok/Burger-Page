@@ -277,6 +277,32 @@ describe('migration 0000000000008 (db hardening) parity with the baseline schema
       expect(down).toContain('chk_hours_consistent');
     });
   });
+
+  describe("T8 optional text columns: '' -> NULL", () => {
+    const cols = [
+      ['customers', 'email'],
+      ['customers', 'address'],
+      ['customers', 'barrio'],
+      ['products', 'description'],
+      ['suppliers', 'contact_name'],
+      ['suppliers', 'phone'],
+      ['suppliers', 'email'],
+    ];
+
+    it.each(cols)("baseline declares %s.%s without an empty-string default", (table, column) => {
+      const body = baseline.match(new RegExp(`CREATE TABLE IF NOT EXISTS public\\.${table} \\(([\\s\\S]*?)\\n\\);`))![1];
+      const line = body.split('\n').find((l) => new RegExp(`^\\s+${column}\\s`).test(l))!;
+      expect(line).toBeDefined();
+      expect(line).not.toMatch(/DEFAULT\s+''/);
+    });
+
+    it.each(cols)("up converts %s.%s '' to NULL and drops the default; down restores both", (table, column) => {
+      expect(up).toMatch(new RegExp(`ALTER TABLE public\\.${table}[\\s\\S]*?ALTER COLUMN ${column} DROP DEFAULT`));
+      expect(up).toMatch(new RegExp(`UPDATE public\\.${table}[\\s\\S]*?${column} = NULLIF\\(${column}, ''\\)`));
+      expect(down).toMatch(new RegExp(`ALTER COLUMN ${column} SET DEFAULT ''`));
+      expect(down).toMatch(new RegExp(`${column} = COALESCE\\(${column}, ''\\)`));
+    });
+  });
 });
 
 describe('schema file structure', () => {

@@ -398,7 +398,7 @@ describe("CheckoutForm - Direct Sale Flow", () => {
         adiciones: [],
       },
     ]
-    const windowOpenSpy = vi.spyOn(window, "open").mockImplementation(() => null)
+    vi.spyOn(window, "open").mockImplementation(() => null)
     const { apiClient } = await import("@/core/api/apiClient")
     const createOrderSpy = vi.spyOn(apiClient, "createOrder").mockResolvedValue({
       id: "server-checkout-2",

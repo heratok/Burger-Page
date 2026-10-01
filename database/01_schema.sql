@@ -215,7 +215,7 @@ CREATE TABLE IF NOT EXISTS public.products (
     restaurant_id            TEXT NOT NULL REFERENCES public.restaurants(id) ON DELETE CASCADE,
     category_id              TEXT,
     name                     TEXT NOT NULL,
-    description              TEXT DEFAULT '',
+    description              TEXT,
     price                    NUMERIC(12, 2) NOT NULL CHECK (price >= 0),
     image_url                TEXT,
     is_available             BOOLEAN NOT NULL DEFAULT TRUE,
@@ -271,9 +271,9 @@ CREATE TABLE IF NOT EXISTS public.customers (
     restaurant_id   TEXT NOT NULL REFERENCES public.restaurants(id) ON DELETE CASCADE,
     name            TEXT NOT NULL,
     phone           TEXT NOT NULL,
-    email           TEXT DEFAULT '',
-    address         TEXT DEFAULT '',
-    barrio          TEXT DEFAULT '',
+    email           TEXT,
+    address         TEXT,
+    barrio          TEXT,
     notes           TEXT,
     -- Fast-read metrics maintained automatically by trigger inside order transactions
     total_orders    INTEGER NOT NULL DEFAULT 0 CHECK (total_orders >= 0),
@@ -289,6 +289,8 @@ CREATE TABLE IF NOT EXISTS public.customers (
         UNIQUE (id, restaurant_id)
 );
 
+-- db-hardening-0008: optional text (email, address, barrio) is NULL when absent,
+-- not ''. The repositories map NULL back to '' for the domain.
 COMMENT ON TABLE public.customers IS 'CRM. total_orders/total_spent/last_order_date son mantenidos por trigger en pedidos.';
 COMMENT ON COLUMN public.customers.loyalty_tier IS 'Nivel de fidelidad (tokens estables de UI, no cambiar sin tocar frontend).';
 
@@ -437,9 +439,9 @@ CREATE TABLE IF NOT EXISTS public.suppliers (
     restaurant_id TEXT NOT NULL REFERENCES public.restaurants(id) ON DELETE CASCADE,
     name          TEXT NOT NULL,
     category      TEXT DEFAULT 'general',
-    contact_name  TEXT DEFAULT '',
-    phone         TEXT DEFAULT '',
-    email         TEXT DEFAULT '',
+    contact_name  TEXT,
+    phone         TEXT,
+    email         TEXT,
     notes         TEXT,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),

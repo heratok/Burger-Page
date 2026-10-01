@@ -204,4 +204,24 @@ describe('PgProductRepository (real Postgres, app_user role)', () => {
     await repo.delete(id, RESTAURANT_A);
     expect(await repo.findById(id, RESTAURANT_A)).toBeNull();
   });
+
+  it("stores an empty description as NULL and still maps it to '' (db-hardening-0008 T8)", async () => {
+    if (!isDbConnected) return;
+    const id = `prod-${randomUUID().slice(0, 8)}`;
+    await repo.save({
+      id,
+      restaurantId: RESTAURANT_A,
+      name: 'No Description',
+      description: '',
+      price: 1000,
+      category: 'Burgers',
+      categoryId: CATEGORY_A_BURGERS,
+      isAvailable: true,
+      additions: [],
+    } as Product);
+
+    const raw = await adminPool.query(`SELECT description FROM public.products WHERE id = $1`, [id]);
+    expect(raw.rows[0].description).toBeNull();
+    expect((await repo.findById(id, RESTAURANT_A))?.description).toBe('');
+  });
 });

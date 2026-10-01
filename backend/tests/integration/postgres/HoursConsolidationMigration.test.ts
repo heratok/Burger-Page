@@ -1,27 +1,14 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import pg from 'pg';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { upSection, downSection } from './helpers/migrationSection.js';
 
 const { Client } = pg;
 
 const ADMIN_URL = process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/burger_page_test';
 const SCRATCH_DB = 'hours_migration_scratch';
 
-const migrationsDir = resolve(__dirname, '../../../../database/migrations');
-
-/** Returns the SQL of one "-- ── T7." section (up to the next "-- ── T" marker). */
-function section(file: string, id: string): string {
-  const sql = readFileSync(resolve(migrationsDir, file), 'utf8');
-  const start = sql.indexOf(`-- ── ${id}.`);
-  if (start < 0) throw new Error(`section ${id} not found in ${file}`);
-  const rest = sql.slice(start + 1);
-  const next = rest.search(/\n-- ── T\d+\./);
-  return next < 0 ? sql.slice(start) : sql.slice(start, start + 1 + next);
-}
-
-const UP = () => section('0000000000008_db_hardening.up.sql', 'T7');
-const DOWN = () => section('0000000000008_db_hardening.down.sql', 'T7');
+const UP = () => upSection('T7');
+const DOWN = () => downSection('T7');
 
 let isDbConnected = false;
 
