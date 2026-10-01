@@ -6,6 +6,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   testDir: path.resolve(__dirname, 'e2e'),
+  // Rebuilds the guarded local database before each local run (skipped in CI).
+  // Playwright starts the webServers BEFORE globalSetup runs, so the backend
+  // pool must survive its database being dropped (see the PgClient pool 'error' handler).
+  globalSetup: path.resolve(__dirname, 'e2e/global-setup.ts'),
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
@@ -22,6 +26,8 @@ export default defineConfig({
   webServer: [
     {
       command: 'npm --prefix ../backend run dev',
+      // An explicit E2E_DATABASE_URL must be the database the backend uses too.
+      env: process.env.E2E_DATABASE_URL ? { DATABASE_URL: process.env.E2E_DATABASE_URL } : undefined,
       url: 'http://localhost:3001/health',
       reuseExistingServer: true,
       timeout: process.env.CI ? 90000 : 30000,
