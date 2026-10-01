@@ -25,6 +25,8 @@ export interface AdditionsModalProps {
   onAddToCart: (cartItem: CartItem) => void
   editing?: boolean
   initial?: CartItem
+  /** Store closed or paused: nothing can be added or increased, only reduced. */
+  closed?: boolean
 }
 
 export default function AdditionsModal({
@@ -33,6 +35,7 @@ export default function AdditionsModal({
   onAddToCart,
   editing = false,
   initial,
+  closed = false,
 }: AdditionsModalProps) {
   const { additions: storeAdditions, storeConfig } = useRestaurant()
   const themeStyles = getStoreThemeStyles(storeConfig.bgTheme, storeConfig.primaryColor)
@@ -85,12 +88,16 @@ export default function AdditionsModal({
     onClose()
   }
 
-  const aumentarCantidad = () => setCantidad((c) => c + 1)
+  const aumentarCantidad = () => {
+    if (closed) return
+    setCantidad((c) => c + 1)
+  }
   const disminuirCantidad = () => {
     if (cantidad > 1) setCantidad((c) => c - 1)
   }
 
   const modificarCantidadAdicion = (index: number, operacion: "incrementar" | "decrementar") => {
+    if (closed && operacion === "incrementar") return
     setAdiciones((prev) => {
       const next = [...prev]
       if (operacion === "incrementar") {
@@ -198,11 +205,12 @@ export default function AdditionsModal({
                         size="icon-sm"
                         onClick={() => modificarCantidadAdicion(i, "incrementar")}
                         aria-label={`Agregar ${adicion.name}`}
+                        disabled={closed}
                         style={{
                           backgroundColor: storeConfig.primaryColor,
                           color: primaryForeground,
                         }}
-                        className="size-11 rounded-full shadow-xs hover:opacity-90 transition-opacity"
+                        className="size-11 rounded-full shadow-xs hover:opacity-90 transition-opacity disabled:opacity-30"
                       >
                         <Plus />
                       </Button>
@@ -271,11 +279,12 @@ export default function AdditionsModal({
                   size="icon-sm"
                   onClick={aumentarCantidad}
                   aria-label="Aumentar cantidad"
+                  disabled={closed}
                   style={{
                     backgroundColor: storeConfig.primaryColor,
                     color: primaryForeground,
                   }}
-                  className="size-10 sm:size-11 rounded-full shadow-xs hover:opacity-90 transition-opacity"
+                  className="size-10 sm:size-11 rounded-full shadow-xs hover:opacity-90 transition-opacity disabled:opacity-30"
                 >
                   <Plus />
                 </Button>
@@ -286,15 +295,21 @@ export default function AdditionsModal({
               variant="default"
               size="lg"
               onClick={handleAdd}
-              disabled={!product}
+              disabled={!product || (closed && !editing)}
               style={{
                 backgroundColor: storeConfig.primaryColor,
                 color: primaryForeground,
               }}
               className="h-11 sm:h-12 w-full rounded-xl text-sm sm:text-base font-bold shadow-md cursor-pointer hover:opacity-90 min-[420px]:w-auto min-[420px]:flex-1 sm:min-w-[200px] sm:flex-none"
             >
-              <Plus data-icon="inline-start" strokeWidth={2.5} />
-              {editing ? "Guardar cambios" : "Agregar"} · {formatCurrency(calcularTotal())}
+              {closed && !editing ? (
+                "Cerrado"
+              ) : (
+                <>
+                  <Plus data-icon="inline-start" strokeWidth={2.5} />
+                  {editing ? "Guardar cambios" : "Agregar"} · {formatCurrency(calcularTotal())}
+                </>
+              )}
             </Button>
           </div>
         </footer>

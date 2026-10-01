@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
+import { TEST_RESTAURANT } from './test-fixture';
 
-test.describe('Exhaustive Platform E2E Suite - Real DB Persistence (admin & rosto)', () => {
+test.describe('Exhaustive Platform E2E Suite - Real DB Persistence (admin & test restaurant)', () => {
   test.setTimeout(240000);
 
   const timestamp = Date.now().toString().slice(-4);
@@ -11,7 +12,7 @@ test.describe('Exhaustive Platform E2E Suite - Real DB Persistence (admin & rost
 
   test('Exhaustive validation: Products, Additions, Categories, Inventory, Orders and SuperAdmin persistence', async ({ browser }) => {
     // -----------------------------------------------------------------------
-    // PART 1: RESTAURANT ADMIN (rosto / rosto0502)
+    // PART 1: RESTAURANT ADMIN (admin_pruebas)
     // -----------------------------------------------------------------------
     const restoContext = await browser.newContext({
       baseURL: 'http://localhost:5173',
@@ -19,16 +20,16 @@ test.describe('Exhaustive Platform E2E Suite - Real DB Persistence (admin & rost
     });
     const restoPage = await restoContext.newPage();
 
-    // 1.1 Login as rosto
+    // 1.1 Login as test restaurant admin
     await restoPage.goto('/admin');
     await restoPage.waitForLoadState('domcontentloaded');
 
     const userField = restoPage.locator('input[type="text"]').first();
     await expect(userField).toBeVisible({ timeout: 15000 });
-    await userField.fill('rosto');
+    await userField.fill(TEST_RESTAURANT.username);
 
     const passField = restoPage.locator('input[type="password"]').first();
-    await passField.fill('rosto0502');
+    await passField.fill(TEST_RESTAURANT.password);
 
     await Promise.all([
       restoPage.waitForResponse(resp => resp.url().includes('/api/users/login') && resp.status() === 200),
@@ -36,7 +37,7 @@ test.describe('Exhaustive Platform E2E Suite - Real DB Persistence (admin & rost
     ]);
 
     await expect(restoPage).toHaveURL(/\/admin\/dashboard/, { timeout: 15000 });
-    await expect(restoPage.locator('aside').getByText(/rosto/i).first()).toBeVisible({ timeout: 15000 });
+    await expect(restoPage.locator('aside').getByText(new RegExp(TEST_RESTAURANT.name, 'i')).first()).toBeVisible({ timeout: 15000 });
     await restoPage.waitForLoadState('domcontentloaded');
 
     // =======================================================================
@@ -68,7 +69,7 @@ test.describe('Exhaustive Platform E2E Suite - Real DB Persistence (admin & rost
     ]);
     const createdProduct = await createProductResp.json();
     expect(createdProduct.name).toBe(testProductName);
-    expect(createdProduct.restaurantId).toBe('rest-1788579266608');
+    expect(createdProduct.restaurantId).toBe(TEST_RESTAURANT.id);
 
     await expect(productModal).not.toBeVisible({ timeout: 10000 });
     // Wait for the optimistic-catalog success toast (emitted only after the
@@ -107,7 +108,7 @@ test.describe('Exhaustive Platform E2E Suite - Real DB Persistence (admin & rost
     ]);
     const createdAddition = await createAdditionResp.json();
     expect(createdAddition.name).toBe(testAdditionName);
-    expect(createdAddition.restaurantId).toBe('rest-1788579266608');
+    expect(createdAddition.restaurantId).toBe(TEST_RESTAURANT.id);
 
     await expect(restoPage.getByRole('heading', { name: testAdditionName })).toBeVisible({ timeout: 10000 });
 
@@ -177,7 +178,7 @@ test.describe('Exhaustive Platform E2E Suite - Real DB Persistence (admin & rost
     const createdInv = await createInvResp.json();
     expect(createdInv.name).toBe(testInventoryName);
     expect(createdInv.currentStock).toBe(50);
-    expect(createdInv.restaurantId).toBe('rest-1788579266608');
+    expect(createdInv.restaurantId).toBe(TEST_RESTAURANT.id);
 
     await expect(inventoryModal).not.toBeVisible({ timeout: 10000 });
 
@@ -222,10 +223,10 @@ test.describe('Exhaustive Platform E2E Suite - Real DB Persistence (admin & rost
     });
     const customerPage = await customerContext.newPage();
 
-    // 2.1 Navigate to rosto storefront
-    await customerPage.goto('/rosto');
+    // 2.1 Navigate to test restaurant storefront
+    await customerPage.goto(`/${TEST_RESTAURANT.slug}`);
     await customerPage.waitForLoadState('domcontentloaded');
-    await expect(customerPage.getByText(/Rosto/i).first()).toBeVisible({ timeout: 15000 });
+    await expect(customerPage.getByText(new RegExp(TEST_RESTAURANT.name, 'i')).first()).toBeVisible({ timeout: 15000 });
 
     // 2.2 Select the newly created product
     const productCard = customerPage.locator('div[role="button"]').filter({ hasText: testProductName }).first();
@@ -269,7 +270,7 @@ test.describe('Exhaustive Platform E2E Suite - Real DB Persistence (admin & rost
       submitOrderBtn.click(),
     ]);
     const createdOrder = await orderResponse.json();
-    expect(createdOrder.restaurantId).toBe('rest-1788579266608');
+    expect(createdOrder.restaurantId).toBe(TEST_RESTAURANT.id);
     expect(createdOrder.status).toBe('pending');
 
     // 2.3 Verify in Restaurant Admin Kanban & Advance Status
@@ -356,8 +357,8 @@ test.describe('Exhaustive Platform E2E Suite - Real DB Persistence (admin & rost
 
     // Super Admin directory
     await expect(superPage).toHaveURL(/\/admin\/restaurants/, { timeout: 15000 });
-    const rostoRow = superPage.locator('tr').filter({ hasText: 'rosto' }).first();
-    await expect(rostoRow).toBeVisible({ timeout: 15000 });
+    const testRestRow = superPage.locator('tr').filter({ hasText: TEST_RESTAURANT.name }).first();
+    await expect(testRestRow).toBeVisible({ timeout: 15000 });
 
     // Register the collector BEFORE entering the tenant dashboard: the mount
     // fetches /api/{orders,products,inventory} immediately, and the module tab
@@ -370,11 +371,11 @@ test.describe('Exhaustive Platform E2E Suite - Real DB Persistence (admin & rost
       }
     });
 
-    // Click "Administrar" to manage rosto
-    await rostoRow.getByRole('button', { name: /Administrar/i }).click();
+    // Click "Administrar" to manage test restaurant
+    await testRestRow.getByRole('button', { name: /Administrar/i }).click();
     await expect(superPage).toHaveURL(/\/admin\/dashboard/, { timeout: 15000 });
 
-    // Verify Super Admin can view orders, products, inventory for rosto with
+    // Verify Super Admin can view orders, products, inventory for test restaurant with
     // zero 401 Unauthorized errors: assert each module UI renders (primary),
     // and, if the mount fetches were captured, every one must be 200.
     await superPage.getByRole('button', { name: /Pedidos en Vivo/i }).click();

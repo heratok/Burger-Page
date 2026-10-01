@@ -1,22 +1,18 @@
 import { test, expect } from '@playwright/test';
+import { TEST_RESTAURANT } from './test-fixture';
 
 test.describe('Inventory & Suppliers Theme Contrast E2E Suite', () => {
   test.beforeEach(async ({ page }) => {
-    await page.addInitScript(() => {
+    await page.addInitScript(({ testRest }) => {
       localStorage.setItem('burger_page_platform_v2', JSON.stringify({
         version: 2,
         superAdminPassword: 'admin',
         restaurants: [{
-          // Canonical backend tenant id (seed: 02_seed.sql maps slug 'rosto'
-          // to rest-1788579266608). The session tenant is bound to the real
-          // backend restaurantId, so the local envelope must use the same id
-          // or the session-bound activeRestaurant resolves to a fresh record
-          // without the fixtures below.
-          id: 'rest-1788579266608',
-          slug: 'rosto',
-          adminPassword: 'rosto',
+          id: testRest.id,
+          slug: testRest.slug,
+          adminPassword: testRest.password,
           isActive: true,
-          config: { name: 'Rosto Burger', tagline: 'Artesanal' },
+          config: { name: testRest.name, tagline: 'Artesanal' },
           suppliers: [{
             id: 'sup-1',
             name: 'Carnes Premium',
@@ -29,9 +25,9 @@ test.describe('Inventory & Suppliers Theme Contrast E2E Suite', () => {
           customers: []
         }]
       }));
-      localStorage.setItem('burger_page_active_rest_v2', 'rest-1788579266608');
+      localStorage.setItem('burger_page_active_rest_v2', testRest.id);
       localStorage.setItem('burger_page_admin_theme_v2', 'light');
-    });
+    }, { testRest: TEST_RESTAURANT });
 
     await page.route('**/api/restaurants', async (route) => {
       await route.fulfill({
@@ -39,12 +35,12 @@ test.describe('Inventory & Suppliers Theme Contrast E2E Suite', () => {
         contentType: 'application/json',
         body: JSON.stringify([
           {
-            id: 'rest-1788579266608',
-            slug: 'rosto',
-            name: 'Rosto Burger',
-            adminPassword: 'rosto',
+            id: TEST_RESTAURANT.id,
+            slug: TEST_RESTAURANT.slug,
+            name: TEST_RESTAURANT.name,
+            adminPassword: TEST_RESTAURANT.password,
             isActive: true,
-            config: { name: 'Rosto Burger', tagline: 'Artesanal' },
+            config: { name: TEST_RESTAURANT.name, tagline: 'Artesanal' },
           },
         ]),
       });
@@ -77,11 +73,11 @@ test.describe('Inventory & Suppliers Theme Contrast E2E Suite', () => {
     // 1. Fill username and password
     const userInput = page.getByPlaceholder(/Tu nombre de usuario/i);
     await expect(userInput).toBeVisible();
-    await userInput.fill('admin_rosto');
+    await userInput.fill(TEST_RESTAURANT.username);
 
     const passwordInput = page.locator('input[type="password"]');
     await expect(passwordInput).toBeVisible();
-    await passwordInput.fill('rosto');
+    await passwordInput.fill(TEST_RESTAURANT.password);
 
     await page.getByRole('button', { name: /Acceder al Panel/i }).click();
 

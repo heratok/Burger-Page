@@ -1,12 +1,34 @@
-import { Restaurant, OpeningHours } from '../../../domain/models/Restaurant.js';
+import type { WeeklySchedule } from '@burger-page/contracts';
+import { Restaurant } from '../../../domain/models/Restaurant.js';
 import { RestaurantRepository } from '../../../domain/ports/out/RestaurantRepository.js';
+import { ID_PREFIX, newId } from '../../../domain/shared/newId.js';
+import {
+  DEFAULT_TIMEZONE,
+  legacyHoursText,
+  legacyOpeningHours,
+  sortSchedule,
+} from '../../../domain/shared/restaurantSchedule.js';
 import { withTenantContext } from './PgClient.js';
+
+// The read query aggregates restaurant_opening_hours into a JSON array; the
+// pg driver already parses it, a string only shows up with other adapters.
+function parseSchedule(raw: unknown): WeeklySchedule {
+  let value = raw;
+  if (typeof value === 'string') {
+    try {
+      value = JSON.parse(value);
+    } catch {
+      return [];
+    }
+  }
+  return Array.isArray(value) ? sortSchedule(value as WeeklySchedule) : [];
+}
 
 export function mapRow(row: any): Restaurant {
   const theme = row.bg_theme || 'dark-charcoal';
-  const openTime = row.open_time ? String(row.open_time).substring(0, 5) : '12:00';
-  const closeTime = row.close_time ? String(row.close_time).substring(0, 5) : '22:30';
-  const openingHours: OpeningHours = { open: openTime, close: closeTime };
+  const schedule = parseSchedule(row.schedule);
+  const timezone: string = row.timezone || DEFAULT_TIMEZONE;
+  const openingHours = legacyOpeningHours(schedule, timezone);
 
   let categories: string[] = [];
   if (Array.isArray(row.categories)) {
@@ -31,6 +53,9 @@ export function mapRow(row: any): Restaurant {
     whatsappNumber: row.whatsapp_number || undefined,
     primaryColor: row.primary_color || '#E63946',
     theme,
+    schedule,
+    timezone,
+    ordersPaused: Boolean(row.orders_paused),
     openingHours,
     isActive: row.is_active !== undefined ? Boolean(row.is_active) : true,
     categories,
@@ -48,9 +73,9 @@ export function mapRow(row: any): Restaurant {
       deliveryFee: Number(row.delivery_fee) || 0,
       minOrderAmount: Number(row.min_order_amount) || 0,
       estimatedDeliveryTime: row.estimated_delivery_time || '30 - 45 min',
-      // The HTTP contract exposes the hours as a "HH:MM - HH:MM" string; it is
-      // derived from open_time/close_time, the single stored source.
-      openingHours: `${openTime} - ${closeTime}`,
+      // Legacy "HH:MM - HH:MM" text, a read-only projection of the weekly
+      // schedule (restaurant_opening_hours is the single stored source).
+      openingHours: legacyHoursText(openingHours),
       address: row.address || '',
       primaryColor: row.primary_color || '#E63946',
       primaryHoverColor: row.primary_hover_color || '#F25C69',
@@ -65,37 +90,11 @@ export function mapRow(row: any): Restaurant {
   };
 }
 
-const HOURS_TEXT_PATTERN = /^\s*(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})\s*$/;
-
-function toTimeColumn(hhmm: string): string {
-  const [h, m] = hhmm.split(':');
-  return `${h.padStart(2, '0')}:${m}:00`;
-}
-
-/**
- * Resolves the open_time/close_time columns, the single stored source of the
- * opening hours. A parseable "HH:MM - HH:MM" hours text (the value the admin
- * edits) wins over the structured hours; a free-form text or no text falls
- * back to the structured hours (free-form text is not stored anywhere).
- */
-function resolveOpeningTimes(restaurant: Restaurant): { openTime: string; closeTime: string } {
-  const match = typeof restaurant.config?.openingHours === 'string'
-    ? HOURS_TEXT_PATTERN.exec(restaurant.config.openingHours)
-    : null;
-  if (match) {
-    return { openTime: toTimeColumn(match[1]), closeTime: toTimeColumn(match[2]) };
-  }
-  return {
-    openTime: restaurant.openingHours?.open ? `${restaurant.openingHours.open}:00` : '12:00:00',
-    closeTime: restaurant.openingHours?.close ? `${restaurant.openingHours.close}:00` : '22:30:00',
-  };
-}
-
 const RESTAURANT_READ_COLUMNS = `
   SELECT r.id, r.slug, r.name, r.tagline, r.whatsapp_number, r.address, r.is_active,
          r.created_at,
          s.currency, s.currency_symbol, s.delivery_fee, s.min_order_amount,
-         s.estimated_delivery_time, s.open_time, s.close_time,
+         s.estimated_delivery_time, s.timezone, s.orders_paused,
          s.announcement_text, s.show_announcement,
          b.logo_url, b.banner_url, b.show_banner, b.primary_color, b.primary_hover_color,
          b.bg_theme, b.font_family, b.card_radius, b.card_style, b.compact_grid, b.show_badges,
@@ -104,7 +103,19 @@ const RESTAURANT_READ_COLUMNS = `
             FROM public.categories c
             WHERE c.restaurant_id = r.id AND c.is_active = true),
            '[]'::json
-         ) AS categories
+         ) AS categories,
+         COALESCE(
+           (SELECT json_agg(
+                     json_build_object(
+                       'dayOfWeek', h.day_of_week,
+                       'open', to_char(h.open_time, 'HH24:MI'),
+                       'close', to_char(h.close_time, 'HH24:MI')
+                     )
+                     ORDER BY h.day_of_week ASC, h.open_time ASC)
+            FROM public.restaurant_opening_hours h
+            WHERE h.restaurant_id = r.id),
+           '[]'::json
+         ) AS schedule
   FROM public.restaurants r
   LEFT JOIN public.restaurant_settings s ON s.restaurant_id = r.id
   LEFT JOIN public.restaurant_branding b ON b.restaurant_id = r.id
@@ -152,6 +163,18 @@ export class PgRestaurantRepository implements RestaurantRepository {
     );
   }
 
+  // The weekly schedule is config, not history: it is replaced wholesale.
+  private async replaceSchedule(client: any, restaurantId: string, schedule: WeeklySchedule): Promise<void> {
+    await client.query('DELETE FROM public.restaurant_opening_hours WHERE restaurant_id = $1', [restaurantId]);
+    for (const range of sortSchedule(schedule)) {
+      await client.query(
+        `INSERT INTO public.restaurant_opening_hours (id, restaurant_id, day_of_week, open_time, close_time)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [newId(ID_PREFIX.openingHours), restaurantId, range.dayOfWeek, range.open, range.close]
+      );
+    }
+  }
+
   async save(restaurant: Restaurant): Promise<void> {
     const slug =
       restaurant.slug?.trim() ||
@@ -159,7 +182,6 @@ export class PgRestaurantRepository implements RestaurantRepository {
       restaurant.id;
     const now = new Date().toISOString();
     const cfg = restaurant.config || {};
-    const { openTime, closeTime } = resolveOpeningTimes(restaurant);
 
     // Identidad del tenant (restaurants)
     const identity: Record<string, unknown> = {
@@ -183,8 +205,8 @@ export class PgRestaurantRepository implements RestaurantRepository {
     if (cfg.deliveryFee !== undefined) settings.delivery_fee = cfg.deliveryFee;
     if (cfg.minOrderAmount !== undefined) settings.min_order_amount = cfg.minOrderAmount;
     if (cfg.estimatedDeliveryTime !== undefined) settings.estimated_delivery_time = cfg.estimatedDeliveryTime;
-    settings.open_time = openTime;
-    settings.close_time = closeTime;
+    settings.timezone = restaurant.timezone || DEFAULT_TIMEZONE;
+    settings.orders_paused = Boolean(restaurant.ordersPaused);
     if (cfg.announcementText !== undefined) settings.announcement_text = cfg.announcementText || null;
     if (cfg.showAnnouncement !== undefined) settings.show_announcement = cfg.showAnnouncement;
 
@@ -206,6 +228,7 @@ export class PgRestaurantRepository implements RestaurantRepository {
       await this.upsert(client, 'public.restaurants', identity);
       await this.upsert(client, 'public.restaurant_settings', settings);
       await this.upsert(client, 'public.restaurant_branding', branding);
+      await this.replaceSchedule(client, restaurant.id, restaurant.schedule ?? []);
     });
   }
 

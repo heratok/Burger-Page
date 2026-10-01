@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { TEST_RESTAURANT } from './test-fixture';
 
 test.describe('Live DB Multi-Tenant Lifecycle, Mobile Storefront & CRM Persistence', () => {
   const timestamp = Date.now().toString().slice(-5);
@@ -7,7 +8,7 @@ test.describe('Live DB Multi-Tenant Lifecycle, Mobile Storefront & CRM Persisten
   const testUsername = `e2e_admin_${timestamp}`;
   const testPassword = `PassFusion_${timestamp}!`;
 
-  test('Full Multi-Tenant Lifecycle: Super Admin Provisioning -> Tenant Setup -> Mobile Storefront Ordering -> Kanban & DB Persistence -> Safe Cleanup', async ({ browser }) => {
+  test('Full Multi-Tenant Lifecycle: Super Admin Provisioning -> Tenant Setup -> Mobile Storefront Ordering -> Kanban & DB Persistence -> Safe Cleanup', async ({ browser, request }) => {
     test.setTimeout(120000);
 
     // =========================================================================
@@ -60,6 +61,23 @@ test.describe('Live DB Multi-Tenant Lifecycle, Mobile Storefront & CRM Persisten
       restModal.getByRole('button', { name: /Crear Restaurante/i }).click(),
     ]);
     expect(createRestResponse.status()).toBe(201);
+
+    // New restaurants default to 12:00-22:30 (Bogota). This spec orders from the
+    // storefront at any time of day, so open the new restaurant 24/7 and keep it
+    // independent of the wall clock.
+    const createdRestaurant = await createRestResponse.json();
+    const adminLogin = await request.post('http://localhost:3001/api/users/login', {
+      data: { username: 'admin', password: 'admin' },
+    });
+    expect(adminLogin.status()).toBe(200);
+    const { token: adminToken } = await adminLogin.json();
+    const openAllDay = await request.put(`http://localhost:3001/api/restaurants/${createdRestaurant.id}`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+      data: {
+        schedule: [0, 1, 2, 3, 4, 5, 6].map((dayOfWeek) => ({ dayOfWeek, open: '00:00', close: '00:00' })),
+      },
+    });
+    expect(openAllDay.status()).toBe(200);
     await expect(restModal).not.toBeVisible({ timeout: 10000 });
 
     // Verify restaurant is created and listed in directory table
@@ -81,7 +99,7 @@ test.describe('Live DB Multi-Tenant Lifecycle, Mobile Storefront & CRM Persisten
     await expect(userModal).toBeVisible();
 
     // Fill Create User Form
-    await userModal.locator('input[placeholder*="admin_rosto" i]').fill(testUsername);
+    await userModal.locator('input[placeholder*="admin_" i]').fill(testUsername);
     await userModal.locator('input[type="password"]').fill(testPassword);
 
     // Select restaurant in modal dropdown
@@ -294,7 +312,7 @@ test.describe('Live DB Multi-Tenant Lifecycle, Mobile Storefront & CRM Persisten
 
     // Strict safety check: Never delete default or production tenants
     expect(testRestSlug).toMatch(/^e2e-fusion-\d+$/);
-    expect(testRestSlug).not.toBe('rosto');
+    expect(testRestSlug).not.toBe(TEST_RESTAURANT.slug);
     expect(testRestSlug).not.toBe('craft-staging');
     expect(testRestSlug).not.toBe('burger-craft');
 

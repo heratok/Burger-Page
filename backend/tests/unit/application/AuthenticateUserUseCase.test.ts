@@ -14,10 +14,10 @@ import type { User } from '../../../src/domain/models/User.js';
 describe('AuthenticateUserUseCase (login bootstrap contract)', () => {
   const storedUser: User = {
     id: 'u1',
-    username: 'admin_rosto',
+    username: 'admin_pruebas',
     passwordHash: 'hashed_password',
     role: 'restaurant_admin',
-    restaurantId: 'rosto',
+    restaurantId: 'tienda-pruebas',
     createdAt: new Date().toISOString(),
     isActive: true,
   };
@@ -40,53 +40,53 @@ describe('AuthenticateUserUseCase (login bootstrap contract)', () => {
   it('authenticates the single matching username and never returns passwordHash', async () => {
     const useCase = new AuthenticateUserUseCase(userRepo, hasher);
 
-    const result = await useCase.execute('admin_rosto', 'securePass123');
+    const result = await useCase.execute('admin_pruebas', 'securePass123');
 
     expect(result.success).toBe(true);
     expect(result.user).toMatchObject({
       id: 'u1',
-      username: 'admin_rosto',
+      username: 'admin_pruebas',
       role: 'restaurant_admin',
-      restaurantId: 'rosto',
+      restaurantId: 'tienda-pruebas',
     });
     expect((result.user as any).passwordHash).toBeUndefined();
-    expect(userRepo.findByUsername).toHaveBeenCalledWith('admin_rosto');
+    expect(userRepo.findByUsername).toHaveBeenCalledWith('admin_pruebas');
     expect(hasher.verify).toHaveBeenCalledWith('securePass123', 'hashed_password');
   });
 
   it('falls back to the admin_ prefix lookup when the raw username has no match', async () => {
     vi.mocked(userRepo.findByUsername).mockImplementation(async (u) =>
-      u === 'admin_rosto' ? storedUser : null
+      u === 'admin_pruebas' ? storedUser : null
     );
     const useCase = new AuthenticateUserUseCase(userRepo, hasher);
 
-    const result = await useCase.execute('rosto', 'securePass123');
+    const result = await useCase.execute('pruebas', 'securePass123');
 
     expect(result.success).toBe(true);
-    expect(result.user?.username).toBe('admin_rosto');
-    expect(userRepo.findByUsername).toHaveBeenNthCalledWith(1, 'rosto');
-    expect(userRepo.findByUsername).toHaveBeenNthCalledWith(2, 'admin_rosto');
+    expect(result.user?.username).toBe('admin_pruebas');
+    expect(userRepo.findByUsername).toHaveBeenNthCalledWith(1, 'pruebas');
+    expect(userRepo.findByUsername).toHaveBeenNthCalledWith(2, 'admin_pruebas');
   });
 
   it('falls back to the restaurant-identifier lookup for rest- prefixed logins', async () => {
     vi.mocked(userRepo.findByUsername).mockResolvedValue(null);
     vi.mocked(userRepo.findByRestaurantId).mockImplementation(async (id) =>
-      id === 'rosto' ? [storedUser] : []
+      id === 'tienda-pruebas' ? [storedUser] : []
     );
     const useCase = new AuthenticateUserUseCase(userRepo, hasher);
 
-    const result = await useCase.execute('rosto', 'securePass123');
+    const result = await useCase.execute('tienda-pruebas', 'securePass123');
 
     expect(result.success).toBe(true);
-    expect(result.user?.restaurantId).toBe('rosto');
-    expect(userRepo.findByRestaurantId).toHaveBeenCalledWith('rosto');
+    expect(result.user?.restaurantId).toBe('tienda-pruebas');
+    expect(userRepo.findByRestaurantId).toHaveBeenCalledWith('tienda-pruebas');
   });
 
   it('rejects an inactive account without reaching the password check', async () => {
     vi.mocked(userRepo.findByUsername).mockResolvedValue({ ...storedUser, isActive: false });
     const useCase = new AuthenticateUserUseCase(userRepo, hasher);
 
-    await expect(useCase.execute('admin_rosto', 'securePass123')).rejects.toThrow(UnauthorizedError);
+    await expect(useCase.execute('admin_pruebas', 'securePass123')).rejects.toThrow(UnauthorizedError);
     expect(hasher.verify).not.toHaveBeenCalled();
   });
 
@@ -94,7 +94,7 @@ describe('AuthenticateUserUseCase (login bootstrap contract)', () => {
     vi.mocked(hasher.verify).mockResolvedValue(false);
     const useCase = new AuthenticateUserUseCase(userRepo, hasher);
 
-    await expect(useCase.execute('admin_rosto', 'wrongPassword')).rejects.toThrow(UnauthorizedError);
+    await expect(useCase.execute('admin_pruebas', 'wrongPassword')).rejects.toThrow(UnauthorizedError);
   });
 
   it('rejects an unknown credential after trying every lookup fallback', async () => {

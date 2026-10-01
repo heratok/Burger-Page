@@ -22,8 +22,10 @@ export function createSqliteDatabase(dbPath = ':memory:'): Database {
       name TEXT NOT NULL,
       tagline TEXT,
       config TEXT NOT NULL,
-      opening_hours TEXT NOT NULL,
+      opening_hours TEXT NOT NULL, -- JSON weekly schedule (legacy rows hold {open, close})
       categories TEXT,
+      timezone TEXT NOT NULL DEFAULT 'America/Bogota',
+      orders_paused INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL
     );
 
@@ -133,6 +135,12 @@ export function createSqliteDatabase(dbPath = ':memory:'): Database {
   const hasCategories = restaurantColumns.some(c => c.name === 'categories');
   if (!hasCategories) {
     db.exec("ALTER TABLE restaurants ADD COLUMN categories TEXT");
+  }
+  if (!restaurantColumns.some(c => c.name === 'timezone')) {
+    db.exec("ALTER TABLE restaurants ADD COLUMN timezone TEXT NOT NULL DEFAULT 'America/Bogota'");
+  }
+  if (!restaurantColumns.some(c => c.name === 'orders_paused')) {
+    db.exec("ALTER TABLE restaurants ADD COLUMN orders_paused INTEGER NOT NULL DEFAULT 0");
   }
 
   return db;

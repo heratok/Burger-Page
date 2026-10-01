@@ -1,6 +1,30 @@
 import { Database } from 'better-sqlite3';
+import type { WeeklySchedule } from '@burger-page/contracts';
 import { Restaurant } from '../../../domain/models/Restaurant.js';
 import { RestaurantRepository } from '../../../domain/ports/out/RestaurantRepository.js';
+import {
+  DEFAULT_TIMEZONE,
+  defaultWeeklySchedule,
+  everyDaySchedule,
+  legacyOpeningHours,
+  sortSchedule,
+} from '../../../domain/shared/restaurantSchedule.js';
+
+// opening_hours holds the JSON weekly schedule. Rows written before the weekly
+// schedule existed hold a single {open, close} object, which applies to every day.
+function parseSchedule(raw: unknown): WeeklySchedule {
+  if (typeof raw !== 'string' || raw === '') return defaultWeeklySchedule();
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return sortSchedule(parsed as WeeklySchedule);
+    if (parsed && typeof parsed.open === 'string' && typeof parsed.close === 'string') {
+      return everyDaySchedule(parsed.open, parsed.close);
+    }
+  } catch {
+    // fall through to the default
+  }
+  return defaultWeeklySchedule();
+}
 
 export class SqliteRestaurantRepository implements RestaurantRepository {
   constructor(private db: Database) {}
@@ -16,14 +40,8 @@ export class SqliteRestaurantRepository implements RestaurantRepository {
       }
     }
 
-    let openingHours = { open: '12:00', close: '22:30' };
-    if (row.opening_hours) {
-      try {
-        openingHours = JSON.parse(row.opening_hours);
-      } catch {
-        // use default
-      }
-    }
+    const schedule = parseSchedule(row.opening_hours);
+    const timezone: string = row.timezone || DEFAULT_TIMEZONE;
 
     let categories: string[] = [];
     if (row.categories) {
@@ -39,7 +57,10 @@ export class SqliteRestaurantRepository implements RestaurantRepository {
       slug: row.slug,
       name: row.name,
       theme,
-      openingHours,
+      schedule,
+      timezone,
+      ordersPaused: Boolean(row.orders_paused),
+      openingHours: legacyOpeningHours(schedule, timezone),
       isActive: true,
       categories,
     };
@@ -69,14 +90,16 @@ export class SqliteRestaurantRepository implements RestaurantRepository {
       restaurant.id;
 
     const stmt = this.db.prepare(`
-      INSERT INTO restaurants (id, slug, name, tagline, config, opening_hours, categories, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO restaurants (id, slug, name, tagline, config, opening_hours, categories, timezone, orders_paused, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         slug = excluded.slug,
         name = excluded.name,
         config = excluded.config,
         opening_hours = excluded.opening_hours,
-        categories = excluded.categories
+        categories = excluded.categories,
+        timezone = excluded.timezone,
+        orders_paused = excluded.orders_paused
     `);
 
     stmt.run(
@@ -85,8 +108,10 @@ export class SqliteRestaurantRepository implements RestaurantRepository {
       restaurant.name,
       restaurant.tagline || 'Cocina artesanal',
       JSON.stringify(restaurant.config || { bgTheme: restaurant.theme, theme: restaurant.theme }),
-      JSON.stringify(restaurant.openingHours),
+      JSON.stringify(sortSchedule(restaurant.schedule ?? [])),
       JSON.stringify(restaurant.categories || []),
+      restaurant.timezone || DEFAULT_TIMEZONE,
+      restaurant.ordersPaused ? 1 : 0,
       restaurant.createdAt || new Date().toISOString()
     );
   }

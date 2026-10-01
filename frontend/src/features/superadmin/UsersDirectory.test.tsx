@@ -73,9 +73,9 @@ describe("UsersDirectory - Super Admin User Management (TDD)", () => {
       },
       {
         id: "usr-2",
-        username: "rosto_chef",
+        username: "chef_pruebas",
         role: "restaurant_admin",
-        restaurantId: "rosto",
+        restaurantId: "tienda-pruebas",
         createdAt: "2026-08-05T12:00:00Z",
       },
     ]
@@ -90,13 +90,13 @@ describe("UsersDirectory - Super Admin User Management (TDD)", () => {
 
     await waitFor(() => {
       expect(screen.getByText("super_admin")).toBeDefined()
-      expect(screen.getByText("rosto_chef")).toBeDefined()
+      expect(screen.getByText("chef_pruebas")).toBeDefined()
     })
 
     const searchInput = screen.getByPlaceholderText(/Buscar por nombre de usuario/i)
-    fireEvent.change(searchInput, { target: { value: "rosto" } })
+    fireEvent.change(searchInput, { target: { value: "chef" } })
 
-    expect(screen.getByText("rosto_chef")).toBeDefined()
+    expect(screen.getByText("chef_pruebas")).toBeDefined()
     expect(screen.queryByText("super_admin")).toBeNull()
   })
 

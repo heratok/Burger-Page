@@ -592,5 +592,83 @@ describe('Restaurant API & Multi-Tenant Security (Integration)', () => {
       expect(getRes.json().isActive).toBe(true);
     });
   });
+  describe('opening schedule, timezone and paused flag (store-opening-hours T2)', () => {
+    const authHeader = () => ({ authorization: `Bearer ${tokenRestaurantAdmin}` });
+    const weekly = [
+      { dayOfWeek: 1, open: '12:00', close: '14:30' },
+      { dayOfWeek: 1, open: '18:00', close: '02:00' },
+      { dayOfWeek: 6, open: '10:00', close: '23:00' },
+    ];
+    const put = (payload: unknown) =>
+      app.inject({ method: 'PUT', url: '/api/restaurants/burger-craft', headers: authHeader(), payload: payload as any });
+
+    afterAll(async () => {
+      await put({ schedule: [0, 1, 2, 3, 4, 5, 6].map((dayOfWeek) => ({ dayOfWeek, open: '00:00', close: '00:00' })), timezone: 'America/Bogota', ordersPaused: false });
+    });
+
+    it('the public storefront projection exposes schedule, timezone, ordersPaused and the legacy openingHours', async () => {
+      for (const url of ['/api/restaurants/burger-craft', '/api/restaurant/burger-craft']) {
+        const res = await app.inject({ method: 'GET', url });
+        expect(res.statusCode, url).toBe(200);
+        const body = res.json();
+        expect(Array.isArray(body.schedule), url).toBe(true);
+        expect(body.schedule.length, url).toBeGreaterThan(0);
+        expect(Object.keys(body.schedule[0]).sort(), url).toEqual(['close', 'dayOfWeek', 'open']);
+        expect(body.timezone, url).toBe('America/Bogota');
+        expect(body.ordersPaused, url).toBe(false);
+        expect(body.openingHours, url).toEqual({ open: expect.any(String), close: expect.any(String) });
+      }
+    });
+
+    it('a tenant admin saves schedule, timezone and the paused flag and the public GET reflects them', async () => {
+      const res = await put({ schedule: weekly, timezone: 'America/Mexico_City', ordersPaused: true });
+      expect(res.statusCode).toBe(200);
+      expect(res.json().schedule).toEqual(weekly);
+      expect(res.json().timezone).toBe('America/Mexico_City');
+      expect(res.json().ordersPaused).toBe(true);
+
+      const pub = (await app.inject({ method: 'GET', url: '/api/restaurants/burger-craft' })).json();
+      expect(pub.schedule).toEqual(weekly);
+      expect(pub.timezone).toBe('America/Mexico_City');
+      expect(pub.ordersPaused).toBe(true);
+    });
+
+    it('an empty schedule is accepted (closed every day) and drops the legacy openingHours', async () => {
+      const res = await put({ schedule: [] });
+      expect(res.statusCode).toBe(200);
+      expect(res.json().schedule).toEqual([]);
+      expect(res.json().openingHours).toBeUndefined();
+    });
+
+    it.each([
+      ['an unknown timezone', { timezone: 'Mars/Olympus' }],
+      ['a weekday above 6', { schedule: [{ dayOfWeek: 7, open: '09:00', close: '17:00' }] }],
+      ['a negative weekday', { schedule: [{ dayOfWeek: -1, open: '09:00', close: '17:00' }] }],
+      ['an opening time that is not HH:MM', { schedule: [{ dayOfWeek: 1, open: '9am', close: '17:00' }] }],
+      ['an out-of-range closing time', { schedule: [{ dayOfWeek: 1, open: '09:00', close: '24:30' }] }],
+      ['two ranges starting at the same time', { schedule: [
+        { dayOfWeek: 1, open: '09:00', close: '12:00' },
+        { dayOfWeek: 1, open: '09:00', close: '15:00' },
+      ] }],
+      ['a non-boolean paused flag', { ordersPaused: 'yes' }],
+    ])('PUT with %s is rejected with 400', async (_label, payload) => {
+      const before = (await app.inject({ method: 'GET', url: '/api/restaurants/burger-craft' })).json();
+      const res = await put(payload);
+      expect(res.statusCode).toBe(400);
+      const after = (await app.inject({ method: 'GET', url: '/api/restaurants/burger-craft' })).json();
+      expect(after.schedule).toEqual(before.schedule);
+      expect(after.timezone).toBe(before.timezone);
+    });
+
+    it('an older client sending only the legacy "HH:MM - HH:MM" text still updates the hours of every weekday', async () => {
+      const res = await put({ config: { openingHours: '11:00 - 23:00' } });
+      expect(res.statusCode).toBe(200);
+      expect(res.json().schedule).toHaveLength(7);
+      expect(res.json().schedule.every((r: any) => r.open === '11:00' && r.close === '23:00')).toBe(true);
+      expect(res.json().config.openingHours).toBe('11:00 - 23:00');
+      expect(res.json().openingHours).toEqual({ open: '11:00', close: '23:00' });
+    });
+  });
+
 });
 

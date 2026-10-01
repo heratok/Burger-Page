@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { realLogoJpg, realBannerPng } from './branding-assets.js';
+import { TEST_RESTAURANT } from './test-fixture';
 
 test.describe('Admin Image & Branding CRUD Full Suite', () => {
 
@@ -7,7 +8,7 @@ test.describe('Admin Image & Branding CRUD Full Suite', () => {
     page.on('console', (msg) => console.log(`[BROWSER ${msg.type()}]: ${msg.text()}`));
     page.on('pageerror', (err) => console.error(`[PAGEERROR]: ${err.message}`));
 
-    // Clear storage and log in as rosto admin
+    // Clear storage and log in as test restaurant admin
     await page.goto('/');
     await page.evaluate(() => {
       localStorage.clear();
@@ -17,10 +18,10 @@ test.describe('Admin Image & Branding CRUD Full Suite', () => {
 
     const userInput = page.getByPlaceholder(/Tu nombre de usuario/i);
     await expect(userInput).toBeVisible({ timeout: 10000 });
-    await userInput.fill('rosto');
+    await userInput.fill(TEST_RESTAURANT.username);
 
     const passwordInput = page.locator('input[type="password"]');
-    await passwordInput.fill('rosto0502');
+    await passwordInput.fill(TEST_RESTAURANT.password);
 
     await Promise.all([
       page.waitForResponse((resp) => resp.url().includes('/api/users/login') && resp.status() === 200),

@@ -87,9 +87,9 @@ describe('Auth Middleware & JWT Suite', () => {
   it('rechaza con 403 en ruta super_admin si el usuario es restaurant_admin', async () => {
     const token = jwtService.generateToken({
       id: 'usr-2',
-      username: 'manager_rosto',
+      username: 'manager_pruebas',
       role: 'restaurant_admin',
-      restaurantId: 'rest-rosto',
+      restaurantId: 'rest-pruebas',
     });
 
     const res = await app.inject({

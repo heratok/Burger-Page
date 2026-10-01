@@ -23,10 +23,10 @@ export async function userRoutes(
         type: 'object',
         required: ['username', 'password', 'role'],
         properties: {
-          username: { type: 'string', minLength: 1, example: 'admin_rosto' },
+          username: { type: 'string', minLength: 1, example: 'admin_local' },
           password: { type: 'string', minLength: 6, example: 'securePass123' },
           role: { type: 'string', enum: ['super_admin', 'restaurant_admin'], example: 'restaurant_admin' },
-          restaurantId: { type: 'string', example: 'rosto' },
+          restaurantId: { type: 'string', example: 'tienda-pruebas' },
         },
       },
       response: {
@@ -54,7 +54,7 @@ export async function userRoutes(
         type: 'object',
         required: ['username', 'password'],
         properties: {
-          username: { type: 'string', example: 'admin_rosto' },
+          username: { type: 'string', example: 'admin_local' },
           password: { type: 'string', example: 'securePass123' },
         },
       },

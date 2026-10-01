@@ -5,6 +5,9 @@ import {
   updateOrderStatusSchema,
   orderEventSchema,
   updateCustomerSchema,
+  updateRestaurantSchema,
+  createRestaurantSchema,
+  restaurantDTOSchema,
 } from './index.js';
 
 describe('@burger-page/contracts', () => {
@@ -71,5 +74,41 @@ describe('@burger-page/contracts', () => {
     };
     const result = orderEventSchema.safeParse(validEvent);
     expect(result.success).toBe(true);
+  });
+});
+
+describe('restaurant schedule contracts', () => {
+  const base = { name: 'Tienda de Pruebas', slug: 'tienda-pruebas' };
+
+  it('accepts schedule, timezone and ordersPaused on create/update', () => {
+    const payload = {
+      schedule: [{ dayOfWeek: 1, open: '12:00', close: '22:30' }],
+      timezone: 'America/Bogota',
+      ordersPaused: true,
+    };
+    expect(createRestaurantSchema.safeParse({ ...base, ...payload }).success).toBe(true);
+    expect(updateRestaurantSchema.safeParse(payload).success).toBe(true);
+    expect(updateRestaurantSchema.safeParse({ schedule: [] }).success).toBe(true);
+  });
+
+  it('rejects an invalid timezone, day of week or time', () => {
+    expect(updateRestaurantSchema.safeParse({ timezone: 'Mars/Olympus' }).success).toBe(false);
+    expect(updateRestaurantSchema.safeParse({ schedule: [{ dayOfWeek: 9, open: '12:00', close: '22:30' }] }).success).toBe(false);
+    expect(updateRestaurantSchema.safeParse({ schedule: [{ dayOfWeek: 1, open: '7pm', close: '22:30' }] }).success).toBe(false);
+    expect(updateRestaurantSchema.safeParse({ ordersPaused: 'yes' }).success).toBe(false);
+  });
+
+  it('restaurantDTOSchema carries schedule, timezone and ordersPaused', () => {
+    const parsed = restaurantDTOSchema.parse({
+      id: 'rest_1',
+      slug: 'tienda-pruebas',
+      name: 'Tienda de Pruebas',
+      schedule: [{ dayOfWeek: 0, open: '12:00', close: '22:30' }],
+      timezone: 'America/Bogota',
+      ordersPaused: false,
+    });
+    expect(parsed.schedule).toHaveLength(1);
+    expect(parsed.timezone).toBe('America/Bogota');
+    expect(parsed.ordersPaused).toBe(false);
   });
 });

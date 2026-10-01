@@ -15,9 +15,9 @@ describe("InventoryManager - Theme Contrast and Supplier Notes Legibility (TDD)"
     cleanup()
   })
 
-  it("renders supplier notes and contact details with high contrast in Light Mode for 'rosto'", async () => {
+  it("renders supplier notes and contact details with high contrast in Light Mode for 'tienda-pruebas'", async () => {
     localStorage.setItem("burger_page_admin_theme_v2", "light")
-    localStorage.setItem("burger_page_active_rest_v2", "rosto")
+    localStorage.setItem("burger_page_active_rest_v2", "rest_e2e_fixture")
 
     render(
       <RestaurantProvider>
@@ -49,9 +49,9 @@ describe("InventoryManager - Theme Contrast and Supplier Notes Legibility (TDD)"
     expect(phoneElement.className).toMatch(/text-slate-800|text-slate-900/)
   })
 
-  it("renders supplier notes and contact details with correct dark styling in Dark Mode for 'rosto'", async () => {
+  it("renders supplier notes and contact details with correct dark styling in Dark Mode for 'tienda-pruebas'", async () => {
     localStorage.setItem("burger_page_admin_theme_v2", "dark")
-    localStorage.setItem("burger_page_active_rest_v2", "rosto")
+    localStorage.setItem("burger_page_active_rest_v2", "rest_e2e_fixture")
 
     render(
       <RestaurantProvider>

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { TEST_RESTAURANT } from './test-fixture';
 
 test.describe('Order Deletion & Persistence E2E Suite', () => {
   test.describe.configure({ mode: 'serial' });
@@ -7,7 +8,7 @@ test.describe('Order Deletion & Persistence E2E Suite', () => {
   test.beforeAll(async ({ request }) => {
     const API_BASE = 'http://localhost:3001/api'
     const loginRes = await request.post(`${API_BASE}/users/login`, {
-      data: { username: 'rosto', password: 'rosto0502' },
+      data: { username: TEST_RESTAURANT.username, password: TEST_RESTAURANT.password },
     })
     expect(loginRes.status()).toBe(200)
     const { token, user } = await loginRes.json()
@@ -71,18 +72,18 @@ test.describe('Order Deletion & Persistence E2E Suite', () => {
     expect(orderBRes.status()).toBe(201)
   })
 
-  test('logs in as rosto admin, deletes an order via modal, verifies DB deletion and persistence after reload', async ({ page }) => {
+  test('logs in as test restaurant admin, deletes an order via modal, verifies DB deletion and persistence after reload', async ({ page }) => {
     test.setTimeout(60000);
 
     // 1. Navigate to /admin
     await page.goto('/admin');
 
-    // 2. Fill login credentials as rosto / rosto0502
+    // 2. Fill login credentials
     const userInput = page.locator('input#username, input[placeholder*="usuario" i], input[type="text"]').first();
     const passInput = page.locator('input#password, input[type="password"]').first();
     await expect(userInput).toBeVisible({ timeout: 10000 });
-    await userInput.fill('rosto');
-    await passInput.fill('rosto0502');
+    await userInput.fill(TEST_RESTAURANT.username);
+    await passInput.fill(TEST_RESTAURANT.password);
 
     const submitBtn = page.locator('button[type="submit"]').first();
     await submitBtn.click();
@@ -194,8 +195,8 @@ test.describe('Order Deletion & Persistence E2E Suite', () => {
     const userInput = page.locator('input#username, input[placeholder*="usuario" i], input[type="text"]').first();
     const passInput = page.locator('input#password, input[type="password"]').first();
     await expect(userInput).toBeVisible({ timeout: 10000 });
-    await userInput.fill('rosto');
-    await passInput.fill('rosto0502');
+    await userInput.fill(TEST_RESTAURANT.username);
+    await passInput.fill(TEST_RESTAURANT.password);
 
     const submitBtn = page.locator('button[type="submit"]').first();
     await submitBtn.click();

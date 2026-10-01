@@ -131,13 +131,39 @@ describe("StorefrontCustomizer & Subcomponents (TDD Modularization)", () => {
       fireEvent.change(whatsappInput, { target: { value: "573110000000" } })
       expect(setDraft).toHaveBeenCalled()
 
-      const scheduleInput = screen.getByPlaceholderText("Mar - Dom: 12:00 PM - 10:30 PM") as HTMLInputElement
-      fireEvent.change(scheduleInput, { target: { value: "Lun - Sab: 11:00 AM - 11:00 PM" } })
-      expect(setDraft).toHaveBeenCalled()
+      // The free-text hours field is gone, replaced by the weekly editor
+      expect(screen.queryByPlaceholderText("Mar - Dom: 12:00 PM - 10:30 PM")).toBeNull()
+      fireEvent.change(screen.getByLabelText("Lunes apertura"), { target: { value: "11:00" } })
+      expect(draft.schedule.find((r) => r.dayOfWeek === 1)?.open).toBe("11:00")
 
       const addressInput = screen.getByPlaceholderText("Calle 45 # 22-18") as HTMLInputElement
       fireEvent.change(addressInput, { target: { value: "Carrera 7 # 100-20" } })
       expect(setDraft).toHaveBeenCalled()
+    })
+
+    it("toggles the orders pause and changes the timezone", () => {
+      let draft: StorefrontConfig = { ...DEFAULT_STORE_CONFIG }
+      const setDraft = vi.fn((updater) => {
+        draft = typeof updater === "function" ? updater(draft) : updater
+      })
+
+      render(<CustomizerBusinessSection draft={draft} setDraft={setDraft} />)
+
+      const pause = screen.getByRole("switch", { name: "Pausar pedidos" })
+      expect(pause.getAttribute("aria-checked")).toBe("false")
+      fireEvent.click(pause)
+      expect(draft.ordersPaused).toBe(true)
+
+      const tz = screen.getByLabelText("Zona horaria") as HTMLSelectElement
+      expect(tz.value).toBe("America/Bogota")
+      fireEvent.change(tz, { target: { value: "Europe/Madrid" } })
+      expect(draft.timezone).toBe("Europe/Madrid")
+    })
+
+    it("keeps an unknown current timezone selectable", () => {
+      const draft: StorefrontConfig = { ...DEFAULT_STORE_CONFIG, timezone: "Pacific/Auckland" }
+      render(<CustomizerBusinessSection draft={draft} setDraft={vi.fn()} />)
+      expect((screen.getByLabelText("Zona horaria") as HTMLSelectElement).value).toBe("Pacific/Auckland")
     })
   })
 

@@ -9,6 +9,7 @@ import { RestaurantRepository } from '../../domain/ports/out/RestaurantRepositor
 import { CustomerRepository } from '../../domain/ports/out/CustomerRepository.js';
 import { CreateOrderDTO } from '../dtos/index.js';
 import { EntityNotFoundError, ValidationError } from '../../domain/errors/DomainErrors.js';
+import { ORDER_CLOSED_ERROR_FRAGMENT, ORDER_PAUSED_ERROR_FRAGMENT, isOpenAt } from '@burger-page/contracts';
 
 export class CreateOrderUseCase {
   constructor(
@@ -16,12 +17,15 @@ export class CreateOrderUseCase {
     private readonly productRepo: ProductRepository,
     private readonly restaurantRepo: RestaurantRepository,
     private readonly additionRepo: ProductAdditionRepository,
-    private readonly customerRepo?: CustomerRepository
+    private readonly customerRepo?: CustomerRepository,
+    private readonly clock: () => Date = () => new Date()
   ) {}
 
   async execute(dto: CreateOrderDTO & { clientOrderId?: string }, opts: { authenticated?: boolean } = {}): Promise<Order> {
     const authenticated = Boolean(opts.authenticated);
     const restaurant = await this.validateAndGetRestaurant(dto.restaurantId);
+    // Staff manual sales (authenticated) bypass the storefront opening hours.
+    if (!authenticated) this.assertAcceptingOrders(restaurant);
     const validatedCustomerId = await this.resolveCustomerId(dto, restaurant, authenticated);
     const { validatedItems, calculatedSubtotal } = await this.validateAndCalculateItems(dto.items, restaurant);
 
@@ -71,6 +75,20 @@ export class CreateOrderUseCase {
     }
 
     return restaurant;
+  }
+
+  /**
+   * Public orders are only taken while the restaurant is open in its own
+   * timezone and has not paused orders. The messages embed the shared
+   * ORDER_*_ERROR_FRAGMENT constants so the storefront can recognize them.
+   */
+  private assertAcceptingOrders(restaurant: Restaurant): void {
+    if (restaurant.ordersPaused) {
+      throw new ValidationError(`El restaurante '${restaurant.name}' tiene los ${ORDER_PAUSED_ERROR_FRAGMENT}.`);
+    }
+    if (!isOpenAt(restaurant.schedule, this.clock(), restaurant.timezone)) {
+      throw new ValidationError(`El restaurante '${restaurant.name}' está ${ORDER_CLOSED_ERROR_FRAGMENT}.`);
+    }
   }
 
   private async resolveCustomerId(

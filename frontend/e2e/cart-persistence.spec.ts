@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { TEST_RESTAURANT } from './test-fixture';
 
 test.describe('Storefront Cart Persistence Across Page Reloads (CLI Suite)', () => {
   test.describe.configure({ mode: 'serial' });
@@ -12,7 +13,7 @@ test.describe('Storefront Cart Persistence Across Page Reloads (CLI Suite)', () 
   for (const vp of viewports) {
     test(`Persists cart, additions, and observations on reload at ${vp.name}`, async ({ page }) => {
       await page.setViewportSize({ width: vp.width, height: vp.height });
-      await page.goto('/rosto');
+      await page.goto(`/${TEST_RESTAURANT.slug}`);
       await page.waitForLoadState('domcontentloaded');
 
       // Clear any prior cart in this browser context

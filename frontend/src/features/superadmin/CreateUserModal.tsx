@@ -107,7 +107,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ isOpen, onClos
               maxLength={50}
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="Ej. admin_rosto"
+              placeholder="Ej. admin_local"
               className={inputClass}
             />
           </div>

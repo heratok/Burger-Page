@@ -70,28 +70,45 @@ describe('PgRestaurantRepository mapRow', () => {
   });
 });
 
-describe('PgRestaurantRepository mapRow - opening hours derived from the time columns (db-hardening-0008 T7)', () => {
-  it('derives config.openingHours from open_time/close_time', () => {
+describe('PgRestaurantRepository mapRow - weekly schedule (store-opening-hours T2)', () => {
+  const allWeek = [0, 1, 2, 3, 4, 5, 6].map((dayOfWeek) => ({ dayOfWeek, open: '09:00', close: '21:15' }));
+
+  it('maps the aggregated schedule, timezone and paused flag', () => {
     const r = mapRow({
       id: 'r', slug: 'r', name: 'R',
-      open_time: '09:00:00', close_time: '21:15:00',
+      schedule: allWeek, timezone: 'America/Mexico_City', orders_paused: true,
+    });
+    expect(r.schedule).toEqual(allWeek);
+    expect(r.timezone).toBe('America/Mexico_City');
+    expect(r.ordersPaused).toBe(true);
+  });
+
+  it('accepts the schedule as a JSON string', () => {
+    const r = mapRow({ id: 'r', slug: 'r', name: 'R', schedule: JSON.stringify(allWeek) });
+    expect(r.schedule).toEqual(allWeek);
+  });
+
+  it('derives the legacy openingHours object and config.openingHours text from the schedule', () => {
+    const r = mapRow({ id: 'r', slug: 'r', name: 'R', schedule: allWeek });
+    expect(r.openingHours).toEqual({ open: '09:00', close: '21:15' });
+    expect(r.config.openingHours).toBe('09:00 - 21:15');
+  });
+
+  it('ignores legacy open_time/close_time keys: the weekly table is the single source', () => {
+    const r = mapRow({
+      id: 'r', slug: 'r', name: 'R',
+      open_time: '01:00:00', close_time: '02:00:00', schedule: allWeek,
     });
     expect(r.config.openingHours).toBe('09:00 - 21:15');
-    expect(r.openingHours).toEqual({ open: '09:00', close: '21:15' });
   });
 
-  it('ignores a legacy opening_hours_text key: the time columns are the single source', () => {
-    const r = mapRow({
-      id: 'r', slug: 'r', name: 'R',
-      opening_hours_text: 'Lun-Vie 8am - 10pm',
-      open_time: '12:00:00', close_time: '22:30:00',
-    });
-    expect(r.config.openingHours).toBe('12:00 - 22:30');
-  });
-
-  it('falls back to the default hours when the time columns are null', () => {
-    const r = mapRow({ id: 'r', slug: 'r', name: 'R', open_time: null, close_time: null });
-    expect(r.config.openingHours).toBe('12:00 - 22:30');
+  it('defaults to Bogota, not paused and an empty (always closed) schedule when the columns are missing', () => {
+    const r = mapRow({ id: 'r', slug: 'r', name: 'R' });
+    expect(r.schedule).toEqual([]);
+    expect(r.timezone).toBe('America/Bogota');
+    expect(r.ordersPaused).toBe(false);
+    expect(r.openingHours).toBeUndefined();
+    expect(r.config.openingHours).toBe('');
   });
 });
 
@@ -129,7 +146,7 @@ describe('PgRestaurantRepository mapRow - branding fields (flow fix 1.3)', () =>
   });
 });
 
-describe('PgRestaurantRepository.save - hours and branding round-trip', () => {
+describe('PgRestaurantRepository.save - schedule and branding round-trip', () => {
   beforeEach(() => {
     h.calls.length = 0;
   });
@@ -141,38 +158,73 @@ describe('PgRestaurantRepository.save - hours and branding round-trip', () => {
     return Object.fromEntries(cols.map((c, i) => [c, call.values[i]]));
   };
 
-  const baseRestaurant = (config: Record<string, unknown>) => ({
+  const schedule = [
+    { dayOfWeek: 1, open: '08:00', close: '23:15' },
+    { dayOfWeek: 5, open: '12:00', close: '14:00' },
+    { dayOfWeek: 5, open: '18:00', close: '02:00' },
+  ];
+
+  const baseRestaurant = (config: Record<string, unknown> = {}, extra: Record<string, unknown> = {}) => ({
     id: 'r1', slug: 'r1', name: 'R1', theme: 'dark-charcoal', isActive: true,
-    openingHours: { open: '12:00', close: '22:30' },
+    schedule, timezone: 'America/Bogota', ordersPaused: false,
     config,
+    ...extra,
   });
 
-  it('parses a "HH:MM - HH:MM" hours text into open_time/close_time and never writes a text column', async () => {
+  it('writes timezone and orders_paused to restaurant_settings, never the dropped time columns', async () => {
+    await new PgRestaurantRepository().save(baseRestaurant({}, { timezone: 'America/Lima', ordersPaused: true }) as any);
+    const settings = valuesFor('public.restaurant_settings');
+    expect(settings.timezone).toBe('America/Lima');
+    expect(settings.orders_paused).toBe(true);
+    expect(settings).not.toHaveProperty('open_time');
+    expect(settings).not.toHaveProperty('close_time');
+    expect(settings).not.toHaveProperty('opening_hours_text');
+  });
+
+  it('replaces the weekly rows: delete then one insert per range with a generated id', async () => {
+    await new PgRestaurantRepository().save(baseRestaurant() as any);
+    const del = h.calls.findIndex((c) => c.sql.includes('DELETE FROM public.restaurant_opening_hours'));
+    const ins = h.calls.filter((c) => c.sql.includes('INSERT INTO public.restaurant_opening_hours'));
+    expect(del).toBeGreaterThanOrEqual(0);
+    expect(h.calls[del].values).toEqual(['r1']);
+    expect(ins).toHaveLength(3);
+    expect(h.calls.indexOf(ins[0])).toBeGreaterThan(del);
+    expect(ins.map((c) => c.values.slice(2))).toEqual([
+      [1, '08:00', '23:15'],
+      [5, '12:00', '14:00'],
+      [5, '18:00', '02:00'],
+    ]);
+    for (const c of ins) {
+      expect(c.values[0]).toMatch(/^oh_[0-9a-f-]{36}$/);
+      expect(c.values[1]).toBe('r1');
+    }
+  });
+
+  it('an empty schedule clears the rows and inserts none (restaurant closed every day)', async () => {
+    await new PgRestaurantRepository().save(baseRestaurant({}, { schedule: [] }) as any);
+    expect(h.calls.some((c) => c.sql.includes('DELETE FROM public.restaurant_opening_hours'))).toBe(true);
+    expect(h.calls.some((c) => c.sql.includes('INSERT INTO public.restaurant_opening_hours'))).toBe(false);
+  });
+
+  it('ignores config.openingHours text: only the schedule is persisted', async () => {
     await new PgRestaurantRepository().save(baseRestaurant({ openingHours: '08:00 - 23:15' }) as any);
     const settings = valuesFor('public.restaurant_settings');
     expect(settings).not.toHaveProperty('opening_hours_text');
-    expect(settings.open_time).toBe('08:00:00');
-    expect(settings.close_time).toBe('23:15:00');
+    expect(settings).not.toHaveProperty('open_time');
   });
 
-  it('keeps the structured times when the text is free-form (the text is not stored)', async () => {
-    await new PgRestaurantRepository().save(baseRestaurant({ openingHours: 'Lun-Vie 8am - 10pm' }) as any);
-    const settings = valuesFor('public.restaurant_settings');
-    expect(settings).not.toHaveProperty('opening_hours_text');
-    expect(settings.open_time).toBe('12:00:00');
-    expect(settings.close_time).toBe('22:30:00');
-  });
-
-  it('does not select the dropped opening_hours_text column when reading', async () => {
+  it('reads the schedule from restaurant_opening_hours and not from the dropped columns', async () => {
     h.calls.length = 0;
     await new PgRestaurantRepository().findBySlug('r1');
     expect(h.calls[0].sql).not.toContain('opening_hours_text');
-    expect(h.calls[0].sql).toContain('s.open_time');
+    expect(h.calls[0].sql).not.toContain('s.open_time');
+    expect(h.calls[0].sql).toContain('public.restaurant_opening_hours');
+    expect(h.calls[0].sql).toContain('s.timezone');
+    expect(h.calls[0].sql).toContain('s.orders_paused');
   });
 
-  it('round-trips branding and hours: save -> mapRow', async () => {
+  it('round-trips branding: save -> mapRow', async () => {
     const config = {
-      openingHours: '12:00 - 22:30',
       primaryHoverColor: '#AABBCC', fontFamily: 'mono', cardRadius: 'lg',
       cardStyle: 'minimal', compactGrid: true, showBadges: false,
     };
@@ -181,6 +233,8 @@ describe('PgRestaurantRepository.save - hours and branding round-trip', () => {
     const branding = valuesFor('public.restaurant_branding');
     const restored = mapRow({ id: 'r1', slug: 'r1', name: 'R1', ...settings, ...branding });
     expect(restored.config).toMatchObject(config);
+    expect(restored.timezone).toBe('America/Bogota');
+    expect(restored.ordersPaused).toBe(false);
   });
 });
 

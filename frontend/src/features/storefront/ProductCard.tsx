@@ -9,9 +9,11 @@ import { formatCurrency, getContrastForeground } from "@/lib/utils"
 export interface ProductCardProps {
   product: MenuItem
   onSelectProduct: () => void
+  /** Store closed or paused: the product can be browsed but not added. */
+  closed?: boolean
 }
 
-export default function ProductCard({ product, onSelectProduct }: ProductCardProps) {
+export default function ProductCard({ product, onSelectProduct, closed = false }: ProductCardProps) {
   const { storeConfig } = useRestaurant()
   const primaryForeground = getContrastForeground(storeConfig.primaryColor)
 
@@ -61,7 +63,11 @@ export default function ProductCard({ product, onSelectProduct }: ProductCardPro
       tabIndex={0}
       onClick={onSelectProduct}
       onKeyDown={handleKeyDown}
-      aria-label={`Agregar ${product.name} al carrito, ${formatCurrency(product.price)}`}
+      aria-label={
+        closed
+          ? `${product.name}, ${formatCurrency(product.price)}. Cerrado, no se puede agregar al carrito`
+          : `Agregar ${product.name} al carrito, ${formatCurrency(product.price)}`
+      }
       style={{
         backgroundColor: "var(--color-bg-elevated)",
         borderColor: "var(--color-border-subtle)",
@@ -142,16 +148,25 @@ export default function ProductCard({ product, onSelectProduct }: ProductCardPro
         >
           {formatCurrency(product.price)}
         </span>
-        <span
-          aria-hidden="true"
-          style={{
-            backgroundColor: storeConfig.primaryColor,
-            color: primaryForeground,
-          }}
-          className="inline-flex size-10 shrink-0 items-center justify-center rounded-full shadow-md transition duration-150 ease-out group-hover:scale-110 group-active:scale-95"
-        >
-          <Plus className="size-5 stroke-[3]" />
-        </span>
+        {closed ? (
+          <span
+            aria-hidden="true"
+            className="inline-flex h-10 shrink-0 items-center justify-center rounded-full bg-red-500/15 px-4 text-xs font-bold text-red-700 dark:text-red-300"
+          >
+            Cerrado
+          </span>
+        ) : (
+          <span
+            aria-hidden="true"
+            style={{
+              backgroundColor: storeConfig.primaryColor,
+              color: primaryForeground,
+            }}
+            className="inline-flex size-10 shrink-0 items-center justify-center rounded-full shadow-md transition duration-150 ease-out group-hover:scale-110 group-active:scale-95"
+          >
+            <Plus className="size-5 stroke-[3]" />
+          </span>
+        )}
       </CardFooter>
     </Card>
   )

@@ -6,6 +6,7 @@ import { useAuth } from "./AuthContext"
 import { apiClient, isNotFoundError } from "@/core/api/apiClient"
 import { toast } from "sonner"
 import { nextTempId } from "@/lib/ids"
+import { splitConfigForApi } from "@/lib/storeSchedule"
 
 export interface CatalogContextType {
   storeConfig: StorefrontConfig
@@ -127,7 +128,7 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       if (activeRestaurant?.id) {
         apiClient
-          .updateRestaurant(activeRestaurant.id, { config: newConfig })
+          .updateRestaurant(activeRestaurant.id, splitConfigForApi(newConfig))
           .catch((err) => {
             if (import.meta.env?.MODE !== 'test') {
               console.warn("Could not persist store config to backend API:", err)
@@ -150,13 +151,19 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     updateActiveRestaurantRecord((current) => ({
       ...current,
-      config: DEFAULT_STORE_CONFIG,
+      config: {
+        ...DEFAULT_STORE_CONFIG,
+        // Resetting the design never touches the opening hours or the pause.
+        schedule: current.config.schedule,
+        timezone: current.config.timezone,
+        ordersPaused: current.config.ordersPaused,
+      },
     }))
     toast.info("Diseño restablecido a los valores por defecto")
 
     if (activeRestaurant?.id) {
       apiClient
-        .updateRestaurant(activeRestaurant.id, { config: DEFAULT_STORE_CONFIG })
+        .updateRestaurant(activeRestaurant.id, { config: splitConfigForApi(DEFAULT_STORE_CONFIG).config })
         .catch((err) => {
           if (import.meta.env?.MODE !== 'test') {
             console.warn("Could not persist reset store config to backend API:", err)

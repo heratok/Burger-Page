@@ -1,10 +1,11 @@
 import { test, expect } from '@playwright/test';
+import { TEST_RESTAURANT } from './test-fixture';
 
 const API_BASE = 'http://localhost:3001/api';
 
 test.describe('Judgment Day Round 2 — Playwright CLI Verification Suite', () => {
   let adminCraftToken: string;
-  let _adminRostoToken: string;
+  let _adminTestRestToken: string;
   let superAdminToken: string;
 
   test.beforeAll(async ({ request }) => {
@@ -16,13 +17,13 @@ test.describe('Judgment Day Round 2 — Playwright CLI Verification Suite', () =
     const bodyCraft = await loginCraft.json();
     adminCraftToken = bodyCraft.token;
 
-    // 2. Authenticate as Rosto admin
-    const loginRosto = await request.post(`${API_BASE}/users/login`, {
-      data: { username: 'admin_rosto', password: 'rosto' },
+    // 2. Authenticate as test restaurant admin
+    const loginTestRest = await request.post(`${API_BASE}/users/login`, {
+      data: { username: TEST_RESTAURANT.username, password: TEST_RESTAURANT.password },
     });
-    expect(loginRosto.status()).toBe(200);
-    const bodyRosto = await loginRosto.json();
-    _adminRostoToken = bodyRosto.token;
+    expect(loginTestRest.status()).toBe(200);
+    const bodyTestRest = await loginTestRest.json();
+    _adminTestRestToken = bodyTestRest.token;
 
     // 3. Authenticate as Super Admin
     const loginSuper = await request.post(`${API_BASE}/users/login`, {
@@ -63,8 +64,8 @@ test.describe('Judgment Day Round 2 — Playwright CLI Verification Suite', () =
   });
 
   test('FWU-003 (JD-CONFIRMED-003): Cross-tenant category mutation via slug is rejected with 403 Forbidden', async ({ request }) => {
-    // Admin of Burger Craft attempts to alter categories of foreign tenant 'rosto'
-    const crossTenantPut = await request.put(`${API_BASE}/restaurant/rosto/categories`, {
+    // Admin of Burger Craft attempts to alter categories of foreign tenant TEST_RESTAURANT.slug
+    const crossTenantPut = await request.put(`${API_BASE}/restaurant/${TEST_RESTAURANT.slug}/categories`, {
       headers: { Authorization: `Bearer ${adminCraftToken}` },
       data: {
         categories: ['Hacked Burger', 'Hacked Sides'],

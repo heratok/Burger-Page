@@ -125,9 +125,10 @@ COMMENT ON COLUMN public.restaurants.is_active IS 'Restaurante visible y operati
 
 -- 2.1.1 RESTAURANT SETTINGS (Configuración operativa 1:1) -------------------
 -- Operación comercial del tenant: moneda, delivery, mínimos, horarios por
--- defecto y anuncios. open_time/close_time son la ÚNICA fuente del horario de
--- atención (db-hardening-0008): el texto "HH:MM - HH:MM" del contrato HTTP se
--- deriva de ellos y no se almacena aparte.
+-- defecto y anuncios. El horario de atención vive en restaurant_opening_hours
+-- (ÚNICA fuente, un rango por fila); timezone es la zona IANA en que se lee y
+-- orders_paused el interruptor manual de pedidos. El texto "HH:MM - HH:MM" del
+-- contrato HTTP se deriva del horario semanal y no se almacena aparte.
 CREATE TABLE IF NOT EXISTS public.restaurant_settings (
     restaurant_id           TEXT PRIMARY KEY REFERENCES public.restaurants(id) ON DELETE CASCADE,
     currency                TEXT NOT NULL DEFAULT 'COP',
@@ -135,17 +136,20 @@ CREATE TABLE IF NOT EXISTS public.restaurant_settings (
     delivery_fee            NUMERIC(12, 2) NOT NULL DEFAULT 0.00 CHECK (delivery_fee >= 0),
     min_order_amount        NUMERIC(12, 2) NOT NULL DEFAULT 0.00 CHECK (min_order_amount >= 0),
     estimated_delivery_time TEXT DEFAULT '30 - 45 min',
-    open_time               TIME DEFAULT '12:00',
-    close_time              TIME DEFAULT '22:30',
+    timezone                TEXT NOT NULL DEFAULT 'America/Bogota',
+    orders_paused           BOOLEAN NOT NULL DEFAULT FALSE,
     announcement_text       TEXT,
     show_announcement       BOOLEAN NOT NULL DEFAULT TRUE,
     created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT chk_restaurant_settings_timezone
+        CHECK (timezone ~ '^[A-Za-z0-9_+/-]{1,64}$')
 );
 
 COMMENT ON TABLE public.restaurant_settings IS 'Configuración operativa 1:1 del restaurante (3NF: identidad ≠ configuración).';
 COMMENT ON COLUMN public.restaurant_settings.delivery_fee IS 'Cargo de envío por defecto en la moneda del restaurante (>= 0).';
-COMMENT ON COLUMN public.restaurant_settings.open_time IS 'Hora de apertura del restaurante (fuente única del horario junto con close_time).';
+COMMENT ON COLUMN public.restaurant_settings.timezone IS 'Zona horaria IANA en la que se interpreta el horario de atención (restaurant_opening_hours).';
+COMMENT ON COLUMN public.restaurant_settings.orders_paused IS 'Interruptor manual: true detiene los pedidos públicos aunque el horario esté abierto.';
 
 -- 2.1.2 RESTAURANT BRANDING (Identidad visual 1:1) ---------------------------
 -- Tema, marca y assets. Solo URLs (nunca binarios): los archivos viven en
@@ -173,6 +177,25 @@ CREATE TABLE IF NOT EXISTS public.restaurant_branding (
 
 COMMENT ON TABLE public.restaurant_branding IS 'Identidad visual 1:1 del restaurante. URL de assets; tema, fuente, radios y estilos de UI.';
 COMMENT ON COLUMN public.restaurant_branding.logo_url IS 'URL al storage de objetos (nunca binario en BD).';
+
+-- 2.1.3 RESTAURANT OPENING HOURS (Horario semanal) ---------------------------
+-- Un rango por fila; un día sin filas está cerrado y un día puede tener varios
+-- rangos. close_time <= open_time cruza la medianoche (termina el día siguiente).
+-- Es configuración, no historial: se borra en cascada con el restaurante.
+CREATE TABLE IF NOT EXISTS public.restaurant_opening_hours (
+    id            TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    restaurant_id TEXT NOT NULL REFERENCES public.restaurants(id) ON DELETE CASCADE,
+    day_of_week   SMALLINT NOT NULL CHECK (day_of_week BETWEEN 0 AND 6),
+    open_time     TIME NOT NULL,
+    close_time    TIME NOT NULL,
+    CONSTRAINT chk_restaurant_opening_hours_id_format
+        CHECK (id ~ '^[A-Za-z0-9_-]{1,64}$'),
+    CONSTRAINT uq_restaurant_opening_hours_range
+        UNIQUE (restaurant_id, day_of_week, open_time)
+);
+
+COMMENT ON TABLE public.restaurant_opening_hours IS 'Horario de atención semanal: un rango por fila; sin filas el día está cerrado; close_time <= open_time cruza la medianoche.';
+COMMENT ON COLUMN public.restaurant_opening_hours.day_of_week IS '0 = Domingo ... 6 = Sábado.';
 
 -- 2.2 USERS (Authentication & Role-Based Access Control) -----------------------
 CREATE TABLE IF NOT EXISTS public.users (
@@ -1118,6 +1141,7 @@ GRANT USAGE ON SCHEMA public TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.restaurants TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.restaurant_settings TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.restaurant_branding TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.restaurant_opening_hours TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.categories TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.products TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.product_additions TO app_user;
@@ -1207,6 +1231,8 @@ ALTER TABLE public.restaurant_settings       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.restaurant_settings       FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.restaurant_branding       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.restaurant_branding       FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.restaurant_opening_hours  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.restaurant_opening_hours  FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.categories                ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.categories                FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.products                  ENABLE ROW LEVEL SECURITY;
@@ -1272,6 +1298,20 @@ CREATE POLICY "public_read_restaurant_branding"
         AND EXISTS (
             SELECT 1 FROM public.restaurants r
             WHERE r.id = restaurant_branding.restaurant_id
+              AND r.is_active = TRUE
+              AND r.slug = (SELECT public.app_current_restaurant_slug())
+        )
+    );
+
+DROP POLICY IF EXISTS "public_read_restaurant_opening_hours" ON public.restaurant_opening_hours;
+CREATE POLICY "public_read_restaurant_opening_hours"
+    ON public.restaurant_opening_hours FOR SELECT
+    USING (
+        (SELECT public.app_current_restaurant_id()) IS NULL
+        AND NOT (SELECT public.app_is_super_admin())
+        AND EXISTS (
+            SELECT 1 FROM public.restaurants r
+            WHERE r.id = restaurant_opening_hours.restaurant_id
               AND r.is_active = TRUE
               AND r.slug = (SELECT public.app_current_restaurant_slug())
         )
@@ -1497,6 +1537,13 @@ CREATE POLICY "tenant_isolation_restaurant_settings" ON public.restaurant_settin
 -- Restaurant Branding isolation
 DROP POLICY IF EXISTS "tenant_isolation_restaurant_branding" ON public.restaurant_branding;
 CREATE POLICY "tenant_isolation_restaurant_branding" ON public.restaurant_branding
+    FOR ALL
+    USING ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()))
+    WITH CHECK ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()));
+
+-- Restaurant Opening Hours isolation
+DROP POLICY IF EXISTS "tenant_isolation_restaurant_opening_hours" ON public.restaurant_opening_hours;
+CREATE POLICY "tenant_isolation_restaurant_opening_hours" ON public.restaurant_opening_hours
     FOR ALL
     USING ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()))
     WITH CHECK ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()));

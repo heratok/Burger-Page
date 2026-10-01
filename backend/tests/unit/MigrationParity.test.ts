@@ -162,8 +162,11 @@ describe('migration 0000000000008 (db hardening) parity with the baseline schema
 
     it('up recreates every rewritten tenant policy exactly as the baseline declares it', () => {
       const upPolicies = new Map(policyStatements(up).map((p) => [p.name, p.sql]));
+      // restaurant_opening_hours only exists from migration 0009.
       const tenant = policyStatements(baseline).filter(
-        (p) => p.name.startsWith('tenant_isolation_') || p.name === 'users_select_for_auth'
+        (p) =>
+          (p.name.startsWith('tenant_isolation_') || p.name === 'users_select_for_auth') &&
+          p.table !== 'restaurant_opening_hours'
       );
       for (const p of tenant) {
         expect(norm(upPolicies.get(p.name)), p.name).toBe(norm(p.sql));
@@ -345,6 +348,86 @@ describe('migration 0000000000008 (db hardening) parity with the baseline schema
       expect(up).toMatch(/RAISE EXCEPTION/);
       expect(down).toContain('DROP CONSTRAINT IF EXISTS');
     });
+  });
+});
+
+describe('migration 0000000000009 (store opening hours) parity with the baseline schema', () => {
+  const baseline = read('01_schema.sql');
+  const up = read('migrations/0000000000009_store_opening_hours.up.sql');
+  const down = read('migrations/0000000000009_store_opening_hours.down.sql');
+  const flat = (sql: string) => sql.replace(/\s+/g, ' ');
+  const tableBody = (sql: string) =>
+    sql.match(/CREATE TABLE IF NOT EXISTS public\.restaurant_opening_hours \(([\s\S]*?)\n\);/)![1];
+
+  describe('T1 restaurant_settings timezone and orders_paused', () => {
+    it('baseline declares both columns with their defaults and no open_time/close_time', () => {
+      const body = baseline.match(/CREATE TABLE IF NOT EXISTS public\.restaurant_settings \(([\s\S]*?)\n\);/)![1];
+      expect(flat(body)).toContain("timezone TEXT NOT NULL DEFAULT 'America/Bogota'");
+      expect(flat(body)).toContain('orders_paused BOOLEAN NOT NULL DEFAULT FALSE');
+      expect(body).not.toMatch(/\bopen_time\b|\bclose_time\b/);
+      expect(baseline).not.toMatch(/restaurant_settings\.open_time/);
+    });
+
+    it('up adds the columns and a sane-looking timezone CHECK (NOT VALID + VALIDATE); down drops them', () => {
+      expect(up).toContain('ADD COLUMN IF NOT EXISTS timezone');
+      expect(up).toContain('ADD COLUMN IF NOT EXISTS orders_paused');
+      expect(flat(up)).toContain('ADD CONSTRAINT chk_restaurant_settings_timezone');
+      expect(up).toContain('NOT VALID');
+      expect(up).toContain('VALIDATE CONSTRAINT chk_restaurant_settings_timezone');
+      expect(down).toContain('DROP CONSTRAINT IF EXISTS chk_restaurant_settings_timezone');
+      expect(down).toContain('DROP COLUMN IF EXISTS timezone');
+      expect(down).toContain('DROP COLUMN IF EXISTS orders_paused');
+    });
+  });
+
+  describe('T2 restaurant_opening_hours table', () => {
+    it('baseline and up declare the same table definition', () => {
+      expect(flat(tableBody(up))).toBe(flat(tableBody(baseline)));
+    });
+
+    it('has a cascading restaurant FK, a 0-6 weekday CHECK, the id format CHECK and a unique range', () => {
+      const body = flat(tableBody(baseline));
+      expect(body).toContain('restaurant_id TEXT NOT NULL REFERENCES public.restaurants(id) ON DELETE CASCADE');
+      expect(body).toContain('CHECK (day_of_week BETWEEN 0 AND 6)');
+      expect(body).toContain("CONSTRAINT chk_restaurant_opening_hours_id_format CHECK (id ~ '^[A-Za-z0-9_-]{1,64}$')");
+      expect(body).toContain('CONSTRAINT uq_restaurant_opening_hours_range UNIQUE (restaurant_id, day_of_week, open_time)');
+    });
+
+    it('enables and forces RLS with tenant isolation and a slug-scoped public read, and grants app_user', () => {
+      for (const sql of [baseline, up]) {
+        expect(flat(sql)).toContain('ALTER TABLE public.restaurant_opening_hours ENABLE ROW LEVEL SECURITY');
+        expect(flat(sql)).toContain('ALTER TABLE public.restaurant_opening_hours FORCE ROW LEVEL SECURITY');
+        expect(flat(sql)).toContain('GRANT SELECT, INSERT, UPDATE, DELETE ON public.restaurant_opening_hours TO app_user');
+        expect(flat(sql)).toContain('"tenant_isolation_restaurant_opening_hours" ON public.restaurant_opening_hours');
+        expect(flat(sql)).toContain('"public_read_restaurant_opening_hours"');
+        expect(flat(sql)).toContain('r.id = restaurant_opening_hours.restaurant_id');
+        expect(flat(sql)).toContain('r.slug = (SELECT public.app_current_restaurant_slug())');
+      }
+    });
+
+    it('down drops the table, which removes its policies and grants', () => {
+      expect(down).toContain('DROP TABLE IF EXISTS public.restaurant_opening_hours');
+    });
+  });
+
+  describe('T3 backfill and single source of truth', () => {
+    it('up backfills 7 rows per restaurant from open_time/close_time (only while the columns exist), then drops them', () => {
+      expect(up).toContain('generate_series(0, 6)');
+      expect(up).toMatch(/information_schema\.columns[\s\S]*open_time/);
+      expect(up).toContain('DROP COLUMN IF EXISTS open_time');
+      expect(up).toContain('DROP COLUMN IF EXISTS close_time');
+    });
+
+    it('down restores the time columns (0008 shape) and refills them from the schedule', () => {
+      expect(down).toContain("ADD COLUMN IF NOT EXISTS open_time TIME DEFAULT '12:00'");
+      expect(down).toContain("ADD COLUMN IF NOT EXISTS close_time TIME DEFAULT '22:30'");
+      expect(down).toMatch(/UPDATE public\.restaurant_settings[\s\S]*restaurant_opening_hours/);
+    });
+  });
+
+  it('the README table count follows the baseline', () => {
+    const tables = [...baseline.matchAll(/CREATE TABLE IF NOT EXISTS public\.(\w+)/g)].length;
+    expect(read('README.md')).toContain(`${tables} tablas relacionales`);
   });
 });
 

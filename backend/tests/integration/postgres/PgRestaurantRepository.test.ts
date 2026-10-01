@@ -44,7 +44,9 @@ describe('PgRestaurantRepository (real Postgres, app_user role)', () => {
       slug: RESTAURANT_ID,
       name: 'Pg Test Restaurant',
       theme: 'dark-charcoal',
-      openingHours: { open: '12:00', close: '22:00' },
+      schedule: [{ dayOfWeek: 1, open: '12:00', close: '22:00' }],
+      timezone: 'America/Bogota',
+      ordersPaused: false,
       isActive: true,
     };
 
@@ -132,4 +134,103 @@ describe('PgRestaurantRepository (real Postgres, app_user role)', () => {
       }
     });
   });
+  describe('weekly schedule, timezone and paused flag (store-opening-hours T2)', () => {
+    const HOURS_ID = `pgrest-hours-${randomUUID().slice(0, 8)}`;
+    const restaurant = (extra: Partial<Restaurant> = {}): Restaurant => ({
+      id: HOURS_ID,
+      slug: HOURS_ID,
+      name: 'Pg Hours Restaurant',
+      theme: 'dark-charcoal',
+      isActive: true,
+      schedule: [
+        { dayOfWeek: 1, open: '12:00', close: '14:30' },
+        { dayOfWeek: 1, open: '18:00', close: '02:00' },
+        { dayOfWeek: 6, open: '10:00', close: '23:00' },
+      ],
+      timezone: 'America/Bogota',
+      ordersPaused: false,
+      ...extra,
+    });
+
+    afterAll(async () => {
+      if (isDbConnected) await adminPool.query(`DELETE FROM public.restaurants WHERE id = $1`, [HOURS_ID]);
+    });
+
+    it('round-trips the schedule (multiple ranges, overnight), timezone and paused flag by id and by public slug', async () => {
+      if (!isDbConnected) return;
+      await repo.save(restaurant({ timezone: 'America/Mexico_City', ordersPaused: true }));
+
+      for (const found of [await repo.findById(HOURS_ID), await repo.findBySlug(HOURS_ID)]) {
+        expect(found?.schedule).toEqual([
+          { dayOfWeek: 1, open: '12:00', close: '14:30' },
+          { dayOfWeek: 1, open: '18:00', close: '02:00' },
+          { dayOfWeek: 6, open: '10:00', close: '23:00' },
+        ]);
+        expect(found?.timezone).toBe('America/Mexico_City');
+        expect(found?.ordersPaused).toBe(true);
+      }
+    });
+
+    it('derives the legacy openingHours object and config.openingHours text from the schedule', async () => {
+      if (!isDbConnected) return;
+      await repo.save(restaurant());
+      const found = await repo.findById(HOURS_ID);
+      expect(found?.openingHours).toBeDefined();
+      expect(found?.config.openingHours).toBe(`${found?.openingHours?.open} - ${found?.openingHours?.close}`);
+      expect(['12:00', '10:00']).toContain(found?.openingHours?.open);
+    });
+
+    it('replaces the whole schedule on save and keeps only the new ranges', async () => {
+      if (!isDbConnected) return;
+      await repo.save(restaurant());
+      await repo.save(restaurant({ schedule: [{ dayOfWeek: 3, open: '09:00', close: '17:00' }] }));
+      expect((await repo.findById(HOURS_ID))?.schedule).toEqual([{ dayOfWeek: 3, open: '09:00', close: '17:00' }]);
+      const { rowCount } = await adminPool.query(
+        `SELECT 1 FROM public.restaurant_opening_hours WHERE restaurant_id = $1`,
+        [HOURS_ID]
+      );
+      expect(rowCount).toBe(1);
+    });
+
+    it('an empty schedule means closed every day: no rows, no legacy hours', async () => {
+      if (!isDbConnected) return;
+      await repo.save(restaurant({ schedule: [] }));
+      const found = await repo.findById(HOURS_ID);
+      expect(found?.schedule).toEqual([]);
+      expect(found?.openingHours).toBeUndefined();
+      expect(found?.config.openingHours).toBe('');
+    });
+
+    it('stores uuidv7 based ids with the oh_ prefix', async () => {
+      if (!isDbConnected) return;
+      await repo.save(restaurant());
+      const { rows } = await adminPool.query(
+        `SELECT id FROM public.restaurant_opening_hours WHERE restaurant_id = $1`,
+        [HOURS_ID]
+      );
+      expect(rows.length).toBeGreaterThan(0);
+      for (const r of rows) expect(r.id).toMatch(/^oh_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    });
+
+    it('rejects a bad weekday at the database level (23514), rolling the save back', async () => {
+      if (!isDbConnected) return;
+      await repo.save(restaurant());
+      await expect(
+        repo.save(restaurant({ schedule: [{ dayOfWeek: 9, open: '09:00', close: '17:00' }] }))
+      ).rejects.toMatchObject({ code: '23514' });
+      expect((await repo.findById(HOURS_ID))?.schedule.length).toBe(3);
+    });
+
+    it('hardDelete removes the schedule rows with the restaurant', async () => {
+      if (!isDbConnected) return;
+      await repo.save(restaurant());
+      await repo.hardDelete?.(HOURS_ID);
+      const { rowCount } = await adminPool.query(
+        `SELECT 1 FROM public.restaurant_opening_hours WHERE restaurant_id = $1`,
+        [HOURS_ID]
+      );
+      expect(rowCount).toBe(0);
+    });
+  });
+
 });

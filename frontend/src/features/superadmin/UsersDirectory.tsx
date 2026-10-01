@@ -75,10 +75,10 @@ export const UsersDirectory: React.FC = () => {
             createdAt: "2026-08-12T09:15:00.000Z",
           },
           {
-            id: "u-rosto-1",
-            username: "admin_rosto",
+            id: "u-pruebas-1",
+            username: "admin_pruebas",
             role: "restaurant_admin",
-            restaurantId: "rosto",
+            restaurantId: "tienda-pruebas",
             createdAt: "2026-08-18T16:45:00.000Z",
           },
         ]

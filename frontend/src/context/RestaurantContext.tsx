@@ -60,6 +60,7 @@ export interface RestaurantContextType {
   updateRestaurant: (id: string, updates: Partial<RestaurantRecord>) => Promise<void>
   deleteRestaurant: (id: string) => Promise<void>
   refreshRestaurants: () => Promise<void>
+  refreshStoreStatus: () => Promise<void>
   globalStats: GlobalPlatformStats
 
   // Auth & Session
@@ -194,6 +195,7 @@ export const useRestaurant = (): RestaurantContextType => {
     updateRestaurant: tenant.updateRestaurant,
     deleteRestaurant: tenant.deleteRestaurant,
     refreshRestaurants: tenant.refreshRestaurants,
+    refreshStoreStatus: tenant.refreshStoreStatus,
     globalStats: tenant.globalStats,
 
     session: auth.session,

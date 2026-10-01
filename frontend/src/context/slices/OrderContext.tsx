@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useMemo, useCallback, useEffect, useRef, useState } from "react"
 import type { Order, OrderStatus, Customer, RestaurantRecord } from "@/types/restaurant"
 import type { CreateOrderInput, UpdateOrderInput, OrderEvent, UpdateCustomerInput } from "@burger-page/contracts"
+import { ORDER_CLOSED_ERROR_FRAGMENT, ORDER_PAUSED_ERROR_FRAGMENT } from "@burger-page/contracts"
 import { apiClient, isNotFoundError } from "@/core/api/apiClient"
 import { calculateLineItemTotal } from "@/features/cart/cartEngine"
 import { useTenant } from "./TenantContext"
@@ -562,6 +563,14 @@ export function formatUserFacingOrderError(rawMessage?: string): string {
     (msg.includes('monto') && (msg.includes('menor al total') || msg.includes('menor que el total')))
   ) {
     return 'El monto en efectivo ingresado es menor al total a pagar.'
+  }
+
+  if (msg.includes(ORDER_PAUSED_ERROR_FRAGMENT)) {
+    return "El restaurante tiene los pedidos en pausa en este momento. Intenta de nuevo más tarde."
+  }
+
+  if (msg.includes(ORDER_CLOSED_ERROR_FRAGMENT)) {
+    return "El restaurante se encuentra fuera del horario de atención. Intenta de nuevo cuando esté abierto."
   }
 
   if (

@@ -14,7 +14,7 @@ export class AuthenticateUserUseCase {
   async execute(username: string, password: string): Promise<AuthResult> {
     let user = await this.userRepo.findByUsername(username);
 
-    // Fallback: support login without admin_ prefix (e.g. rosto -> admin_rosto)
+    // Fallback: support login without admin_ prefix (e.g. craft -> admin_craft)
     if (!user && !username.startsWith('admin_')) {
       user = await this.userRepo.findByUsername(`admin_${username}`);
     }

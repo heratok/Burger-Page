@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { TEST_RESTAURANT } from './test-fixture';
 
 test.describe('Manual Sale Transfer Receipt - POS & Order History', () => {
   test.beforeEach(async ({ page }) => {
@@ -41,7 +42,7 @@ test.describe('Manual Sale Transfer Receipt - POS & Order History', () => {
           token: 'mock-token-receipt-pos',
           user: {
             id: 'usr-admin-craft',
-            username: 'rosto',
+            username: 'admin_craft',
             role: 'restaurant_admin',
             restaurantId: 'rest-burger-craft',
           },
@@ -182,10 +183,10 @@ test.describe('Manual Sale Transfer Receipt - POS & Order History', () => {
     // Login
     const userInput = page.getByPlaceholder(/Tu nombre de usuario/i);
     await expect(userInput).toBeVisible();
-    await userInput.fill('rosto');
+    await userInput.fill(TEST_RESTAURANT.username);
 
     const passwordInput = page.locator('input[type="password"]');
-    await passwordInput.fill('rosto0502');
+    await passwordInput.fill(TEST_RESTAURANT.password);
     await page.getByRole('button', { name: /Acceder al Panel/i }).click();
 
     // Open Nueva Venta POS modal
@@ -272,10 +273,10 @@ test.describe('Manual Sale Transfer Receipt - POS & Order History', () => {
     // Login
     const userInput = page.getByPlaceholder(/Tu nombre de usuario/i);
     await expect(userInput).toBeVisible();
-    await userInput.fill('rosto');
+    await userInput.fill(TEST_RESTAURANT.username);
 
     const passwordInput = page.locator('input[type="password"]');
-    await passwordInput.fill('rosto0502');
+    await passwordInput.fill(TEST_RESTAURANT.password);
     await page.getByRole('button', { name: /Acceder al Panel/i }).click();
 
     // Open Nueva Venta POS modal
@@ -342,10 +343,10 @@ test.describe('Manual Sale Transfer Receipt - POS & Order History', () => {
     // Login
     const userInput = page.getByPlaceholder(/Tu nombre de usuario/i);
     await expect(userInput).toBeVisible();
-    await userInput.fill('rosto');
+    await userInput.fill(TEST_RESTAURANT.username);
 
     const passwordInput = page.locator('input[type="password"]');
-    await passwordInput.fill('rosto0502');
+    await passwordInput.fill(TEST_RESTAURANT.password);
     await page.getByRole('button', { name: /Acceder al Panel/i }).click();
 
     // Open POS

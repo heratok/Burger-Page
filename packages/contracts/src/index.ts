@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isValidTimeZone, weeklyScheduleSchema } from './schedule.js';
 
 // ==========================================
 // RESTAURANT / STOREFRONT CONTRACTS
@@ -46,6 +47,12 @@ export const createRestaurantSchema = z.object({
   theme: z.string().optional(),
   isActive: z.boolean().optional(),
   config: storefrontConfigSchema.partial().optional(),
+  // Weekly opening hours (source of truth), the IANA timezone they are read in
+  // and the manual "pause orders" switch. config.openingHours (text) and the
+  // top-level openingHours object are legacy read-only projections of schedule.
+  schedule: weeklyScheduleSchema.optional(),
+  timezone: z.string().refine(isValidTimeZone, 'Timezone must be a valid IANA timezone').optional(),
+  ordersPaused: z.boolean().optional(),
 });
 
 export type CreateRestaurantInput = z.infer<typeof createRestaurantSchema>;
@@ -65,6 +72,9 @@ export const restaurantDTOSchema = z.object({
   categories: z.array(z.string()).default([]),
   config: storefrontConfigSchema.partial().optional(),
   openingHours: z.object({ open: z.string(), close: z.string() }).optional(),
+  schedule: weeklyScheduleSchema.optional(),
+  timezone: z.string().optional(),
+  ordersPaused: z.boolean().optional(),
 });
 
 export type RestaurantDTO = z.infer<typeof restaurantDTOSchema>;
@@ -288,3 +298,4 @@ export type UpdateCustomerInput = z.infer<typeof updateCustomerSchema>;
 
 
 
+export * from './schedule.js';

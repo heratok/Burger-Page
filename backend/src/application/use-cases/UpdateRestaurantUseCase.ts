@@ -4,6 +4,30 @@ import { CategoryRepository } from '../../domain/ports/out/CategoryRepository.js
 import { Restaurant, omitAdminPassword } from '../../domain/models/Restaurant.js';
 import { UpdateRestaurantInput } from '@burger-page/contracts';
 import { EntityNotFoundError, ValidationError } from '../../domain/errors/DomainErrors.js';
+import {
+  assertValidSchedule,
+  assertValidTimezone,
+  scheduleFromLegacyHoursText,
+} from '../../domain/shared/restaurantSchedule.js';
+import type { WeeklySchedule } from '@burger-page/contracts';
+
+/**
+ * The weekly schedule is the stored source of the hours. An explicit
+ * `schedule` always wins. Otherwise an older admin client may still send the
+ * legacy "HH:MM - HH:MM" config text: it applies to every weekday, unless it
+ * merely echoes one of the current ranges (the full-config save path sends
+ * back the text it was served), which must never flatten a weekly schedule.
+ */
+function resolveSchedule(current: Restaurant, input: UpdateRestaurantInput): WeeklySchedule {
+  if (input.schedule !== undefined) {
+    assertValidSchedule(input.schedule);
+    return input.schedule;
+  }
+  const legacy = scheduleFromLegacyHoursText(input.config?.openingHours);
+  if (!legacy) return current.schedule;
+  const echoed = current.schedule.some((r) => r.open === legacy[0].open && r.close === legacy[0].close);
+  return echoed ? current.schedule : legacy;
+}
 
 export class UpdateRestaurantUseCase {
   constructor(
@@ -37,6 +61,9 @@ export class UpdateRestaurantUseCase {
       }
     }
 
+    if (input.timezone !== undefined) assertValidTimezone(input.timezone);
+    const schedule = resolveSchedule(restaurant, input);
+
     let slug = restaurant.slug;
     if (input.slug !== undefined) {
       const cleanSlug = input.slug
@@ -67,6 +94,9 @@ export class UpdateRestaurantUseCase {
       primaryColor: input.primaryColor ?? restaurant.primaryColor,
       theme: input.theme ?? restaurant.theme,
       isActive: input.isActive ?? restaurant.isActive,
+      schedule,
+      timezone: input.timezone ?? restaurant.timezone,
+      ordersPaused: input.ordersPaused ?? restaurant.ordersPaused,
       categories: input.categories ?? restaurant.categories,
       config: {
         ...restaurant.config,
@@ -125,7 +155,7 @@ export class UpdateRestaurantUseCase {
     }
 
     // Respond with what was actually persisted: the adapter derives stored
-    // fields (e.g. openingHours from the "HH:MM - HH:MM" config text), so the
+    // fields (e.g. the legacy openingHours from the weekly schedule), so the
     // in-memory merge can be stale.
     const persisted = (await this.restaurantRepo.findById(restaurant.id)) ?? updated;
 
