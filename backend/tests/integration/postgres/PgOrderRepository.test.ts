@@ -57,6 +57,8 @@ describe('PgOrderRepository (real Postgres, app_user role, via create_order_atom
   afterAll(async () => {
     if (isDbConnected) {
       await adminPool.query(`DELETE FROM public.users WHERE id = $1`, [ACTOR_ID]);
+      // Orders first: restaurant FKs on sales tables are ON DELETE RESTRICT.
+      await adminPool.query(`DELETE FROM public.orders WHERE restaurant_id IN ($1, $2)`, [RESTAURANT_A, RESTAURANT_B]);
       await adminPool.query(`DELETE FROM public.restaurants WHERE id IN ($1, $2)`, [RESTAURANT_A, RESTAURANT_B]);
     }
     await adminPool?.end();

@@ -220,21 +220,12 @@ export class PgRestaurantRepository implements RestaurantRepository {
 
   async hardDelete(id: string): Promise<void> {
     await withTenantContext({ restaurantId: id, actorRole: 'super_admin' }, async (client) => {
-      const { rows: orderRows } = await client.query(`SELECT id FROM public.orders WHERE restaurant_id = $1`, [id]);
-      const orderIds = orderRows.map((o) => o.id);
-      if (orderIds.length > 0) {
-        const { rows: itemRows } = await client.query(
-          `SELECT id FROM public.order_items WHERE order_id = ANY($1::text[])`,
-          [orderIds]
-        );
-        const itemIds = itemRows.map((i) => i.id);
-        if (itemIds.length > 0) {
-          await client.query(`DELETE FROM public.order_item_additions WHERE order_item_id = ANY($1::text[])`, [itemIds]);
-        }
-        await client.query(`DELETE FROM public.order_items WHERE order_id = ANY($1::text[])`, [orderIds]);
-        await client.query(`DELETE FROM public.orders WHERE restaurant_id = $1`, [id]);
-      }
-
+      // The restaurant FKs of orders/order_items/order_item_additions/
+      // order_status_history are ON DELETE RESTRICT, so the orders go first;
+      // their items, additions and status history follow through the order
+      // FK cascades (referential actions run as table owner, so the append-only
+      // grants on order_status_history do not block them).
+      await client.query(`DELETE FROM public.orders WHERE restaurant_id = $1`, [id]);
       await client.query(`DELETE FROM public.users WHERE restaurant_id = $1`, [id]);
       await client.query(`DELETE FROM public.products WHERE restaurant_id = $1`, [id]);
       await client.query(`DELETE FROM public.customers WHERE restaurant_id = $1`, [id]);

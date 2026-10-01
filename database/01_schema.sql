@@ -320,7 +320,7 @@ COMMENT ON TABLE public.restaurant_order_counters IS 'Contador atómico por rest
 -- 2.7 ORDERS (Sales Header / POS) --------------------------------------------
 CREATE TABLE IF NOT EXISTS public.orders (
     id              TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-    restaurant_id   TEXT NOT NULL REFERENCES public.restaurants(id) ON DELETE CASCADE,
+    restaurant_id   TEXT NOT NULL REFERENCES public.restaurants(id) ON DELETE RESTRICT,
     order_number    INTEGER, -- auto-assigned by trigger if left NULL
     customer_id     TEXT,
     status          TEXT NOT NULL DEFAULT 'pending'
@@ -360,6 +360,11 @@ CREATE TABLE IF NOT EXISTS public.orders (
         UNIQUE (restaurant_id, order_number)
 );
 
+-- db-hardening-0008: orders, order_items, order_item_additions and
+-- order_status_history reference restaurants ON DELETE RESTRICT: deleting a
+-- restaurant must never silently erase its sales and audit history. Hard delete
+-- is an explicit operation that removes the orders first (see
+-- PgRestaurantRepository.hardDelete); the app soft-deletes (is_active = false).
 COMMENT ON TABLE public.orders IS 'Cabecera de venta. subtotal/total_final los calcula la BD (create_order_atomic).';
 COMMENT ON COLUMN public.orders.status IS 'Estado del pedido. Valores = enum del contrato HTTP (no renombrar sin full-stack).';
 COMMENT ON COLUMN public.orders.client_order_id IS 'Idempotencia SUS-19: correlación del cliente; único por (restaurant_id, client_order_id).';
@@ -372,7 +377,7 @@ COMMENT ON COLUMN public.orders.contact_barrio IS 'Snapshot del barrio de entreg
 CREATE TABLE IF NOT EXISTS public.order_status_history (
     id            TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
     order_id      TEXT NOT NULL,
-    restaurant_id TEXT NOT NULL REFERENCES public.restaurants(id) ON DELETE CASCADE,
+    restaurant_id TEXT NOT NULL REFERENCES public.restaurants(id) ON DELETE RESTRICT,
     old_status    TEXT,
     new_status    TEXT NOT NULL,
     changed_by    TEXT,
@@ -390,7 +395,7 @@ COMMENT ON TABLE public.order_status_history IS 'Auditoría inmutable de transic
 CREATE TABLE IF NOT EXISTS public.order_items (
     id            TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
     order_id      TEXT NOT NULL,
-    restaurant_id TEXT NOT NULL REFERENCES public.restaurants(id) ON DELETE CASCADE,
+    restaurant_id TEXT NOT NULL REFERENCES public.restaurants(id) ON DELETE RESTRICT,
     product_id    TEXT,
     product_name  TEXT NOT NULL, -- historical snapshot at time of sale
     unit_price    NUMERIC(12, 2) NOT NULL CHECK (unit_price >= 0),
@@ -421,7 +426,7 @@ COMMENT ON TABLE public.order_items IS 'Líneas de pedido con snapshot históric
 CREATE TABLE IF NOT EXISTS public.order_item_additions (
     id            TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
     order_item_id TEXT NOT NULL,
-    restaurant_id TEXT NOT NULL REFERENCES public.restaurants(id) ON DELETE CASCADE,
+    restaurant_id TEXT NOT NULL REFERENCES public.restaurants(id) ON DELETE RESTRICT,
     addition_id   TEXT,
     addition_name TEXT NOT NULL, -- historical snapshot
     unit_price    NUMERIC(12, 2) NOT NULL DEFAULT 0.00 CHECK (unit_price >= 0),

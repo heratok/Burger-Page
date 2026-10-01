@@ -237,6 +237,24 @@ describe('migration 0000000000008 (db hardening) parity with the baseline schema
       expect(down).toContain('DROP FUNCTION IF EXISTS public.guard_order_status_history_immutable()');
     });
   });
+
+  describe('T6 restaurant FKs on financial tables are RESTRICT', () => {
+    const tables = ['orders', 'order_items', 'order_item_additions', 'order_status_history'];
+
+    it.each(tables)('baseline declares %s.restaurant_id ON DELETE RESTRICT', (table) => {
+      const body = baseline.match(new RegExp(`CREATE TABLE IF NOT EXISTS public\\.${table} \\(([\\s\\S]*?)\\n\\);`))![1];
+      expect(body).toMatch(/restaurant_id\s+TEXT NOT NULL REFERENCES public\.restaurants\(id\) ON DELETE RESTRICT/);
+    });
+
+    it.each(tables)('up swaps %s_restaurant_id_fkey to RESTRICT (NOT VALID + VALIDATE) and down restores CASCADE', (table) => {
+      expect(up).toContain(`'${table}'`);
+      expect(up).toContain('ON DELETE RESTRICT');
+      expect(up).toContain('NOT VALID');
+      expect(up).toContain('VALIDATE CONSTRAINT');
+      expect(down).toContain(`'${table}'`);
+      expect(down).toContain('ON DELETE CASCADE');
+    });
+  });
 });
 
 describe('schema file structure', () => {

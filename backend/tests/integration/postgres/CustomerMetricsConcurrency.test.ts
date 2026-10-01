@@ -51,6 +51,8 @@ describe('update_customer_order_metrics under concurrent orders (db-hardening-00
 
   afterAll(async () => {
     if (isDbConnected) {
+      // Orders first: restaurant FKs on sales tables are ON DELETE RESTRICT.
+      await adminPool.query(`DELETE FROM public.orders WHERE restaurant_id = $1`, [RESTAURANT]);
       await adminPool.query(`DELETE FROM public.restaurants WHERE id = $1`, [RESTAURANT]);
     }
     await adminPool?.end();

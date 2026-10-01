@@ -6,6 +6,34 @@
 
 SET LOCAL lock_timeout = '15s';
 
+-- ── T6. Restaurant FKs back to ON DELETE CASCADE ────────────────────────────
+DO $$
+DECLARE
+    t TEXT;
+BEGIN
+    FOREACH t IN ARRAY ARRAY['orders', 'order_items', 'order_item_additions', 'order_status_history']
+    LOOP
+        IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint
+            WHERE conname = t || '_restaurant_id_fkey'
+              AND conrelid = format('public.%I', t)::regclass
+              AND confdeltype = 'c'
+        ) THEN
+            EXECUTE format('ALTER TABLE public.%I DROP CONSTRAINT IF EXISTS %I', t, t || '_restaurant_id_fkey');
+            EXECUTE format(
+                'ALTER TABLE public.%I ADD CONSTRAINT %I FOREIGN KEY (restaurant_id) REFERENCES public.restaurants(id) ON DELETE CASCADE NOT VALID',
+                t, t || '_restaurant_id_fkey'
+            );
+        END IF;
+    END LOOP;
+END
+$$;
+
+ALTER TABLE public.orders VALIDATE CONSTRAINT orders_restaurant_id_fkey;
+ALTER TABLE public.order_items VALIDATE CONSTRAINT order_items_restaurant_id_fkey;
+ALTER TABLE public.order_item_additions VALIDATE CONSTRAINT order_item_additions_restaurant_id_fkey;
+ALTER TABLE public.order_status_history VALIDATE CONSTRAINT order_status_history_restaurant_id_fkey;
+
 -- ── T5. order_status_history writable again ─────────────────────────────────
 DROP TRIGGER IF EXISTS trg_order_status_history_immutable ON public.order_status_history;
 DROP FUNCTION IF EXISTS public.guard_order_status_history_immutable();
