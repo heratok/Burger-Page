@@ -16,19 +16,6 @@ describe('migration 0000000000006 parity with the baseline schema', () => {
   const baseline = read('01_schema.sql');
   const up = read('migrations/0000000000006_order_contact_snapshot_and_metrics.up.sql');
   const down = read('migrations/0000000000006_order_contact_snapshot_and_metrics.down.sql');
-  const previous = read('migrations/0000000000004_composite_tenant_fks.up.sql');
-
-  it('redefines update_customer_order_metrics byte-identically in baseline and up', () => {
-    expect(extractFunction(up, 'update_customer_order_metrics')).toBe(
-      extractFunction(baseline, 'update_customer_order_metrics')
-    );
-  });
-
-  it('down restores the body that 0000000000004 introduced', () => {
-    expect(extractFunction(down, 'update_customer_order_metrics')).toBe(
-      extractFunction(previous, 'update_customer_order_metrics')
-    );
-  });
 
   it('declares the same nullable snapshot columns in baseline and migration', () => {
     for (const col of ['contact_name', 'contact_phone', 'contact_address', 'contact_barrio']) {
@@ -120,6 +107,34 @@ describe('migration 0000000000007 (schema integrity) parity with the baseline sc
       }
     }
     expect(redundant).toEqual([]);
+  });
+});
+
+describe('migration 0000000000008 (db hardening) parity with the baseline schema', () => {
+  const baseline = read('01_schema.sql');
+  const up = read('migrations/0000000000008_db_hardening.up.sql');
+  const down = read('migrations/0000000000008_db_hardening.down.sql');
+  const migration6 = read('migrations/0000000000006_order_contact_snapshot_and_metrics.up.sql');
+
+  describe('T2 customer metrics row lock', () => {
+    it('redefines update_customer_order_metrics byte-identically in baseline and up', () => {
+      expect(extractFunction(up, 'update_customer_order_metrics')).toBe(
+        extractFunction(baseline, 'update_customer_order_metrics')
+      );
+    });
+
+    it('locks the customer row before aggregating', () => {
+      const body = extractFunction(baseline, 'update_customer_order_metrics');
+      const lock = body.indexOf('FOR UPDATE');
+      expect(lock).toBeGreaterThan(-1);
+      expect(lock).toBeLessThan(body.indexOf('COUNT(*)'));
+    });
+
+    it('down restores the body that 0000000000006 introduced', () => {
+      expect(extractFunction(down, 'update_customer_order_metrics')).toBe(
+        extractFunction(migration6, 'update_customer_order_metrics')
+      );
+    });
   });
 });
 

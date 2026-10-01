@@ -599,9 +599,22 @@ BEGIN
         v_restaurant_id := NEW.restaurant_id;
     END IF;
 
+    -- db-hardening-0008 (T2): lock the customer row BEFORE aggregating. Under
+    -- READ COMMITTED every statement takes a fresh snapshot, so once the lock is
+    -- granted the aggregate below sees every order committed by the transaction
+    -- that held it. Without the lock, two concurrent order writes for the same
+    -- customer aggregate stale snapshots and the last UPDATE silently wins
+    -- (lost update). ORDER BY gives a stable lock order when an UPDATE moves an
+    -- order between two customers, so two such transactions cannot deadlock.
     FOR v_customer_id IN
-        SELECT DISTINCT c FROM unnest(v_customer_ids) AS c WHERE c IS NOT NULL
+        SELECT DISTINCT c FROM unnest(v_customer_ids) AS c WHERE c IS NOT NULL ORDER BY c
     LOOP
+        PERFORM 1
+        FROM public.customers
+        WHERE id = v_customer_id
+          AND restaurant_id = v_restaurant_id
+        FOR UPDATE;
+
         SELECT
             COUNT(*),
             COALESCE(SUM(final_total), 0.00),
