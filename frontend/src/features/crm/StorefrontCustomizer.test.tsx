@@ -125,7 +125,7 @@ describe("StorefrontCustomizer & Subcomponents (TDD Modularization)", () => {
         draft = typeof updater === "function" ? updater(draft) : updater
       })
 
-      render(<CustomizerBusinessSection draft={draft} setDraft={setDraft} />)
+      const { rerender } = render(<CustomizerBusinessSection draft={draft} setDraft={setDraft} />)
 
       const whatsappInput = screen.getByPlaceholderText("573022575805") as HTMLInputElement
       fireEvent.change(whatsappInput, { target: { value: "573110000000" } })
@@ -133,6 +133,9 @@ describe("StorefrontCustomizer & Subcomponents (TDD Modularization)", () => {
 
       // The free-text hours field is gone, replaced by the weekly editor
       expect(screen.queryByPlaceholderText("Mar - Dom: 12:00 PM - 10:30 PM")).toBeNull()
+      // DEFAULT_STORE_CONFIG starts open 24/7; switch Monday to custom hours to edit
+      fireEvent.click(screen.getByRole("button", { name: "Definir horario para Lunes" }))
+      rerender(<CustomizerBusinessSection draft={draft} setDraft={setDraft} />)
       fireEvent.change(screen.getByLabelText("Lunes apertura"), { target: { value: "11:00" } })
       expect(draft.schedule.find((r) => r.dayOfWeek === 1)?.open).toBe("11:00")
 

@@ -131,3 +131,33 @@ export function copyRangeToWeekend(schedule: WeeklySchedule, sourceDayOfWeek: nu
   }))
   return [...nonWeekend, ...weekendRanges]
 }
+
+/** Returns true if opening and closing times are identical (spans a full 24-hour day in the domain model). */
+export function is24HourRange(open: string, close: string): boolean {
+  if (!open || !close) return false
+  return open === close
+}
+
+/** Sets a day's first range to 24 hours (00:00-00:00), preserving any extra ranges. */
+export function setDay24Hours(schedule: WeeklySchedule, day: number): WeeklySchedule {
+  const [, ...extras] = rangesForDay(schedule, day)
+  const otherDays = schedule.filter((r) => r.dayOfWeek !== day)
+  return [...otherDays, { dayOfWeek: day, open: "00:00", close: "00:00" }, ...extras]
+}
+
+/** Sets a day's first range to custom opening and closing hours, preserving any extra ranges. */
+export function setDayCustomHours(
+  schedule: WeeklySchedule,
+  day: number,
+  open: string = "12:00",
+  close: string = "22:30"
+): WeeklySchedule {
+  const [, ...extras] = rangesForDay(schedule, day)
+  const otherDays = schedule.filter((r) => r.dayOfWeek !== day)
+  return [...otherDays, { dayOfWeek: day, open, close }, ...extras]
+}
+
+/** Sets all 7 days to 24 hours (00:00-00:00). */
+export function setAll24Hours(): WeeklySchedule {
+  return DAY_DISPLAY_ORDER.map((day) => ({ dayOfWeek: day, open: "00:00", close: "00:00" }))
+}

@@ -13,6 +13,10 @@ import {
   isOvernightRange,
   copyRangeToWeekdays,
   copyRangeToWeekend,
+  is24HourRange,
+  setDay24Hours,
+  setDayCustomHours,
+  setAll24Hours,
 } from "./storeSchedule"
 import { DEFAULT_STORE_CONFIG } from "@/constants/themePresets"
 
@@ -132,6 +136,39 @@ describe("storeSchedule helpers", () => {
       ])
       // Monday is untouched
       expect(result.find((r) => r.dayOfWeek === 1)).toEqual({ dayOfWeek: 1, open: "09:00", close: "18:00" })
+    })
+  })
+
+  describe("24-hour schedule helpers", () => {
+    it("detects when open and close times are identical (24 hours in domain model)", () => {
+      expect(is24HourRange("00:00", "00:00")).toBe(true)
+      expect(is24HourRange("12:00", "12:00")).toBe(true)
+      expect(is24HourRange("09:00", "18:00")).toBe(false)
+      expect(is24HourRange("", "")).toBe(false)
+    })
+
+    it("sets a specific day to 24 hours (00:00-00:00)", () => {
+      const schedule: WeeklySchedule = [{ dayOfWeek: 1, open: "12:00", close: "22:30" }]
+      const updated = setDay24Hours(schedule, 1)
+      expect(updated).toEqual([{ dayOfWeek: 1, open: "00:00", close: "00:00" }])
+    })
+
+    it("switches a 24-hour day to custom hours (12:00-22:30 by default)", () => {
+      const schedule: WeeklySchedule = [{ dayOfWeek: 1, open: "00:00", close: "00:00" }]
+      const updated = setDayCustomHours(schedule, 1)
+      expect(updated).toEqual([{ dayOfWeek: 1, open: "12:00", close: "22:30" }])
+    })
+
+    it("sets all 7 days to 24 hours", () => {
+      const all24 = setAll24Hours()
+      expect(all24).toHaveLength(7)
+      for (const d of DAY_DISPLAY_ORDER) {
+        expect(all24.find((r) => r.dayOfWeek === d)).toEqual({
+          dayOfWeek: d,
+          open: "00:00",
+          close: "00:00",
+        })
+      }
     })
   })
 })
