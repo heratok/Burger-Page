@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from "vitest"
+import React from "react"
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import { TablePicker, type TablePickerProps } from "./TablePicker"
 
@@ -106,5 +107,72 @@ describe("TablePicker", () => {
     unmount()
     setup({ tables: [], loadError: "boom" })
     expect(screen.getByText(/boom/)).toBeDefined()
+  })
+})
+
+describe("TablePicker inside a parent form", () => {
+  const renderInForm = (onCreateTable = vi.fn().mockResolvedValue(t("n", "Barra 1", 3))) => {
+    const onSubmit = vi.fn((e: React.FormEvent) => e.preventDefault())
+    const onSelect = vi.fn()
+    const { container } = render(
+      <form onSubmit={onSubmit}>
+        <TablePicker
+          isDark={false}
+          tables={[t("a", "Mesa 1")]}
+          isLoading={false}
+          loadError={null}
+          selectedTableId={null}
+          occupiedTableIds={new Set()}
+          onSelect={onSelect}
+          onCreateTable={onCreateTable}
+          onOpenManager={() => {}}
+        />
+      </form>
+    )
+    fireEvent.click(screen.getByRole("button", { name: /\+ Nueva mesa/i }))
+    fireEvent.change(screen.getByLabelText(/Nombre de la nueva mesa/i), { target: { value: "Barra 1" } })
+    return { container, onSubmit, onSelect, onCreateTable }
+  }
+
+  it("never nests a form inside the parent form", () => {
+    const { container } = renderInForm()
+    expect(container.querySelectorAll("form form")).toHaveLength(0)
+    expect(container.querySelectorAll("form")).toHaveLength(1)
+  })
+
+  it("creates with the Crear button without submitting the parent form", async () => {
+    const { onSubmit, onSelect, onCreateTable } = renderInForm()
+
+    fireEvent.click(screen.getByRole("button", { name: /^Crear$/i }))
+
+    await waitFor(() => expect(onCreateTable).toHaveBeenCalledWith("Barra 1"))
+    await waitFor(() => expect(onSelect).toHaveBeenCalledWith("n"))
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  it("creates with Enter without submitting the parent form", async () => {
+    const { onSubmit, onSelect, onCreateTable } = renderInForm()
+
+    const input = screen.getByLabelText(/Nombre de la nueva mesa/i)
+    const notPrevented = fireEvent.keyDown(input, { key: "Enter" })
+
+    await waitFor(() => expect(onCreateTable).toHaveBeenCalledWith("Barra 1"))
+    await waitFor(() => expect(onSelect).toHaveBeenCalledWith("n"))
+    expect(notPrevented).toBe(false)
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  it("cancels with Escape without closing anything else and returns focus to the add button", async () => {
+    renderInForm()
+    const input = screen.getByLabelText(/Nombre de la nueva mesa/i)
+    const stop = vi.fn()
+    document.addEventListener("keydown", stop)
+
+    fireEvent.keyDown(input, { key: "Escape" })
+    document.removeEventListener("keydown", stop)
+
+    expect(screen.queryByLabelText(/Nombre de la nueva mesa/i)).toBeNull()
+    expect(stop).not.toHaveBeenCalled()
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: /\+ Nueva mesa/i })))
   })
 })

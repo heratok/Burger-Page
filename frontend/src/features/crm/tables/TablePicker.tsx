@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useRef, useState } from "react"
 import type { RestaurantTable } from "@/types/restaurant"
 
 export interface TablePickerProps {
@@ -33,10 +33,18 @@ export function TablePicker({
   const [newName, setNewName] = useState("")
   const [isSaving, setIsSaving] = useState(false)
 
+  const addButtonRef = useRef<HTMLButtonElement>(null)
+
   const activeTables = tables.filter((t) => t.isActive)
 
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault()
+  // Not a <form>: this picker lives inside the sale form and nested forms navigate the page.
+  const closeCreate = () => {
+    setIsCreating(false)
+    setNewName("")
+    requestAnimationFrame(() => addButtonRef.current?.focus())
+  }
+
+  const handleCreate = async () => {
     const name = newName.trim()
     if (!name || isSaving) return
     setIsSaving(true)
@@ -44,8 +52,19 @@ export function TablePicker({
     setIsSaving(false)
     if (created) {
       onSelect(created.id)
-      setNewName("")
-      setIsCreating(false)
+      closeCreate()
+    }
+  }
+
+  const handleNameKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault()
+      e.stopPropagation()
+      void handleCreate()
+    } else if (e.key === "Escape") {
+      e.preventDefault()
+      e.stopPropagation()
+      closeCreate()
     }
   }
 
@@ -66,6 +85,7 @@ export function TablePicker({
         <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">Mesa *</span>
         {!isCreating && (
           <button
+            ref={addButtonRef}
             type="button"
             onClick={() => setIsCreating(true)}
             className="rounded-lg px-1.5 py-0.5 text-[10px] font-bold text-orange-600 hover:bg-orange-500/10 dark:text-orange-400 cursor-pointer"
@@ -129,7 +149,7 @@ export function TablePicker({
       )}
 
       {isCreating && (
-        <form onSubmit={handleCreate} className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5">
           <input
             autoFocus
             type="text"
@@ -138,10 +158,12 @@ export function TablePicker({
             placeholder="Ej: Mesa 12"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
+            onKeyDown={handleNameKeyDown}
             className={inputClass}
           />
           <button
-            type="submit"
+            type="button"
+            onClick={() => void handleCreate()}
             disabled={isSaving || !newName.trim()}
             className="shrink-0 rounded-lg bg-orange-500 px-2.5 py-1.5 text-xs font-bold text-white disabled:opacity-50 cursor-pointer"
           >
@@ -149,15 +171,12 @@ export function TablePicker({
           </button>
           <button
             type="button"
-            onClick={() => {
-              setIsCreating(false)
-              setNewName("")
-            }}
+            onClick={closeCreate}
             className="shrink-0 rounded-lg px-2 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800 cursor-pointer"
           >
             Cancelar
           </button>
-        </form>
+        </div>
       )}
     </div>
   )
