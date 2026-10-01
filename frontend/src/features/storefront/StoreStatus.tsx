@@ -16,7 +16,7 @@ export const StoreStatus: React.FC<StoreStatusProps> = ({ config, status }) => {
   const detail = reason === "paused" ? "Pedidos en pausa" : describeNextOpening(next)
 
   return (
-    <div className="flex flex-col items-center gap-2 text-xs sm:items-start">
+    <div className="flex flex-col items-center gap-2 text-center text-xs">
       <div role="status" aria-live="polite" className="flex flex-wrap items-center justify-center gap-2">
         <span
           className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-bold ${
@@ -37,21 +37,21 @@ export const StoreStatus: React.FC<StoreStatusProps> = ({ config, status }) => {
           </span>
         )}
         {!isOpen && (
-          <span style={{ color: "var(--color-text-secondary)" }} className="basis-full text-center font-normal sm:text-left">
+          <span style={{ color: "var(--color-text-secondary)" }} className="basis-full text-center font-normal">
             Puedes ver el menú, pero no puedes agregar productos al carrito por ahora.
           </span>
         )}
       </div>
 
-      <details className="group w-full max-w-xs">
+      <details className="group w-full max-w-xs text-center">
         <summary
           style={{ color: "var(--color-text-secondary)" }}
-          className="flex cursor-pointer list-none items-center justify-center gap-1 font-semibold sm:justify-start"
+          className="flex cursor-pointer list-none items-center justify-center gap-1 font-semibold"
         >
           Horarios de atención
           <ChevronDown className="size-3.5 transition-transform group-open:rotate-180" aria-hidden="true" />
         </summary>
-        <ul aria-label="Horarios de atención" className="mt-2 space-y-1">
+        <ul aria-label="Horarios de atención" className="mx-auto mt-2 w-fit min-w-56 space-y-1 text-left">
           {DAY_DISPLAY_ORDER.map((day) => (
             <li
               key={day}

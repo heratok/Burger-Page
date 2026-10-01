@@ -78,4 +78,13 @@ describe("StoreStatus", () => {
     render(<Harness config={config} />)
     expect(screen.getByText("Horarios de atención", { selector: "summary" })).toBeDefined()
   })
+
+  it("is centered at every width: no breakpoint switches the block to left alignment", () => {
+    const { container } = render(<Harness config={config} />)
+    const html = container.innerHTML
+    expect(html).not.toMatch(/sm:items-start|sm:text-left|sm:justify-start|md:text-left|md:items-start/)
+    const hours = screen.getByRole("list", { name: "Horarios de atención" })
+    expect(hours.className).toMatch(/mx-auto/)
+    expect(screen.getByText(/no puedes agregar productos/i).className).toMatch(/text-center/)
+  })
 })

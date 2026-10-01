@@ -327,12 +327,12 @@ export default function Home() {
               </div>
             )}
 
-            <div className="flex justify-center sm:justify-start">
+            <div className="flex justify-center">
               <StoreStatus config={storeConfig} status={openStatus} />
             </div>
 
             {/* Search Input */}
-            <div className="flex justify-center sm:justify-start">
+            <div className="flex justify-center">
               <ProductSearch onChangeText={(text) => setSearchText(text)} total={filteredProducts.length} />
             </div>
 
