@@ -22,6 +22,7 @@ export const RestaurantsDirectory: React.FC = () => {
     switchRestaurant,
     updateRestaurant,
     deleteRestaurant,
+    refreshRestaurants,
     isSyncing,
     adminTheme,
   } = useRestaurant()
@@ -32,7 +33,6 @@ export const RestaurantsDirectory: React.FC = () => {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [restaurantToDelete, setRestaurantToDelete] = useState<RestaurantRecord | null>(null)
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set())
-  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set())
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
 
@@ -40,16 +40,14 @@ export const RestaurantsDirectory: React.FC = () => {
 
   const filteredRestaurants = useMemo(() => {
     const term = searchTerm.toLowerCase().trim();
-    return restaurants
-      .filter((r) => !deletedIds.has(r.id) && !deletedIds.has(r.slug))
-      .filter((r) => {
-        if (!term) return true;
-        const name = (r.config?.name || r.name || "").toLowerCase();
-        const slug = (r.slug || "").toLowerCase();
-        const tagline = (r.config?.tagline || r.tagline || "").toLowerCase();
-        return name.includes(term) || slug.includes(term) || tagline.includes(term);
-      });
-  }, [restaurants, searchTerm, deletedIds]);
+    return restaurants.filter((r) => {
+      if (!term) return true;
+      const name = (r.config?.name || r.name || "").toLowerCase();
+      const slug = (r.slug || "").toLowerCase();
+      const tagline = (r.config?.tagline || r.tagline || "").toLowerCase();
+      return name.includes(term) || slug.includes(term) || tagline.includes(term);
+    });
+  }, [restaurants, searchTerm]);
 
   const paginatedRestaurants = useMemo(() => {
     const start = (currentPage - 1) * pageSize
@@ -164,11 +162,12 @@ export const RestaurantsDirectory: React.FC = () => {
                         </div>
                       </td>
 
-                      {/* Status switch */}
+                      {/* Status switch (Pause vs Delete distinction) */}
                       <td className="px-4 py-4">
                         <button
                           type="button"
                           onClick={() => updateRestaurant(r.id, { isActive: !r.isActive })}
+                          title={r.isActive ? "Pausar restaurante temporalmente (conserva visibilidad en SaaS)" : "Reactivar restaurante"}
                           className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold transition-all cursor-pointer ${
                             r.isActive
                               ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/25"
@@ -234,6 +233,7 @@ export const RestaurantsDirectory: React.FC = () => {
                             onClick={() => setRestaurantToDelete(r)}
                             className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/20 dark:hover:text-rose-400 transition-colors cursor-pointer"
                             title="Eliminar restaurante"
+                            aria-label={`Eliminar restaurante ${r.config.name}`}
                           >
                             <Trash2 className="size-3.5" />
                           </button>
@@ -279,7 +279,7 @@ export const RestaurantsDirectory: React.FC = () => {
             setRestaurantToDelete(null)
             try {
               await deleteRestaurant(idToDelete)
-              setDeletedIds((prev) => new Set(prev).add(idToDelete))
+              await refreshRestaurants()
             } finally {
               setDeletingIds((prev) => {
                 const next = new Set(prev)
@@ -293,7 +293,7 @@ export const RestaurantsDirectory: React.FC = () => {
         targetName={restaurantToDelete?.config.name}
         description={
           restaurantToDelete
-            ? `¿Estás seguro de que deseas eliminar permanentemente a "${restaurantToDelete.config.name}" (/${restaurantToDelete.slug})? Se borrarán sus productos, adiciones, inventario y pedidos acumulados.`
+            ? `¿Estás seguro de que deseas eliminar a "${restaurantToDelete.config.name}" (/${restaurantToDelete.slug})? El restaurante dejará de estar visible y se bloqueará el acceso a sus administradores. Sus datos históricos y pedidos se conservarán en el sistema.`
             : undefined
         }
         confirmText="Eliminar restaurante"

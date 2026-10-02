@@ -76,6 +76,10 @@ export interface RestaurantContextType {
     restaurantId?: string
     error?: string
   }>
+  changePassword: (
+    currentPassword: string,
+    newPassword: string
+  ) => Promise<{ success: boolean; error?: string }>
   logout: () => void
 
   // Scoped Data of Active Restaurant
@@ -200,6 +204,7 @@ export const useRestaurant = (): RestaurantContextType => {
 
     session: auth.session,
     setSession: auth.setSession,
+    changePassword: auth.changePassword,
     login: async (username: string, password: string, targetRestaurantIdOrSlug?: string) => {
       const res = await auth.login(username, password, targetRestaurantIdOrSlug)
       if (res.success) {

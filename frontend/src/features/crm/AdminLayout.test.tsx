@@ -188,4 +188,34 @@ describe("AdminLayout - Super Admin Navigation & Global Modules (TDD)", () => {
     fireEvent.click(expandButtons[0])
     expect(aside.className).toContain("lg:w-64")
   })
+
+  it("renders Cambiar Clave button in sidebar and opens voluntary ChangePasswordScreen modal", () => {
+    sessionStorage.setItem(
+      "burger_page_session_v2",
+      JSON.stringify({
+        role: "super",
+        username: "admin@burgers.com",
+        authenticatedAt: new Date().toISOString(),
+      })
+    )
+
+    render(
+      <RestaurantProvider>
+        <AdminLayout>
+          <div>Dashboard</div>
+        </AdminLayout>
+      </RestaurantProvider>
+    )
+
+    const changePasswordBtn = screen.getByRole("button", { name: /Cambiar Contraseña/i })
+    expect(changePasswordBtn).toBeDefined()
+
+    // Initially modal is not open
+    expect(screen.queryByText(/Actualizar Contraseña/i)).toBeNull()
+
+    // Click button to open modal
+    fireEvent.click(changePasswordBtn)
+    expect(screen.getByText(/Actualizar Contraseña/i)).toBeDefined()
+    expect(screen.getByRole("button", { name: /Cancelar/i })).toBeDefined()
+  })
 })

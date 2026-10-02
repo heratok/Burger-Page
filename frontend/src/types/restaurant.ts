@@ -185,7 +185,9 @@ export type UserRole = "super" | "restaurant" | "guest"
 export interface AdminSession {
   role: UserRole
   restaurantId?: string
+  userId?: string
   username?: string
+  mustChangePassword?: boolean
   authenticatedAt?: string
 }
 

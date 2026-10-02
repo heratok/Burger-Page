@@ -41,6 +41,11 @@ test.describe('Optimistic UI Updates (Zero-Reload), Skeletons & Real-Time Feedba
     await createModal.getByRole('button', { name: /Crear Restaurante/i }).click();
     await expect(createModal).not.toBeVisible({ timeout: 8000 });
 
+    const credsCloseBtn = page.getByRole('button', { name: /Entendido y Cerrar/i });
+    if (await credsCloseBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await credsCloseBtn.click();
+    }
+
     // Verify it appeared in Directory INSTANTLY (0 page reloads!)
     const searchRest = page.getByPlaceholder(/Buscar por nombre, slug/i);
     await searchRest.fill(testRestSlug);

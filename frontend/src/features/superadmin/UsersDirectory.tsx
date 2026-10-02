@@ -8,99 +8,61 @@ import {
   Store,
   Calendar,
   Filter,
+  KeyRound,
+  Trash2,
+  Power,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Select } from "@/components/ui/select"
 import { Pagination } from "@/components/ui/pagination"
 import { TableSkeleton } from "@/components/ui/Skeletons"
 import { CreateUserModal } from "./CreateUserModal"
-import { apiClient } from "@/core/api/apiClient"
+import { ResetPasswordModal } from "./ResetPasswordModal"
+import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
+import { apiClient, ApiUserRecord } from "@/core/api/apiClient"
+import { toast } from "sonner"
 
-interface UserRecord {
-  id: string
-  username: string
-  role: string
-  restaurantId?: string
-  createdAt?: string
+function mapUserActionError(err: any, fallbackMessage: string): string {
+  const msg = err?.message || ""
+  if (err?.status === 409 || msg.includes("409") || msg.toLowerCase().includes("conflict")) {
+    if (msg.includes("own account") || msg.includes("yourself") || msg.includes("propia")) {
+      return "No puedes modificar ni eliminar tu propia cuenta de usuario."
+    }
+    if (msg.includes("last active super admin") || msg.includes("last") || msg.includes("último")) {
+      return "No es posible desactivar ni eliminar al único super administrador activo del sistema."
+    }
+    return "Conflicto: la operación no está permitida en este usuario."
+  }
+  if (err?.status === 404 || msg.includes("404") || msg.toLowerCase().includes("not found")) {
+    return "El usuario no fue encontrado o ya ha sido eliminado."
+  }
+  return msg || fallbackMessage
 }
 
 export const UsersDirectory: React.FC = () => {
-  const { restaurants, adminTheme } = useRestaurant()
-  const [users, setUsers] = useState<UserRecord[]>([])
+  const { restaurants, adminTheme, session } = useRestaurant()
+  const [users, setUsers] = useState<ApiUserRecord[]>([])
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [roleFilter, setRoleFilter] = useState<string>("ALL")
   const [restaurantFilter, setRestaurantFilter] = useState<string>("ALL")
   const [isCreateUserOpen, setIsCreateUserOpen] = useState(false)
+  const [resetModalData, setResetModalData] = useState<{ username: string; temporaryPassword?: string } | null>(null)
+  const [userToDelete, setUserToDelete] = useState<ApiUserRecord | null>(null)
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
 
   const isDark = adminTheme === "dark"
 
-  // Load users from backend / local storage
   const loadUsers = async () => {
     setIsLoading(true)
     try {
       const fetched = await apiClient.listUsers()
-      if (fetched && fetched.length > 0) {
-        setUsers(fetched)
-      } else {
-        // Fallback default sample users if backend DB is empty
-        const defaultUsers: UserRecord[] = [
-          {
-            id: "u-super-1",
-            username: "admin",
-            role: "super_admin",
-            createdAt: "2026-08-01T00:00:00.000Z",
-          },
-          {
-            id: "u-craft-1",
-            username: "admin_craft",
-            role: "restaurant_admin",
-            restaurantId: "burger-craft",
-            createdAt: "2026-08-02T10:00:00.000Z",
-          },
-          {
-            id: "u-napoli-1",
-            username: "admin_napoli",
-            role: "restaurant_admin",
-            restaurantId: "pizzeria-napoli",
-            createdAt: "2026-08-05T14:30:00.000Z",
-          },
-          {
-            id: "u-tacos-1",
-            username: "admin_tacos",
-            role: "restaurant_admin",
-            restaurantId: "tacos-el-rey",
-            createdAt: "2026-08-12T09:15:00.000Z",
-          },
-          {
-            id: "u-pruebas-1",
-            username: "admin_pruebas",
-            role: "restaurant_admin",
-            restaurantId: "tienda-pruebas",
-            createdAt: "2026-08-18T16:45:00.000Z",
-          },
-        ]
-        setUsers(defaultUsers)
-      }
-    } catch {
-      // Offline fallback
-      setUsers([
-        {
-          id: "u-super-1",
-          username: "admin",
-          role: "super_admin",
-          createdAt: "2026-08-01T00:00:00.000Z",
-        },
-        {
-          id: "u-craft-1",
-          username: "admin_craft",
-          role: "restaurant_admin",
-          restaurantId: "burger-craft",
-          createdAt: "2026-08-02T10:00:00.000Z",
-        },
-      ])
+      setUsers(fetched || [])
+    } catch (err: any) {
+      toast.error(mapUserActionError(err, "No se pudo cargar la lista de usuarios"))
+      setUsers([])
     } finally {
       setIsLoading(false)
     }
@@ -149,6 +111,60 @@ export const UsersDirectory: React.FC = () => {
       })
     } catch {
       return dateStr
+    }
+  }
+
+  const handleToggleActive = async (u: ApiUserRecord) => {
+    const nextActive = u.isActive === false
+    setActionLoadingId(u.id)
+    try {
+      const updated = await apiClient.setUserActive(u.id, nextActive)
+      setUsers((prev) =>
+        prev.map((item) => (item.id === u.id ? { ...item, isActive: updated.isActive } : item))
+      )
+      toast.success(
+        nextActive
+          ? `Usuario "${u.username}" activado con éxito`
+          : `Usuario "${u.username}" desactivado con éxito`
+      )
+    } catch (err: any) {
+      toast.error(
+        mapUserActionError(
+          err,
+          nextActive ? "No se pudo activar el usuario" : "No se pudo desactivar el usuario"
+        )
+      )
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
+
+  const handleResetPassword = async (u: ApiUserRecord) => {
+    setActionLoadingId(u.id)
+    try {
+      const res = await apiClient.resetUserPassword(u.id)
+      setResetModalData({ username: u.username, temporaryPassword: res.temporaryPassword })
+      toast.success(`Contraseña de "${u.username}" restablecida correctamente`)
+    } catch (err: any) {
+      toast.error(mapUserActionError(err, "No se pudo restablecer la contraseña del usuario"))
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!userToDelete) return
+    const target = userToDelete
+    setUserToDelete(null)
+    setActionLoadingId(target.id)
+    try {
+      await apiClient.deleteUser(target.id)
+      setUsers((prev) => prev.filter((item) => item.id !== target.id))
+      toast.success(`Usuario "${target.username}" eliminado con éxito`)
+    } catch (err: any) {
+      toast.error(mapUserActionError(err, "No se pudo eliminar el usuario"))
+    } finally {
+      setActionLoadingId(null)
     }
   }
 
@@ -280,7 +296,7 @@ export const UsersDirectory: React.FC = () => {
 
       {/* Users Table */}
       {isLoading ? (
-        <TableSkeleton isDark={isDark} rows={5} columns={5} />
+        <TableSkeleton isDark={isDark} rows={5} columns={6} />
       ) : (
         <div className={`overflow-hidden rounded-2xl border shadow-xs ${isDark ? "border-slate-800 bg-[#0E1322]" : "border-slate-200 bg-white"}`}>
           <div className="overflow-x-auto">
@@ -291,13 +307,14 @@ export const UsersDirectory: React.FC = () => {
                   <th className="px-4 py-3">Rol</th>
                   <th className="px-4 py-3">Restaurante Asignado</th>
                   <th className="px-4 py-3">Fecha de Registro</th>
-                  <th className="px-4 py-3 text-right">Estado</th>
+                  <th className="px-4 py-3">Estado</th>
+                  <th className="px-4 py-3 text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody className={`divide-y ${isDark ? "divide-slate-800/60 text-slate-200" : "divide-slate-100 text-slate-700"}`}>
                 {paginatedUsers.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-12 text-center text-slate-400">
+                    <td colSpan={6} className="py-12 text-center text-slate-400">
                       <Users className="size-8 mx-auto mb-2 opacity-30" />
                       <p className="font-semibold">No se encontraron usuarios coincidentes</p>
                     </td>
@@ -306,6 +323,12 @@ export const UsersDirectory: React.FC = () => {
                   paginatedUsers.map((u) => {
                     const isSuperAdmin = u.role === "super_admin" || u.role === "super"
                     const assignedName = u.restaurantId ? restaurantMap.get(u.restaurantId) || u.restaurantId : null
+                    const isActive = u.isActive !== false
+                    const isSelf = Boolean(
+                      (session.userId && session.userId === u.id) ||
+                      (session.username && session.username.toLowerCase() === u.username.toLowerCase())
+                    )
+                    const isBusy = actionLoadingId === u.id
 
                     return (
                       <tr key={u.id} className={`transition-colors ${isDark ? "hover:bg-slate-800/40" : "hover:bg-slate-50/80"}`}>
@@ -319,7 +342,14 @@ export const UsersDirectory: React.FC = () => {
                               {u.username.charAt(0).toUpperCase()}
                             </div>
                             <div>
-                              <div className="font-bold text-slate-900 dark:text-white">{u.username}</div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-bold text-slate-900 dark:text-white">{u.username}</span>
+                                {isSelf && (
+                                  <span className="rounded-md bg-indigo-500/10 px-1.5 py-0.5 text-[9px] font-bold text-indigo-500 border border-indigo-500/20">
+                                    Tú
+                                  </span>
+                                )}
+                              </div>
                               <div className="text-[10px] text-slate-400 font-mono">ID: {u.id}</div>
                             </div>
                           </div>
@@ -359,11 +389,76 @@ export const UsersDirectory: React.FC = () => {
                           </div>
                         </td>
 
+                        <td className="px-4 py-3">
+                          {isActive ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-500">
+                              <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                              <span>Activo</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-400 dark:text-slate-500">
+                              <span className="size-1.5 rounded-full bg-slate-400" />
+                              <span>Inactivo</span>
+                            </span>
+                          )}
+                        </td>
+
                         <td className="px-4 py-3 text-right">
-                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-500">
-                            <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                            <span>Activo</span>
-                          </span>
+                          <div className="flex items-center justify-end gap-1.5">
+                            {/* Toggle active / inactive */}
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              disabled={isSelf || isBusy}
+                              onClick={() => handleToggleActive(u)}
+                              title={
+                                isSelf
+                                  ? "No puedes desactivar tu propia cuenta"
+                                  : isActive
+                                  ? "Desactivar usuario"
+                                  : "Activar usuario"
+                              }
+                              aria-label={isActive ? "Desactivar" : "Activar"}
+                              className={`h-7 px-2.5 text-xs font-semibold rounded-lg ${
+                                isActive
+                                  ? "text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
+                                  : "border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10"
+                              }`}
+                            >
+                              <Power className="size-3 mr-1" />
+                              <span>{isActive ? "Desactivar" : "Activar"}</span>
+                            </Button>
+
+                            {/* Reset password */}
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              disabled={isBusy}
+                              onClick={() => handleResetPassword(u)}
+                              title="Restablecer contraseña"
+                              aria-label="Restablecer clave"
+                              className="h-7 px-2.5 text-xs font-semibold rounded-lg text-indigo-600 dark:text-indigo-400 border-indigo-500/30 hover:bg-indigo-500/10"
+                            >
+                              <KeyRound className="size-3 mr-1" />
+                              <span>Restablecer clave</span>
+                            </Button>
+
+                            {/* Delete user */}
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              disabled={isSelf || isBusy}
+                              onClick={() => setUserToDelete(u)}
+                              title={isSelf ? "No puedes eliminar tu propia cuenta" : "Eliminar usuario"}
+                              aria-label="Eliminar usuario"
+                              className="h-7 size-7 p-0 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/20 dark:hover:text-rose-400 cursor-pointer disabled:opacity-30 disabled:pointer-events-none"
+                            >
+                              <Trash2 className="size-3.5" />
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     )
@@ -395,6 +490,31 @@ export const UsersDirectory: React.FC = () => {
           setIsCreateUserOpen(false)
           loadUsers()
         }}
+      />
+
+      {/* Reset Password Modal */}
+      {resetModalData && (
+        <ResetPasswordModal
+          isOpen={Boolean(resetModalData)}
+          onClose={() => setResetModalData(null)}
+          username={resetModalData.username}
+          temporaryPassword={resetModalData.temporaryPassword}
+        />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmDeleteModal
+        isOpen={Boolean(userToDelete)}
+        onClose={() => setUserToDelete(null)}
+        onConfirm={handleConfirmDelete}
+        title="¿Eliminar usuario?"
+        targetName={userToDelete?.username}
+        description={
+          userToDelete
+            ? `¿Estás seguro de que deseas eliminar permanentemente al usuario "${userToDelete.username}"? Esta acción no se puede deshacer.`
+            : undefined
+        }
+        confirmText="Eliminar definitivamente"
       />
     </div>
   )

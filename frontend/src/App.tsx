@@ -88,6 +88,11 @@ const AdminAuthModal = lazy(() =>
     default: m.AdminAuthModal,
   }))
 )
+const ChangePasswordScreen = lazy(() =>
+  import("@/features/superadmin/ChangePasswordScreen").then((m) => ({
+    default: m.ChangePasswordScreen,
+  }))
+)
 
 interface GlobalModuleAccessDeniedProps {
   onBackToDashboard: () => void
@@ -150,6 +155,26 @@ export function MainRouter() {
             <AdminAuthModal
               isOpen={true}
               onClose={() => navigateTo("/")}
+            />
+          </Suspense>
+        </ErrorBoundary>
+      )
+    }
+
+    // Forced password change screen blocks the entire admin until changed
+    if (session.mustChangePassword) {
+      return (
+        <ErrorBoundary>
+          <Suspense fallback={<AdminLoadingFallback />}>
+            <ChangePasswordScreen
+              isForced={true}
+              onSuccess={() => {
+                if (session.role === "super") {
+                  navigateTo("/admin/restaurants")
+                } else {
+                  navigateTo("/admin/dashboard")
+                }
+              }}
             />
           </Suspense>
         </ErrorBoundary>

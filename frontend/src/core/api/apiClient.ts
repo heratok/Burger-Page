@@ -68,9 +68,20 @@ function readStoredToken(): string | null {
   }
 }
 
+export interface ApiUserRecord {
+  id: string
+  username: string
+  role: string
+  restaurantId?: string
+  createdAt?: string
+  isActive?: boolean
+  mustChangePassword?: boolean
+}
+
 export class ApiClient {
   private baseUrl: string
   private token: string | null
+  private passwordChangeRequiredListeners = new Set<() => void>()
 
   constructor(config?: ApiClientConfig) {
     const rawUrl =
@@ -92,6 +103,23 @@ export class ApiClient {
         : 'http://localhost:3001/api')
 
     this.token = readStoredToken()
+  }
+
+  onPasswordChangeRequired(listener: () => void): () => void {
+    this.passwordChangeRequiredListeners.add(listener)
+    return () => {
+      this.passwordChangeRequiredListeners.delete(listener)
+    }
+  }
+
+  private notifyPasswordChangeRequired(): void {
+    this.passwordChangeRequiredListeners.forEach((listener) => {
+      try {
+        listener()
+      } catch (err) {
+        console.error('Error in password change required listener:', err)
+      }
+    })
   }
 
   setToken(token: string | null): void {
@@ -119,6 +147,7 @@ export class ApiClient {
     if (options?.body) {
       headers['Content-Type'] = 'application/json'
     }
+    const sentToken = this.token
     if (this.token) {
       headers['Authorization'] = `Bearer ${this.token}`
     }
@@ -133,8 +162,10 @@ export class ApiClient {
       // unavailable, ...) instead of a bare "400 Bad Request". The status stays
       // on the error so callers can classify rejection vs retryable failure.
       let serverMessage: string | undefined
+      let errorBody: any
       try {
-        serverMessage = extractErrorMessage(await response.json())
+        errorBody = await response.json()
+        serverMessage = extractErrorMessage(errorBody)
       } catch {
         // Non-JSON or empty body (e.g. a gateway HTML page): keep the generic text.
       }
@@ -143,6 +174,22 @@ export class ApiClient {
       )
       error.status = response.status
       error.statusText = response.statusText
+      if (errorBody && typeof errorBody === 'object') {
+        error.code = errorBody.code
+        error.body = errorBody
+      }
+      if (
+        response.status === 403 &&
+        (errorBody?.code === 'PASSWORD_CHANGE_REQUIRED' ||
+          (typeof errorBody?.detail === 'string' && errorBody.detail.includes('PASSWORD_CHANGE_REQUIRED')))
+      ) {
+        // Only notify if the request was sent with the currently active token.
+        // If the token was already superseded (e.g. by changeOwnPassword), a stale in-flight
+        // request must not flip the gate back to required.
+        if (this.token && this.token === sentToken) {
+          this.notifyPasswordChangeRequired()
+        }
+      }
       throw error
     }
 
@@ -679,7 +726,7 @@ export class ApiClient {
   async login(username: string, password: string): Promise<{
     success: boolean
     token?: string
-    user?: { id: string; username: string; role: string; restaurantId?: string }
+    user?: { id: string; username: string; role: string; restaurantId?: string; mustChangePassword?: boolean }
     error?: string
   }> {
     // A 401 here means bad credentials, not a network failure: surface it as a
@@ -687,7 +734,7 @@ export class ApiClient {
     const result = await this.request<{
       success: boolean
       token?: string
-      user?: { id: string; username: string; role: string; restaurantId?: string }
+      user?: { id: string; username: string; role: string; restaurantId?: string; mustChangePassword?: boolean }
       error?: string
     }>('/users/login', {
       method: 'POST',
@@ -716,15 +763,42 @@ export class ApiClient {
     })
   }
 
-  async listUsers(restaurantId?: string): Promise<Array<{
-    id: string
-    username: string
-    role: string
-    restaurantId?: string
-    createdAt: string
-  }>> {
+  async listUsers(restaurantId?: string): Promise<ApiUserRecord[]> {
     const query = restaurantId ? `?restaurantId=${restaurantId}` : ''
-    return this.request(`/users${query}`)
+    return this.request<ApiUserRecord[]>(`/users${query}`)
+  }
+
+  async setUserActive(id: string, isActive: boolean): Promise<ApiUserRecord> {
+    return this.request<ApiUserRecord>(`/users/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ isActive }),
+    })
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    await this.request<void>(`/users/${id}`, {
+      method: 'DELETE',
+    })
+  }
+
+  async resetUserPassword(id: string): Promise<{ temporaryPassword: string }> {
+    return this.request<{ temporaryPassword: string }>(`/users/${id}/reset-password`, {
+      method: 'POST',
+    })
+  }
+
+  async changeOwnPassword(
+    currentPassword: string,
+    newPassword: string
+  ): Promise<{ success: boolean; token: string }> {
+    const res = await this.request<{ success: boolean; token: string }>('/users/me/password', {
+      method: 'POST',
+      body: JSON.stringify({ currentPassword, newPassword }),
+    })
+    if (res?.token) {
+      this.setToken(res.token)
+    }
+    return res
   }
 
   async getPresignedUploadUrl(params: {

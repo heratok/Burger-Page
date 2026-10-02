@@ -80,6 +80,11 @@ test.describe('Live DB Multi-Tenant Lifecycle, Mobile Storefront & CRM Persisten
     expect(openAllDay.status()).toBe(200);
     await expect(restModal).not.toBeVisible({ timeout: 10000 });
 
+    const credsCloseBtn = superPage.getByRole('button', { name: /Entendido y Cerrar/i });
+    if (await credsCloseBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await credsCloseBtn.click();
+    }
+
     // Verify restaurant is created and listed in directory table
     const searchRestInput = superPage.getByPlaceholder(/Buscar por nombre, slug/i);
     await expect(searchRestInput).toBeVisible({ timeout: 10000 });

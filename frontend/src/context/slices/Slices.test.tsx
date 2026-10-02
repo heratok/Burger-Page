@@ -111,6 +111,50 @@ describe("AuthContext Slice", () => {
         expect(result.current.session.role).toBe("guest")
         expect(onLogout).toHaveBeenCalledTimes(1)
       })
+
+      it("captures userId, username and mustChangePassword flag from backend login response", async () => {
+        const { apiClient } = await import("@/core/api/apiClient")
+        vi.spyOn(apiClient, "login").mockResolvedValue({
+          success: true,
+          token: "temp-token",
+          user: { id: "u-tenant-1", username: "chef", role: "restaurant_admin", restaurantId: "burger-craft", mustChangePassword: true },
+        } as any)
+        const { result } = renderHook(() => useAuth(), { wrapper })
+        await act(async () => {
+          const res = await result.current.login("chef", "temp-pass")
+          expect(res.success).toBe(true)
+          expect(res.mustChangePassword).toBe(true)
+        })
+        expect(result.current.session.userId).toBe("u-tenant-1")
+        expect(result.current.session.username).toBe("chef")
+        expect(result.current.session.mustChangePassword).toBe(true)
+      })
+
+      it("changePassword calls apiClient.changeOwnPassword and clears mustChangePassword", async () => {
+        const { apiClient } = await import("@/core/api/apiClient")
+        vi.spyOn(apiClient, "login").mockResolvedValue({
+          success: true,
+          token: "temp-token",
+          user: { id: "u-1", username: "admin", role: "super_admin", mustChangePassword: true },
+        } as any)
+        const changeSpy = vi.spyOn(apiClient, "changeOwnPassword").mockResolvedValue({
+          success: true,
+          token: "fresh-token",
+        })
+        const { result } = renderHook(() => useAuth(), { wrapper })
+        await act(async () => {
+          await result.current.login("admin", "temp-pass")
+        })
+        expect(result.current.session.mustChangePassword).toBe(true)
+
+        await act(async () => {
+          const res = await result.current.changePassword("temp-pass", "new-secret-1")
+          expect(res.success).toBe(true)
+        })
+
+        expect(changeSpy).toHaveBeenCalledWith("temp-pass", "new-secret-1")
+        expect(result.current.session.mustChangePassword).toBe(false)
+      })
 })
 
 describe("InventoryContext Slice", () => {

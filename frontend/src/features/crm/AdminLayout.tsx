@@ -26,9 +26,10 @@ import {
   PanelLeftOpen,
   LayoutGrid,
   Settings,
+  KeyRound,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { AdminSwitcher, CreateRestaurantModal, CreateUserModal } from "@/features/superadmin"
+import { AdminSwitcher, CreateRestaurantModal, CreateUserModal, ChangePasswordScreen } from "@/features/superadmin"
 import { useAppRouter } from "@/core/router/useAppRouter"
 import { AdminContentFallback } from "@/components/ui/LoadingFallbacks"
 import { ManualSaleModal } from "./ManualSaleModal"
@@ -60,6 +61,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const [isManualSaleOpen, setIsManualSaleOpen] = useState(false)
   const [isCreateRestaurantOpen, setIsCreateRestaurantOpen] = useState(false)
   const [isCreateUserOpen, setIsCreateUserOpen] = useState(false)
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
     try {
       return localStorage.getItem("burger_page_sidebar_collapsed") === "true"
@@ -423,6 +425,24 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
               </button>
             )}
 
+            {/* Change Password button */}
+            {session.role !== "guest" && (
+              <button
+                type="button"
+                title="Cambiar Contraseña"
+                aria-label="Cambiar Contraseña"
+                onClick={() => setIsChangePasswordOpen(true)}
+                className={`flex items-center justify-center rounded-xl text-slate-400 hover:bg-indigo-500/10 hover:text-indigo-500 dark:hover:text-indigo-400 active:scale-95 transition-all cursor-pointer ${
+                  isSidebarCollapsed
+                    ? "lg:size-10 lg:mx-auto w-full gap-1.5 py-1.5 text-xs font-semibold"
+                    : "w-full gap-1.5 py-1.5 text-xs font-semibold"
+                }`}
+              >
+                <KeyRound className="size-4 shrink-0" />
+                <span className={isSidebarCollapsed ? "lg:hidden" : ""}>Cambiar Clave</span>
+              </button>
+            )}
+
             {/* Logout button */}
             {session.role !== "guest" && (
               <button
@@ -619,6 +639,15 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
             onClose={() => setIsCreateUserOpen(false)}
           />
         </>
+      )}
+
+      {/* Voluntary Change Password Modal */}
+      {isChangePasswordOpen && (
+        <ChangePasswordScreen
+          forced={false}
+          onSuccess={() => setIsChangePasswordOpen(false)}
+          onCancel={() => setIsChangePasswordOpen(false)}
+        />
       )}
     </div>
   )

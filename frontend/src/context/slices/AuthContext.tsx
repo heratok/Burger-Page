@@ -18,8 +18,13 @@ export interface AuthContextType {
     success: boolean
     role: "super" | "restaurant" | null
     restaurantId?: string
+    mustChangePassword?: boolean
     error?: string
   }>
+  changePassword: (
+    currentPassword: string,
+    newPassword: string
+  ) => Promise<{ success: boolean; error?: string }>
   logout: () => void
   setSession: React.Dispatch<React.SetStateAction<AdminSession>>
 }
@@ -56,6 +61,15 @@ export const AuthProvider: React.FC<{
     sessionStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(session))
   }, [session])
 
+  useEffect(() => {
+    return apiClient.onPasswordChangeRequired(() => {
+      setSession((prev) => {
+        if (prev.role === "guest") return prev
+        return { ...prev, mustChangePassword: true }
+      })
+    })
+  }, [])
+
   const login = useCallback(
     async (
       username: string,
@@ -65,6 +79,7 @@ export const AuthProvider: React.FC<{
       success: boolean
       role: "super" | "restaurant" | null
       restaurantId?: string
+      mustChangePassword?: boolean
       error?: string
     }> => {
       const trimmedUser = username.trim()
@@ -85,9 +100,13 @@ export const AuthProvider: React.FC<{
 
         const isSuper = result.user.role === "super_admin"
         const role = isSuper ? ("super" as const) : ("restaurant" as const)
+        const mustChangePassword = Boolean(result.user.mustChangePassword)
         setSession({
           role,
+          userId: result.user.id,
+          username: result.user.username,
           restaurantId: result.user.restaurantId,
+          mustChangePassword,
           authenticatedAt: new Date().toISOString(),
         })
 
@@ -101,6 +120,7 @@ export const AuthProvider: React.FC<{
           success: true,
           role,
           restaurantId: result.user.restaurantId ?? targetRestaurantIdOrSlug,
+          mustChangePassword,
         }
       } catch (err: any) {
         console.error("[AUTH] Backend login failed:", err)
@@ -112,6 +132,28 @@ export const AuthProvider: React.FC<{
               ? "No se pudo conectar con el servidor"
               : "Credenciales incorrectas",
         }
+      }
+    },
+    []
+  )
+
+  const changePassword = useCallback(
+    async (
+      currentPassword: string,
+      newPassword: string
+    ): Promise<{ success: boolean; error?: string }> => {
+      try {
+        const res = await apiClient.changeOwnPassword(currentPassword, newPassword)
+        if (res.success) {
+          setSession((prev) => ({ ...prev, mustChangePassword: false }))
+          toast.success("Contraseña actualizada exitosamente")
+          return { success: true }
+        }
+        return { success: false, error: "No se pudo actualizar la contraseña" }
+      } catch (err: any) {
+        const msg = err?.message || "Error al actualizar la contraseña"
+        toast.error(msg)
+        return { success: false, error: msg }
       }
     },
     []
@@ -130,6 +172,7 @@ export const AuthProvider: React.FC<{
   const value: AuthContextType = {
     session,
     login,
+    changePassword,
     logout,
     setSession,
   }
@@ -142,6 +185,7 @@ const DEFAULT_GUEST_SESSION: AdminSession = Object.freeze({ role: "guest" })
 const DEFAULT_AUTH_CONTEXT: AuthContextType = Object.freeze({
   session: DEFAULT_GUEST_SESSION,
   login: async () => ({ success: false, role: null }),
+  changePassword: async () => ({ success: false }),
   logout: () => {},
   setSession: () => {},
 })

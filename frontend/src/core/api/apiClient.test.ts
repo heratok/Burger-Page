@@ -485,7 +485,6 @@ describe('ApiClient', () => {
 
       expect(FakeEventSource.instances).toHaveLength(3)
       expect(FakeEventSource.instances[2].url).toContain('stream-token-3')
-
       // Unsubscribe stops any further reconnects.
       unsub()
       FakeEventSource.instances[2].emit('error')
@@ -494,4 +493,96 @@ describe('ApiClient', () => {
     })
   })
 
+  describe('user lifecycle endpoints and password change', () => {
+    let client: ApiClient
+    let originalFetch: typeof globalThis.fetch
 
+    beforeEach(() => {
+      client = new ApiClient({ baseUrl: 'http://localhost:3001/api' })
+      originalFetch = globalThis.fetch
+      globalThis.fetch = vi.fn()
+    })
+
+    afterEach(() => {
+      globalThis.fetch = originalFetch
+    })
+
+    const mockResponse = (data: any, ok = true, status = 200, statusText = 'OK') => {
+      (globalThis.fetch as any).mockResolvedValueOnce({
+        ok,
+        status,
+        statusText,
+        json: async () => data,
+      })
+    }
+
+    it('setUserActive sends PATCH /users/:id with isActive body', async () => {
+      mockResponse({ id: 'u1', username: 'john', role: 'restaurant_admin', isActive: false })
+      const res = await (client as any).setUserActive('u1', false)
+      expect(res.isActive).toBe(false)
+      const [url, init] = (globalThis.fetch as any).mock.calls[0]
+      expect(url).toBe('http://localhost:3001/api/users/u1')
+      expect(init.method).toBe('PATCH')
+      expect(JSON.parse(init.body)).toEqual({ isActive: false })
+    })
+
+    it('deleteUser sends DELETE /users/:id with 204 response', async () => {
+      (globalThis.fetch as any).mockResolvedValueOnce({
+        ok: true,
+        status: 204,
+        statusText: 'No Content',
+        json: async () => undefined,
+      })
+      await (client as any).deleteUser('u1')
+      const [url, init] = (globalThis.fetch as any).mock.calls[0]
+      expect(url).toBe('http://localhost:3001/api/users/u1')
+      expect(init.method).toBe('DELETE')
+    })
+
+    it('resetUserPassword sends POST /users/:id/reset-password', async () => {
+      mockResponse({ temporaryPassword: 'temp-secret-pass-123' })
+      const res = await (client as any).resetUserPassword('u1')
+      expect(res.temporaryPassword).toBe('temp-secret-pass-123')
+      const [url, init] = (globalThis.fetch as any).mock.calls[0]
+      expect(url).toBe('http://localhost:3001/api/users/u1/reset-password')
+      expect(init.method).toBe('POST')
+    })
+
+    it('changeOwnPassword sends POST /users/me/password and updates auth token', async () => {
+      client.setToken('old-token')
+      mockResponse({ success: true, token: 'new-fresh-token' })
+      const res = await (client as any).changeOwnPassword('old-pass-1', 'new-pass-2')
+      expect(res.success).toBe(true)
+      expect(res.token).toBe('new-fresh-token')
+      const [url, init] = (globalThis.fetch as any).mock.calls[0]
+      expect(url).toBe('http://localhost:3001/api/users/me/password')
+      expect(init.method).toBe('POST')
+      expect(JSON.parse(init.body)).toEqual({ currentPassword: 'old-pass-1', newPassword: 'new-pass-2' })
+      expect((client as any).token).toBe('new-fresh-token')
+    })
+
+    it('notifies password change required on 403 PASSWORD_CHANGE_REQUIRED response', async () => {
+      const listener = vi.fn()
+      const unsub = (client as any).onPasswordChangeRequired(listener)
+
+      ;(globalThis.fetch as any).mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        statusText: 'Forbidden',
+        json: async () => ({ code: 'PASSWORD_CHANGE_REQUIRED', message: 'Password change required' }),
+      })
+
+      await expect(client.listRestaurants()).rejects.toThrow()
+      expect(listener).toHaveBeenCalledTimes(1)
+
+      unsub()
+      ;(globalThis.fetch as any).mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        statusText: 'Forbidden',
+        json: async () => ({ code: 'PASSWORD_CHANGE_REQUIRED' }),
+      })
+      await expect(client.listRestaurants()).rejects.toThrow()
+      expect(listener).toHaveBeenCalledTimes(1)
+    })
+  })

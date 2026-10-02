@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { MIN_PASSWORD_LENGTH } from "@burger-page/contracts"
 import { cleanPhoneNumber } from "./utils"
 
 /**
@@ -73,7 +74,7 @@ export type FormValues = z.infer<typeof formSchema>
 export const ADMIN_LIMITS = {
   auth: {
     username: { min: 3, max: 50 },
-    password: { min: 4, max: 100 },
+    password: { min: MIN_PASSWORD_LENGTH, max: 100 },
   },
   restaurant: {
     name: { min: 2, max: 80 },

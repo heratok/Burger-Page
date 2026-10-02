@@ -185,6 +185,7 @@ export const TenantProvider: React.FC<{
 
   // Sync with Backend DB on mount and when authentication session changes
   useEffect(() => {
+    if (session.mustChangePassword) return
     refreshRestaurants()
   }, [refreshRestaurants, session])
 
