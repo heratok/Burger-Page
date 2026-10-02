@@ -703,3 +703,19 @@ describe('migration 0000000000015 (admin_audit_log) parity with the baseline sch
     expect(down).toContain('DROP FUNCTION IF EXISTS public.guard_admin_audit_log_immutable()');
   });
 });
+
+describe('migration 0000000000016 (users.retired_was_active) parity with the baseline schema', () => {
+  const baseline = read('01_schema.sql');
+  const up = read('migrations/0000000000016_users_retired_was_active.up.sql');
+  const down = read('migrations/0000000000016_users_retired_was_active.down.sql');
+
+  it('declares the nullable column in baseline and migration, without a default or backfill', () => {
+    expect(baseline).toMatch(/retired_was_active BOOLEAN,/);
+    expect(up).toMatch(/ADD COLUMN IF NOT EXISTS retired_was_active BOOLEAN;/);
+    expect(up).not.toMatch(/\bUPDATE\b/);
+  });
+
+  it('is reversible', () => {
+    expect(down).toContain('DROP COLUMN IF EXISTS retired_was_active');
+  });
+});

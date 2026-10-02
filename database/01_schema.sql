@@ -237,6 +237,7 @@ CREATE TABLE IF NOT EXISTS public.users (
     is_active     BOOLEAN NOT NULL DEFAULT TRUE,
     must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
     password_changed_at TIMESTAMPTZ,
+    retired_was_active BOOLEAN,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT chk_restaurant_admin_has_restaurant
@@ -249,6 +250,7 @@ COMMENT ON TABLE public.users IS 'Empleados/administradores. rol super_admin es 
 COMMENT ON COLUMN public.users.password_hash IS 'Hash con salt del credencial de acceso. Nunca se devuelve al frontend.';
 COMMENT ON COLUMN public.users.must_change_password IS 'true tras un reseteo de contraseña por el super admin: el usuario solo puede cambiar su propia contraseña hasta hacerlo.';
 COMMENT ON COLUMN public.users.password_changed_at IS 'Instante del último cambio/reseteo de contraseña. Los tokens emitidos antes (iat) se rechazan. NULL = nunca cambiada.';
+COMMENT ON COLUMN public.users.retired_was_active IS 'is_active del usuario al darse de baja su restaurante; se usa para restaurarlo igual. NULL = no retirado o retirado antes de existir la columna (se restaura activo).';
 
 -- 2.3 CATEGORIES (Relational Menu Sections) ----------------------------------
 CREATE TABLE IF NOT EXISTS public.categories (

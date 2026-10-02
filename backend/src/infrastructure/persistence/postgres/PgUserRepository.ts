@@ -153,7 +153,10 @@ export class PgUserRepository implements UserRepository {
     await withTenantContext({ restaurantId, actorRole: 'super_admin' }, async (client) => {
       await client.query(
         `UPDATE public.users
-            SET is_active = false,
+            SET retired_was_active = CASE
+                                       WHEN username LIKE '%-deleted-' || restaurant_id
+                                       THEN retired_was_active ELSE is_active END,
+                is_active = false,
                 username = CASE WHEN username LIKE '%-deleted-' || restaurant_id
                                 THEN username ELSE username || '-deleted-' || restaurant_id END,
                 updated_at = NOW()
@@ -222,7 +225,11 @@ export class PgUserRepository implements UserRepository {
         );
         const username = taken ? `${originalUsername}-restored-${restaurantId}` : originalUsername;
         await client.query(
-          `UPDATE public.users SET username = $2, is_active = true, updated_at = NOW() WHERE id = $1`,
+          `UPDATE public.users SET username = $2,
+                  is_active = COALESCE(retired_was_active, true),
+                  retired_was_active = NULL,
+                  updated_at = NOW()
+            WHERE id = $1`,
           [row.id, username]
         );
         restored.push({ id: row.id, username, originalUsername });

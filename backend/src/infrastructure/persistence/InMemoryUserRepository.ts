@@ -70,11 +70,17 @@ export class InMemoryUserRepository implements UserRepository {
     return 'done';
   }
 
+  /** is_active a retired user had before its tenant was deleted (users.retired_was_active). */
+  private retiredWasActive = new Map<string, boolean>();
+
   async retireByRestaurantId(restaurantId: string): Promise<void> {
     const suffix = `-deleted-${restaurantId}`;
     for (const [id, user] of [...this.users.entries()]) {
       if (user.restaurantId !== restaurantId) continue;
-      const username = user.username.endsWith(suffix) ? user.username : user.username + suffix;
+      const alreadyRetired = user.username.endsWith(suffix);
+      // Idempotent: a second retire must not capture the already-retired state.
+      if (!alreadyRetired) this.retiredWasActive.set(id, user.isActive !== false);
+      const username = alreadyRetired ? user.username : user.username + suffix;
       this.users.set(id, { ...user, isActive: false, username });
     }
   }
@@ -107,7 +113,10 @@ export class InMemoryUserRepository implements UserRepository {
       const originalUsername = user.username.slice(0, -suffix.length);
       const taken = [...this.users.values()].some((u) => u.id !== id && u.username === originalUsername);
       const username = taken ? `${originalUsername}-restored-${restaurantId}` : originalUsername;
-      this.users.set(id, { ...user, isActive: true, username });
+      // Unknown prior state (retired before it was tracked) restores active.
+      const isActive = this.retiredWasActive.get(id) ?? true;
+      this.retiredWasActive.delete(id);
+      this.users.set(id, { ...user, isActive, username });
       restored.push({ id, username, originalUsername });
     }
     return restored;

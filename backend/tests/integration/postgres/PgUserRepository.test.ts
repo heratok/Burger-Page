@@ -350,6 +350,37 @@ describe('PgUserRepository (real Postgres, app_user role — login is the pre-te
       expect(byId[other.id]).toMatchObject({ username: other.username, is_active: true });
     });
 
+    it('restoreByRestaurantId keeps a user deactivated before the retire inactive (retired_was_active)', async () => {
+      if (!isDbConnected) return;
+      const on = mk('restaurant_admin', RESTAURANT_B);
+      const off = mk('restaurant_admin', RESTAURANT_B);
+      await repo.save(on);
+      await repo.save(off);
+      expect(await repo.setActive(off.id, false)).toBe('done');
+
+      await repo.retireByRestaurantId(RESTAURANT_B);
+      await repo.retireByRestaurantId(RESTAURANT_B); // idempotent: must not overwrite the captured state
+      await repo.restoreByRestaurantId(RESTAURANT_B);
+
+      const { rows } = await adminPool.query(
+        `SELECT id, is_active, retired_was_active FROM public.users WHERE id = ANY($1)`,
+        [[on.id, off.id]]
+      );
+      const byId = Object.fromEntries(rows.map((r) => [r.id, r]));
+      expect(byId[on.id]).toMatchObject({ is_active: true, retired_was_active: null });
+      expect(byId[off.id]).toMatchObject({ is_active: false, retired_was_active: null });
+    });
+
+    it('restoreByRestaurantId treats a retired row with unknown prior state (NULL) as active, as before', async () => {
+      if (!isDbConnected) return;
+      const legacy = mk('restaurant_admin', RESTAURANT_B);
+      await repo.save(legacy);
+      await repo.retireByRestaurantId(RESTAURANT_B);
+      await adminPool.query(`UPDATE public.users SET retired_was_active = NULL WHERE id = $1`, [legacy.id]);
+      await repo.restoreByRestaurantId(RESTAURANT_B);
+      expect((await repo.findById(legacy.id))?.isActive).toBe(true);
+    });
+
     it('restoreByRestaurantId gives a unique -restored- username when the original was taken meanwhile', async () => {
       if (!isDbConnected) return;
       const retired = mk('restaurant_admin', RESTAURANT_B);
