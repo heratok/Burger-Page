@@ -65,7 +65,7 @@ export function createAuthMiddlewares(
     // the stored row is available it overrides the claim (below).
     let mustChangePassword = payload.mustChangePassword === true;
 
-    // SUS-14: signed claims age up to 7 days, so a deactivated or demoted
+    // SUS-14: signed claims age up to 12 hours, so a deactivated or demoted
     // account must be re-validated against storage on every authenticated
     // request. The stored row wins over the stale claims: the current role,
     // username, and restaurantId actually governing the session come from

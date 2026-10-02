@@ -79,7 +79,7 @@ export class JwtService {
 
   generateToken(
     user: { id: string; username: string; role: UserRole; restaurantId?: string; scope?: string; mustChangePassword?: boolean },
-    expiresInSeconds: number = 60 * 60 * 24 * 7 // 7 days
+    expiresInSeconds: number = 60 * 60 * 12 // 12 hours: one work shift
   ): string {
     const now = Math.floor(Date.now() / 1000);
     const header = { alg: 'HS256', typ: 'JWT' };
