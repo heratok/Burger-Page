@@ -255,6 +255,19 @@ describe("StorefrontCustomizer & Subcomponents (TDD Modularization)", () => {
       expect(screen.getByRole("tab", { name: /Estilos/i }).getAttribute("aria-selected")).toBe("false")
     })
 
+    it("derives tablist gridTemplateColumns style from TAB_COLUMNS constant and removes grid-cols-3", () => {
+      render(
+        <RestaurantProvider>
+          <StorefrontCustomizer />
+        </RestaurantProvider>
+      )
+
+      const tablist = screen.getByRole("tablist", { name: /Secciones del personalizador/i })
+      expect(tablist.style.gridTemplateColumns).toBe("repeat(3, minmax(0, 1fr))")
+      expect(tablist.className).not.toContain("grid-cols-3")
+      expect(tablist.className).toContain("grid")
+    })
+
     describe("WAI-ARIA keyboard navigation for Personalizar tabs", () => {
       it("manages roving tabIndex so only the active tab has tabIndex=0 and others have -1", () => {
         render(

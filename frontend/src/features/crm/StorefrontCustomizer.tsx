@@ -149,7 +149,8 @@ export const StorefrontCustomizer: React.FC = () => {
             role="tablist"
             aria-label="Secciones del personalizador"
             onKeyDown={handleKeyDown}
-            className="grid grid-cols-3 gap-1 rounded-xl border bg-slate-100 p-1 text-xs font-semibold dark:border-slate-700 dark:bg-slate-800"
+            style={{ gridTemplateColumns: `repeat(${TAB_COLUMNS}, minmax(0, 1fr))` }}
+            className="grid gap-1 rounded-xl border bg-slate-100 p-1 text-xs font-semibold dark:border-slate-700 dark:bg-slate-800"
           >
             {CUSTOMIZER_TABS.map((tab, index) => {
               const Icon = tab.icon
