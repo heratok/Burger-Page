@@ -3,6 +3,8 @@ import { RestaurantRepository } from '../../domain/ports/out/RestaurantRepositor
 import { ConflictError, EntityNotFoundError, ValidationError } from '../../domain/errors/DomainErrors.js';
 import { User, UserRole } from '../../domain/models/User.js';
 import { assertGuardedChangeAllowed, assertNotSelf } from './userGuards.js';
+import { AdminAuditRecorder, AuditActor } from '../services/AdminAuditRecorder.js';
+import { diffFields } from '../../domain/shared/auditDetails.js';
 
 export interface UpdateUserInput {
   actorId: string;
@@ -11,6 +13,8 @@ export interface UpdateUserInput {
   role?: UserRole;
   restaurantId?: string | null;
   isActive?: boolean;
+  /** Who performs the edit (audit trail). */
+  actor?: AuditActor;
 }
 
 /**
@@ -22,7 +26,8 @@ export interface UpdateUserInput {
 export class UpdateUserUseCase {
   constructor(
     private userRepo: UserRepository,
-    private restaurantRepo: RestaurantRepository
+    private restaurantRepo: RestaurantRepository,
+    private audit?: AdminAuditRecorder
   ) {}
 
   async execute(input: UpdateUserInput): Promise<User> {
@@ -102,6 +107,31 @@ export class UpdateUserUseCase {
     if (!updated) {
       throw new EntityNotFoundError(`User '${targetId}' not found`);
     }
+    await this.recordAudit(input.actor, target, updated);
     return updated;
+  }
+
+  private async recordAudit(actor: AuditActor | undefined, before: User, after: User): Promise<void> {
+    if (!this.audit) return;
+    const flat = (u: User) => ({ username: u.username, role: u.role, restaurantId: u.restaurantId ?? null });
+    const diff = diffFields(flat(before), flat(after), ['username', 'role', 'restaurantId']);
+    const wasActive = before.isActive !== false;
+    const isActive = after.isActive !== false;
+    const target = {
+      targetType: 'user' as const,
+      targetId: after.id,
+      targetLabel: after.username,
+      restaurantId: after.restaurantId ?? null,
+    };
+    if (wasActive !== isActive) {
+      await this.audit.record(actor, {
+        ...target,
+        action: isActive ? 'user.activate' : 'user.deactivate',
+        details: { from: wasActive, to: isActive },
+      });
+    }
+    if (diff.changedFields.length > 0) {
+      await this.audit.record(actor, { ...target, action: 'user.update', details: diff });
+    }
   }
 }

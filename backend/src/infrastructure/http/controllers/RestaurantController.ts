@@ -11,6 +11,7 @@ import { RestoreRestaurantUseCase } from '../../../application/use-cases/Restore
 import { createRestaurantSchema, restoreRestaurantSchema, updateRestaurantCategoriesSchema, updateRestaurantSchema } from '@burger-page/contracts';
 import { ValidationError } from '../../../domain/errors/DomainErrors.js';
 import { omitAdminPassword } from '../../../domain/models/Restaurant.js';
+import { auditActorOf } from '../auditActor.js';
 
 /**
  * A9: storefront-only projection of a tenant for the public landing.
@@ -91,7 +92,7 @@ export class RestaurantController {
     if (!parsed.success) {
       throw new ValidationError(parsed.error.message);
     }
-    const created = await this.createRestaurantUseCase.execute(parsed.data, req.authContext?.role);
+    const created = await this.createRestaurantUseCase.execute(parsed.data, req.authContext?.role, auditActorOf(req));
     return reply.status(201).send(created);
   }
 
@@ -119,7 +120,7 @@ export class RestaurantController {
 
   async delete(req: FastifyRequest, reply: FastifyReply) {
     const params = (req.params || {}) as { id: string };
-    await this.deleteRestaurantUseCase.execute(params.id);
+    await this.deleteRestaurantUseCase.execute(params.id, auditActorOf(req));
     return reply.status(200).send({ message: 'Restaurant deleted successfully' });
   }
 
@@ -146,7 +147,7 @@ export class RestaurantController {
     if (!body.success) {
       throw new ValidationError(body.error.message);
     }
-    const result = await this.restoreRestaurantUseCase.execute({ id, slug: body.data.slug });
+    const result = await this.restoreRestaurantUseCase.execute({ id, slug: body.data.slug, actor: auditActorOf(req) });
     return reply.status(200).send(result);
   }
 
@@ -232,7 +233,7 @@ export class RestaurantController {
     if (!parsed.success) {
       throw new ValidationError(parsed.error.message);
     }
-    const updated = await this.updateRestaurantUseCase.execute(params.id, parsed.data, auth?.role);
+    const updated = await this.updateRestaurantUseCase.execute(params.id, parsed.data, auth?.role, auditActorOf(req));
     return reply.status(200).send(updated);
   }
 }

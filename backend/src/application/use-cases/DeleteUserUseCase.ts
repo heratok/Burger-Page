@@ -1,16 +1,22 @@
 import { UserRepository } from '../../domain/ports/out/UserRepository.js';
 import { EntityNotFoundError } from '../../domain/errors/DomainErrors.js';
 import { assertGuardedChangeAllowed, assertNotSelf } from './userGuards.js';
+import { AdminAuditRecorder, AuditActor } from '../services/AdminAuditRecorder.js';
 
 export interface DeleteUserInput {
   actorId: string;
   targetId: string;
+  /** Who deletes it (audit trail). */
+  actor?: AuditActor;
 }
 
 export class DeleteUserUseCase {
-  constructor(private userRepo: UserRepository) {}
+  constructor(
+    private userRepo: UserRepository,
+    private audit?: AdminAuditRecorder
+  ) {}
 
-  async execute({ actorId, targetId }: DeleteUserInput): Promise<void> {
+  async execute({ actorId, targetId, actor }: DeleteUserInput): Promise<void> {
     const target = await this.userRepo.findById(targetId);
     if (!target) {
       throw new EntityNotFoundError(`User '${targetId}' not found`);
@@ -21,5 +27,13 @@ export class DeleteUserUseCase {
       throw new EntityNotFoundError(`User '${targetId}' not found`);
     }
     assertGuardedChangeAllowed(outcome, 'delete');
+    await this.audit?.record(actor, {
+      action: 'user.delete',
+      targetType: 'user',
+      targetId: target.id,
+      targetLabel: target.username,
+      restaurantId: target.restaurantId ?? null,
+      details: { username: target.username, role: target.role },
+    });
   }
 }

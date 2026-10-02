@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { AdminAuditRecorder, AuditActor } from '../services/AdminAuditRecorder.js';
 import { ID_PREFIX, newId } from '../../domain/shared/newId.js';
 import { RestaurantRepository } from '../../domain/ports/out/RestaurantRepository.js';
 import { CategoryRepository } from '../../domain/ports/out/CategoryRepository.js';
@@ -36,10 +37,11 @@ export class CreateRestaurantUseCase {
     // Needed to seed the sample dishes of a template. Without them a template
     // only picks the theme (script/test callers that wire a bare use case).
     private readonly productRepo?: ProductRepository,
-    private readonly additionRepo?: ProductAdditionRepository
+    private readonly additionRepo?: ProductAdditionRepository,
+    private readonly audit?: AdminAuditRecorder
   ) {}
 
-  async execute(input: CreateRestaurantInput, callerRole?: UserRole): Promise<Restaurant> {
+  async execute(input: CreateRestaurantInput, callerRole?: UserRole, actor?: AuditActor): Promise<Restaurant> {
     const cleanSlug = normalizeSlug(input.slug);
 
     const existing = await this.restaurantRepo.findBySlug(cleanSlug);
@@ -177,6 +179,23 @@ export class CreateRestaurantUseCase {
         throw err;
       }
     }
+
+    await this.audit?.record(actor, {
+      action: 'restaurant.create',
+      targetType: 'restaurant',
+      targetId: restaurantId,
+      targetLabel: newRestaurant.name,
+      restaurantId,
+      // Never the password: only the admin USERNAME is recorded.
+      details: {
+        slug: cleanSlug,
+        template: template?.id ?? null,
+        currency,
+        currencySymbol,
+        timezone,
+        adminUsername: this.userRepo && this.hasher ? adminUsername : null,
+      },
+    });
 
     return { ...newRestaurant, adminPassword, adminUsername } as Restaurant;
   }

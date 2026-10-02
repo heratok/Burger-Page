@@ -354,4 +354,64 @@ export type UpdateCustomerInput = z.infer<typeof updateCustomerSchema>;
 
 
 
+// ==========================================
+// SUPER ADMIN AUDIT LOG
+// ==========================================
+
+/** Every super admin mutation recorded in the audit log. */
+export const AUDIT_ACTIONS = [
+  'restaurant.create',
+  'restaurant.update',
+  'restaurant.pause',
+  'restaurant.activate',
+  'restaurant.delete',
+  'restaurant.restore',
+  'user.create',
+  'user.update',
+  'user.activate',
+  'user.deactivate',
+  'user.delete',
+  'user.reset_password',
+] as const;
+export const auditActionEnum = z.enum(AUDIT_ACTIONS);
+export type AuditAction = z.infer<typeof auditActionEnum>;
+
+export const AUDIT_LOG_DEFAULT_LIMIT = 50;
+export const AUDIT_LOG_MAX_LIMIT = 200;
+
+/** Query string of GET /audit-log. Newest first; `cursor` is the opaque nextCursor of the previous page. */
+export const auditLogQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(AUDIT_LOG_MAX_LIMIT).default(AUDIT_LOG_DEFAULT_LIMIT),
+  cursor: z.string().min(1).optional(),
+  action: auditActionEnum.optional(),
+  restaurantId: z.string().min(1).optional(),
+  actorUserId: z.string().min(1).optional(),
+  /** Inclusive lower bound (ISO 8601). */
+  from: z.string().datetime({ offset: true }).optional(),
+  /** Inclusive upper bound (ISO 8601). */
+  to: z.string().datetime({ offset: true }).optional(),
+});
+export type AuditLogQuery = z.infer<typeof auditLogQuerySchema>;
+
+export const auditLogItemSchema = z.object({
+  id: z.string(),
+  createdAt: z.string(),
+  actorUserId: z.string().nullable(),
+  actorUsername: z.string(),
+  action: auditActionEnum,
+  targetType: z.enum(['restaurant', 'user']),
+  targetId: z.string(),
+  targetLabel: z.string(),
+  restaurantId: z.string().nullable(),
+  /** Changed field names and non-secret before/after values; never credentials. */
+  details: z.record(z.string(), z.unknown()),
+});
+export type AuditLogItem = z.infer<typeof auditLogItemSchema>;
+
+export const auditLogPageSchema = z.object({
+  items: z.array(auditLogItemSchema),
+  nextCursor: z.string().nullable(),
+});
+export type AuditLogPage = z.infer<typeof auditLogPageSchema>;
+
 export * from './schedule.js';

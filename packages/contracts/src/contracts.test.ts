@@ -10,6 +10,10 @@ import {
   createRestaurantSchema,
   restaurantDTOSchema,
   restaurantTemplateSummarySchema,
+  AUDIT_ACTIONS,
+  auditLogQuerySchema,
+  auditLogItemSchema,
+  auditLogPageSchema,
 } from './index.js';
 
 describe('@burger-page/contracts', () => {
@@ -139,5 +143,39 @@ describe('restaurant schedule contracts', () => {
     const entry = { id: 'burger', name: 'Hamburguesería', description: 'x', productCount: 6, additionCount: 7 };
     expect(restaurantTemplateSummarySchema.safeParse(entry).success).toBe(true);
     expect(restaurantTemplateSummarySchema.safeParse({ ...entry, productCount: -1 }).success).toBe(false);
+  });
+
+  describe('audit log contracts', () => {
+    it('lists every super admin action', () => {
+      expect(AUDIT_ACTIONS).toEqual([
+        'restaurant.create', 'restaurant.update', 'restaurant.pause', 'restaurant.activate',
+        'restaurant.delete', 'restaurant.restore',
+        'user.create', 'user.update', 'user.activate', 'user.deactivate', 'user.delete', 'user.reset_password',
+      ]);
+    });
+
+    it('defaults limit to 50, caps it at 200 and coerces query strings', () => {
+      expect(auditLogQuerySchema.parse({}).limit).toBe(50);
+      expect(auditLogQuerySchema.parse({ limit: '25' }).limit).toBe(25);
+      expect(auditLogQuerySchema.safeParse({ limit: '201' }).success).toBe(false);
+      expect(auditLogQuerySchema.safeParse({ limit: '0' }).success).toBe(false);
+    });
+
+    it('validates filters', () => {
+      expect(auditLogQuerySchema.safeParse({ action: 'restaurant.create', restaurantId: 'r', actorUserId: 'u', from: '2026-01-01T00:00:00.000Z', to: '2026-02-01T00:00:00.000Z', cursor: 'abc' }).success).toBe(true);
+      expect(auditLogQuerySchema.safeParse({ action: 'restaurant.explode' }).success).toBe(false);
+      expect(auditLogQuerySchema.safeParse({ from: 'yesterday' }).success).toBe(false);
+    });
+
+    it('describes an item and a page', () => {
+      const item = {
+        id: 'aud_1', createdAt: '2026-01-01T00:00:00.000Z', actorUserId: 'usr_1', actorUsername: 'root',
+        action: 'user.create', targetType: 'user', targetId: 'usr_2', targetLabel: 'bob', restaurantId: null,
+        details: { role: 'restaurant_admin' },
+      };
+      expect(auditLogItemSchema.safeParse(item).success).toBe(true);
+      expect(auditLogPageSchema.safeParse({ items: [item], nextCursor: null }).success).toBe(true);
+      expect(auditLogItemSchema.safeParse({ ...item, targetType: 'order' }).success).toBe(false);
+    });
   });
 });

@@ -3,11 +3,14 @@ import { UserRepository } from '../../domain/ports/out/UserRepository.js';
 import { Restaurant, omitAdminPassword } from '../../domain/models/Restaurant.js';
 import { ConflictError, EntityNotFoundError } from '../../domain/errors/DomainErrors.js';
 import { normalizeSlug } from '../../domain/shared/slug.js';
+import { AdminAuditRecorder, AuditActor } from '../services/AdminAuditRecorder.js';
 
 export interface RestoreRestaurantInput {
   id: string;
   /** Optional replacement slug, e.g. when the original one was reused. */
   slug?: string;
+  /** Who restores it (audit trail). */
+  actor?: AuditActor;
 }
 
 export interface RenamedUser {
@@ -31,10 +34,11 @@ export interface RestoreRestaurantResult {
 export class RestoreRestaurantUseCase {
   constructor(
     private restaurantRepo: RestaurantRepository,
-    private userRepo: UserRepository
+    private userRepo: UserRepository,
+    private audit?: AdminAuditRecorder
   ) {}
 
-  async execute({ id, slug: requestedSlug }: RestoreRestaurantInput): Promise<RestoreRestaurantResult> {
+  async execute({ id, slug: requestedSlug, actor }: RestoreRestaurantInput): Promise<RestoreRestaurantResult> {
     const deleted = (await this.restaurantRepo.findDeleted()).find((r) => r.id === id);
     if (!deleted) {
       throw new EntityNotFoundError(`Deleted restaurant "${id}" not found`);
@@ -60,12 +64,18 @@ export class RestoreRestaurantUseCase {
     if (!restaurant) {
       throw new EntityNotFoundError(`Restaurant "${id}" not found after restore`);
     }
-    return {
-      restaurant: omitAdminPassword(restaurant),
-      renamedUsers: restoredUsers
-        .filter((u) => u.username !== u.originalUsername)
-        .map((u) => ({ id: u.id, from: u.originalUsername, to: u.username })),
-    };
+    const renamedUsers = restoredUsers
+      .filter((u) => u.username !== u.originalUsername)
+      .map((u) => ({ id: u.id, from: u.originalUsername, to: u.username }));
+    await this.audit?.record(actor, {
+      action: 'restaurant.restore',
+      targetType: 'restaurant',
+      targetId: restaurant.id,
+      targetLabel: restaurant.name,
+      restaurantId: restaurant.id,
+      details: { slug: restaurant.slug, originalSlug: deleted.slug, restoredUsers: restoredUsers.length, renamedUsers },
+    });
+    return { restaurant: omitAdminPassword(restaurant), renamedUsers };
   }
 
   private slugTaken(slug: string, wasOriginal: boolean): ConflictError {

@@ -1,4 +1,6 @@
 import { ID_PREFIX, newId } from '../../domain/shared/newId.js';
+import { AdminAuditRecorder, AuditActor } from '../services/AdminAuditRecorder.js';
+import { diffFields } from '../../domain/shared/auditDetails.js';
 import { RestaurantRepository } from '../../domain/ports/out/RestaurantRepository.js';
 import { CategoryRepository } from '../../domain/ports/out/CategoryRepository.js';
 import { Restaurant, omitAdminPassword } from '../../domain/models/Restaurant.js';
@@ -39,10 +41,11 @@ export class UpdateRestaurantUseCase {
     private restaurantRepo: RestaurantRepository,
     private categoryRepo?: CategoryRepository,
     private userRepo?: UserRepository,
-    private hasher?: PasswordHasher
+    private hasher?: PasswordHasher,
+    private audit?: AdminAuditRecorder
   ) {}
 
-  async execute(id: string, input: UpdateRestaurantInput, actorRole?: string): Promise<Restaurant> {
+  async execute(id: string, input: UpdateRestaurantInput, actorRole?: string, actor?: AuditActor): Promise<Restaurant> {
     const restaurant = (await this.restaurantRepo.findById(id)) || (await this.restaurantRepo.findBySlug(id));
     if (!restaurant) {
       throw new EntityNotFoundError(`Restaurant "${id}" not found`);
@@ -171,10 +174,57 @@ export class UpdateRestaurantUseCase {
     // in-memory merge can be stale.
     const persisted = (await this.restaurantRepo.findById(restaurant.id)) ?? updated;
 
+    await this.recordAudit(actor, restaurant, persisted, input.adminPassword !== undefined);
+
     // SUS-20: a provided adminPassword must never be echoed back in the
     // response — only the create 201 carries one-time credentials.
     return omitAdminPassword(persisted);
   }
+  /**
+   * One entry per semantic change: pausing/activating the tenant is its own
+   * action, every other changed field goes into a single restaurant.update.
+   * The admin password is recorded by field NAME only.
+   */
+  private async recordAudit(
+    actor: AuditActor | undefined,
+    before: Restaurant,
+    after: Restaurant,
+    passwordRotated: boolean
+  ): Promise<void> {
+    if (!this.audit) return;
+    const flat = (r: Restaurant) => ({
+      name: r.name,
+      slug: r.slug,
+      tagline: r.tagline,
+      whatsappNumber: r.whatsappNumber,
+      primaryColor: r.primaryColor,
+      theme: r.theme,
+      timezone: r.timezone,
+      ordersPaused: r.ordersPaused,
+      currency: r.config?.currency,
+      currencySymbol: r.config?.currencySymbol,
+      schedule: r.schedule,
+      categories: r.categories,
+    });
+    const diff = diffFields(flat(before), flat(after), [
+      'name', 'slug', 'tagline', 'whatsappNumber', 'primaryColor', 'theme', 'timezone', 'ordersPaused',
+      'currency', 'currencySymbol', 'schedule', 'categories',
+    ]);
+    if (passwordRotated) diff.changedFields.push('adminPassword');
+    const target = { targetType: 'restaurant' as const, targetId: after.id, targetLabel: after.name, restaurantId: after.id };
+
+    if (before.isActive !== after.isActive) {
+      await this.audit.record(actor, {
+        ...target,
+        action: after.isActive ? 'restaurant.activate' : 'restaurant.pause',
+        details: { from: before.isActive, to: after.isActive },
+      });
+    }
+    if (diff.changedFields.length > 0) {
+      await this.audit.record(actor, { ...target, action: 'restaurant.update', details: diff });
+    }
+  }
+
   /**
    * Builds the primary admin user with the new password hash, flagged so the
    * super-admin-chosen password must be changed at next login (same as a

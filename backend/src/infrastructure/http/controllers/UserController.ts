@@ -7,6 +7,7 @@ import { DeleteUserUseCase } from '../../../application/use-cases/DeleteUserUseC
 import { ResetUserPasswordUseCase } from '../../../application/use-cases/ResetUserPasswordUseCase.js';
 import { ChangeOwnPasswordUseCase } from '../../../application/use-cases/ChangeOwnPasswordUseCase.js';
 import { CreateUserDTO } from '../../../application/dtos/index.js';
+import { auditActorOf } from '../auditActor.js';
 
 export class UserController {
   constructor(
@@ -23,7 +24,7 @@ export class UserController {
     request: FastifyRequest,
     reply: FastifyReply
   ) {
-    const user = await this.createUser.execute(request.body as CreateUserDTO, request.authContext?.role);
+    const user = await this.createUser.execute(request.body as CreateUserDTO, request.authContext?.role, auditActorOf(request));
     const { passwordHash: _, ...safe } = user;
     return reply.status(201).send(safe);
   }
@@ -81,6 +82,7 @@ export class UserController {
     };
     const user = await this.updateUser.execute({
       actorId: request.authContext!.userId,
+      actor: auditActorOf(request),
       targetId: id,
       username: body.username,
       role: body.role,
@@ -93,13 +95,13 @@ export class UserController {
 
   async remove(request: FastifyRequest, reply: FastifyReply) {
     const { id } = request.params as { id: string };
-    await this.deleteUser.execute({ actorId: request.authContext!.userId, targetId: id });
+    await this.deleteUser.execute({ actorId: request.authContext!.userId, actor: auditActorOf(request), targetId: id });
     return reply.status(204).send();
   }
 
   async resetPassword(request: FastifyRequest, reply: FastifyReply) {
     const { id } = request.params as { id: string };
-    const result = await this.resetUserPassword.execute({ targetId: id });
+    const result = await this.resetUserPassword.execute({ targetId: id, actor: auditActorOf(request) });
     return reply.send(result);
   }
 

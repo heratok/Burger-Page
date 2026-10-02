@@ -658,3 +658,48 @@ describe('migration 0000000000014 (restaurants.deleted_slug) parity with the bas
     expect(down).toContain('DROP COLUMN IF EXISTS deleted_slug');
   });
 });
+
+describe('migration 0000000000015 (admin_audit_log) parity with the baseline schema', () => {
+  const baseline = read('01_schema.sql');
+  const up = read('migrations/0000000000015_admin_audit_log.up.sql');
+  const down = read('migrations/0000000000015_admin_audit_log.down.sql');
+
+  const tableDef = (sql: string) => {
+    const start = sql.indexOf('CREATE TABLE IF NOT EXISTS public.admin_audit_log');
+    expect(start).toBeGreaterThan(-1);
+    return sql.slice(start, sql.indexOf('\n);', start)).replace(/\s+/g, ' ');
+  };
+
+  it('declares the same table, with no foreign keys, in baseline and migration', () => {
+    expect(tableDef(baseline)).toBe(tableDef(up));
+    expect(tableDef(up)).not.toMatch(/REFERENCES/i);
+    expect(tableDef(up)).toMatch(/actor_user_id TEXT,/);
+    expect(tableDef(up)).toMatch(/details JSONB NOT NULL DEFAULT '\{\}'::jsonb/);
+  });
+
+  it.each([
+    'idx_admin_audit_log_created ON public.admin_audit_log (created_at DESC, id DESC)',
+    'idx_admin_audit_log_restaurant ON public.admin_audit_log (restaurant_id, created_at DESC)',
+    'idx_admin_audit_log_actor ON public.admin_audit_log (actor_user_id)',
+  ])('creates index %s in baseline and migration', (def) => {
+    for (const sql of [baseline, up]) expect(sql.replace(/\s+/g, ' ')).toContain(`CREATE INDEX IF NOT EXISTS ${def}`);
+  });
+
+  it('is append-only for app_user in baseline and migration, with super-admin-only RLS', () => {
+    for (const sql of [baseline, up]) {
+      expect(sql).toContain('GRANT SELECT, INSERT ON public.admin_audit_log TO app_user;');
+      expect(sql).toContain('REVOKE UPDATE, DELETE ON public.admin_audit_log FROM app_user;');
+      expect(sql).toMatch(/ALTER TABLE public\.admin_audit_log\s+ENABLE ROW LEVEL SECURITY;/);
+      expect(sql).toMatch(/ALTER TABLE public\.admin_audit_log\s+FORCE ROW LEVEL SECURITY;/);
+      expect(sql).toMatch(/super_admin_read_admin_audit_log[\s\S]*?FOR SELECT\s+USING \(\(SELECT public\.app_is_super_admin\(\)\)\)/);
+      expect(sql).toMatch(/super_admin_append_admin_audit_log[\s\S]*?FOR INSERT\s+WITH CHECK \(\(SELECT public\.app_is_super_admin\(\)\)\)/);
+      expect(sql).toContain('BEFORE UPDATE ON public.admin_audit_log');
+      expect(sql).not.toMatch(/ON public\.admin_audit_log\s+FOR (ALL|UPDATE|DELETE)/);
+    }
+  });
+
+  it('is reversible', () => {
+    expect(down).toContain('DROP TABLE IF EXISTS public.admin_audit_log');
+    expect(down).toContain('DROP FUNCTION IF EXISTS public.guard_admin_audit_log_immutable()');
+  });
+});

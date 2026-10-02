@@ -32,6 +32,7 @@ export const ID_PREFIX = {
   inventory: 'inv',
   openingHours: 'oh',
   table: 'tbl',
+  audit: 'aud',
 } as const;
 
 const PREFIX_PATTERN = /^[a-z][a-z0-9_]*$/;
