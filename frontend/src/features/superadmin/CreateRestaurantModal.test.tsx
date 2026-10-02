@@ -84,10 +84,10 @@ describe("CreateRestaurantModal (TDD)", () => {
     expect(await screen.findByText(/Credenciales del Administrador/i)).toBeDefined()
     expect(screen.getByText("admin_burgerqueen")).toBeDefined()
     expect(screen.getByText("generatedTempPass123")).toBeDefined()
-    expect(screen.getByText(/Esta es la única vez que se mostrará/i)).toBeDefined()
+    expect(screen.getByText(/primer inicio de sesión/i)).toBeDefined()
 
     // Finish button should close the modal
-    const closeBtn = screen.getByRole("button", { name: /Entendido y Cerrar/i })
+    const closeBtn = screen.getByRole("button", { name: /Ya copié las credenciales, cerrar/i })
     fireEvent.click(closeBtn)
     expect(onCloseMock).toHaveBeenCalled()
   })
@@ -119,5 +119,47 @@ describe("CreateRestaurantModal (TDD)", () => {
 
     // Preserves values in form so user can edit
     expect((screen.getByLabelText(/Usuario Admin/i) as HTMLInputElement).value).toBe("taken_user")
+  })
+
+  it("shows manual copy toast when clipboard writeText rejects in credentials view", async () => {
+    const { toast } = await import("sonner")
+    const toastErrorSpy = vi.spyOn(toast, "error")
+
+    vi.spyOn(apiClient, "createRestaurant").mockResolvedValue({
+      id: "rest-new-123",
+      slug: "burger-queen",
+      name: "Burger Queen",
+      adminUsername: "admin_burgerqueen",
+      adminPassword: "generatedTempPass123",
+    } as any)
+
+    const writeTextMock = vi.fn().mockRejectedValue(new Error("Clipboard denied"))
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: writeTextMock,
+      },
+    })
+
+    render(
+      <RestaurantProvider>
+        <CreateRestaurantModal isOpen={true} onClose={vi.fn()} />
+      </RestaurantProvider>
+    )
+
+    fireEvent.change(screen.getByLabelText(/Nombre del Restaurante/i), {
+      target: { value: "Burger Queen" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: /Crear Restaurante/i }))
+
+    expect(await screen.findByText(/Credenciales del Administrador/i)).toBeDefined()
+
+    const copyPassBtn = screen.getByRole("button", { name: /Copiar clave provisional/i })
+    fireEvent.click(copyPassBtn)
+
+    await waitFor(() => {
+      expect(toastErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining("No se pudo copiar automáticamente")
+      )
+    })
   })
 })

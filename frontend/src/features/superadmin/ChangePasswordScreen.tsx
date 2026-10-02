@@ -12,8 +12,8 @@ import {
   X,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { useAppRouter } from "@/core/router/useAppRouter"
-import { toast } from "sonner"
 
 interface ChangePasswordScreenProps {
   forced?: boolean
@@ -80,12 +80,15 @@ export const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({
         onSuccess?.()
         handleClose?.()
       } else {
-        setErrorMessage(res.error || "No se pudo cambiar la contraseña. Verifica la contraseña actual.")
+        const error = res.error || "No se pudo cambiar la contraseña. Verifica la contraseña actual."
+        setErrorMessage(error)
       }
     } catch (err: any) {
-      const msg = err?.message || "Ocurrió un error al intentar cambiar la contraseña."
+      const rawMsg = err?.message || ""
+      const msg = rawMsg.toLowerCase().includes("current password")
+        ? "La contraseña actual es incorrecta"
+        : rawMsg || "Ocurrió un error al intentar cambiar la contraseña."
       setErrorMessage(msg)
-      toast.error(msg)
     } finally {
       setIsSubmitting(false)
     }
@@ -326,8 +329,18 @@ export const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
-      {content}
-    </div>
+    <Dialog open={true} onOpenChange={(open) => !open && handleClose?.()}>
+      <DialogContent
+        showCloseButton={false}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            handleClose?.()
+          }
+        }}
+        className="fixed top-1/2 left-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 p-0 border-0 bg-transparent shadow-none"
+      >
+        {content}
+      </DialogContent>
+    </Dialog>
   )
 }

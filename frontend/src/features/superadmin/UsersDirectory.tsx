@@ -39,6 +39,24 @@ function mapUserActionError(err: any, fallbackMessage: string): string {
   return msg || fallbackMessage
 }
 
+function parseJwtPayload(token?: string): { userId?: string; username?: string; role?: string } | null {
+  if (!token) return null
+  try {
+    const parts = token.split(".")
+    if (parts.length < 2) return null
+    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/")
+    const json = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    )
+    return JSON.parse(json)
+  } catch {
+    return null
+  }
+}
+
 export const UsersDirectory: React.FC = () => {
   const { restaurants, adminTheme, session } = useRestaurant()
   const [users, setUsers] = useState<ApiUserRecord[]>([])
@@ -324,9 +342,20 @@ export const UsersDirectory: React.FC = () => {
                     const isSuperAdmin = u.role === "super_admin" || u.role === "super"
                     const assignedName = u.restaurantId ? restaurantMap.get(u.restaurantId) || u.restaurantId : null
                     const isActive = u.isActive !== false
+                    const token = (session as { token?: string }).token || (typeof sessionStorage !== "undefined" ? sessionStorage.getItem("burger_page_auth_token_v2") : null)
+                    const tokenPayload = parseJwtPayload(token || undefined)
+                    const sessionUserId = session.userId || tokenPayload?.userId
+                    const sessionUsername = session.username || tokenPayload?.username
+
                     const isSelf = Boolean(
-                      (session.userId && session.userId === u.id) ||
-                      (session.username && session.username.toLowerCase() === u.username.toLowerCase())
+                      (sessionUserId && sessionUserId === u.id) ||
+                      (sessionUsername && sessionUsername.toLowerCase() === u.username.toLowerCase()) ||
+                      (!sessionUserId &&
+                        !sessionUsername &&
+                        ((session.role as string) === "super" || (session.role as string) === "super_admin") &&
+                        isSuperAdmin &&
+                        (u.username.toLowerCase() === "admin" ||
+                          users.filter((x) => x.role === "super_admin" || x.role === "super").length === 1))
                     )
                     const isBusy = actionLoadingId === u.id
 
@@ -435,11 +464,11 @@ export const UsersDirectory: React.FC = () => {
                               type="button"
                               variant="outline"
                               size="sm"
-                              disabled={isBusy}
+                              disabled={isSelf || isBusy}
                               onClick={() => handleResetPassword(u)}
-                              title="Restablecer contraseña"
+                              title={isSelf ? "Usa 'Cambiar clave' para tu propia cuenta" : "Restablecer contraseña"}
                               aria-label="Restablecer clave"
-                              className="h-7 px-2.5 text-xs font-semibold rounded-lg text-indigo-600 dark:text-indigo-400 border-indigo-500/30 hover:bg-indigo-500/10"
+                              className="h-7 px-2.5 text-xs font-semibold rounded-lg text-indigo-600 dark:text-indigo-400 border-indigo-500/30 hover:bg-indigo-500/10 disabled:opacity-40 disabled:pointer-events-none"
                             >
                               <KeyRound className="size-3 mr-1" />
                               <span>Restablecer clave</span>

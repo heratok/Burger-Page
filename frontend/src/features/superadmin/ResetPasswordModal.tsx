@@ -29,21 +29,29 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
 
   const handleCopy = async () => {
     try {
-      if (typeof navigator !== "undefined" && navigator.clipboard) {
+      if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(temporaryPassword)
+        setCopied(true)
+        toast.success("Contraseña temporal copiada al portapapeles")
+        setTimeout(() => setCopied(false), 2500)
+        return
       }
-      setCopied(true)
-      toast.success("Contraseña temporal copiada al portapapeles")
-      setTimeout(() => setCopied(false), 2500)
+      throw new Error("Clipboard API no disponible")
     } catch {
-      toast.error("No se pudo copiar automáticamente")
+      toast.error("No se pudo copiar automáticamente. Por favor selecciónala y cópiala manualmente.")
     }
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={() => { /* Do not close on outside click or escape */ }}>
       <DialogContent
         showCloseButton={false}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            e.preventDefault()
+            e.stopPropagation()
+          }
+        }}
         className="fixed top-1/2 left-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0E1322] p-6 shadow-2xl text-slate-900 dark:text-slate-100"
       >
         <div className="flex items-start gap-4">
@@ -78,6 +86,7 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
               variant="outline"
               size="sm"
               onClick={handleCopy}
+              aria-label={copied ? "Contraseña copiada" : "Copiar contraseña"}
               className="shrink-0 gap-1.5 rounded-xl border-slate-300 dark:border-slate-700 text-xs font-bold cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800"
             >
               {copied ? (
@@ -109,7 +118,7 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
             onClick={onClose}
             className="w-full sm:w-auto rounded-xl bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white text-xs font-bold px-5 cursor-pointer"
           >
-            Entendido, cerrar
+            Ya la copié, cerrar
           </Button>
         </div>
       </DialogContent>

@@ -315,5 +315,73 @@ describe("UsersDirectory - Super Admin User Management (TDD)", () => {
     expect(screen.queryByText("admin_craft")).toBeNull()
     expect(screen.queryByText("admin_napoli")).toBeNull()
   })
+
+  it("disables reset password button on own user row with explanatory title", async () => {
+    localStorage.setItem(
+      "admin_session",
+      JSON.stringify({ role: "super_admin", userId: "usr-me", username: "super_me" })
+    )
+
+    const mockUsers = [
+      { id: "usr-me", username: "super_me", role: "super_admin", isActive: true },
+      { id: "usr-other", username: "other_user", role: "restaurant_admin", isActive: true },
+    ]
+    vi.spyOn(apiClient, "listUsers").mockResolvedValue(mockUsers as any)
+
+    render(
+      <RestaurantProvider>
+        <UsersDirectory />
+      </RestaurantProvider>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText("super_me")).toBeDefined()
+      expect(screen.getByText("other_user")).toBeDefined()
+    })
+
+    const ownRow = screen.getByText("super_me").closest("tr")!
+    const otherRow = screen.getByText("other_user").closest("tr")!
+
+    const ownReset = ownRow.querySelector("button[aria-label*='Restablecer'], button[title*='Restablecer']") as HTMLButtonElement
+    const otherReset = otherRow.querySelector("button[aria-label*='Restablecer'], button[title*='Restablecer']") as HTMLButtonElement
+
+    expect(ownReset).toBeDefined()
+    expect(ownReset.disabled).toBe(true)
+    expect(ownReset.getAttribute("title")).toContain("Cambiar clave")
+
+    expect(otherReset).toBeDefined()
+    expect(otherReset.disabled).toBe(false)
+  })
+
+  it("identifies own row even when session has missing userId by matching username or token", async () => {
+    // Legacy session without userId
+    localStorage.setItem(
+      "admin_session",
+      JSON.stringify({ role: "super_admin", username: "legacy_admin" })
+    )
+
+    const mockUsers = [
+      { id: "usr-legacy", username: "legacy_admin", role: "super_admin", isActive: true },
+      { id: "usr-other", username: "other_user", role: "restaurant_admin", isActive: true },
+    ]
+    vi.spyOn(apiClient, "listUsers").mockResolvedValue(mockUsers as any)
+
+    render(
+      <RestaurantProvider>
+        <UsersDirectory />
+      </RestaurantProvider>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText("legacy_admin")).toBeDefined()
+    })
+
+    const ownRow = screen.getByText("legacy_admin").closest("tr")!
+    const ownDelete = ownRow.querySelector("button[aria-label*='Eliminar'], button[title*='Eliminar']") as HTMLButtonElement
+    const ownReset = ownRow.querySelector("button[aria-label*='Restablecer'], button[title*='Restablecer']") as HTMLButtonElement
+
+    expect(ownDelete.disabled).toBe(true)
+    expect(ownReset.disabled).toBe(true)
+  })
 })
 

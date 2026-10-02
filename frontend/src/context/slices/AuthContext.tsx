@@ -29,6 +29,24 @@ export interface AuthContextType {
   setSession: React.Dispatch<React.SetStateAction<AdminSession>>
 }
 
+function parseJwtPayload(token?: string): { userId?: string; username?: string; role?: string } | null {
+  if (!token) return null
+  try {
+    const parts = token.split(".")
+    if (parts.length < 2) return null
+    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/")
+    const json = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    )
+    return JSON.parse(json)
+  } catch {
+    return null
+  }
+}
+
 const STORAGE_KEYS = {
   SESSION: "burger_page_session_v2",
 }
@@ -47,9 +65,23 @@ export const AuthProvider: React.FC<{
 }> = ({ children, onLogout }) => {
   const [session, setSession] = useState<AdminSession>(() => {
     try {
-      const saved = sessionStorage.getItem(STORAGE_KEYS.SESSION)
+      const saved =
+        sessionStorage.getItem(STORAGE_KEYS.SESSION) ||
+        localStorage.getItem(STORAGE_KEYS.SESSION) ||
+        localStorage.getItem("admin_session")
       if (saved) {
-        return JSON.parse(saved) as AdminSession
+        const parsed = JSON.parse(saved) as AdminSession & { token?: string }
+        const token =
+          parsed.token ||
+          (typeof sessionStorage !== "undefined"
+            ? sessionStorage.getItem("burger_page_auth_token_v2")
+            : null)
+        if (token && (!parsed.userId || !parsed.username)) {
+          const payload = parseJwtPayload(token)
+          if (payload?.userId && !parsed.userId) parsed.userId = payload.userId
+          if (payload?.username && !parsed.username) parsed.username = payload.username
+        }
+        return parsed
       }
       return { role: "guest" }
     } catch {
@@ -151,9 +183,19 @@ export const AuthProvider: React.FC<{
         }
         return { success: false, error: "No se pudo actualizar la contraseña" }
       } catch (err: any) {
-        const msg = err?.message || "Error al actualizar la contraseña"
-        toast.error(msg)
-        return { success: false, error: msg }
+        const rawMsg = err?.message || ""
+        let errorMsg = "Error al actualizar la contraseña"
+        const isWrongCurrent =
+          err?.status === 400 ||
+          rawMsg.toLowerCase().includes("current password") ||
+          err?.code === "INVALID_CURRENT_PASSWORD"
+        if (isWrongCurrent) {
+          errorMsg = "La contraseña actual es incorrecta"
+          // Defect 4: show error inline once without toast
+        } else {
+          toast.error(rawMsg || errorMsg)
+        }
+        return { success: false, error: errorMsg }
       }
     },
     []

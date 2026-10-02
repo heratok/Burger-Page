@@ -76,19 +76,21 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
 
   const handleCopy = async (text: string, type: "user" | "pass") => {
     try {
-      if (typeof navigator !== "undefined" && navigator.clipboard) {
+      if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(text)
+        if (type === "user") {
+          setCopiedUser(true)
+          setTimeout(() => setCopiedUser(false), 2000)
+        } else {
+          setCopiedPass(true)
+          setTimeout(() => setCopiedPass(false), 2000)
+        }
+        toast.success("Copiado al portapapeles")
+        return
       }
-      if (type === "user") {
-        setCopiedUser(true)
-        setTimeout(() => setCopiedUser(false), 2000)
-      } else {
-        setCopiedPass(true)
-        setTimeout(() => setCopiedPass(false), 2000)
-      }
-      toast.success("Copiado al portapapeles")
+      throw new Error("Clipboard API no disponible")
     } catch {
-      toast.error("No se pudo copiar automáticamente")
+      toast.error("No se pudo copiar automáticamente. Por favor selecciónalo y cópialo manualmente.")
     }
   }
 
@@ -142,7 +144,17 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
   // Credentials View
   if (createdCredentials) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-md">
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-md"
+        role="dialog"
+        aria-modal="true"
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            e.preventDefault()
+            e.stopPropagation()
+          }
+        }}
+      >
         <div
           className={`w-full max-w-md rounded-2xl border p-6 shadow-2xl transition-all ${
             isDark ? "border-slate-800 bg-[#0E1322] text-slate-100" : "border-slate-200 bg-white text-slate-900"
@@ -166,7 +178,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
             <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/25 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-400">
               <AlertTriangle className="size-4 shrink-0 mt-0.5 text-amber-500" />
               <span>
-                <strong>Atención:</strong> Esta es la única vez que se mostrará esta contraseña provisional. Cópiala y entrégala al administrador del restaurante.
+                <strong>Atención:</strong> Esta contraseña provisional es de uso único y solo se mostrará esta vez. Cópiala y entrégala al administrador del restaurante; deberá cambiarla obligatoriamente en su primer inicio de sesión.
               </span>
             </div>
 
@@ -182,6 +194,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
                 <button
                   type="button"
                   onClick={() => handleCopy(createdCredentials.username, "user")}
+                  aria-label={copiedUser ? "Usuario copiado" : "Copiar usuario administrador"}
                   className="rounded-lg border px-2 py-1 text-[11px] font-semibold flex items-center gap-1 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                 >
                   {copiedUser ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3 text-slate-400" />}
@@ -203,6 +216,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
                   <button
                     type="button"
                     onClick={() => handleCopy(createdCredentials.password!, "pass")}
+                    aria-label={copiedPass ? "Clave copiada" : "Copiar clave provisional"}
                     className="rounded-lg border px-2 py-1 text-[11px] font-semibold flex items-center gap-1 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                   >
                     {copiedPass ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3 text-slate-400" />}
@@ -219,7 +233,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
               onClick={handleFinish}
               className="w-full rounded-xl bg-indigo-600 font-bold text-white shadow-md hover:bg-indigo-700 cursor-pointer"
             >
-              Entendido y Cerrar
+              Ya copié las credenciales, cerrar
             </Button>
           </div>
         </div>

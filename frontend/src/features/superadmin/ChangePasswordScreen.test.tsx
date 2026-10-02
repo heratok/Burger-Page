@@ -115,4 +115,51 @@ describe("ChangePasswordScreen (TDD)", () => {
       expect(changeSpy).toHaveBeenCalledWith("old-temporary-pass", "brand-new-pass-123")
     })
   })
+
+  it("shows Spanish error inline once and no toast when current password is incorrect", async () => {
+    const { toast } = await import("sonner")
+    const toastErrorSpy = vi.spyOn(toast, "error")
+
+    const error400: any = new Error("Current password is incorrect")
+    error400.status = 400
+    vi.spyOn(apiClient, "changeOwnPassword").mockRejectedValue(error400)
+
+    render(
+      <RestaurantProvider>
+        <ChangePasswordScreen isForced={false} />
+      </RestaurantProvider>
+    )
+
+    fireEvent.change(screen.getByLabelText(/^Contraseña actual$/i), {
+      target: { value: "wrong-current-pass" },
+    })
+    fireEvent.change(screen.getByLabelText(/^Nueva contraseña$/i), {
+      target: { value: "brand-new-pass-123" },
+    })
+    fireEvent.change(screen.getByLabelText(/^Confirmar nueva contraseña$/i), {
+      target: { value: "brand-new-pass-123" },
+    })
+
+    const submitBtn = screen.getByRole("button", { name: /Actualizar contraseña|Cambiar contraseña/i })
+    fireEvent.click(submitBtn)
+
+    expect(await screen.findByText("La contraseña actual es incorrecta")).toBeDefined()
+    expect(toastErrorSpy).not.toHaveBeenCalled()
+  })
+
+  it("renders accessible dialog in voluntary mode with role=dialog, aria-modal and closes on Escape", () => {
+    const onClose = vi.fn()
+    render(
+      <RestaurantProvider>
+        <ChangePasswordScreen isForced={false} onClose={onClose} />
+      </RestaurantProvider>
+    )
+
+    const dialog = screen.getByRole("dialog")
+    expect(dialog).toBeDefined()
+    expect(dialog.getAttribute("aria-modal")).toBe("true")
+
+    fireEvent.keyDown(dialog, { key: "Escape", code: "Escape" })
+    expect(onClose).toHaveBeenCalled()
+  })
 })
