@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react"
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react"
 import type { AdminSession } from "@/types/restaurant"
 import { toast } from "sonner"
 import { apiClient } from "@/core/api/apiClient"
@@ -101,6 +101,39 @@ export const AuthProvider: React.FC<{
       })
     })
   }, [])
+
+  const sessionRoleRef = useRef(session.role)
+  sessionRoleRef.current = session.role
+
+  const sessionExpiredHandledRef = useRef(false)
+  useEffect(() => {
+    if (session.role !== "guest") {
+      sessionExpiredHandledRef.current = false
+    }
+  }, [session.role])
+
+  useEffect(() => {
+    return apiClient.onSessionExpired(() => {
+      if (sessionRoleRef.current === "guest") return
+      if (sessionExpiredHandledRef.current) return
+      sessionExpiredHandledRef.current = true
+
+      setSession({ role: "guest" })
+      apiClient.setToken(null)
+      onLogout?.()
+      toast.error("Tu sesión expiró. Iniciá sesión de nuevo.")
+
+      if (typeof window !== "undefined") {
+        if (
+          window.location.pathname.startsWith("/admin") ||
+          window.location.pathname === "/login"
+        ) {
+          window.history.pushState({}, "", "/admin")
+          window.dispatchEvent(new PopStateEvent("popstate"))
+        }
+      }
+    })
+  }, [onLogout])
 
   const login = useCallback(
     async (

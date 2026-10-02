@@ -82,6 +82,7 @@ export class ApiClient {
   private baseUrl: string
   private token: string | null
   private passwordChangeRequiredListeners = new Set<() => void>()
+  private sessionExpiredListeners = new Set<() => void>()
 
   constructor(config?: ApiClientConfig) {
     const rawUrl =
@@ -120,6 +121,27 @@ export class ApiClient {
         console.error('Error in password change required listener:', err)
       }
     })
+  }
+
+  onSessionExpired(listener: () => void): () => void {
+    this.sessionExpiredListeners.add(listener)
+    return () => {
+      this.sessionExpiredListeners.delete(listener)
+    }
+  }
+
+  private notifySessionExpired(): void {
+    this.sessionExpiredListeners.forEach((listener) => {
+      try {
+        listener()
+      } catch (err) {
+        console.error('Error in session expired listener:', err)
+      }
+    })
+  }
+
+  getToken(): string | null {
+    return this.token
   }
 
   setToken(token: string | null): void {
@@ -189,6 +211,16 @@ export class ApiClient {
         if (this.token && this.token === sentToken) {
           this.notifyPasswordChangeRequired()
         }
+      }
+      if (
+        response.status === 401 &&
+        sentToken &&
+        this.token === sentToken &&
+        !endpoint.includes('/users/login') &&
+        !endpoint.includes('/users/me/password')
+      ) {
+        this.setToken(null)
+        this.notifySessionExpired()
       }
       throw error
     }
@@ -707,7 +739,13 @@ export class ApiClient {
         es.addEventListener('ORDER_RECEIPT_UPDATED', handleMessage as EventListener)
         es.addEventListener('ORDER_DELETED', handleMessage as EventListener)
         es.addEventListener('ORDER_UPDATED', handleMessage as EventListener)
-      } catch {
+      } catch (err: any) {
+        if (err?.status === 401) {
+          disposed = true
+          eventSource?.close()
+          eventSource = null
+          return
+        }
         // No stream token available (backend down or session expired): retry
         // with bounded backoff; the session token must never travel in URLs.
         dropped = true

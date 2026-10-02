@@ -110,15 +110,42 @@ test.describe('Manual Sale POS Modal - Mobile & Desktop Responsiveness with Addi
     });
 
     await page.route('**/api/orders**', async (route) => {
-      await route.fulfill({
-        status: 201,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          id: 'ord-test-pos',
-          orderNumber: 101,
-          status: 'pending',
-        }),
-      });
+      if (route.request().method() === 'POST') {
+        await route.fulfill({
+          status: 201,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            id: 'ord-test-pos',
+            orderNumber: 101,
+            status: 'pending',
+          }),
+        });
+      } else {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify([]),
+        });
+      }
+    });
+
+    await page.route('**/api/orders/stream-token', (route) => {
+      return route.fulfill({ status: 200, json: { token: 'mock-stream-token' } });
+    });
+    await page.route('**/api/orders/stream*', (route) => {
+      return route.fulfill({ status: 200, contentType: 'text/event-stream', body: '' });
+    });
+    await page.route('**/api/customers*', (route) => {
+      if (route.request().method() !== 'GET') return route.continue();
+      return route.fulfill({ status: 200, json: [] });
+    });
+    await page.route('**/api/inventory*', (route) => {
+      if (route.request().method() !== 'GET') return route.continue();
+      return route.fulfill({ status: 200, json: [] });
+    });
+    await page.route('**/api/suppliers*', (route) => {
+      if (route.request().method() !== 'GET') return route.continue();
+      return route.fulfill({ status: 200, json: [] });
     });
   });
 

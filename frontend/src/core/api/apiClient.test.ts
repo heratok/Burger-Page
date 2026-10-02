@@ -585,4 +585,123 @@ describe('ApiClient', () => {
       await expect(client.listRestaurants()).rejects.toThrow()
       expect(listener).toHaveBeenCalledTimes(1)
     })
+
+    describe('session expiration handling', () => {
+      it('notifies session expired on 401 response from an authenticated request', async () => {
+        client.setToken('valid-token')
+        const listener = vi.fn()
+        const unsub = (client as any).onSessionExpired(listener)
+
+        ;(globalThis.fetch as any).mockResolvedValueOnce({
+          ok: false,
+          status: 401,
+          statusText: 'Unauthorized',
+          json: async () => ({ message: 'Token expired' }),
+        })
+
+        await expect(client.listRestaurants()).rejects.toThrow()
+        expect(listener).toHaveBeenCalledTimes(1)
+        expect(client.getToken()).toBeNull()
+
+        unsub()
+      })
+
+      it('does not notify session expired on 401 from login', async () => {
+        const listener = vi.fn()
+        ;(client as any).onSessionExpired(listener)
+
+        ;(globalThis.fetch as any).mockResolvedValueOnce({
+          ok: false,
+          status: 401,
+          statusText: 'Unauthorized',
+          json: async () => ({ error: 'Invalid credentials' }),
+        })
+
+        const res = await client.login('baduser', 'badpass')
+        expect(res.success).toBe(false)
+        expect(listener).not.toHaveBeenCalled()
+      })
+
+      it('ignores 401 when the request was sent with a stale/superseded token', async () => {
+        const listener = vi.fn()
+        ;(client as any).onSessionExpired(listener)
+
+        client.setToken('old-token')
+
+        ;(globalThis.fetch as any).mockImplementationOnce(async () => {
+          client.setToken('new-active-token')
+          return {
+            ok: false,
+            status: 401,
+            statusText: 'Unauthorized',
+            json: async () => ({ message: 'Session expired' }),
+          }
+        })
+
+        await expect(client.listRestaurants()).rejects.toThrow()
+        expect(listener).not.toHaveBeenCalled()
+        expect(client.getToken()).toBe('new-active-token')
+      })
+
+      it('notifies exactly once on concurrent 401 responses', async () => {
+        client.setToken('active-token')
+        const listener = vi.fn()
+        ;(client as any).onSessionExpired(listener)
+
+        const make401 = () => ({
+          ok: false,
+          status: 401,
+          statusText: 'Unauthorized',
+          json: async () => ({ message: 'Session expired' }),
+        })
+
+        ;(globalThis.fetch as any)
+          .mockResolvedValueOnce(make401())
+          .mockResolvedValueOnce(make401())
+          .mockResolvedValueOnce(make401())
+
+        await Promise.allSettled([
+          client.listRestaurants(),
+          client.listRestaurants(),
+          client.listRestaurants(),
+        ])
+
+        expect(listener).toHaveBeenCalledTimes(1)
+        expect(client.getToken()).toBeNull()
+      })
+
+      it('stops SSE reconnection when stream token request gets 401', async () => {
+        const originalES = (globalThis as any).EventSource
+        class FakeES {
+          addEventListener = vi.fn()
+          close = vi.fn()
+        }
+        (globalThis as any).EventSource = FakeES
+
+        try {
+          client.setToken('active-token')
+          const listener = vi.fn()
+          const unsubExpired = (client as any).onSessionExpired(listener)
+
+          ;(globalThis.fetch as any).mockResolvedValueOnce({
+            ok: false,
+            status: 401,
+            statusText: 'Unauthorized',
+            json: async () => ({ message: 'Session expired' }),
+          })
+
+          const unsubStream = client.subscribeToOrderStream(() => {})
+
+          await new Promise((r) => setTimeout(r, 50))
+
+          expect(listener).toHaveBeenCalledTimes(1)
+          expect(globalThis.fetch).toHaveBeenCalledTimes(1)
+
+          unsubStream()
+          unsubExpired()
+        } finally {
+          (globalThis as any).EventSource = originalES
+        }
+      })
+    })
   })
