@@ -64,17 +64,52 @@ describe('PgRestaurantRepository (real Postgres, app_user role)', () => {
     expect(list.some((r) => r.id === RESTAURANT_ID)).toBe(true);
   });
 
-  it('soft-deletes a restaurant (is_active=false) and it stays findable by id (super_admin visibility)', async () => {
+  it('pausing (is_active=false via save) keeps the restaurant findable by super_admin and listed', async () => {
+    if (!isDbConnected) return;
+    const current = (await repo.findById(RESTAURANT_ID))!;
+    await repo.save({ ...current, isActive: false });
+    expect((await repo.findById(RESTAURANT_ID))?.isActive).toBe(false);
+    expect((await repo.findAll()).some((r) => r.id === RESTAURANT_ID)).toBe(true);
+    await repo.save({ ...current, isActive: true });
+  });
+
+  it('delete() sets deleted_at, hides the restaurant everywhere and frees its slug', async () => {
     if (!isDbConnected) return;
     await repo.delete(RESTAURANT_ID);
-    const found = await repo.findById(RESTAURANT_ID);
-    expect(found?.isActive).toBe(false);
+
+    expect(await repo.findById(RESTAURANT_ID)).toBeNull();
+    expect(await repo.findBySlug(RESTAURANT_ID)).toBeNull();
+    expect((await repo.findAll()).some((r) => r.id === RESTAURANT_ID)).toBe(false);
+
+    const { rows } = await adminPool.query(
+      `SELECT slug, is_active, deleted_at FROM public.restaurants WHERE id = $1`,
+      [RESTAURANT_ID]
+    );
+    expect(rows[0].deleted_at).not.toBeNull();
+    expect(rows[0].is_active).toBe(false);
+    expect(rows[0].slug).toBe(`${RESTAURANT_ID}-deleted-${RESTAURANT_ID}`);
+  });
+
+  it('a deleted restaurant cannot be resurrected by save()', async () => {
+    if (!isDbConnected) return;
+    await repo.save({
+      id: RESTAURANT_ID,
+      slug: RESTAURANT_ID,
+      name: 'Zombie',
+      theme: 'dark-charcoal',
+      schedule: [],
+      timezone: 'America/Bogota',
+      ordersPaused: false,
+      isActive: true,
+    });
+    expect(await repo.findById(RESTAURANT_ID)).toBeNull();
   });
 
   it('hard-deletes a restaurant', async () => {
     if (!isDbConnected) return;
     await repo.hardDelete?.(RESTAURANT_ID);
-    expect(await repo.findById(RESTAURANT_ID)).toBeNull();
+    const { rowCount } = await adminPool.query(`SELECT 1 FROM public.restaurants WHERE id = $1`, [RESTAURANT_ID]);
+    expect(rowCount).toBe(0);
   });
 
   describe('financial history is protected from restaurant deletion (db-hardening-0008 T6)', () => {

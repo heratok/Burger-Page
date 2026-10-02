@@ -33,13 +33,19 @@ export const storefrontConfigSchema = z.object({
 
 export type StorefrontConfigDTO = z.infer<typeof storefrontConfigSchema>;
 
+/** Minimum length of any account password (mirrors the backend User model). */
+export const MIN_PASSWORD_LENGTH = 8;
+
 export const createRestaurantSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, 'Restaurant name is required'),
   slug: z.string().min(1, 'Restaurant slug is required'),
   tagline: z.string().optional(),
   whatsappNumber: z.string().optional(),
-  adminPassword: z.string().optional(),
+  adminPassword: z
+    .string()
+    .min(MIN_PASSWORD_LENGTH, `Admin password must be at least ${MIN_PASSWORD_LENGTH} characters`)
+    .optional(),
   adminUsername: z.string().optional(),
   primaryColor: z.string().optional(),
   templateType: z.enum(['burger', 'pizza', 'tacos', 'blank']).optional(),

@@ -105,4 +105,47 @@ describe('AuthenticateUserUseCase (login bootstrap contract)', () => {
     // The rest- identifier fallback is attempted but finds no restaurant admin.
     expect(userRepo.findByRestaurantId).toHaveBeenCalled();
   });
+
+  describe('tenant lifecycle', () => {
+    const restaurantRepoWith = (restaurant: { id: string; isActive: boolean } | null) =>
+      ({
+        findById: vi.fn().mockResolvedValue(restaurant),
+        findBySlug: vi.fn().mockResolvedValue(restaurant),
+        findAll: vi.fn(),
+        save: vi.fn(),
+        delete: vi.fn(),
+      }) as any;
+
+    it('rejects an admin of an inactive restaurant with the generic credentials error', async () => {
+      const useCase = new AuthenticateUserUseCase(
+        userRepo,
+        hasher,
+        undefined,
+        restaurantRepoWith({ id: 'tienda-pruebas', isActive: false })
+      );
+
+      await expect(useCase.execute('admin_pruebas', 'securePass123')).rejects.toThrow('Invalid credentials');
+    });
+
+    it('rejects an admin of a deleted (unresolvable) restaurant', async () => {
+      const useCase = new AuthenticateUserUseCase(userRepo, hasher, undefined, restaurantRepoWith(null));
+
+      await expect(useCase.execute('admin_pruebas', 'securePass123')).rejects.toBeInstanceOf(UnauthorizedError);
+    });
+
+    it('lets an admin of an active restaurant in, and never checks users without a tenant', async () => {
+      const active = restaurantRepoWith({ id: 'tienda-pruebas', isActive: true });
+      const ok = await new AuthenticateUserUseCase(userRepo, hasher, undefined, active).execute(
+        'admin_pruebas',
+        'securePass123'
+      );
+      expect(ok.success).toBe(true);
+
+      vi.mocked(userRepo.findByUsername).mockResolvedValue({ ...storedUser, role: 'super_admin', restaurantId: undefined });
+      const none = restaurantRepoWith(null);
+      const sa = await new AuthenticateUserUseCase(userRepo, hasher, undefined, none).execute('root', 'securePass123');
+      expect(sa.success).toBe(true);
+      expect(none.findById).not.toHaveBeenCalled();
+    });
+  });
 });

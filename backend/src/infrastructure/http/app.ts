@@ -239,7 +239,7 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
   const createRestaurant = new CreateRestaurantUseCase(restaurantRepo, categoryRepo, userRepo, hasher);
   const deleteRestaurant = new DeleteRestaurantUseCase(restaurantRepo);
   const updateRestaurantCategories = new UpdateRestaurantCategoriesUseCase(restaurantRepo, categoryRepo, productRepo);
-  const updateRestaurant = new UpdateRestaurantUseCase(restaurantRepo, categoryRepo);
+  const updateRestaurant = new UpdateRestaurantUseCase(restaurantRepo, categoryRepo, userRepo, hasher);
 
   const listProducts = new ListProductsUseCase(productRepo);
   const getProductById = new GetProductByIdUseCase(productRepo);
@@ -280,7 +280,7 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
   const reorderTables = new ReorderRestaurantTablesUseCase(tableRepo);
 
   const createUser = new CreateUserUseCase(userRepo, hasher, restaurantRepo);
-  const authenticateUser = new AuthenticateUserUseCase(userRepo, hasher);
+  const authenticateUser = new AuthenticateUserUseCase(userRepo, hasher, undefined, restaurantRepo);
   const listUsersUC = new ListUsersUseCase(userRepo);
 
   const listAdditions = new ListProductAdditionsUseCase(additionRepo);

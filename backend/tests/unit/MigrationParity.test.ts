@@ -609,3 +609,18 @@ describe('migration 0000000000011 (users.must_change_password) parity with the b
     expect(down).toContain('DROP COLUMN IF EXISTS must_change_password');
   });
 });
+
+describe('migration 0000000000012 (restaurants.deleted_at) parity with the baseline schema', () => {
+  const baseline = read('01_schema.sql');
+  const up = read('migrations/0000000000012_restaurants_deleted_at.up.sql');
+  const down = read('migrations/0000000000012_restaurants_deleted_at.down.sql');
+
+  it('declares the nullable deleted_at column in baseline and migration', () => {
+    expect(baseline).toMatch(/deleted_at\s+TIMESTAMPTZ,/);
+    expect(up).toMatch(/ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ/);
+  });
+
+  it('is reversible', () => {
+    expect(down).toContain('DROP COLUMN IF EXISTS deleted_at');
+  });
+});

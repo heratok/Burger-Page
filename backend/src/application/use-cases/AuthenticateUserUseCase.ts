@@ -1,3 +1,4 @@
+import { RestaurantRepository } from '../../domain/ports/out/RestaurantRepository.js';
 import { UserRepository } from '../../domain/ports/out/UserRepository.js';
 import { PasswordHasher } from '../../domain/ports/out/PasswordHasher.js';
 import { UnauthorizedError } from '../../domain/errors/DomainErrors.js';
@@ -8,7 +9,8 @@ export class AuthenticateUserUseCase {
   constructor(
     private userRepo: UserRepository,
     private hasher: PasswordHasher,
-    private jwtService: JwtService = new JwtService()
+    private jwtService: JwtService = new JwtService(),
+    private restaurantRepo?: RestaurantRepository
   ) {}
 
   async execute(username: string, password: string): Promise<AuthResult> {
@@ -42,6 +44,16 @@ export class AuthenticateUserUseCase {
 
         if (user.isActive === false) {
           throw new UnauthorizedError('Invalid credentials');
+        }
+
+        // A tenant admin of a paused or deleted restaurant must not get a token
+        // that every later call would reject; the answer stays the generic
+        // credentials error so it never confirms the password was right.
+        if (this.restaurantRepo && user.restaurantId) {
+          const restaurant = await this.restaurantRepo.findById(user.restaurantId);
+          if (!restaurant || !restaurant.isActive) {
+            throw new UnauthorizedError('Invalid credentials');
+          }
         }
 
         const valid = await this.hasher.verify(password, user.passwordHash);

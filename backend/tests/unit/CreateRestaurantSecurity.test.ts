@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { CreateRestaurantUseCase } from '../../src/application/use-cases/CreateRestaurantUseCase.js';
 import { RestaurantRepository } from '../../src/domain/ports/out/RestaurantRepository.js';
 import { CategoryRepository } from '../../src/domain/ports/out/CategoryRepository.js';
+import { ConflictError } from '../../src/domain/errors/DomainErrors.js';
 import { buildApp } from '../../src/infrastructure/http/app.js';
 
 // RED unit 5: restaurant ids and admin passwords must be server-owned.
@@ -155,7 +156,7 @@ describe('CreateRestaurantUseCase (Security Hardening)', () => {
     expect(result.adminPassword).toBeDefined();
   });
 
-  it('keeps creating the tenant when the admin user save fails (secondary failure)', async () => {
+  it('rolls the tenant back and surfaces the error when the admin user save fails', async () => {
     const mockUserRepo = {
       findByUsername: vi.fn().mockResolvedValue(null),
       save: vi.fn().mockRejectedValue(new Error('user save failed')),
@@ -164,7 +165,7 @@ describe('CreateRestaurantUseCase (Security Hardening)', () => {
       hash: vi.fn(async (p: string) => `hashed:${p}`),
       verify: vi.fn(),
     } as any;
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    (mockRestaurantRepo as any).hardDelete = vi.fn().mockResolvedValue(undefined);
     const useCaseWithUsers = new CreateRestaurantUseCase(
       mockRestaurantRepo,
       mockCategoryRepo,
@@ -172,31 +173,23 @@ describe('CreateRestaurantUseCase (Security Hardening)', () => {
       mockHasher
     );
 
-    const result = await useCaseWithUsers.execute({ name: 'Burger Test', slug: 'burger-test' } as any);
+    await expect(
+      useCaseWithUsers.execute({ name: 'Burger Test', slug: 'burger-test' } as any)
+    ).rejects.toThrow('user save failed');
 
-    expect(result.id).toMatch(/^rest_/);
-    expect(result.adminPassword).toBeDefined();
-    expect(warnSpy).toHaveBeenCalled();
-    warnSpy.mockRestore();
+    const savedId = (mockRestaurantRepo.save as any).mock.calls[0][0].id;
+    expect((mockRestaurantRepo as any).hardDelete).toHaveBeenCalledWith(savedId);
   });
 
-  it('never overwrites an existing user when adminUsername collides (JD-B-001)', async () => {
-    // The seeded super admin 'admin' already owns the username: save() must
-    // never be reached, so no password_hash/role/restaurant_id rewrite can
-    // happen through the Pg username-or-id upsert.
+  it('never persists the plaintext adminPassword on the restaurant record', async () => {
     const mockUserRepo = {
-      findByUsername: vi.fn().mockResolvedValue({
-        id: 'usr-seeded-admin',
-        username: 'admin',
-        role: 'super_admin',
-      }),
+      findByUsername: vi.fn().mockResolvedValue(null),
       save: vi.fn().mockResolvedValue(undefined),
     } as any;
     const mockHasher = {
       hash: vi.fn(async (p: string) => `hashed:${p}`),
       verify: vi.fn(),
     } as any;
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const useCaseWithUsers = new CreateRestaurantUseCase(
       mockRestaurantRepo,
       mockCategoryRepo,
@@ -207,47 +200,50 @@ describe('CreateRestaurantUseCase (Security Hardening)', () => {
     const result = await useCaseWithUsers.execute({
       name: 'Burger Test',
       slug: 'burger-test',
-      adminUsername: 'admin',
       adminPassword: 'custom-secret-42',
     } as any);
 
-    // SUS-02 contract is preserved: the tenant is still created and the
-    // response still carries the one-time credentials for a manual retry...
-    expect(result.id).toMatch(/^rest_/);
+    expect((mockRestaurantRepo.save as any).mock.calls[0][0]).not.toHaveProperty('adminPassword');
     expect(result.adminPassword).toBe('custom-secret-42');
-    // ...but the colliding user was never saved, and the secondary failure
-    // reported through the existing warn path.
+  });
+
+  it('rejects a too-short adminPassword before creating anything', async () => {
+    await expect(
+      useCase.execute({ name: 'Burger Test', slug: 'burger-test', adminPassword: 'short' } as any)
+    ).rejects.toThrow(/at least 8/);
+    expect(mockRestaurantRepo.save).not.toHaveBeenCalled();
+  });
+
+  it('rejects a colliding adminUsername with a ConflictError before creating the tenant (JD-B-001)', async () => {
+    // The seeded super admin 'admin' already owns the username: neither the
+    // restaurant nor the user may be saved, so no password_hash/role/
+    // restaurant_id rewrite can happen through the Pg username-or-id upsert.
+    const mockUserRepo = {
+      findByUsername: vi.fn().mockResolvedValue({ id: 'usr-seeded-admin', username: 'admin', role: 'super_admin' }),
+      save: vi.fn().mockResolvedValue(undefined),
+    } as any;
+    const mockHasher = {
+      hash: vi.fn(async (p: string) => `hashed:${p}`),
+      verify: vi.fn(),
+    } as any;
+    const useCaseWithUsers = new CreateRestaurantUseCase(
+      mockRestaurantRepo,
+      mockCategoryRepo,
+      mockUserRepo,
+      mockHasher
+    );
+
+    await expect(
+      useCaseWithUsers.execute({
+        name: 'Burger Test',
+        slug: 'burger-test',
+        adminUsername: 'admin',
+        adminPassword: 'custom-secret-42',
+      } as any)
+    ).rejects.toThrow(ConflictError);
+
     expect(mockUserRepo.findByUsername).toHaveBeenCalledWith('admin');
     expect(mockUserRepo.save).not.toHaveBeenCalled();
-    expect(warnSpy).toHaveBeenCalled();
-    warnSpy.mockRestore();
-  });
-});
-
-describe('Public restaurant API (Response Shape)', () => {
-  it('does not expose adminPassword on GET /api/restaurants/:idOrSlug', async () => {
-    const app = buildApp();
-    await app.ready();
-    // Seed a tenant through the authenticated super-admin path (in-memory driver
-    // stores the raw entity, so the response schema is the only filter).
-    const { JwtService } = await import('../../src/infrastructure/security/JwtService.js');
-    const jwt = new JwtService();
-    const token = jwt.generateToken({ id: 'usr-root', username: 'root', role: 'super_admin' });
-    const created = await app.inject({
-      method: 'POST',
-      url: '/api/restaurants',
-      headers: { authorization: `Bearer ${token}` },
-      payload: { name: 'Burger Test', slug: 'burger-test-sec' },
-    });
-    expect(created.statusCode).toBe(201);
-    const createdBody = created.json();
-    expect(createdBody.id).toBeDefined();
-
-    const res = await app.inject({ method: 'GET', url: `/api/restaurants/${createdBody.id}` });
-    expect(res.statusCode).toBe(200);
-    const body = res.json();
-    expect(body).not.toHaveProperty('adminPassword');
-    expect(body.id).toBe(createdBody.id);
-    await app.close();
+    expect(mockRestaurantRepo.save).not.toHaveBeenCalled();
   });
 });

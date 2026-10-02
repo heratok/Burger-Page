@@ -67,19 +67,19 @@ export class SqliteRestaurantRepository implements RestaurantRepository {
   }
 
   async findById(id: string): Promise<Restaurant | null> {
-    const row = this.db.prepare('SELECT * FROM restaurants WHERE id = ?').get(id) as any;
+    const row = this.db.prepare('SELECT * FROM restaurants WHERE id = ? AND deleted_at IS NULL').get(id) as any;
     if (!row) return null;
     return this.mapRow(row);
   }
 
   async findBySlug(slug: string): Promise<Restaurant | null> {
-    const row = this.db.prepare('SELECT * FROM restaurants WHERE slug = ?').get(slug) as any;
+    const row = this.db.prepare('SELECT * FROM restaurants WHERE slug = ? AND deleted_at IS NULL').get(slug) as any;
     if (!row) return null;
     return this.mapRow(row);
   }
 
   async findAll(): Promise<Restaurant[]> {
-    const rows = this.db.prepare('SELECT * FROM restaurants ORDER BY created_at ASC').all() as any[];
+    const rows = this.db.prepare('SELECT * FROM restaurants WHERE deleted_at IS NULL ORDER BY created_at ASC').all() as any[];
     return rows.map((row) => this.mapRow(row));
   }
 
@@ -100,6 +100,7 @@ export class SqliteRestaurantRepository implements RestaurantRepository {
         categories = excluded.categories,
         timezone = excluded.timezone,
         orders_paused = excluded.orders_paused
+      WHERE restaurants.deleted_at IS NULL
     `);
 
     stmt.run(
@@ -126,7 +127,10 @@ export class SqliteRestaurantRepository implements RestaurantRepository {
         config = {};
       }
       config.isActive = false;
-      this.db.prepare('UPDATE restaurants SET config = ? WHERE id = ?').run(JSON.stringify(config), id);
+      // Soft delete: hidden from every lookup, slug renamed so it can be reused.
+      this.db
+        .prepare("UPDATE restaurants SET config = ?, deleted_at = ?, slug = slug || '-deleted-' || id WHERE id = ? AND deleted_at IS NULL")
+        .run(JSON.stringify(config), new Date().toISOString(), id);
     }
   }
 

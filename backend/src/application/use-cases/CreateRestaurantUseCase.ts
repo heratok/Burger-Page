@@ -5,9 +5,9 @@ import { CategoryRepository } from '../../domain/ports/out/CategoryRepository.js
 import { UserRepository } from '../../domain/ports/out/UserRepository.js';
 import { PasswordHasher } from '../../domain/ports/out/PasswordHasher.js';
 import { Restaurant } from '../../domain/models/Restaurant.js';
-import { User, UserRole } from '../../domain/models/User.js';
+import { MIN_PASSWORD_LENGTH, User, UserRole } from '../../domain/models/User.js';
 import { CreateRestaurantInput } from '@burger-page/contracts';
-import { ValidationError } from '../../domain/errors/DomainErrors.js';
+import { ConflictError, ValidationError } from '../../domain/errors/DomainErrors.js';
 import {
   DEFAULT_TIMEZONE,
   assertValidSchedule,
@@ -41,6 +41,20 @@ export class CreateRestaurantUseCase {
       throw new ValidationError(`Restaurant with slug "${cleanSlug}" already exists`);
     }
 
+    if (input.adminPassword !== undefined && input.adminPassword.length < MIN_PASSWORD_LENGTH) {
+      throw new ValidationError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
+    }
+
+    // SUS-02: a tenant is only usable when its admin user exists, so the
+    // username is checked BEFORE anything is written. JD-B-001: a colliding
+    // adminUsername (e.g. the seeded super admin 'admin') must never reach
+    // userRepo.save — the Pg driver upserts by username OR id and would rewrite
+    // the existing user's password_hash/role/restaurant_id.
+    const adminUsername = input.adminUsername?.trim() || `admin_${cleanSlug}`;
+    if (this.userRepo && (await this.userRepo.findByUsername(adminUsername))) {
+      throw new ConflictError(`Username "${adminUsername}" already exists`);
+    }
+
     // The weekly schedule is the stored source of the hours: an explicit one
     // wins, then a legacy "HH:MM - HH:MM" config text, then the default.
     const timezone = input.timezone ?? DEFAULT_TIMEZONE;
@@ -52,15 +66,16 @@ export class CreateRestaurantUseCase {
     // Server-owned identity: client-supplied ids are never trusted
         // (a malicious or stale id could overwrite an existing tenant via upsert).
         const restaurantId = newId(ID_PREFIX.restaurant);
+    // Default admin credentials must never be predictable: generate a random
+    // secret when the caller does not provide one. It is returned once in the
+    // create response and only its hash (on the admin user) is persisted.
+    const adminPassword = input.adminPassword || randomBytes(12).toString('base64url');
     const newRestaurant: Restaurant = {
       id: restaurantId,
       slug: cleanSlug,
       name: input.name.trim(),
       tagline: input.tagline || 'Cocina artesanal',
       whatsappNumber: input.whatsappNumber || '573001234567',
-      // Default admin credentials must never be predictable: generate a
-          // random secret when the caller does not provide one.
-          adminPassword: input.adminPassword || randomBytes(12).toString('base64url'),
       primaryColor: input.primaryColor || '#FF7A21',
       theme: input.theme || (input.templateType === 'pizza' ? 'warm-cream' : input.templateType === 'tacos' ? 'clean-white' : 'dark-charcoal'),
       config: input.config || {
@@ -97,27 +112,17 @@ export class CreateRestaurantUseCase {
       }
     }
 
-    // SUS-02: a tenant is only usable when its admin user exists, so provision
-    // the restaurant_admin row from the one-time credentials we are about to
-    // return. The actor role comes from the authenticated caller (the create
-    // route is super-admin-gated) and defaults to super_admin for script/test
-    // callers that do not authenticate.
-    const adminUsername = input.adminUsername?.trim() || `admin_${cleanSlug}`;
+    // Provision the restaurant_admin row from the one-time credentials we are
+    // about to return. The actor role comes from the authenticated caller (the
+    // create route is super-admin-gated) and defaults to super_admin for
+    // script/test callers that do not authenticate. A failure here must not
+    // leave a tenant nobody can log into: undo the tenant and surface the error.
     if (this.userRepo && this.hasher) {
       try {
-        // JD-B-001: a colliding adminUsername (e.g. the seeded super admin
-        // 'admin') must never reach userRepo.save — the Pg driver upserts by
-        // username OR id and would rewrite the existing user's
-        // password_hash/role/restaurant_id. Mirror CreateUserUseCase's
-        // uniqueness check; the throw is handled by the SUS-02 catch below.
-        const existing = await this.userRepo.findByUsername(adminUsername);
-        if (existing) {
-          throw new ValidationError(`Username "${adminUsername}" already exists`);
-        }
         const adminUser: User = {
           id: newId(ID_PREFIX.user),
           username: adminUsername,
-          passwordHash: await this.hasher.hash(newRestaurant.adminPassword ?? ''),
+          passwordHash: await this.hasher.hash(adminPassword),
           role: 'restaurant_admin',
           restaurantId,
           createdAt: new Date().toISOString(),
@@ -125,12 +130,21 @@ export class CreateRestaurantUseCase {
         };
         await this.userRepo.save(adminUser, callerRole ?? 'super_admin');
       } catch (err) {
-        // A secondary admin-row failure must never roll back tenant creation:
-        // the response still carries the credentials for a manual retry.
-        console.warn('Could not create admin user for restaurant:', err);
+        await this.rollbackTenant(restaurantId);
+        throw err;
       }
     }
 
-    return { ...newRestaurant, adminUsername } as Restaurant;
+    return { ...newRestaurant, adminPassword, adminUsername } as Restaurant;
+  }
+
+  private async rollbackTenant(restaurantId: string): Promise<void> {
+    try {
+      // Prefer physically removing the half-created tenant; adapters without
+      // hardDelete fall back to the (deleted_at) soft delete.
+      await (this.restaurantRepo.hardDelete ?? this.restaurantRepo.delete).call(this.restaurantRepo, restaurantId);
+    } catch (cleanupErr) {
+      console.error(`Could not roll back restaurant ${restaurantId} after a failed admin provisioning:`, cleanupErr);
+    }
   }
 }

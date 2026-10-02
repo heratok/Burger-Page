@@ -4,12 +4,16 @@ import { CategoryRepository } from '../../domain/ports/out/CategoryRepository.js
 import { Restaurant, omitAdminPassword } from '../../domain/models/Restaurant.js';
 import { UpdateRestaurantInput } from '@burger-page/contracts';
 import { EntityNotFoundError, ValidationError } from '../../domain/errors/DomainErrors.js';
+import { UserRepository } from '../../domain/ports/out/UserRepository.js';
+import { PasswordHasher } from '../../domain/ports/out/PasswordHasher.js';
+import { MIN_PASSWORD_LENGTH } from '../../domain/models/User.js';
 import {
   assertValidSchedule,
   assertValidTimezone,
   scheduleFromLegacyHoursText,
 } from '../../domain/shared/restaurantSchedule.js';
 import type { WeeklySchedule } from '@burger-page/contracts';
+import { User } from '../../domain/models/User.js';
 
 /**
  * The weekly schedule is the stored source of the hours. An explicit
@@ -32,7 +36,9 @@ function resolveSchedule(current: Restaurant, input: UpdateRestaurantInput): Wee
 export class UpdateRestaurantUseCase {
   constructor(
     private restaurantRepo: RestaurantRepository,
-    private categoryRepo?: CategoryRepository
+    private categoryRepo?: CategoryRepository,
+    private userRepo?: UserRepository,
+    private hasher?: PasswordHasher
   ) {}
 
   async execute(id: string, input: UpdateRestaurantInput, actorRole?: string): Promise<Restaurant> {
@@ -83,14 +89,21 @@ export class UpdateRestaurantUseCase {
       }
     }
 
+    // The password is a credential of the admin USER (its hash is what the
+    // login checks); it is never stored on the restaurant record. Everything
+    // that can fail is resolved before the first write.
+    const adminReset = await this.prepareAdminPasswordReset(restaurant.id, input.adminPassword);
+
+    // A plaintext secret left on a stored record by older code is dropped on
+    // the next write.
+    const { adminPassword: _legacyPlaintext, ...stored } = restaurant;
     const updated: Restaurant = {
-      ...restaurant,
+      ...stored,
       id: restaurant.id,
       slug,
       name: input.name?.trim() ?? restaurant.name,
       tagline: input.tagline ?? restaurant.tagline,
       whatsappNumber: input.whatsappNumber ?? restaurant.whatsappNumber,
-      adminPassword: input.adminPassword ?? restaurant.adminPassword,
       primaryColor: input.primaryColor ?? restaurant.primaryColor,
       theme: input.theme ?? restaurant.theme,
       isActive: input.isActive ?? restaurant.isActive,
@@ -108,6 +121,7 @@ export class UpdateRestaurantUseCase {
       },
     };
 
+    if (adminReset) await this.userRepo!.save(adminReset, 'super_admin');
     await this.restaurantRepo.save(updated);
 
     if (input.categories !== undefined && this.categoryRepo) {
@@ -159,9 +173,32 @@ export class UpdateRestaurantUseCase {
     // in-memory merge can be stale.
     const persisted = (await this.restaurantRepo.findById(restaurant.id)) ?? updated;
 
-    // SUS-20: a provided adminPassword is accepted (update semantics) but must
-    // never be echoed back in the response — only the create 201 carries
-    // one-time credentials.
+    // SUS-20: a provided adminPassword must never be echoed back in the
+    // response — only the create 201 carries one-time credentials.
     return omitAdminPassword(persisted);
+  }
+  /**
+   * Builds the primary admin user with the new password hash, flagged so the
+   * super-admin-chosen password must be changed at next login (same as a
+   * reset). The primary admin is the earliest-created restaurant_admin of the
+   * tenant, i.e. the one provisioned at creation; additional admins are not
+   * touched (reset those through POST /api/users/:id/reset-password).
+   */
+  private async prepareAdminPasswordReset(restaurantId: string, password?: string): Promise<User | null> {
+    if (password === undefined) return null;
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      throw new ValidationError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
+    }
+    if (!this.userRepo || !this.hasher) {
+      throw new Error('Admin password reset is not configured (user repository / hasher missing).');
+    }
+    const admins = (await this.userRepo.findByRestaurantId(restaurantId))
+      .filter((u) => u.role === 'restaurant_admin')
+      .sort((a, b) => (a.createdAt ?? '').localeCompare(b.createdAt ?? ''));
+    const primary = admins[0];
+    if (!primary) {
+      throw new EntityNotFoundError(`Restaurant "${restaurantId}" has no administrator user`);
+    }
+    return { ...primary, passwordHash: await this.hasher.hash(password), mustChangePassword: true };
   }
 }

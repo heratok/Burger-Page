@@ -121,6 +121,10 @@ const RESTAURANT_READ_COLUMNS = `
   LEFT JOIN public.restaurant_branding b ON b.restaurant_id = r.id
 `;
 
+// Deleted tenants (deleted_at set) are invisible to every read below, for
+// super_admin included: deleting is distinct from pausing (is_active=false),
+// which keeps the tenant listed and editable.
+//
 // findById/findAll/save/delete/hardDelete are administrative — no tenant
 // context exists yet to scope by (a restaurant is the tenant root), so they
 // run as actorRole 'super_admin' to preserve today's unrestricted
@@ -132,21 +136,21 @@ const RESTAURANT_READ_COLUMNS = `
 export class PgRestaurantRepository implements RestaurantRepository {
   async findById(id: string): Promise<Restaurant | null> {
     return withTenantContext({ restaurantId: null, actorRole: 'super_admin' }, async (client) => {
-      const { rows } = await client.query(`${RESTAURANT_READ_COLUMNS} WHERE r.id = $1`, [id]);
+      const { rows } = await client.query(`${RESTAURANT_READ_COLUMNS} WHERE r.deleted_at IS NULL AND r.id = $1`, [id]);
       return rows[0] ? mapRow(rows[0]) : null;
     });
   }
 
   async findBySlug(slug: string): Promise<Restaurant | null> {
     return withTenantContext({ restaurantId: null, restaurantSlug: slug }, async (client) => {
-      const { rows } = await client.query(`${RESTAURANT_READ_COLUMNS} WHERE r.slug = $1`, [slug]);
+      const { rows } = await client.query(`${RESTAURANT_READ_COLUMNS} WHERE r.deleted_at IS NULL AND r.slug = $1`, [slug]);
       return rows[0] ? mapRow(rows[0]) : null;
     });
   }
 
   async findAll(): Promise<Restaurant[]> {
     return withTenantContext({ restaurantId: null, actorRole: 'super_admin' }, async (client) => {
-      const { rows } = await client.query(`${RESTAURANT_READ_COLUMNS} ORDER BY r.created_at ASC`);
+      const { rows } = await client.query(`${RESTAURANT_READ_COLUMNS} WHERE r.deleted_at IS NULL ORDER BY r.created_at ASC`);
       return rows.map(mapRow);
     });
   }
@@ -225,6 +229,12 @@ export class PgRestaurantRepository implements RestaurantRepository {
     if (cfg.showBadges !== undefined) branding.show_badges = cfg.showBadges;
 
     await withTenantContext({ restaurantId: restaurant.id, actorRole: 'super_admin' }, async (client) => {
+      // A deleted tenant can never be resurrected by a save.
+      const { rowCount } = await client.query(
+        'SELECT 1 FROM public.restaurants WHERE id = $1 AND deleted_at IS NOT NULL',
+        [restaurant.id]
+      );
+      if (rowCount) return;
       await this.upsert(client, 'public.restaurants', identity);
       await this.upsert(client, 'public.restaurant_settings', settings);
       await this.upsert(client, 'public.restaurant_branding', branding);
@@ -235,7 +245,14 @@ export class PgRestaurantRepository implements RestaurantRepository {
   async delete(id: string): Promise<void> {
     await withTenantContext({ restaurantId: id, actorRole: 'super_admin' }, async (client) => {
       await client.query(
-        `UPDATE public.restaurants SET is_active = false, updated_at = NOW() WHERE id = $1`,
+        // The slug is renamed so it can be reused by a new tenant; the id suffix
+        // keeps the renamed value unique.
+        `UPDATE public.restaurants
+            SET is_active = false,
+                deleted_at = NOW(),
+                slug = slug || '-deleted-' || id,
+                updated_at = NOW()
+          WHERE id = $1 AND deleted_at IS NULL`,
         [id]
       );
     });
