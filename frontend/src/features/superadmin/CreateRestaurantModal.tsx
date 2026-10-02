@@ -1,6 +1,6 @@
-import React, { useState } from "react"
+import React, { useState, useEffect, useMemo } from "react"
 import { useRestaurant } from "@/context/RestaurantContext"
-import { MIN_PASSWORD_LENGTH } from "@burger-page/contracts"
+import { MIN_PASSWORD_LENGTH, type RestaurantTemplateSummary } from "@burger-page/contracts"
 import {
   Store,
   X,
@@ -12,11 +12,17 @@ import {
   AlertTriangle,
   AlertCircle,
   CheckCircle2,
+  Loader2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { THEME_COLOR_PRESETS } from "@/constants/themePresets"
 import { apiClient } from "@/core/api/apiClient"
 import { toast } from "sonner"
+import {
+  COMMON_CURRENCIES,
+  COMMON_TIMEZONES,
+  getDefaultSymbolForCurrency,
+} from "@/lib/currenciesAndTimezones"
 
 interface CreateRestaurantModalProps {
   isOpen: boolean
@@ -34,6 +40,32 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
   const [templateType, setTemplateType] = useState<"burger" | "pizza" | "tacos" | "blank">("burger")
   const [adminUsername, setAdminUsername] = useState("")
   const [adminPassword, setAdminPassword] = useState("")
+  const [timezone, setTimezone] = useState("America/Bogota")
+  const [currency, setCurrency] = useState("COP")
+  const [currencySymbol, setCurrencySymbol] = useState("$")
+  const [templates, setTemplates] = useState<RestaurantTemplateSummary[]>([])
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(false)
+
+  const selectedTemplate = useMemo(() => {
+    return templates.find((t) => t.id === templateType)
+  }, [templates, templateType])
+
+  const supportedCurrencies = selectedTemplate?.supportedCurrencies ?? null
+
+  const availableCurrencies = useMemo(() => {
+    if (!supportedCurrencies) return COMMON_CURRENCIES
+    return COMMON_CURRENCIES.filter((c) => supportedCurrencies.includes(c.code))
+  }, [supportedCurrencies])
+
+  useEffect(() => {
+    if (supportedCurrencies && supportedCurrencies.length > 0) {
+      if (!supportedCurrencies.includes(currency)) {
+        const nextCurr = supportedCurrencies.includes("COP") ? "COP" : supportedCurrencies[0]
+        setCurrency(nextCurr)
+        setCurrencySymbol(getDefaultSymbolForCurrency(nextCurr))
+      }
+    }
+  }, [supportedCurrencies, currency])
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -45,6 +77,24 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
   const [copiedPass, setCopiedPass] = useState(false)
 
   const isDark = adminTheme === "dark"
+
+  useEffect(() => {
+    if (isOpen) {
+      setIsLoadingTemplates(true)
+      apiClient.listRestaurantTemplates()
+        .then((data) => {
+          if (Array.isArray(data) && data.length > 0) {
+            setTemplates(data)
+          }
+        })
+        .catch(() => {
+          // Keep default templates on error
+        })
+        .finally(() => {
+          setIsLoadingTemplates(false)
+        })
+    }
+  }, [isOpen])
 
   if (!isOpen) return null
 
@@ -69,6 +119,9 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
     setTemplateType("burger")
     setAdminUsername("")
     setAdminPassword("")
+    setTimezone("America/Bogota")
+    setCurrency("COP")
+    setCurrencySymbol("$")
     setCreatedCredentials(null)
     setErrorMessage(null)
     onClose()
@@ -96,7 +149,26 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!name.trim() || !slug.trim()) return
+    setErrorMessage(null)
+
+    const trimmedName = name.trim()
+    const trimmedSlug = slug.trim().toLowerCase()
+
+    if (!trimmedName) {
+      setErrorMessage("El nombre del restaurante no puede estar vacío ni contener solo espacios.")
+      return
+    }
+
+    if (!trimmedSlug) {
+      setErrorMessage("El slug del restaurante es obligatorio.")
+      return
+    }
+
+    const RESERVED_SLUGS = ["deleted", "templates"]
+    if (RESERVED_SLUGS.includes(trimmedSlug)) {
+      setErrorMessage(`El slug «${trimmedSlug}» está reservado por el sistema. Por favor, elegí otro slug.`)
+      return
+    }
 
     if (adminPassword.trim() && adminPassword.trim().length < MIN_PASSWORD_LENGTH) {
       setErrorMessage(`La contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres.`)
@@ -104,16 +176,18 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
     }
 
     setIsSubmitting(true)
-    setErrorMessage(null)
 
     try {
       const res = await apiClient.createRestaurant({
-        name: name.trim(),
-        slug: slug.trim(),
+        name: trimmedName,
+        slug: trimmedSlug,
         tagline: tagline.trim() || "La mejor comida artesanal",
         whatsappNumber: whatsapp.trim() || "573001234567",
         primaryColor,
         templateType,
+        timezone,
+        currency,
+        currencySymbol: currencySymbol.trim() || "$",
         adminUsername: adminUsername.trim() || undefined,
         adminPassword: adminPassword.trim() || undefined,
       })
@@ -127,12 +201,31 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
           password: creds.adminPassword,
         })
       } else {
-        toast.success(`Restaurante "${name.trim()}" creado exitosamente`)
+        toast.success(`Restaurante "${trimmedName}" creado exitosamente`)
         handleFinish()
       }
     } catch (err: any) {
-      if (err?.status === 409 || err?.message?.includes("409") || err?.code === "CONFLICT") {
-        setErrorMessage("El nombre de usuario administrador ya está en uso. Por favor ingresa otro en el campo 'Usuario Admin'.")
+      const status = err?.status
+      const rawMsg = (err?.message || err?.body?.detail || err?.detail || "").toLowerCase()
+
+      if (status === 409 || err?.code === "CONFLICT") {
+        if (rawMsg.includes("username") || rawMsg.includes("usuario")) {
+          setErrorMessage("El nombre de usuario administrador ya está en uso. Por favor ingresa otro en el campo 'Usuario Admin'.")
+        } else {
+          setErrorMessage("El slug ya está en uso por otro restaurante (incluso si está pausado). Por favor, elegí un slug diferente.")
+        }
+      } else if (status === 400) {
+        if (rawMsg.includes("name is required") || rawMsg.includes("nombre")) {
+          setErrorMessage("El nombre del restaurante no puede estar vacío ni contener solo espacios.")
+        } else if (rawMsg.includes("reserved") || rawMsg.includes("reservado")) {
+          setErrorMessage(`El slug «${trimmedSlug}» está reservado por el sistema. Por favor, elegí otro slug.`)
+        } else if (rawMsg.includes("cannot price sample dishes") || rawMsg.includes("supported currencies")) {
+          setErrorMessage("La moneda seleccionada no es compatible con los platos de ejemplo de esta plantilla. Elegí una moneda admitida o la plantilla «En Blanco».")
+        } else if (rawMsg.includes("slug")) {
+          setErrorMessage("El slug ingresado no es válido. Solo se permiten letras minúsculas, números y guiones (máximo 63 caracteres).")
+        } else {
+          setErrorMessage(err?.message || "Los datos ingresados no son válidos. Por favor, revisá el formulario.")
+        }
       } else {
         setErrorMessage(err?.message || "Ocurrió un error al crear el restaurante.")
       }
@@ -383,6 +476,112 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
             </div>
           </div>
 
+          {/* Zona Horaria, Moneda y Símbolo */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="sm:col-span-1">
+              <label
+                htmlFor="restaurant-timezone"
+                className="block text-xs font-bold mb-1 text-slate-700 dark:text-slate-300"
+              >
+                Zona Horaria *
+              </label>
+              <select
+                id="restaurant-timezone"
+                aria-label="Zona Horaria"
+                value={timezone}
+                onChange={(e) => setTimezone(e.target.value)}
+                className={`w-full rounded-xl border px-3.5 py-2 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                  isDark
+                    ? "border-slate-700 bg-slate-800 text-white"
+                    : "border-slate-200 bg-slate-50 text-slate-900"
+                }`}
+              >
+                <optgroup label="Latinoamérica">
+                  {COMMON_TIMEZONES.filter((tz) => tz.group === "Latinoamérica").map((tz) => (
+                    <option key={tz.value} value={tz.value}>
+                      {tz.label}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="Otras regiones">
+                  {COMMON_TIMEZONES.filter((tz) => tz.group === "Otras regiones").map((tz) => (
+                    <option key={tz.value} value={tz.value}>
+                      {tz.label}
+                    </option>
+                  ))}
+                </optgroup>
+              </select>
+            </div>
+
+            <div className="sm:col-span-1">
+              <label
+                htmlFor="restaurant-currency"
+                className="block text-xs font-bold mb-1 text-slate-700 dark:text-slate-300"
+              >
+                Moneda *
+              </label>
+              <select
+                id="restaurant-currency"
+                aria-label="Moneda"
+                value={currency}
+                onChange={(e) => {
+                  const nextCurr = e.target.value
+                  const prevDefault = getDefaultSymbolForCurrency(currency)
+                  if (!currencySymbol || currencySymbol === prevDefault) {
+                    setCurrencySymbol(getDefaultSymbolForCurrency(nextCurr))
+                  }
+                  setCurrency(nextCurr)
+                }}
+                className={`w-full rounded-xl border px-3.5 py-2 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                  isDark
+                    ? "border-slate-700 bg-slate-800 text-white"
+                    : "border-slate-200 bg-slate-50 text-slate-900"
+                }`}
+              >
+                {availableCurrencies.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="sm:col-span-1">
+              <label
+                htmlFor="restaurant-currency-symbol"
+                className="block text-xs font-bold mb-1 text-slate-700 dark:text-slate-300"
+              >
+                Símbolo *
+              </label>
+              <input
+                id="restaurant-currency-symbol"
+                aria-label="Símbolo"
+                type="text"
+                required
+                maxLength={8}
+                value={currencySymbol}
+                onChange={(e) => setCurrencySymbol(e.target.value)}
+                placeholder="$"
+                className={`w-full rounded-xl border px-3.5 py-2 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                  isDark
+                    ? "border-slate-700 bg-slate-800 text-white"
+                    : "border-slate-200 bg-slate-50 text-slate-900"
+                }`}
+              />
+            </div>
+          </div>
+
+          {/* Helper note explaining currency restriction or blank support */}
+          {supportedCurrencies ? (
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 -mt-2">
+              Los platos de ejemplo de esta plantilla tienen precios calculados para las monedas admitidas ({supportedCurrencies.join(", ")}). Si necesitás otra moneda, elegí la plantilla «En Blanco».
+            </p>
+          ) : (
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 -mt-2">
+              La plantilla «En Blanco» admite cualquier moneda disponible.
+            </p>
+          )}
+
           {/* One-time Admin Credentials */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
@@ -432,33 +631,55 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
 
           {/* Preset Template */}
           <div>
-            <label className="block text-xs font-bold mb-1.5 text-slate-700 dark:text-slate-300">
-              Plantilla Inicial de Menú
-            </label>
-            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-              {[
-                { id: "burger", name: "🍔 Hamburguesería", desc: "6 platos + 7 adicionales" },
-                { id: "pizza", name: "🍕 Pizzería", desc: "4 pizzas + adicionales" },
-                { id: "tacos", name: "🌮 Taquería", desc: "3 tipos de tacos" },
-                { id: "blank", name: "📝 En Blanco", desc: "Menú vacío desde cero" },
-              ].map((tpl) => (
-                <button
-                  key={tpl.id}
-                  type="button"
-                  onClick={() => setTemplateType(tpl.id as typeof templateType)}
-                  className={`rounded-xl border p-2.5 text-left transition-all ${
-                    templateType === tpl.id
-                      ? "border-indigo-600 bg-indigo-500/10 ring-2 ring-indigo-500"
-                      : isDark
-                      ? "border-slate-800 bg-slate-900 hover:border-slate-700"
-                      : "border-slate-200 bg-white hover:border-slate-300"
-                  }`}
-                >
-                  <div className="text-xs font-bold">{tpl.name}</div>
-                  <div className="mt-0.5 text-[10px] text-slate-400">{tpl.desc}</div>
-                </button>
-              ))}
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                Plantilla Inicial de Menú
+              </label>
+              {isLoadingTemplates && (
+                <div className="flex items-center gap-1 text-[11px] text-slate-400">
+                  <Loader2 className="size-3 animate-spin" />
+                  <span>Cargando plantillas...</span>
+                </div>
+              )}
             </div>
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+              {(templates.length > 0
+                ? templates
+                : [
+                    { id: "burger", name: "🍔 Hamburguesería", description: "Hamburguesas artesanales y combos", productCount: 6, additionCount: 7 },
+                    { id: "pizza", name: "🍕 Pizzería", description: "Pizzas clásicas e ingredientes", productCount: 4, additionCount: 5 },
+                    { id: "tacos", name: "🌮 Taquería", description: "Tacos tradicionales y salsas", productCount: 3, additionCount: 4 },
+                    { id: "blank", name: "📝 En Blanco", description: "Menú vacío desde cero", productCount: 0, additionCount: 0 },
+                  ]
+              ).map((tpl) => {
+                const isSelected = templateType === tpl.id
+                const countsText =
+                  tpl.productCount > 0
+                    ? `${tpl.productCount} platos + ${tpl.additionCount} adicionales`
+                    : tpl.description || "Menú vacío desde cero"
+
+                return (
+                  <button
+                    key={tpl.id}
+                    type="button"
+                    onClick={() => setTemplateType(tpl.id as typeof templateType)}
+                    className={`rounded-xl border p-2.5 text-left transition-all ${
+                      isSelected
+                        ? "border-indigo-600 bg-indigo-500/10 ring-2 ring-indigo-500"
+                        : isDark
+                        ? "border-slate-800 bg-slate-900 hover:border-slate-700"
+                        : "border-slate-200 bg-white hover:border-slate-300"
+                    }`}
+                  >
+                    <div className="text-xs font-bold">{tpl.name}</div>
+                    <div className="mt-0.5 text-[10px] text-slate-400">{countsText}</div>
+                  </button>
+                )
+              })}
+            </div>
+            <p className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+              💡 Los platos de muestra se crean automáticamente y podrás editarlos o eliminarlos en cualquier momento desde el menú.
+            </p>
           </div>
 
           {/* Color Presets */}

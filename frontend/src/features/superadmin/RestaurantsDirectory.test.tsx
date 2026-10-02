@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { render, screen, cleanup, fireEvent } from "@testing-library/react"
+import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react"
 import { RestaurantProvider } from "@/context/RestaurantContext"
 import { RestaurantsDirectory } from "./RestaurantsDirectory"
-import { apiClient } from "@/core/api/apiClient"
+import { apiClient, type DeletedRestaurantRecord } from "@/core/api/apiClient"
 import type { RestaurantRecord } from "@/types/restaurant"
 
 const mockRestaurant: RestaurantRecord = {
@@ -46,6 +46,13 @@ const mockRestaurant: RestaurantRecord = {
   customers: [],
 }
 
+const mockDeletedRestaurant: DeletedRestaurantRecord = {
+  id: "rest-pizza-old",
+  name: "Pizza Nostra",
+  slug: "pizza-nostra",
+  deletedAt: "2026-02-15T12:00:00.000Z",
+}
+
 describe("RestaurantsDirectory - Edit Action (TDD)", () => {
   beforeEach(() => {
     localStorage.clear()
@@ -58,6 +65,7 @@ describe("RestaurantsDirectory - Edit Action (TDD)", () => {
     )
     vi.clearAllMocks()
     vi.spyOn(apiClient, "listUsers").mockResolvedValue([])
+    vi.spyOn(apiClient, "listDeletedRestaurants").mockResolvedValue([mockDeletedRestaurant])
   })
 
   afterEach(() => {
@@ -93,5 +101,96 @@ describe("RestaurantsDirectory - Edit Action (TDD)", () => {
     expect(await screen.findByRole("heading", { name: "Editar Restaurante" })).toBeDefined()
     expect(screen.getByDisplayValue("Burger Craft")).toBeDefined()
     expect(screen.getByDisplayValue("burger-craft")).toBeDefined()
+  })
+
+  it("switches to 'Eliminados' tab, displays deleted restaurants list, and allows restoring", async () => {
+    const restoreSpy = vi.spyOn(apiClient, "restoreRestaurant").mockResolvedValue({
+      restaurant: {
+        ...mockRestaurant,
+        id: "rest-pizza-old",
+        name: "Pizza Nostra",
+        slug: "pizza-nostra",
+        isActive: false,
+      },
+      renamedUsers: [],
+    })
+
+    render(
+      <RestaurantProvider>
+        <RestaurantsDirectory />
+      </RestaurantProvider>
+    )
+
+    // Click on Eliminados tab
+    const eliminadosTab = screen.getByRole("button", { name: /Eliminados/i })
+    fireEvent.click(eliminadosTab)
+
+    expect(await screen.findByText("Pizza Nostra")).toBeDefined()
+    expect(screen.getByText("/pizza-nostra")).toBeDefined()
+
+    // Click on Restaurar
+    const restoreBtn = screen.getByRole("button", { name: /Restaurar restaurante Pizza Nostra/i })
+    fireEvent.click(restoreBtn)
+
+    // Confirm dialog should appear explaining it returns paused and admins are reactivated
+    expect(
+      screen.getByText(/volverá en estado PAUSADO y sus administradores serán reactivados/i)
+    ).toBeDefined()
+
+    // Confirm restoration
+    const confirmBtn = screen.getByRole("button", { name: /Confirmar Restauración/i })
+    fireEvent.click(confirmBtn)
+
+    await waitFor(() => {
+      expect(restoreSpy).toHaveBeenCalledWith("rest-pizza-old", {})
+    })
+  })
+
+  it("handles 409 slug conflict on restore by prompting inline for a new slug and retrying", async () => {
+    const conflictError: any = new Error("Slug already taken")
+    conflictError.status = 409
+
+    const restoreSpy = vi
+      .spyOn(apiClient, "restoreRestaurant")
+      .mockRejectedValueOnce(conflictError)
+      .mockResolvedValueOnce({
+        restaurant: {
+          ...mockRestaurant,
+          id: "rest-pizza-old",
+          name: "Pizza Nostra",
+          slug: "pizza-nostra-nueva",
+          isActive: false,
+        },
+        renamedUsers: [{ id: "usr-1", from: "admin_pizza", to: "admin_pizza-restored-1" }],
+      })
+
+    render(
+      <RestaurantProvider>
+        <RestaurantsDirectory />
+      </RestaurantProvider>
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: /Eliminados/i }))
+    expect(await screen.findByText("Pizza Nostra")).toBeDefined()
+
+    fireEvent.click(screen.getByRole("button", { name: /Restaurar restaurante Pizza Nostra/i }))
+
+    // First attempt fails with 409
+    fireEvent.click(screen.getByRole("button", { name: /Confirmar Restauración/i }))
+
+    expect(
+      await screen.findByText(/El slug original ya está en uso/i)
+    ).toBeDefined()
+
+    // Input new slug
+    const slugInput = screen.getByLabelText(/Nuevo slug para restaurar/i)
+    fireEvent.change(slugInput, { target: { value: "pizza-nostra-nueva" } })
+
+    // Retry restoration
+    fireEvent.click(screen.getByRole("button", { name: /Reintentar Restauración/i }))
+
+    await waitFor(() => {
+      expect(restoreSpy).toHaveBeenCalledWith("rest-pizza-old", { slug: "pizza-nostra-nueva" })
+    })
   })
 })

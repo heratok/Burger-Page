@@ -8,7 +8,40 @@ import {
   Supplier,
   RestaurantTable,
 } from '@/types/restaurant'
-import type { OrderEvent, CreateOrderInput, UpdateOrderInput, CreateRestaurantInput, UpdateRestaurantInput, CreateCustomerInput, UpdateCustomerInput, CreateSupplierInput, UpdateSupplierInput } from '@burger-page/contracts'
+import type {
+  OrderEvent,
+  CreateOrderInput,
+  UpdateOrderInput,
+  CreateRestaurantInput,
+  UpdateRestaurantInput,
+  CreateCustomerInput,
+  UpdateCustomerInput,
+  CreateSupplierInput,
+  UpdateSupplierInput,
+  RestaurantTemplateSummary,
+  AuditLogQuery,
+  AuditLogPage,
+  AuditLogItem,
+} from '@burger-page/contracts'
+
+export type {
+  RestaurantTemplateSummary,
+  AuditLogQuery,
+  AuditLogPage,
+  AuditLogItem,
+}
+
+export interface DeletedRestaurantRecord {
+  id: string
+  name: string
+  slug: string
+  deletedAt: string
+}
+
+export interface RestoreRestaurantResponse {
+  restaurant: RestaurantRecord
+  renamedUsers: Array<{ id: string; from: string; to: string }>
+}
 
 export interface ApiClientConfig {
   baseUrl: string
@@ -258,6 +291,24 @@ export class ApiClient {
   async deleteRestaurant(id: string): Promise<{ message: string }> {
     return this.request<{ message: string }>(`/restaurants/${id}`, {
       method: 'DELETE',
+    })
+  }
+
+  async listRestaurantTemplates(): Promise<RestaurantTemplateSummary[]> {
+    return this.request<RestaurantTemplateSummary[]>('/restaurants/templates')
+  }
+
+  async listDeletedRestaurants(): Promise<DeletedRestaurantRecord[]> {
+    return this.request<DeletedRestaurantRecord[]>('/restaurants/deleted')
+  }
+
+  async restoreRestaurant(
+    id: string,
+    data?: { slug?: string }
+  ): Promise<RestoreRestaurantResponse> {
+    return this.request<RestoreRestaurantResponse>(`/restaurants/${id}/restore`, {
+      method: 'POST',
+      body: JSON.stringify(data || {}),
     })
   }
 
@@ -813,6 +864,21 @@ export class ApiClient {
     })
   }
 
+  async updateUser(
+    id: string,
+    data: {
+      username?: string
+      role?: 'super_admin' | 'restaurant_admin'
+      restaurantId?: string | null
+      isActive?: boolean
+    }
+  ): Promise<ApiUserRecord> {
+    return this.request<ApiUserRecord>(`/users/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    })
+  }
+
   async deleteUser(id: string): Promise<void> {
     await this.request<void>(`/users/${id}`, {
       method: 'DELETE',
@@ -837,6 +903,19 @@ export class ApiClient {
       this.setToken(res.token)
     }
     return res
+  }
+
+  async fetchAuditLog(query?: AuditLogQuery): Promise<AuditLogPage> {
+    const params = new URLSearchParams()
+    if (query?.limit) params.set('limit', String(query.limit))
+    if (query?.cursor) params.set('cursor', query.cursor)
+    if (query?.action) params.set('action', query.action)
+    if (query?.restaurantId) params.set('restaurantId', query.restaurantId)
+    if (query?.actorUserId) params.set('actorUserId', query.actorUserId)
+    if (query?.from) params.set('from', query.from)
+    if (query?.to) params.set('to', query.to)
+    const qs = params.toString() ? `?${params.toString()}` : ''
+    return this.request<AuditLogPage>(`/audit-log${qs}`)
   }
 
   async getPresignedUploadUrl(params: {

@@ -27,7 +27,7 @@ const mockRestaurant: RestaurantRecord = {
     minOrderAmount: 20000,
     estimatedDeliveryTime: "30-45 min",
     schedule: [],
-    timezone: "UTC",
+    timezone: "America/Bogota",
     ordersPaused: false,
     address: "Calle 123 # 45-67",
     bgTheme: "dark-charcoal",
@@ -94,6 +94,9 @@ describe("EditRestaurantModal (TDD)", () => {
     expect((screen.getByLabelText(/Eslogan/i) as HTMLInputElement).value).toBe("Hamburguesas artesanales premium")
     expect((screen.getByLabelText(/WhatsApp/i) as HTMLInputElement).value).toBe("573001234567")
     expect((screen.getByLabelText(/Slug \/ URL Pública/i) as HTMLInputElement).value).toBe("burger-craft")
+    expect((screen.getByLabelText(/Zona Horaria/i) as HTMLSelectElement).value).toBe("America/Bogota")
+    expect((screen.getByLabelText(/^Moneda/i) as HTMLSelectElement).value).toBe("COP")
+    expect((screen.getByLabelText(/Símbolo/i) as HTMLInputElement).value).toBe("$")
   })
 
   it("warns that old store links and QR codes stop working when slug is changed", async () => {
@@ -166,6 +169,9 @@ describe("EditRestaurantModal (TDD)", () => {
         tagline: "Hamburguesas artesanales premium",
         whatsappNumber: "573001234567",
         slug: "burger-craft",
+        timezone: "America/Bogota",
+        currency: "COP",
+        currencySymbol: "$",
       })
       expect(onSavedMock).toHaveBeenCalled()
       expect(onCloseMock).toHaveBeenCalled()
@@ -290,5 +296,96 @@ describe("EditRestaurantModal (TDD)", () => {
 
     expect(await screen.findByRole("heading", { name: /Crear Usuario/i })).toBeDefined()
     expect(screen.getByDisplayValue("Burger Craft (/burger-craft)")).toBeDefined()
+  })
+
+  it("opens EditUserModal when clicking edit on an administrator row", async () => {
+    render(
+      <RestaurantProvider>
+        <EditRestaurantModal
+          isOpen={true}
+          onClose={vi.fn()}
+          restaurant={mockRestaurant}
+        />
+      </RestaurantProvider>
+    )
+
+    await screen.findByText("craft_manager")
+
+    const editUserBtn = screen.getByRole("button", { name: /Editar usuario craft_manager/i })
+    fireEvent.click(editUserBtn)
+
+    expect(await screen.findByRole("heading", { name: /Editar Usuario/i })).toBeDefined()
+    expect(screen.getByDisplayValue("craft_manager")).toBeDefined()
+  })
+
+  it("shows Spanish validation error when name is whitespace-only", async () => {
+    render(
+      <RestaurantProvider>
+        <EditRestaurantModal
+          isOpen={true}
+          onClose={vi.fn()}
+          restaurant={mockRestaurant}
+        />
+      </RestaurantProvider>
+    )
+
+    fireEvent.change(screen.getByLabelText(/Nombre del Restaurante/i), {
+      target: { value: "    " },
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: /Guardar Cambios/i }))
+
+    expect(
+      await screen.findByText(/El nombre del restaurante no puede estar vacío ni contener solo espacios/i)
+    ).toBeDefined()
+  })
+
+  it("shows Spanish validation error when slug is reserved ('templates' or 'deleted')", async () => {
+    render(
+      <RestaurantProvider>
+        <EditRestaurantModal
+          isOpen={true}
+          onClose={vi.fn()}
+          restaurant={mockRestaurant}
+        />
+      </RestaurantProvider>
+    )
+
+    fireEvent.change(screen.getByLabelText(/Slug \/ URL Pública/i), {
+      target: { value: "deleted" },
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: /Guardar Cambios/i }))
+
+    expect(
+      await screen.findByText(/El slug «deleted» está reservado por el sistema. Por favor, elegí otro slug/i)
+    ).toBeDefined()
+  })
+
+  it("shows clear Spanish error when update returns 409 for taken slug", async () => {
+    const error409: any = new Error("Restaurant with slug 'other-place' already exists")
+    error409.status = 409
+
+    vi.spyOn(apiClient, "updateRestaurant").mockRejectedValue(error409)
+
+    render(
+      <RestaurantProvider>
+        <EditRestaurantModal
+          isOpen={true}
+          onClose={vi.fn()}
+          restaurant={mockRestaurant}
+        />
+      </RestaurantProvider>
+    )
+
+    fireEvent.change(screen.getByLabelText(/Slug \/ URL Pública/i), {
+      target: { value: "other-place" },
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: /Guardar Cambios/i }))
+
+    expect(
+      await screen.findByText(/El slug ya está en uso por otro restaurante \(incluso si está pausado\)/i)
+    ).toBeDefined()
   })
 })

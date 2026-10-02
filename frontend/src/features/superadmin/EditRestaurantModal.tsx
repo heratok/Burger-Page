@@ -14,12 +14,19 @@ import {
   Power,
   Shield,
   Loader2,
+  Pencil,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ResetPasswordModal } from "./ResetPasswordModal"
 import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
 import { CreateUserModal } from "./CreateUserModal"
+import { EditUserModal } from "./EditUserModal"
 import { toast } from "sonner"
+import {
+  COMMON_CURRENCIES,
+  COMMON_TIMEZONES,
+  getDefaultSymbolForCurrency,
+} from "@/lib/currenciesAndTimezones"
 
 export interface EditRestaurantModalProps {
   isOpen: boolean
@@ -42,6 +49,9 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
   const [tagline, setTagline] = useState("")
   const [whatsapp, setWhatsapp] = useState("")
   const [slug, setSlug] = useState("")
+  const [timezone, setTimezone] = useState("America/Bogota")
+  const [currency, setCurrency] = useState("COP")
+  const [currencySymbol, setCurrencySymbol] = useState("$")
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -53,6 +63,7 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
   const [isCreateUserOpen, setIsCreateUserOpen] = useState(false)
   const [resetModalData, setResetModalData] = useState<{ username: string; temporaryPassword?: string } | null>(null)
   const [userToDelete, setUserToDelete] = useState<ApiUserRecord | null>(null)
+  const [userToEdit, setUserToEdit] = useState<ApiUserRecord | null>(null)
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
 
   const isDark = adminTheme === "dark"
@@ -76,6 +87,12 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
       setTagline(restaurant.config?.tagline || restaurant.tagline || "")
       setWhatsapp(restaurant.config?.whatsappNumber || (restaurant as any).whatsappNumber || "")
       setSlug(restaurant.slug || "")
+      const initialTz = restaurant.config?.timezone || "America/Bogota"
+      const initialCurr = restaurant.config?.currency || "COP"
+      const initialSym = restaurant.config?.currencySymbol || getDefaultSymbolForCurrency(initialCurr)
+      setTimezone(initialTz)
+      setCurrency(initialCurr)
+      setCurrencySymbol(initialSym)
       setErrorMessage(null)
       setSlugError(null)
       loadAdmins(restaurant.id)
@@ -150,12 +167,18 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
     const trimmedSlug = slug.trim().toLowerCase()
 
     if (!trimmedName) {
-      setErrorMessage("El nombre del restaurante es obligatorio.")
+      setErrorMessage("El nombre del restaurante no puede estar vacío ni contener solo espacios.")
       return
     }
 
     if (!trimmedSlug) {
       setSlugError("El slug es obligatorio.")
+      return
+    }
+
+    const RESERVED_SLUGS = ["deleted", "templates"]
+    if (RESERVED_SLUGS.includes(trimmedSlug)) {
+      setSlugError(`El slug «${trimmedSlug}» está reservado por el sistema. Por favor, elegí otro slug.`)
       return
     }
 
@@ -171,6 +194,9 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
         tagline: tagline.trim(),
         whatsappNumber: whatsapp.trim(),
         slug: trimmedSlug,
+        timezone,
+        currency,
+        currencySymbol: currencySymbol.trim() || "$",
       })
 
       toast.success("Restaurante actualizado correctamente")
@@ -178,15 +204,21 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
       onSaved?.()
       onClose()
     } catch (err: any) {
+      const status = err?.status
+      const rawMsg = (err?.message || err?.body?.detail || err?.detail || "").toLowerCase()
       const isConflict =
-        err?.status === 409 ||
+        status === 409 ||
         err?.code === "CONFLICT" ||
         err?.message?.includes("409") ||
-        err?.message?.toLowerCase().includes("already exists") ||
-        err?.message?.toLowerCase().includes("en uso")
+        rawMsg.includes("already exists") ||
+        rawMsg.includes("en uso")
 
       if (isConflict) {
-        setSlugError("El slug ya está en uso por otro restaurante.")
+        setSlugError("El slug ya está en uso por otro restaurante (incluso si está pausado). Por favor, elegí un slug diferente.")
+      } else if (rawMsg.includes("reserved") || rawMsg.includes("reservado")) {
+        setSlugError(`El slug «${trimmedSlug}» está reservado por el sistema. Por favor, elegí otro slug.`)
+      } else if (rawMsg.includes("name is required") || rawMsg.includes("nombre")) {
+        setErrorMessage("El nombre del restaurante no puede estar vacío ni contener solo espacios.")
       } else {
         setErrorMessage(err?.message || "Ocurrió un error al actualizar el restaurante.")
       }
@@ -336,6 +368,79 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
                   </div>
                 )}
               </div>
+
+              {/* Zona Horaria */}
+              <div className="space-y-1 sm:col-span-2">
+                <label htmlFor="edit-rest-timezone" className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Zona Horaria *
+                </label>
+                <select
+                  id="edit-rest-timezone"
+                  aria-label="Zona Horaria"
+                  value={timezone}
+                  onChange={(e) => setTimezone(e.target.value)}
+                  className={inputClass}
+                >
+                  <optgroup label="Latinoamérica">
+                    {COMMON_TIMEZONES.filter((tz) => tz.group === "Latinoamérica").map((tz) => (
+                      <option key={tz.value} value={tz.value}>
+                        {tz.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Otras regiones">
+                    {COMMON_TIMEZONES.filter((tz) => tz.group === "Otras regiones").map((tz) => (
+                      <option key={tz.value} value={tz.value}>
+                        {tz.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                </select>
+              </div>
+
+              {/* Moneda y Símbolo */}
+              <div className="space-y-1">
+                <label htmlFor="edit-rest-currency" className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Moneda *
+                </label>
+                <select
+                  id="edit-rest-currency"
+                  aria-label="Moneda"
+                  value={currency}
+                  onChange={(e) => {
+                    const nextCurr = e.target.value
+                    const prevDefault = getDefaultSymbolForCurrency(currency)
+                    if (!currencySymbol || currencySymbol === prevDefault) {
+                      setCurrencySymbol(getDefaultSymbolForCurrency(nextCurr))
+                    }
+                    setCurrency(nextCurr)
+                  }}
+                  className={inputClass}
+                >
+                  {COMMON_CURRENCIES.map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label htmlFor="edit-rest-symbol" className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Símbolo *
+                </label>
+                <input
+                  id="edit-rest-symbol"
+                  aria-label="Símbolo"
+                  type="text"
+                  required
+                  maxLength={8}
+                  value={currencySymbol}
+                  onChange={(e) => setCurrencySymbol(e.target.value)}
+                  placeholder="$"
+                  className={inputClass}
+                />
+              </div>
             </div>
 
             {/* Administradores de este restaurante */}
@@ -410,6 +515,18 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
                           >
                             {admin.isActive !== false ? "Activo" : "Inactivo"}
                           </span>
+
+                          {/* Edit user */}
+                          <button
+                            type="button"
+                            disabled={isActionLoading}
+                            onClick={() => setUserToEdit(admin)}
+                            title="Editar usuario"
+                            aria-label={`Editar usuario ${admin.username}`}
+                            className="rounded-lg p-1.5 text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-950/40 dark:hover:text-indigo-400 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <Pencil className="size-3.5" />
+                          </button>
 
                           {/* Toggle Active */}
                           <button
@@ -535,6 +652,14 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
             : undefined
         }
         confirmText="Eliminar usuario"
+      />
+
+      {/* Submodal: Edit User */}
+      <EditUserModal
+        isOpen={!!userToEdit}
+        onClose={() => setUserToEdit(null)}
+        user={userToEdit}
+        onSuccess={() => loadAdmins(restaurant.id)}
       />
     </>
   )

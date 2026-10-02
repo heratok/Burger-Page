@@ -3,6 +3,7 @@ import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/re
 import { RestaurantProvider } from "@/context/RestaurantContext"
 import { CreateRestaurantModal } from "./CreateRestaurantModal"
 import { apiClient } from "@/core/api/apiClient"
+import type { RestaurantTemplateSummary } from "@burger-page/contracts"
 
 describe("CreateRestaurantModal (TDD)", () => {
   beforeEach(() => {
@@ -15,7 +16,16 @@ describe("CreateRestaurantModal (TDD)", () => {
     cleanup()
   })
 
-  it("renders form fields correctly when open", () => {
+  const mockTemplates: RestaurantTemplateSummary[] = [
+    { id: "burger", name: "Hamburguesería", description: "Hamburguesas artesanales y combos", productCount: 6, additionCount: 7 },
+    { id: "pizza", name: "Pizzería", description: "Pizzas clásicas e ingredientes", productCount: 4, additionCount: 5 },
+    { id: "tacos", name: "Taquería", description: "Tacos tradicionales y salsas", productCount: 3, additionCount: 4 },
+    { id: "blank", name: "En Blanco", description: "Menú vacío desde cero", productCount: 0, additionCount: 0 },
+  ]
+
+  it("renders form fields correctly when open, including timezone and currency defaults", async () => {
+    vi.spyOn(apiClient, "listRestaurantTemplates").mockResolvedValue(mockTemplates)
+
     render(
       <RestaurantProvider>
         <CreateRestaurantModal isOpen={true} onClose={vi.fn()} />
@@ -27,6 +37,77 @@ describe("CreateRestaurantModal (TDD)", () => {
     expect(screen.getByLabelText(/Slug \/ URL Pública/i)).toBeDefined()
     expect(screen.getByLabelText(/Usuario Admin/i)).toBeDefined()
     expect(screen.getByLabelText(/Clave Admin/i)).toBeDefined()
+    expect((screen.getByLabelText(/Zona Horaria/i) as HTMLSelectElement).value).toBe("America/Bogota")
+    expect((screen.getByLabelText(/^Moneda/i) as HTMLSelectElement).value).toBe("COP")
+    expect((screen.getByLabelText(/Símbolo/i) as HTMLInputElement).value).toBe("$")
+  })
+
+  it("loads and displays dynamic templates with counts and sample dish note", async () => {
+    vi.spyOn(apiClient, "listRestaurantTemplates").mockResolvedValue(mockTemplates)
+
+    render(
+      <RestaurantProvider>
+        <CreateRestaurantModal isOpen={true} onClose={vi.fn()} />
+      </RestaurantProvider>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText("Pizzería")).toBeDefined()
+    })
+
+    expect(screen.getByText(/4 platos \+ 5 adicionales/i)).toBeDefined()
+    expect(screen.getByText(/Los platos de muestra se crean automáticamente y podrás editarlos/i)).toBeDefined()
+  })
+
+  it("submits templateType, timezone, currency, and currencySymbol to createRestaurant API", async () => {
+    vi.spyOn(apiClient, "listRestaurantTemplates").mockResolvedValue(mockTemplates)
+    const createSpy = vi.spyOn(apiClient, "createRestaurant").mockResolvedValue({
+      id: "rest-pizza-1",
+      slug: "pizza-napoli",
+      name: "Pizza Napoli",
+    } as any)
+
+    render(
+      <RestaurantProvider>
+        <CreateRestaurantModal isOpen={true} onClose={vi.fn()} />
+      </RestaurantProvider>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText("Pizzería")).toBeDefined()
+    })
+
+    fireEvent.change(screen.getByLabelText(/Nombre del Restaurante/i), {
+      target: { value: "Pizza Napoli" },
+    })
+
+    // Select Pizzeria template
+    fireEvent.click(screen.getByText("Pizzería"))
+
+    // Change currency to USD
+    fireEvent.change(screen.getByLabelText(/^Moneda/i), {
+      target: { value: "USD" },
+    })
+
+    // Change timezone
+    fireEvent.change(screen.getByLabelText(/Zona Horaria/i), {
+      target: { value: "America/New_York" },
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: /Crear Restaurante/i }))
+
+    await waitFor(() => {
+      expect(createSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "Pizza Napoli",
+          slug: "pizza-napoli",
+          templateType: "pizza",
+          timezone: "America/New_York",
+          currency: "USD",
+          currencySymbol: "$",
+        })
+      )
+    })
   })
 
   it("validates that admin password must be at least 8 characters if provided", async () => {
@@ -162,4 +243,139 @@ describe("CreateRestaurantModal (TDD)", () => {
       )
     })
   })
+
+  it("restricts currency select to supportedCurrencies when a template with sample dishes is selected and displays explanation", async () => {
+    const templatesWithCurrencies: RestaurantTemplateSummary[] = [
+      { id: "burger", name: "Hamburguesería", description: "Hamburguesas artesanales", productCount: 6, additionCount: 7, supportedCurrencies: ["COP", "USD", "EUR"] },
+      { id: "blank", name: "En Blanco", description: "Menú vacío desde cero", productCount: 0, additionCount: 0, supportedCurrencies: null },
+    ]
+    vi.spyOn(apiClient, "listRestaurantTemplates").mockResolvedValue(templatesWithCurrencies)
+
+    render(
+      <RestaurantProvider>
+        <CreateRestaurantModal isOpen={true} onClose={vi.fn()} />
+      </RestaurantProvider>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText("Hamburguesería")).toBeDefined()
+    })
+
+    // With burger template selected, currency select should only have COP, USD, EUR
+    const currencySelect = screen.getByLabelText(/^Moneda/i) as HTMLSelectElement
+    const options = Array.from(currencySelect.options).map((o) => o.value)
+    expect(options).toEqual(["COP", "USD", "EUR"])
+    expect(screen.getByText(/Los platos de ejemplo de esta plantilla tienen precios calculados para las monedas admitidas/i)).toBeDefined()
+
+    // Switch to blank template
+    fireEvent.click(screen.getByText("En Blanco"))
+
+    // Blank allows any currency
+    const allOptions = Array.from(currencySelect.options).map((o) => o.value)
+    expect(allOptions.length).toBeGreaterThan(5)
+    expect(allOptions).toContain("BOB")
+    expect(screen.getByText(/La plantilla «En Blanco» admite cualquier moneda disponible/i)).toBeDefined()
+  })
+
+  it("resets currency to supported currency when switching to a template that does not support the current currency", async () => {
+    const templatesWithCurrencies: RestaurantTemplateSummary[] = [
+      { id: "burger", name: "Hamburguesería", description: "Hamburguesas artesanales", productCount: 6, additionCount: 7, supportedCurrencies: ["COP", "USD"] },
+      { id: "blank", name: "En Blanco", description: "Menú vacío desde cero", productCount: 0, additionCount: 0, supportedCurrencies: null },
+    ]
+    vi.spyOn(apiClient, "listRestaurantTemplates").mockResolvedValue(templatesWithCurrencies)
+
+    render(
+      <RestaurantProvider>
+        <CreateRestaurantModal isOpen={true} onClose={vi.fn()} />
+      </RestaurantProvider>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText("En Blanco")).toBeDefined()
+    })
+
+    // Select blank
+    fireEvent.click(screen.getByText("En Blanco"))
+    // Select BOB currency
+    const currencySelect = screen.getByLabelText(/^Moneda/i) as HTMLSelectElement
+    fireEvent.change(currencySelect, { target: { value: "BOB" } })
+    expect(currencySelect.value).toBe("BOB")
+
+    // Now switch back to burger (which only supports COP, USD)
+    fireEvent.click(screen.getByText("Hamburguesería"))
+
+    // Currency should have auto-reset to COP
+    await waitFor(() => {
+      expect((screen.getByLabelText(/^Moneda/i) as HTMLSelectElement).value).toBe("COP")
+    })
+  })
+
+  it("shows Spanish validation error when name is whitespace-only", async () => {
+    render(
+      <RestaurantProvider>
+        <CreateRestaurantModal isOpen={true} onClose={vi.fn()} />
+      </RestaurantProvider>
+    )
+
+    fireEvent.change(screen.getByLabelText(/Nombre del Restaurante/i), {
+      target: { value: "    " },
+    })
+    fireEvent.change(screen.getByLabelText(/Slug \/ URL Pública/i), {
+      target: { value: "mi-restaurante" },
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: /Crear Restaurante/i }))
+
+    expect(
+      await screen.findByText(/El nombre del restaurante no puede estar vacío ni contener solo espacios/i)
+    ).toBeDefined()
+  })
+
+  it("shows Spanish validation error when slug is reserved ('templates' or 'deleted')", async () => {
+    render(
+      <RestaurantProvider>
+        <CreateRestaurantModal isOpen={true} onClose={vi.fn()} />
+      </RestaurantProvider>
+    )
+
+    fireEvent.change(screen.getByLabelText(/Nombre del Restaurante/i), {
+      target: { value: "Mi Restaurante" },
+    })
+    fireEvent.change(screen.getByLabelText(/Slug \/ URL Pública/i), {
+      target: { value: "templates" },
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: /Crear Restaurante/i }))
+
+    expect(
+      await screen.findByText(/El slug «templates» está reservado por el sistema. Por favor, elegí otro slug/i)
+    ).toBeDefined()
+  })
+
+  it("shows clear Spanish error when backend returns 409 for taken slug", async () => {
+    const error409: any = new Error("Restaurant with slug 'burger-king' already exists")
+    error409.status = 409
+
+    vi.spyOn(apiClient, "createRestaurant").mockRejectedValue(error409)
+
+    render(
+      <RestaurantProvider>
+        <CreateRestaurantModal isOpen={true} onClose={vi.fn()} />
+      </RestaurantProvider>
+    )
+
+    fireEvent.change(screen.getByLabelText(/Nombre del Restaurante/i), {
+      target: { value: "Burger King" },
+    })
+    fireEvent.change(screen.getByLabelText(/Slug \/ URL Pública/i), {
+      target: { value: "burger-king" },
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: /Crear Restaurante/i }))
+
+    expect(
+      await screen.findByText(/El slug ya está en uso por otro restaurante \(incluso si está pausado\)/i)
+    ).toBeDefined()
+  })
 })
+
