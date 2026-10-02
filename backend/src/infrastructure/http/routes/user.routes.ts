@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { UserController } from '../controllers/UserController.js';
-import { requireAuth, requireSuperAdmin } from '../middleware/auth.middleware.js';
+import { requireAuth, requireAuthAllowingPasswordChange, requireSuperAdmin } from '../middleware/auth.middleware.js';
 
 interface UserRoutesOptions {
   prefix: string;
@@ -24,7 +24,7 @@ export async function userRoutes(
         required: ['username', 'password', 'role'],
         properties: {
           username: { type: 'string', minLength: 1, example: 'admin_local' },
-          password: { type: 'string', minLength: 6, example: 'securePass123' },
+          password: { type: 'string', minLength: 8, example: 'securePass123' },
           role: { type: 'string', enum: ['super_admin', 'restaurant_admin'], example: 'restaurant_admin' },
           restaurantId: { type: 'string', example: 'tienda-pruebas' },
         },
@@ -71,6 +71,7 @@ export async function userRoutes(
                 username: { type: 'string' },
                 role: { type: 'string' },
                 restaurantId: { type: 'string' },
+                mustChangePassword: { type: 'boolean' },
               },
             },
           },
@@ -102,10 +103,97 @@ export async function userRoutes(
               role: { type: 'string' },
               restaurantId: { type: 'string' },
               createdAt: { type: 'string' },
+              isActive: { type: 'boolean' },
+              mustChangePassword: { type: 'boolean' },
             },
           },
         },
       },
     },
   }, ctrl.list.bind(ctrl));
+
+  const idParams = {
+    type: 'object',
+    required: ['id'],
+    properties: { id: { type: 'string', minLength: 1 } },
+  };
+
+  app.patch('/:id', {
+    preHandler: [requireSuperAdmin],
+    schema: {
+      tags: ['Users'],
+      summary: 'Activate or deactivate a user',
+      description: 'Super admin only. A deactivated user cannot log in and loses access on the next request. Cannot target yourself or the last active super admin.',
+      params: idParams,
+      body: {
+        type: 'object',
+        required: ['isActive'],
+        properties: { isActive: { type: 'boolean' } },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' },
+            username: { type: 'string' },
+            role: { type: 'string' },
+            restaurantId: { type: 'string' },
+            createdAt: { type: 'string' },
+            isActive: { type: 'boolean' },
+            mustChangePassword: { type: 'boolean' },
+          },
+        },
+      },
+    },
+  }, ctrl.setActive.bind(ctrl));
+
+  app.delete('/:id', {
+    preHandler: [requireSuperAdmin],
+    schema: {
+      tags: ['Users'],
+      summary: 'Delete a user',
+      description: 'Super admin only. Permanently removes the user. Cannot target yourself or the last active super admin.',
+      params: idParams,
+    },
+  }, ctrl.remove.bind(ctrl));
+
+  app.post('/:id/reset-password', {
+    preHandler: [requireSuperAdmin],
+    schema: {
+      tags: ['Users'],
+      summary: 'Reset a user password',
+      description: 'Super admin only. Replaces the password with a generated temporary one, returned once. The user must change it at next login.',
+      params: idParams,
+      response: {
+        200: {
+          type: 'object',
+          properties: { temporaryPassword: { type: 'string' } },
+        },
+      },
+    },
+  }, ctrl.resetPassword.bind(ctrl));
+
+  app.post('/me/password', {
+    preHandler: [requireAuthAllowingPasswordChange],
+    config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
+    schema: {
+      tags: ['Users'],
+      summary: 'Change own password',
+      description: 'Verifies the current password and sets a new one (min 8 characters, different from the current). Returns a fresh session token. Also the only authenticated route open to accounts that must change a temporary password.',
+      body: {
+        type: 'object',
+        required: ['currentPassword', 'newPassword'],
+        properties: {
+          currentPassword: { type: 'string', minLength: 1 },
+          newPassword: { type: 'string', minLength: 8 },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: { success: { type: 'boolean' }, token: { type: 'string' } },
+        },
+      },
+    },
+  }, ctrl.changePassword.bind(ctrl));
 }

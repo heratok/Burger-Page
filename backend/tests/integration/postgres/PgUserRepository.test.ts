@@ -119,4 +119,67 @@ describe('PgUserRepository (real Postgres, app_user role — login is the pre-te
     await repo.delete(user.id);
     expect(await repo.findById(user.id)).toBeNull();
   });
+
+  describe('account state columns (is_active, must_change_password)', () => {
+    const make = (restaurantId = RESTAURANT_A): User => ({
+      id: `usr-${randomUUID().slice(0, 8)}`,
+      username: `state-${randomUUID().slice(0, 8)}`,
+      passwordHash: 'hash',
+      role: 'restaurant_admin',
+      restaurantId,
+      createdAt: new Date().toISOString(),
+    });
+
+    it('new users default to active with no pending password change', async () => {
+      if (!isDbConnected) return;
+      const user = make();
+      await repo.save(user);
+      const found = await repo.findById(user.id);
+      expect(found?.isActive).toBe(true);
+      expect(found?.mustChangePassword).toBe(false);
+    });
+
+    it('persists isActive on update, as super admin', async () => {
+      if (!isDbConnected) return;
+      const user = make();
+      await repo.save(user);
+
+      await repo.save({ ...user, isActive: false }, 'super_admin');
+      expect((await repo.findById(user.id))?.isActive).toBe(false);
+
+      await repo.save({ ...user, isActive: true }, 'super_admin');
+      expect((await repo.findById(user.id))?.isActive).toBe(true);
+    });
+
+    it('persists mustChangePassword and the new hash on update; an undefined flag leaves state untouched', async () => {
+      if (!isDbConnected) return;
+      const user = make();
+      await repo.save(user);
+
+      await repo.save({ ...user, passwordHash: 'temp-hash', mustChangePassword: true }, 'super_admin');
+      let found = await repo.findById(user.id);
+      expect(found?.passwordHash).toBe('temp-hash');
+      expect(found?.mustChangePassword).toBe(true);
+
+      // A plain save (no flags) must not reset the stored state.
+      await repo.save({ ...user, passwordHash: 'temp-hash' }, 'super_admin');
+      found = await repo.findById(user.id);
+      expect(found?.mustChangePassword).toBe(true);
+      expect(found?.isActive).toBe(true);
+
+      // A tenant admin can clear its own flag (change-password path).
+      await repo.save({ ...user, passwordHash: 'own-hash', mustChangePassword: false }, 'restaurant_admin');
+      found = await repo.findById(user.id);
+      expect(found?.mustChangePassword).toBe(false);
+      expect(found?.passwordHash).toBe('own-hash');
+    });
+
+    it('super admin deletes a tenant user with the actor role', async () => {
+      if (!isDbConnected) return;
+      const user = make();
+      await repo.save(user);
+      await repo.delete(user.id, 'super_admin');
+      expect(await repo.findById(user.id)).toBeNull();
+    });
+  });
 });

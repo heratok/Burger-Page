@@ -594,3 +594,18 @@ describe('migration drift check wiring', () => {
     expect(fingerprint).toContain("'pgmigrations'");
   });
 });
+
+describe('migration 0000000000011 (users.must_change_password) parity with the baseline schema', () => {
+  const baseline = read('01_schema.sql');
+  const up = read('migrations/0000000000011_users_must_change_password.up.sql');
+  const down = read('migrations/0000000000011_users_must_change_password.down.sql');
+
+  it('declares the column NOT NULL DEFAULT FALSE in baseline and migration', () => {
+    expect(baseline).toMatch(/must_change_password\s+BOOLEAN NOT NULL DEFAULT FALSE,/);
+    expect(up).toMatch(/ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT FALSE/);
+  });
+
+  it('is reversible', () => {
+    expect(down).toContain('DROP COLUMN IF EXISTS must_change_password');
+  });
+});

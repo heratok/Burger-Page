@@ -3,7 +3,7 @@ import { UserRepository } from '../../domain/ports/out/UserRepository.js';
 import { PasswordHasher } from '../../domain/ports/out/PasswordHasher.js';
 import { RestaurantRepository } from '../../domain/ports/out/RestaurantRepository.js';
 import { ValidationError, EntityNotFoundError } from '../../domain/errors/DomainErrors.js';
-import { User, UserRole } from '../../domain/models/User.js';
+import { User, UserRole, MIN_PASSWORD_LENGTH } from '../../domain/models/User.js';
 import { CreateUserDTO } from '../dtos/index.js';
 
 export class CreateUserUseCase {
@@ -19,8 +19,8 @@ export class CreateUserUseCase {
       throw new ValidationError('Username is required');
     }
 
-    if (dto.password.length < 6) {
-      throw new ValidationError('Password must be at least 6 characters');
+    if (dto.password.length < MIN_PASSWORD_LENGTH) {
+      throw new ValidationError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
     }
 
     if (dto.role === 'restaurant_admin') {

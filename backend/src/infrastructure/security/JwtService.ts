@@ -8,6 +8,8 @@ export interface JwtPayload {
   restaurantId?: string;
   /** Narrow-purpose tokens (e.g. 'sse' for the EventSource stream). */
   scope?: string;
+  /** Account must change its temporary password: the auth middleware only admits the change-password route. */
+  mustChangePassword?: boolean;
   /** Single-value issuer/audience claims: strict equality, prevents cross-context reuse. */
   iss?: string;
   aud?: string;
@@ -76,7 +78,7 @@ export class JwtService {
   }
 
   generateToken(
-    user: { id: string; username: string; role: UserRole; restaurantId?: string; scope?: string },
+    user: { id: string; username: string; role: UserRole; restaurantId?: string; scope?: string; mustChangePassword?: boolean },
     expiresInSeconds: number = 60 * 60 * 24 * 7 // 7 days
   ): string {
     const now = Math.floor(Date.now() / 1000);
@@ -87,6 +89,7 @@ export class JwtService {
       role: user.role,
       restaurantId: user.restaurantId,
       scope: user.scope,
+      ...(user.mustChangePassword ? { mustChangePassword: true } : {}),
       iss: ISSUER,
       aud: AUDIENCE,
       iat: now,

@@ -32,6 +32,8 @@ export interface AuthMiddlewareDeps {
 
 export interface AuthMiddlewares {
   requireAuth: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
+  /** Like requireAuth, but also admits accounts that must change their temporary password. Only for the change-password route. */
+  requireAuthAllowingPasswordChange: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
   requireSuperAdmin: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
   requireAnyAdmin: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
   tryAuth: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
@@ -42,7 +44,7 @@ export function createAuthMiddlewares(
   jwt: JwtService = new JwtService(),
   deps?: AuthMiddlewareDeps
 ): AuthMiddlewares {
-  async function requireAuth(req: FastifyRequest, reply: FastifyReply) {
+  async function authenticate(req: FastifyRequest, reply: FastifyReply, allowPendingPasswordChange: boolean) {
     const authHeader = req.headers.authorization;
     let token: string | undefined;
     if (authHeader && authHeader.startsWith('Bearer ')) {
@@ -72,6 +74,9 @@ export function createAuthMiddlewares(
         role: payload.role,
         restaurantId: payload.restaurantId,
       };
+      // Test runs skip revalidation, so the signed claim is the fallback; when
+      // the stored row is available it overrides the claim (below).
+      let mustChangePassword = payload.mustChangePassword === true;
 
       // SUS-14: signed claims age up to 7 days, so a deactivated or demoted
       // account must be re-validated against storage on every authenticated
@@ -104,6 +109,7 @@ export function createAuthMiddlewares(
         authContext.username = user.username;
         authContext.role = user.role;
         authContext.restaurantId = user.restaurantId;
+        mustChangePassword = user.mustChangePassword === true;
       }
 
       // SUS-14: a tenant deactivated server-side must stop accepting its
@@ -120,6 +126,16 @@ export function createAuthMiddlewares(
         }
       }
 
+      if (mustChangePassword && !allowPendingPasswordChange) {
+        return reply.status(403).send({
+          type: 'https://example.com/probs/password-change-required',
+          title: 'Password Change Required',
+          status: 403,
+          code: 'PASSWORD_CHANGE_REQUIRED',
+          detail: 'You must change your temporary password before using the API.',
+        });
+      }
+
       req.authContext = authContext;
     } catch (err: any) {
       return reply.status(401).send({
@@ -130,6 +146,10 @@ export function createAuthMiddlewares(
       });
     }
   }
+
+  const requireAuth = (req: FastifyRequest, reply: FastifyReply) => authenticate(req, reply, false);
+  const requireAuthAllowingPasswordChange = (req: FastifyRequest, reply: FastifyReply) =>
+    authenticate(req, reply, true);
 
   async function requireSuperAdmin(req: FastifyRequest, reply: FastifyReply) {
     await requireAuth(req, reply);
@@ -265,13 +285,14 @@ export function createAuthMiddlewares(
     }
   }
 
-  return { requireAuth, requireSuperAdmin, requireAnyAdmin, tryAuth, requireStreamToken };
+  return { requireAuth, requireAuthAllowingPasswordChange, requireSuperAdmin, requireAnyAdmin, tryAuth, requireStreamToken };
 }
 
 let defaultMiddlewares = createAuthMiddlewares();
 // ESM live bindings: re-assigning these (configureAuthMiddlewares) upgrades
 // every route file that imports { requireAuth, … } without touching it.
 export let requireAuth = defaultMiddlewares.requireAuth;
+export let requireAuthAllowingPasswordChange = defaultMiddlewares.requireAuthAllowingPasswordChange;
 export let requireSuperAdmin = defaultMiddlewares.requireSuperAdmin;
 export let requireAnyAdmin = defaultMiddlewares.requireAnyAdmin;
 export let tryAuth = defaultMiddlewares.tryAuth;
@@ -287,6 +308,7 @@ export let requireStreamToken = defaultMiddlewares.requireStreamToken;
 export function configureAuthMiddlewares(deps: AuthMiddlewareDeps): void {
   defaultMiddlewares = createAuthMiddlewares(new JwtService(), deps);
   requireAuth = defaultMiddlewares.requireAuth;
+  requireAuthAllowingPasswordChange = defaultMiddlewares.requireAuthAllowingPasswordChange;
   requireSuperAdmin = defaultMiddlewares.requireSuperAdmin;
   requireAnyAdmin = defaultMiddlewares.requireAnyAdmin;
   tryAuth = defaultMiddlewares.tryAuth;

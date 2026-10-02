@@ -88,6 +88,10 @@ import { DeleteInventoryItemUseCase } from '../../application/use-cases/DeleteIn
 import { CreateUserUseCase } from '../../application/use-cases/CreateUserUseCase.js';
 import { AuthenticateUserUseCase } from '../../application/use-cases/AuthenticateUserUseCase.js';
 import { ListUsersUseCase } from '../../application/use-cases/ListUsersUseCase.js';
+import { SetUserActiveUseCase } from '../../application/use-cases/SetUserActiveUseCase.js';
+import { DeleteUserUseCase } from '../../application/use-cases/DeleteUserUseCase.js';
+import { ResetUserPasswordUseCase } from '../../application/use-cases/ResetUserPasswordUseCase.js';
+import { ChangeOwnPasswordUseCase } from '../../application/use-cases/ChangeOwnPasswordUseCase.js';
 import { CreateProductAdditionUseCase } from '../../application/use-cases/CreateProductAdditionUseCase.js';
 import { GetProductAdditionByIdUseCase } from '../../application/use-cases/GetProductAdditionByIdUseCase.js';
 import { ListProductAdditionsUseCase } from '../../application/use-cases/ListProductAdditionsUseCase.js';
@@ -345,7 +349,15 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
       reorderTables,
       restaurantRepo
     ),
-    userController: new UserController(createUser, authenticateUser, listUsersUC),
+    userController: new UserController(
+      createUser,
+      authenticateUser,
+      listUsersUC,
+      new SetUserActiveUseCase(userRepo),
+      new DeleteUserUseCase(userRepo),
+      new ResetUserPasswordUseCase(userRepo, hasher),
+      new ChangeOwnPasswordUseCase(userRepo, hasher)
+    ),
     additionController: new ProductAdditionController(
       listAdditions,
       getAdditionById,

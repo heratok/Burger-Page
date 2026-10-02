@@ -86,13 +86,13 @@ describe('User Use Cases', () => {
       ).rejects.toThrow(ValidationError);
     });
 
-    it('should throw ValidationError when password is shorter than 6 characters', async () => {
+    it('should throw ValidationError when password is shorter than 8 characters', async () => {
       const useCase = new CreateUserUseCase(mockUserRepo, mockHasher, mockRestaurantRepo);
 
       await expect(
         useCase.execute({
           username: 'admin',
-          password: '123',
+          password: 'abc1234',
           role: 'super_admin',
         })
       ).rejects.toThrow(ValidationError);

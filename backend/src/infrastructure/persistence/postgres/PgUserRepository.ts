@@ -11,6 +11,7 @@ function mapRow(row: any): User {
     restaurantId: row.restaurant_id || undefined,
     createdAt: row.created_at || new Date().toISOString(),
         isActive: row.is_active === undefined ? undefined : Boolean(row.is_active),
+    mustChangePassword: row.must_change_password === undefined ? undefined : Boolean(row.must_change_password),
   };
 }
 
@@ -69,15 +70,17 @@ export class PgUserRepository implements UserRepository {
                password_hash = $2,
                role = $3,
                restaurant_id = $4,
+               is_active = COALESCE($5::boolean, is_active),
+               must_change_password = COALESCE($6::boolean, must_change_password),
                updated_at = NOW()
-             WHERE id = $5`,
-            [user.username, user.passwordHash, user.role, user.restaurantId || null, existing.rows[0].id]
+             WHERE id = $7`,
+            [user.username, user.passwordHash, user.role, user.restaurantId || null, user.isActive ?? null, user.mustChangePassword ?? null, existing.rows[0].id]
           );
         } else {
           await client.query(
-            `INSERT INTO public.users (id, username, password_hash, role, restaurant_id, is_active, created_at)
-             VALUES ($1, $2, $3, $4, $5, true, $6)`,
-            [user.id, user.username, user.passwordHash, user.role, user.restaurantId || null, user.createdAt || new Date().toISOString()]
+            `INSERT INTO public.users (id, username, password_hash, role, restaurant_id, is_active, must_change_password, created_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+            [user.id, user.username, user.passwordHash, user.role, user.restaurantId || null, user.isActive ?? true, user.mustChangePassword ?? false, user.createdAt || new Date().toISOString()]
           );
         }
       }

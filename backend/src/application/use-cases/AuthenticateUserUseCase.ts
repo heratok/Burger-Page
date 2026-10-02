@@ -54,6 +54,7 @@ export class AuthenticateUserUseCase {
       username: user.username,
       role: user.role,
       restaurantId: user.restaurantId,
+      mustChangePassword: user.mustChangePassword === true,
     });
 
     return {
@@ -64,6 +65,7 @@ export class AuthenticateUserUseCase {
         username: user.username,
         role: user.role,
         restaurantId: user.restaurantId,
+        mustChangePassword: user.mustChangePassword === true,
       },
     };
   }
