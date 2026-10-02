@@ -247,7 +247,7 @@ test.describe('Manual Sale POS Modal - Mobile & Desktop Responsiveness with Addi
     await page.getByRole('button', { name: /Guardar Cambios/i }).click();
 
     // Select Mesa service
-    await page.getByRole('button', { name: /Mesa/i }).click();
+    await page.getByRole('button', { name: /Mesa \/ Salón/i }).click();
     await page.getByRole('button', { name: /^Mesa 4/ }).click();
 
     // Submit sale

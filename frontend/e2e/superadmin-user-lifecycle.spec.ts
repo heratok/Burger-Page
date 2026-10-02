@@ -68,7 +68,7 @@ test.describe('Super Admin User Lifecycle & Password Management E2E Suite', () =
     expect(temporaryPassword.length).toBeGreaterThan(0);
 
     // Close the reset modal
-    await resetModal.getByRole('button', { name: /Entendido, cerrar/i }).click();
+    await resetModal.getByRole('button', { name: /Ya la copié, cerrar|Entendido, cerrar/i }).click();
     await expect(resetModal).not.toBeVisible();
 
     // 7. Log out of Super Admin
@@ -182,13 +182,24 @@ test.describe('Super Admin User Lifecycle & Password Management E2E Suite', () =
     await page.getByRole('button', { name: /Cerrar Sesión/i }).click();
     await page.waitForTimeout(500);
 
-    // 9. Log in as the reactivated user -> succeeds
+    // 9. Log in as the reactivated user -> forced change password at first login
     await page.goto('/admin');
     await page.getByPlaceholder(/Tu nombre de usuario/i).fill(testUsername);
     await page.locator('input[type="password"]').fill(userPassword);
     await page.getByRole('button', { name: /Acceder al Panel/i }).click();
 
-    // Verify successful login
+    // Forced change password screen
+    await expect(page.getByText(/Cambio de contraseña obligatorio/i)).toBeVisible({ timeout: 10000 });
+    await page.locator('input#currentPassword').fill(userPassword);
+    const updatedUserPassword = `${userPassword}-updated`;
+    await page.locator('input#newPassword').fill(updatedUserPassword);
+    await page.locator('input#confirmPassword').fill(updatedUserPassword);
+    await Promise.all([
+      page.waitForResponse((resp) => resp.url().includes('/api/users/me/password') && resp.status() === 200),
+      page.getByRole('button', { name: /Actualizar contraseña/i }).click(),
+    ]);
+
+    // Verify successful login to super admin panel
     await expect(page).toHaveURL(/\/admin\/restaurants/);
     await expect(page.getByRole('button', { name: /Usuarios & Accesos/i })).toBeVisible();
   });

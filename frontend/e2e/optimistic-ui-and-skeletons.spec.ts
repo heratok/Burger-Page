@@ -41,7 +41,7 @@ test.describe('Optimistic UI Updates (Zero-Reload), Skeletons & Real-Time Feedba
     await createModal.getByRole('button', { name: /Crear Restaurante/i }).click();
     await expect(createModal).not.toBeVisible({ timeout: 8000 });
 
-    const credsCloseBtn = page.getByRole('button', { name: /Entendido y Cerrar/i });
+    const credsCloseBtn = page.getByRole('button', { name: /Ya copié las credenciales, cerrar|Entendido y Cerrar/i });
     if (await credsCloseBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
       await credsCloseBtn.click();
     }

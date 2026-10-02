@@ -80,7 +80,7 @@ test.describe('Live DB Multi-Tenant Lifecycle, Mobile Storefront & CRM Persisten
     expect(openAllDay.status()).toBe(200);
     await expect(restModal).not.toBeVisible({ timeout: 10000 });
 
-    const credsCloseBtn = superPage.getByRole('button', { name: /Entendido y Cerrar/i });
+    const credsCloseBtn = superPage.getByRole('button', { name: /Ya copié las credenciales, cerrar|Entendido y Cerrar/i });
     if (await credsCloseBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
       await credsCloseBtn.click();
     }
@@ -152,7 +152,18 @@ test.describe('Live DB Multi-Tenant Lifecycle, Mobile Storefront & CRM Persisten
       tenantPage.getByRole('button', { name: /Acceder al Panel/i }).click(),
     ]);
 
-    // 2.2 Verify Tenant CRM landing
+    // 2.2 Complete forced password change at first login
+    await expect(tenantPage.getByText(/Cambio de contraseña obligatorio/i)).toBeVisible({ timeout: 10000 });
+    await tenantPage.locator('input#currentPassword').fill(testPassword);
+    const updatedTenantPassword = `${testPassword}-updated`;
+    await tenantPage.locator('input#newPassword').fill(updatedTenantPassword);
+    await tenantPage.locator('input#confirmPassword').fill(updatedTenantPassword);
+    await Promise.all([
+      tenantPage.waitForResponse(resp => resp.url().includes('/api/users/me/password') && resp.status() === 200),
+      tenantPage.getByRole('button', { name: /Actualizar contraseña/i }).click(),
+    ]);
+
+    // 2.3 Verify Tenant CRM landing
     await expect(tenantPage).toHaveURL(/\/admin\/dashboard/, { timeout: 15000 });
 
     // 2.3 Mobile Navigation: Open hamburger drawer & go to Menú & Carta

@@ -55,12 +55,11 @@ test.describe('Restaurant tables: Personalizar → Mesas and Mesa / Salón sales
     }
   });
 
-  test('the owner creates tables in Personalizar → Mesas', async ({ page }) => {
+  test('the owner creates tables in Mesas & QR', async ({ page }) => {
     test.setTimeout(60000);
     await loginAsAdmin(page);
 
-    await page.locator('aside button, nav button').filter({ hasText: /Personalizar/i }).first().click();
-    await page.getByRole('tab', { name: /^Mesas$/ }).click();
+    await page.locator('aside button, nav button').filter({ hasText: /Mesas & QR/i }).first().click();
     await expect(page.getByText('Mesas del salón')).toBeVisible();
 
     for (const name of [tableA, tableB]) {
@@ -81,8 +80,7 @@ test.describe('Restaurant tables: Personalizar → Mesas and Mesa / Salón sales
 
     // The tables survive a reload (server-side data).
     await page.reload();
-    await page.locator('aside button, nav button').filter({ hasText: /Personalizar/i }).first().click();
-    await page.getByRole('tab', { name: /^Mesas$/ }).click();
+    await page.locator('aside button, nav button').filter({ hasText: /Mesas & QR/i }).first().click();
     await expect(page.getByText(tableA, { exact: true })).toBeVisible({ timeout: 10000 });
   });
 
