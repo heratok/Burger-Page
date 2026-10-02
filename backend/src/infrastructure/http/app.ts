@@ -58,6 +58,7 @@ import { CryptoPasswordHasher } from '../security/CryptoPasswordHasher.js';
 // Use Cases
 import { GetRestaurantUseCase } from '../../application/use-cases/GetRestaurantUseCase.js';
 import { ListRestaurantsUseCase } from '../../application/use-cases/ListRestaurantsUseCase.js';
+import { ListRestaurantTemplatesUseCase } from '../../application/use-cases/ListRestaurantTemplatesUseCase.js';
 import { CreateRestaurantUseCase } from '../../application/use-cases/CreateRestaurantUseCase.js';
 import { DeleteRestaurantUseCase } from '../../application/use-cases/DeleteRestaurantUseCase.js';
 import { UpdateRestaurantCategoriesUseCase } from '../../application/use-cases/UpdateRestaurantCategoriesUseCase.js';
@@ -238,7 +239,14 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
   const hasher: PasswordHasher = new CryptoPasswordHasher();
   const getRestaurant = new GetRestaurantUseCase(restaurantRepo, categoryRepo);
   const listRestaurants = new ListRestaurantsUseCase(restaurantRepo, categoryRepo);
-  const createRestaurant = new CreateRestaurantUseCase(restaurantRepo, categoryRepo, userRepo, hasher);
+  const createRestaurant = new CreateRestaurantUseCase(
+    restaurantRepo,
+    categoryRepo,
+    userRepo,
+    hasher,
+    productRepo,
+    additionRepo
+  );
   const deleteRestaurant = new DeleteRestaurantUseCase(restaurantRepo, userRepo);
   const updateRestaurantCategories = new UpdateRestaurantCategoriesUseCase(restaurantRepo, categoryRepo, productRepo);
   const updateRestaurant = new UpdateRestaurantUseCase(restaurantRepo, categoryRepo, userRepo, hasher);
@@ -301,7 +309,8 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
       updateRestaurantCategories,
       updateRestaurant,
       new ListDeletedRestaurantsUseCase(restaurantRepo),
-      new RestoreRestaurantUseCase(restaurantRepo, userRepo)
+      new RestoreRestaurantUseCase(restaurantRepo, userRepo),
+      new ListRestaurantTemplatesUseCase()
     ),
     productController: new ProductController(
       listProducts,

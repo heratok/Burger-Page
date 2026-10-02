@@ -1,6 +1,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { GetRestaurantUseCase } from '../../../application/use-cases/GetRestaurantUseCase.js';
 import { ListRestaurantsUseCase } from '../../../application/use-cases/ListRestaurantsUseCase.js';
+import { ListRestaurantTemplatesUseCase } from '../../../application/use-cases/ListRestaurantTemplatesUseCase.js';
 import { CreateRestaurantUseCase } from '../../../application/use-cases/CreateRestaurantUseCase.js';
 import { DeleteRestaurantUseCase } from '../../../application/use-cases/DeleteRestaurantUseCase.js';
 import { UpdateRestaurantCategoriesUseCase } from '../../../application/use-cases/UpdateRestaurantCategoriesUseCase.js';
@@ -58,7 +59,8 @@ export class RestaurantController {
     private readonly updateCategoriesUseCase: UpdateRestaurantCategoriesUseCase,
     private readonly updateRestaurantUseCase?: UpdateRestaurantUseCase,
     private readonly listDeletedUseCase?: ListDeletedRestaurantsUseCase,
-    private readonly restoreRestaurantUseCase?: RestoreRestaurantUseCase
+    private readonly restoreRestaurantUseCase?: RestoreRestaurantUseCase,
+    private readonly listTemplatesUseCase?: ListRestaurantTemplatesUseCase
   ) {}
 
   async list(req: FastifyRequest, reply: FastifyReply) {
@@ -119,6 +121,13 @@ export class RestaurantController {
     const params = (req.params || {}) as { id: string };
     await this.deleteRestaurantUseCase.execute(params.id);
     return reply.status(200).send({ message: 'Restaurant deleted successfully' });
+  }
+
+  async listTemplates(_req: FastifyRequest, reply: FastifyReply) {
+    if (!this.listTemplatesUseCase) {
+      throw new Error('ListRestaurantTemplatesUseCase is not configured.');
+    }
+    return reply.status(200).send(this.listTemplatesUseCase.execute());
   }
 
   async listDeleted(_req: FastifyRequest, reply: FastifyReply) {

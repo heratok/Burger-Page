@@ -89,6 +89,30 @@ export async function restaurantsRoutes(fastify: FastifyInstance, opts: { contro
     }
   }, opts.controller.create.bind(opts.controller));
 
+  fastify.get('/templates', {
+    preHandler: [requireSuperAdmin],
+    schema: {
+      tags: ['Restaurant'],
+      summary: 'List restaurant templates',
+      description: 'Super admin only. The templates selectable as templateType when creating a restaurant, with the number of sample products and additions each one creates (derived from the template data).',
+      response: {
+        200: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              name: { type: 'string' },
+              description: { type: 'string' },
+              productCount: { type: 'integer' },
+              additionCount: { type: 'integer' },
+            },
+          },
+        },
+      },
+    },
+  }, opts.controller.listTemplates.bind(opts.controller));
+
   fastify.get('/deleted', {
     preHandler: [requireSuperAdmin],
     schema: {

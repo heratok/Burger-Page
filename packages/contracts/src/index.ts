@@ -69,6 +69,16 @@ export const createRestaurantSchema = z.object({
 
 export type CreateRestaurantInput = z.infer<typeof createRestaurantSchema>;
 
+/** One entry of GET /restaurants/templates: counts are derived from the template data. */
+export const restaurantTemplateSummarySchema = z.object({
+  id: z.enum(['burger', 'pizza', 'tacos', 'blank']),
+  name: z.string(),
+  description: z.string(),
+  productCount: z.number().int().nonnegative(),
+  additionCount: z.number().int().nonnegative(),
+});
+export type RestaurantTemplateSummary = z.infer<typeof restaurantTemplateSummarySchema>;
+
 export const updateRestaurantSchema = createRestaurantSchema.partial();
 export type UpdateRestaurantInput = z.infer<typeof updateRestaurantSchema>;
 

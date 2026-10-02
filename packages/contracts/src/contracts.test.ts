@@ -9,6 +9,7 @@ import {
   restoreRestaurantSchema,
   createRestaurantSchema,
   restaurantDTOSchema,
+  restaurantTemplateSummarySchema,
 } from './index.js';
 
 describe('@burger-page/contracts', () => {
@@ -123,5 +124,20 @@ describe('restaurant schedule contracts', () => {
     expect(restoreRestaurantSchema.safeParse({}).success).toBe(true);
     expect(restoreRestaurantSchema.safeParse({ slug: 'otro' }).success).toBe(true);
     expect(restoreRestaurantSchema.safeParse({ slug: '' }).success).toBe(false);
+  });
+
+  it('createRestaurantSchema accepts currency and currencySymbol and rejects malformed ones', () => {
+    expect(
+      createRestaurantSchema.safeParse({ name: 'A', slug: 'a', currency: 'MXN', currencySymbol: 'MX$', templateType: 'tacos' })
+        .success
+    ).toBe(true);
+    expect(createRestaurantSchema.safeParse({ name: 'A', slug: 'a', currency: 'PESOS' }).success).toBe(false);
+    expect(createRestaurantSchema.safeParse({ name: 'A', slug: 'a', templateType: 'sushi' }).success).toBe(false);
+  });
+
+  it('restaurantTemplateSummarySchema describes a template list entry', () => {
+    const entry = { id: 'burger', name: 'Hamburguesería', description: 'x', productCount: 6, additionCount: 7 };
+    expect(restaurantTemplateSummarySchema.safeParse(entry).success).toBe(true);
+    expect(restaurantTemplateSummarySchema.safeParse({ ...entry, productCount: -1 }).success).toBe(false);
   });
 });
