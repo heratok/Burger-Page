@@ -74,6 +74,66 @@ describe('User lifecycle use cases', () => {
     });
   });
 
+  describe('atomic guard and narrow writes', () => {
+    it('SetUserActive only flips is_active and never rewrites the stored hash', async () => {
+      const stale = (await repo.findById('ra-1'))!;
+      // A password reset lands after the use case reads the (stale) user.
+      let raced = false;
+      const racing: Pick<InMemoryUserRepository, 'findById'> = {
+        findById: async (id: string) => {
+          if (raced) return repo.findById(id);
+          raced = true;
+          await repo.save({ ...stale, passwordHash: 'reset-hash', mustChangePassword: true });
+          return { ...stale };
+        },
+      };
+      const uc = new SetUserActiveUseCase(Object.assign(Object.create(repo), racing) as InMemoryUserRepository);
+      await uc.execute({ actorId: 'sa-1', targetId: 'ra-1', isActive: false });
+      const after = await repo.findById('ra-1');
+      expect(after?.isActive).toBe(false);
+      expect(after?.passwordHash).toBe('reset-hash');
+      expect(after?.mustChangePassword).toBe(true);
+    });
+
+    it('two concurrent deactivations of the two remaining super admins leave exactly one active', async () => {
+      await seed(repo, { id: 'sa-2', username: 'root2', role: 'super_admin', restaurantId: undefined });
+      const uc = new SetUserActiveUseCase(repo);
+      const results = await Promise.allSettled([
+        uc.execute({ actorId: 'sa-1', targetId: 'sa-2', isActive: false }),
+        uc.execute({ actorId: 'sa-2', targetId: 'sa-1', isActive: false }),
+      ]);
+      expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+      const rejected = results.find((r) => r.status === 'rejected') as PromiseRejectedResult;
+      expect(rejected.reason).toBeInstanceOf(ConflictError);
+      const active = (await repo.findAll()).filter((u) => u.role === 'super_admin' && u.isActive !== false);
+      expect(active).toHaveLength(1);
+    });
+
+    it('two concurrent deletes of the two remaining super admins leave exactly one', async () => {
+      await seed(repo, { id: 'sa-2', username: 'root2', role: 'super_admin', restaurantId: undefined });
+      const uc = new DeleteUserUseCase(repo);
+      const results = await Promise.allSettled([
+        uc.execute({ actorId: 'sa-1', targetId: 'sa-2' }),
+        uc.execute({ actorId: 'sa-2', targetId: 'sa-1' }),
+      ]);
+      expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+      expect((await repo.findAll()).filter((u) => u.role === 'super_admin')).toHaveLength(1);
+    });
+  });
+
+  describe('retireByRestaurantId', () => {
+    it('deactivates the tenant users and frees their usernames, idempotently', async () => {
+      await repo.retireByRestaurantId('rest-a');
+      const u = await repo.findById('ra-1');
+      expect(u?.isActive).toBe(false);
+      expect(u?.username).toBe('owner-deleted-rest-a');
+      expect(await repo.findByUsername('owner')).toBeNull();
+      await repo.retireByRestaurantId('rest-a');
+      expect((await repo.findById('ra-1'))?.username).toBe('owner-deleted-rest-a');
+      expect((await repo.findById('sa-1'))?.isActive).toBe(true);
+    });
+  });
+
   describe('DeleteUserUseCase', () => {
     it('deletes a user', async () => {
       await new DeleteUserUseCase(repo).execute({ actorId: 'sa-1', targetId: 'ra-1' });

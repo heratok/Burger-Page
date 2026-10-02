@@ -44,6 +44,63 @@ export function createAuthMiddlewares(
   jwt: JwtService = new JwtService(),
   deps?: AuthMiddlewareDeps
 ): AuthMiddlewares {
+  type ResolvedSession =
+    | { ok: true; authContext: AuthContext; mustChangePassword: boolean }
+    | { ok: false; detail: string };
+
+  /**
+   * Single source of truth for turning verified token claims into a session
+   * (SUS-14): the stored account and tenant, not the signed claims, decide
+   * whether the session is valid and what it may do. Shared by requireAuth and
+   * tryAuth so optional auth can never grant more than mandatory auth.
+   */
+  async function resolveSession(payload: ReturnType<JwtService['verifyToken']>): Promise<ResolvedSession> {
+    const authContext: AuthContext = {
+      userId: payload.sub,
+      username: payload.username,
+      role: payload.role,
+      restaurantId: payload.restaurantId,
+    };
+    // Test runs skip revalidation, so the signed claim is the fallback; when
+    // the stored row is available it overrides the claim (below).
+    let mustChangePassword = payload.mustChangePassword === true;
+
+    // SUS-14: signed claims age up to 7 days, so a deactivated or demoted
+    // account must be re-validated against storage on every authenticated
+    // request. The stored row wins over the stale claims: the current role,
+    // username, and restaurantId actually governing the session come from
+    // the repository, never from the token.
+    if (deps?.userRepo) {
+      const user = await deps.userRepo.findById(payload.sub);
+      if (!user) {
+        // Fail closed: the token references an account that no longer
+        // exists, so whatever the signed claims say, it is unauthorized.
+        return { ok: false, detail: 'Account no longer exists.' };
+      }
+      if (user.isActive === false) {
+        // Licensed accounts keep their 7-day token but lose access the
+        // moment is_active flips; the stored flag is the source of truth.
+        return { ok: false, detail: 'Account is deactivated.' };
+      }
+      authContext.userId = user.id;
+      authContext.username = user.username;
+      authContext.role = user.role;
+      authContext.restaurantId = user.restaurantId;
+      mustChangePassword = user.mustChangePassword === true;
+    }
+
+    // SUS-14: a tenant deactivated server-side must stop accepting its
+    // admins' mutations immediately, not after their token expires.
+    if (deps?.restaurantRepo && authContext.restaurantId) {
+      const restaurant = await deps.restaurantRepo.findById(authContext.restaurantId);
+      if (!restaurant || !restaurant.isActive) {
+        return { ok: false, detail: 'Restaurant is deactivated.' };
+      }
+    }
+
+    return { ok: true, authContext, mustChangePassword };
+  }
+
   async function authenticate(req: FastifyRequest, reply: FastifyReply, allowPendingPasswordChange: boolean) {
     const authHeader = req.headers.authorization;
     let token: string | undefined;
@@ -68,63 +125,16 @@ export function createAuthMiddlewares(
           detail: 'Token has restricted scope and cannot be used for general API access.',
         });
       }
-      const authContext: AuthContext = {
-        userId: payload.sub,
-        username: payload.username,
-        role: payload.role,
-        restaurantId: payload.restaurantId,
-      };
-      // Test runs skip revalidation, so the signed claim is the fallback; when
-      // the stored row is available it overrides the claim (below).
-      let mustChangePassword = payload.mustChangePassword === true;
-
-      // SUS-14: signed claims age up to 7 days, so a deactivated or demoted
-      // account must be re-validated against storage on every authenticated
-      // request. The stored row wins over the stale claims: the current role,
-      // username, and restaurantId actually governing the session come from
-      // the repository, never from the token.
-      if (deps?.userRepo) {
-        const user = await deps.userRepo.findById(payload.sub);
-        if (!user) {
-          // Fail closed: the token references an account that no longer
-          // exists, so whatever the signed claims say, it is unauthorized.
-          return reply.status(401).send({
-            type: 'https://example.com/probs/unauthorized',
-            title: 'Unauthorized',
-            status: 401,
-            detail: 'Account no longer exists.',
-          });
-        }
-        if (user.isActive === false) {
-          // Licensed accounts keep their 7-day token but lose access the
-          // moment is_active flips; the stored flag is the source of truth.
-          return reply.status(401).send({
-            type: 'https://example.com/probs/unauthorized',
-            title: 'Unauthorized',
-            status: 401,
-            detail: 'Account is deactivated.',
-          });
-        }
-        authContext.userId = user.id;
-        authContext.username = user.username;
-        authContext.role = user.role;
-        authContext.restaurantId = user.restaurantId;
-        mustChangePassword = user.mustChangePassword === true;
+      const resolved = await resolveSession(payload);
+      if (!resolved.ok) {
+        return reply.status(401).send({
+          type: 'https://example.com/probs/unauthorized',
+          title: 'Unauthorized',
+          status: 401,
+          detail: resolved.detail,
+        });
       }
-
-      // SUS-14: a tenant deactivated server-side must stop accepting its
-      // admins' mutations immediately, not after their token expires.
-      if (deps?.restaurantRepo && authContext.restaurantId) {
-        const restaurant = await deps.restaurantRepo.findById(authContext.restaurantId);
-        if (!restaurant || !restaurant.isActive) {
-          return reply.status(401).send({
-            type: 'https://example.com/probs/unauthorized',
-            title: 'Unauthorized',
-            status: 401,
-            detail: 'Restaurant is deactivated.',
-          });
-        }
-      }
+      const { authContext, mustChangePassword } = resolved;
 
       if (mustChangePassword && !allowPendingPasswordChange) {
         return reply.status(403).send({
@@ -187,12 +197,11 @@ export function createAuthMiddlewares(
       try {
         const payload = jwt.verifyToken(token);
         if (payload.scope && payload.scope !== 'session') return; // restricted token never authenticates storefront calls
-        req.authContext = {
-          userId: payload.sub,
-          username: payload.username,
-          role: payload.role,
-          restaurantId: payload.restaurantId,
-        };
+        const resolved = await resolveSession(payload);
+        // Optional auth degrades to anonymous: an invalid account, a deactivated
+        // tenant or a pending forced password change never grants staff context.
+        if (!resolved.ok || resolved.mustChangePassword) return;
+        req.authContext = resolved.authContext;
       } catch {
         // Token inválido o expirado en endpoint público: ignorar para permitir acceso público como guest
       }
@@ -230,48 +239,25 @@ export function createAuthMiddlewares(
             detail: 'Stream token is invalid for this purpose.',
           });
         }
-        const authContext: AuthContext = {
-          userId: payload.sub,
-          username: payload.username,
-          role: payload.role,
-          restaurantId: payload.restaurantId,
-        };
-
-        if (deps?.userRepo) {
-          const user = await deps.userRepo.findById(payload.sub);
-          if (!user) {
-            return reply.status(401).send({
-              type: 'https://example.com/probs/unauthorized',
-              title: 'Unauthorized',
-              status: 401,
-              detail: 'Account no longer exists.',
-            });
-          }
-          if (user.isActive === false) {
-            return reply.status(401).send({
-              type: 'https://example.com/probs/unauthorized',
-              title: 'Unauthorized',
-              status: 401,
-              detail: 'Account is deactivated.',
-            });
-          }
-          authContext.userId = user.id;
-          authContext.username = user.username;
-          authContext.role = user.role;
-          authContext.restaurantId = user.restaurantId;
+        const resolved = await resolveSession(payload);
+        if (!resolved.ok) {
+          return reply.status(401).send({
+            type: 'https://example.com/probs/unauthorized',
+            title: 'Unauthorized',
+            status: 401,
+            detail: resolved.detail,
+          });
         }
-
-        if (deps?.restaurantRepo && authContext.restaurantId) {
-          const restaurant = await deps.restaurantRepo.findById(authContext.restaurantId);
-          if (!restaurant || !restaurant.isActive) {
-            return reply.status(401).send({
-              type: 'https://example.com/probs/unauthorized',
-              title: 'Unauthorized',
-              status: 401,
-              detail: 'Restaurant is deactivated.',
-            });
-          }
+        if (resolved.mustChangePassword) {
+          return reply.status(403).send({
+            type: 'https://example.com/probs/password-change-required',
+            title: 'Password Change Required',
+            status: 403,
+            code: 'PASSWORD_CHANGE_REQUIRED',
+            detail: 'You must change your temporary password before using the API.',
+          });
         }
+        const authContext = resolved.authContext;
 
         req.authContext = authContext;
       } catch (err: any) {

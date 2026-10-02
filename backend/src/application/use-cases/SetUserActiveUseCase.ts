@@ -1,7 +1,7 @@
 import { UserRepository } from '../../domain/ports/out/UserRepository.js';
 import { EntityNotFoundError } from '../../domain/errors/DomainErrors.js';
 import { User } from '../../domain/models/User.js';
-import { assertCanRemoveAccess } from './userGuards.js';
+import { assertGuardedChangeAllowed, assertNotSelf } from './userGuards.js';
 
 export interface SetUserActiveInput {
   actorId: string;
@@ -18,10 +18,15 @@ export class SetUserActiveUseCase {
       throw new EntityNotFoundError(`User '${targetId}' not found`);
     }
     if (!isActive) {
-      await assertCanRemoveAccess(this.userRepo, actorId, target, 'deactivate');
+      assertNotSelf(actorId, target, 'deactivate');
     }
-    const updated: User = { ...target, isActive };
-    await this.userRepo.save(updated, 'super_admin');
-    return updated;
+    // Atomic in the repository: only is_active changes, and the last active
+    // super admin cannot be deactivated even under concurrent requests.
+    const outcome = await this.userRepo.setActive(targetId, isActive);
+    if (outcome === 'not_found') {
+      throw new EntityNotFoundError(`User '${targetId}' not found`);
+    }
+    assertGuardedChangeAllowed(outcome, 'deactivate');
+    return (await this.userRepo.findById(targetId)) ?? { ...target, isActive };
   }
 }

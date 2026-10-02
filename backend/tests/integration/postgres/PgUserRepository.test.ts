@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import pg from 'pg';
 import { randomUUID } from 'node:crypto';
 import { PgUserRepository } from '../../../src/infrastructure/persistence/postgres/PgUserRepository.js';
@@ -181,5 +181,96 @@ describe('PgUserRepository (real Postgres, app_user role — login is the pre-te
       await repo.delete(user.id, 'super_admin');
       expect(await repo.findById(user.id)).toBeNull();
     });
+
+  describe('atomic guards and narrow writes', () => {
+    const mk = (role: 'super_admin' | 'restaurant_admin', restaurantId?: string): User => ({
+      id: `usr-${randomUUID().slice(0, 8)}`,
+      username: `u-${randomUUID().slice(0, 8)}`,
+      passwordHash: 'hash',
+      role,
+      restaurantId,
+      createdAt: new Date().toISOString(),
+    });
+
+    it('setActive updates only is_active (a concurrent hash change survives)', async () => {
+      if (!isDbConnected) return;
+      const user = mk('restaurant_admin', RESTAURANT_A);
+      await repo.save(user);
+      await adminPool.query(`UPDATE public.users SET password_hash = 'fresh', must_change_password = true WHERE id = $1`, [user.id]);
+
+      expect(await repo.setActive(user.id, false)).toBe('done');
+
+      const { rows } = await adminPool.query(`SELECT password_hash, must_change_password, is_active FROM public.users WHERE id = $1`, [user.id]);
+      expect(rows[0]).toMatchObject({ password_hash: 'fresh', must_change_password: true, is_active: false });
+      expect(await repo.setActive('does-not-exist', false)).toBe('not_found');
+    });
+
+    describe('last active super admin (serialized with row locks)', () => {
+      let others: string[] = [];
+      let a: User;
+      let b: User;
+      beforeEach(async () => {
+        if (!isDbConnected) return;
+        const { rows } = await adminPool.query(`SELECT id FROM public.users WHERE role = 'super_admin' AND is_active`);
+        others = rows.map((r) => r.id);
+        if (others.length) await adminPool.query(`UPDATE public.users SET is_active = false WHERE id = ANY($1)`, [others]);
+        a = mk('super_admin');
+        b = mk('super_admin');
+        await repo.save(a, 'super_admin');
+        await repo.save(b, 'super_admin');
+      });
+      afterEach(async () => {
+        if (!isDbConnected) return;
+        await adminPool.query(`DELETE FROM public.users WHERE id = ANY($1)`, [[a.id, b.id]]);
+        if (others.length) await adminPool.query(`UPDATE public.users SET is_active = true WHERE id = ANY($1)`, [others]);
+      });
+
+      it('two concurrent deactivations leave exactly one active super admin', async () => {
+        if (!isDbConnected) return;
+        const results = await Promise.all([repo.setActive(a.id, false), repo.setActive(b.id, false)]);
+        expect(results.filter((r) => r === 'done')).toHaveLength(1);
+        expect(results.filter((r) => r === 'last_super_admin')).toHaveLength(1);
+        const { rows } = await adminPool.query(`SELECT count(*)::int AS n FROM public.users WHERE id = ANY($1) AND is_active`, [[a.id, b.id]]);
+        expect(rows[0].n).toBe(1);
+      });
+
+      it('two concurrent deletes leave exactly one super admin', async () => {
+        if (!isDbConnected) return;
+        const results = await Promise.all([repo.deleteGuarded(a.id), repo.deleteGuarded(b.id)]);
+        expect(results.filter((r) => r === 'done')).toHaveLength(1);
+        expect(results.filter((r) => r === 'last_super_admin')).toHaveLength(1);
+        const { rows } = await adminPool.query(`SELECT count(*)::int AS n FROM public.users WHERE id = ANY($1)`, [[a.id, b.id]]);
+        expect(rows[0].n).toBe(1);
+      });
+
+      it('allows removing a super admin while another stays active, and reactivating is never blocked', async () => {
+        if (!isDbConnected) return;
+        expect(await repo.setActive(a.id, false)).toBe('done');
+        expect(await repo.setActive(a.id, true)).toBe('done');
+        expect(await repo.deleteGuarded(a.id)).toBe('done');
+        expect(await repo.deleteGuarded('nope')).toBe('not_found');
+      });
+    });
+
+    it('retireByRestaurantId deactivates the tenant users and renames their usernames, idempotently', async () => {
+      if (!isDbConnected) return;
+      const u1 = mk('restaurant_admin', RESTAURANT_B);
+      const u2 = mk('restaurant_admin', RESTAURANT_B);
+      const other = mk('restaurant_admin', RESTAURANT_A);
+      await repo.save(u1);
+      await repo.save(u2);
+      await repo.save(other);
+
+      await repo.retireByRestaurantId(RESTAURANT_B);
+      await repo.retireByRestaurantId(RESTAURANT_B);
+
+      const { rows } = await adminPool.query(`SELECT id, username, is_active FROM public.users WHERE id = ANY($1)`, [[u1.id, u2.id, other.id]]);
+      const byId = Object.fromEntries(rows.map((r) => [r.id, r]));
+      expect(byId[u1.id]).toMatchObject({ username: `${u1.username}-deleted-${RESTAURANT_B}`, is_active: false });
+      expect(byId[u2.id].is_active).toBe(false);
+      expect(byId[other.id]).toMatchObject({ username: other.username, is_active: true });
+      expect(await repo.findByUsername(u1.username)).toBeNull();
+    });
+  });
   });
 });

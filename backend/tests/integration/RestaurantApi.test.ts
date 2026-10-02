@@ -298,6 +298,22 @@ describe('Restaurant API & Multi-Tenant Security (Integration)', () => {
       url: `/api/restaurant/${body.slug}`
     });
     expect(publicGetBySlug.statusCode).toBe(404);
+
+    // The slug and the default admin username are free again: the same tenant
+    // can be recreated without a 409 from the retired admin user.
+    const recreate = await app.inject({
+      method: 'POST',
+      url: '/api/restaurants',
+      headers: { authorization: `Bearer ${tokenSuperAdmin}` },
+      payload: { name: 'Pizzería Napoli Test', slug: 'pizzeria-napoli-test', templateType: 'pizza', categories: ['Pizzas'] },
+    });
+    expect(recreate.statusCode).toBe(201);
+    expect(recreate.json().adminUsername).toBe(body.adminUsername);
+    await app.inject({
+      method: 'DELETE',
+      url: `/api/restaurants/${recreate.json().id}`,
+      headers: { authorization: `Bearer ${tokenSuperAdmin}` },
+    });
   });
 
   describe('PUT /api/restaurants/:id (Tenant Configuration & Branding Updates)', () => {

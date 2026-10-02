@@ -1,6 +1,6 @@
 import { UserRepository } from '../../domain/ports/out/UserRepository.js';
 import { EntityNotFoundError } from '../../domain/errors/DomainErrors.js';
-import { assertCanRemoveAccess } from './userGuards.js';
+import { assertGuardedChangeAllowed, assertNotSelf } from './userGuards.js';
 
 export interface DeleteUserInput {
   actorId: string;
@@ -15,7 +15,11 @@ export class DeleteUserUseCase {
     if (!target) {
       throw new EntityNotFoundError(`User '${targetId}' not found`);
     }
-    await assertCanRemoveAccess(this.userRepo, actorId, target, 'delete');
-    await this.userRepo.delete(targetId, 'super_admin');
+    assertNotSelf(actorId, target, 'delete');
+    const outcome = await this.userRepo.deleteGuarded(targetId);
+    if (outcome === 'not_found') {
+      throw new EntityNotFoundError(`User '${targetId}' not found`);
+    }
+    assertGuardedChangeAllowed(outcome, 'delete');
   }
 }

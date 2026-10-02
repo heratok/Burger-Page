@@ -6,6 +6,9 @@ import { User } from '../../src/domain/models/User.js';
 import { UserRepository } from '../../src/domain/ports/out/UserRepository.js';
 
 class FakeUserRepository implements UserRepository {
+  async setActive(): Promise<never> { throw new Error('unused'); }
+  async deleteGuarded(): Promise<never> { throw new Error('unused'); }
+  async retireByRestaurantId(): Promise<void> { throw new Error('unused'); }
   users = new Map<string, User>();
   async findById(id: string) { return this.users.get(id) ?? null; }
   async findByUsername(): Promise<User | null> { throw new Error('unused'); }

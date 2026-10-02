@@ -1,5 +1,5 @@
 import { User, UserRole } from '../../../domain/models/User.js';
-import { UserRepository } from '../../../domain/ports/out/UserRepository.js';
+import { UserRepository, GuardedUserChange } from '../../../domain/ports/out/UserRepository.js';
 import { withTenantContext } from './PgClient.js';
 
 function mapRow(row: any): User {
@@ -97,5 +97,61 @@ export class PgUserRepository implements UserRepository {
         await client.query(`DELETE FROM public.users WHERE id = $1`, [id]);
       }
     );
+  }
+
+  /**
+   * Serializes changes that could leave zero active super admins: every active
+   * super_admin row is locked (consistent id order) before the check, so two
+   * concurrent deactivations/deletes queue up and the second re-evaluates after
+   * the first commits (READ COMMITTED re-checks the is_active predicate).
+   */
+  private async guarded(
+    id: string,
+    removesAccess: boolean,
+    write: (client: import('pg').PoolClient) => Promise<void>
+  ): Promise<GuardedUserChange> {
+    return withTenantContext({ restaurantId: null, actorRole: 'super_admin' }, async (client) => {
+      const { rows: locked } = await client.query(
+        `SELECT id FROM public.users WHERE role = 'super_admin' AND is_active ORDER BY id FOR UPDATE`
+      );
+      const { rows } = await client.query(
+        `SELECT id, role, is_active FROM public.users WHERE id = $1 FOR UPDATE`,
+        [id]
+      );
+      const target = rows[0];
+      if (!target) return 'not_found';
+      if (removesAccess && target.role === 'super_admin' && target.is_active) {
+        const others = locked.filter((r) => r.id !== id);
+        if (others.length === 0) return 'last_super_admin';
+      }
+      await write(client);
+      return 'done';
+    });
+  }
+
+  async setActive(id: string, isActive: boolean): Promise<GuardedUserChange> {
+    return this.guarded(id, !isActive, async (client) => {
+      await client.query(`UPDATE public.users SET is_active = $2, updated_at = NOW() WHERE id = $1`, [id, isActive]);
+    });
+  }
+
+  async deleteGuarded(id: string): Promise<GuardedUserChange> {
+    return this.guarded(id, true, async (client) => {
+      await client.query(`DELETE FROM public.users WHERE id = $1`, [id]);
+    });
+  }
+
+  async retireByRestaurantId(restaurantId: string): Promise<void> {
+    await withTenantContext({ restaurantId, actorRole: 'super_admin' }, async (client) => {
+      await client.query(
+        `UPDATE public.users
+            SET is_active = false,
+                username = CASE WHEN username LIKE '%-deleted-' || restaurant_id
+                                THEN username ELSE username || '-deleted-' || restaurant_id END,
+                updated_at = NOW()
+          WHERE restaurant_id = $1`,
+        [restaurantId]
+      );
+    });
   }
 }
