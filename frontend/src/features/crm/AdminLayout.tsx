@@ -29,7 +29,7 @@ import {
   KeyRound,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { AdminSwitcher, CreateRestaurantModal, CreateUserModal, ChangePasswordScreen } from "@/features/superadmin"
+import { AdminSwitcher, CreateRestaurantModal, CreateUserModal, ChangePasswordScreen, SupportModeBanner } from "@/features/superadmin"
 import { useAppRouter } from "@/core/router/useAppRouter"
 import { AdminContentFallback } from "@/components/ui/LoadingFallbacks"
 import { ManualSaleModal } from "./ManualSaleModal"
@@ -391,6 +391,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 title="Volver al Panel Super Admin"
                 aria-label="Volver al Panel Super Admin"
                 onClick={() => {
+                  switchRestaurant("")
                   navigateTo("/admin/restaurants")
                   setIsMobileSidebarOpen(false)
                 }}
@@ -470,6 +471,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         {/* RIGHT MAIN CONTENT AREA                                   */}
         {/* ======================================================== */}
         <div className="flex flex-1 flex-col overflow-hidden min-w-0">
+          {/* Support Mode Banner */}
+          <SupportModeBanner />
+
           {/* Top Header Bar */}
           <header
             className={`sticky top-0 z-30 flex h-16 items-center justify-between border-b px-4 backdrop-blur-md transition-colors sm:px-6 lg:px-8 ${
@@ -531,7 +535,10 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => navigateTo("/admin/restaurants")}
+                    onClick={() => {
+                      switchRestaurant("")
+                      navigateTo("/admin/restaurants")
+                    }}
                     className="flex items-center gap-1.5 rounded-xl border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 font-bold text-xs cursor-pointer shadow-xs"
                   >
                     <ArrowLeft className="size-3.5" />

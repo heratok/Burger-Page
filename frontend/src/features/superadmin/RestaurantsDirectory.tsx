@@ -6,9 +6,11 @@ import {
   Trash2,
   Search,
   Eye,
+  Pencil,
 } from "lucide-react"
 import { GlobalPlatformSummary } from "./GlobalPlatformSummary"
 import { CreateRestaurantModal } from "./CreateRestaurantModal"
+import { EditRestaurantModal } from "./EditRestaurantModal"
 import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
 import { Pagination } from "@/components/ui/pagination"
 import { TableSkeleton } from "@/components/ui/Skeletons"
@@ -31,6 +33,7 @@ export const RestaurantsDirectory: React.FC = () => {
 
   const [searchTerm, setSearchTerm] = useState("")
   const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [restaurantToEdit, setRestaurantToEdit] = useState<RestaurantRecord | null>(null)
   const [restaurantToDelete, setRestaurantToDelete] = useState<RestaurantRecord | null>(null)
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set())
   const [currentPage, setCurrentPage] = useState(1)
@@ -220,6 +223,17 @@ export const RestaurantsDirectory: React.FC = () => {
 
                           <button
                             type="button"
+                            onClick={() => setRestaurantToEdit(r)}
+                            className="rounded-lg border border-slate-200 dark:border-slate-700 px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center gap-1"
+                            title="Editar datos y administradores del restaurante"
+                            aria-label={`Editar restaurante ${r.config.name}`}
+                          >
+                            <Pencil className="size-3.5 text-slate-400" />
+                            <span>Editar</span>
+                          </button>
+
+                          <button
+                            type="button"
                             onClick={() => handleManage(r)}
                             className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-indigo-700 transition-colors flex items-center gap-1"
                             title="Administrar pedidos, menú y diseño de este local"
@@ -267,6 +281,13 @@ export const RestaurantsDirectory: React.FC = () => {
       <CreateRestaurantModal
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
+      />
+
+      <EditRestaurantModal
+        isOpen={!!restaurantToEdit}
+        onClose={() => setRestaurantToEdit(null)}
+        restaurant={restaurantToEdit}
+        onSaved={refreshRestaurants}
       />
 
       <ConfirmDeleteModal

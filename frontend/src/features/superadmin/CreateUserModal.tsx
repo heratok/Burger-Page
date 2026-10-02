@@ -10,16 +10,29 @@ import { toast } from "sonner"
 interface CreateUserModalProps {
   isOpen: boolean
   onClose: () => void
+  defaultRestaurantId?: string
+  onSuccess?: () => void
 }
 
-export const CreateUserModal: React.FC<CreateUserModalProps> = ({ isOpen, onClose }) => {
+export const CreateUserModal: React.FC<CreateUserModalProps> = ({
+  isOpen,
+  onClose,
+  defaultRestaurantId,
+  onSuccess,
+}) => {
   const { restaurants, adminTheme } = useRestaurant()
 
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [role, setRole] = useState<"super_admin" | "restaurant_admin">("restaurant_admin")
-  const [restaurantId, setRestaurantId] = useState("")
+  const [restaurantId, setRestaurantId] = useState(defaultRestaurantId || "")
   const [isLoading, setIsLoading] = useState(false)
+
+  React.useEffect(() => {
+    if (isOpen) {
+      setRestaurantId(defaultRestaurantId || "")
+    }
+  }, [isOpen, defaultRestaurantId])
 
   const isDark = adminTheme === "dark"
 
@@ -46,7 +59,8 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ isOpen, onClos
       setUsername("")
       setPassword("")
       setRole("restaurant_admin")
-      setRestaurantId("")
+      setRestaurantId(defaultRestaurantId || "")
+      onSuccess?.()
       onClose()
     } catch (err) {
       const message = err instanceof Error ? err.message : "Error al crear usuario"

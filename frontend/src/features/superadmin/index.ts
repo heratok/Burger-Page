@@ -8,3 +8,6 @@ export { UsersDirectory } from "./UsersDirectory"
 export { GlobalAnalytics } from "./GlobalAnalytics"
 export { ResetPasswordModal } from "./ResetPasswordModal"
 export { ChangePasswordScreen } from "./ChangePasswordScreen"
+export { SupportModeBanner } from "./SupportModeBanner"
+export { EditRestaurantModal } from "./EditRestaurantModal"
+
