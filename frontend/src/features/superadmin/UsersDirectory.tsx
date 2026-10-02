@@ -11,12 +11,14 @@ import {
   KeyRound,
   Trash2,
   Power,
+  Pencil,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Select } from "@/components/ui/select"
 import { Pagination } from "@/components/ui/pagination"
 import { TableSkeleton } from "@/components/ui/Skeletons"
 import { CreateUserModal } from "./CreateUserModal"
+import { EditUserModal } from "./EditUserModal"
 import { ResetPasswordModal } from "./ResetPasswordModal"
 import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
 import { apiClient, ApiUserRecord } from "@/core/api/apiClient"
@@ -52,6 +54,7 @@ export const UsersDirectory: React.FC = () => {
   const [isCreateUserOpen, setIsCreateUserOpen] = useState(false)
   const [resetModalData, setResetModalData] = useState<{ username: string; temporaryPassword?: string } | null>(null)
   const [userToDelete, setUserToDelete] = useState<ApiUserRecord | null>(null)
+  const [userToEdit, setUserToEdit] = useState<ApiUserRecord | null>(null)
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
@@ -419,6 +422,21 @@ export const UsersDirectory: React.FC = () => {
 
                         <td className="px-4 py-3 text-right">
                           <div className="flex items-center justify-end gap-1.5">
+                            {/* Edit user */}
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              disabled={isBusy}
+                              onClick={() => setUserToEdit(u)}
+                              title="Editar usuario"
+                              aria-label={`Editar usuario ${u.username}`}
+                              className="h-7 px-2.5 text-xs font-semibold rounded-lg text-indigo-600 dark:text-indigo-400 border-indigo-500/30 hover:bg-indigo-500/10 cursor-pointer"
+                            >
+                              <Pencil className="size-3 mr-1" />
+                              <span>Editar</span>
+                            </Button>
+
                             {/* Toggle active / inactive */}
                             <Button
                               type="button"
@@ -530,6 +548,16 @@ export const UsersDirectory: React.FC = () => {
         }
         confirmText="Eliminar definitivamente"
       />
+
+      {/* Edit User Modal */}
+      {userToEdit && (
+        <EditUserModal
+          isOpen={Boolean(userToEdit)}
+          onClose={() => setUserToEdit(null)}
+          user={userToEdit}
+          onSuccess={loadUsers}
+        />
+      )}
     </div>
   )
 }

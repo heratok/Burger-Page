@@ -383,5 +383,28 @@ describe("UsersDirectory - Super Admin User Management (TDD)", () => {
     expect(ownDelete.disabled).toBe(true)
     expect(ownReset.disabled).toBe(true)
   })
+
+  it("opens EditUserModal when clicking 'Editar' on a user row", async () => {
+    const mockUsers = [
+      { id: "usr-1", username: "craft_manager", role: "restaurant_admin", restaurantId: "burger-craft", isActive: true },
+    ]
+    vi.spyOn(apiClient, "listUsers").mockResolvedValue(mockUsers as any)
+
+    render(
+      <RestaurantProvider>
+        <UsersDirectory />
+      </RestaurantProvider>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText("craft_manager")).toBeDefined()
+    })
+
+    const editBtn = screen.getByRole("button", { name: /Editar usuario craft_manager/i })
+    fireEvent.click(editBtn)
+
+    expect(await screen.findByRole("heading", { name: "Editar Usuario" })).toBeDefined()
+    expect(screen.getByDisplayValue("craft_manager")).toBeDefined()
+  })
 })
 
