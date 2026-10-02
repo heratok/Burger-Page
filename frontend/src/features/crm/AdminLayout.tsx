@@ -24,6 +24,8 @@ import {
   ArrowLeft,
   PanelLeftClose,
   PanelLeftOpen,
+  LayoutGrid,
+  Settings,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { AdminSwitcher, CreateRestaurantModal, CreateUserModal } from "@/features/superadmin"
@@ -131,6 +133,13 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       badge: pendingOrdersCount > 0 ? pendingOrdersCount : undefined,
     },
     {
+      id: "tables" as const,
+      label: "Mesas & QR",
+      icon: LayoutGrid,
+      description: "Salón, mesas y códigos QR",
+      badge: undefined,
+    },
+    {
       id: "menu" as const,
       label: "Menú & Carta",
       icon: UtensilsCrossed,
@@ -163,6 +172,13 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       label: "Personalizar",
       icon: Palette,
       description: "Diseño y apariencia de tienda",
+      badge: undefined,
+    },
+    {
+      id: "settings" as const,
+      label: "Ajustes de Negocio",
+      icon: Settings,
+      description: "Horarios, WhatsApp y domicilios",
       badge: undefined,
     },
   ]

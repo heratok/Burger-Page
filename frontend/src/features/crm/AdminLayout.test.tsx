@@ -94,6 +94,8 @@ describe("AdminLayout - Super Admin Navigation & Global Modules (TDD)", () => {
     expect(screen.getByText(/Clientes CRM/i)).toBeDefined()
     expect(screen.getByText(/Reportes & Cierre/i)).toBeDefined()
     expect(screen.getByText(/Personalizar/i)).toBeDefined()
+    expect(screen.getByText(/Mesas & QR/i)).toBeDefined()
+    expect(screen.getByText(/Ajustes de Negocio/i)).toBeDefined()
 
     // Contextual Impersonation Banner & Return Button MUST be visible
     const returnButtons = screen.getAllByRole("button", { name: /Volver al Panel Super Admin|Volver a SaaS/i })

@@ -13,11 +13,13 @@ export interface RouteResolution {
 export const VALID_ADMIN_TABS: AdminTab[] = [
   "dashboard",
   "orders",
+  "tables",
   "menu",
   "inventory",
   "customers",
   "reports",
   "customizer",
+  "settings",
   "restaurants",
   "users",
   "metrics",

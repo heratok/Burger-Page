@@ -1,6 +1,6 @@
 import React from "react"
 import { useRestaurant } from "@/context/RestaurantContext"
-import { Palette, RotateCcw, Save, Sparkles, ImageIcon, Sliders, DollarSign, LayoutGrid } from "lucide-react"
+import { Palette, RotateCcw, Save, Sparkles, ImageIcon, Sliders } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useCustomizerDraft } from "./hooks/useCustomizerDraft"
 import {
@@ -8,20 +8,16 @@ import {
   CustomizerBrandingSection,
   CustomizerColorsSection,
   CustomizerLayoutSection,
-  CustomizerBusinessSection,
-  CustomizerTablesSection,
   CustomizerLivePreview,
 } from "./customizer"
 
-const TAB_COLUMNS = 3
+const TAB_COLUMNS = 4
 
 const CUSTOMIZER_TABS = [
   { id: "templates", label: "Estilos", icon: Sparkles, iconClass: "text-amber-500" },
   { id: "branding", label: "Marca", icon: ImageIcon, iconClass: "text-indigo-500" },
   { id: "colors", label: "Colores", icon: Palette, iconClass: "text-rose-500" },
   { id: "uiux", label: "Diseño", icon: Sliders, iconClass: "text-emerald-500" },
-  { id: "business", label: "Pedidos", icon: DollarSign, iconClass: "text-amber-500" },
-  { id: "tables", label: "Mesas", icon: LayoutGrid, iconClass: "text-sky-500" },
 ] as const
 
 export const StorefrontCustomizer: React.FC = () => {
@@ -141,7 +137,7 @@ export const StorefrontCustomizer: React.FC = () => {
       </div>
 
       {/* Editor Grid: Left Controls (5 cols), Right Live Simulator (7 cols) */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
         {/* LEFT COLUMN: Controls & Settings */}
         <div className="space-y-5 lg:col-span-5">
           {/* Section Navigation Tabs */}
@@ -189,13 +185,11 @@ export const StorefrontCustomizer: React.FC = () => {
           )}
           {activeSection === "colors" && <CustomizerColorsSection draft={draft} setDraft={setDraft} isDark={isDark} />}
           {activeSection === "uiux" && <CustomizerLayoutSection draft={draft} setDraft={setDraft} isDark={isDark} />}
-          {activeSection === "business" && <CustomizerBusinessSection draft={draft} setDraft={setDraft} isDark={isDark} />}
-          {activeSection === "tables" && <CustomizerTablesSection restaurantId={activeRestaurant?.id} isDark={isDark} />}
           </div>
         </div>
 
         {/* RIGHT COLUMN: Interactive Live Simulator Preview */}
-        <div className="space-y-3 lg:col-span-7">
+        <div className="space-y-3 lg:col-span-7 lg:sticky lg:top-4">
           <CustomizerLivePreview
             draft={draft}
             previewDevice={previewDevice}

@@ -66,6 +66,8 @@ describe("Router Engine - resolveRoute", () => {
     expect(resolveRoute("/admin/customizer", mockRestaurants).adminTab).toBe("customizer")
     expect(resolveRoute("/admin/customers", mockRestaurants).adminTab).toBe("customers")
     expect(resolveRoute("/admin/restaurants", mockRestaurants).adminTab).toBe("restaurants")
+    expect(resolveRoute("/admin/tables", mockRestaurants).adminTab).toBe("tables")
+    expect(resolveRoute("/admin/settings", mockRestaurants).adminTab).toBe("settings")
   })
 
   it("resolves admin subroutes case-insensitively with slashes", () => {

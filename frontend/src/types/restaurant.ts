@@ -198,11 +198,13 @@ export interface StorageEnvelopeV2 {
 export type AdminTab =
   | "dashboard"
   | "orders"
+  | "tables"
   | "menu"
   | "inventory"
   | "customers"
   | "reports"
   | "customizer"
+  | "settings"
   | "restaurants"
   | "users"
   | "metrics"

@@ -53,6 +53,16 @@ const ReportsManager = lazy(() =>
     default: m.ReportsManager,
   }))
 )
+const TablesManager = lazy(() =>
+  import("@/features/crm/TablesManager").then((m) => ({
+    default: m.TablesManager,
+  }))
+)
+const StoreSettingsManager = lazy(() =>
+  import("@/features/crm/StoreSettingsManager").then((m) => ({
+    default: m.StoreSettingsManager,
+  }))
+)
 const RestaurantNotFound = lazy(() =>
   import("@/features/crm/RestaurantNotFound").then((m) => ({
     default: m.RestaurantNotFound,
@@ -169,11 +179,13 @@ export function MainRouter() {
                 {adminTab === "metrics" && <GlobalAnalytics />}
                 {adminTab === "dashboard" && <DashboardOverview />}
                 {adminTab === "orders" && <OrdersKanban />}
+                {adminTab === "tables" && <TablesManager />}
                 {adminTab === "menu" && <MenuManager />}
                 {adminTab === "inventory" && <InventoryManager />}
                 {adminTab === "customers" && <CustomerCRM />}
                 {adminTab === "reports" && <ReportsManager />}
                 {adminTab === "customizer" && <StorefrontCustomizer />}
+                {adminTab === "settings" && <StoreSettingsManager />}
               </>
             )}
           </AdminLayout>
