@@ -51,6 +51,44 @@ export const StorefrontCustomizer: React.FC = () => {
     setActiveView("store")
   }
 
+  const tabRefs = React.useRef<(HTMLButtonElement | null)[]>([])
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    let nextIndex: number | null = null
+
+    const targetElement = (e.target as HTMLElement | null)?.closest?.('[role="tab"]')
+    const targetId = targetElement?.id
+    const targetTab = CUSTOMIZER_TABS.find((tab) => `customizer-tab-${tab.id}` === targetId)
+    const currentIndex = targetTab
+      ? CUSTOMIZER_TABS.indexOf(targetTab)
+      : CUSTOMIZER_TABS.findIndex((tab) => tab.id === activeSection)
+
+    const effectiveIndex = currentIndex === -1 ? 0 : currentIndex
+
+    switch (e.key) {
+      case "ArrowRight":
+        nextIndex = (effectiveIndex + 1) % CUSTOMIZER_TABS.length
+        break
+      case "ArrowLeft":
+        nextIndex = (effectiveIndex - 1 + CUSTOMIZER_TABS.length) % CUSTOMIZER_TABS.length
+        break
+      case "Home":
+        nextIndex = 0
+        break
+      case "End":
+        nextIndex = CUSTOMIZER_TABS.length - 1
+        break
+      default:
+        return
+    }
+
+    e.preventDefault()
+    const nextTab = CUSTOMIZER_TABS[nextIndex]
+    setActiveSection(nextTab.id)
+    const nextEl = tabRefs.current[nextIndex] ?? document.getElementById(`customizer-tab-${nextTab.id}`)
+    nextEl?.focus()
+  }
+
   return (
     <div className="space-y-6">
       {/* Top Header Strip */}
@@ -96,19 +134,24 @@ export const StorefrontCustomizer: React.FC = () => {
           <div
             role="tablist"
             aria-label="Secciones del personalizador"
+            onKeyDown={handleKeyDown}
             className="grid grid-cols-3 gap-1 rounded-xl border bg-slate-100 p-1 text-xs font-semibold dark:border-slate-700 dark:bg-slate-800"
           >
-            {CUSTOMIZER_TABS.map((tab) => {
+            {CUSTOMIZER_TABS.map((tab, index) => {
               const Icon = tab.icon
               const isActive = activeSection === tab.id
               return (
                 <button
                   key={tab.id}
+                  ref={(el) => {
+                    tabRefs.current[index] = el
+                  }}
                   type="button"
                   role="tab"
                   id={`customizer-tab-${tab.id}`}
                   aria-selected={isActive}
                   aria-controls="customizer-tabpanel"
+                  tabIndex={isActive ? 0 : -1}
                   onClick={() => setActiveSection(tab.id)}
                   className={`flex min-h-10 items-center justify-center gap-1.5 rounded-lg px-1.5 py-2 text-center whitespace-nowrap transition-all cursor-pointer ${
                     isActive

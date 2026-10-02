@@ -254,5 +254,154 @@ describe("StorefrontCustomizer & Subcomponents (TDD Modularization)", () => {
       expect(screen.getByRole("tab", { name: /Mesas/i }).getAttribute("aria-selected")).toBe("true")
       expect(screen.getByRole("tab", { name: /Estilos/i }).getAttribute("aria-selected")).toBe("false")
     })
+
+    describe("WAI-ARIA keyboard navigation for Personalizar tabs", () => {
+      it("manages roving tabIndex so only the active tab has tabIndex=0 and others have -1", () => {
+        render(
+          <RestaurantProvider>
+            <StorefrontCustomizer />
+          </RestaurantProvider>
+        )
+
+        const estilosTab = screen.getByRole("tab", { name: /Estilos/i })
+        const marcaTab = screen.getByRole("tab", { name: /Marca/i })
+        const coloresTab = screen.getByRole("tab", { name: /Colores/i })
+        const disenoTab = screen.getByRole("tab", { name: /Diseño/i })
+        const pedidosTab = screen.getByRole("tab", { name: /Pedidos/i })
+        const mesasTab = screen.getByRole("tab", { name: /Mesas/i })
+
+        // Initial state: Estilos is active
+        expect(estilosTab.getAttribute("tabindex")).toBe("0")
+        expect(marcaTab.getAttribute("tabindex")).toBe("-1")
+        expect(coloresTab.getAttribute("tabindex")).toBe("-1")
+        expect(disenoTab.getAttribute("tabindex")).toBe("-1")
+        expect(pedidosTab.getAttribute("tabindex")).toBe("-1")
+        expect(mesasTab.getAttribute("tabindex")).toBe("-1")
+
+        // Switch to Marca tab
+        fireEvent.click(marcaTab)
+        expect(estilosTab.getAttribute("tabindex")).toBe("-1")
+        expect(marcaTab.getAttribute("tabindex")).toBe("0")
+        expect(coloresTab.getAttribute("tabindex")).toBe("-1")
+      })
+
+      it("navigates forward with ArrowRight, wraps from last to first, and moves focus and selection", () => {
+        render(
+          <RestaurantProvider>
+            <StorefrontCustomizer />
+          </RestaurantProvider>
+        )
+
+        const estilosTab = screen.getByRole("tab", { name: /Estilos/i })
+        const marcaTab = screen.getByRole("tab", { name: /Marca/i })
+        const mesasTab = screen.getByRole("tab", { name: /Mesas/i })
+
+        estilosTab.focus()
+        expect(document.activeElement).toBe(estilosTab)
+
+        // ArrowRight from Estilos -> Marca
+        fireEvent.keyDown(estilosTab, { key: "ArrowRight" })
+        expect(document.activeElement).toBe(marcaTab)
+        expect(marcaTab.getAttribute("aria-selected")).toBe("true")
+        expect(marcaTab.getAttribute("tabindex")).toBe("0")
+        expect(estilosTab.getAttribute("aria-selected")).toBe("false")
+        expect(estilosTab.getAttribute("tabindex")).toBe("-1")
+
+        // Jump to last tab (Mesas)
+        fireEvent.click(mesasTab)
+        mesasTab.focus()
+        expect(document.activeElement).toBe(mesasTab)
+
+        // ArrowRight wraps to Estilos
+        fireEvent.keyDown(mesasTab, { key: "ArrowRight" })
+        expect(document.activeElement).toBe(estilosTab)
+        expect(estilosTab.getAttribute("aria-selected")).toBe("true")
+        expect(estilosTab.getAttribute("tabindex")).toBe("0")
+        expect(mesasTab.getAttribute("aria-selected")).toBe("false")
+        expect(mesasTab.getAttribute("tabindex")).toBe("-1")
+      })
+
+      it("navigates backward with ArrowLeft, wraps from first to last, and moves focus and selection", () => {
+        render(
+          <RestaurantProvider>
+            <StorefrontCustomizer />
+          </RestaurantProvider>
+        )
+
+        const estilosTab = screen.getByRole("tab", { name: /Estilos/i })
+        const pedidosTab = screen.getByRole("tab", { name: /Pedidos/i })
+        const mesasTab = screen.getByRole("tab", { name: /Mesas/i })
+
+        estilosTab.focus()
+        expect(document.activeElement).toBe(estilosTab)
+
+        // ArrowLeft from first tab (Estilos) wraps to last tab (Mesas)
+        fireEvent.keyDown(estilosTab, { key: "ArrowLeft" })
+        expect(document.activeElement).toBe(mesasTab)
+        expect(mesasTab.getAttribute("aria-selected")).toBe("true")
+        expect(mesasTab.getAttribute("tabindex")).toBe("0")
+        expect(estilosTab.getAttribute("aria-selected")).toBe("false")
+        expect(estilosTab.getAttribute("tabindex")).toBe("-1")
+
+        // ArrowLeft from Mesas moves to Pedidos
+        fireEvent.keyDown(mesasTab, { key: "ArrowLeft" })
+        expect(document.activeElement).toBe(pedidosTab)
+        expect(pedidosTab.getAttribute("aria-selected")).toBe("true")
+        expect(pedidosTab.getAttribute("tabindex")).toBe("0")
+      })
+
+      it("jumps to first with Home and last with End, moving focus and selection", () => {
+        render(
+          <RestaurantProvider>
+            <StorefrontCustomizer />
+          </RestaurantProvider>
+        )
+
+        const estilosTab = screen.getByRole("tab", { name: /Estilos/i })
+        const coloresTab = screen.getByRole("tab", { name: /Colores/i })
+        const mesasTab = screen.getByRole("tab", { name: /Mesas/i })
+
+        fireEvent.click(coloresTab)
+        coloresTab.focus()
+        expect(document.activeElement).toBe(coloresTab)
+
+        // End moves to last tab (Mesas)
+        fireEvent.keyDown(coloresTab, { key: "End" })
+        expect(document.activeElement).toBe(mesasTab)
+        expect(mesasTab.getAttribute("aria-selected")).toBe("true")
+        expect(mesasTab.getAttribute("tabindex")).toBe("0")
+
+        // Home moves to first tab (Estilos)
+        fireEvent.keyDown(mesasTab, { key: "Home" })
+        expect(document.activeElement).toBe(estilosTab)
+        expect(estilosTab.getAttribute("aria-selected")).toBe("true")
+        expect(estilosTab.getAttribute("tabindex")).toBe("0")
+      })
+
+      it("calls preventDefault on handled keys and leaves other keys untouched", () => {
+        render(
+          <RestaurantProvider>
+            <StorefrontCustomizer />
+          </RestaurantProvider>
+        )
+
+        const estilosTab = screen.getByRole("tab", { name: /Estilos/i })
+        estilosTab.focus()
+
+        // Handled keys should have defaultPrevented = true
+        for (const key of ["ArrowRight", "ArrowLeft", "Home", "End"]) {
+          const event = new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true })
+          fireEvent(estilosTab, event)
+          expect(event.defaultPrevented).toBe(true)
+        }
+
+        // Unhandled keys should NOT have defaultPrevented
+        for (const key of ["Tab", "Enter", "Space", "ArrowUp", "ArrowDown", "KeyA"]) {
+          const event = new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true })
+          fireEvent(estilosTab, event)
+          expect(event.defaultPrevented).toBe(false)
+        }
+      })
+    })
   })
 })
