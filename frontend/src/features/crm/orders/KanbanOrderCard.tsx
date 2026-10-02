@@ -10,6 +10,7 @@ import {
   Pencil,
 } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
+import { getOrderLocationText } from "@/features/crm/tables/orderTable"
 
 export interface KanbanOrderCardProps {
   order: Order
@@ -67,7 +68,7 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
       <div className="mt-2 flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1">
         <MapPin className="size-3 shrink-0 text-slate-400" />
         <span className="truncate">
-          {order.customer.barrio} - {order.customer.direccion}
+          {getOrderLocationText(order)}
         </span>
       </div>
 

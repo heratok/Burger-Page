@@ -162,11 +162,12 @@ describe('migration 0000000000008 (db hardening) parity with the baseline schema
 
     it('up recreates every rewritten tenant policy exactly as the baseline declares it', () => {
       const upPolicies = new Map(policyStatements(up).map((p) => [p.name, p.sql]));
-      // restaurant_opening_hours only exists from migration 0009.
+      // restaurant_opening_hours / restaurant_tables only exist from migrations 0009 / 0010.
       const tenant = policyStatements(baseline).filter(
         (p) =>
           (p.name.startsWith('tenant_isolation_') || p.name === 'users_select_for_auth') &&
-          p.table !== 'restaurant_opening_hours'
+          p.table !== 'restaurant_opening_hours' &&
+          p.table !== 'restaurant_tables'
       );
       for (const p of tenant) {
         expect(norm(upPolicies.get(p.name)), p.name).toBe(norm(p.sql));
@@ -428,6 +429,73 @@ describe('migration 0000000000009 (store opening hours) parity with the baseline
   it('the README table count follows the baseline', () => {
     const tables = [...baseline.matchAll(/CREATE TABLE IF NOT EXISTS public\.(\w+)/g)].length;
     expect(read('README.md')).toContain(`${tables} tablas relacionales`);
+  });
+});
+
+describe('migration 0000000000010 (restaurant tables) parity with the baseline schema', () => {
+  const baseline = read('01_schema.sql');
+  const up = read('migrations/0000000000010_restaurant_tables.up.sql');
+  const down = read('migrations/0000000000010_restaurant_tables.down.sql');
+  const flat = (sql: string) => sql.replace(/\s+/g, ' ');
+  const tableBody = (sql: string) =>
+    sql.match(/CREATE TABLE IF NOT EXISTS public\.restaurant_tables \(([\s\S]*?)\n\);/)![1];
+
+  describe('T1 restaurant_tables table', () => {
+    it('baseline and up declare the same table definition', () => {
+      expect(flat(tableBody(up))).toBe(flat(tableBody(baseline)));
+    });
+
+    it('cascades with the restaurant and constrains id format, name length and tenant-scoped uniqueness', () => {
+      const body = flat(tableBody(baseline));
+      expect(body).toContain('restaurant_id TEXT NOT NULL REFERENCES public.restaurants(id) ON DELETE CASCADE');
+      expect(body).toContain("CONSTRAINT chk_restaurant_tables_id_format CHECK (id ~ '^[A-Za-z0-9_-]{1,64}$')");
+      expect(body).toContain('CHECK (char_length(btrim(name)) BETWEEN 1 AND 40)');
+      expect(body).toContain('CONSTRAINT uq_restaurant_tables_id_restaurant UNIQUE (id, restaurant_id)');
+      for (const sql of [baseline, up]) {
+        expect(flat(sql)).toContain('uq_restaurant_tables_name');
+        expect(flat(sql)).toContain('(restaurant_id, lower(btrim(name)))');
+      }
+    });
+
+    it('enables and forces RLS with tenant isolation only (no public read) and grants app_user', () => {
+      for (const sql of [baseline, up]) {
+        expect(flat(sql)).toContain('ALTER TABLE public.restaurant_tables ENABLE ROW LEVEL SECURITY');
+        expect(flat(sql)).toContain('ALTER TABLE public.restaurant_tables FORCE ROW LEVEL SECURITY');
+        expect(flat(sql)).toContain('GRANT SELECT, INSERT, UPDATE, DELETE ON public.restaurant_tables TO app_user');
+        expect(flat(sql)).toContain('CREATE POLICY "tenant_isolation_restaurant_tables" ON public.restaurant_tables FOR ALL');
+        expect(flat(sql)).toContain(
+          'USING ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()))'
+        );
+        expect(sql).not.toContain('public_read_restaurant_tables');
+        expect(flat(sql)).toContain('trg_restaurant_tables_updated_at');
+      }
+    });
+
+    it('down drops the table, which removes its policy, trigger and grants', () => {
+      expect(down).toContain('DROP TABLE IF EXISTS public.restaurant_tables');
+    });
+  });
+
+  describe('T2 orders.table_id and orders.table_label', () => {
+    it('baseline declares both nullable columns and the tenant-scoped SET NULL (table_id) FK', () => {
+      const body = flat(baseline.match(/CREATE TABLE IF NOT EXISTS public\.orders \(([\s\S]*?)\n\);/)![1]);
+      expect(body).toContain('table_id TEXT, table_label TEXT,');
+      expect(body).toContain(
+        'CONSTRAINT fk_orders_table_tenant FOREIGN KEY (table_id, restaurant_id) REFERENCES public.restaurant_tables(id, restaurant_id) ON DELETE SET NULL (table_id)'
+      );
+    });
+
+    it('up adds the same columns and FK idempotently; down removes them', () => {
+      expect(up).toContain('ADD COLUMN IF NOT EXISTS table_id TEXT');
+      expect(up).toContain('ADD COLUMN IF NOT EXISTS table_label TEXT');
+      expect(flat(up)).toContain(
+        'FOREIGN KEY (table_id, restaurant_id) REFERENCES public.restaurant_tables(id, restaurant_id) ON DELETE SET NULL (table_id)'
+      );
+      expect(up).toContain("conname = 'fk_orders_table_tenant'");
+      expect(down).toContain('DROP CONSTRAINT IF EXISTS fk_orders_table_tenant');
+      expect(down).toContain('DROP COLUMN IF EXISTS table_id');
+      expect(down).toContain('DROP COLUMN IF EXISTS table_label');
+    });
   });
 });
 

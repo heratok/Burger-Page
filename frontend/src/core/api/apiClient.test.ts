@@ -33,6 +33,51 @@ describe('ApiClient', () => {
     expect(JSON.parse(init.body)).toEqual({ categories: ['B'], renames: [{ from: 'A', to: 'B' }] })
   })
 
+  describe('restaurant tables', () => {
+    const raw = { id: 'tbl_1', restaurantId: 'r1', name: 'Mesa 1', sortOrder: 2, isActive: true, createdAt: 'x', updatedAt: 'y' }
+    const mapped = { id: 'tbl_1', name: 'Mesa 1', sortOrder: 2, isActive: true }
+
+    it('lists tables scoped to the restaurant', async () => {
+      mockResponse([raw])
+      const tables = await client.fetchTables('r1')
+      expect(tables).toEqual([mapped])
+      expect((globalThis.fetch as any).mock.calls[0][0]).toBe('http://localhost:3001/api/tables?restaurantId=r1')
+    })
+
+    it('creates a table sending the restaurant id in the body', async () => {
+      mockResponse(raw)
+      const table = await client.createTable('Mesa 1', 'r1')
+      expect(table).toEqual(mapped)
+      const [url, init] = (globalThis.fetch as any).mock.calls[0]
+      expect(url).toBe('http://localhost:3001/api/tables?restaurantId=r1')
+      expect(init.method).toBe('POST')
+      expect(JSON.parse(init.body)).toEqual({ name: 'Mesa 1', restaurantId: 'r1' })
+    })
+
+    it('updates, reorders and deletes a table', async () => {
+      mockResponse({ ...raw, name: 'Terraza', isActive: false })
+      const updated = await client.updateTable('tbl_1', { name: 'Terraza', isActive: false }, 'r1')
+      expect(updated).toMatchObject({ name: 'Terraza', isActive: false })
+      let [url, init] = (globalThis.fetch as any).mock.calls[0]
+      expect(url).toBe('http://localhost:3001/api/tables/tbl_1?restaurantId=r1')
+      expect(init.method).toBe('PUT')
+      expect(JSON.parse(init.body)).toEqual({ name: 'Terraza', isActive: false, restaurantId: 'r1' })
+
+      mockResponse([raw])
+      const ordered = await client.reorderTables(['tbl_1'], 'r1')
+      expect(ordered).toEqual([mapped]);
+      [url, init] = (globalThis.fetch as any).mock.calls[1]
+      expect(url).toBe('http://localhost:3001/api/tables/order?restaurantId=r1')
+      expect(JSON.parse(init.body)).toEqual({ ids: ['tbl_1'], restaurantId: 'r1' })
+
+      ;(globalThis.fetch as any).mockResolvedValueOnce({ ok: true, status: 204, statusText: 'No Content', json: async () => undefined })
+      await client.deleteTable('tbl_1', 'r1')
+      ;[url, init] = (globalThis.fetch as any).mock.calls[2]
+      expect(url).toBe('http://localhost:3001/api/tables/tbl_1?restaurantId=r1')
+      expect(init.method).toBe('DELETE')
+    })
+  })
+
   it('should fetch restaurant', async () => {
     const mockData = { id: 'r1', name: 'Burger' }
     mockResponse(mockData)

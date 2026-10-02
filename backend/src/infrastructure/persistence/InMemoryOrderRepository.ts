@@ -32,6 +32,8 @@ function cloneOrder(order: Order): Order {
   if (order.customer) {
     copy.customer = order.customer;
   }
+  copy.tableId = order.tableId;
+  copy.tableLabel = order.tableLabel;
   return copy;
 }
 

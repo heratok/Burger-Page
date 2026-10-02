@@ -40,7 +40,7 @@ test.describe('Admin Image & Branding CRUD Full Suite', () => {
     await customizerNav.click();
 
     // 2. Open "Marca" Tab
-    const brandingTab = page.getByRole('button', { name: /Marca/i });
+    const brandingTab = page.getByRole('tab', { name: /Marca/i });
     await expect(brandingTab).toBeVisible({ timeout: 10000 });
     await brandingTab.click();
 
@@ -98,7 +98,7 @@ test.describe('Admin Image & Branding CRUD Full Suite', () => {
     await expect(customizerNavAfterReload).toBeVisible({ timeout: 10000 });
     await customizerNavAfterReload.click();
 
-    const brandingTabAfterReload = page.getByRole('button', { name: /Marca/i });
+    const brandingTabAfterReload = page.getByRole('tab', { name: /Marca/i });
     await expect(brandingTabAfterReload).toBeVisible({ timeout: 10000 });
     await brandingTabAfterReload.click();
 
@@ -141,7 +141,7 @@ test.describe('Admin Image & Branding CRUD Full Suite', () => {
     await expect(customizerNavFinal).toBeVisible({ timeout: 10000 });
     await customizerNavFinal.click();
 
-    const brandingTabFinal = page.getByRole('button', { name: /Marca/i });
+    const brandingTabFinal = page.getByRole('tab', { name: /Marca/i });
     await expect(brandingTabFinal).toBeVisible({ timeout: 10000 });
     await brandingTabFinal.click();
 

@@ -147,6 +147,10 @@ function mapBackendOrderToDomain(bo: any, existing?: Order, matchedCustomer?: an
     cambio: bo.changeAmount !== undefined ? Number(bo.changeAmount) : (bo.cambio ?? existing?.cambio),
     comentario: bo.comment || bo.comentario || existing?.comentario,
     receiptUrl: bo.receiptUrl || existing?.receiptUrl,
+    // The server is the source of truth for the table: an absent field means
+    // "no table" (detached), never "keep the previous local value".
+    ...(bo.tableId ? { tableId: bo.tableId as string } : {}),
+    ...(bo.tableLabel ? { tableLabel: bo.tableLabel as string } : {}),
     status: (bo.status as OrderStatus) || existing?.status || 'pending',
     createdAt: bo.createdAt || existing?.createdAt || new Date().toISOString(),
     updatedAt: bo.updatedAt || existing?.updatedAt || new Date().toISOString(),
@@ -245,6 +249,8 @@ export function handleOrderCreatedEvent(current: RestaurantRecord, event: OrderE
     cambio: p.changeAmount != null ? Number(p.changeAmount) : p.cambio,
     comentario: p.comment || p.comentario,
     receiptUrl: p.receiptUrl,
+    ...(p.tableId ? { tableId: p.tableId as string } : {}),
+    ...(p.tableLabel ? { tableLabel: p.tableLabel as string } : {}),
     status: (event.status as OrderStatus) || p.status || "pending",
     createdAt: event.timestamp || new Date().toISOString(),
     updatedAt: event.timestamp || new Date().toISOString(),
@@ -666,6 +672,7 @@ export function buildCreateOrderInput(
         changeAmount: newOrder.cambio !== undefined ? Number(newOrder.cambio) : undefined,
     receiptUrl: newOrder.receiptUrl,
     comment: newOrder.comentario,
+    ...(newOrder.tableId ? { tableId: newOrder.tableId } : {}),
     // SUS-19: the offline retry re-sends the same correlation id (it rebuilds
     // the input from the same optimistic order object), so the backend replays
     // instead of duplicating.
@@ -713,6 +720,9 @@ export function buildUpdateOrderInput(
   if (updates.cambio !== undefined) updateInput.changeAmount = updates.cambio
   if (updates.comentario !== undefined) updateInput.comment = updates.comentario
   if (updates.status !== undefined) updateInput.status = updates.status
+  // A sale edit always states its table: the key present with no value
+  // detaches the order from its table.
+  if ('tableId' in updates) updateInput.tableId = updates.tableId ?? null
   return updateInput
 }
 

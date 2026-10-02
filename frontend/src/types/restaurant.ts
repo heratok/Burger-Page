@@ -95,12 +95,23 @@ export interface Order {
   cambio?: number
   comentario?: string
   receiptUrl?: string
+  // "Mesa / Salón" sales: the restaurant table and a snapshot of its name.
+  // tableId disappears when the table is deleted; tableLabel stays.
+  tableId?: string
+  tableLabel?: string
   status: OrderStatus
   createdAt: string
   updatedAt: string
   // Offline-created order awaiting automatic server sync (REJ-02). Local-only
   // flag: never a server field; cleared once the order reaches the backend.
   pendingSync?: boolean
+}
+
+export interface RestaurantTable {
+  id: string
+  name: string
+  sortOrder: number
+  isActive: boolean
 }
 
 export type LoyaltyTier = "bronze" | "silver" | "gold" | "vip"

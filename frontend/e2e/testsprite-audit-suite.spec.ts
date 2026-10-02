@@ -101,8 +101,18 @@ test.describe('TestSprite Audit & Resolution Suite', () => {
     await expect(toggleBtn).toBeVisible();
     const initialText = await toggleBtn.innerText();
 
-    await toggleBtn.click();
     const expectedNewText = initialText.includes('Operando') ? 'Pausado' : 'Operando';
-    await expect(targetRow.getByRole('button', { name: expectedNewText })).toBeVisible({ timeout: 10000 });
+    await toggleBtn.click();
+    try {
+      await expect(targetRow.getByRole('button', { name: expectedNewText })).toBeVisible({ timeout: 10000 });
+    } finally {
+      // Burger Craft is shared by other specs (admin_craft logins are rejected
+      // while it is paused): always leave it in the state it was found in.
+      const current = targetRow.getByRole('button', { name: /Operando|Pausado/i });
+      if (!(await current.innerText()).includes(initialText.trim())) {
+        await current.click();
+        await expect(targetRow.getByRole('button', { name: initialText.trim() })).toBeVisible({ timeout: 10000 });
+      }
+    }
   });
 });

@@ -16,6 +16,7 @@ import { InMemoryCustomerRepository } from '../persistence/InMemoryCustomerRepos
 import { InMemoryInventoryRepository } from '../persistence/InMemoryInventoryRepository.js';
 import { InMemoryUserRepository } from '../persistence/InMemoryUserRepository.js';
 import { InMemorySupplierRepository } from '../persistence/InMemorySupplierRepository.js';
+import { InMemoryRestaurantTableRepository } from '../persistence/InMemoryRestaurantTableRepository.js';
 import { createSqliteDatabase } from '../persistence/sqlite/SqliteDatabase.js';
 import { SqliteRestaurantRepository } from '../persistence/sqlite/SqliteRestaurantRepository.js';
 import { SqliteCategoryRepository } from '../persistence/sqlite/SqliteCategoryRepository.js';
@@ -25,6 +26,7 @@ import { SqliteCustomerRepository } from '../persistence/sqlite/SqliteCustomerRe
 import { SqliteInventoryRepository } from '../persistence/sqlite/SqliteInventoryRepository.js';
 import { SqliteProductAdditionRepository } from '../persistence/sqlite/SqliteProductAdditionRepository.js';
 import { SqliteSupplierRepository } from '../persistence/sqlite/SqliteSupplierRepository.js';
+import { SqliteRestaurantTableRepository } from '../persistence/sqlite/SqliteRestaurantTableRepository.js';
 import { verifyPgConnection } from '../persistence/postgres/PgClient.js';
 import { resolveStorageDriver, dataRunsOnPostgres } from '../persistence/driverSelection.js';
 import type { StorageDriver } from '../persistence/driverSelection.js';
@@ -38,6 +40,7 @@ import { PgCustomerRepository } from '../persistence/postgres/PgCustomerReposito
 import { PgInventoryRepository } from '../persistence/postgres/PgInventoryRepository.js';
 import { PgUserRepository } from '../persistence/postgres/PgUserRepository.js';
 import { PgSupplierRepository } from '../persistence/postgres/PgSupplierRepository.js';
+import { PgRestaurantTableRepository } from '../persistence/postgres/PgRestaurantTableRepository.js';
 import { RestaurantRepository } from '../../domain/ports/out/RestaurantRepository.js';
 import { CategoryRepository } from '../../domain/ports/out/CategoryRepository.js';
 import { ProductRepository } from '../../domain/ports/out/ProductRepository.js';
@@ -47,6 +50,7 @@ import { CustomerRepository } from '../../domain/ports/out/CustomerRepository.js
 import { InventoryRepository } from '../../domain/ports/out/InventoryRepository.js';
 import { UserRepository } from '../../domain/ports/out/UserRepository.js';
 import { SupplierRepository } from '../../domain/ports/out/SupplierRepository.js';
+import { RestaurantTableRepository } from '../../domain/ports/out/RestaurantTableRepository.js';
 import { PasswordHasher } from '../../domain/ports/out/PasswordHasher.js';
 import { CryptoPasswordHasher } from '../security/CryptoPasswordHasher.js';
 
@@ -94,6 +98,11 @@ import { ListSuppliersUseCase } from '../../application/use-cases/ListSuppliersU
 import { CreateSupplierUseCase } from '../../application/use-cases/CreateSupplierUseCase.js';
 import { UpdateSupplierUseCase } from '../../application/use-cases/UpdateSupplierUseCase.js';
 import { DeleteSupplierUseCase } from '../../application/use-cases/DeleteSupplierUseCase.js';
+import { ListRestaurantTablesUseCase } from '../../application/use-cases/ListRestaurantTablesUseCase.js';
+import { CreateRestaurantTableUseCase } from '../../application/use-cases/CreateRestaurantTableUseCase.js';
+import { UpdateRestaurantTableUseCase } from '../../application/use-cases/UpdateRestaurantTableUseCase.js';
+import { DeleteRestaurantTableUseCase } from '../../application/use-cases/DeleteRestaurantTableUseCase.js';
+import { ReorderRestaurantTablesUseCase } from '../../application/use-cases/ReorderRestaurantTablesUseCase.js';
 
 // Controllers
 import { RestaurantController } from './controllers/RestaurantController.js';
@@ -104,6 +113,7 @@ import { InventoryController } from './controllers/InventoryController.js';
 import { UserController } from './controllers/UserController.js';
 import { ProductAdditionController } from './controllers/ProductAdditionController.js';
 import { SupplierController } from './controllers/SupplierController.js';
+import { RestaurantTableController } from './controllers/RestaurantTableController.js';
 
 // Routes
 import { restaurantRoutes } from './routes/restaurant.routes.js';
@@ -116,6 +126,7 @@ import { userRoutes } from './routes/user.routes.js';
 import { additionRoutes } from './routes/addition.routes.js';
 import { storageRoutes } from './routes/storage.routes.js';
 import { supplierRoutes } from './routes/supplier.routes.js';
+import { restaurantTableRoutes } from './routes/restaurantTable.routes.js';
 
 export interface AppDependencies {
   restaurantController: RestaurantController;
@@ -124,6 +135,7 @@ export interface AppDependencies {
   customerController: CustomerController;
   inventoryController: InventoryController;
   supplierController: SupplierController;
+  restaurantTableController: RestaurantTableController;
   userController: UserController;
   additionController: ProductAdditionController;
   /** Repository-backed JWT revalidation (SUS-14): wired into the auth
@@ -166,6 +178,7 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
   let inventoryRepo: InventoryRepository;
   let userRepo: UserRepository;
   let supplierRepo: SupplierRepository;
+  let tableRepo: RestaurantTableRepository;
 
   if (dataRunsOnPostgres(selectedDriver)) {
     // S5: the 'supabase' driver no longer talks to Supabase PostgREST with the
@@ -189,6 +202,7 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
     inventoryRepo = new PgInventoryRepository();
     userRepo = new PgUserRepository();
     supplierRepo = new PgSupplierRepository();
+    tableRepo = new PgRestaurantTableRepository();
   } else if (selectedDriver === 'sqlite') {
     const db = createSqliteDatabase(dbPath || process.env.DATABASE_PATH || ':memory:');
     restaurantRepo = new SqliteRestaurantRepository(db);
@@ -200,6 +214,7 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
     inventoryRepo = new SqliteInventoryRepository(db);
     userRepo = new InMemoryUserRepository();
     supplierRepo = new SqliteSupplierRepository(db);
+    tableRepo = new SqliteRestaurantTableRepository(db);
   } else {
     restaurantRepo = new InMemoryRestaurantRepository();
     categoryRepo = new InMemoryCategoryRepository();
@@ -210,6 +225,7 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
     inventoryRepo = new InMemoryInventoryRepository();
     userRepo = new InMemoryUserRepository();
     supplierRepo = new InMemorySupplierRepository();
+    tableRepo = new InMemoryRestaurantTableRepository();
   }
 
   // Use Cases
@@ -229,11 +245,11 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
 
   const listOrders = new ListOrdersUseCase(orderRepo);
   const getOrderById = new GetOrderByIdUseCase(orderRepo);
-  const createOrder = new CreateOrderUseCase(orderRepo, productRepo, restaurantRepo, additionRepo, customerRepo);
+  const createOrder = new CreateOrderUseCase(orderRepo, productRepo, restaurantRepo, additionRepo, customerRepo, undefined, tableRepo);
   const updateOrderStatus = new UpdateOrderStatusUseCase(orderRepo);
   const updateOrderReceipt = new UpdateOrderReceiptUseCase(orderRepo);
   const deleteOrder = new DeleteOrderUseCase(orderRepo);
-  const updateOrder = new UpdateOrderUseCase(orderRepo, productRepo, additionRepo, customerRepo);
+  const updateOrder = new UpdateOrderUseCase(orderRepo, productRepo, additionRepo, customerRepo, tableRepo);
 
   const listCustomers = new ListCustomersUseCase(customerRepo);
   const getCustomerById = new GetCustomerByIdUseCase(customerRepo);
@@ -252,6 +268,12 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
   const createSupplier = new CreateSupplierUseCase(supplierRepo);
   const updateSupplier = new UpdateSupplierUseCase(supplierRepo);
   const deleteSupplier = new DeleteSupplierUseCase(supplierRepo);
+
+  const listTables = new ListRestaurantTablesUseCase(tableRepo);
+  const createTable = new CreateRestaurantTableUseCase(tableRepo);
+  const updateTable = new UpdateRestaurantTableUseCase(tableRepo);
+  const deleteTable = new DeleteRestaurantTableUseCase(tableRepo);
+  const reorderTables = new ReorderRestaurantTablesUseCase(tableRepo);
 
   const createUser = new CreateUserUseCase(userRepo, hasher, restaurantRepo);
   const authenticateUser = new AuthenticateUserUseCase(userRepo, hasher);
@@ -313,6 +335,14 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
       createSupplier,
       updateSupplier,
       deleteSupplier,
+      restaurantRepo
+    ),
+    restaurantTableController: new RestaurantTableController(
+      listTables,
+      createTable,
+      updateTable,
+      deleteTable,
+      reorderTables,
       restaurantRepo
     ),
     userController: new UserController(createUser, authenticateUser, listUsersUC),
@@ -593,6 +623,7 @@ export function buildApp(
     api.register(customerRoutes, { prefix: '/customers', controller: deps.customerController });
     api.register(inventoryRoutes, { prefix: '/inventory', controller: deps.inventoryController });
     api.register(supplierRoutes, { prefix: '/suppliers', controller: deps.supplierController });
+    api.register(restaurantTableRoutes, { prefix: '/tables', controller: deps.restaurantTableController });
     api.register(userRoutes, { prefix: '/users', controller: deps.userController });
     api.register(storageRoutes, { prefix: '/storage' });
   }, { prefix: '/api' });

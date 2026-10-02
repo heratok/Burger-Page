@@ -38,6 +38,13 @@ export function getPgPool(): pg.Pool {
       maxUses: PG_MAX_USES,
       statement_timeout: PG_STATEMENT_TIMEOUT_MS,
     });
+    // An idle client can be terminated server-side (restart, failover, or the
+    // E2E database reset). Without a listener pg re-emits it as an uncaught
+    // exception and kills the process; with one the pool discards the client
+    // and opens a fresh connection on the next acquire.
+    pool.on('error', (err) => {
+      console.warn(`[PgClient] idle client error (discarded): ${err.message}`);
+    });
   }
   return pool;
 }

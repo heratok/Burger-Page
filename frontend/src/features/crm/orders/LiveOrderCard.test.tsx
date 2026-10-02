@@ -35,6 +35,13 @@ const mockOrder: Order = {
   updatedAt: new Date().toISOString(),
 }
 
+const tableOrder: Order = {
+  ...mockOrder,
+  customer: { ...mockOrder.customer, nombre: "Cliente Salón", direccion: "Salón", barrio: "Local" },
+  tableId: "tbl_4",
+  tableLabel: "Mesa 4",
+}
+
 describe("LiveOrderCard", () => {
   afterEach(() => {
     cleanup()
@@ -179,5 +186,11 @@ describe("LiveOrderCard", () => {
       />
     )
     expect(screen.queryByTitle("Editar venta")).toBeNull()
+  })
+
+  it("shows the salon table instead of barrio and address", () => {
+    render(<LiveOrderCard order={tableOrder} onViewDetails={vi.fn()} onUpdateStatus={vi.fn()} onWhatsApp={vi.fn()} />)
+
+    expect(screen.getByText("Salón · Mesa 4")).toBeDefined()
   })
 })

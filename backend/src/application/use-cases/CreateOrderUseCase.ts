@@ -7,6 +7,8 @@ import { ProductRepository } from '../../domain/ports/out/ProductRepository.js';
 import { ProductAdditionRepository } from '../../domain/ports/out/ProductAdditionRepository.js';
 import { RestaurantRepository } from '../../domain/ports/out/RestaurantRepository.js';
 import { CustomerRepository } from '../../domain/ports/out/CustomerRepository.js';
+import { RestaurantTableRepository } from '../../domain/ports/out/RestaurantTableRepository.js';
+import { resolveOrderTable } from './resolveOrderTable.js';
 import { CreateOrderDTO } from '../dtos/index.js';
 import { EntityNotFoundError, ValidationError } from '../../domain/errors/DomainErrors.js';
 import { ORDER_CLOSED_ERROR_FRAGMENT, ORDER_PAUSED_ERROR_FRAGMENT, isOpenAt } from '@burger-page/contracts';
@@ -18,7 +20,8 @@ export class CreateOrderUseCase {
     private readonly restaurantRepo: RestaurantRepository,
     private readonly additionRepo: ProductAdditionRepository,
     private readonly customerRepo?: CustomerRepository,
-    private readonly clock: () => Date = () => new Date()
+    private readonly clock: () => Date = () => new Date(),
+    private readonly tableRepo?: RestaurantTableRepository
   ) {}
 
   async execute(dto: CreateOrderDTO & { clientOrderId?: string }, opts: { authenticated?: boolean } = {}): Promise<Order> {
@@ -26,6 +29,7 @@ export class CreateOrderUseCase {
     const restaurant = await this.validateAndGetRestaurant(dto.restaurantId);
     // Staff manual sales (authenticated) bypass the storefront opening hours.
     if (!authenticated) this.assertAcceptingOrders(restaurant);
+    const table = await this.resolveTable(dto.tableId, restaurant, authenticated);
     const validatedCustomerId = await this.resolveCustomerId(dto, restaurant, authenticated);
     const { validatedItems, calculatedSubtotal } = await this.validateAndCalculateItems(dto.items, restaurant);
 
@@ -49,6 +53,10 @@ export class CreateOrderUseCase {
       payment,
       dto,
     });
+    if (table) {
+      order.tableId = table.id;
+      order.tableLabel = table.name;
+    }
 
     const generatedId = order.id;
     await this.orderRepo.save(order);
@@ -56,6 +64,19 @@ export class CreateOrderUseCase {
     // idempotent replay, so a changed id means nothing new was created.
     order.replayed = order.id !== generatedId;
     return order;
+  }
+
+  /**
+   * A table is part of a staff "Mesa / Salón" sale only: the public storefront
+   * never sends one, so an unauthenticated order carrying a tableId is rejected
+   * (not silently ignored) instead of probing a restaurant's tables.
+   */
+  private async resolveTable(tableId: string | undefined, restaurant: Restaurant, authenticated: boolean) {
+    if (!tableId) return undefined;
+    if (!authenticated) {
+      throw new ValidationError('La mesa solo puede asignarse en ventas del personal.');
+    }
+    return resolveOrderTable(this.tableRepo, tableId, restaurant.id);
   }
 
   private async validateAndGetRestaurant(restaurantId?: string): Promise<Restaurant> {

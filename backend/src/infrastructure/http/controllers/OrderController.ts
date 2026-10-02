@@ -137,6 +137,8 @@ export class OrderController {
         changeAmount: order.changeAmount,
         comment: order.comment,
         receiptUrl: order.receiptUrl,
+        tableId: order.tableId,
+        tableLabel: order.tableLabel,
       },
     });
 
@@ -313,6 +315,8 @@ export class OrderController {
         changeAmount: updatedOrder.changeAmount,
         comment: updatedOrder.comment,
         receiptUrl: updatedOrder.receiptUrl,
+        tableId: updatedOrder.tableId,
+        tableLabel: updatedOrder.tableLabel,
       },
     });
 

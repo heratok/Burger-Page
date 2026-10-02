@@ -4,6 +4,7 @@ import { renderHook, act, waitFor } from "@testing-library/react"
 import React from "react"
 import { TenantProvider, useTenant } from "./TenantContext"
 import { AuthProvider } from "./AuthContext"
+import { toast } from "sonner"
 import { apiClient } from "@/core/api/apiClient"
 import { DEFAULT_STORE_CONFIG } from "@/constants/themePresets"
 
@@ -380,6 +381,85 @@ describe("TenantContext - effective tenant derivation and mutation identity (A1/
       result.current.switchRestaurant("own")
     })
     expect(result.current.activeRestaurant.id).toBe("rest-own")
+  })
+
+  describe("restaurant session requesting its own tenant before the list loads", () => {
+    const own = { id: "rest-own", slug: "own", name: "Own", isActive: true, categories: [] }
+    const other = { id: "rest-other", slug: "other", name: "Other", isActive: true, categories: [] }
+
+    const mountOwn = () => {
+      localStorage.setItem("burger_page_active_rest_v2", "rest-default")
+      sessionStorage.setItem(
+        "burger_page_session_v2",
+        JSON.stringify({ role: "restaurant", restaurantId: "rest-own", authenticatedAt: new Date().toISOString() })
+      )
+      vi.spyOn(apiClient, "listRestaurants").mockReturnValue(new Promise(() => {}) as any)
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <AuthProvider>
+          <TenantProvider>{children}</TenantProvider>
+        </AuthProvider>
+      )
+      return renderHook(() => useTenant(), { wrapper })
+    }
+
+    it("does not warn and activates the own tenant fetched on demand (id)", async () => {
+      const warn = vi.spyOn(toast, "warning").mockImplementation((() => "") as any)
+      const fetchSpy = vi.spyOn(apiClient, "fetchRestaurant").mockResolvedValue(own as any)
+      const { result } = mountOwn()
+
+      act(() => {
+        result.current.switchRestaurant("rest-own")
+      })
+
+      await waitFor(() => {
+        expect(result.current.activeRestaurant.id).toBe("rest-own")
+      })
+      expect(fetchSpy).toHaveBeenCalledWith("rest-own")
+      expect(warn).not.toHaveBeenCalled()
+    })
+
+    it("does not warn when the own tenant is requested by slug and resolves to itself", async () => {
+      const warn = vi.spyOn(toast, "warning").mockImplementation((() => "") as any)
+      vi.spyOn(apiClient, "fetchRestaurant").mockResolvedValue(own as any)
+      const { result } = mountOwn()
+
+      act(() => {
+        result.current.switchRestaurant("own")
+      })
+
+      await waitFor(() => {
+        expect(result.current.activeRestaurant.id).toBe("rest-own")
+      })
+      expect(warn).not.toHaveBeenCalled()
+    })
+
+    it("still warns and never switches when the slug resolves to a different tenant", async () => {
+      const warn = vi.spyOn(toast, "warning").mockImplementation((() => "") as any)
+      vi.spyOn(apiClient, "fetchRestaurant").mockResolvedValue(other as any)
+      const { result } = mountOwn()
+
+      act(() => {
+        result.current.switchRestaurant("other")
+      })
+
+      await waitFor(() => expect(warn).toHaveBeenCalledTimes(1))
+      expect(result.current.activeRestaurant.id).not.toBe("rest-other")
+      expect(result.current.effectiveRestaurantId).toBe("rest-own")
+    })
+
+    it("loadRestaurant of the own slug does not warn", async () => {
+      const warn = vi.spyOn(toast, "warning").mockImplementation((() => "") as any)
+      vi.spyOn(apiClient, "fetchRestaurant").mockResolvedValue(own as any)
+      const { result } = mountOwn()
+
+      let outcome = ""
+      await act(async () => {
+        outcome = await result.current.loadRestaurant("own")
+      })
+
+      expect(outcome).toBe("ok")
+      expect(warn).not.toHaveBeenCalled()
+    })
   })
 
   it("creates a fresh record for a stub/unknown active id instead of mutating restaurants[0] (M10)", async () => {

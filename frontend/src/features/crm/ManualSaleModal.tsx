@@ -35,6 +35,9 @@ import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { uploadImageToStorage } from "@/core/storage/supabaseStorage"
 import { useHorizontalScroll } from "@/hooks/useHorizontalScroll"
+import { useRestaurantTables } from "@/features/crm/tables/useRestaurantTables"
+import { TablePicker } from "@/features/crm/tables/TablePicker"
+import { getOrderTableLabel } from "@/features/crm/tables/orderTable"
 
 export interface ManualSaleModalProps {
   isOpen: boolean
@@ -44,23 +47,33 @@ export interface ManualSaleModalProps {
 
 type ServiceType = "mostrador" | "mesa" | "domicilio"
 
-function getOrderAddress(serviceType: ServiceType, customerAddress: string, tableNumber: string): string {
+/** Order statuses in which a table counts as occupied. */
+const ACTIVE_ORDER_STATUSES = new Set(["pending", "cooking", "delivering"])
+
+/**
+ * The table itself travels in tableId/tableLabel, never in the customer
+ * fields. A legacy order edited without picking a table keeps its original
+ * address text so the old "Salón - Mesa N" label is not lost.
+ */
+function getOrderAddress(
+  serviceType: ServiceType,
+  customerAddress: string,
+  legacyAddress: string | undefined
+): string {
   if (serviceType === "domicilio") {
     return customerAddress.trim()
   }
   if (serviceType === "mesa") {
-    const table = tableNumber.trim()
-    const tableLabel = table ? `Mesa ${table}` : "Mesa general"
-    return `Salón - ${tableLabel}`
+    return legacyAddress || "Salón"
   }
   return "Mostrador / Para llevar"
 }
 
-function resolveCustomerDisplayName(serviceType: ServiceType, customerName: string, tableNumber: string): string {
+function resolveCustomerDisplayName(serviceType: ServiceType, customerName: string, legacyName?: string): string {
   const trimmed = customerName.trim()
   if (trimmed) return trimmed
   if (serviceType === "mesa") {
-    return tableNumber.trim() ? `Mesa ${tableNumber.trim()}` : "Mesa Salón"
+    return legacyName || "Cliente Salón"
   }
   if (serviceType === "mostrador") {
     return "Cliente Mostrador"
@@ -70,7 +83,11 @@ function resolveCustomerDisplayName(serviceType: ServiceType, customerName: stri
 
 interface ParsedOrderToEdit {
   serviceType: ServiceType
-  tableNumber: string
+  tableId: string | null
+  /** Table text of an order saved before tables existed (no tableId). */
+  legacyTableLabel: string
+  legacyAddress: string
+  legacyName: string
   customerName: string
   customerPhone: string
   customerAddress: string
@@ -86,6 +103,7 @@ function parseOrderToEdit(order: Order): ParsedOrderToEdit {
   const lowerDir = dir.toLowerCase()
   const custName = order.customer?.nombre ?? ""
   const isMesa =
+    Boolean(order.tableId || order.tableLabel) ||
     lowerDir.includes("mesa") ||
     lowerDir.includes("salón") ||
     lowerDir.includes("salon") ||
@@ -95,13 +113,11 @@ function parseOrderToEdit(order: Order): ParsedOrderToEdit {
     lowerDir.includes("llevar")
 
   let parsedServiceType: ServiceType = "domicilio"
-  let parsedTableNumber = ""
+  let legacyTableLabel = ""
 
   if (isMesa) {
     parsedServiceType = "mesa"
-    const mesaRegex = /mesa\s*(\d+)/i
-    const mesaMatch = mesaRegex.exec(dir) || mesaRegex.exec(custName)
-    parsedTableNumber = mesaMatch ? mesaMatch[1] : ""
+    legacyTableLabel = order.tableId ? "" : (getOrderTableLabel(order) ?? "")
   } else if (isMostrador) {
     parsedServiceType = "mostrador"
   }
@@ -110,6 +126,7 @@ function parseOrderToEdit(order: Order): ParsedOrderToEdit {
     custName.startsWith("Mesa ") ||
     custName === "Cliente Mostrador" ||
     custName === "Cliente Domicilio" ||
+    custName === "Cliente Salón" ||
     custName === "Mesa Salón"
 
   const finalCustName = isGenericName ? "" : custName
@@ -120,7 +137,10 @@ function parseOrderToEdit(order: Order): ParsedOrderToEdit {
 
   return {
     serviceType: parsedServiceType,
-    tableNumber: parsedTableNumber,
+    tableId: order.tableId ?? null,
+    legacyTableLabel,
+    legacyAddress: isMesa && legacyTableLabel ? dir : "",
+    legacyName: isMesa && legacyTableLabel && isGenericName ? custName : "",
     customerName: finalCustName,
     customerPhone: phone,
     customerAddress: address,
@@ -173,7 +193,10 @@ function buildOrderPayload(params: {
   customerAddress: string
   customerBarrio: string
   serviceType: ServiceType
-  tableNumber: string
+  tableId: string | null
+  tableLabel: string | undefined
+  legacyAddress: string
+  legacyName: string
   selectedItems: CartItem[]
   subtotal: number
   deliveryFee: number
@@ -184,14 +207,23 @@ function buildOrderPayload(params: {
   orderNotes: string
   receiptUrl?: string
 }) {
-  const finalCustomerName = resolveCustomerDisplayName(params.serviceType, params.customerName, params.tableNumber)
+  const finalCustomerName = resolveCustomerDisplayName(
+    params.serviceType,
+    params.customerName,
+    params.legacyName || undefined
+  )
+  const onTable = params.serviceType === "mesa" && params.tableId
   return {
     customer: {
       nombre: finalCustomerName,
       telefono: params.customerPhone.trim() || "N/A",
-      direccion: getOrderAddress(params.serviceType, params.customerAddress, params.tableNumber),
+      direccion: getOrderAddress(params.serviceType, params.customerAddress, params.legacyAddress || undefined),
       barrio: params.serviceType === "domicilio" ? params.customerBarrio.trim() : "Local",
     },
+    // Always present (undefined when there is no table) so an edit that leaves
+    // the salon service detaches the order from its table.
+    tableId: onTable ? (params.tableId as string) : undefined,
+    tableLabel: onTable ? params.tableLabel : undefined,
     items: params.selectedItems.map(cartItemToOrderItem),
     total: params.subtotal,
     deliveryFee: params.deliveryFee,
@@ -212,35 +244,21 @@ function getFieldInputClass(isDark: boolean): string {
 
 interface MesaInputsProps {
   readonly isDark: boolean
-  readonly tableNumber: string
-  readonly setTableNumber: (val: string) => void
+  readonly tableSelector: React.ReactNode
   readonly customerName: string
   readonly setCustomerName: (val: string) => void
 }
 
 function MesaInputs({
   isDark,
-  tableNumber,
-  setTableNumber,
+  tableSelector,
   customerName,
   setCustomerName,
 }: Readonly<MesaInputsProps>) {
   const inputClass = getFieldInputClass(isDark)
   return (
-    <div className="grid grid-cols-2 gap-2">
-      <div>
-        <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-          Número de Mesa
-        </label>
-        <input
-          type="text"
-          maxLength={25}
-          placeholder="Ej: 3, Terraza 1"
-          value={tableNumber}
-          onChange={(e) => setTableNumber(e.target.value)}
-          className={inputClass}
-        />
-      </div>
+    <div className="space-y-2">
+      {tableSelector}
       <div>
         <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
           Nombre Cliente (Opcional)
@@ -395,8 +413,7 @@ function MostradorInputs({
 interface CustomerInputsProps {
   readonly serviceType: ServiceType
   readonly isDark: boolean
-  readonly tableNumber: string
-  readonly setTableNumber: (val: string) => void
+  readonly tableSelector: React.ReactNode
   readonly customerName: string
   readonly setCustomerName: (val: string) => void
   readonly customerPhone: string
@@ -412,8 +429,7 @@ function CustomerInputs(props: Readonly<CustomerInputsProps>) {
     return (
       <MesaInputs
         isDark={props.isDark}
-        tableNumber={props.tableNumber}
-        setTableNumber={props.setTableNumber}
+        tableSelector={props.tableSelector}
         customerName={props.customerName}
         setCustomerName={props.setCustomerName}
       />
@@ -448,7 +464,7 @@ function CustomerInputs(props: Readonly<CustomerInputsProps>) {
 }
 
 export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClose, orderToEdit }) => {
-  const { activeRestaurant, storeConfig, adminTheme, addOrder, updateOrder } = useRestaurant()
+  const { activeRestaurant, storeConfig, adminTheme, addOrder, updateOrder, setAdminTab } = useRestaurant()
   const isDark = adminTheme === "dark"
 
   // Mobile Tab State
@@ -456,7 +472,8 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
 
   // Service and Customer State
   const [serviceType, setServiceType] = useState<ServiceType>("mostrador")
-  const [tableNumber, setTableNumber] = useState("")
+  const [selectedTableId, setSelectedTableId] = useState<string | null>(null)
+  const [legacy, setLegacy] = useState({ tableLabel: "", address: "", name: "" })
   const [customerName, setCustomerName] = useState("")
   const [customerPhone, setCustomerPhone] = useState("")
   const [customerAddress, setCustomerAddress] = useState("")
@@ -493,6 +510,25 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
   const [editingCartItemIndex, setEditingCartItemIndex] = useState<number | null>(null)
   const [customAdditions, setCustomAdditions] = useState<Record<string, number>>({})
   const [customItemNote, setCustomItemNote] = useState("")
+
+  const {
+    tables,
+    isLoading: isLoadingTables,
+    loadError: tablesLoadError,
+    createTable,
+  } = useRestaurantTables(isOpen ? activeRestaurant.id : undefined)
+
+  // A table is occupied while it has an order in progress. Derived from the
+  // orders already in context; the order being edited does not occupy it.
+  const occupiedTableIds = useMemo(() => {
+    const ids = new Set<string>()
+    for (const order of activeRestaurant.orders ?? []) {
+      if (order.tableId && ACTIVE_ORDER_STATUSES.has(order.status) && order.id !== orderToEdit?.id) {
+        ids.add(order.tableId)
+      }
+    }
+    return ids
+  }, [activeRestaurant.orders, orderToEdit?.id])
 
   // Products from active restaurant
   const catalogProducts = useMemo(() => activeRestaurant.products ?? [], [activeRestaurant.products])
@@ -725,7 +761,8 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
   const handleResetForm = useCallback(() => {
     setSelectedItems([])
     setServiceType("mostrador")
-    setTableNumber("")
+    setSelectedTableId(null)
+    setLegacy({ tableLabel: "", address: "", name: "" })
     setCustomerName("")
     setCustomerPhone("")
     setCustomerAddress("")
@@ -750,7 +787,8 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
 
       const parsed = parseOrderToEdit(orderToEdit)
       setServiceType(parsed.serviceType)
-      setTableNumber(parsed.tableNumber)
+      setSelectedTableId(parsed.tableId)
+      setLegacy({ tableLabel: parsed.legacyTableLabel, address: parsed.legacyAddress, name: parsed.legacyName })
       setCustomerName(parsed.customerName)
       setCustomerPhone(parsed.customerPhone)
       setCustomerAddress(parsed.customerAddress)
@@ -786,6 +824,11 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
       }
     }
 
+    if (serviceType === "mesa" && !selectedTableId && !legacy.tableLabel) {
+      toast.error("Seleccioná la mesa de la venta de salón")
+      return
+    }
+
     let finalReceiptUrl: string | undefined = undefined
     if (paymentMethod === "Transferencia" && (receiptFile || receiptPreview)) {
       setIsUploadingReceipt(true)
@@ -809,7 +852,10 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
       customerAddress,
       customerBarrio,
       serviceType,
-      tableNumber,
+      tableId: selectedTableId,
+      tableLabel: tables.find((t) => t.id === selectedTableId)?.name ?? orderToEdit?.tableLabel,
+      legacyAddress: selectedTableId ? "" : legacy.address,
+      legacyName: selectedTableId ? "" : legacy.name,
       selectedItems,
       subtotal,
       deliveryFee,
@@ -839,6 +885,12 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
 
     handleResetForm()
     onClose()
+  }
+
+  const handleOpenTableManager = () => {
+    handleResetForm()
+    onClose()
+    setAdminTab("customizer")
   }
 
   const handleClose = () => {
@@ -1343,8 +1395,20 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                   <CustomerInputs
                     serviceType={serviceType}
                     isDark={isDark}
-                    tableNumber={tableNumber}
-                    setTableNumber={setTableNumber}
+                    tableSelector={
+                      <TablePicker
+                        isDark={isDark}
+                        tables={tables}
+                        isLoading={isLoadingTables}
+                        loadError={tablesLoadError}
+                        selectedTableId={selectedTableId}
+                        occupiedTableIds={occupiedTableIds}
+                        onSelect={setSelectedTableId}
+                        onCreateTable={createTable}
+                        onOpenManager={handleOpenTableManager}
+                        legacyLabel={legacy.tableLabel || undefined}
+                      />
+                    }
                     customerName={customerName}
                     setCustomerName={setCustomerName}
                     customerPhone={customerPhone}

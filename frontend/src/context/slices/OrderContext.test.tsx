@@ -14,7 +14,8 @@ import {
   handleOrderReceiptUpdatedEvent,
   handleOrderCreatedEvent,
   handleOrderUpdatedEvent,
-      buildCreateOrderInput,
+  buildCreateOrderInput,
+  buildUpdateOrderInput,
   updateRestaurantOrderState,
   syncBackendOrders,
   syncBackendCustomers,
@@ -1290,5 +1291,83 @@ describe("formatUserFacingOrderError - opening hours", () => {
     expect(formatUserFacingOrderError("El restaurante 'Burger Craft' tiene los pedidos en pausa.")).toBe(
       "El restaurante tiene los pedidos en pausa en este momento. Intenta de nuevo más tarde."
     )
+  })
+})
+
+describe("orders and restaurant tables", () => {
+  const restaurant = { id: "rest-1", orders: [], customers: [] } as any
+  const baseOrder = {
+    id: "order-t",
+    orderNumber: 9,
+    customer: { nombre: "Cliente Salón", telefono: "N/A", direccion: "Salón", barrio: "Local" },
+    items: [],
+    total: 1000,
+    deliveryFee: 0,
+    finalTotal: 1000,
+    metodo: "Efectivo",
+    status: "pending",
+  } as any
+
+  it("sends the table id of a sale to the server", () => {
+    const input = buildCreateOrderInput(restaurant, { ...baseOrder, tableId: "tbl_1", tableLabel: "Mesa 1" })
+    expect(input.tableId).toBe("tbl_1")
+  })
+
+  it("omits tableId for a sale without a table", () => {
+    expect(buildCreateOrderInput(restaurant, baseOrder).tableId).toBeUndefined()
+    expect("tableId" in buildCreateOrderInput(restaurant, baseOrder)).toBe(false)
+  })
+
+  it("sends the new table of an edit, and null when the table is detached", () => {
+    expect(buildUpdateOrderInput({ tableId: "tbl_2" }, []).tableId).toBe("tbl_2")
+    expect(buildUpdateOrderInput({ tableId: undefined, tableLabel: undefined }, []).tableId).toBeNull()
+    expect("tableId" in buildUpdateOrderInput({ comentario: "x" }, [])).toBe(false)
+  })
+
+  it("reads tableId and tableLabel from backend orders and keeps a label whose table was deleted", () => {
+    const synced = syncBackendOrders(
+      [],
+      [
+        { id: "a", orderNumber: 1, status: "pending", createdAt: "2026-08-02T10:00:00.000Z", tableId: "tbl_1", tableLabel: "Mesa 1" },
+        { id: "b", orderNumber: 2, status: "pending", createdAt: "2026-08-02T10:00:00.000Z", tableLabel: "Mesa 2" },
+        { id: "c", orderNumber: 3, status: "pending", createdAt: "2026-08-02T10:00:00.000Z" },
+      ],
+      []
+    )
+    expect(synced.find((o) => o.id === "a")).toMatchObject({ tableId: "tbl_1", tableLabel: "Mesa 1" })
+    expect(synced.find((o) => o.id === "b")?.tableId).toBeUndefined()
+    expect(synced.find((o) => o.id === "b")?.tableLabel).toBe("Mesa 2")
+    expect(synced.find((o) => o.id === "c")?.tableLabel).toBeUndefined()
+  })
+
+  it("takes the table from the ORDER_CREATED event payload and drops it on an ORDER_UPDATED without one", () => {
+    const created: OrderEvent = {
+      eventType: "ORDER_CREATED",
+      orderId: "o-ev",
+      orderNumber: 77,
+      status: "pending",
+      timestamp: "2026-08-01T16:00:00.000Z",
+      payload: {
+        customer: { nombre: "Cliente Salón", telefono: "", direccion: "Salón", barrio: "Local" },
+        items: [],
+        finalTotal: 0,
+        tableId: "tbl_1",
+        tableLabel: "Mesa 1",
+      },
+    }
+    const afterCreate = handleOrderCreatedEvent({ id: "rest-1", orders: [], customers: [] } as any, created)
+    expect(afterCreate.orders[0]).toMatchObject({ tableId: "tbl_1", tableLabel: "Mesa 1" })
+
+    const updated: OrderEvent = {
+      eventType: "ORDER_UPDATED",
+      orderId: "o-ev",
+      orderNumber: 77,
+      status: "pending",
+      timestamp: "2026-08-01T16:05:00.000Z",
+      payload: { customer: afterCreate.orders[0].customer, items: [], finalTotal: 0 },
+    }
+    const afterUpdate = handleOrderUpdatedEvent(afterCreate, updated, 0)
+    expect(afterUpdate.orders[0].tableId).toBeUndefined()
+    expect(afterUpdate.orders[0].tableLabel).toBeUndefined()
   })
 })
