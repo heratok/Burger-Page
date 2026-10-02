@@ -5,7 +5,15 @@
 
 /** Keys whose VALUES must never be stored (matched case-insensitively). */
 const SECRET_KEY = /pass(word|wd)?|hash|secret|token|authorization|api[-_]?key|credential/i;
+// Short secret names would false-positive as substrings ("pinned", "shipping"),
+// so they only match as a whole word of the key: "pin", "adminPin", "pin_code",
+// "user-pwd", "passcode" (camelCase is split into words first).
+const SECRET_WORD = /(^|[^a-z])(pin|pwd|passcode)([^a-z]|$)/i;
 const MAX_DEPTH = 5;
+
+function isSecretKey(key: string): boolean {
+  return SECRET_KEY.test(key) || SECRET_WORD.test(key.replace(/([a-z])([A-Z])/g, '$1_$2'));
+}
 const MAX_STRING = 500;
 
 function clean(value: unknown, depth: number): unknown {
@@ -20,7 +28,7 @@ function clean(value: unknown, depth: number): unknown {
   if (typeof value === 'object') {
     const out: Record<string, unknown> = {};
     for (const [key, v] of Object.entries(value as Record<string, unknown>)) {
-      if (SECRET_KEY.test(key)) continue;
+      if (isSecretKey(key)) continue;
       const c = clean(v, depth + 1);
       if (c !== undefined) out[key] = c;
     }

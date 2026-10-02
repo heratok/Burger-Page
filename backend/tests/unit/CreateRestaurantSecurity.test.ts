@@ -15,6 +15,7 @@ describe('CreateRestaurantUseCase (Security Hardening)', () => {
     mockRestaurantRepo = {
       findById: vi.fn().mockResolvedValue(null),
       findBySlug: vi.fn().mockResolvedValue(null),
+      slugExists: vi.fn().mockResolvedValue(false),
       findAll: vi.fn().mockResolvedValue([]),
       save: vi.fn().mockResolvedValue(undefined),
       delete: vi.fn().mockResolvedValue(true),

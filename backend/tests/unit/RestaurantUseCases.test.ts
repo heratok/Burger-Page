@@ -29,6 +29,7 @@ function mockRepo(): RestaurantRepository {
   return {
     findById: vi.fn(),
     findBySlug: vi.fn(),
+    slugExists: vi.fn().mockResolvedValue(false),
     findAll: vi.fn(),
     save: vi.fn(),
     delete: vi.fn(),

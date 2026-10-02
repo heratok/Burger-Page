@@ -16,8 +16,11 @@ import { normalizeSlug } from '../../domain/shared/slug.js';
 import { DEFAULT_CURRENCY_SYMBOL, defaultSymbolFor, normalizeCurrency } from '../../domain/shared/currency.js';
 import {
   RestaurantTemplate,
+  SUPPORTED_TEMPLATE_CURRENCIES,
   getRestaurantTemplate,
+  isTemplateCurrencySupported,
   scaleTemplatePrice,
+  templateSeedsSampleData,
 } from '../../domain/templates/restaurantTemplates.js';
 import {
   DEFAULT_TIMEZONE,
@@ -44,9 +47,13 @@ export class CreateRestaurantUseCase {
   async execute(input: CreateRestaurantInput, callerRole?: UserRole, actor?: AuditActor): Promise<Restaurant> {
     const cleanSlug = normalizeSlug(input.slug);
 
-    const existing = await this.restaurantRepo.findBySlug(cleanSlug);
-    if (existing) {
-      throw new ValidationError(`Restaurant with slug "${cleanSlug}" already exists`);
+    const name = input.name.trim();
+    if (!name) throw new ValidationError('Restaurant name is required');
+
+    // slugExists, not findBySlug: the latter is the public lookup and cannot see
+    // a paused tenant, which would let the unique index answer with a 500.
+    if (await this.restaurantRepo.slugExists(cleanSlug)) {
+      throw new ConflictError(`Restaurant with slug "${cleanSlug}" already exists`);
     }
 
     if (input.adminPassword !== undefined && input.adminPassword.length < MIN_PASSWORD_LENGTH) {
@@ -79,6 +86,13 @@ export class CreateRestaurantUseCase {
     // Money of the store (restaurant_settings). Omitted means COP / "$"; a
     // currency sent without a symbol gets the usual symbol for that code.
     const currency = normalizeCurrency(input.currency ?? input.config?.currency);
+    // Sample prices are declared in COP and scaled: a currency without a known
+    // scale would seed COP-sized numbers, so it is refused up front.
+    if (template && templateSeedsSampleData(template) && !isTemplateCurrencySupported(currency)) {
+      throw new ValidationError(
+        `The "${template.id}" template cannot price sample dishes in ${currency}. Supported currencies: ${SUPPORTED_TEMPLATE_CURRENCIES.join(', ')}. Use the blank template or one of those currencies.`
+      );
+    }
     const currencySymbol =
       input.currencySymbol ??
       input.config?.currencySymbol ??
@@ -96,14 +110,14 @@ export class CreateRestaurantUseCase {
     const newRestaurant: Restaurant = {
       id: restaurantId,
       slug: cleanSlug,
-      name: input.name.trim(),
+      name,
       tagline: input.tagline || 'Cocina artesanal',
       whatsappNumber: input.whatsappNumber || '573001234567',
       primaryColor: input.primaryColor || '#FF7A21',
       theme: input.theme || template?.theme || 'dark-charcoal',
       config: {
         ...(input.config || {
-          name: input.name.trim(),
+          name,
           tagline: input.tagline || 'Cocina artesanal',
           whatsappNumber: input.whatsappNumber || '573001234567',
           primaryColor: input.primaryColor || '#FF7A21',
@@ -126,7 +140,7 @@ export class CreateRestaurantUseCase {
     // A template with sample data seeds every category strictly below; otherwise
     // (no template, or blank) the caller's categories keep the historical
     // best-effort sync.
-    const seedsSampleData = !!template && (template.products.length > 0 || template.additions.length > 0);
+    const seedsSampleData = !!template && templateSeedsSampleData(template);
     if (!seedsSampleData && this.categoryRepo && newRestaurant.categories?.length) {
       try {
         for (let i = 0; i < newRestaurant.categories.length; i++) {
@@ -284,7 +298,9 @@ function logCleanup(err: unknown): void {
 function mergeCategoryNames(primary: string[], extra: string[]): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
-  for (const name of [...primary, ...extra]) {
+  for (const raw of [...primary, ...extra]) {
+    const name = raw.trim();
+    if (!name) continue;
     const key = name.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);

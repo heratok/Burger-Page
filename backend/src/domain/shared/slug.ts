@@ -3,8 +3,12 @@ import { ValidationError } from '../errors/DomainErrors.js';
 /** Longest slug accepted (a DNS label), so slugs stay usable in URLs. */
 export const MAX_SLUG_LENGTH = 63;
 
-/** Slugs that would shadow a fixed route under /api/restaurants/. */
-const RESERVED_SLUGS = new Set(['deleted']);
+/**
+ * Slugs that would shadow a fixed route under /api/restaurants/. Must list every
+ * static segment of restaurants.routes.ts (a unit test reads that file and
+ * fails when one is missing).
+ */
+const RESERVED_SLUGS = new Set(['deleted', 'templates']);
 
 /**
  * Normalizes a storefront slug the way tenants have always been created:

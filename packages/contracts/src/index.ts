@@ -76,6 +76,8 @@ export const restaurantTemplateSummarySchema = z.object({
   description: z.string(),
   productCount: z.number().int().nonnegative(),
   additionCount: z.number().int().nonnegative(),
+  /** Currencies the sample prices support; null = any (blank template). */
+  supportedCurrencies: z.array(z.string()).nullable().optional(),
 });
 export type RestaurantTemplateSummary = z.infer<typeof restaurantTemplateSummarySchema>;
 

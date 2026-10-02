@@ -4,6 +4,7 @@ import {
   getRestaurantTemplate,
   listRestaurantTemplateSummaries,
   scaleTemplatePrice,
+  SUPPORTED_TEMPLATE_CURRENCIES,
 } from '../../../src/domain/templates/restaurantTemplates.js';
 import { createRestaurantSchema } from '@burger-page/contracts';
 
@@ -48,6 +49,7 @@ describe('restaurant templates (data-only module)', () => {
         description: t.description,
         productCount: t.products.length,
         additionCount: t.additions.length,
+        supportedCurrencies: t.products.length > 0 || t.additions.length > 0 ? SUPPORTED_TEMPLATE_CURRENCIES : null,
       });
     }
   });

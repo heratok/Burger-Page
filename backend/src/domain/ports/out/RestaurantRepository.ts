@@ -6,6 +6,12 @@ export type RestoreRestaurantOutcome = 'restored' | 'not_found' | 'slug_taken';
 export interface RestaurantRepository {
   findById(id: string): Promise<Restaurant | null>;
   findBySlug(slug: string): Promise<Restaurant | null>;
+  /**
+   * True when any non-deleted tenant, ACTIVE OR PAUSED, owns `slug`. findBySlug
+   * is the public storefront lookup and (under RLS) only sees active tenants, so
+   * uniqueness checks on create/update must use this instead.
+   */
+  slugExists(slug: string): Promise<boolean>;
   findAll(): Promise<Restaurant[]>;
   save(restaurant: Restaurant): Promise<void>;
   delete(id: string): Promise<void>;

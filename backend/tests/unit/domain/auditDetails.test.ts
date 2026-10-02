@@ -65,3 +65,35 @@ describe('audit cursor', () => {
     expect(() => decodeAuditCursor(Buffer.from('{"x":1}').toString('base64url'))).toThrow(ValidationError);
   });
 });
+
+describe('audit cursor strictness (review B4)', () => {
+  const encode = (t: string) => Buffer.from(JSON.stringify({ t, i: 'aud_1' })).toString('base64url');
+  it.each(['2026', 'yesterday', '2026-13-45T00:00:00Z', 'Jan 1 2026', '2026-01-01', '2026-01-01T00:00:00', ''])(
+    'rejects the non-ISO timestamp %j',
+    (t) => {
+      expect(() => decodeAuditCursor(encode(t))).toThrow(ValidationError);
+    }
+  );
+  it.each(['2026-01-01T00:00:00Z', '2026-01-01T00:00:00.123Z', '2026-01-01T00:00:00.123456+00:00'])(
+    'accepts the ISO timestamp %s',
+    (t) => {
+      expect(decodeAuditCursor(encode(t)).createdAt).toBe(t);
+    }
+  );
+});
+
+describe('sanitizeAuditDetails short secret keys (review B4)', () => {
+  it('drops pin, pwd and passcode style keys but keeps look-alikes', () => {
+    const out = sanitizeAuditDetails({
+      pin: '1234',
+      PIN: '1234',
+      pwd: 'x',
+      passcode: 'x',
+      adminPin: '1234',
+      pin_code: '1234',
+      pinned: true,
+      shipping: 'ok',
+    });
+    expect(out).toEqual({ pinned: true, shipping: 'ok' });
+  });
+});

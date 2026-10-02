@@ -50,6 +50,11 @@ export interface RestaurantTemplateSummary {
   description: string;
   productCount: number;
   additionCount: number;
+  /**
+   * Currencies the sample prices can be scaled to. `null` for a template with
+   * no sample data (blank): it accepts any valid currency.
+   */
+  supportedCurrencies: string[] | null;
 }
 
 export const RESTAURANT_TEMPLATES: RestaurantTemplate[] = [
@@ -258,6 +263,7 @@ export function listRestaurantTemplateSummaries(): RestaurantTemplateSummary[] {
     description: t.description,
     productCount: t.products.length,
     additionCount: t.additions.length,
+    supportedCurrencies: templateSeedsSampleData(t) ? [...SUPPORTED_TEMPLATE_CURRENCIES] : null,
   }));
 }
 
@@ -278,6 +284,17 @@ const PRICE_SCALE: Record<string, { perCop: number; step: number }> = {
   ARS: { perCop: 0.3, step: 100 },
   UYU: { perCop: 0.01, step: 5 },
 };
+
+/** Currencies a template with sample data can be priced in (the keys of the price scale). */
+export const SUPPORTED_TEMPLATE_CURRENCIES: readonly string[] = Object.keys(PRICE_SCALE);
+
+export function templateSeedsSampleData(template: RestaurantTemplate): boolean {
+  return template.products.length > 0 || template.additions.length > 0;
+}
+
+export function isTemplateCurrencySupported(currency: string): boolean {
+  return currency in PRICE_SCALE;
+}
 
 export function scaleTemplatePrice(copPrice: number, currency: string): number {
   if (currency === DEFAULT_CURRENCY) return copPrice;

@@ -106,6 +106,7 @@ export async function restaurantsRoutes(fastify: FastifyInstance, opts: { contro
               description: { type: 'string' },
               productCount: { type: 'integer' },
               additionCount: { type: 'integer' },
+              supportedCurrencies: { type: 'array', nullable: true, items: { type: 'string' } },
             },
           },
         },

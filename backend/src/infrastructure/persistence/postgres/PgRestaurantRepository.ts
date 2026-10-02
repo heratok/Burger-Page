@@ -148,6 +148,18 @@ export class PgRestaurantRepository implements RestaurantRepository {
     });
   }
 
+  async slugExists(slug: string): Promise<boolean> {
+    // Administrative check (super_admin context, like findById/findAll): it must
+    // see paused tenants, which the public slug-scoped read policy hides.
+    return withTenantContext({ restaurantId: null, actorRole: 'super_admin' }, async (client) => {
+      const { rowCount } = await client.query(
+        `SELECT 1 FROM public.restaurants WHERE deleted_at IS NULL AND slug = $1`,
+        [slug]
+      );
+      return (rowCount ?? 0) > 0;
+    });
+  }
+
   async findAll(): Promise<Restaurant[]> {
     return withTenantContext({ restaurantId: null, actorRole: 'super_admin' }, async (client) => {
       const { rows } = await client.query(`${RESTAURANT_READ_COLUMNS} WHERE r.deleted_at IS NULL ORDER BY r.created_at ASC`);

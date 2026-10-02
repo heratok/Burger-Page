@@ -60,6 +60,24 @@ export function errorHandler(error: FastifyError | Error, request: FastifyReques
     });
   }
 
+  // Safety net: a Postgres unique violation that slipped past the application
+  // checks (a race, or a lookup that cannot see the row under RLS) is a client
+  // conflict, never a 500. Only the constraint is inspected, so no SQL leaks.
+  if ((error as { code?: string }).code === '23505') {
+    const constraint = String((error as { constraint?: string }).constraint ?? '');
+    const subject = constraint.includes('slug')
+      ? 'slug'
+      : constraint.includes('username')
+        ? 'username'
+        : 'value';
+    return reply.status(409).send({
+      type: 'https://example.com/probs/conflict',
+      title: 'Conflict',
+      status: 409,
+      detail: subject === 'value' ? 'A record with that value already exists' : `That ${subject} is already in use`
+    });
+  }
+
   // Zod schema errors
   if (error instanceof ZodError) {
     return reply.status(400).send({

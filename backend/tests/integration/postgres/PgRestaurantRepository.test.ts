@@ -332,3 +332,54 @@ describe('PgRestaurantRepository (real Postgres, app_user role)', () => {
     });
   });
 });
+
+describe('PgRestaurantRepository.slugExists (review B4, real Postgres, app_user role)', () => {
+  let adminPool: pg.Pool;
+  let repo: PgRestaurantRepository;
+  let connected = false;
+  const ids: string[] = [];
+
+  beforeAll(async () => {
+    process.env.DATABASE_URL = APP_USER_DATABASE_URL;
+    adminPool = new Pool({ connectionString: DATABASE_URL, connectionTimeoutMillis: 2000 });
+    try {
+      await adminPool.query('SELECT 1');
+      connected = true;
+      repo = new PgRestaurantRepository();
+    } catch {
+      connected = false;
+    }
+  });
+
+  afterAll(async () => {
+    if (connected) await adminPool.query(`DELETE FROM public.restaurants WHERE id = ANY($1)`, [ids]);
+    await adminPool?.end();
+  });
+
+  const tenant = (id: string, slug: string, isActive: boolean): Restaurant => ({
+    id,
+    slug,
+    name: id,
+    theme: 'dark-charcoal',
+    schedule: [{ dayOfWeek: 1, open: '12:00', close: '22:00' }],
+    timezone: 'America/Bogota',
+    ordersPaused: false,
+    isActive,
+  });
+
+  it('sees a paused tenant that findBySlug (public RLS read) cannot, and ignores deleted ones', async () => {
+    if (!connected) return;
+    const suffix = randomUUID().slice(0, 8);
+    const paused = `pgslug-p-${suffix}`;
+    const gone = `pgslug-d-${suffix}`;
+    ids.push(paused, gone);
+    await repo.save(tenant(paused, paused, false));
+    await repo.save(tenant(gone, gone, true));
+    await repo.delete(gone);
+
+    expect(await repo.findBySlug(paused)).toBeNull();
+    expect(await repo.slugExists(paused)).toBe(true);
+    expect(await repo.slugExists(gone)).toBe(false);
+    expect(await repo.slugExists(`pgslug-none-${suffix}`)).toBe(false);
+  });
+});

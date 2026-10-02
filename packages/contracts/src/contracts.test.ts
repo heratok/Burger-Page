@@ -143,6 +143,8 @@ describe('restaurant schedule contracts', () => {
     const entry = { id: 'burger', name: 'Hamburguesería', description: 'x', productCount: 6, additionCount: 7 };
     expect(restaurantTemplateSummarySchema.safeParse(entry).success).toBe(true);
     expect(restaurantTemplateSummarySchema.safeParse({ ...entry, productCount: -1 }).success).toBe(false);
+    expect(restaurantTemplateSummarySchema.safeParse({ ...entry, supportedCurrencies: ['COP', 'USD'] }).success).toBe(true);
+    expect(restaurantTemplateSummarySchema.safeParse({ ...entry, supportedCurrencies: null }).success).toBe(true);
   });
 
   describe('audit log contracts', () => {

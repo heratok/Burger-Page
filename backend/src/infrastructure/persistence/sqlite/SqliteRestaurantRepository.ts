@@ -78,6 +78,10 @@ export class SqliteRestaurantRepository implements RestaurantRepository {
     return this.mapRow(row);
   }
 
+  async slugExists(slug: string): Promise<boolean> {
+    return !!this.db.prepare('SELECT 1 FROM restaurants WHERE slug = ? AND deleted_at IS NULL').get(slug);
+  }
+
   async findAll(): Promise<Restaurant[]> {
     const rows = this.db.prepare('SELECT * FROM restaurants WHERE deleted_at IS NULL ORDER BY created_at ASC').all() as any[];
     return rows.map((row) => this.mapRow(row));

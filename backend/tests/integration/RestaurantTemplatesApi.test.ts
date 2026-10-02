@@ -68,3 +68,25 @@ describe('Restaurant templates API (super-admin-panel B2)', () => {
     expect(additions.json().length).toBeGreaterThan(0);
   });
 });
+
+describe('Restaurant templates API - supported currencies (review B4)', () => {
+  it('exposes supportedCurrencies per template: a list for sample templates, null (any) for blank', async () => {
+    const app = buildApp();
+    await app.ready();
+    const token = new JwtService().generateToken({ id: 'user-superadmin', username: 'admin', role: 'super_admin' });
+    const res = await app.inject({ method: 'GET', url: '/api/restaurants/templates', headers: { authorization: `Bearer ${token}` } });
+    const list = res.json();
+    expect(list.find((t: any) => t.id === 'burger').supportedCurrencies).toEqual(expect.arrayContaining(['COP', 'USD', 'MXN']));
+    expect(list.find((t: any) => t.id === 'blank').supportedCurrencies).toBeNull();
+
+    const bad = await app.inject({
+      method: 'POST',
+      url: '/api/restaurants',
+      headers: { authorization: `Bearer ${token}` },
+      payload: { name: 'Yen', slug: 'yen-api', templateType: 'pizza', currency: 'JPY' },
+    });
+    expect(bad.statusCode).toBe(400);
+    expect(bad.json().detail).toMatch(/JPY/);
+    await app.close();
+  });
+});

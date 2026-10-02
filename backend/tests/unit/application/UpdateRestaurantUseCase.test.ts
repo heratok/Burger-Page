@@ -66,6 +66,10 @@ class FakeRestaurantRepository implements RestaurantRepository {
     return this.restaurants.find((r) => r.slug === slug) ?? null;
   }
 
+  async slugExists(slug: string): Promise<boolean> {
+    return this.restaurants.some((r) => r.slug === slug);
+  }
+
   async findAll(): Promise<Restaurant[]> {
     return [...this.restaurants];
   }

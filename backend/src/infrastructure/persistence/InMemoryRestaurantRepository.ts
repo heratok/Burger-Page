@@ -30,6 +30,10 @@ export class InMemoryRestaurantRepository implements RestaurantRepository {
     return found ? { ...found } : null;
   }
 
+  async slugExists(slug: string): Promise<boolean> {
+    return this.live().some((r) => r.slug === slug);
+  }
+
   async findAll(): Promise<Restaurant[]> {
     return this.live().map((r) => ({ ...r }));
   }

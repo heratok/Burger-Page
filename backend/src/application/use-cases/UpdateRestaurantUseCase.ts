@@ -71,6 +71,9 @@ export class UpdateRestaurantUseCase {
       }
     }
 
+    if (input.name !== undefined && !input.name.trim()) {
+      throw new ValidationError('Restaurant name cannot be empty');
+    }
     if (input.timezone !== undefined) assertValidTimezone(input.timezone);
     const schedule = resolveSchedule(restaurant, input);
 
@@ -78,8 +81,8 @@ export class UpdateRestaurantUseCase {
     if (input.slug !== undefined) {
       const cleanSlug = normalizeSlug(input.slug);
       if (cleanSlug !== restaurant.slug) {
-        const existing = await this.restaurantRepo.findBySlug(cleanSlug);
-        if (existing && existing.id !== restaurant.id) {
+        // slugExists, not findBySlug: the latter cannot see a paused tenant.
+        if (await this.restaurantRepo.slugExists(cleanSlug)) {
           throw new ConflictError(`Restaurant with slug "${cleanSlug}" already exists`);
         }
         slug = cleanSlug;
@@ -107,7 +110,9 @@ export class UpdateRestaurantUseCase {
       schedule,
       timezone: input.timezone ?? restaurant.timezone,
       ordersPaused: input.ordersPaused ?? restaurant.ordersPaused,
-      categories: input.categories ?? restaurant.categories,
+      categories: input.categories
+        ? input.categories.map((c) => c.trim()).filter((c) => c.length > 0)
+        : restaurant.categories,
       config: {
         ...restaurant.config,
         ...input.config,

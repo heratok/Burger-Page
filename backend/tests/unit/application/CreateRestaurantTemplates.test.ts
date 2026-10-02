@@ -209,3 +209,29 @@ function failingOnNthSave<T extends { save(entity: any): Promise<void> }>(repo: 
   };
   return recorded;
 }
+
+describe('CreateRestaurantUseCase - currencies a sample template can price (review B4)', () => {
+  it('rejects a sample template with a currency without a price scale, listing the supported ones, and writes nothing', async () => {
+    const { useCase, restaurantRepo } = build();
+    const before = (await restaurantRepo.findAll()).length;
+    const attempt = useCase.execute({ name: 'Yen', slug: 'yen-shop', templateType: 'burger', currency: 'JPY' });
+    await expect(attempt).rejects.toThrow(ValidationError);
+    await expect(attempt).rejects.toThrow(/JPY.*COP.*USD/s);
+    expect((await restaurantRepo.findAll()).length).toBe(before);
+  });
+
+  it('accepts any valid currency with the blank template or no template', async () => {
+    const { useCase, restaurantRepo } = build();
+    const a = await useCase.execute({ name: 'Yen blank', slug: 'yen-blank', templateType: 'blank', currency: 'JPY' });
+    const b = await useCase.execute({ name: 'Yen plain', slug: 'yen-plain', currency: 'JPY' });
+    expect((await restaurantRepo.findById(a.id))?.config).toMatchObject({ currency: 'JPY' });
+    expect((await restaurantRepo.findById(b.id))?.config).toMatchObject({ currency: 'JPY' });
+  });
+
+  it('still accepts a listed currency with a sample template', async () => {
+    const { useCase } = build();
+    await expect(
+      useCase.execute({ name: 'Peso', slug: 'peso-shop', templateType: 'tacos', currency: 'mxn' })
+    ).resolves.toBeDefined();
+  });
+});
