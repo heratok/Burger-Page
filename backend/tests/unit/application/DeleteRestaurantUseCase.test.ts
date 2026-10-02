@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { DeleteRestaurantUseCase } from '../../../src/application/use-cases/DeleteRestaurantUseCase.js';
 import { RestaurantRepository } from '../../../src/domain/ports/out/RestaurantRepository.js';
+import { UserRepository } from '../../../src/domain/ports/out/UserRepository.js';
 import { Restaurant } from '../../../src/domain/models/Restaurant.js';
 import { EntityNotFoundError } from '../../../src/domain/errors/DomainErrors.js';
 
@@ -75,6 +76,17 @@ describe('DeleteRestaurantUseCase', () => {
     expect(repo.findByIdCalls).toEqual(['mi-restaurante']);
     expect(repo.findBySlugCalls).toEqual(['mi-restaurante']);
     // Deletes under the canonical restaurant id, not the slug.
+    expect(repo.deleteCalls).toEqual(['rest-1']);
+  });
+
+  it('retires the tenant users (deactivate + free usernames) when it deletes the restaurant', async () => {
+    const repo = new FakeRestaurantRepository([restaurant('rest-1', { slug: 'mi-restaurante' })]);
+    const retired: string[] = [];
+    const userRepo = { retireByRestaurantId: async (id: string) => { retired.push(id); } } as unknown as UserRepository;
+
+    await new DeleteRestaurantUseCase(repo, userRepo).execute('mi-restaurante');
+
+    expect(retired).toEqual(['rest-1']);
     expect(repo.deleteCalls).toEqual(['rest-1']);
   });
 

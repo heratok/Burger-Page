@@ -185,6 +185,7 @@ export const TenantProvider: React.FC<{
 
   // Sync with Backend DB on mount and when authentication session changes
   useEffect(() => {
+    if (session.mustChangePassword) return
     refreshRestaurants()
   }, [refreshRestaurants, session])
 
@@ -267,6 +268,10 @@ export const TenantProvider: React.FC<{
 
   const switchRestaurant = useCallback(
     (idOrSlug: string) => {
+      if (!idOrSlug) {
+        setActiveRestaurantId("")
+        return
+      }
       const target = envelope.restaurants.find(
         (r) => r.id === idOrSlug || r.slug === idOrSlug
       )

@@ -41,6 +41,13 @@ import { PgInventoryRepository } from '../persistence/postgres/PgInventoryReposi
 import { PgUserRepository } from '../persistence/postgres/PgUserRepository.js';
 import { PgSupplierRepository } from '../persistence/postgres/PgSupplierRepository.js';
 import { PgRestaurantTableRepository } from '../persistence/postgres/PgRestaurantTableRepository.js';
+import { PgAuditLogRepository } from '../persistence/postgres/PgAuditLogRepository.js';
+import { InMemoryAuditLogRepository } from '../persistence/InMemoryAuditLogRepository.js';
+import { AuditLogRepository } from '../../domain/ports/out/AuditLogRepository.js';
+import { AdminAuditRecorder } from '../../application/services/AdminAuditRecorder.js';
+import { ListAuditLogUseCase } from '../../application/use-cases/ListAuditLogUseCase.js';
+import { AuditLogController } from './controllers/AuditLogController.js';
+import { auditLogRoutes } from './routes/auditLog.routes.js';
 import { RestaurantRepository } from '../../domain/ports/out/RestaurantRepository.js';
 import { CategoryRepository } from '../../domain/ports/out/CategoryRepository.js';
 import { ProductRepository } from '../../domain/ports/out/ProductRepository.js';
@@ -58,6 +65,7 @@ import { CryptoPasswordHasher } from '../security/CryptoPasswordHasher.js';
 // Use Cases
 import { GetRestaurantUseCase } from '../../application/use-cases/GetRestaurantUseCase.js';
 import { ListRestaurantsUseCase } from '../../application/use-cases/ListRestaurantsUseCase.js';
+import { ListRestaurantTemplatesUseCase } from '../../application/use-cases/ListRestaurantTemplatesUseCase.js';
 import { CreateRestaurantUseCase } from '../../application/use-cases/CreateRestaurantUseCase.js';
 import { DeleteRestaurantUseCase } from '../../application/use-cases/DeleteRestaurantUseCase.js';
 import { UpdateRestaurantCategoriesUseCase } from '../../application/use-cases/UpdateRestaurantCategoriesUseCase.js';
@@ -88,6 +96,12 @@ import { DeleteInventoryItemUseCase } from '../../application/use-cases/DeleteIn
 import { CreateUserUseCase } from '../../application/use-cases/CreateUserUseCase.js';
 import { AuthenticateUserUseCase } from '../../application/use-cases/AuthenticateUserUseCase.js';
 import { ListUsersUseCase } from '../../application/use-cases/ListUsersUseCase.js';
+import { UpdateUserUseCase } from '../../application/use-cases/UpdateUserUseCase.js';
+import { ListDeletedRestaurantsUseCase } from '../../application/use-cases/ListDeletedRestaurantsUseCase.js';
+import { RestoreRestaurantUseCase } from '../../application/use-cases/RestoreRestaurantUseCase.js';
+import { DeleteUserUseCase } from '../../application/use-cases/DeleteUserUseCase.js';
+import { ResetUserPasswordUseCase } from '../../application/use-cases/ResetUserPasswordUseCase.js';
+import { ChangeOwnPasswordUseCase } from '../../application/use-cases/ChangeOwnPasswordUseCase.js';
 import { CreateProductAdditionUseCase } from '../../application/use-cases/CreateProductAdditionUseCase.js';
 import { GetProductAdditionByIdUseCase } from '../../application/use-cases/GetProductAdditionByIdUseCase.js';
 import { ListProductAdditionsUseCase } from '../../application/use-cases/ListProductAdditionsUseCase.js';
@@ -137,6 +151,7 @@ export interface AppDependencies {
   supplierController: SupplierController;
   restaurantTableController: RestaurantTableController;
   userController: UserController;
+  auditLogController: AuditLogController;
   additionController: ProductAdditionController;
   /** Repository-backed JWT revalidation (SUS-14): wired into the auth
    *  middlewares by buildApp so sessions are re-checked against storage. */
@@ -179,6 +194,7 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
   let userRepo: UserRepository;
   let supplierRepo: SupplierRepository;
   let tableRepo: RestaurantTableRepository;
+  let auditRepo: AuditLogRepository;
 
   if (dataRunsOnPostgres(selectedDriver)) {
     // S5: the 'supabase' driver no longer talks to Supabase PostgREST with the
@@ -203,6 +219,7 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
     userRepo = new PgUserRepository();
     supplierRepo = new PgSupplierRepository();
     tableRepo = new PgRestaurantTableRepository();
+    auditRepo = new PgAuditLogRepository();
   } else if (selectedDriver === 'sqlite') {
     const db = createSqliteDatabase(dbPath || process.env.DATABASE_PATH || ':memory:');
     restaurantRepo = new SqliteRestaurantRepository(db);
@@ -215,6 +232,8 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
     userRepo = new InMemoryUserRepository();
     supplierRepo = new SqliteSupplierRepository(db);
     tableRepo = new SqliteRestaurantTableRepository(db);
+    // sqlite/memory are local-dev drivers: the audit trail lives in process memory.
+    auditRepo = new InMemoryAuditLogRepository();
   } else {
     restaurantRepo = new InMemoryRestaurantRepository();
     categoryRepo = new InMemoryCategoryRepository();
@@ -226,16 +245,26 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
     userRepo = new InMemoryUserRepository();
     supplierRepo = new InMemorySupplierRepository();
     tableRepo = new InMemoryRestaurantTableRepository();
+    auditRepo = new InMemoryAuditLogRepository();
   }
 
   // Use Cases
   const hasher: PasswordHasher = new CryptoPasswordHasher();
+  const audit = new AdminAuditRecorder(auditRepo);
   const getRestaurant = new GetRestaurantUseCase(restaurantRepo, categoryRepo);
   const listRestaurants = new ListRestaurantsUseCase(restaurantRepo, categoryRepo);
-  const createRestaurant = new CreateRestaurantUseCase(restaurantRepo, categoryRepo, userRepo, hasher);
-  const deleteRestaurant = new DeleteRestaurantUseCase(restaurantRepo);
+  const createRestaurant = new CreateRestaurantUseCase(
+    restaurantRepo,
+    categoryRepo,
+    userRepo,
+    hasher,
+    productRepo,
+    additionRepo,
+    audit
+  );
+  const deleteRestaurant = new DeleteRestaurantUseCase(restaurantRepo, userRepo, audit);
   const updateRestaurantCategories = new UpdateRestaurantCategoriesUseCase(restaurantRepo, categoryRepo, productRepo);
-  const updateRestaurant = new UpdateRestaurantUseCase(restaurantRepo, categoryRepo);
+  const updateRestaurant = new UpdateRestaurantUseCase(restaurantRepo, categoryRepo, userRepo, hasher, audit);
 
   const listProducts = new ListProductsUseCase(productRepo);
   const getProductById = new GetProductByIdUseCase(productRepo);
@@ -275,8 +304,8 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
   const deleteTable = new DeleteRestaurantTableUseCase(tableRepo);
   const reorderTables = new ReorderRestaurantTablesUseCase(tableRepo);
 
-  const createUser = new CreateUserUseCase(userRepo, hasher, restaurantRepo);
-  const authenticateUser = new AuthenticateUserUseCase(userRepo, hasher);
+  const createUser = new CreateUserUseCase(userRepo, hasher, restaurantRepo, audit);
+  const authenticateUser = new AuthenticateUserUseCase(userRepo, hasher, undefined, restaurantRepo);
   const listUsersUC = new ListUsersUseCase(userRepo);
 
   const listAdditions = new ListProductAdditionsUseCase(additionRepo);
@@ -293,7 +322,10 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
       createRestaurant,
       deleteRestaurant,
       updateRestaurantCategories,
-      updateRestaurant
+      updateRestaurant,
+      new ListDeletedRestaurantsUseCase(restaurantRepo),
+      new RestoreRestaurantUseCase(restaurantRepo, userRepo, audit),
+      new ListRestaurantTemplatesUseCase()
     ),
     productController: new ProductController(
       listProducts,
@@ -345,7 +377,16 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
       reorderTables,
       restaurantRepo
     ),
-    userController: new UserController(createUser, authenticateUser, listUsersUC),
+    userController: new UserController(
+      createUser,
+      authenticateUser,
+      listUsersUC,
+      new UpdateUserUseCase(userRepo, restaurantRepo, audit),
+      new DeleteUserUseCase(userRepo, audit),
+      new ResetUserPasswordUseCase(userRepo, hasher, undefined, audit),
+      new ChangeOwnPasswordUseCase(userRepo, hasher)
+    ),
+    auditLogController: new AuditLogController(new ListAuditLogUseCase(auditRepo)),
     additionController: new ProductAdditionController(
       listAdditions,
       getAdditionById,
@@ -506,6 +547,7 @@ export function buildApp(
         { name: 'Inventory', description: 'Stock levels, suppliers, and ingredients' },
         { name: 'Customers', description: 'Customer profiles and loyalty tiers' },
         { name: 'Users', description: 'User management and authentication' },
+        { name: 'Audit log', description: 'Append-only trail of super admin actions' },
         { name: 'Storage', description: 'Storage and media presigned URLs' },
         { name: 'Health', description: 'Server health status' },
       ]
@@ -625,6 +667,7 @@ export function buildApp(
     api.register(supplierRoutes, { prefix: '/suppliers', controller: deps.supplierController });
     api.register(restaurantTableRoutes, { prefix: '/tables', controller: deps.restaurantTableController });
     api.register(userRoutes, { prefix: '/users', controller: deps.userController });
+    api.register(auditLogRoutes, { prefix: '/audit-log', controller: deps.auditLogController });
     api.register(storageRoutes, { prefix: '/storage' });
   }, { prefix: '/api' });
 

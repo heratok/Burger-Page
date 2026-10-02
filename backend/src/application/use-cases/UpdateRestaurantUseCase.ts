@@ -1,15 +1,22 @@
 import { ID_PREFIX, newId } from '../../domain/shared/newId.js';
+import { AdminAuditRecorder, AuditActor } from '../services/AdminAuditRecorder.js';
+import { diffFields } from '../../domain/shared/auditDetails.js';
 import { RestaurantRepository } from '../../domain/ports/out/RestaurantRepository.js';
 import { CategoryRepository } from '../../domain/ports/out/CategoryRepository.js';
 import { Restaurant, omitAdminPassword } from '../../domain/models/Restaurant.js';
 import { UpdateRestaurantInput } from '@burger-page/contracts';
-import { EntityNotFoundError, ValidationError } from '../../domain/errors/DomainErrors.js';
+import { ConflictError, EntityNotFoundError, ValidationError } from '../../domain/errors/DomainErrors.js';
+import { UserRepository } from '../../domain/ports/out/UserRepository.js';
+import { PasswordHasher } from '../../domain/ports/out/PasswordHasher.js';
+import { MIN_PASSWORD_LENGTH } from '../../domain/models/User.js';
 import {
   assertValidSchedule,
   assertValidTimezone,
   scheduleFromLegacyHoursText,
 } from '../../domain/shared/restaurantSchedule.js';
+import { normalizeSlug } from '../../domain/shared/slug.js';
 import type { WeeklySchedule } from '@burger-page/contracts';
+import { User } from '../../domain/models/User.js';
 
 /**
  * The weekly schedule is the stored source of the hours. An explicit
@@ -32,10 +39,13 @@ function resolveSchedule(current: Restaurant, input: UpdateRestaurantInput): Wee
 export class UpdateRestaurantUseCase {
   constructor(
     private restaurantRepo: RestaurantRepository,
-    private categoryRepo?: CategoryRepository
+    private categoryRepo?: CategoryRepository,
+    private userRepo?: UserRepository,
+    private hasher?: PasswordHasher,
+    private audit?: AdminAuditRecorder
   ) {}
 
-  async execute(id: string, input: UpdateRestaurantInput, actorRole?: string): Promise<Restaurant> {
+  async execute(id: string, input: UpdateRestaurantInput, actorRole?: string, actor?: AuditActor): Promise<Restaurant> {
     const restaurant = (await this.restaurantRepo.findById(id)) || (await this.restaurantRepo.findBySlug(id));
     if (!restaurant) {
       throw new EntityNotFoundError(`Restaurant "${id}" not found`);
@@ -61,43 +71,48 @@ export class UpdateRestaurantUseCase {
       }
     }
 
+    if (input.name !== undefined && !input.name.trim()) {
+      throw new ValidationError('Restaurant name cannot be empty');
+    }
     if (input.timezone !== undefined) assertValidTimezone(input.timezone);
     const schedule = resolveSchedule(restaurant, input);
 
     let slug = restaurant.slug;
     if (input.slug !== undefined) {
-      const cleanSlug = input.slug
-        .toLowerCase()
-        .trim()
-        .replace(/[^a-z0-9-]/g, '-')
-        .replace(/-+/g, '-');
-      if (!cleanSlug) {
-        throw new ValidationError('A valid slug is required');
-      }
+      const cleanSlug = normalizeSlug(input.slug);
       if (cleanSlug !== restaurant.slug) {
-        const existing = await this.restaurantRepo.findBySlug(cleanSlug);
-        if (existing && existing.id !== restaurant.id) {
-          throw new ValidationError(`Restaurant with slug "${cleanSlug}" already exists`);
+        // slugExists, not findBySlug: the latter cannot see a paused tenant.
+        if (await this.restaurantRepo.slugExists(cleanSlug)) {
+          throw new ConflictError(`Restaurant with slug "${cleanSlug}" already exists`);
         }
         slug = cleanSlug;
       }
     }
 
+    // The password is a credential of the admin USER (its hash is what the
+    // login checks); it is never stored on the restaurant record. Everything
+    // that can fail is resolved before the first write.
+    const adminReset = await this.prepareAdminPasswordReset(restaurant.id, input.adminPassword);
+
+    // A plaintext secret left on a stored record by older code is dropped on
+    // the next write.
+    const { adminPassword: _legacyPlaintext, ...stored } = restaurant;
     const updated: Restaurant = {
-      ...restaurant,
+      ...stored,
       id: restaurant.id,
       slug,
       name: input.name?.trim() ?? restaurant.name,
       tagline: input.tagline ?? restaurant.tagline,
       whatsappNumber: input.whatsappNumber ?? restaurant.whatsappNumber,
-      adminPassword: input.adminPassword ?? restaurant.adminPassword,
       primaryColor: input.primaryColor ?? restaurant.primaryColor,
       theme: input.theme ?? restaurant.theme,
       isActive: input.isActive ?? restaurant.isActive,
       schedule,
       timezone: input.timezone ?? restaurant.timezone,
       ordersPaused: input.ordersPaused ?? restaurant.ordersPaused,
-      categories: input.categories ?? restaurant.categories,
+      categories: input.categories
+        ? input.categories.map((c) => c.trim()).filter((c) => c.length > 0)
+        : restaurant.categories,
       config: {
         ...restaurant.config,
         ...input.config,
@@ -105,9 +120,14 @@ export class UpdateRestaurantUseCase {
         ...(input.tagline !== undefined ? { tagline: input.tagline } : {}),
         ...(input.whatsappNumber !== undefined ? { whatsappNumber: input.whatsappNumber } : {}),
         ...(input.primaryColor !== undefined ? { primaryColor: input.primaryColor } : {}),
+        // Top-level currency fields are the super admin form's shortcut for
+        // config.currency / config.currencySymbol (restaurant_settings).
+        ...(input.currency !== undefined ? { currency: input.currency.toUpperCase() } : {}),
+        ...(input.currencySymbol !== undefined ? { currencySymbol: input.currencySymbol } : {}),
       },
     };
 
+    if (adminReset) await this.userRepo!.save(adminReset, 'super_admin');
     await this.restaurantRepo.save(updated);
 
     if (input.categories !== undefined && this.categoryRepo) {
@@ -159,9 +179,79 @@ export class UpdateRestaurantUseCase {
     // in-memory merge can be stale.
     const persisted = (await this.restaurantRepo.findById(restaurant.id)) ?? updated;
 
-    // SUS-20: a provided adminPassword is accepted (update semantics) but must
-    // never be echoed back in the response — only the create 201 carries
-    // one-time credentials.
+    await this.recordAudit(actor, restaurant, persisted, input.adminPassword !== undefined);
+
+    // SUS-20: a provided adminPassword must never be echoed back in the
+    // response — only the create 201 carries one-time credentials.
     return omitAdminPassword(persisted);
+  }
+  /**
+   * One entry per semantic change: pausing/activating the tenant is its own
+   * action, every other changed field goes into a single restaurant.update.
+   * The admin password is recorded by field NAME only.
+   */
+  private async recordAudit(
+    actor: AuditActor | undefined,
+    before: Restaurant,
+    after: Restaurant,
+    passwordRotated: boolean
+  ): Promise<void> {
+    if (!this.audit) return;
+    const flat = (r: Restaurant) => ({
+      name: r.name,
+      slug: r.slug,
+      tagline: r.tagline,
+      whatsappNumber: r.whatsappNumber,
+      primaryColor: r.primaryColor,
+      theme: r.theme,
+      timezone: r.timezone,
+      ordersPaused: r.ordersPaused,
+      currency: r.config?.currency,
+      currencySymbol: r.config?.currencySymbol,
+      schedule: r.schedule,
+      categories: r.categories,
+    });
+    const diff = diffFields(flat(before), flat(after), [
+      'name', 'slug', 'tagline', 'whatsappNumber', 'primaryColor', 'theme', 'timezone', 'ordersPaused',
+      'currency', 'currencySymbol', 'schedule', 'categories',
+    ]);
+    if (passwordRotated) diff.changedFields.push('adminPassword');
+    const target = { targetType: 'restaurant' as const, targetId: after.id, targetLabel: after.name, restaurantId: after.id };
+
+    if (before.isActive !== after.isActive) {
+      await this.audit.record(actor, {
+        ...target,
+        action: after.isActive ? 'restaurant.activate' : 'restaurant.pause',
+        details: { from: before.isActive, to: after.isActive },
+      });
+    }
+    if (diff.changedFields.length > 0) {
+      await this.audit.record(actor, { ...target, action: 'restaurant.update', details: diff });
+    }
+  }
+
+  /**
+   * Builds the primary admin user with the new password hash, flagged so the
+   * super-admin-chosen password must be changed at next login (same as a
+   * reset). The primary admin is the earliest-created restaurant_admin of the
+   * tenant, i.e. the one provisioned at creation; additional admins are not
+   * touched (reset those through POST /api/users/:id/reset-password).
+   */
+  private async prepareAdminPasswordReset(restaurantId: string, password?: string): Promise<User | null> {
+    if (password === undefined) return null;
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      throw new ValidationError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
+    }
+    if (!this.userRepo || !this.hasher) {
+      throw new Error('Admin password reset is not configured (user repository / hasher missing).');
+    }
+    const admins = (await this.userRepo.findByRestaurantId(restaurantId))
+      .filter((u) => u.role === 'restaurant_admin')
+      .sort((a, b) => (a.createdAt ?? '').localeCompare(b.createdAt ?? ''));
+    const primary = admins[0];
+    if (!primary) {
+      throw new EntityNotFoundError(`Restaurant "${restaurantId}" has no administrator user`);
+    }
+    return { ...primary, passwordHash: await this.hasher.hash(password), mustChangePassword: true, passwordChangedAt: new Date().toISOString() };
   }
 }

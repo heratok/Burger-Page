@@ -13,14 +13,17 @@ export interface RouteResolution {
 export const VALID_ADMIN_TABS: AdminTab[] = [
   "dashboard",
   "orders",
+  "tables",
   "menu",
   "inventory",
   "customers",
   "reports",
   "customizer",
+  "settings",
   "restaurants",
   "users",
   "metrics",
+  "audit",
 ]
 
 /**
@@ -65,6 +68,14 @@ export function resolveRoute(
       return {
         view: "admin",
         adminTab: "restaurants",
+        isNotFound: false,
+      }
+    }
+
+    if (["audit-log", "auditlog"].includes(subRoute)) {
+      return {
+        view: "admin",
+        adminTab: "audit",
         isNotFound: false,
       }
     }

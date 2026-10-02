@@ -144,8 +144,8 @@ describe("Admin Validation Schemas (TDD)", () => {
     it("rechaza username o password que exceden el límite máximo", () => {
       const longUser = "u".repeat(ADMIN_LIMITS.auth.username.max + 1)
       const longPass = "p".repeat(ADMIN_LIMITS.auth.password.max + 1)
-      expect(adminAuthSchema.safeParse({ username: longUser, password: "valid" }).success).toBe(false)
-      expect(adminAuthSchema.safeParse({ username: "valid", password: longPass }).success).toBe(false)
+      expect(adminAuthSchema.safeParse({ username: longUser, password: "validpassword" }).success).toBe(false)
+      expect(adminAuthSchema.safeParse({ username: "validuser", password: longPass }).success).toBe(false)
     })
   })
 

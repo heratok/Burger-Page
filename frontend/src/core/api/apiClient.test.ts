@@ -485,7 +485,6 @@ describe('ApiClient', () => {
 
       expect(FakeEventSource.instances).toHaveLength(3)
       expect(FakeEventSource.instances[2].url).toContain('stream-token-3')
-
       // Unsubscribe stops any further reconnects.
       unsub()
       FakeEventSource.instances[2].emit('error')
@@ -494,4 +493,215 @@ describe('ApiClient', () => {
     })
   })
 
+  describe('user lifecycle endpoints and password change', () => {
+    let client: ApiClient
+    let originalFetch: typeof globalThis.fetch
 
+    beforeEach(() => {
+      client = new ApiClient({ baseUrl: 'http://localhost:3001/api' })
+      originalFetch = globalThis.fetch
+      globalThis.fetch = vi.fn()
+    })
+
+    afterEach(() => {
+      globalThis.fetch = originalFetch
+    })
+
+    const mockResponse = (data: any, ok = true, status = 200, statusText = 'OK') => {
+      (globalThis.fetch as any).mockResolvedValueOnce({
+        ok,
+        status,
+        statusText,
+        json: async () => data,
+      })
+    }
+
+    it('setUserActive sends PATCH /users/:id with isActive body', async () => {
+      mockResponse({ id: 'u1', username: 'john', role: 'restaurant_admin', isActive: false })
+      const res = await (client as any).setUserActive('u1', false)
+      expect(res.isActive).toBe(false)
+      const [url, init] = (globalThis.fetch as any).mock.calls[0]
+      expect(url).toBe('http://localhost:3001/api/users/u1')
+      expect(init.method).toBe('PATCH')
+      expect(JSON.parse(init.body)).toEqual({ isActive: false })
+    })
+
+    it('deleteUser sends DELETE /users/:id with 204 response', async () => {
+      (globalThis.fetch as any).mockResolvedValueOnce({
+        ok: true,
+        status: 204,
+        statusText: 'No Content',
+        json: async () => undefined,
+      })
+      await (client as any).deleteUser('u1')
+      const [url, init] = (globalThis.fetch as any).mock.calls[0]
+      expect(url).toBe('http://localhost:3001/api/users/u1')
+      expect(init.method).toBe('DELETE')
+    })
+
+    it('resetUserPassword sends POST /users/:id/reset-password', async () => {
+      mockResponse({ temporaryPassword: 'temp-secret-pass-123' })
+      const res = await (client as any).resetUserPassword('u1')
+      expect(res.temporaryPassword).toBe('temp-secret-pass-123')
+      const [url, init] = (globalThis.fetch as any).mock.calls[0]
+      expect(url).toBe('http://localhost:3001/api/users/u1/reset-password')
+      expect(init.method).toBe('POST')
+    })
+
+    it('changeOwnPassword sends POST /users/me/password and updates auth token', async () => {
+      client.setToken('old-token')
+      mockResponse({ success: true, token: 'new-fresh-token' })
+      const res = await (client as any).changeOwnPassword('old-pass-1', 'new-pass-2')
+      expect(res.success).toBe(true)
+      expect(res.token).toBe('new-fresh-token')
+      const [url, init] = (globalThis.fetch as any).mock.calls[0]
+      expect(url).toBe('http://localhost:3001/api/users/me/password')
+      expect(init.method).toBe('POST')
+      expect(JSON.parse(init.body)).toEqual({ currentPassword: 'old-pass-1', newPassword: 'new-pass-2' })
+      expect((client as any).token).toBe('new-fresh-token')
+    })
+
+    it('notifies password change required on 403 PASSWORD_CHANGE_REQUIRED response', async () => {
+      const listener = vi.fn()
+      const unsub = (client as any).onPasswordChangeRequired(listener)
+
+      ;(globalThis.fetch as any).mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        statusText: 'Forbidden',
+        json: async () => ({ code: 'PASSWORD_CHANGE_REQUIRED', message: 'Password change required' }),
+      })
+
+      await expect(client.listRestaurants()).rejects.toThrow()
+      expect(listener).toHaveBeenCalledTimes(1)
+
+      unsub()
+      ;(globalThis.fetch as any).mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        statusText: 'Forbidden',
+        json: async () => ({ code: 'PASSWORD_CHANGE_REQUIRED' }),
+      })
+      await expect(client.listRestaurants()).rejects.toThrow()
+      expect(listener).toHaveBeenCalledTimes(1)
+    })
+
+    describe('session expiration handling', () => {
+      it('notifies session expired on 401 response from an authenticated request', async () => {
+        client.setToken('valid-token')
+        const listener = vi.fn()
+        const unsub = (client as any).onSessionExpired(listener)
+
+        ;(globalThis.fetch as any).mockResolvedValueOnce({
+          ok: false,
+          status: 401,
+          statusText: 'Unauthorized',
+          json: async () => ({ message: 'Token expired' }),
+        })
+
+        await expect(client.listRestaurants()).rejects.toThrow()
+        expect(listener).toHaveBeenCalledTimes(1)
+        expect(client.getToken()).toBeNull()
+
+        unsub()
+      })
+
+      it('does not notify session expired on 401 from login', async () => {
+        const listener = vi.fn()
+        ;(client as any).onSessionExpired(listener)
+
+        ;(globalThis.fetch as any).mockResolvedValueOnce({
+          ok: false,
+          status: 401,
+          statusText: 'Unauthorized',
+          json: async () => ({ error: 'Invalid credentials' }),
+        })
+
+        const res = await client.login('baduser', 'badpass')
+        expect(res.success).toBe(false)
+        expect(listener).not.toHaveBeenCalled()
+      })
+
+      it('ignores 401 when the request was sent with a stale/superseded token', async () => {
+        const listener = vi.fn()
+        ;(client as any).onSessionExpired(listener)
+
+        client.setToken('old-token')
+
+        ;(globalThis.fetch as any).mockImplementationOnce(async () => {
+          client.setToken('new-active-token')
+          return {
+            ok: false,
+            status: 401,
+            statusText: 'Unauthorized',
+            json: async () => ({ message: 'Session expired' }),
+          }
+        })
+
+        await expect(client.listRestaurants()).rejects.toThrow()
+        expect(listener).not.toHaveBeenCalled()
+        expect(client.getToken()).toBe('new-active-token')
+      })
+
+      it('notifies exactly once on concurrent 401 responses', async () => {
+        client.setToken('active-token')
+        const listener = vi.fn()
+        ;(client as any).onSessionExpired(listener)
+
+        const make401 = () => ({
+          ok: false,
+          status: 401,
+          statusText: 'Unauthorized',
+          json: async () => ({ message: 'Session expired' }),
+        })
+
+        ;(globalThis.fetch as any)
+          .mockResolvedValueOnce(make401())
+          .mockResolvedValueOnce(make401())
+          .mockResolvedValueOnce(make401())
+
+        await Promise.allSettled([
+          client.listRestaurants(),
+          client.listRestaurants(),
+          client.listRestaurants(),
+        ])
+
+        expect(listener).toHaveBeenCalledTimes(1)
+        expect(client.getToken()).toBeNull()
+      })
+
+      it('stops SSE reconnection when stream token request gets 401', async () => {
+        const originalES = (globalThis as any).EventSource
+        class FakeES {
+          addEventListener = vi.fn()
+          close = vi.fn()
+        }
+        (globalThis as any).EventSource = FakeES
+
+        try {
+          client.setToken('active-token')
+          const listener = vi.fn()
+          const unsubExpired = (client as any).onSessionExpired(listener)
+
+          ;(globalThis.fetch as any).mockResolvedValueOnce({
+            ok: false,
+            status: 401,
+            statusText: 'Unauthorized',
+            json: async () => ({ message: 'Session expired' }),
+          })
+
+          const unsubStream = client.subscribeToOrderStream(() => {})
+
+          await new Promise((r) => setTimeout(r, 50))
+
+          expect(listener).toHaveBeenCalledTimes(1)
+          expect(globalThis.fetch).toHaveBeenCalledTimes(1)
+
+          unsubStream()
+          unsubExpired()
+        } finally {
+          (globalThis as any).EventSource = originalES
+        }
+      })
+    })
+  })

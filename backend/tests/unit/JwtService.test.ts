@@ -72,6 +72,13 @@ describe('JwtService Security Hardening', () => {
     expect(payload.role).toBe('super_admin');
   });
 
+  it('session tokens expire 12 hours after issuance by default (one work shift)', () => {
+    process.env.JWT_SECRET = EXPLICIT_SECRET;
+    const jwt = new JwtService();
+    const payload = jwt.verifyToken(jwt.generateToken({ id: 'usr-1', username: 'root', role: 'super_admin' }));
+    expect(payload.exp - payload.iat).toBe(12 * 60 * 60);
+  });
+
   it('rejects a validly signed token that lacks exp (tokens must expire)', () => {
     const jwt = new JwtService(EXPLICIT_SECRET);
     const claims = validClaims();

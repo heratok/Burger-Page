@@ -202,6 +202,29 @@ test.describe('Menu & Categories Full CRUD & Customization E2E Suite', () => {
         ]),
       });
     });
+
+    await page.route('**/api/orders/stream-token', (route) => {
+      return route.fulfill({ status: 200, json: { token: 'mock-stream-token' } });
+    });
+    await page.route('**/api/orders/stream*', (route) => {
+      return route.fulfill({ status: 200, contentType: 'text/event-stream', body: '' });
+    });
+    await page.route('**/api/orders*', (route) => {
+      if (route.request().method() !== 'GET') return route.continue();
+      return route.fulfill({ status: 200, json: [] });
+    });
+    await page.route('**/api/customers*', (route) => {
+      if (route.request().method() !== 'GET') return route.continue();
+      return route.fulfill({ status: 200, json: [] });
+    });
+    await page.route('**/api/inventory*', (route) => {
+      if (route.request().method() !== 'GET') return route.continue();
+      return route.fulfill({ status: 200, json: [] });
+    });
+    await page.route('**/api/suppliers*', (route) => {
+      if (route.request().method() !== 'GET') return route.continue();
+      return route.fulfill({ status: 200, json: [] });
+    });
   });
 
   test('Owner can perform complete CRUD lifecycle on categories with product cascades and UI updates', async ({ page }) => {

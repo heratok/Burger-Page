@@ -4,21 +4,35 @@ import { UserPlus, X, Shield, Store } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Select } from "@/components/ui/select"
 import { apiClient } from "@/core/api/apiClient"
+import { MIN_PASSWORD_LENGTH } from "@burger-page/contracts"
 import { toast } from "sonner"
 
 interface CreateUserModalProps {
   isOpen: boolean
   onClose: () => void
+  defaultRestaurantId?: string
+  onSuccess?: () => void
 }
 
-export const CreateUserModal: React.FC<CreateUserModalProps> = ({ isOpen, onClose }) => {
+export const CreateUserModal: React.FC<CreateUserModalProps> = ({
+  isOpen,
+  onClose,
+  defaultRestaurantId,
+  onSuccess,
+}) => {
   const { restaurants, adminTheme } = useRestaurant()
 
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [role, setRole] = useState<"super_admin" | "restaurant_admin">("restaurant_admin")
-  const [restaurantId, setRestaurantId] = useState("")
+  const [restaurantId, setRestaurantId] = useState(defaultRestaurantId || "")
   const [isLoading, setIsLoading] = useState(false)
+
+  React.useEffect(() => {
+    if (isOpen) {
+      setRestaurantId(defaultRestaurantId || "")
+    }
+  }, [isOpen, defaultRestaurantId])
 
   const isDark = adminTheme === "dark"
 
@@ -27,6 +41,10 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ isOpen, onClos
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!username.trim() || !password.trim()) return
+    if (password.trim().length < MIN_PASSWORD_LENGTH) {
+      toast.error(`La contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres`)
+      return
+    }
     if (role === "restaurant_admin" && !restaurantId) return
 
     setIsLoading(true)
@@ -41,7 +59,8 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ isOpen, onClos
       setUsername("")
       setPassword("")
       setRole("restaurant_admin")
-      setRestaurantId("")
+      setRestaurantId(defaultRestaurantId || "")
+      onSuccess?.()
       onClose()
     } catch (err) {
       const message = err instanceof Error ? err.message : "Error al crear usuario"
@@ -66,7 +85,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ isOpen, onClos
   ]
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-md">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-md">
       <div
         className={`w-full max-w-md rounded-2xl border p-6 shadow-2xl transition-all ${
           isDark ? "border-slate-800 bg-[#0E1322] text-slate-100" : "border-slate-200 bg-white text-slate-900"
@@ -115,12 +134,12 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ isOpen, onClos
           {/* Password */}
           <div>
             <label className="block text-xs font-bold mb-1 text-slate-700 dark:text-slate-300">
-              Contraseña * (mínimo 6 caracteres)
+              Contraseña * (mínimo 8 caracteres)
             </label>
             <input
               type="password"
               required
-              minLength={6}
+              minLength={8}
               maxLength={100}
               value={password}
               onChange={(e) => setPassword(e.target.value)}

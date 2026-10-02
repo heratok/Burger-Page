@@ -24,9 +24,13 @@ import {
   ArrowLeft,
   PanelLeftClose,
   PanelLeftOpen,
+  LayoutGrid,
+  Settings,
+  KeyRound,
+  ClipboardList,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { AdminSwitcher, CreateRestaurantModal, CreateUserModal } from "@/features/superadmin"
+import { AdminSwitcher, CreateRestaurantModal, CreateUserModal, ChangePasswordScreen, SupportModeBanner } from "@/features/superadmin"
 import { useAppRouter } from "@/core/router/useAppRouter"
 import { AdminContentFallback } from "@/components/ui/LoadingFallbacks"
 import { ManualSaleModal } from "./ManualSaleModal"
@@ -58,6 +62,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const [isManualSaleOpen, setIsManualSaleOpen] = useState(false)
   const [isCreateRestaurantOpen, setIsCreateRestaurantOpen] = useState(false)
   const [isCreateUserOpen, setIsCreateUserOpen] = useState(false)
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
     try {
       return localStorage.getItem("burger_page_sidebar_collapsed") === "true"
@@ -86,7 +91,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
   const isDark = adminTheme === "dark"
   const isSuper = session.role === "super"
-  const isSuperGlobalMode = isSuper && (adminTab === "restaurants" || adminTab === "users" || adminTab === "metrics")
+  const isSuperGlobalMode = isSuper && (adminTab === "restaurants" || adminTab === "users" || adminTab === "metrics" || adminTab === "audit")
   const isSuperTenantMode = isSuper && !isSuperGlobalMode
 
   // Global SaaS navigation modules for platform-wide management
@@ -112,6 +117,13 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       description: "Consolidado financiero y rendimiento",
       badge: "SaaS",
     },
+    {
+      id: "audit" as const,
+      label: "Auditoría",
+      icon: ClipboardList,
+      description: "Registro de actividad y cambios",
+      badge: undefined,
+    },
   ]
 
   // Local operational modules for tenant administration
@@ -129,6 +141,13 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       icon: ShoppingBag,
       description: "Flujo Kanban de cocina",
       badge: pendingOrdersCount > 0 ? pendingOrdersCount : undefined,
+    },
+    {
+      id: "tables" as const,
+      label: "Mesas & QR",
+      icon: LayoutGrid,
+      description: "Salón, mesas y códigos QR",
+      badge: undefined,
     },
     {
       id: "menu" as const,
@@ -163,6 +182,13 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       label: "Personalizar",
       icon: Palette,
       description: "Diseño y apariencia de tienda",
+      badge: undefined,
+    },
+    {
+      id: "settings" as const,
+      label: "Ajustes de Negocio",
+      icon: Settings,
+      description: "Horarios, WhatsApp y domicilios",
       badge: undefined,
     },
   ]
@@ -373,6 +399,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 title="Volver al Panel Super Admin"
                 aria-label="Volver al Panel Super Admin"
                 onClick={() => {
+                  switchRestaurant("")
                   navigateTo("/admin/restaurants")
                   setIsMobileSidebarOpen(false)
                 }}
@@ -407,6 +434,24 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
               </button>
             )}
 
+            {/* Change Password button */}
+            {session.role !== "guest" && (
+              <button
+                type="button"
+                title="Cambiar Contraseña"
+                aria-label="Cambiar Contraseña"
+                onClick={() => setIsChangePasswordOpen(true)}
+                className={`flex items-center justify-center rounded-xl text-slate-400 hover:bg-indigo-500/10 hover:text-indigo-500 dark:hover:text-indigo-400 active:scale-95 transition-all cursor-pointer ${
+                  isSidebarCollapsed
+                    ? "lg:size-10 lg:mx-auto w-full gap-1.5 py-1.5 text-xs font-semibold"
+                    : "w-full gap-1.5 py-1.5 text-xs font-semibold"
+                }`}
+              >
+                <KeyRound className="size-4 shrink-0" />
+                <span className={isSidebarCollapsed ? "lg:hidden" : ""}>Cambiar Clave</span>
+              </button>
+            )}
+
             {/* Logout button */}
             {session.role !== "guest" && (
               <button
@@ -434,6 +479,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         {/* RIGHT MAIN CONTENT AREA                                   */}
         {/* ======================================================== */}
         <div className="flex flex-1 flex-col overflow-hidden min-w-0">
+          {/* Support Mode Banner */}
+          <SupportModeBanner />
+
           {/* Top Header Bar */}
           <header
             className={`sticky top-0 z-30 flex h-16 items-center justify-between border-b px-4 backdrop-blur-md transition-colors sm:px-6 lg:px-8 ${
@@ -495,7 +543,10 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => navigateTo("/admin/restaurants")}
+                    onClick={() => {
+                      switchRestaurant("")
+                      navigateTo("/admin/restaurants")
+                    }}
                     className="flex items-center gap-1.5 rounded-xl border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 font-bold text-xs cursor-pointer shadow-xs"
                   >
                     <ArrowLeft className="size-3.5" />
@@ -603,6 +654,15 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
             onClose={() => setIsCreateUserOpen(false)}
           />
         </>
+      )}
+
+      {/* Voluntary Change Password Modal */}
+      {isChangePasswordOpen && (
+        <ChangePasswordScreen
+          forced={false}
+          onSuccess={() => setIsChangePasswordOpen(false)}
+          onCancel={() => setIsChangePasswordOpen(false)}
+        />
       )}
     </div>
   )

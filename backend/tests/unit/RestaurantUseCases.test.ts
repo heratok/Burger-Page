@@ -29,6 +29,7 @@ function mockRepo(): RestaurantRepository {
   return {
     findById: vi.fn(),
     findBySlug: vi.fn(),
+    slugExists: vi.fn().mockResolvedValue(false),
     findAll: vi.fn(),
     save: vi.fn(),
     delete: vi.fn(),
@@ -140,7 +141,14 @@ describe('SUS-20 update responses never echo adminPassword (Seam D)', () => {
     // same plaintext cannot be compared to the stored hash), so this update
     // runs as super_admin — the genuine assertion is that the provided
     // password is never echoed back in the response.
-    const updated = await new UpdateRestaurantUseCase(repo).execute(
+    const userRepo = {
+      findByRestaurantId: async () => [
+        { id: 'u1', username: 'admin_x', passwordHash: 'h', role: 'restaurant_admin', restaurantId: 'rest-1', createdAt: '2026-01-01' },
+      ],
+      save: async () => {},
+    } as any;
+    const hasher = { hash: async (p: string) => `hashed:${p}`, verify: async () => true };
+    const updated = await new UpdateRestaurantUseCase(repo, undefined, userRepo, hasher).execute(
       'rest-1',
       {
         name: 'Tienda V2',

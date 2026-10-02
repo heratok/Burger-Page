@@ -1,13 +1,17 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { GetRestaurantUseCase } from '../../../application/use-cases/GetRestaurantUseCase.js';
 import { ListRestaurantsUseCase } from '../../../application/use-cases/ListRestaurantsUseCase.js';
+import { ListRestaurantTemplatesUseCase } from '../../../application/use-cases/ListRestaurantTemplatesUseCase.js';
 import { CreateRestaurantUseCase } from '../../../application/use-cases/CreateRestaurantUseCase.js';
 import { DeleteRestaurantUseCase } from '../../../application/use-cases/DeleteRestaurantUseCase.js';
 import { UpdateRestaurantCategoriesUseCase } from '../../../application/use-cases/UpdateRestaurantCategoriesUseCase.js';
 import { UpdateRestaurantUseCase } from '../../../application/use-cases/UpdateRestaurantUseCase.js';
-import { createRestaurantSchema, updateRestaurantCategoriesSchema, updateRestaurantSchema } from '@burger-page/contracts';
+import { ListDeletedRestaurantsUseCase } from '../../../application/use-cases/ListDeletedRestaurantsUseCase.js';
+import { RestoreRestaurantUseCase } from '../../../application/use-cases/RestoreRestaurantUseCase.js';
+import { createRestaurantSchema, restoreRestaurantSchema, updateRestaurantCategoriesSchema, updateRestaurantSchema } from '@burger-page/contracts';
 import { ValidationError } from '../../../domain/errors/DomainErrors.js';
 import { omitAdminPassword } from '../../../domain/models/Restaurant.js';
+import { auditActorOf } from '../auditActor.js';
 
 /**
  * A9: storefront-only projection of a tenant for the public landing.
@@ -54,7 +58,10 @@ export class RestaurantController {
     private readonly createRestaurantUseCase: CreateRestaurantUseCase,
     private readonly deleteRestaurantUseCase: DeleteRestaurantUseCase,
     private readonly updateCategoriesUseCase: UpdateRestaurantCategoriesUseCase,
-    private readonly updateRestaurantUseCase?: UpdateRestaurantUseCase
+    private readonly updateRestaurantUseCase?: UpdateRestaurantUseCase,
+    private readonly listDeletedUseCase?: ListDeletedRestaurantsUseCase,
+    private readonly restoreRestaurantUseCase?: RestoreRestaurantUseCase,
+    private readonly listTemplatesUseCase?: ListRestaurantTemplatesUseCase
   ) {}
 
   async list(req: FastifyRequest, reply: FastifyReply) {
@@ -85,7 +92,7 @@ export class RestaurantController {
     if (!parsed.success) {
       throw new ValidationError(parsed.error.message);
     }
-    const created = await this.createRestaurantUseCase.execute(parsed.data, req.authContext?.role);
+    const created = await this.createRestaurantUseCase.execute(parsed.data, req.authContext?.role, auditActorOf(req));
     return reply.status(201).send(created);
   }
 
@@ -113,8 +120,35 @@ export class RestaurantController {
 
   async delete(req: FastifyRequest, reply: FastifyReply) {
     const params = (req.params || {}) as { id: string };
-    await this.deleteRestaurantUseCase.execute(params.id);
+    await this.deleteRestaurantUseCase.execute(params.id, auditActorOf(req));
     return reply.status(200).send({ message: 'Restaurant deleted successfully' });
+  }
+
+  async listTemplates(_req: FastifyRequest, reply: FastifyReply) {
+    if (!this.listTemplatesUseCase) {
+      throw new Error('ListRestaurantTemplatesUseCase is not configured.');
+    }
+    return reply.status(200).send(this.listTemplatesUseCase.execute());
+  }
+
+  async listDeleted(_req: FastifyRequest, reply: FastifyReply) {
+    if (!this.listDeletedUseCase) {
+      throw new Error('ListDeletedRestaurantsUseCase is not configured.');
+    }
+    return reply.status(200).send(await this.listDeletedUseCase.execute());
+  }
+
+  async restore(req: FastifyRequest, reply: FastifyReply) {
+    if (!this.restoreRestaurantUseCase) {
+      throw new Error('RestoreRestaurantUseCase is not configured.');
+    }
+    const { id } = req.params as { id: string };
+    const body = restoreRestaurantSchema.safeParse(req.body ?? {});
+    if (!body.success) {
+      throw new ValidationError(body.error.message);
+    }
+    const result = await this.restoreRestaurantUseCase.execute({ id, slug: body.data.slug, actor: auditActorOf(req) });
+    return reply.status(200).send(result);
   }
 
   async updateCategories(
@@ -199,7 +233,7 @@ export class RestaurantController {
     if (!parsed.success) {
       throw new ValidationError(parsed.error.message);
     }
-    const updated = await this.updateRestaurantUseCase.execute(params.id, parsed.data, auth?.role);
+    const updated = await this.updateRestaurantUseCase.execute(params.id, parsed.data, auth?.role, auditActorOf(req));
     return reply.status(200).send(updated);
   }
 }

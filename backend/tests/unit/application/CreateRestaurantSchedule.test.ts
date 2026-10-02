@@ -7,6 +7,7 @@ function repo() {
   return {
     findById: vi.fn(),
     findBySlug: vi.fn().mockResolvedValue(null),
+    slugExists: vi.fn().mockResolvedValue(false),
     findAll: vi.fn(),
     save: vi.fn(),
     delete: vi.fn(),

@@ -111,6 +111,154 @@ describe("AuthContext Slice", () => {
         expect(result.current.session.role).toBe("guest")
         expect(onLogout).toHaveBeenCalledTimes(1)
       })
+
+      it("captures userId, username and mustChangePassword flag from backend login response", async () => {
+        const { apiClient } = await import("@/core/api/apiClient")
+        vi.spyOn(apiClient, "login").mockResolvedValue({
+          success: true,
+          token: "temp-token",
+          user: { id: "u-tenant-1", username: "chef", role: "restaurant_admin", restaurantId: "burger-craft", mustChangePassword: true },
+        } as any)
+        const { result } = renderHook(() => useAuth(), { wrapper })
+        await act(async () => {
+          const res = await result.current.login("chef", "temp-pass")
+          expect(res.success).toBe(true)
+          expect(res.mustChangePassword).toBe(true)
+        })
+        expect(result.current.session.userId).toBe("u-tenant-1")
+        expect(result.current.session.username).toBe("chef")
+        expect(result.current.session.mustChangePassword).toBe(true)
+      })
+
+      it("changePassword calls apiClient.changeOwnPassword and clears mustChangePassword", async () => {
+        const { apiClient } = await import("@/core/api/apiClient")
+        vi.spyOn(apiClient, "login").mockResolvedValue({
+          success: true,
+          token: "temp-token",
+          user: { id: "u-1", username: "admin", role: "super_admin", mustChangePassword: true },
+        } as any)
+        const changeSpy = vi.spyOn(apiClient, "changeOwnPassword").mockResolvedValue({
+          success: true,
+          token: "fresh-token",
+        })
+        const { result } = renderHook(() => useAuth(), { wrapper })
+        await act(async () => {
+          await result.current.login("admin", "temp-pass")
+        })
+        expect(result.current.session.mustChangePassword).toBe(true)
+
+        await act(async () => {
+          const res = await result.current.changePassword("temp-pass", "new-secret-1")
+          expect(res.success).toBe(true)
+        })
+
+        expect(changeSpy).toHaveBeenCalledWith("temp-pass", "new-secret-1")
+        expect(result.current.session.mustChangePassword).toBe(false)
+      })
+
+      it("clears session, triggers onLogout, and shows toast on session expiration", async () => {
+        const { apiClient } = await import("@/core/api/apiClient")
+        const { toast } = await import("sonner")
+        const toastErrorSpy = vi.spyOn(toast, "error")
+        const onLogout = vi.fn()
+
+        vi.spyOn(apiClient, "login").mockResolvedValue({
+          success: true,
+          token: "active-token",
+          user: { id: "u-1", username: "admin", role: "super_admin" },
+        } as any)
+
+        let sessionExpiredCallback: (() => void) | undefined
+        vi.spyOn(apiClient, "onSessionExpired").mockImplementation((cb: any) => {
+          sessionExpiredCallback = cb
+          return () => {}
+        })
+
+        const wrapperWithLogout = ({ children }: { children: React.ReactNode }) => (
+          <AuthProvider onLogout={onLogout}>{children}</AuthProvider>
+        )
+
+        const { result } = renderHook(() => useAuth(), { wrapper: wrapperWithLogout })
+        await act(async () => {
+          await result.current.login("admin", "pass")
+        })
+        expect(result.current.session.role).toBe("super")
+
+        act(() => {
+          sessionExpiredCallback?.()
+        })
+
+        expect(result.current.session.role).toBe("guest")
+        expect(onLogout).toHaveBeenCalledTimes(1)
+        expect(toastErrorSpy).toHaveBeenCalledWith("Tu sesión expiró. Iniciá sesión de nuevo.")
+      })
+
+      it("handles concurrent session expiration events with exactly one logout and one toast", async () => {
+        const { apiClient } = await import("@/core/api/apiClient")
+        const { toast } = await import("sonner")
+        const toastErrorSpy = vi.spyOn(toast, "error")
+        const onLogout = vi.fn()
+
+        vi.spyOn(apiClient, "login").mockResolvedValue({
+          success: true,
+          token: "active-token",
+          user: { id: "u-1", username: "admin", role: "super_admin" },
+        } as any)
+
+        let sessionExpiredCallback: (() => void) | undefined
+        vi.spyOn(apiClient, "onSessionExpired").mockImplementation((cb: any) => {
+          sessionExpiredCallback = cb
+          return () => {}
+        })
+
+        const wrapperWithLogout = ({ children }: { children: React.ReactNode }) => (
+          <AuthProvider onLogout={onLogout}>{children}</AuthProvider>
+        )
+
+        const { result } = renderHook(() => useAuth(), { wrapper: wrapperWithLogout })
+        await act(async () => {
+          await result.current.login("admin", "pass")
+        })
+
+        act(() => {
+          sessionExpiredCallback?.()
+          sessionExpiredCallback?.()
+          sessionExpiredCallback?.()
+        })
+
+        expect(result.current.session.role).toBe("guest")
+        expect(onLogout).toHaveBeenCalledTimes(1)
+        expect(toastErrorSpy).toHaveBeenCalledTimes(1)
+        expect(toastErrorSpy).toHaveBeenCalledWith("Tu sesión expiró. Iniciá sesión de nuevo.")
+      })
+
+      it("ignores session expiration when already a guest", async () => {
+        const { apiClient } = await import("@/core/api/apiClient")
+        const { toast } = await import("sonner")
+        const toastErrorSpy = vi.spyOn(toast, "error")
+        const onLogout = vi.fn()
+
+        let sessionExpiredCallback: (() => void) | undefined
+        vi.spyOn(apiClient, "onSessionExpired").mockImplementation((cb: any) => {
+          sessionExpiredCallback = cb
+          return () => {}
+        })
+
+        const wrapperWithLogout = ({ children }: { children: React.ReactNode }) => (
+          <AuthProvider onLogout={onLogout}>{children}</AuthProvider>
+        )
+
+        const { result } = renderHook(() => useAuth(), { wrapper: wrapperWithLogout })
+        expect(result.current.session.role).toBe("guest")
+
+        act(() => {
+          sessionExpiredCallback?.()
+        })
+
+        expect(result.current.session.role).toBe("guest")
+        expect(onLogout).not.toHaveBeenCalled()
+        expect(toastErrorSpy).not.toHaveBeenCalled()
+      })
 })
 
 describe("InventoryContext Slice", () => {

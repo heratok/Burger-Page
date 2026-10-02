@@ -33,13 +33,19 @@ export const storefrontConfigSchema = z.object({
 
 export type StorefrontConfigDTO = z.infer<typeof storefrontConfigSchema>;
 
+/** Minimum length of any account password (mirrors the backend User model). */
+export const MIN_PASSWORD_LENGTH = 8;
+
 export const createRestaurantSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, 'Restaurant name is required'),
   slug: z.string().min(1, 'Restaurant slug is required'),
   tagline: z.string().optional(),
   whatsappNumber: z.string().optional(),
-  adminPassword: z.string().optional(),
+  adminPassword: z
+    .string()
+    .min(MIN_PASSWORD_LENGTH, `Admin password must be at least ${MIN_PASSWORD_LENGTH} characters`)
+    .optional(),
   adminUsername: z.string().optional(),
   primaryColor: z.string().optional(),
   templateType: z.enum(['burger', 'pizza', 'tacos', 'blank']).optional(),
@@ -53,12 +59,36 @@ export const createRestaurantSchema = z.object({
   schedule: weeklyScheduleSchema.optional(),
   timezone: z.string().refine(isValidTimeZone, 'Timezone must be a valid IANA timezone').optional(),
   ordersPaused: z.boolean().optional(),
+  // Money of the store (restaurant_settings): ISO 4217 code and display symbol.
+  currency: z
+    .string()
+    .regex(/^[A-Za-z]{3}$/, 'Currency must be a 3-letter ISO 4217 code')
+    .optional(),
+  currencySymbol: z.string().trim().min(1, 'Currency symbol is required').max(8).optional(),
 });
 
 export type CreateRestaurantInput = z.infer<typeof createRestaurantSchema>;
 
+/** One entry of GET /restaurants/templates: counts are derived from the template data. */
+export const restaurantTemplateSummarySchema = z.object({
+  id: z.enum(['burger', 'pizza', 'tacos', 'blank']),
+  name: z.string(),
+  description: z.string(),
+  productCount: z.number().int().nonnegative(),
+  additionCount: z.number().int().nonnegative(),
+  /** Currencies the sample prices support; null = any (blank template). */
+  supportedCurrencies: z.array(z.string()).nullable().optional(),
+});
+export type RestaurantTemplateSummary = z.infer<typeof restaurantTemplateSummarySchema>;
+
 export const updateRestaurantSchema = createRestaurantSchema.partial();
 export type UpdateRestaurantInput = z.infer<typeof updateRestaurantSchema>;
+
+/** Body of POST /restaurants/:id/restore: optionally restore under a new slug. */
+export const restoreRestaurantSchema = z.object({
+  slug: z.string().min(1, 'Restaurant slug is required').optional(),
+});
+export type RestoreRestaurantInput = z.infer<typeof restoreRestaurantSchema>;
 
 export const restaurantDTOSchema = z.object({
   id: z.string(),
@@ -325,5 +355,65 @@ export const updateCustomerSchema = z.object({
 export type UpdateCustomerInput = z.infer<typeof updateCustomerSchema>;
 
 
+
+// ==========================================
+// SUPER ADMIN AUDIT LOG
+// ==========================================
+
+/** Every super admin mutation recorded in the audit log. */
+export const AUDIT_ACTIONS = [
+  'restaurant.create',
+  'restaurant.update',
+  'restaurant.pause',
+  'restaurant.activate',
+  'restaurant.delete',
+  'restaurant.restore',
+  'user.create',
+  'user.update',
+  'user.activate',
+  'user.deactivate',
+  'user.delete',
+  'user.reset_password',
+] as const;
+export const auditActionEnum = z.enum(AUDIT_ACTIONS);
+export type AuditAction = z.infer<typeof auditActionEnum>;
+
+export const AUDIT_LOG_DEFAULT_LIMIT = 50;
+export const AUDIT_LOG_MAX_LIMIT = 200;
+
+/** Query string of GET /audit-log. Newest first; `cursor` is the opaque nextCursor of the previous page. */
+export const auditLogQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(AUDIT_LOG_MAX_LIMIT).default(AUDIT_LOG_DEFAULT_LIMIT),
+  cursor: z.string().min(1).optional(),
+  action: auditActionEnum.optional(),
+  restaurantId: z.string().min(1).optional(),
+  actorUserId: z.string().min(1).optional(),
+  /** Inclusive lower bound (ISO 8601). */
+  from: z.string().datetime({ offset: true }).optional(),
+  /** Inclusive upper bound (ISO 8601). */
+  to: z.string().datetime({ offset: true }).optional(),
+});
+export type AuditLogQuery = z.infer<typeof auditLogQuerySchema>;
+
+export const auditLogItemSchema = z.object({
+  id: z.string(),
+  createdAt: z.string(),
+  actorUserId: z.string().nullable(),
+  actorUsername: z.string(),
+  action: auditActionEnum,
+  targetType: z.enum(['restaurant', 'user']),
+  targetId: z.string(),
+  targetLabel: z.string(),
+  restaurantId: z.string().nullable(),
+  /** Changed field names and non-secret before/after values; never credentials. */
+  details: z.record(z.string(), z.unknown()),
+});
+export type AuditLogItem = z.infer<typeof auditLogItemSchema>;
+
+export const auditLogPageSchema = z.object({
+  items: z.array(auditLogItemSchema),
+  nextCursor: z.string().nullable(),
+});
+export type AuditLogPage = z.infer<typeof auditLogPageSchema>;
 
 export * from './schedule.js';

@@ -1,7 +1,7 @@
 import { Database } from 'better-sqlite3';
 import type { WeeklySchedule } from '@burger-page/contracts';
-import { Restaurant } from '../../../domain/models/Restaurant.js';
-import { RestaurantRepository } from '../../../domain/ports/out/RestaurantRepository.js';
+import { DeletedRestaurant, Restaurant } from '../../../domain/models/Restaurant.js';
+import { RestaurantRepository, RestoreRestaurantOutcome } from '../../../domain/ports/out/RestaurantRepository.js';
 import {
   DEFAULT_TIMEZONE,
   defaultWeeklySchedule,
@@ -67,19 +67,23 @@ export class SqliteRestaurantRepository implements RestaurantRepository {
   }
 
   async findById(id: string): Promise<Restaurant | null> {
-    const row = this.db.prepare('SELECT * FROM restaurants WHERE id = ?').get(id) as any;
+    const row = this.db.prepare('SELECT * FROM restaurants WHERE id = ? AND deleted_at IS NULL').get(id) as any;
     if (!row) return null;
     return this.mapRow(row);
   }
 
   async findBySlug(slug: string): Promise<Restaurant | null> {
-    const row = this.db.prepare('SELECT * FROM restaurants WHERE slug = ?').get(slug) as any;
+    const row = this.db.prepare('SELECT * FROM restaurants WHERE slug = ? AND deleted_at IS NULL').get(slug) as any;
     if (!row) return null;
     return this.mapRow(row);
   }
 
+  async slugExists(slug: string): Promise<boolean> {
+    return !!this.db.prepare('SELECT 1 FROM restaurants WHERE slug = ? AND deleted_at IS NULL').get(slug);
+  }
+
   async findAll(): Promise<Restaurant[]> {
-    const rows = this.db.prepare('SELECT * FROM restaurants ORDER BY created_at ASC').all() as any[];
+    const rows = this.db.prepare('SELECT * FROM restaurants WHERE deleted_at IS NULL ORDER BY created_at ASC').all() as any[];
     return rows.map((row) => this.mapRow(row));
   }
 
@@ -100,6 +104,7 @@ export class SqliteRestaurantRepository implements RestaurantRepository {
         categories = excluded.categories,
         timezone = excluded.timezone,
         orders_paused = excluded.orders_paused
+      WHERE restaurants.deleted_at IS NULL
     `);
 
     stmt.run(
@@ -126,8 +131,42 @@ export class SqliteRestaurantRepository implements RestaurantRepository {
         config = {};
       }
       config.isActive = false;
-      this.db.prepare('UPDATE restaurants SET config = ? WHERE id = ?').run(JSON.stringify(config), id);
+      // Soft delete: hidden from every lookup, slug renamed so it can be reused.
+      this.db
+        .prepare("UPDATE restaurants SET config = ?, deleted_at = ?, slug = slug || '-deleted-' || id WHERE id = ? AND deleted_at IS NULL")
+        .run(JSON.stringify(config), new Date().toISOString(), id);
     }
+  }
+
+  // The legacy SQLite driver keeps no separate original-slug column: delete
+  // appends '-deleted-<id>', so stripping that suffix recovers the slug.
+  async findDeleted(): Promise<DeletedRestaurant[]> {
+    const rows = this.db
+      .prepare('SELECT id, name, slug, deleted_at FROM restaurants WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC')
+      .all() as any[];
+    return rows.map((row) => {
+      const suffix = `-deleted-${row.id}`;
+      const slug: string = row.slug.endsWith(suffix) ? row.slug.slice(0, -suffix.length) : row.slug;
+      return { id: row.id, name: row.name, slug, deletedAt: row.deleted_at };
+    });
+  }
+
+  async restore(id: string, slug: string): Promise<RestoreRestaurantOutcome> {
+    const row = this.db.prepare('SELECT * FROM restaurants WHERE id = ? AND deleted_at IS NOT NULL').get(id) as any;
+    if (!row) return 'not_found';
+    const taken = this.db.prepare('SELECT 1 FROM restaurants WHERE slug = ? AND deleted_at IS NULL').get(slug);
+    if (taken) return 'slug_taken';
+    let config: any = {};
+    try {
+      config = JSON.parse(row.config || '{}');
+    } catch {
+      config = {};
+    }
+    config.isActive = false;
+    this.db
+      .prepare('UPDATE restaurants SET slug = ?, config = ?, deleted_at = NULL WHERE id = ?')
+      .run(slug, JSON.stringify(config), id);
+    return 'restored';
   }
 
   async hardDelete(id: string): Promise<void> {

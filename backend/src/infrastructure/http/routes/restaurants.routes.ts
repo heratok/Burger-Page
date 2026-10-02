@@ -89,6 +89,68 @@ export async function restaurantsRoutes(fastify: FastifyInstance, opts: { contro
     }
   }, opts.controller.create.bind(opts.controller));
 
+  fastify.get('/templates', {
+    preHandler: [requireSuperAdmin],
+    schema: {
+      tags: ['Restaurant'],
+      summary: 'List restaurant templates',
+      description: 'Super admin only. The templates selectable as templateType when creating a restaurant, with the number of sample products and additions each one creates (derived from the template data).',
+      response: {
+        200: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              name: { type: 'string' },
+              description: { type: 'string' },
+              productCount: { type: 'integer' },
+              additionCount: { type: 'integer' },
+              supportedCurrencies: { type: 'array', nullable: true, items: { type: 'string' } },
+            },
+          },
+        },
+      },
+    },
+  }, opts.controller.listTemplates.bind(opts.controller));
+
+  fastify.get('/deleted', {
+    preHandler: [requireSuperAdmin],
+    schema: {
+      tags: ['Restaurant'],
+      summary: 'List deleted restaurant tenants',
+      description: 'Super admin only. Soft-deleted tenants with their original slug and deletion time, newest first.',
+      response: {
+        200: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              name: { type: 'string' },
+              slug: { type: 'string' },
+              deletedAt: { type: 'string' },
+            },
+          },
+        },
+      },
+    },
+  }, opts.controller.listDeleted.bind(opts.controller));
+
+  fastify.post('/:id/restore', {
+    preHandler: [requireSuperAdmin],
+    schema: {
+      tags: ['Restaurant'],
+      summary: 'Restore a deleted restaurant tenant',
+      description: 'Super admin only. Brings the tenant back PAUSED (isActive=false) so it is reactivated explicitly, with its original slug (or the optional body.slug), and reactivates its users with their original usernames. 404 if it is not deleted, 409 if the slug is taken. A user whose original username was taken meanwhile is restored as <username>-restored-<restaurantId> and reported in renamedUsers.',
+      params: {
+        type: 'object',
+        properties: { id: { type: 'string' } },
+        required: ['id'],
+      },
+    },
+  }, opts.controller.restore.bind(opts.controller));
+
   fastify.get('/:idOrSlug', {
     preHandler: [tryAuth],
     schema: {

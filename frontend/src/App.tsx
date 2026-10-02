@@ -53,6 +53,16 @@ const ReportsManager = lazy(() =>
     default: m.ReportsManager,
   }))
 )
+const TablesManager = lazy(() =>
+  import("@/features/crm/TablesManager").then((m) => ({
+    default: m.TablesManager,
+  }))
+)
+const StoreSettingsManager = lazy(() =>
+  import("@/features/crm/StoreSettingsManager").then((m) => ({
+    default: m.StoreSettingsManager,
+  }))
+)
 const RestaurantNotFound = lazy(() =>
   import("@/features/crm/RestaurantNotFound").then((m) => ({
     default: m.RestaurantNotFound,
@@ -73,9 +83,19 @@ const GlobalAnalytics = lazy(() =>
     default: m.GlobalAnalytics,
   }))
 )
+const AuditLogScreen = lazy(() =>
+  import("@/features/superadmin/AuditLogScreen").then((m) => ({
+    default: m.AuditLogScreen,
+  }))
+)
 const AdminAuthModal = lazy(() =>
   import("@/features/superadmin/AdminAuthModal").then((m) => ({
     default: m.AdminAuthModal,
+  }))
+)
+const ChangePasswordScreen = lazy(() =>
+  import("@/features/superadmin/ChangePasswordScreen").then((m) => ({
+    default: m.ChangePasswordScreen,
   }))
 )
 
@@ -146,13 +166,33 @@ export function MainRouter() {
       )
     }
 
+    // Forced password change screen blocks the entire admin until changed
+    if (session.mustChangePassword) {
+      return (
+        <ErrorBoundary>
+          <Suspense fallback={<AdminLoadingFallback />}>
+            <ChangePasswordScreen
+              isForced={true}
+              onSuccess={() => {
+                if (session.role === "super") {
+                  navigateTo("/admin/restaurants")
+                } else {
+                  navigateTo("/admin/dashboard")
+                }
+              }}
+            />
+          </Suspense>
+        </ErrorBoundary>
+      )
+    }
+
     // SUS-04: global SaaS modules are exclusive to the platform Super Admin.
     // A restaurant admin (or any non-super, non-guest session) deep-linking to
     // /admin/restaurants, /admin/users or /admin/metrics must never render
     // cross-tenant directories or aggregates, so enforce the gate at route level.
     const isSuper = session.role === "super"
     const isGlobalAdminTab =
-      adminTab === "restaurants" || adminTab === "users" || adminTab === "metrics"
+      adminTab === "restaurants" || adminTab === "users" || adminTab === "metrics" || adminTab === "audit"
 
     return (
       <ErrorBoundary>
@@ -167,13 +207,16 @@ export function MainRouter() {
                 {adminTab === "restaurants" && <RestaurantsDirectory />}
                 {adminTab === "users" && <UsersDirectory />}
                 {adminTab === "metrics" && <GlobalAnalytics />}
+                {adminTab === "audit" && <AuditLogScreen />}
                 {adminTab === "dashboard" && <DashboardOverview />}
                 {adminTab === "orders" && <OrdersKanban />}
+                {adminTab === "tables" && <TablesManager />}
                 {adminTab === "menu" && <MenuManager />}
                 {adminTab === "inventory" && <InventoryManager />}
                 {adminTab === "customers" && <CustomerCRM />}
                 {adminTab === "reports" && <ReportsManager />}
                 {adminTab === "customizer" && <StorefrontCustomizer />}
+                {adminTab === "settings" && <StoreSettingsManager />}
               </>
             )}
           </AdminLayout>

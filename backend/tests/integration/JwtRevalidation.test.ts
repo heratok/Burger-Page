@@ -10,6 +10,9 @@ import { RestaurantRepository } from '../../src/domain/ports/out/RestaurantRepos
 // Minimal fakes: only the members the revalidation path calls are implemented;
 // everything else throws so a test can never silently depend on unused ports.
 class FakeUserRepository implements UserRepository {
+  async setActive(): Promise<never> { throw new Error('unused'); }
+  async deleteGuarded(): Promise<never> { throw new Error('unused'); }
+  async retireByRestaurantId(): Promise<void> { throw new Error('unused'); }
   private users = new Map<string, User>();
 
   setUser(user: User): void {

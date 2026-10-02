@@ -268,9 +268,23 @@ describe('Restaurant API & Multi-Tenant Security (Integration)', () => {
       url: '/api/restaurants',
       headers: { authorization: `Bearer ${tokenSuperAdmin}` },
     });
-    const deletedRest = listAfterDelete.json().find((r: any) => r.slug === 'pizzeria-napoli-test');
-    expect(deletedRest).toBeDefined();
-    expect(deletedRest.isActive).toBe(false);
+    // A deleted tenant is gone from the directory (unlike a paused one).
+    expect(listAfterDelete.json().some((r: any) => r.id === body.id)).toBe(false);
+
+    // ...cannot be re-activated through PATCH, and its admin can no longer log in.
+    const revive = await app.inject({
+      method: 'PATCH',
+      url: `/api/restaurants/${body.id}`,
+      headers: { authorization: `Bearer ${tokenSuperAdmin}` },
+      payload: { isActive: true },
+    });
+    expect(revive.statusCode).toBe(404);
+    const login = await app.inject({
+      method: 'POST',
+      url: '/api/users/login',
+      payload: { username: body.adminUsername, password: body.adminPassword },
+    });
+    expect(login.statusCode).toBe(401);
 
     // Verify public lookup returns 404 for soft-deleted / paused restaurant
     const publicGetById = await app.inject({
@@ -284,6 +298,22 @@ describe('Restaurant API & Multi-Tenant Security (Integration)', () => {
       url: `/api/restaurant/${body.slug}`
     });
     expect(publicGetBySlug.statusCode).toBe(404);
+
+    // The slug and the default admin username are free again: the same tenant
+    // can be recreated without a 409 from the retired admin user.
+    const recreate = await app.inject({
+      method: 'POST',
+      url: '/api/restaurants',
+      headers: { authorization: `Bearer ${tokenSuperAdmin}` },
+      payload: { name: 'Pizzería Napoli Test', slug: 'pizzeria-napoli-test', templateType: 'pizza', categories: ['Pizzas'] },
+    });
+    expect(recreate.statusCode).toBe(201);
+    expect(recreate.json().adminUsername).toBe(body.adminUsername);
+    await app.inject({
+      method: 'DELETE',
+      url: `/api/restaurants/${recreate.json().id}`,
+      headers: { authorization: `Bearer ${tokenSuperAdmin}` },
+    });
   });
 
   describe('PUT /api/restaurants/:id (Tenant Configuration & Branding Updates)', () => {
@@ -473,9 +503,7 @@ describe('Restaurant API & Multi-Tenant Security (Integration)', () => {
       });
       expect(superRes.statusCode).toBe(200);
       const full = superRes.json();
-      const deleted = full.find((r: any) => r.slug === 'pizzeria-napoli-test');
-      expect(deleted).toBeDefined();
-      expect(deleted.isActive).toBe(false);
+      expect(full.some((r: any) => r.slug === 'pizzeria-napoli-test')).toBe(false);
     });
   });
 
@@ -670,5 +698,72 @@ describe('Restaurant API & Multi-Tenant Security (Integration)', () => {
     });
   });
 
+
+  describe('restaurant admin credentials and lifecycle', () => {
+    const create = async (slug: string, extraPayload: Record<string, unknown> = {}) =>
+      app.inject({
+        method: 'POST',
+        url: '/api/restaurants',
+        headers: { authorization: `Bearer ${tokenSuperAdmin}` },
+        payload: { name: slug, slug, ...extraPayload },
+      });
+    const login = (username: string, password: string) =>
+      app.inject({ method: 'POST', url: '/api/users/login', payload: { username, password } });
+
+    it('rejects an adminPassword shorter than 8 characters with 400', async () => {
+      const res = await create('short-pass-tenant', { adminPassword: 'short' });
+      expect(res.statusCode).toBe(400);
+    });
+
+    it('answers 409 when the adminUsername is already taken and creates nothing', async () => {
+      const first = await create('collide-a', { adminUsername: 'collide_admin' });
+      expect(first.statusCode).toBe(201);
+      const second = await create('collide-b', { adminUsername: 'collide_admin' });
+      expect(second.statusCode).toBe(409);
+      const list = await app.inject({
+        method: 'GET',
+        url: '/api/restaurants',
+        headers: { authorization: `Bearer ${tokenSuperAdmin}` },
+      });
+      expect(list.json().some((r: any) => r.slug === 'collide-b')).toBe(false);
+    });
+
+    it('PATCH adminPassword changes the real login and forces a password change', async () => {
+      const created = (await create('reset-tenant')).json();
+      expect((await login(created.adminUsername, created.adminPassword)).statusCode).toBe(200);
+
+      const patch = await app.inject({
+        method: 'PATCH',
+        url: `/api/restaurants/${created.id}`,
+        headers: { authorization: `Bearer ${tokenSuperAdmin}` },
+        payload: { adminPassword: 'brand-new-pass-1' },
+      });
+      expect(patch.statusCode).toBe(200);
+      expect(patch.json()).not.toHaveProperty('adminPassword');
+
+      expect((await login(created.adminUsername, created.adminPassword)).statusCode).toBe(401);
+      const fresh = await login(created.adminUsername, 'brand-new-pass-1');
+      expect(fresh.statusCode).toBe(200);
+      expect(fresh.json().user.mustChangePassword).toBe(true);
+    });
+
+    it('a paused tenant stays listed but its admin cannot log in; deleted is not listed', async () => {
+      const created = (await create('paused-tenant')).json();
+      await app.inject({
+        method: 'PATCH',
+        url: `/api/restaurants/${created.id}`,
+        headers: { authorization: `Bearer ${tokenSuperAdmin}` },
+        payload: { isActive: false },
+      });
+      const list = await app.inject({
+        method: 'GET',
+        url: '/api/restaurants',
+        headers: { authorization: `Bearer ${tokenSuperAdmin}` },
+      });
+      const paused = list.json().find((r: any) => r.id === created.id);
+      expect(paused?.isActive).toBe(false);
+      expect((await login(created.adminUsername, created.adminPassword)).statusCode).toBe(401);
+    });
+  });
 });
 

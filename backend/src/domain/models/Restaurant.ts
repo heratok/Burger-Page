@@ -42,3 +42,12 @@ export function omitAdminPassword(restaurant: Restaurant): Restaurant {
   const { adminPassword: _oneTimeSecret, ...redacted } = restaurant;
   return redacted;
 }
+
+/** A soft-deleted tenant as shown in the super admin recovery list. */
+export interface DeletedRestaurant {
+  id: string;
+  name: string;
+  /** The slug the tenant had before it was deleted (the stored one is renamed). */
+  slug: string;
+  deletedAt: string;
+}

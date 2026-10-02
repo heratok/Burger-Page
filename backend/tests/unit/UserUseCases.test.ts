@@ -74,6 +74,13 @@ describe('User Use Cases', () => {
       expect(mockUserRepo.save).toHaveBeenCalledWith(result, undefined);
     });
 
+    it('forces the new user to change the password the super admin chose', async () => {
+      const useCase = new CreateUserUseCase(mockUserRepo, mockHasher, mockRestaurantRepo);
+      vi.mocked(mockUserRepo.findByUsername).mockResolvedValue(null);
+      const result = await useCase.execute({ username: 'fresh_admin', password: 'securePass123', role: 'super_admin' });
+      expect(result.mustChangePassword).toBe(true);
+    });
+
     it('should throw ValidationError when username is empty', async () => {
       const useCase = new CreateUserUseCase(mockUserRepo, mockHasher, mockRestaurantRepo);
 
@@ -86,13 +93,13 @@ describe('User Use Cases', () => {
       ).rejects.toThrow(ValidationError);
     });
 
-    it('should throw ValidationError when password is shorter than 6 characters', async () => {
+    it('should throw ValidationError when password is shorter than 8 characters', async () => {
       const useCase = new CreateUserUseCase(mockUserRepo, mockHasher, mockRestaurantRepo);
 
       await expect(
         useCase.execute({
           username: 'admin',
-          password: '123',
+          password: 'abc1234',
           role: 'super_admin',
         })
       ).rejects.toThrow(ValidationError);

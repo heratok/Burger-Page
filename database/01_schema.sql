@@ -116,12 +116,16 @@ CREATE TABLE IF NOT EXISTS public.restaurants (
     is_active               BOOLEAN NOT NULL DEFAULT TRUE,
     created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    deleted_at              TIMESTAMPTZ,
+    deleted_slug            TEXT,
     CONSTRAINT chk_restaurants_id_format
         CHECK (id ~ '^[A-Za-z0-9_-]{1,64}$')
 );
 
 COMMENT ON TABLE public.restaurants IS 'Tenants: identidad y ciclo de vida del restaurante. Config/branding viven en restaurant_settings / restaurant_branding (1:1).';
 COMMENT ON COLUMN public.restaurants.is_active IS 'Restaurante visible y operativo (usado por la política de lectura pública).';
+COMMENT ON COLUMN public.restaurants.deleted_at IS 'Baja lógica del tenant (distinta de pausar con is_active=false): la app lo oculta de listados y búsquedas y renombra el slug para liberarlo.';
+COMMENT ON COLUMN public.restaurants.deleted_slug IS 'Slug original del tenant al darlo de baja (el slug vigente se renombra con el sufijo -deleted-<id>). NULL mientras el tenant no esté dado de baja.';
 
 -- 2.1.1 RESTAURANT SETTINGS (Configuración operativa 1:1) -------------------
 -- Operación comercial del tenant: moneda, delivery, mínimos, horarios por
@@ -231,6 +235,9 @@ CREATE TABLE IF NOT EXISTS public.users (
                     CHECK (role IN ('super_admin', 'restaurant_admin')),
     restaurant_id TEXT REFERENCES public.restaurants(id) ON DELETE CASCADE,
     is_active     BOOLEAN NOT NULL DEFAULT TRUE,
+    must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
+    password_changed_at TIMESTAMPTZ,
+    retired_was_active BOOLEAN,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT chk_restaurant_admin_has_restaurant
@@ -241,6 +248,9 @@ CREATE TABLE IF NOT EXISTS public.users (
 
 COMMENT ON TABLE public.users IS 'Empleados/administradores. rol super_admin es de plataforma (restaurant_id NULL).';
 COMMENT ON COLUMN public.users.password_hash IS 'Hash con salt del credencial de acceso. Nunca se devuelve al frontend.';
+COMMENT ON COLUMN public.users.must_change_password IS 'true tras un reseteo de contraseña por el super admin: el usuario solo puede cambiar su propia contraseña hasta hacerlo.';
+COMMENT ON COLUMN public.users.password_changed_at IS 'Instante del último cambio/reseteo de contraseña. Los tokens emitidos antes (iat) se rechazan. NULL = nunca cambiada.';
+COMMENT ON COLUMN public.users.retired_was_active IS 'is_active del usuario al darse de baja su restaurante; se usa para restaurarlo igual. NULL = no retirado o retirado antes de existir la columna (se restaura activo).';
 
 -- 2.3 CATEGORIES (Relational Menu Sections) ----------------------------------
 CREATE TABLE IF NOT EXISTS public.categories (
@@ -563,6 +573,38 @@ CREATE TABLE IF NOT EXISTS public.inventory_items (
 COMMENT ON TABLE public.inventory_items IS 'Inventario en unidades de compra (kg, litros, paquetes...).';
 COMMENT ON COLUMN public.inventory_items.category IS 'Códigos: ingredients/beverages/packaging/cleaning/other (validados también en el backend).';
 
+-- 2.12 ADMIN AUDIT LOG (Super admin audit trail) -----------------------------
+-- Append-only. Actor and target are snapshots with NO foreign keys, so the
+-- history survives deleting the user or the restaurant it describes. `details`
+-- never holds credentials (the application sanitizes them out).
+CREATE TABLE IF NOT EXISTS public.admin_audit_log (
+    id             TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    actor_user_id  TEXT,
+    actor_username TEXT NOT NULL,
+    action         TEXT NOT NULL,
+    target_type    TEXT NOT NULL,
+    target_id      TEXT NOT NULL,
+    target_label   TEXT NOT NULL DEFAULT '',
+    restaurant_id  TEXT,
+    details        JSONB NOT NULL DEFAULT '{}'::jsonb,
+    CONSTRAINT chk_admin_audit_log_id_format
+        CHECK (id ~ '^[A-Za-z0-9_-]{1,64}$'),
+    CONSTRAINT chk_admin_audit_log_action
+        CHECK (char_length(action) BETWEEN 1 AND 64),
+    CONSTRAINT chk_admin_audit_log_target_type
+        CHECK (target_type IN ('restaurant', 'user')),
+    CONSTRAINT chk_admin_audit_log_details_object
+        CHECK (jsonb_typeof(details) = 'object')
+);
+
+COMMENT ON TABLE public.admin_audit_log IS 'Auditoría append-only de acciones del super admin sobre restaurantes y usuarios. Sin claves foráneas: actor y objetivo son snapshots y el historial sobrevive al borrado de ambos.';
+COMMENT ON COLUMN public.admin_audit_log.actor_user_id IS 'Id del usuario que actuó (sin FK: el usuario puede borrarse después). actor_username conserva el nombre.';
+COMMENT ON COLUMN public.admin_audit_log.action IS 'restaurant.create|update|pause|activate|delete|restore, user.create|update|activate|deactivate|delete|reset_password.';
+COMMENT ON COLUMN public.admin_audit_log.target_label IS 'Snapshot del nombre del restaurante o del username del usuario afectado al momento de la acción.';
+COMMENT ON COLUMN public.admin_audit_log.restaurant_id IS 'Restaurante afectado o al que pertenece el usuario afectado (sin FK: un tenant borrado conserva su historial).';
+COMMENT ON COLUMN public.admin_audit_log.details IS 'Nombres de campos cambiados y valores antes/después no secretos. Nunca contraseñas, hashes ni credenciales temporales.';
+
 
 -- ============================================================================
 -- 3. TRIGGERS (Automations inside Postgres Transactions)
@@ -701,6 +743,24 @@ DROP TRIGGER IF EXISTS trg_order_status_history_immutable ON public.order_status
 CREATE TRIGGER trg_order_status_history_immutable
     BEFORE UPDATE ON public.order_status_history
     FOR EACH ROW EXECUTE FUNCTION public.guard_order_status_history_immutable();
+
+-- 3.2c Append-only admin audit trail: app_user has no UPDATE/DELETE privilege
+-- (section 6) and this trigger rejects UPDATE for any other role too.
+CREATE OR REPLACE FUNCTION public.guard_admin_audit_log_immutable()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+    RAISE EXCEPTION 'admin_audit_log is append-only: rows cannot be updated'
+        USING ERRCODE = '42501';
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_admin_audit_log_immutable ON public.admin_audit_log;
+CREATE TRIGGER trg_admin_audit_log_immutable
+    BEFORE UPDATE ON public.admin_audit_log
+    FOR EACH ROW EXECUTE FUNCTION public.guard_admin_audit_log_immutable();
 
 -- 3.3 Atomic Customer Order Metrics Trigger -----------------------------------
 CREATE OR REPLACE FUNCTION public.update_customer_order_metrics()
@@ -1173,6 +1233,9 @@ CREATE INDEX IF NOT EXISTS idx_order_item_additions_addition ON public.order_ite
 CREATE INDEX IF NOT EXISTS idx_order_item_additions_restaurant ON public.order_item_additions(restaurant_id);
 CREATE INDEX IF NOT EXISTS idx_order_status_history_order ON public.order_status_history(order_id, changed_at DESC);
 CREATE INDEX IF NOT EXISTS idx_order_status_history_restaurant ON public.order_status_history(restaurant_id);
+CREATE INDEX IF NOT EXISTS idx_admin_audit_log_created ON public.admin_audit_log (created_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_admin_audit_log_restaurant ON public.admin_audit_log (restaurant_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_admin_audit_log_actor ON public.admin_audit_log (actor_user_id);
 CREATE INDEX IF NOT EXISTS idx_suppliers_restaurant      ON public.suppliers(restaurant_id);
 CREATE INDEX IF NOT EXISTS idx_inventory_items_low_stock  ON public.inventory_items(restaurant_id, current_stock);
 
@@ -1200,6 +1263,10 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.order_item_additions TO app_user;
 -- keeps a re-apply over an older database consistent.
 GRANT SELECT, INSERT ON public.order_status_history TO app_user;
 REVOKE UPDATE, DELETE ON public.order_status_history FROM app_user;
+-- Append-only super admin audit trail: same shape (the REVOKE also covers the
+-- default privileges below).
+GRANT SELECT, INSERT ON public.admin_audit_log TO app_user;
+REVOKE UPDATE, DELETE ON public.admin_audit_log FROM app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.suppliers TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.inventory_items TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.restaurant_order_counters TO app_user;
@@ -1298,6 +1365,8 @@ ALTER TABLE public.order_item_additions      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.order_item_additions      FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.order_status_history      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.order_status_history      FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.admin_audit_log           ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.admin_audit_log           FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.suppliers                 ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.suppliers                 FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.inventory_items           ENABLE ROW LEVEL SECURITY;
@@ -1704,6 +1773,18 @@ CREATE POLICY "tenant_isolation_order_status_history" ON public.order_status_his
     FOR ALL
     USING ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()))
     WITH CHECK ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()));
+
+-- Admin audit log: platform data, readable and appendable only by a super_admin
+-- session (no UPDATE/DELETE policy exists)
+DROP POLICY IF EXISTS "super_admin_read_admin_audit_log" ON public.admin_audit_log;
+CREATE POLICY "super_admin_read_admin_audit_log" ON public.admin_audit_log
+    FOR SELECT
+    USING ((SELECT public.app_is_super_admin()));
+
+DROP POLICY IF EXISTS "super_admin_append_admin_audit_log" ON public.admin_audit_log;
+CREATE POLICY "super_admin_append_admin_audit_log" ON public.admin_audit_log
+    FOR INSERT
+    WITH CHECK ((SELECT public.app_is_super_admin()));
 
 -- Restaurant Order Counters isolation
 DROP POLICY IF EXISTS "tenant_isolation_restaurant_order_counters" ON public.restaurant_order_counters;

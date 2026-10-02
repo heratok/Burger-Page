@@ -185,7 +185,9 @@ export type UserRole = "super" | "restaurant" | "guest"
 export interface AdminSession {
   role: UserRole
   restaurantId?: string
+  userId?: string
   username?: string
+  mustChangePassword?: boolean
   authenticatedAt?: string
 }
 
@@ -198,13 +200,16 @@ export interface StorageEnvelopeV2 {
 export type AdminTab =
   | "dashboard"
   | "orders"
+  | "tables"
   | "menu"
   | "inventory"
   | "customers"
   | "reports"
   | "customizer"
+  | "settings"
   | "restaurants"
   | "users"
   | "metrics"
+  | "audit"
 export type AdminTheme = "light" | "dark"
 export type AppView = "landing" | "store" | "admin" | "not-found"

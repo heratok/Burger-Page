@@ -129,6 +129,8 @@ export interface AuthResult {
     username: string;
     role: 'super_admin' | 'restaurant_admin';
     restaurantId?: string;
+    /** True while the account must change its temporary password before using the API. */
+    mustChangePassword?: boolean;
   };
   error?: string;
 }

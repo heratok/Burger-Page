@@ -26,6 +26,7 @@ export function createSqliteDatabase(dbPath = ':memory:'): Database {
       categories TEXT,
       timezone TEXT NOT NULL DEFAULT 'America/Bogota',
       orders_paused INTEGER NOT NULL DEFAULT 0,
+      deleted_at TEXT,
       created_at TEXT NOT NULL
     );
 
@@ -151,6 +152,9 @@ export function createSqliteDatabase(dbPath = ':memory:'): Database {
   }
   if (!restaurantColumns.some(c => c.name === 'orders_paused')) {
     db.exec("ALTER TABLE restaurants ADD COLUMN orders_paused INTEGER NOT NULL DEFAULT 0");
+  }
+  if (!restaurantColumns.some(c => c.name === 'deleted_at')) {
+    db.exec("ALTER TABLE restaurants ADD COLUMN deleted_at TEXT");
   }
 
   return db;

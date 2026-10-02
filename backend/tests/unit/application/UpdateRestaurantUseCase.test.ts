@@ -2,8 +2,10 @@ import { describe, it, expect } from 'vitest';
 import { UpdateRestaurantUseCase } from '../../../src/application/use-cases/UpdateRestaurantUseCase.js';
 import { RestaurantRepository } from '../../../src/domain/ports/out/RestaurantRepository.js';
 import { Restaurant } from '../../../src/domain/models/Restaurant.js';
-import { EntityNotFoundError, ValidationError } from '../../../src/domain/errors/DomainErrors.js';
+import { EntityNotFoundError, ConflictError, ValidationError } from '../../../src/domain/errors/DomainErrors.js';
 
+import { User } from '../../../src/domain/models/User.js';
+import { UserRepository } from '../../../src/domain/ports/out/UserRepository.js';
 import { CategoryRepository } from '../../../src/domain/ports/out/CategoryRepository.js';
 import { Category } from '../../../src/domain/models/Category.js';
 import { legacyHoursText, legacyOpeningHours } from '../../../src/domain/shared/restaurantSchedule.js';
@@ -62,6 +64,10 @@ class FakeRestaurantRepository implements RestaurantRepository {
   async findBySlug(slug: string): Promise<Restaurant | null> {
     this.findBySlugCalls.push(slug);
     return this.restaurants.find((r) => r.slug === slug) ?? null;
+  }
+
+  async slugExists(slug: string): Promise<boolean> {
+    return this.restaurants.some((r) => r.slug === slug);
   }
 
   async findAll(): Promise<Restaurant[]> {
@@ -236,7 +242,7 @@ describe('UpdateRestaurantUseCase', () => {
     // Duplicate rejection still applies for super_admin too.
     await expect(
       useCase.execute('rest-1', { slug: 'tomado' } as any, 'super_admin')
-    ).rejects.toThrow(ValidationError);
+    ).rejects.toThrow(ConflictError);
     await expect(
       useCase.execute('rest-1', { slug: 'tomado' } as any, 'super_admin')
     ).rejects.toThrow(/already exists/);
@@ -409,5 +415,97 @@ describe('UpdateRestaurantUseCase', () => {
         expect(repo.saveCalls[0].schedule).toEqual(allWeek('09:00', '22:00'));
       });
     });
+  });
+});
+
+// A super admin's adminPassword reaches the real login (the admin user's
+// hash), never the restaurant record.
+describe('UpdateRestaurantUseCase admin password reset', () => {
+  const adminUser = (overrides: Partial<User> = {}): User => ({
+    id: 'usr-1',
+    username: 'admin_mi-restaurante',
+    passwordHash: 'old-hash',
+    role: 'restaurant_admin',
+    restaurantId: 'rest-1',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    isActive: true,
+    ...overrides,
+  });
+
+  const fakeUserRepo = (users: User[]) => {
+    const saved: Array<{ user: User; actorRole?: string }> = [];
+    const repo = {
+      findById: async (id: string) => users.find((u) => u.id === id) ?? null,
+      findByUsername: async (n: string) => users.find((u) => u.username === n) ?? null,
+      findByRestaurantId: async (rid: string) => users.filter((u) => u.restaurantId === rid),
+      findAll: async () => users,
+      save: async (user: User, actorRole?: string) => {
+        saved.push({ user, actorRole });
+      },
+      delete: async () => {},
+    } as unknown as UserRepository;
+    return { repo, saved };
+  };
+  const hasher = { hash: async (p: string) => `hashed:${p}`, verify: async () => true };
+
+  it('rehashes the admin user, forces a password change and persists no plaintext', async () => {
+    const restRepo = new FakeRestaurantRepository([restaurant()]);
+    const { repo: userRepo, saved } = fakeUserRepo([adminUser()]);
+    const useCase = new UpdateRestaurantUseCase(restRepo, undefined, userRepo, hasher);
+
+    const result = await useCase.execute('rest-1', { adminPassword: 'fresh-secret-9' }, 'super_admin');
+
+    expect(saved).toHaveLength(1);
+    expect(saved[0].user.passwordHash).toBe('hashed:fresh-secret-9');
+    expect(saved[0].user.mustChangePassword).toBe(true);
+    expect(Number.isNaN(Date.parse(saved[0].user.passwordChangedAt ?? ''))).toBe(false);
+    expect(saved[0].actorRole).toBe('super_admin');
+    expect(restRepo.saveCalls[0]).not.toHaveProperty('adminPassword');
+    expect(result).not.toHaveProperty('adminPassword');
+  });
+
+  it('resets only the primary (earliest created) admin when the tenant has several', async () => {
+    const restRepo = new FakeRestaurantRepository([restaurant()]);
+    const { repo: userRepo, saved } = fakeUserRepo([
+      adminUser({ id: 'usr-2', username: 'second', createdAt: '2026-03-01T00:00:00.000Z' }),
+      adminUser({ id: 'usr-1' }),
+    ]);
+    const useCase = new UpdateRestaurantUseCase(restRepo, undefined, userRepo, hasher);
+
+    await useCase.execute('rest-1', { adminPassword: 'fresh-secret-9' }, 'super_admin');
+
+    expect(saved.map((s) => s.user.id)).toEqual(['usr-1']);
+  });
+
+  it('rejects a password shorter than 8 characters and changes nothing', async () => {
+    const restRepo = new FakeRestaurantRepository([restaurant()]);
+    const { repo: userRepo, saved } = fakeUserRepo([adminUser()]);
+    const useCase = new UpdateRestaurantUseCase(restRepo, undefined, userRepo, hasher);
+
+    await expect(useCase.execute('rest-1', { adminPassword: 'short' }, 'super_admin')).rejects.toThrow(
+      ValidationError
+    );
+    expect(saved).toHaveLength(0);
+    expect(restRepo.saveCalls).toHaveLength(0);
+  });
+
+  it('fails with not found, saving nothing, when the tenant has no admin user', async () => {
+    const restRepo = new FakeRestaurantRepository([restaurant()]);
+    const { repo: userRepo } = fakeUserRepo([]);
+    const useCase = new UpdateRestaurantUseCase(restRepo, undefined, userRepo, hasher);
+
+    await expect(
+      useCase.execute('rest-1', { adminPassword: 'fresh-secret-9' }, 'super_admin')
+    ).rejects.toThrow(EntityNotFoundError);
+    expect(restRepo.saveCalls).toHaveLength(0);
+  });
+
+  it('strips a legacy plaintext adminPassword already on the stored record', async () => {
+    const restRepo = new FakeRestaurantRepository([restaurant({ adminPassword: 'legacy-plain' })]);
+    const useCase = new UpdateRestaurantUseCase(restRepo);
+
+    await useCase.execute('rest-1', { name: 'Nuevo' }, 'super_admin');
+
+    expect(restRepo.saveCalls[0]).not.toHaveProperty('adminPassword');
   });
 });

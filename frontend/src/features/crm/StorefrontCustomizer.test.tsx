@@ -133,6 +133,10 @@ describe("StorefrontCustomizer & Subcomponents (TDD Modularization)", () => {
 
       // The free-text hours field is gone, replaced by the weekly editor
       expect(screen.queryByPlaceholderText("Mar - Dom: 12:00 PM - 10:30 PM")).toBeNull()
+
+      // Expand the schedule accordion
+      fireEvent.click(screen.getByRole("button", { name: /Horario de Atención & Zona/i }))
+
       // DEFAULT_STORE_CONFIG starts open 24/7; switch Monday to custom hours to edit
       fireEvent.click(screen.getByRole("button", { name: "Definir horario para Lunes" }))
       rerender(<CustomizerBusinessSection draft={draft} setDraft={setDraft} />)
@@ -157,6 +161,8 @@ describe("StorefrontCustomizer & Subcomponents (TDD Modularization)", () => {
       fireEvent.click(pause)
       expect(draft.ordersPaused).toBe(true)
 
+      // Open schedule accordion for timezone
+      fireEvent.click(screen.getByRole("button", { name: /Horario de Atención & Zona/i }))
       const tz = screen.getByLabelText("Zona horaria") as HTMLSelectElement
       expect(tz.value).toBe("America/Bogota")
       fireEvent.change(tz, { target: { value: "Europe/Madrid" } })
@@ -166,7 +172,29 @@ describe("StorefrontCustomizer & Subcomponents (TDD Modularization)", () => {
     it("keeps an unknown current timezone selectable", () => {
       const draft: StorefrontConfig = { ...DEFAULT_STORE_CONFIG, timezone: "Pacific/Auckland" }
       render(<CustomizerBusinessSection draft={draft} setDraft={vi.fn()} />)
+      fireEvent.click(screen.getByRole("button", { name: /Horario de Atención & Zona/i }))
       expect((screen.getByLabelText("Zona horaria") as HTMLSelectElement).value).toBe("Pacific/Auckland")
+    })
+
+    it("allows expanding and collapsing all accordion sections", () => {
+      const draft: StorefrontConfig = { ...DEFAULT_STORE_CONFIG }
+      render(<CustomizerBusinessSection draft={draft} setDraft={vi.fn()} />)
+
+      // Initially schedule is closed
+      expect(screen.queryByLabelText("Zona horaria")).toBeNull()
+
+      // Click "Expandir todo"
+      const toggleAllBtn = screen.getByRole("button", { name: "Expandir todo" })
+      fireEvent.click(toggleAllBtn)
+
+      // Now schedule is open
+      expect(screen.getByLabelText("Zona horaria")).toBeDefined()
+      expect(screen.getByPlaceholderText("573022575805")).toBeDefined()
+
+      // Click "Colapsar todo"
+      fireEvent.click(screen.getByRole("button", { name: "Colapsar todo" }))
+      expect(screen.queryByLabelText("Zona horaria")).toBeNull()
+      expect(screen.queryByPlaceholderText("573022575805")).toBeNull()
     })
   })
 
@@ -213,7 +241,7 @@ describe("StorefrontCustomizer & Subcomponents (TDD Modularization)", () => {
   })
 
   describe("StorefrontCustomizer Container Component", () => {
-    it("renders header and navigates through all 5 sections seamlessly", () => {
+    it("renders header and navigates through all 4 visual sections seamlessly", () => {
       render(
         <RestaurantProvider>
           <StorefrontCustomizer />
@@ -222,7 +250,7 @@ describe("StorefrontCustomizer & Subcomponents (TDD Modularization)", () => {
 
       // Initial active tab: Estilos (templates)
       expect(screen.getByRole("tablist", { name: /Secciones del personalizador/i })).toBeDefined()
-      expect(screen.getAllByRole("tab")).toHaveLength(6)
+      expect(screen.getAllByRole("tab")).toHaveLength(4)
       expect(screen.getByRole("tab", { name: /Estilos/i }).getAttribute("aria-selected")).toBe("true")
       expect(screen.getByText("Personalizador Visual de Tienda")).toBeDefined()
       expect(screen.getByText("Estilos Listos en 1 Clic")).toBeDefined()
@@ -241,21 +269,15 @@ describe("StorefrontCustomizer & Subcomponents (TDD Modularization)", () => {
       const disenoTab = screen.getByRole("tab", { name: /Diseño/i })
       fireEvent.click(disenoTab)
       expect(screen.getByText("Tipografía de la Carta")).toBeDefined()
-
-      // Navigate to "Pedidos" tab
-      const pedidosTab = screen.getByRole("tab", { name: /Pedidos/i })
-      fireEvent.click(pedidosTab)
-      expect(screen.getByText("Información Comercial, Pedidos & Domicilios")).toBeDefined()
-
-      // Navigate to "Mesas" tab
-      const mesasTab = screen.getByRole("tab", { name: /Mesas/i })
-      fireEvent.click(mesasTab)
-      expect(screen.getByText("Mesas del salón")).toBeDefined()
-      expect(screen.getByRole("tab", { name: /Mesas/i }).getAttribute("aria-selected")).toBe("true")
+      expect(screen.getByRole("tab", { name: /Diseño/i }).getAttribute("aria-selected")).toBe("true")
       expect(screen.getByRole("tab", { name: /Estilos/i }).getAttribute("aria-selected")).toBe("false")
+
+      // Decoupled operational modules should NOT exist in visual customizer tabs
+      expect(screen.queryByRole("tab", { name: /Pedidos/i })).toBeNull()
+      expect(screen.queryByRole("tab", { name: /Mesas/i })).toBeNull()
     })
 
-    it("derives tablist gridTemplateColumns style from TAB_COLUMNS constant and removes grid-cols-3", () => {
+    it("derives tablist gridTemplateColumns style from TAB_COLUMNS constant and sets repeat(4, ...)", () => {
       render(
         <RestaurantProvider>
           <StorefrontCustomizer />
@@ -263,7 +285,7 @@ describe("StorefrontCustomizer & Subcomponents (TDD Modularization)", () => {
       )
 
       const tablist = screen.getByRole("tablist", { name: /Secciones del personalizador/i })
-      expect(tablist.style.gridTemplateColumns).toBe("repeat(3, minmax(0, 1fr))")
+      expect(tablist.style.gridTemplateColumns).toBe("repeat(4, minmax(0, 1fr))")
       expect(tablist.className).not.toContain("grid-cols-3")
       expect(tablist.className).toContain("grid")
     })
@@ -280,16 +302,12 @@ describe("StorefrontCustomizer & Subcomponents (TDD Modularization)", () => {
         const marcaTab = screen.getByRole("tab", { name: /Marca/i })
         const coloresTab = screen.getByRole("tab", { name: /Colores/i })
         const disenoTab = screen.getByRole("tab", { name: /Diseño/i })
-        const pedidosTab = screen.getByRole("tab", { name: /Pedidos/i })
-        const mesasTab = screen.getByRole("tab", { name: /Mesas/i })
 
         // Initial state: Estilos is active
         expect(estilosTab.getAttribute("tabindex")).toBe("0")
         expect(marcaTab.getAttribute("tabindex")).toBe("-1")
         expect(coloresTab.getAttribute("tabindex")).toBe("-1")
         expect(disenoTab.getAttribute("tabindex")).toBe("-1")
-        expect(pedidosTab.getAttribute("tabindex")).toBe("-1")
-        expect(mesasTab.getAttribute("tabindex")).toBe("-1")
 
         // Switch to Marca tab
         fireEvent.click(marcaTab)
@@ -307,7 +325,7 @@ describe("StorefrontCustomizer & Subcomponents (TDD Modularization)", () => {
 
         const estilosTab = screen.getByRole("tab", { name: /Estilos/i })
         const marcaTab = screen.getByRole("tab", { name: /Marca/i })
-        const mesasTab = screen.getByRole("tab", { name: /Mesas/i })
+        const disenoTab = screen.getByRole("tab", { name: /Diseño/i })
 
         estilosTab.focus()
         expect(document.activeElement).toBe(estilosTab)
@@ -320,18 +338,18 @@ describe("StorefrontCustomizer & Subcomponents (TDD Modularization)", () => {
         expect(estilosTab.getAttribute("aria-selected")).toBe("false")
         expect(estilosTab.getAttribute("tabindex")).toBe("-1")
 
-        // Jump to last tab (Mesas)
-        fireEvent.click(mesasTab)
-        mesasTab.focus()
-        expect(document.activeElement).toBe(mesasTab)
+        // Jump to last tab (Diseño)
+        fireEvent.click(disenoTab)
+        disenoTab.focus()
+        expect(document.activeElement).toBe(disenoTab)
 
         // ArrowRight wraps to Estilos
-        fireEvent.keyDown(mesasTab, { key: "ArrowRight" })
+        fireEvent.keyDown(disenoTab, { key: "ArrowRight" })
         expect(document.activeElement).toBe(estilosTab)
         expect(estilosTab.getAttribute("aria-selected")).toBe("true")
         expect(estilosTab.getAttribute("tabindex")).toBe("0")
-        expect(mesasTab.getAttribute("aria-selected")).toBe("false")
-        expect(mesasTab.getAttribute("tabindex")).toBe("-1")
+        expect(disenoTab.getAttribute("aria-selected")).toBe("false")
+        expect(disenoTab.getAttribute("tabindex")).toBe("-1")
       })
 
       it("navigates backward with ArrowLeft, wraps from first to last, and moves focus and selection", () => {
@@ -342,25 +360,25 @@ describe("StorefrontCustomizer & Subcomponents (TDD Modularization)", () => {
         )
 
         const estilosTab = screen.getByRole("tab", { name: /Estilos/i })
-        const pedidosTab = screen.getByRole("tab", { name: /Pedidos/i })
-        const mesasTab = screen.getByRole("tab", { name: /Mesas/i })
+        const coloresTab = screen.getByRole("tab", { name: /Colores/i })
+        const disenoTab = screen.getByRole("tab", { name: /Diseño/i })
 
         estilosTab.focus()
         expect(document.activeElement).toBe(estilosTab)
 
-        // ArrowLeft from first tab (Estilos) wraps to last tab (Mesas)
+        // ArrowLeft from first tab (Estilos) wraps to last tab (Diseño)
         fireEvent.keyDown(estilosTab, { key: "ArrowLeft" })
-        expect(document.activeElement).toBe(mesasTab)
-        expect(mesasTab.getAttribute("aria-selected")).toBe("true")
-        expect(mesasTab.getAttribute("tabindex")).toBe("0")
+        expect(document.activeElement).toBe(disenoTab)
+        expect(disenoTab.getAttribute("aria-selected")).toBe("true")
+        expect(disenoTab.getAttribute("tabindex")).toBe("0")
         expect(estilosTab.getAttribute("aria-selected")).toBe("false")
         expect(estilosTab.getAttribute("tabindex")).toBe("-1")
 
-        // ArrowLeft from Mesas moves to Pedidos
-        fireEvent.keyDown(mesasTab, { key: "ArrowLeft" })
-        expect(document.activeElement).toBe(pedidosTab)
-        expect(pedidosTab.getAttribute("aria-selected")).toBe("true")
-        expect(pedidosTab.getAttribute("tabindex")).toBe("0")
+        // ArrowLeft from Diseño moves to Colores
+        fireEvent.keyDown(disenoTab, { key: "ArrowLeft" })
+        expect(document.activeElement).toBe(coloresTab)
+        expect(coloresTab.getAttribute("aria-selected")).toBe("true")
+        expect(coloresTab.getAttribute("tabindex")).toBe("0")
       })
 
       it("jumps to first with Home and last with End, moving focus and selection", () => {
@@ -372,105 +390,46 @@ describe("StorefrontCustomizer & Subcomponents (TDD Modularization)", () => {
 
         const estilosTab = screen.getByRole("tab", { name: /Estilos/i })
         const coloresTab = screen.getByRole("tab", { name: /Colores/i })
-        const mesasTab = screen.getByRole("tab", { name: /Mesas/i })
+        const disenoTab = screen.getByRole("tab", { name: /Diseño/i })
 
         fireEvent.click(coloresTab)
         coloresTab.focus()
         expect(document.activeElement).toBe(coloresTab)
 
-        // End moves to last tab (Mesas)
+        // End moves to last tab (Diseño)
         fireEvent.keyDown(coloresTab, { key: "End" })
-        expect(document.activeElement).toBe(mesasTab)
-        expect(mesasTab.getAttribute("aria-selected")).toBe("true")
-        expect(mesasTab.getAttribute("tabindex")).toBe("0")
+        expect(document.activeElement).toBe(disenoTab)
+        expect(disenoTab.getAttribute("aria-selected")).toBe("true")
+        expect(disenoTab.getAttribute("tabindex")).toBe("0")
 
         // Home moves to first tab (Estilos)
-        fireEvent.keyDown(mesasTab, { key: "Home" })
+        fireEvent.keyDown(disenoTab, { key: "Home" })
         expect(document.activeElement).toBe(estilosTab)
         expect(estilosTab.getAttribute("aria-selected")).toBe("true")
         expect(estilosTab.getAttribute("tabindex")).toBe("0")
       })
 
-      it("navigates vertically within the same column with ArrowDown and ArrowUp and wraps within column", () => {
+      it("navigates vertically with ArrowDown and ArrowUp wrapping within column", () => {
         render(
           <RestaurantProvider>
             <StorefrontCustomizer />
           </RestaurantProvider>
         )
 
-        const estilosTab = screen.getByRole("tab", { name: /Estilos/i }) // col 0, row 0 (index 0)
-        const marcaTab = screen.getByRole("tab", { name: /Marca/i })     // col 1, row 0 (index 1)
-        const coloresTab = screen.getByRole("tab", { name: /Colores/i }) // col 2, row 0 (index 2)
-        const disenoTab = screen.getByRole("tab", { name: /Diseño/i })   // col 0, row 1 (index 3)
-        const pedidosTab = screen.getByRole("tab", { name: /Pedidos/i }) // col 1, row 1 (index 4)
-        const mesasTab = screen.getByRole("tab", { name: /Mesas/i })     // col 2, row 1 (index 5)
+        const estilosTab = screen.getByRole("tab", { name: /Estilos/i })
+        const marcaTab = screen.getByRole("tab", { name: /Marca/i })
 
-        // --- Column 0: Estilos (0) <-> Diseño (3) ---
         estilosTab.focus()
         expect(document.activeElement).toBe(estilosTab)
 
-        // Down from Estilos -> Diseño
+        // With 1 row (4 items in 4 columns), Down/Up wraps to same column
         fireEvent.keyDown(estilosTab, { key: "ArrowDown" })
-        expect(document.activeElement).toBe(disenoTab)
-        expect(disenoTab.getAttribute("aria-selected")).toBe("true")
-        expect(disenoTab.getAttribute("tabindex")).toBe("0")
-        expect(estilosTab.getAttribute("aria-selected")).toBe("false")
-        expect(estilosTab.getAttribute("tabindex")).toBe("-1")
-
-        // Down from bottom row (Diseño) wraps to top of column (Estilos)
-        fireEvent.keyDown(disenoTab, { key: "ArrowDown" })
         expect(document.activeElement).toBe(estilosTab)
-        expect(estilosTab.getAttribute("aria-selected")).toBe("true")
 
-        // Up from top row (Estilos) wraps to bottom of column (Diseño)
-        fireEvent.keyDown(estilosTab, { key: "ArrowUp" })
-        expect(document.activeElement).toBe(disenoTab)
-        expect(disenoTab.getAttribute("aria-selected")).toBe("true")
-
-        // Up from Diseño -> Estilos
-        fireEvent.keyDown(disenoTab, { key: "ArrowUp" })
-        expect(document.activeElement).toBe(estilosTab)
-        expect(estilosTab.getAttribute("aria-selected")).toBe("true")
-
-        // --- Column 1: Marca (1) <-> Pedidos (4) ---
         fireEvent.click(marcaTab)
         marcaTab.focus()
-        expect(document.activeElement).toBe(marcaTab)
-
-        // Down from Marca -> Pedidos
-        fireEvent.keyDown(marcaTab, { key: "ArrowDown" })
-        expect(document.activeElement).toBe(pedidosTab)
-        expect(pedidosTab.getAttribute("aria-selected")).toBe("true")
-
-        // Down from Pedidos wraps to Marca
-        fireEvent.keyDown(pedidosTab, { key: "ArrowDown" })
-        expect(document.activeElement).toBe(marcaTab)
-        expect(marcaTab.getAttribute("aria-selected")).toBe("true")
-
-        // Up from Marca wraps to Pedidos
         fireEvent.keyDown(marcaTab, { key: "ArrowUp" })
-        expect(document.activeElement).toBe(pedidosTab)
-        expect(pedidosTab.getAttribute("aria-selected")).toBe("true")
-
-        // --- Column 2: Colores (2) <-> Mesas (5) ---
-        fireEvent.click(coloresTab)
-        coloresTab.focus()
-        expect(document.activeElement).toBe(coloresTab)
-
-        // Down from Colores -> Mesas
-        fireEvent.keyDown(coloresTab, { key: "ArrowDown" })
-        expect(document.activeElement).toBe(mesasTab)
-        expect(mesasTab.getAttribute("aria-selected")).toBe("true")
-
-        // Down from Mesas wraps to Colores
-        fireEvent.keyDown(mesasTab, { key: "ArrowDown" })
-        expect(document.activeElement).toBe(coloresTab)
-        expect(coloresTab.getAttribute("aria-selected")).toBe("true")
-
-        // Up from Colores wraps to Mesas
-        fireEvent.keyDown(coloresTab, { key: "ArrowUp" })
-        expect(document.activeElement).toBe(mesasTab)
-        expect(mesasTab.getAttribute("aria-selected")).toBe("true")
+        expect(document.activeElement).toBe(marcaTab)
       })
 
       it("calls preventDefault on handled keys and leaves other keys untouched", () => {

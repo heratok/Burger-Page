@@ -94,6 +94,8 @@ describe("AdminLayout - Super Admin Navigation & Global Modules (TDD)", () => {
     expect(screen.getByText(/Clientes CRM/i)).toBeDefined()
     expect(screen.getByText(/Reportes & Cierre/i)).toBeDefined()
     expect(screen.getByText(/Personalizar/i)).toBeDefined()
+    expect(screen.getByText(/Mesas & QR/i)).toBeDefined()
+    expect(screen.getByText(/Ajustes de Negocio/i)).toBeDefined()
 
     // Contextual Impersonation Banner & Return Button MUST be visible
     const returnButtons = screen.getAllByRole("button", { name: /Volver al Panel Super Admin|Volver a SaaS/i })
@@ -185,5 +187,35 @@ describe("AdminLayout - Super Admin Navigation & Global Modules (TDD)", () => {
     const expandButtons = screen.getAllByRole("button", { name: /Contraer menú|Expandir menú/i })
     fireEvent.click(expandButtons[0])
     expect(aside.className).toContain("lg:w-64")
+  })
+
+  it("renders Cambiar Clave button in sidebar and opens voluntary ChangePasswordScreen modal", () => {
+    sessionStorage.setItem(
+      "burger_page_session_v2",
+      JSON.stringify({
+        role: "super",
+        username: "admin@burgers.com",
+        authenticatedAt: new Date().toISOString(),
+      })
+    )
+
+    render(
+      <RestaurantProvider>
+        <AdminLayout>
+          <div>Dashboard</div>
+        </AdminLayout>
+      </RestaurantProvider>
+    )
+
+    const changePasswordBtn = screen.getByRole("button", { name: /Cambiar Contraseña/i })
+    expect(changePasswordBtn).toBeDefined()
+
+    // Initially modal is not open
+    expect(screen.queryByText(/Actualizar Contraseña/i)).toBeNull()
+
+    // Click button to open modal
+    fireEvent.click(changePasswordBtn)
+    expect(screen.getByText(/Actualizar Contraseña/i)).toBeDefined()
+    expect(screen.getByRole("button", { name: /Cancelar/i })).toBeDefined()
   })
 })

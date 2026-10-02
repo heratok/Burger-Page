@@ -1,6 +1,6 @@
 import type { WeeklySchedule } from '@burger-page/contracts';
-import { Restaurant } from '../../../domain/models/Restaurant.js';
-import { RestaurantRepository } from '../../../domain/ports/out/RestaurantRepository.js';
+import { DeletedRestaurant, Restaurant } from '../../../domain/models/Restaurant.js';
+import { RestaurantRepository, RestoreRestaurantOutcome } from '../../../domain/ports/out/RestaurantRepository.js';
 import { ID_PREFIX, newId } from '../../../domain/shared/newId.js';
 import {
   DEFAULT_TIMEZONE,
@@ -121,6 +121,10 @@ const RESTAURANT_READ_COLUMNS = `
   LEFT JOIN public.restaurant_branding b ON b.restaurant_id = r.id
 `;
 
+// Deleted tenants (deleted_at set) are invisible to every read below, for
+// super_admin included: deleting is distinct from pausing (is_active=false),
+// which keeps the tenant listed and editable.
+//
 // findById/findAll/save/delete/hardDelete are administrative — no tenant
 // context exists yet to scope by (a restaurant is the tenant root), so they
 // run as actorRole 'super_admin' to preserve today's unrestricted
@@ -132,21 +136,33 @@ const RESTAURANT_READ_COLUMNS = `
 export class PgRestaurantRepository implements RestaurantRepository {
   async findById(id: string): Promise<Restaurant | null> {
     return withTenantContext({ restaurantId: null, actorRole: 'super_admin' }, async (client) => {
-      const { rows } = await client.query(`${RESTAURANT_READ_COLUMNS} WHERE r.id = $1`, [id]);
+      const { rows } = await client.query(`${RESTAURANT_READ_COLUMNS} WHERE r.deleted_at IS NULL AND r.id = $1`, [id]);
       return rows[0] ? mapRow(rows[0]) : null;
     });
   }
 
   async findBySlug(slug: string): Promise<Restaurant | null> {
     return withTenantContext({ restaurantId: null, restaurantSlug: slug }, async (client) => {
-      const { rows } = await client.query(`${RESTAURANT_READ_COLUMNS} WHERE r.slug = $1`, [slug]);
+      const { rows } = await client.query(`${RESTAURANT_READ_COLUMNS} WHERE r.deleted_at IS NULL AND r.slug = $1`, [slug]);
       return rows[0] ? mapRow(rows[0]) : null;
+    });
+  }
+
+  async slugExists(slug: string): Promise<boolean> {
+    // Administrative check (super_admin context, like findById/findAll): it must
+    // see paused tenants, which the public slug-scoped read policy hides.
+    return withTenantContext({ restaurantId: null, actorRole: 'super_admin' }, async (client) => {
+      const { rowCount } = await client.query(
+        `SELECT 1 FROM public.restaurants WHERE deleted_at IS NULL AND slug = $1`,
+        [slug]
+      );
+      return (rowCount ?? 0) > 0;
     });
   }
 
   async findAll(): Promise<Restaurant[]> {
     return withTenantContext({ restaurantId: null, actorRole: 'super_admin' }, async (client) => {
-      const { rows } = await client.query(`${RESTAURANT_READ_COLUMNS} ORDER BY r.created_at ASC`);
+      const { rows } = await client.query(`${RESTAURANT_READ_COLUMNS} WHERE r.deleted_at IS NULL ORDER BY r.created_at ASC`);
       return rows.map(mapRow);
     });
   }
@@ -225,6 +241,12 @@ export class PgRestaurantRepository implements RestaurantRepository {
     if (cfg.showBadges !== undefined) branding.show_badges = cfg.showBadges;
 
     await withTenantContext({ restaurantId: restaurant.id, actorRole: 'super_admin' }, async (client) => {
+      // A deleted tenant can never be resurrected by a save.
+      const { rowCount } = await client.query(
+        'SELECT 1 FROM public.restaurants WHERE id = $1 AND deleted_at IS NOT NULL',
+        [restaurant.id]
+      );
+      if (rowCount) return;
       await this.upsert(client, 'public.restaurants', identity);
       await this.upsert(client, 'public.restaurant_settings', settings);
       await this.upsert(client, 'public.restaurant_branding', branding);
@@ -235,10 +257,59 @@ export class PgRestaurantRepository implements RestaurantRepository {
   async delete(id: string): Promise<void> {
     await withTenantContext({ restaurantId: id, actorRole: 'super_admin' }, async (client) => {
       await client.query(
-        `UPDATE public.restaurants SET is_active = false, updated_at = NOW() WHERE id = $1`,
+        // The slug is renamed so it can be reused by a new tenant; the id suffix
+        // keeps the renamed value unique and deleted_slug keeps the original so
+        // the tenant can be listed and restored.
+        `UPDATE public.restaurants
+            SET is_active = false,
+                deleted_at = NOW(),
+                deleted_slug = slug,
+                slug = slug || '-deleted-' || id,
+                updated_at = NOW()
+          WHERE id = $1 AND deleted_at IS NULL`,
         [id]
       );
     });
+  }
+
+  async findDeleted(): Promise<DeletedRestaurant[]> {
+    return withTenantContext({ restaurantId: null, actorRole: 'super_admin' }, async (client) => {
+      const { rows } = await client.query(
+        `SELECT id, name, COALESCE(deleted_slug, slug) AS slug, deleted_at
+           FROM public.restaurants
+          WHERE deleted_at IS NOT NULL
+          ORDER BY deleted_at DESC, id ASC`
+      );
+      return rows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        slug: row.slug,
+        deletedAt: new Date(row.deleted_at).toISOString(),
+      }));
+    });
+  }
+
+  async restore(id: string, slug: string): Promise<RestoreRestaurantOutcome> {
+    try {
+      return await withTenantContext({ restaurantId: id, actorRole: 'super_admin' }, async (client) => {
+        const { rowCount } = await client.query(
+          `UPDATE public.restaurants
+              SET deleted_at = NULL,
+                  deleted_slug = NULL,
+                  is_active = false,
+                  slug = $2,
+                  updated_at = NOW()
+            WHERE id = $1 AND deleted_at IS NOT NULL`,
+          [id, slug]
+        );
+        return rowCount ? 'restored' : 'not_found';
+      });
+    } catch (err: any) {
+      // restaurants.slug is UNIQUE: a live tenant owns it (also covers the race
+      // with a concurrent create). The transaction was rolled back.
+      if (err?.code === '23505') return 'slug_taken';
+      throw err;
+    }
   }
 
   async hardDelete(id: string): Promise<void> {

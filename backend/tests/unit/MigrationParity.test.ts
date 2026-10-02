@@ -594,3 +594,128 @@ describe('migration drift check wiring', () => {
     expect(fingerprint).toContain("'pgmigrations'");
   });
 });
+
+describe('migration 0000000000011 (users.must_change_password) parity with the baseline schema', () => {
+  const baseline = read('01_schema.sql');
+  const up = read('migrations/0000000000011_users_must_change_password.up.sql');
+  const down = read('migrations/0000000000011_users_must_change_password.down.sql');
+
+  it('declares the column NOT NULL DEFAULT FALSE in baseline and migration', () => {
+    expect(baseline).toMatch(/must_change_password\s+BOOLEAN NOT NULL DEFAULT FALSE,/);
+    expect(up).toMatch(/ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT FALSE/);
+  });
+
+  it('is reversible', () => {
+    expect(down).toContain('DROP COLUMN IF EXISTS must_change_password');
+  });
+});
+
+describe('migration 0000000000012 (restaurants.deleted_at) parity with the baseline schema', () => {
+  const baseline = read('01_schema.sql');
+  const up = read('migrations/0000000000012_restaurants_deleted_at.up.sql');
+  const down = read('migrations/0000000000012_restaurants_deleted_at.down.sql');
+
+  it('declares the nullable deleted_at column in baseline and migration', () => {
+    expect(baseline).toMatch(/deleted_at\s+TIMESTAMPTZ,/);
+    expect(up).toMatch(/ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ/);
+  });
+
+  it('is reversible', () => {
+    expect(down).toContain('DROP COLUMN IF EXISTS deleted_at');
+  });
+});
+
+describe('migration 0000000000013 (users.password_changed_at) parity with the baseline schema', () => {
+  const baseline = read('01_schema.sql');
+  const up = read('migrations/0000000000013_users_password_changed_at.up.sql');
+  const down = read('migrations/0000000000013_users_password_changed_at.down.sql');
+
+  it('declares the nullable password_changed_at column in baseline and migration', () => {
+    expect(baseline).toMatch(/password_changed_at\s+TIMESTAMPTZ,/);
+    expect(up).toMatch(/ADD COLUMN IF NOT EXISTS password_changed_at TIMESTAMPTZ/);
+  });
+
+  it('is reversible', () => {
+    expect(down).toContain('DROP COLUMN IF EXISTS password_changed_at');
+  });
+});
+
+describe('migration 0000000000014 (restaurants.deleted_slug) parity with the baseline schema', () => {
+  const baseline = read('01_schema.sql');
+  const up = read('migrations/0000000000014_restaurants_deleted_slug.up.sql');
+  const down = read('migrations/0000000000014_restaurants_deleted_slug.down.sql');
+
+  it('declares the nullable deleted_slug column in baseline and migration', () => {
+    expect(baseline).toMatch(/deleted_slug\s+TEXT,/);
+    expect(up).toMatch(/ADD COLUMN IF NOT EXISTS deleted_slug TEXT/);
+  });
+
+  it('backfills only deleted rows that lack the value, so a re-run changes nothing', () => {
+    expect(up).toMatch(/WHERE deleted_at IS NOT NULL\s+AND deleted_slug IS NULL/);
+  });
+
+  it('is reversible', () => {
+    expect(down).toContain('DROP COLUMN IF EXISTS deleted_slug');
+  });
+});
+
+describe('migration 0000000000015 (admin_audit_log) parity with the baseline schema', () => {
+  const baseline = read('01_schema.sql');
+  const up = read('migrations/0000000000015_admin_audit_log.up.sql');
+  const down = read('migrations/0000000000015_admin_audit_log.down.sql');
+
+  const tableDef = (sql: string) => {
+    const start = sql.indexOf('CREATE TABLE IF NOT EXISTS public.admin_audit_log');
+    expect(start).toBeGreaterThan(-1);
+    return sql.slice(start, sql.indexOf('\n);', start)).replace(/\s+/g, ' ');
+  };
+
+  it('declares the same table, with no foreign keys, in baseline and migration', () => {
+    expect(tableDef(baseline)).toBe(tableDef(up));
+    expect(tableDef(up)).not.toMatch(/REFERENCES/i);
+    expect(tableDef(up)).toMatch(/actor_user_id TEXT,/);
+    expect(tableDef(up)).toMatch(/details JSONB NOT NULL DEFAULT '\{\}'::jsonb/);
+  });
+
+  it.each([
+    'idx_admin_audit_log_created ON public.admin_audit_log (created_at DESC, id DESC)',
+    'idx_admin_audit_log_restaurant ON public.admin_audit_log (restaurant_id, created_at DESC)',
+    'idx_admin_audit_log_actor ON public.admin_audit_log (actor_user_id)',
+  ])('creates index %s in baseline and migration', (def) => {
+    for (const sql of [baseline, up]) expect(sql.replace(/\s+/g, ' ')).toContain(`CREATE INDEX IF NOT EXISTS ${def}`);
+  });
+
+  it('is append-only for app_user in baseline and migration, with super-admin-only RLS', () => {
+    for (const sql of [baseline, up]) {
+      expect(sql).toContain('GRANT SELECT, INSERT ON public.admin_audit_log TO app_user;');
+      expect(sql).toContain('REVOKE UPDATE, DELETE ON public.admin_audit_log FROM app_user;');
+      expect(sql).toMatch(/ALTER TABLE public\.admin_audit_log\s+ENABLE ROW LEVEL SECURITY;/);
+      expect(sql).toMatch(/ALTER TABLE public\.admin_audit_log\s+FORCE ROW LEVEL SECURITY;/);
+      expect(sql).toMatch(/super_admin_read_admin_audit_log[\s\S]*?FOR SELECT\s+USING \(\(SELECT public\.app_is_super_admin\(\)\)\)/);
+      expect(sql).toMatch(/super_admin_append_admin_audit_log[\s\S]*?FOR INSERT\s+WITH CHECK \(\(SELECT public\.app_is_super_admin\(\)\)\)/);
+      expect(sql).toContain('BEFORE UPDATE ON public.admin_audit_log');
+      expect(sql).not.toMatch(/ON public\.admin_audit_log\s+FOR (ALL|UPDATE|DELETE)/);
+    }
+  });
+
+  it('is reversible', () => {
+    expect(down).toContain('DROP TABLE IF EXISTS public.admin_audit_log');
+    expect(down).toContain('DROP FUNCTION IF EXISTS public.guard_admin_audit_log_immutable()');
+  });
+});
+
+describe('migration 0000000000016 (users.retired_was_active) parity with the baseline schema', () => {
+  const baseline = read('01_schema.sql');
+  const up = read('migrations/0000000000016_users_retired_was_active.up.sql');
+  const down = read('migrations/0000000000016_users_retired_was_active.down.sql');
+
+  it('declares the nullable column in baseline and migration, without a default or backfill', () => {
+    expect(baseline).toMatch(/retired_was_active BOOLEAN,/);
+    expect(up).toMatch(/ADD COLUMN IF NOT EXISTS retired_was_active BOOLEAN;/);
+    expect(up).not.toMatch(/\bUPDATE\b/);
+  });
+
+  it('is reversible', () => {
+    expect(down).toContain('DROP COLUMN IF EXISTS retired_was_active');
+  });
+});

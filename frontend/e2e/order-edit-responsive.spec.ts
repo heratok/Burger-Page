@@ -172,6 +172,29 @@ test.describe('Order Edit in Backoffice POS - Responsive Verification (320px, 39
         }),
       });
     });
+
+    await page.route('**/api/orders/stream-token', (route) => {
+      return route.fulfill({ status: 200, json: { token: 'mock-stream-token' } });
+    });
+    await page.route('**/api/orders/stream*', (route) => {
+      return route.fulfill({ status: 200, contentType: 'text/event-stream', body: '' });
+    });
+    await page.route('**/api/customers*', (route) => {
+      if (route.request().method() !== 'GET') return route.continue();
+      return route.fulfill({ status: 200, json: [] });
+    });
+    await page.route('**/api/inventory*', (route) => {
+      if (route.request().method() !== 'GET') return route.continue();
+      return route.fulfill({ status: 200, json: [] });
+    });
+    await page.route('**/api/suppliers*', (route) => {
+      if (route.request().method() !== 'GET') return route.continue();
+      return route.fulfill({ status: 200, json: [] });
+    });
+    await page.route('**/api/tables*', (route) => {
+      if (route.request().method() !== 'GET') return route.continue();
+      return route.fulfill({ status: 200, json: [] });
+    });
   });
 
   const viewports = [

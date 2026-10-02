@@ -64,17 +64,52 @@ describe('PgRestaurantRepository (real Postgres, app_user role)', () => {
     expect(list.some((r) => r.id === RESTAURANT_ID)).toBe(true);
   });
 
-  it('soft-deletes a restaurant (is_active=false) and it stays findable by id (super_admin visibility)', async () => {
+  it('pausing (is_active=false via save) keeps the restaurant findable by super_admin and listed', async () => {
+    if (!isDbConnected) return;
+    const current = (await repo.findById(RESTAURANT_ID))!;
+    await repo.save({ ...current, isActive: false });
+    expect((await repo.findById(RESTAURANT_ID))?.isActive).toBe(false);
+    expect((await repo.findAll()).some((r) => r.id === RESTAURANT_ID)).toBe(true);
+    await repo.save({ ...current, isActive: true });
+  });
+
+  it('delete() sets deleted_at, hides the restaurant everywhere and frees its slug', async () => {
     if (!isDbConnected) return;
     await repo.delete(RESTAURANT_ID);
-    const found = await repo.findById(RESTAURANT_ID);
-    expect(found?.isActive).toBe(false);
+
+    expect(await repo.findById(RESTAURANT_ID)).toBeNull();
+    expect(await repo.findBySlug(RESTAURANT_ID)).toBeNull();
+    expect((await repo.findAll()).some((r) => r.id === RESTAURANT_ID)).toBe(false);
+
+    const { rows } = await adminPool.query(
+      `SELECT slug, is_active, deleted_at FROM public.restaurants WHERE id = $1`,
+      [RESTAURANT_ID]
+    );
+    expect(rows[0].deleted_at).not.toBeNull();
+    expect(rows[0].is_active).toBe(false);
+    expect(rows[0].slug).toBe(`${RESTAURANT_ID}-deleted-${RESTAURANT_ID}`);
+  });
+
+  it('a deleted restaurant cannot be resurrected by save()', async () => {
+    if (!isDbConnected) return;
+    await repo.save({
+      id: RESTAURANT_ID,
+      slug: RESTAURANT_ID,
+      name: 'Zombie',
+      theme: 'dark-charcoal',
+      schedule: [],
+      timezone: 'America/Bogota',
+      ordersPaused: false,
+      isActive: true,
+    });
+    expect(await repo.findById(RESTAURANT_ID)).toBeNull();
   });
 
   it('hard-deletes a restaurant', async () => {
     if (!isDbConnected) return;
     await repo.hardDelete?.(RESTAURANT_ID);
-    expect(await repo.findById(RESTAURANT_ID)).toBeNull();
+    const { rowCount } = await adminPool.query(`SELECT 1 FROM public.restaurants WHERE id = $1`, [RESTAURANT_ID]);
+    expect(rowCount).toBe(0);
   });
 
   describe('financial history is protected from restaurant deletion (db-hardening-0008 T6)', () => {
@@ -233,4 +268,118 @@ describe('PgRestaurantRepository (real Postgres, app_user role)', () => {
     });
   });
 
+
+  describe('deleted tenants: list and restore', () => {
+    const rid = `pgdel-${randomUUID().slice(0, 8)}`;
+    const base = (id: string, slug: string): Restaurant => ({
+      id,
+      slug,
+      name: 'Pg Deleted Test',
+      theme: 'dark-charcoal',
+      schedule: [{ dayOfWeek: 1, open: '12:00', close: '22:00' }],
+      timezone: 'America/Bogota',
+      ordersPaused: false,
+      isActive: true,
+    });
+    afterAll(async () => {
+      if (isDbConnected) await adminPool.query(`DELETE FROM public.restaurants WHERE id LIKE 'pgdel-%'`);
+    });
+
+    it('delete stores the original slug; findDeleted lists it; restore brings it back paused', async () => {
+      if (!isDbConnected) return;
+      await repo.save(base(rid, rid));
+      await repo.delete(rid);
+
+      const deleted = (await repo.findDeleted()).find((r) => r.id === rid);
+      expect(deleted).toMatchObject({ id: rid, name: 'Pg Deleted Test', slug: rid });
+      expect(Date.parse(deleted!.deletedAt)).not.toBeNaN();
+      expect(await repo.findById(rid)).toBeNull();
+
+      expect(await repo.restore(rid, rid)).toBe('restored');
+      const restored = await repo.findById(rid);
+      expect(restored).toMatchObject({ id: rid, slug: rid, isActive: false });
+      expect((await repo.findDeleted()).some((r) => r.id === rid)).toBe(false);
+      const { rows } = await adminPool.query(`SELECT deleted_at, deleted_slug FROM public.restaurants WHERE id = $1`, [rid]);
+      expect(rows[0]).toMatchObject({ deleted_at: null, deleted_slug: null });
+    });
+
+    it('restore reports not_found for a live or unknown tenant and slug_taken without touching the row', async () => {
+      if (!isDbConnected) return;
+      const a = `pgdel-${randomUUID().slice(0, 8)}`;
+      const b = `pgdel-${randomUUID().slice(0, 8)}`;
+      await repo.save(base(a, a));
+      await repo.save(base(b, b));
+      await repo.delete(a);
+
+      expect(await repo.restore(b, b)).toBe('not_found');
+      expect(await repo.restore('pgdel-ghost', 'ghost')).toBe('not_found');
+      expect(await repo.restore(a, b)).toBe('slug_taken');
+      expect((await repo.findDeleted()).some((r) => r.id === a)).toBe(true);
+
+      expect(await repo.restore(a, `${a}-new`)).toBe('restored');
+      expect((await repo.findById(a))?.slug).toBe(`${a}-new`);
+    });
+
+    it('a restored tenant cannot be restored twice and saves work again', async () => {
+      if (!isDbConnected) return;
+      const id = `pgdel-${randomUUID().slice(0, 8)}`;
+      await repo.save(base(id, id));
+      await repo.delete(id);
+      expect(await repo.restore(id, id)).toBe('restored');
+      expect(await repo.restore(id, id)).toBe('not_found');
+      await repo.save({ ...base(id, id), name: 'Renamed after restore' });
+      expect((await repo.findById(id))?.name).toBe('Renamed after restore');
+    });
+  });
+});
+
+describe('PgRestaurantRepository.slugExists (review B4, real Postgres, app_user role)', () => {
+  let adminPool: pg.Pool;
+  let repo: PgRestaurantRepository;
+  let connected = false;
+  const ids: string[] = [];
+
+  beforeAll(async () => {
+    process.env.DATABASE_URL = APP_USER_DATABASE_URL;
+    adminPool = new Pool({ connectionString: DATABASE_URL, connectionTimeoutMillis: 2000 });
+    try {
+      await adminPool.query('SELECT 1');
+      connected = true;
+      repo = new PgRestaurantRepository();
+    } catch {
+      connected = false;
+    }
+  });
+
+  afterAll(async () => {
+    if (connected) await adminPool.query(`DELETE FROM public.restaurants WHERE id = ANY($1)`, [ids]);
+    await adminPool?.end();
+  });
+
+  const tenant = (id: string, slug: string, isActive: boolean): Restaurant => ({
+    id,
+    slug,
+    name: id,
+    theme: 'dark-charcoal',
+    schedule: [{ dayOfWeek: 1, open: '12:00', close: '22:00' }],
+    timezone: 'America/Bogota',
+    ordersPaused: false,
+    isActive,
+  });
+
+  it('sees a paused tenant that findBySlug (public RLS read) cannot, and ignores deleted ones', async () => {
+    if (!connected) return;
+    const suffix = randomUUID().slice(0, 8);
+    const paused = `pgslug-p-${suffix}`;
+    const gone = `pgslug-d-${suffix}`;
+    ids.push(paused, gone);
+    await repo.save(tenant(paused, paused, false));
+    await repo.save(tenant(gone, gone, true));
+    await repo.delete(gone);
+
+    expect(await repo.findBySlug(paused)).toBeNull();
+    expect(await repo.slugExists(paused)).toBe(true);
+    expect(await repo.slugExists(gone)).toBe(false);
+    expect(await repo.slugExists(`pgslug-none-${suffix}`)).toBe(false);
+  });
 });
