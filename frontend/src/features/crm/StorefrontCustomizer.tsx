@@ -13,6 +13,8 @@ import {
   CustomizerLivePreview,
 } from "./customizer"
 
+const TAB_COLUMNS = 3
+
 const CUSTOMIZER_TABS = [
   { id: "templates", label: "Estilos", icon: Sparkles, iconClass: "text-amber-500" },
   { id: "branding", label: "Marca", icon: ImageIcon, iconClass: "text-indigo-500" },
@@ -54,24 +56,37 @@ export const StorefrontCustomizer: React.FC = () => {
   const tabRefs = React.useRef<(HTMLButtonElement | null)[]>([])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    const currentIndex = CUSTOMIZER_TABS.findIndex((tab) => tab.id === activeSection)
+    if (currentIndex === -1) return
+
     let nextIndex: number | null = null
-
-    const targetElement = (e.target as HTMLElement | null)?.closest?.('[role="tab"]')
-    const targetId = targetElement?.id
-    const targetTab = CUSTOMIZER_TABS.find((tab) => `customizer-tab-${tab.id}` === targetId)
-    const currentIndex = targetTab
-      ? CUSTOMIZER_TABS.indexOf(targetTab)
-      : CUSTOMIZER_TABS.findIndex((tab) => tab.id === activeSection)
-
-    const effectiveIndex = currentIndex === -1 ? 0 : currentIndex
 
     switch (e.key) {
       case "ArrowRight":
-        nextIndex = (effectiveIndex + 1) % CUSTOMIZER_TABS.length
+        nextIndex = (currentIndex + 1) % CUSTOMIZER_TABS.length
         break
       case "ArrowLeft":
-        nextIndex = (effectiveIndex - 1 + CUSTOMIZER_TABS.length) % CUSTOMIZER_TABS.length
+        nextIndex = (currentIndex - 1 + CUSTOMIZER_TABS.length) % CUSTOMIZER_TABS.length
         break
+      case "ArrowDown": {
+        const next = currentIndex + TAB_COLUMNS
+        nextIndex = next < CUSTOMIZER_TABS.length ? next : currentIndex % TAB_COLUMNS
+        break
+      }
+      case "ArrowUp": {
+        const next = currentIndex - TAB_COLUMNS
+        if (next >= 0) {
+          nextIndex = next
+        } else {
+          const col = currentIndex % TAB_COLUMNS
+          let bottom = col
+          while (bottom + TAB_COLUMNS < CUSTOMIZER_TABS.length) {
+            bottom += TAB_COLUMNS
+          }
+          nextIndex = bottom
+        }
+        break
+      }
       case "Home":
         nextIndex = 0
         break
@@ -85,8 +100,7 @@ export const StorefrontCustomizer: React.FC = () => {
     e.preventDefault()
     const nextTab = CUSTOMIZER_TABS[nextIndex]
     setActiveSection(nextTab.id)
-    const nextEl = tabRefs.current[nextIndex] ?? document.getElementById(`customizer-tab-${nextTab.id}`)
-    nextEl?.focus()
+    tabRefs.current[nextIndex]?.focus()
   }
 
   return (

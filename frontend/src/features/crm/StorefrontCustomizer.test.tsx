@@ -378,6 +378,88 @@ describe("StorefrontCustomizer & Subcomponents (TDD Modularization)", () => {
         expect(estilosTab.getAttribute("tabindex")).toBe("0")
       })
 
+      it("navigates vertically within the same column with ArrowDown and ArrowUp and wraps within column", () => {
+        render(
+          <RestaurantProvider>
+            <StorefrontCustomizer />
+          </RestaurantProvider>
+        )
+
+        const estilosTab = screen.getByRole("tab", { name: /Estilos/i }) // col 0, row 0 (index 0)
+        const marcaTab = screen.getByRole("tab", { name: /Marca/i })     // col 1, row 0 (index 1)
+        const coloresTab = screen.getByRole("tab", { name: /Colores/i }) // col 2, row 0 (index 2)
+        const disenoTab = screen.getByRole("tab", { name: /Diseño/i })   // col 0, row 1 (index 3)
+        const pedidosTab = screen.getByRole("tab", { name: /Pedidos/i }) // col 1, row 1 (index 4)
+        const mesasTab = screen.getByRole("tab", { name: /Mesas/i })     // col 2, row 1 (index 5)
+
+        // --- Column 0: Estilos (0) <-> Diseño (3) ---
+        estilosTab.focus()
+        expect(document.activeElement).toBe(estilosTab)
+
+        // Down from Estilos -> Diseño
+        fireEvent.keyDown(estilosTab, { key: "ArrowDown" })
+        expect(document.activeElement).toBe(disenoTab)
+        expect(disenoTab.getAttribute("aria-selected")).toBe("true")
+        expect(disenoTab.getAttribute("tabindex")).toBe("0")
+        expect(estilosTab.getAttribute("aria-selected")).toBe("false")
+        expect(estilosTab.getAttribute("tabindex")).toBe("-1")
+
+        // Down from bottom row (Diseño) wraps to top of column (Estilos)
+        fireEvent.keyDown(disenoTab, { key: "ArrowDown" })
+        expect(document.activeElement).toBe(estilosTab)
+        expect(estilosTab.getAttribute("aria-selected")).toBe("true")
+
+        // Up from top row (Estilos) wraps to bottom of column (Diseño)
+        fireEvent.keyDown(estilosTab, { key: "ArrowUp" })
+        expect(document.activeElement).toBe(disenoTab)
+        expect(disenoTab.getAttribute("aria-selected")).toBe("true")
+
+        // Up from Diseño -> Estilos
+        fireEvent.keyDown(disenoTab, { key: "ArrowUp" })
+        expect(document.activeElement).toBe(estilosTab)
+        expect(estilosTab.getAttribute("aria-selected")).toBe("true")
+
+        // --- Column 1: Marca (1) <-> Pedidos (4) ---
+        fireEvent.click(marcaTab)
+        marcaTab.focus()
+        expect(document.activeElement).toBe(marcaTab)
+
+        // Down from Marca -> Pedidos
+        fireEvent.keyDown(marcaTab, { key: "ArrowDown" })
+        expect(document.activeElement).toBe(pedidosTab)
+        expect(pedidosTab.getAttribute("aria-selected")).toBe("true")
+
+        // Down from Pedidos wraps to Marca
+        fireEvent.keyDown(pedidosTab, { key: "ArrowDown" })
+        expect(document.activeElement).toBe(marcaTab)
+        expect(marcaTab.getAttribute("aria-selected")).toBe("true")
+
+        // Up from Marca wraps to Pedidos
+        fireEvent.keyDown(marcaTab, { key: "ArrowUp" })
+        expect(document.activeElement).toBe(pedidosTab)
+        expect(pedidosTab.getAttribute("aria-selected")).toBe("true")
+
+        // --- Column 2: Colores (2) <-> Mesas (5) ---
+        fireEvent.click(coloresTab)
+        coloresTab.focus()
+        expect(document.activeElement).toBe(coloresTab)
+
+        // Down from Colores -> Mesas
+        fireEvent.keyDown(coloresTab, { key: "ArrowDown" })
+        expect(document.activeElement).toBe(mesasTab)
+        expect(mesasTab.getAttribute("aria-selected")).toBe("true")
+
+        // Down from Mesas wraps to Colores
+        fireEvent.keyDown(mesasTab, { key: "ArrowDown" })
+        expect(document.activeElement).toBe(coloresTab)
+        expect(coloresTab.getAttribute("aria-selected")).toBe("true")
+
+        // Up from Colores wraps to Mesas
+        fireEvent.keyDown(coloresTab, { key: "ArrowUp" })
+        expect(document.activeElement).toBe(mesasTab)
+        expect(mesasTab.getAttribute("aria-selected")).toBe("true")
+      })
+
       it("calls preventDefault on handled keys and leaves other keys untouched", () => {
         render(
           <RestaurantProvider>
@@ -389,14 +471,14 @@ describe("StorefrontCustomizer & Subcomponents (TDD Modularization)", () => {
         estilosTab.focus()
 
         // Handled keys should have defaultPrevented = true
-        for (const key of ["ArrowRight", "ArrowLeft", "Home", "End"]) {
+        for (const key of ["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp", "Home", "End"]) {
           const event = new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true })
           fireEvent(estilosTab, event)
           expect(event.defaultPrevented).toBe(true)
         }
 
         // Unhandled keys should NOT have defaultPrevented
-        for (const key of ["Tab", "Enter", "Space", "ArrowUp", "ArrowDown", "KeyA"]) {
+        for (const key of ["Tab", "Enter", "Space", "KeyA"]) {
           const event = new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true })
           fireEvent(estilosTab, event)
           expect(event.defaultPrevented).toBe(false)
