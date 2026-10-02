@@ -27,6 +27,7 @@ import {
   LayoutGrid,
   Settings,
   KeyRound,
+  ClipboardList,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { AdminSwitcher, CreateRestaurantModal, CreateUserModal, ChangePasswordScreen, SupportModeBanner } from "@/features/superadmin"
@@ -90,7 +91,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
   const isDark = adminTheme === "dark"
   const isSuper = session.role === "super"
-  const isSuperGlobalMode = isSuper && (adminTab === "restaurants" || adminTab === "users" || adminTab === "metrics")
+  const isSuperGlobalMode = isSuper && (adminTab === "restaurants" || adminTab === "users" || adminTab === "metrics" || adminTab === "audit")
   const isSuperTenantMode = isSuper && !isSuperGlobalMode
 
   // Global SaaS navigation modules for platform-wide management
@@ -115,6 +116,13 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       icon: BarChart3,
       description: "Consolidado financiero y rendimiento",
       badge: "SaaS",
+    },
+    {
+      id: "audit" as const,
+      label: "Auditoría",
+      icon: ClipboardList,
+      description: "Registro de actividad y cambios",
+      badge: undefined,
     },
   ]
 

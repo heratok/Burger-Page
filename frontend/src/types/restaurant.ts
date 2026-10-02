@@ -210,5 +210,6 @@ export type AdminTab =
   | "restaurants"
   | "users"
   | "metrics"
+  | "audit"
 export type AdminTheme = "light" | "dark"
 export type AppView = "landing" | "store" | "admin" | "not-found"

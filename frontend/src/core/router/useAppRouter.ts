@@ -23,6 +23,7 @@ export const VALID_ADMIN_TABS: AdminTab[] = [
   "restaurants",
   "users",
   "metrics",
+  "audit",
 ]
 
 /**
@@ -67,6 +68,14 @@ export function resolveRoute(
       return {
         view: "admin",
         adminTab: "restaurants",
+        isNotFound: false,
+      }
+    }
+
+    if (["audit-log", "auditlog"].includes(subRoute)) {
+      return {
+        view: "admin",
+        adminTab: "audit",
         isNotFound: false,
       }
     }

@@ -17,7 +17,7 @@ export const SupportModeBanner: React.FC<SupportModeBannerProps> = ({
 
   const isSuper = session.role === "super"
   const isSuperGlobalScreen =
-    adminTab === "restaurants" || adminTab === "users" || adminTab === "metrics"
+    adminTab === "restaurants" || adminTab === "users" || adminTab === "metrics" || adminTab === "audit"
   const hasActiveRestaurant =
     Boolean(activeRestaurantId) &&
     activeRestaurantId !== "rest-default" &&

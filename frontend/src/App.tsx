@@ -83,6 +83,11 @@ const GlobalAnalytics = lazy(() =>
     default: m.GlobalAnalytics,
   }))
 )
+const AuditLogScreen = lazy(() =>
+  import("@/features/superadmin/AuditLogScreen").then((m) => ({
+    default: m.AuditLogScreen,
+  }))
+)
 const AdminAuthModal = lazy(() =>
   import("@/features/superadmin/AdminAuthModal").then((m) => ({
     default: m.AdminAuthModal,
@@ -187,7 +192,7 @@ export function MainRouter() {
     // cross-tenant directories or aggregates, so enforce the gate at route level.
     const isSuper = session.role === "super"
     const isGlobalAdminTab =
-      adminTab === "restaurants" || adminTab === "users" || adminTab === "metrics"
+      adminTab === "restaurants" || adminTab === "users" || adminTab === "metrics" || adminTab === "audit"
 
     return (
       <ErrorBoundary>
@@ -202,6 +207,7 @@ export function MainRouter() {
                 {adminTab === "restaurants" && <RestaurantsDirectory />}
                 {adminTab === "users" && <UsersDirectory />}
                 {adminTab === "metrics" && <GlobalAnalytics />}
+                {adminTab === "audit" && <AuditLogScreen />}
                 {adminTab === "dashboard" && <DashboardOverview />}
                 {adminTab === "orders" && <OrdersKanban />}
                 {adminTab === "tables" && <TablesManager />}

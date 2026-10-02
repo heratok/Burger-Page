@@ -76,16 +76,17 @@ describe("SupportModeBanner (TDD)", () => {
     expect(container.firstChild).toBeNull()
   })
 
-  it("does not show banner for super admin on super admin screens (restaurants, users, metrics)", () => {
+  it("does not show banner for super admin on super admin screens (restaurants, users, metrics, audit)", () => {
+    seedBlankActiveTenant("rest-burger-craft", "burger-craft", { name: "Burger Craft" })
     sessionStorage.setItem(
       "burger_page_session_v2",
       JSON.stringify({ role: "super", username: "superadmin", authenticatedAt: new Date().toISOString() })
     )
 
-    const TestComponent = ({ tab }: { tab: "restaurants" | "users" | "metrics" }) => {
+    const TestComponent = ({ tab }: { tab: "restaurants" | "users" | "metrics" | "audit" }) => {
       const { setAdminTab, switchRestaurant } = useRestaurant()
       React.useEffect(() => {
-        switchRestaurant("burger-craft")
+        switchRestaurant("rest-burger-craft")
         setAdminTab(tab)
       }, [setAdminTab, switchRestaurant, tab])
 
@@ -109,6 +110,13 @@ describe("SupportModeBanner (TDD)", () => {
     rerender(
       <RestaurantProvider>
         <TestComponent tab="metrics" />
+      </RestaurantProvider>
+    )
+    expect(screen.queryByText(/Modo soporte:/i)).toBeNull()
+
+    rerender(
+      <RestaurantProvider>
+        <TestComponent tab="audit" />
       </RestaurantProvider>
     )
     expect(screen.queryByText(/Modo soporte:/i)).toBeNull()
