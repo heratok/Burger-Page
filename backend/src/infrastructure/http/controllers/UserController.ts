@@ -2,7 +2,7 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 import { CreateUserUseCase } from '../../../application/use-cases/CreateUserUseCase.js';
 import { AuthenticateUserUseCase } from '../../../application/use-cases/AuthenticateUserUseCase.js';
 import { ListUsersUseCase } from '../../../application/use-cases/ListUsersUseCase.js';
-import { SetUserActiveUseCase } from '../../../application/use-cases/SetUserActiveUseCase.js';
+import { UpdateUserUseCase } from '../../../application/use-cases/UpdateUserUseCase.js';
 import { DeleteUserUseCase } from '../../../application/use-cases/DeleteUserUseCase.js';
 import { ResetUserPasswordUseCase } from '../../../application/use-cases/ResetUserPasswordUseCase.js';
 import { ChangeOwnPasswordUseCase } from '../../../application/use-cases/ChangeOwnPasswordUseCase.js';
@@ -13,7 +13,7 @@ export class UserController {
     private createUser: CreateUserUseCase,
     private authenticate: AuthenticateUserUseCase,
     private listUsers: ListUsersUseCase,
-    private setUserActive: SetUserActiveUseCase,
+    private updateUser: UpdateUserUseCase,
     private deleteUser: DeleteUserUseCase,
     private resetUserPassword: ResetUserPasswordUseCase,
     private changeOwnPassword: ChangeOwnPasswordUseCase
@@ -71,13 +71,21 @@ export class UserController {
     return reply.send(users);
   }
 
-  async setActive(request: FastifyRequest, reply: FastifyReply) {
+  async update(request: FastifyRequest, reply: FastifyReply) {
     const { id } = request.params as { id: string };
-    const { isActive } = request.body as { isActive: boolean };
-    const user = await this.setUserActive.execute({
+    const body = request.body as {
+      username?: string;
+      role?: 'super_admin' | 'restaurant_admin';
+      restaurantId?: string | null;
+      isActive?: boolean;
+    };
+    const user = await this.updateUser.execute({
       actorId: request.authContext!.userId,
       targetId: id,
-      isActive,
+      username: body.username,
+      role: body.role,
+      restaurantId: body.restaurantId,
+      isActive: body.isActive,
     });
     const { passwordHash: _, ...safe } = user;
     return reply.send(safe);

@@ -639,3 +639,22 @@ describe('migration 0000000000013 (users.password_changed_at) parity with the ba
     expect(down).toContain('DROP COLUMN IF EXISTS password_changed_at');
   });
 });
+
+describe('migration 0000000000014 (restaurants.deleted_slug) parity with the baseline schema', () => {
+  const baseline = read('01_schema.sql');
+  const up = read('migrations/0000000000014_restaurants_deleted_slug.up.sql');
+  const down = read('migrations/0000000000014_restaurants_deleted_slug.down.sql');
+
+  it('declares the nullable deleted_slug column in baseline and migration', () => {
+    expect(baseline).toMatch(/deleted_slug\s+TEXT,/);
+    expect(up).toMatch(/ADD COLUMN IF NOT EXISTS deleted_slug TEXT/);
+  });
+
+  it('backfills only deleted rows that lack the value, so a re-run changes nothing', () => {
+    expect(up).toMatch(/WHERE deleted_at IS NOT NULL\s+AND deleted_slug IS NULL/);
+  });
+
+  it('is reversible', () => {
+    expect(down).toContain('DROP COLUMN IF EXISTS deleted_slug');
+  });
+});

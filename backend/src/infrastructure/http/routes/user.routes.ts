@@ -122,13 +122,18 @@ export async function userRoutes(
     preHandler: [requireSuperAdmin],
     schema: {
       tags: ['Users'],
-      summary: 'Activate or deactivate a user',
-      description: 'Super admin only. A deactivated user cannot log in and loses access on the next request. Cannot target yourself or the last active super admin.',
+      summary: 'Edit a user',
+      description: 'Super admin only. Edits username, role, restaurantId and/or isActive (at least one). A restaurant_admin needs an existing, non-deleted restaurant; a super_admin has none. 409 on a taken username, on demoting or deactivating yourself, and on demoting or deactivating the last active super admin. The password is never changed here (use reset-password). Role and restaurant changes apply to tokens already issued.',
       params: idParams,
       body: {
         type: 'object',
-        required: ['isActive'],
-        properties: { isActive: { type: 'boolean' } },
+        minProperties: 1,
+        properties: {
+          username: { type: 'string', minLength: 1 },
+          role: { type: 'string', enum: ['super_admin', 'restaurant_admin'] },
+          restaurantId: { type: ['string', 'null'] },
+          isActive: { type: 'boolean' },
+        },
       },
       response: {
         200: {
@@ -145,7 +150,7 @@ export async function userRoutes(
         },
       },
     },
-  }, ctrl.setActive.bind(ctrl));
+  }, ctrl.update.bind(ctrl));
 
   app.delete('/:id', {
     preHandler: [requireSuperAdmin],

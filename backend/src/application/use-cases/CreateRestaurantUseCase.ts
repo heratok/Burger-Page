@@ -8,6 +8,7 @@ import { Restaurant } from '../../domain/models/Restaurant.js';
 import { MIN_PASSWORD_LENGTH, User, UserRole } from '../../domain/models/User.js';
 import { CreateRestaurantInput } from '@burger-page/contracts';
 import { ConflictError, ValidationError } from '../../domain/errors/DomainErrors.js';
+import { normalizeSlug } from '../../domain/shared/slug.js';
 import {
   DEFAULT_TIMEZONE,
   assertValidSchedule,
@@ -26,15 +27,7 @@ export class CreateRestaurantUseCase {
   ) {}
 
   async execute(input: CreateRestaurantInput, callerRole?: UserRole): Promise<Restaurant> {
-    const cleanSlug = input.slug
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9-]/g, '-')
-      .replace(/-+/g, '-');
-
-    if (!cleanSlug) {
-      throw new ValidationError('A valid slug is required');
-    }
+    const cleanSlug = normalizeSlug(input.slug);
 
     const existing = await this.restaurantRepo.findBySlug(cleanSlug);
     if (existing) {

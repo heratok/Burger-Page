@@ -1,5 +1,11 @@
 import { User, UserRole } from '../../../domain/models/User.js';
-import { UserRepository, GuardedUserChange } from '../../../domain/ports/out/UserRepository.js';
+import {
+  UserRepository,
+  GuardedUserChange,
+  UserChanges,
+  UserUpdateOutcome,
+  RestoredUser,
+} from '../../../domain/ports/out/UserRepository.js';
 import { withTenantContext } from './PgClient.js';
 
 function mapRow(row: any): User {
@@ -154,6 +160,74 @@ export class PgUserRepository implements UserRepository {
           WHERE restaurant_id = $1`,
         [restaurantId]
       );
+    });
+  }
+
+  async updateGuarded(id: string, changes: UserChanges): Promise<UserUpdateOutcome> {
+    try {
+      return await withTenantContext({ restaurantId: null, actorRole: 'super_admin' }, async (client) => {
+        // Same serialization as guarded(): every active super admin is locked
+        // before the check so concurrent demotions/deactivations queue up.
+        const { rows: locked } = await client.query(
+          `SELECT id FROM public.users WHERE role = 'super_admin' AND is_active ORDER BY id FOR UPDATE`
+        );
+        const { rows } = await client.query(
+          `SELECT id, role, is_active FROM public.users WHERE id = $1 FOR UPDATE`,
+          [id]
+        );
+        const target = rows[0];
+        if (!target) return 'not_found';
+        const nextRole = changes.role ?? target.role;
+        const nextActive = changes.isActive ?? target.is_active;
+        const losesSuperAdmin = target.role === 'super_admin' && target.is_active && (nextRole !== 'super_admin' || !nextActive);
+        if (losesSuperAdmin && locked.filter((r) => r.id !== id).length === 0) return 'last_super_admin';
+
+        const sets: string[] = [];
+        const values: unknown[] = [id];
+        const set = (column: string, value: unknown) => {
+          values.push(value);
+          sets.push(`${column} = $${values.length}`);
+        };
+        if (changes.username !== undefined) set('username', changes.username);
+        if (changes.role !== undefined) set('role', changes.role);
+        if (changes.restaurantId !== undefined) set('restaurant_id', changes.restaurantId);
+        if (changes.isActive !== undefined) set('is_active', changes.isActive);
+        if (sets.length > 0) {
+          await client.query(`UPDATE public.users SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $1`, values);
+        }
+        return 'done';
+      });
+    } catch (err: any) {
+      // users.username is UNIQUE; the transaction was rolled back.
+      if (err?.code === '23505') return 'username_taken';
+      throw err;
+    }
+  }
+
+  async restoreByRestaurantId(restaurantId: string): Promise<RestoredUser[]> {
+    return withTenantContext({ restaurantId, actorRole: 'super_admin' }, async (client) => {
+      const suffix = `-deleted-${restaurantId}`;
+      const { rows } = await client.query(
+        `SELECT id, username FROM public.users
+          WHERE restaurant_id = $1 AND right(username, length($2::text)) = $2::text
+          ORDER BY created_at ASC, id ASC FOR UPDATE`,
+        [restaurantId, suffix]
+      );
+      const restored: RestoredUser[] = [];
+      for (const row of rows) {
+        const originalUsername: string = row.username.slice(0, -suffix.length);
+        const { rowCount: taken } = await client.query(
+          `SELECT 1 FROM public.users WHERE username = $1 AND id <> $2`,
+          [originalUsername, row.id]
+        );
+        const username = taken ? `${originalUsername}-restored-${restaurantId}` : originalUsername;
+        await client.query(
+          `UPDATE public.users SET username = $2, is_active = true, updated_at = NOW() WHERE id = $1`,
+          [row.id, username]
+        );
+        restored.push({ id: row.id, username, originalUsername });
+      }
+      return restored;
     });
   }
 }

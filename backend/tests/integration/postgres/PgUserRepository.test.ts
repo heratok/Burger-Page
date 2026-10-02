@@ -259,6 +259,18 @@ describe('PgUserRepository (real Postgres, app_user role — login is the pre-te
         expect(rows[0].n).toBe(1);
       });
 
+      it('two concurrent demotions leave exactly one super admin, and a demotion succeeds while another stays active', async () => {
+        if (!isDbConnected) return;
+        const results = await Promise.all([
+          repo.updateGuarded(a.id, { role: 'restaurant_admin', restaurantId: RESTAURANT_A }),
+          repo.updateGuarded(b.id, { role: 'restaurant_admin', restaurantId: RESTAURANT_A }),
+        ]);
+        expect(results.filter((r) => r === 'done')).toHaveLength(1);
+        expect(results.filter((r) => r === 'last_super_admin')).toHaveLength(1);
+        const { rows } = await adminPool.query(`SELECT count(*)::int AS n FROM public.users WHERE id = ANY($1) AND role = 'super_admin' AND is_active`, [[a.id, b.id]]);
+        expect(rows[0].n).toBe(1);
+      });
+
       it('allows removing a super admin while another stays active, and reactivating is never blocked', async () => {
         if (!isDbConnected) return;
         expect(await repo.setActive(a.id, false)).toBe('done');
@@ -286,6 +298,74 @@ describe('PgUserRepository (real Postgres, app_user role — login is the pre-te
       expect(byId[u2.id].is_active).toBe(false);
       expect(byId[other.id]).toMatchObject({ username: other.username, is_active: true });
       expect(await repo.findByUsername(u1.username)).toBeNull();
+    });
+
+    it('updateGuarded edits username, role and restaurant atomically and only the given fields', async () => {
+      if (!isDbConnected) return;
+      const user = mk('restaurant_admin', RESTAURANT_A);
+      await repo.save(user);
+      await adminPool.query(`UPDATE public.users SET password_hash = 'fresh' WHERE id = $1`, [user.id]);
+
+      const renamed = `renamed-${randomUUID().slice(0, 8)}`;
+      expect(await repo.updateGuarded(user.id, { username: renamed, restaurantId: RESTAURANT_B })).toBe('done');
+      let { rows } = await adminPool.query(`SELECT username, role, restaurant_id, password_hash, is_active FROM public.users WHERE id = $1`, [user.id]);
+      expect(rows[0]).toMatchObject({ username: renamed, role: 'restaurant_admin', restaurant_id: RESTAURANT_B, password_hash: 'fresh', is_active: true });
+
+      expect(await repo.updateGuarded(user.id, { role: 'super_admin', restaurantId: null })).toBe('done');
+      ({ rows } = await adminPool.query(`SELECT role, restaurant_id FROM public.users WHERE id = $1`, [user.id]));
+      expect(rows[0]).toMatchObject({ role: 'super_admin', restaurant_id: null });
+      expect(await repo.updateGuarded('nope', { username: 'x' })).toBe('not_found');
+      await repo.delete(user.id, 'super_admin');
+    });
+
+    it('updateGuarded reports username_taken and leaves the row untouched', async () => {
+      if (!isDbConnected) return;
+      const a = mk('restaurant_admin', RESTAURANT_A);
+      const b = mk('restaurant_admin', RESTAURANT_A);
+      await repo.save(a);
+      await repo.save(b);
+      expect(await repo.updateGuarded(b.id, { username: a.username, restaurantId: RESTAURANT_B })).toBe('username_taken');
+      const { rows } = await adminPool.query(`SELECT username, restaurant_id FROM public.users WHERE id = $1`, [b.id]);
+      expect(rows[0]).toMatchObject({ username: b.username, restaurant_id: RESTAURANT_A });
+    });
+
+    it('restoreByRestaurantId reverses retire: original usernames back, users active, idempotent', async () => {
+      if (!isDbConnected) return;
+      const u1 = mk('restaurant_admin', RESTAURANT_B);
+      const u2 = mk('restaurant_admin', RESTAURANT_B);
+      const other = mk('restaurant_admin', RESTAURANT_A);
+      await repo.save(u1);
+      await repo.save(u2);
+      await repo.save(other);
+      await repo.retireByRestaurantId(RESTAURANT_B);
+
+      const restored = await repo.restoreByRestaurantId(RESTAURANT_B);
+      expect(restored.map((r) => r.id)).toEqual(expect.arrayContaining([u1.id, u2.id]));
+      expect(await repo.restoreByRestaurantId(RESTAURANT_B)).toEqual([]);
+
+      const { rows } = await adminPool.query(`SELECT id, username, is_active FROM public.users WHERE id = ANY($1)`, [[u1.id, u2.id, other.id]]);
+      const byId = Object.fromEntries(rows.map((r) => [r.id, r]));
+      expect(byId[u1.id]).toMatchObject({ username: u1.username, is_active: true });
+      expect(byId[u2.id]).toMatchObject({ username: u2.username, is_active: true });
+      expect(byId[other.id]).toMatchObject({ username: other.username, is_active: true });
+    });
+
+    it('restoreByRestaurantId gives a unique -restored- username when the original was taken meanwhile', async () => {
+      if (!isDbConnected) return;
+      const retired = mk('restaurant_admin', RESTAURANT_B);
+      await repo.save(retired);
+      await repo.retireByRestaurantId(RESTAURANT_B);
+      const squatter = { ...mk('restaurant_admin', RESTAURANT_A), username: retired.username };
+      await repo.save(squatter);
+
+      const restored = await repo.restoreByRestaurantId(RESTAURANT_B);
+      expect(restored.find((r) => r.id === retired.id)).toEqual({
+        id: retired.id,
+        username: `${retired.username}-restored-${RESTAURANT_B}`,
+        originalUsername: retired.username,
+      });
+      expect((await repo.findById(squatter.id))?.username).toBe(retired.username);
+      expect((await repo.findById(retired.id))?.isActive).toBe(true);
     });
   });
   });

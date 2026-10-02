@@ -268,4 +268,67 @@ describe('PgRestaurantRepository (real Postgres, app_user role)', () => {
     });
   });
 
+
+  describe('deleted tenants: list and restore', () => {
+    const rid = `pgdel-${randomUUID().slice(0, 8)}`;
+    const base = (id: string, slug: string): Restaurant => ({
+      id,
+      slug,
+      name: 'Pg Deleted Test',
+      theme: 'dark-charcoal',
+      schedule: [{ dayOfWeek: 1, open: '12:00', close: '22:00' }],
+      timezone: 'America/Bogota',
+      ordersPaused: false,
+      isActive: true,
+    });
+    afterAll(async () => {
+      if (isDbConnected) await adminPool.query(`DELETE FROM public.restaurants WHERE id LIKE 'pgdel-%'`);
+    });
+
+    it('delete stores the original slug; findDeleted lists it; restore brings it back paused', async () => {
+      if (!isDbConnected) return;
+      await repo.save(base(rid, rid));
+      await repo.delete(rid);
+
+      const deleted = (await repo.findDeleted()).find((r) => r.id === rid);
+      expect(deleted).toMatchObject({ id: rid, name: 'Pg Deleted Test', slug: rid });
+      expect(Date.parse(deleted!.deletedAt)).not.toBeNaN();
+      expect(await repo.findById(rid)).toBeNull();
+
+      expect(await repo.restore(rid, rid)).toBe('restored');
+      const restored = await repo.findById(rid);
+      expect(restored).toMatchObject({ id: rid, slug: rid, isActive: false });
+      expect((await repo.findDeleted()).some((r) => r.id === rid)).toBe(false);
+      const { rows } = await adminPool.query(`SELECT deleted_at, deleted_slug FROM public.restaurants WHERE id = $1`, [rid]);
+      expect(rows[0]).toMatchObject({ deleted_at: null, deleted_slug: null });
+    });
+
+    it('restore reports not_found for a live or unknown tenant and slug_taken without touching the row', async () => {
+      if (!isDbConnected) return;
+      const a = `pgdel-${randomUUID().slice(0, 8)}`;
+      const b = `pgdel-${randomUUID().slice(0, 8)}`;
+      await repo.save(base(a, a));
+      await repo.save(base(b, b));
+      await repo.delete(a);
+
+      expect(await repo.restore(b, b)).toBe('not_found');
+      expect(await repo.restore('pgdel-ghost', 'ghost')).toBe('not_found');
+      expect(await repo.restore(a, b)).toBe('slug_taken');
+      expect((await repo.findDeleted()).some((r) => r.id === a)).toBe(true);
+
+      expect(await repo.restore(a, `${a}-new`)).toBe('restored');
+      expect((await repo.findById(a))?.slug).toBe(`${a}-new`);
+    });
+
+    it('a restored tenant cannot be restored twice and saves work again', async () => {
+      if (!isDbConnected) return;
+      const id = `pgdel-${randomUUID().slice(0, 8)}`;
+      await repo.save(base(id, id));
+      await repo.delete(id);
+      expect(await repo.restore(id, id)).toBe('restored');
+      expect(await repo.restore(id, id)).toBe('not_found');
+      await repo.save({ ...base(id, id), name: 'Renamed after restore' });
+      expect((await repo.findById(id))?.name).toBe('Renamed after restore');
+    });
+  });
 });

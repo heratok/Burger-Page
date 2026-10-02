@@ -1,5 +1,5 @@
-import { RestaurantRepository } from '../../domain/ports/out/RestaurantRepository.js';
-import { Restaurant } from '../../domain/models/Restaurant.js';
+import { RestaurantRepository, RestoreRestaurantOutcome } from '../../domain/ports/out/RestaurantRepository.js';
+import { DeletedRestaurant, Restaurant } from '../../domain/models/Restaurant.js';
 import { legacyHoursText, legacyOpeningHours } from '../../domain/shared/restaurantSchedule.js';
 import { defaultRestaurant, multiTenantSeedRestaurants } from './seedData.js';
 
@@ -7,6 +7,8 @@ export class InMemoryRestaurantRepository implements RestaurantRepository {
   private restaurants: Map<string, Restaurant> = new Map();
   /** Soft-deleted tenants: hidden from every read and never resurrected by save(). */
   private deletedIds = new Set<string>();
+  /** Original slug and deletion instant of each soft-deleted tenant. */
+  private deletedMeta = new Map<string, { slug: string; deletedAt: string }>();
 
   constructor() {
     for (const seed of [defaultRestaurant, ...multiTenantSeedRestaurants]) {
@@ -54,6 +56,7 @@ export class InMemoryRestaurantRepository implements RestaurantRepository {
   async delete(id: string): Promise<void> {
     const rest = this.restaurants.get(id);
     if (rest && !this.deletedIds.has(id)) {
+      this.deletedMeta.set(id, { slug: rest.slug ?? id, deletedAt: new Date().toISOString() });
       rest.isActive = false;
       rest.slug = `${rest.slug}-deleted-${id}`;
       this.deletedIds.add(id);
@@ -63,5 +66,25 @@ export class InMemoryRestaurantRepository implements RestaurantRepository {
   async hardDelete(id: string): Promise<void> {
     this.restaurants.delete(id);
     this.deletedIds.delete(id);
+    this.deletedMeta.delete(id);
+  }
+
+  async findDeleted(): Promise<DeletedRestaurant[]> {
+    return [...this.deletedIds]
+      .map((id) => ({ rest: this.restaurants.get(id), meta: this.deletedMeta.get(id) }))
+      .filter((e): e is { rest: Restaurant; meta: { slug: string; deletedAt: string } } => !!e.rest && !!e.meta)
+      .map(({ rest, meta }) => ({ id: rest.id, name: rest.name, slug: meta.slug, deletedAt: meta.deletedAt }))
+      .sort((a, b) => b.deletedAt.localeCompare(a.deletedAt));
+  }
+
+  async restore(id: string, slug: string): Promise<RestoreRestaurantOutcome> {
+    const rest = this.restaurants.get(id);
+    if (!rest || !this.deletedIds.has(id)) return 'not_found';
+    if (this.live().some((r) => r.slug === slug)) return 'slug_taken';
+    rest.slug = slug;
+    rest.isActive = false;
+    this.deletedIds.delete(id);
+    this.deletedMeta.delete(id);
+    return 'restored';
   }
 }

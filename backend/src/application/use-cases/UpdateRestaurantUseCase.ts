@@ -3,7 +3,7 @@ import { RestaurantRepository } from '../../domain/ports/out/RestaurantRepositor
 import { CategoryRepository } from '../../domain/ports/out/CategoryRepository.js';
 import { Restaurant, omitAdminPassword } from '../../domain/models/Restaurant.js';
 import { UpdateRestaurantInput } from '@burger-page/contracts';
-import { EntityNotFoundError, ValidationError } from '../../domain/errors/DomainErrors.js';
+import { ConflictError, EntityNotFoundError, ValidationError } from '../../domain/errors/DomainErrors.js';
 import { UserRepository } from '../../domain/ports/out/UserRepository.js';
 import { PasswordHasher } from '../../domain/ports/out/PasswordHasher.js';
 import { MIN_PASSWORD_LENGTH } from '../../domain/models/User.js';
@@ -12,6 +12,7 @@ import {
   assertValidTimezone,
   scheduleFromLegacyHoursText,
 } from '../../domain/shared/restaurantSchedule.js';
+import { normalizeSlug } from '../../domain/shared/slug.js';
 import type { WeeklySchedule } from '@burger-page/contracts';
 import { User } from '../../domain/models/User.js';
 
@@ -72,18 +73,11 @@ export class UpdateRestaurantUseCase {
 
     let slug = restaurant.slug;
     if (input.slug !== undefined) {
-      const cleanSlug = input.slug
-        .toLowerCase()
-        .trim()
-        .replace(/[^a-z0-9-]/g, '-')
-        .replace(/-+/g, '-');
-      if (!cleanSlug) {
-        throw new ValidationError('A valid slug is required');
-      }
+      const cleanSlug = normalizeSlug(input.slug);
       if (cleanSlug !== restaurant.slug) {
         const existing = await this.restaurantRepo.findBySlug(cleanSlug);
         if (existing && existing.id !== restaurant.id) {
-          throw new ValidationError(`Restaurant with slug "${cleanSlug}" already exists`);
+          throw new ConflictError(`Restaurant with slug "${cleanSlug}" already exists`);
         }
         slug = cleanSlug;
       }
@@ -118,6 +112,10 @@ export class UpdateRestaurantUseCase {
         ...(input.tagline !== undefined ? { tagline: input.tagline } : {}),
         ...(input.whatsappNumber !== undefined ? { whatsappNumber: input.whatsappNumber } : {}),
         ...(input.primaryColor !== undefined ? { primaryColor: input.primaryColor } : {}),
+        // Top-level currency fields are the super admin form's shortcut for
+        // config.currency / config.currencySymbol (restaurant_settings).
+        ...(input.currency !== undefined ? { currency: input.currency.toUpperCase() } : {}),
+        ...(input.currencySymbol !== undefined ? { currencySymbol: input.currencySymbol } : {}),
       },
     };
 

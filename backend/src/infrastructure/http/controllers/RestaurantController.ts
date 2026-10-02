@@ -5,7 +5,9 @@ import { CreateRestaurantUseCase } from '../../../application/use-cases/CreateRe
 import { DeleteRestaurantUseCase } from '../../../application/use-cases/DeleteRestaurantUseCase.js';
 import { UpdateRestaurantCategoriesUseCase } from '../../../application/use-cases/UpdateRestaurantCategoriesUseCase.js';
 import { UpdateRestaurantUseCase } from '../../../application/use-cases/UpdateRestaurantUseCase.js';
-import { createRestaurantSchema, updateRestaurantCategoriesSchema, updateRestaurantSchema } from '@burger-page/contracts';
+import { ListDeletedRestaurantsUseCase } from '../../../application/use-cases/ListDeletedRestaurantsUseCase.js';
+import { RestoreRestaurantUseCase } from '../../../application/use-cases/RestoreRestaurantUseCase.js';
+import { createRestaurantSchema, restoreRestaurantSchema, updateRestaurantCategoriesSchema, updateRestaurantSchema } from '@burger-page/contracts';
 import { ValidationError } from '../../../domain/errors/DomainErrors.js';
 import { omitAdminPassword } from '../../../domain/models/Restaurant.js';
 
@@ -54,7 +56,9 @@ export class RestaurantController {
     private readonly createRestaurantUseCase: CreateRestaurantUseCase,
     private readonly deleteRestaurantUseCase: DeleteRestaurantUseCase,
     private readonly updateCategoriesUseCase: UpdateRestaurantCategoriesUseCase,
-    private readonly updateRestaurantUseCase?: UpdateRestaurantUseCase
+    private readonly updateRestaurantUseCase?: UpdateRestaurantUseCase,
+    private readonly listDeletedUseCase?: ListDeletedRestaurantsUseCase,
+    private readonly restoreRestaurantUseCase?: RestoreRestaurantUseCase
   ) {}
 
   async list(req: FastifyRequest, reply: FastifyReply) {
@@ -115,6 +119,26 @@ export class RestaurantController {
     const params = (req.params || {}) as { id: string };
     await this.deleteRestaurantUseCase.execute(params.id);
     return reply.status(200).send({ message: 'Restaurant deleted successfully' });
+  }
+
+  async listDeleted(_req: FastifyRequest, reply: FastifyReply) {
+    if (!this.listDeletedUseCase) {
+      throw new Error('ListDeletedRestaurantsUseCase is not configured.');
+    }
+    return reply.status(200).send(await this.listDeletedUseCase.execute());
+  }
+
+  async restore(req: FastifyRequest, reply: FastifyReply) {
+    if (!this.restoreRestaurantUseCase) {
+      throw new Error('RestoreRestaurantUseCase is not configured.');
+    }
+    const { id } = req.params as { id: string };
+    const body = restoreRestaurantSchema.safeParse(req.body ?? {});
+    if (!body.success) {
+      throw new ValidationError(body.error.message);
+    }
+    const result = await this.restoreRestaurantUseCase.execute({ id, slug: body.data.slug });
+    return reply.status(200).send(result);
   }
 
   async updateCategories(

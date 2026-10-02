@@ -1,6 +1,6 @@
 import type { WeeklySchedule } from '@burger-page/contracts';
-import { Restaurant } from '../../../domain/models/Restaurant.js';
-import { RestaurantRepository } from '../../../domain/ports/out/RestaurantRepository.js';
+import { DeletedRestaurant, Restaurant } from '../../../domain/models/Restaurant.js';
+import { RestaurantRepository, RestoreRestaurantOutcome } from '../../../domain/ports/out/RestaurantRepository.js';
 import { ID_PREFIX, newId } from '../../../domain/shared/newId.js';
 import {
   DEFAULT_TIMEZONE,
@@ -246,16 +246,58 @@ export class PgRestaurantRepository implements RestaurantRepository {
     await withTenantContext({ restaurantId: id, actorRole: 'super_admin' }, async (client) => {
       await client.query(
         // The slug is renamed so it can be reused by a new tenant; the id suffix
-        // keeps the renamed value unique.
+        // keeps the renamed value unique and deleted_slug keeps the original so
+        // the tenant can be listed and restored.
         `UPDATE public.restaurants
             SET is_active = false,
                 deleted_at = NOW(),
+                deleted_slug = slug,
                 slug = slug || '-deleted-' || id,
                 updated_at = NOW()
           WHERE id = $1 AND deleted_at IS NULL`,
         [id]
       );
     });
+  }
+
+  async findDeleted(): Promise<DeletedRestaurant[]> {
+    return withTenantContext({ restaurantId: null, actorRole: 'super_admin' }, async (client) => {
+      const { rows } = await client.query(
+        `SELECT id, name, COALESCE(deleted_slug, slug) AS slug, deleted_at
+           FROM public.restaurants
+          WHERE deleted_at IS NOT NULL
+          ORDER BY deleted_at DESC, id ASC`
+      );
+      return rows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        slug: row.slug,
+        deletedAt: new Date(row.deleted_at).toISOString(),
+      }));
+    });
+  }
+
+  async restore(id: string, slug: string): Promise<RestoreRestaurantOutcome> {
+    try {
+      return await withTenantContext({ restaurantId: id, actorRole: 'super_admin' }, async (client) => {
+        const { rowCount } = await client.query(
+          `UPDATE public.restaurants
+              SET deleted_at = NULL,
+                  deleted_slug = NULL,
+                  is_active = false,
+                  slug = $2,
+                  updated_at = NOW()
+            WHERE id = $1 AND deleted_at IS NOT NULL`,
+          [id, slug]
+        );
+        return rowCount ? 'restored' : 'not_found';
+      });
+    } catch (err: any) {
+      // restaurants.slug is UNIQUE: a live tenant owns it (also covers the race
+      // with a concurrent create). The transaction was rolled back.
+      if (err?.code === '23505') return 'slug_taken';
+      throw err;
+    }
   }
 
   async hardDelete(id: string): Promise<void> {

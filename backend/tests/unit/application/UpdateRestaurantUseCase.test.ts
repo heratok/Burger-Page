@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { UpdateRestaurantUseCase } from '../../../src/application/use-cases/UpdateRestaurantUseCase.js';
 import { RestaurantRepository } from '../../../src/domain/ports/out/RestaurantRepository.js';
 import { Restaurant } from '../../../src/domain/models/Restaurant.js';
-import { EntityNotFoundError, ValidationError } from '../../../src/domain/errors/DomainErrors.js';
+import { EntityNotFoundError, ConflictError, ValidationError } from '../../../src/domain/errors/DomainErrors.js';
 
 import { User } from '../../../src/domain/models/User.js';
 import { UserRepository } from '../../../src/domain/ports/out/UserRepository.js';
@@ -238,7 +238,7 @@ describe('UpdateRestaurantUseCase', () => {
     // Duplicate rejection still applies for super_admin too.
     await expect(
       useCase.execute('rest-1', { slug: 'tomado' } as any, 'super_admin')
-    ).rejects.toThrow(ValidationError);
+    ).rejects.toThrow(ConflictError);
     await expect(
       useCase.execute('rest-1', { slug: 'tomado' } as any, 'super_admin')
     ).rejects.toThrow(/already exists/);

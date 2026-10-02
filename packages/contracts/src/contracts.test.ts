@@ -6,6 +6,7 @@ import {
   orderEventSchema,
   updateCustomerSchema,
   updateRestaurantSchema,
+  restoreRestaurantSchema,
   createRestaurantSchema,
   restaurantDTOSchema,
 } from './index.js';
@@ -110,5 +111,17 @@ describe('restaurant schedule contracts', () => {
     expect(parsed.schedule).toHaveLength(1);
     expect(parsed.timezone).toBe('America/Bogota');
     expect(parsed.ordersPaused).toBe(false);
+  });
+
+  it('accepts currency and currencySymbol on update and rejects malformed ones', () => {
+    expect(updateRestaurantSchema.safeParse({ currency: 'MXN', currencySymbol: 'MX$' }).success).toBe(true);
+    expect(updateRestaurantSchema.safeParse({ currency: 'EURO' }).success).toBe(false);
+    expect(updateRestaurantSchema.safeParse({ currencySymbol: '' }).success).toBe(false);
+  });
+
+  it('restoreRestaurantSchema takes an optional slug', () => {
+    expect(restoreRestaurantSchema.safeParse({}).success).toBe(true);
+    expect(restoreRestaurantSchema.safeParse({ slug: 'otro' }).success).toBe(true);
+    expect(restoreRestaurantSchema.safeParse({ slug: '' }).success).toBe(false);
   });
 });

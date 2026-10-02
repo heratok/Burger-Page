@@ -59,12 +59,24 @@ export const createRestaurantSchema = z.object({
   schedule: weeklyScheduleSchema.optional(),
   timezone: z.string().refine(isValidTimeZone, 'Timezone must be a valid IANA timezone').optional(),
   ordersPaused: z.boolean().optional(),
+  // Money of the store (restaurant_settings): ISO 4217 code and display symbol.
+  currency: z
+    .string()
+    .regex(/^[A-Za-z]{3}$/, 'Currency must be a 3-letter ISO 4217 code')
+    .optional(),
+  currencySymbol: z.string().trim().min(1, 'Currency symbol is required').max(8).optional(),
 });
 
 export type CreateRestaurantInput = z.infer<typeof createRestaurantSchema>;
 
 export const updateRestaurantSchema = createRestaurantSchema.partial();
 export type UpdateRestaurantInput = z.infer<typeof updateRestaurantSchema>;
+
+/** Body of POST /restaurants/:id/restore: optionally restore under a new slug. */
+export const restoreRestaurantSchema = z.object({
+  slug: z.string().min(1, 'Restaurant slug is required').optional(),
+});
+export type RestoreRestaurantInput = z.infer<typeof restoreRestaurantSchema>;
 
 export const restaurantDTOSchema = z.object({
   id: z.string(),

@@ -88,7 +88,9 @@ import { DeleteInventoryItemUseCase } from '../../application/use-cases/DeleteIn
 import { CreateUserUseCase } from '../../application/use-cases/CreateUserUseCase.js';
 import { AuthenticateUserUseCase } from '../../application/use-cases/AuthenticateUserUseCase.js';
 import { ListUsersUseCase } from '../../application/use-cases/ListUsersUseCase.js';
-import { SetUserActiveUseCase } from '../../application/use-cases/SetUserActiveUseCase.js';
+import { UpdateUserUseCase } from '../../application/use-cases/UpdateUserUseCase.js';
+import { ListDeletedRestaurantsUseCase } from '../../application/use-cases/ListDeletedRestaurantsUseCase.js';
+import { RestoreRestaurantUseCase } from '../../application/use-cases/RestoreRestaurantUseCase.js';
 import { DeleteUserUseCase } from '../../application/use-cases/DeleteUserUseCase.js';
 import { ResetUserPasswordUseCase } from '../../application/use-cases/ResetUserPasswordUseCase.js';
 import { ChangeOwnPasswordUseCase } from '../../application/use-cases/ChangeOwnPasswordUseCase.js';
@@ -297,7 +299,9 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
       createRestaurant,
       deleteRestaurant,
       updateRestaurantCategories,
-      updateRestaurant
+      updateRestaurant,
+      new ListDeletedRestaurantsUseCase(restaurantRepo),
+      new RestoreRestaurantUseCase(restaurantRepo, userRepo)
     ),
     productController: new ProductController(
       listProducts,
@@ -353,7 +357,7 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
       createUser,
       authenticateUser,
       listUsersUC,
-      new SetUserActiveUseCase(userRepo),
+      new UpdateUserUseCase(userRepo, restaurantRepo),
       new DeleteUserUseCase(userRepo),
       new ResetUserPasswordUseCase(userRepo, hasher),
       new ChangeOwnPasswordUseCase(userRepo, hasher)

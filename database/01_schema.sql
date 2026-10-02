@@ -117,6 +117,7 @@ CREATE TABLE IF NOT EXISTS public.restaurants (
     created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     deleted_at              TIMESTAMPTZ,
+    deleted_slug            TEXT,
     CONSTRAINT chk_restaurants_id_format
         CHECK (id ~ '^[A-Za-z0-9_-]{1,64}$')
 );
@@ -124,6 +125,7 @@ CREATE TABLE IF NOT EXISTS public.restaurants (
 COMMENT ON TABLE public.restaurants IS 'Tenants: identidad y ciclo de vida del restaurante. Config/branding viven en restaurant_settings / restaurant_branding (1:1).';
 COMMENT ON COLUMN public.restaurants.is_active IS 'Restaurante visible y operativo (usado por la política de lectura pública).';
 COMMENT ON COLUMN public.restaurants.deleted_at IS 'Baja lógica del tenant (distinta de pausar con is_active=false): la app lo oculta de listados y búsquedas y renombra el slug para liberarlo.';
+COMMENT ON COLUMN public.restaurants.deleted_slug IS 'Slug original del tenant al darlo de baja (el slug vigente se renombra con el sufijo -deleted-<id>). NULL mientras el tenant no esté dado de baja.';
 
 -- 2.1.1 RESTAURANT SETTINGS (Configuración operativa 1:1) -------------------
 -- Operación comercial del tenant: moneda, delivery, mínimos, horarios por
