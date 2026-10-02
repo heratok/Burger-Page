@@ -12,6 +12,7 @@ function mapRow(row: any): User {
     createdAt: row.created_at || new Date().toISOString(),
         isActive: row.is_active === undefined ? undefined : Boolean(row.is_active),
     mustChangePassword: row.must_change_password === undefined ? undefined : Boolean(row.must_change_password),
+    passwordChangedAt: row.password_changed_at ? new Date(row.password_changed_at).toISOString() : undefined,
   };
 }
 
@@ -72,15 +73,16 @@ export class PgUserRepository implements UserRepository {
                restaurant_id = $4,
                is_active = COALESCE($5::boolean, is_active),
                must_change_password = COALESCE($6::boolean, must_change_password),
+               password_changed_at = COALESCE($8::timestamptz, password_changed_at),
                updated_at = NOW()
              WHERE id = $7`,
-            [user.username, user.passwordHash, user.role, user.restaurantId || null, user.isActive ?? null, user.mustChangePassword ?? null, existing.rows[0].id]
+            [user.username, user.passwordHash, user.role, user.restaurantId || null, user.isActive ?? null, user.mustChangePassword ?? null, existing.rows[0].id, user.passwordChangedAt ?? null]
           );
         } else {
           await client.query(
-            `INSERT INTO public.users (id, username, password_hash, role, restaurant_id, is_active, must_change_password, created_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-            [user.id, user.username, user.passwordHash, user.role, user.restaurantId || null, user.isActive ?? true, user.mustChangePassword ?? false, user.createdAt || new Date().toISOString()]
+            `INSERT INTO public.users (id, username, password_hash, role, restaurant_id, is_active, must_change_password, created_at, password_changed_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+            [user.id, user.username, user.passwordHash, user.role, user.restaurantId || null, user.isActive ?? true, user.mustChangePassword ?? false, user.createdAt || new Date().toISOString(), user.passwordChangedAt ?? null]
           );
         }
       }

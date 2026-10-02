@@ -127,6 +127,7 @@ export class CreateRestaurantUseCase {
           restaurantId,
           createdAt: new Date().toISOString(),
           isActive: true,
+          mustChangePassword: true,
         };
         await this.userRepo.save(adminUser, callerRole ?? 'super_admin');
       } catch (err) {

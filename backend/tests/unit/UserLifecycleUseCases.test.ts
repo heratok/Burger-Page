@@ -167,6 +167,7 @@ describe('User lifecycle use cases', () => {
 
       const stored = await repo.findById('ra-1');
       expect(stored?.mustChangePassword).toBe(true);
+      expect(Number.isNaN(Date.parse(stored?.passwordChangedAt ?? ''))).toBe(false);
       expect(await hasher.verify(temporaryPassword, stored!.passwordHash)).toBe(true);
       expect(await hasher.verify('password-1', stored!.passwordHash)).toBe(false);
     });
@@ -198,6 +199,7 @@ describe('User lifecycle use cases', () => {
 
       const after = await repo.findById('ra-1');
       expect(after?.mustChangePassword).toBe(false);
+      expect(Number.isNaN(Date.parse(after?.passwordChangedAt ?? ''))).toBe(false);
       expect(await hasher.verify('brand-new-pass', after!.passwordHash)).toBe(true);
       expect(jwt.verifyToken(token).mustChangePassword).toBeFalsy();
     });

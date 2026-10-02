@@ -24,7 +24,7 @@ export class ResetUserPasswordUseCase {
     }
     const temporaryPassword = this.generatePassword();
     const passwordHash = await this.hasher.hash(temporaryPassword);
-    await this.userRepo.save({ ...target, passwordHash, mustChangePassword: true }, 'super_admin');
+    await this.userRepo.save({ ...target, passwordHash, mustChangePassword: true, passwordChangedAt: new Date().toISOString() }, 'super_admin');
     return { temporaryPassword };
   }
 }

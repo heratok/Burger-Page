@@ -111,6 +111,8 @@ async function main() {
           role,
           restaurantId,
           createdAt: now,
+          // Operator-set password (also used to rotate an existing account): revoke older sessions.
+          passwordChangedAt: now,
         },
         'super_admin'
       );
@@ -130,7 +132,7 @@ async function main() {
   console.log('--------------------------------------------------------------------------------');
   console.log(`INSERT INTO public.users (id, username, password_hash, role, is_active, created_at, updated_at)`);
   console.log(`VALUES ('${userId}', '${username}', '${passwordHash}', 'super_admin', true, NOW(), NOW())`);
-  console.log(`ON CONFLICT (username) DO UPDATE SET password_hash = '${passwordHash}', updated_at = NOW();`);
+  console.log(`ON CONFLICT (username) DO UPDATE SET password_hash = '${passwordHash}', password_changed_at = NOW(), updated_at = NOW();`);
   console.log('--------------------------------------------------------------------------------\n');
 }
 

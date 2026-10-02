@@ -82,6 +82,18 @@ export function createAuthMiddlewares(
         // moment is_active flips; the stored flag is the source of truth.
         return { ok: false, detail: 'Account is deactivated.' };
       }
+      if (user.passwordChangedAt) {
+        // A password change/reset revokes every session issued before it. `iat`
+        // has whole-second precision while the stored instant has milliseconds,
+        // so floor the stored value to seconds: a token minted in the same
+        // second as the change (the fresh one /me/password returns) is accepted,
+        // and only strictly earlier seconds are rejected. The trade-off is that
+        // a token stolen within the very second of a change survives it.
+        const changedAtSeconds = Math.floor(Date.parse(user.passwordChangedAt) / 1000);
+        if (Number.isFinite(changedAtSeconds) && payload.iat < changedAtSeconds) {
+          return { ok: false, detail: 'Session expired: the password was changed. Please sign in again.' };
+        }
+      }
       authContext.userId = user.id;
       authContext.username = user.username;
       authContext.role = user.role;

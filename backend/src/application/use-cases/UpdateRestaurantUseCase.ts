@@ -199,6 +199,6 @@ export class UpdateRestaurantUseCase {
     if (!primary) {
       throw new EntityNotFoundError(`Restaurant "${restaurantId}" has no administrator user`);
     }
-    return { ...primary, passwordHash: await this.hasher.hash(password), mustChangePassword: true };
+    return { ...primary, passwordHash: await this.hasher.hash(password), mustChangePassword: true, passwordChangedAt: new Date().toISOString() };
   }
 }

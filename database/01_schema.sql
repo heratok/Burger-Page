@@ -234,6 +234,7 @@ CREATE TABLE IF NOT EXISTS public.users (
     restaurant_id TEXT REFERENCES public.restaurants(id) ON DELETE CASCADE,
     is_active     BOOLEAN NOT NULL DEFAULT TRUE,
     must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
+    password_changed_at TIMESTAMPTZ,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT chk_restaurant_admin_has_restaurant
@@ -245,6 +246,7 @@ CREATE TABLE IF NOT EXISTS public.users (
 COMMENT ON TABLE public.users IS 'Empleados/administradores. rol super_admin es de plataforma (restaurant_id NULL).';
 COMMENT ON COLUMN public.users.password_hash IS 'Hash con salt del credencial de acceso. Nunca se devuelve al frontend.';
 COMMENT ON COLUMN public.users.must_change_password IS 'true tras un reseteo de contraseña por el super admin: el usuario solo puede cambiar su propia contraseña hasta hacerlo.';
+COMMENT ON COLUMN public.users.password_changed_at IS 'Instante del último cambio/reseteo de contraseña. Los tokens emitidos antes (iat) se rechazan. NULL = nunca cambiada.';
 
 -- 2.3 CATEGORIES (Relational Menu Sections) ----------------------------------
 CREATE TABLE IF NOT EXISTS public.categories (

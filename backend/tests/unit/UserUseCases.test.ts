@@ -74,6 +74,13 @@ describe('User Use Cases', () => {
       expect(mockUserRepo.save).toHaveBeenCalledWith(result, undefined);
     });
 
+    it('forces the new user to change the password the super admin chose', async () => {
+      const useCase = new CreateUserUseCase(mockUserRepo, mockHasher, mockRestaurantRepo);
+      vi.mocked(mockUserRepo.findByUsername).mockResolvedValue(null);
+      const result = await useCase.execute({ username: 'fresh_admin', password: 'securePass123', role: 'super_admin' });
+      expect(result.mustChangePassword).toBe(true);
+    });
+
     it('should throw ValidationError when username is empty', async () => {
       const useCase = new CreateUserUseCase(mockUserRepo, mockHasher, mockRestaurantRepo);
 

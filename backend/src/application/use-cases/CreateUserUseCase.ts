@@ -47,6 +47,8 @@ export class CreateUserUseCase {
       role: dto.role,
       restaurantId: dto.role === 'restaurant_admin' ? dto.restaurantId : undefined,
       createdAt: new Date().toISOString(),
+      // The super admin chose this password, so the account owner must replace it at first login.
+      mustChangePassword: true,
     };
 
     await this.userRepo.save(user, callerRole);

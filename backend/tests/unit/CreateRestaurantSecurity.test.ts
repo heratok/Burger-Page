@@ -102,6 +102,7 @@ describe('CreateRestaurantUseCase (Security Hardening)', () => {
     const [savedUser, actorRole] = mockUserRepo.save.mock.calls[0];
     expect(savedUser.username).toBe('admin_burger-test');
     expect(savedUser.role).toBe('restaurant_admin');
+    expect(savedUser.mustChangePassword).toBe(true);
     expect(savedUser.restaurantId).toBe(result.id);
     expect(savedUser.isActive).toBe(true);
     expect(savedUser.createdAt).toBeDefined();

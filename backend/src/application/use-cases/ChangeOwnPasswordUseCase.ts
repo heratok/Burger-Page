@@ -36,7 +36,7 @@ export class ChangeOwnPasswordUseCase {
     }
 
     const passwordHash = await this.hasher.hash(newPassword);
-    await this.userRepo.save({ ...user, passwordHash, mustChangePassword: false }, user.role);
+    await this.userRepo.save({ ...user, passwordHash, mustChangePassword: false, passwordChangedAt: new Date().toISOString() }, user.role);
 
     return {
       token: this.jwtService.generateToken({

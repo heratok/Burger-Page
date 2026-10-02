@@ -454,6 +454,7 @@ describe('UpdateRestaurantUseCase admin password reset', () => {
     expect(saved).toHaveLength(1);
     expect(saved[0].user.passwordHash).toBe('hashed:fresh-secret-9');
     expect(saved[0].user.mustChangePassword).toBe(true);
+    expect(Number.isNaN(Date.parse(saved[0].user.passwordChangedAt ?? ''))).toBe(false);
     expect(saved[0].actorRole).toBe('super_admin');
     expect(restRepo.saveCalls[0]).not.toHaveProperty('adminPassword');
     expect(result).not.toHaveProperty('adminPassword');

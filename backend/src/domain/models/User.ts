@@ -15,4 +15,6 @@ export const MIN_PASSWORD_LENGTH = 8;
       isActive?: boolean;
       /** Set after a super-admin password reset: the account may only change its own password until cleared (users.must_change_password). */
       mustChangePassword?: boolean;
+      /** Instant of the last password change/reset (users.password_changed_at). Session tokens issued earlier are rejected. Absent = never changed. */
+      passwordChangedAt?: string;
     }

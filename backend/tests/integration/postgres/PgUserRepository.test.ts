@@ -174,6 +174,22 @@ describe('PgUserRepository (real Postgres, app_user role — login is the pre-te
       expect(found?.passwordHash).toBe('own-hash');
     });
 
+    it('persists passwordChangedAt through look_up_user_for_auth*; an undefined value leaves it untouched', async () => {
+      if (!isDbConnected) return;
+      const user = make();
+      await repo.save(user);
+      expect((await repo.findById(user.id))?.passwordChangedAt).toBeUndefined();
+
+      await repo.save({ ...user, passwordHash: 'h2', passwordChangedAt: '2026-03-04T05:06:07.890Z' }, 'super_admin');
+      const byId = await repo.findById(user.id);
+      const byName = await repo.findByUsername(user.username);
+      expect(byId?.passwordChangedAt).toBe('2026-03-04T05:06:07.890Z');
+      expect(byName?.passwordChangedAt).toBe('2026-03-04T05:06:07.890Z');
+
+      await repo.save({ ...user, passwordHash: 'h2' }, 'super_admin');
+      expect((await repo.findById(user.id))?.passwordChangedAt).toBe('2026-03-04T05:06:07.890Z');
+    });
+
     it('super admin deletes a tenant user with the actor role', async () => {
       if (!isDbConnected) return;
       const user = make();
