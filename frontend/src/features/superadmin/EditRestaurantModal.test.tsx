@@ -388,4 +388,33 @@ describe("EditRestaurantModal (TDD)", () => {
       await screen.findByText(/El slug ya está en uso por otro restaurante \(incluso si está pausado\)/i)
     ).toBeDefined()
   })
+
+  it("includes unlisted stored timezone and currency as '(actual)' options (Defect 7)", async () => {
+    const unlistedRest: RestaurantRecord = {
+      ...mockRestaurant,
+      config: {
+        ...mockRestaurant.config,
+        timezone: "Asia/Tokyo",
+        currency: "JPY",
+      },
+    }
+
+    render(
+      <RestaurantProvider>
+        <EditRestaurantModal
+          isOpen={true}
+          onClose={vi.fn()}
+          restaurant={unlistedRest}
+        />
+      </RestaurantProvider>
+    )
+
+    const tzSelect = screen.getByLabelText(/Zona Horaria/i) as HTMLSelectElement
+    expect(tzSelect.value).toBe("Asia/Tokyo")
+    expect(screen.getByText(/Asia\/Tokyo \(actual\)/i)).toBeDefined()
+
+    const currSelect = screen.getByLabelText(/^Moneda/i) as HTMLSelectElement
+    expect(currSelect.value).toBe("JPY")
+    expect(screen.getByText(/JPY \(actual\)/i)).toBeDefined()
+  })
 })

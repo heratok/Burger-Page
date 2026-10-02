@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react"
+import React, { useState, useEffect, useMemo, useCallback } from "react"
 import { useRestaurant } from "@/context/RestaurantContext"
 import { MIN_PASSWORD_LENGTH, type RestaurantTemplateSummary } from "@burger-page/contracts"
 import {
@@ -13,6 +13,7 @@ import {
   AlertCircle,
   CheckCircle2,
   Loader2,
+  RefreshCw,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { THEME_COLOR_PRESETS } from "@/constants/themePresets"
@@ -23,6 +24,13 @@ import {
   COMMON_TIMEZONES,
   getDefaultSymbolForCurrency,
 } from "@/lib/currenciesAndTimezones"
+
+const FALLBACK_TEMPLATES = [
+  { id: "burger", name: "🍔 Hamburguesería", description: "Hamburguesas artesanales y combos" },
+  { id: "pizza", name: "🍕 Pizzería", description: "Pizzas clásicas e ingredientes" },
+  { id: "tacos", name: "🌮 Taquería", description: "Tacos tradicionales y salsas" },
+  { id: "blank", name: "📝 En Blanco", description: "Menú vacío desde cero" },
+]
 
 interface CreateRestaurantModalProps {
   isOpen: boolean
@@ -45,6 +53,25 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
   const [currencySymbol, setCurrencySymbol] = useState("$")
   const [templates, setTemplates] = useState<RestaurantTemplateSummary[]>([])
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false)
+  const [templatesError, setTemplatesError] = useState(false)
+
+  const fetchTemplates = useCallback(() => {
+    setIsLoadingTemplates(true)
+    setTemplatesError(false)
+    apiClient
+      .listRestaurantTemplates()
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setTemplates(data)
+        }
+      })
+      .catch(() => {
+        setTemplatesError(true)
+      })
+      .finally(() => {
+        setIsLoadingTemplates(false)
+      })
+  }, [])
 
   const selectedTemplate = useMemo(() => {
     return templates.find((t) => t.id === templateType)
@@ -80,21 +107,9 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
 
   useEffect(() => {
     if (isOpen) {
-      setIsLoadingTemplates(true)
-      apiClient.listRestaurantTemplates()
-        .then((data) => {
-          if (Array.isArray(data) && data.length > 0) {
-            setTemplates(data)
-          }
-        })
-        .catch(() => {
-          // Keep default templates on error
-        })
-        .finally(() => {
-          setIsLoadingTemplates(false)
-        })
+      fetchTemplates()
     }
-  }, [isOpen])
+  }, [isOpen, fetchTemplates])
 
   if (!isOpen) return null
 
@@ -641,42 +656,60 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
                   <span>Cargando plantillas...</span>
                 </div>
               )}
+              {!isLoadingTemplates && templatesError && (
+                <button
+                  type="button"
+                  onClick={fetchTemplates}
+                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-500 hover:text-indigo-400 underline cursor-pointer"
+                >
+                  <RefreshCw className="size-3" />
+                  <span>Reintentar</span>
+                </button>
+              )}
             </div>
-            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-              {(templates.length > 0
-                ? templates
-                : [
-                    { id: "burger", name: "🍔 Hamburguesería", description: "Hamburguesas artesanales y combos", productCount: 6, additionCount: 7 },
-                    { id: "pizza", name: "🍕 Pizzería", description: "Pizzas clásicas e ingredientes", productCount: 4, additionCount: 5 },
-                    { id: "tacos", name: "🌮 Taquería", description: "Tacos tradicionales y salsas", productCount: 3, additionCount: 4 },
-                    { id: "blank", name: "📝 En Blanco", description: "Menú vacío desde cero", productCount: 0, additionCount: 0 },
-                  ]
-              ).map((tpl) => {
-                const isSelected = templateType === tpl.id
-                const countsText =
-                  tpl.productCount > 0
+            {isLoadingTemplates ? (
+              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+                {[1, 2, 3, 4].map((i) => (
+                  <div
+                    key={i}
+                    className={`rounded-xl border p-2.5 animate-pulse ${
+                      isDark ? "border-slate-800 bg-slate-900/60" : "border-slate-200 bg-slate-100"
+                    }`}
+                  >
+                    <div className="h-4 w-24 bg-slate-700/40 rounded mb-2"></div>
+                    <div className="h-3 w-16 bg-slate-700/20 rounded"></div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+                {(templates.length > 0 ? templates : FALLBACK_TEMPLATES).map((tpl: any) => {
+                  const isSelected = templateType === tpl.id
+                  const hasApiCounts = typeof tpl.productCount === "number" && tpl.productCount > 0
+                  const countsText = hasApiCounts
                     ? `${tpl.productCount} platos + ${tpl.additionCount} adicionales`
                     : tpl.description || "Menú vacío desde cero"
 
-                return (
-                  <button
-                    key={tpl.id}
-                    type="button"
-                    onClick={() => setTemplateType(tpl.id as typeof templateType)}
-                    className={`rounded-xl border p-2.5 text-left transition-all ${
-                      isSelected
-                        ? "border-indigo-600 bg-indigo-500/10 ring-2 ring-indigo-500"
-                        : isDark
-                        ? "border-slate-800 bg-slate-900 hover:border-slate-700"
-                        : "border-slate-200 bg-white hover:border-slate-300"
-                    }`}
-                  >
-                    <div className="text-xs font-bold">{tpl.name}</div>
-                    <div className="mt-0.5 text-[10px] text-slate-400">{countsText}</div>
-                  </button>
-                )
-              })}
-            </div>
+                  return (
+                    <button
+                      key={tpl.id}
+                      type="button"
+                      onClick={() => setTemplateType(tpl.id as typeof templateType)}
+                      className={`rounded-xl border p-2.5 text-left transition-all ${
+                        isSelected
+                          ? "border-indigo-600 bg-indigo-500/10 ring-2 ring-indigo-500"
+                          : isDark
+                          ? "border-slate-800 bg-slate-900 hover:border-slate-700"
+                          : "border-slate-200 bg-white hover:border-slate-300"
+                      }`}
+                    >
+                      <div className="text-xs font-bold">{tpl.name}</div>
+                      <div className="mt-0.5 text-[10px] text-slate-400">{countsText}</div>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
             <p className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
               💡 Los platos de muestra se crean automáticamente y podrás editarlos o eliminarlos en cualquier momento desde el menú.
             </p>

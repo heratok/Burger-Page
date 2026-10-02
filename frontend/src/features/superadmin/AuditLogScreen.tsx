@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react"
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { useRestaurant } from "@/context/RestaurantContext"
 import { apiClient, type AuditLogItem } from "@/core/api/apiClient"
 import {
@@ -12,6 +12,7 @@ import {
   Clock,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { parseLocalDateRange } from "./auditLogUtils"
 
 const AUDIT_ACTION_LABELS: Record<string, string> = {
   "restaurant.create": "Creación de restaurante",
@@ -98,6 +99,8 @@ export const AuditLogScreen: React.FC = () => {
   const [fromDate, setFromDate] = useState<string>("")
   const [toDate, setToDate] = useState<string>("")
 
+  const activeRequestIdRef = useRef(0)
+
   const restaurantMap = useMemo(() => {
     const map = new Map<string, string>()
     restaurants.forEach((r) => map.set(r.id, r.config?.name || r.name || ""))
@@ -105,11 +108,14 @@ export const AuditLogScreen: React.FC = () => {
   }, [restaurants])
 
   const loadAuditLog = useCallback(async (reset = true, cursorToUse?: string) => {
+    let requestId: number
     if (reset) {
       setIsLoading(true)
       setError(null)
+      requestId = ++activeRequestIdRef.current
     } else {
       setIsLoadingMore(true)
+      requestId = activeRequestIdRef.current
     }
 
     try {
@@ -119,14 +125,20 @@ export const AuditLogScreen: React.FC = () => {
       if (cursorToUse) query.cursor = cursorToUse
       if (actionFilter) query.action = actionFilter
       if (restaurantFilter) query.restaurantId = restaurantFilter
-      if (fromDate) query.from = new Date(fromDate).toISOString()
+      if (fromDate) {
+        const fromIso = parseLocalDateRange(fromDate, false)
+        if (fromIso) query.from = fromIso
+      }
       if (toDate) {
-        const toObj = new Date(toDate)
-        toObj.setHours(23, 59, 59, 999)
-        query.to = toObj.toISOString()
+        const toIso = parseLocalDateRange(toDate, true)
+        if (toIso) query.to = toIso
       }
 
       const res = await apiClient.fetchAuditLog(query)
+      if (requestId !== activeRequestIdRef.current) {
+        return
+      }
+
       if (reset) {
         setItems(res.items || [])
       } else {
@@ -134,10 +146,15 @@ export const AuditLogScreen: React.FC = () => {
       }
       setNextCursor(res.nextCursor || null)
     } catch (err: any) {
+      if (requestId !== activeRequestIdRef.current) {
+        return
+      }
       setError(err?.message || "Ocurrió un error al cargar el registro de auditoría.")
     } finally {
-      setIsLoading(false)
-      setIsLoadingMore(false)
+      if (requestId === activeRequestIdRef.current) {
+        setIsLoading(false)
+        setIsLoadingMore(false)
+      }
     }
   }, [actionFilter, restaurantFilter, fromDate, toDate])
 
@@ -146,7 +163,7 @@ export const AuditLogScreen: React.FC = () => {
   }, [loadAuditLog])
 
   const handleLoadMore = () => {
-    if (nextCursor && !isLoadingMore) {
+    if (nextCursor && !isLoading && !isLoadingMore) {
       loadAuditLog(false, nextCursor)
     }
   }
@@ -503,7 +520,7 @@ export const AuditLogScreen: React.FC = () => {
                 type="button"
                 variant="outline"
                 onClick={handleLoadMore}
-                disabled={isLoadingMore}
+                disabled={isLoading || isLoadingMore}
                 className="rounded-xl px-5 text-xs font-bold"
               >
                 {isLoadingMore ? (

@@ -189,4 +189,65 @@ describe("EditUserModal (TDD)", () => {
       await screen.findByText(/El nombre de usuario ya está en uso por otra cuenta/i)
     ).toBeDefined()
   })
+
+  it("distinguishes own account self-demotion from last active super admin demotion (Defect 5)", async () => {
+    // 1. Self demotion error from backend
+    const selfDemoteError: any = new Error("You cannot demote your own account")
+    selfDemoteError.status = 409
+
+    vi.spyOn(apiClient, "updateUser").mockRejectedValueOnce(selfDemoteError)
+
+    render(
+      <RestaurantProvider>
+        <EditUserModal
+          isOpen={true}
+          onClose={vi.fn()}
+          user={mockAdminUser}
+        />
+      </RestaurantProvider>
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: /Guardar Cambios/i }))
+
+    expect(
+      await screen.findByText(/No podés degradar tu propia cuenta/i)
+    ).toBeDefined()
+    expect(screen.queryByText(/último Super Administrador/i)).toBeNull()
+
+    // 2. Last super admin error from backend
+    const lastSuperAdminError: any = new Error("Cannot demote the last active super admin")
+    lastSuperAdminError.status = 409
+
+    vi.spyOn(apiClient, "updateUser").mockRejectedValueOnce(lastSuperAdminError)
+
+    fireEvent.click(screen.getByRole("button", { name: /Guardar Cambios/i }))
+
+    expect(
+      await screen.findByText(/No podés degradar al último Super Administrador activo/i)
+    ).toBeDefined()
+  })
+
+  it("distinguishes generic 400 validation errors like required username from restaurant role validation (Defect 5)", async () => {
+    const usernameRequiredError: any = new Error("Username is required")
+    usernameRequiredError.status = 400
+
+    vi.spyOn(apiClient, "updateUser").mockRejectedValueOnce(usernameRequiredError)
+
+    render(
+      <RestaurantProvider>
+        <EditUserModal
+          isOpen={true}
+          onClose={vi.fn()}
+          user={mockAdminUser}
+        />
+      </RestaurantProvider>
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: /Guardar Cambios/i }))
+
+    expect(
+      await screen.findByText(/El nombre de usuario es obligatorio/i)
+    ).toBeDefined()
+    expect(screen.queryByText(/Un Administrador de Restaurante debe tener un restaurante asignado/i)).toBeNull()
+  })
 })

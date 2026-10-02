@@ -132,9 +132,9 @@ describe("RestaurantsDirectory - Edit Action (TDD)", () => {
     const restoreBtn = screen.getByRole("button", { name: /Restaurar restaurante Pizza Nostra/i })
     fireEvent.click(restoreBtn)
 
-    // Confirm dialog should appear explaining it returns paused and admins are reactivated
+    // Confirm dialog should appear explaining it returns paused and admins keep their status
     expect(
-      screen.getByText(/volverá en estado PAUSADO y sus administradores serán reactivados/i)
+      screen.getByText(/Sus administradores vuelven con el estado que tenían antes de eliminarlo/i)
     ).toBeDefined()
 
     // Confirm restoration
@@ -175,6 +175,10 @@ describe("RestaurantsDirectory - Edit Action (TDD)", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Restaurar restaurante Pizza Nostra/i }))
 
+    // Defect 3: Verify copy specifies admins return with their previous status, not automatically reactivated
+    expect(screen.getByText(/Sus administradores vuelven con el estado que tenían antes de eliminarlo/i)).toBeDefined()
+    expect(screen.queryByText(/reactivados automáticamente/i)).toBeNull()
+
     // First attempt fails with 409
     fireEvent.click(screen.getByRole("button", { name: /Confirmar Restauración/i }))
 
@@ -192,5 +196,39 @@ describe("RestaurantsDirectory - Edit Action (TDD)", () => {
     await waitFor(() => {
       expect(restoreSpy).toHaveBeenCalledWith("rest-pizza-old", { slug: "pizza-nostra-nueva" })
     })
+  })
+
+  it("reflects the attempted slug in error message when second restore attempt fails with 409 (Defect 8)", async () => {
+    const conflictError: any = new Error("Slug already taken")
+    conflictError.status = 409
+
+    vi.spyOn(apiClient, "restoreRestaurant")
+      .mockRejectedValueOnce(conflictError)
+      .mockRejectedValueOnce(conflictError)
+
+    render(
+      <RestaurantProvider>
+        <RestaurantsDirectory />
+      </RestaurantProvider>
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: /Eliminados/i }))
+    expect(await screen.findByText("Pizza Nostra")).toBeDefined()
+
+    fireEvent.click(screen.getByRole("button", { name: /Restaurar restaurante Pizza Nostra/i }))
+
+    // First attempt fails with original slug
+    fireEvent.click(screen.getByRole("button", { name: /Confirmar Restauración/i }))
+    expect(await screen.findByText(/El slug original ya está en uso/i)).toBeDefined()
+
+    // User enters a custom new slug
+    const slugInput = screen.getByLabelText(/Nuevo slug para restaurar/i)
+    fireEvent.change(slugInput, { target: { value: "mi-nuevo-slug" } })
+
+    // Second attempt fails with 409
+    fireEvent.click(screen.getByRole("button", { name: /Reintentar Restauración/i }))
+
+    // Message must reflect the attempted slug
+    expect(await screen.findByText(/El slug «mi-nuevo-slug» ya está en uso/i)).toBeDefined()
   })
 })

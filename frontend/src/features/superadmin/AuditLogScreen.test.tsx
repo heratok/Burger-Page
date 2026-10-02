@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react"
+import { render, screen, cleanup, fireEvent, waitFor, within } from "@testing-library/react"
 import { RestaurantProvider } from "@/context/RestaurantContext"
 import { AuditLogScreen } from "./AuditLogScreen"
+import { parseLocalDateRange } from "./auditLogUtils"
 import { apiClient, type AuditLogItem } from "@/core/api/apiClient"
 
 const mockRestaurant = {
@@ -213,4 +214,168 @@ describe("AuditLogScreen (TDD)", () => {
 
     expect(screen.getByRole("button", { name: /Reintentar/i })).toBeDefined()
   })
+
+  it("builds local start-of-day and end-of-day ISO strings from date filters", async () => {
+    const fetchSpy = vi.spyOn(apiClient, "fetchAuditLog").mockResolvedValue({
+      items: [],
+      nextCursor: null,
+    })
+
+    render(
+      <RestaurantProvider>
+        <AuditLogScreen />
+      </RestaurantProvider>
+    )
+
+    await waitFor(() => {
+      expect(fetchSpy).toHaveBeenCalled()
+    })
+
+    const fromInput = screen.getByLabelText(/Fecha desde/i)
+    const toInput = screen.getByLabelText(/Fecha hasta/i)
+
+    fireEvent.change(fromInput, { target: { value: "2026-10-02" } })
+    fireEvent.change(toInput, { target: { value: "2026-10-02" } })
+
+    const expectedFrom = new Date(2026, 9, 2, 0, 0, 0, 0).toISOString()
+    const expectedTo = new Date(2026, 9, 2, 23, 59, 59, 999).toISOString()
+
+    await waitFor(() => {
+      expect(fetchSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          from: expectedFrom,
+          to: expectedTo,
+        })
+      )
+    })
+  })
+
+  it("guards against stale responses overwriting list when filter changes rapidly", async () => {
+    let resolveFirst: (value: any) => void
+    const firstPromise = new Promise((resolve) => {
+      resolveFirst = resolve
+    })
+
+    vi.spyOn(apiClient, "fetchAuditLog")
+      .mockReturnValueOnce(firstPromise as any)
+      .mockResolvedValueOnce({
+        items: [mockAuditLogs[1]], // user.create
+        nextCursor: null,
+      })
+
+    render(
+      <RestaurantProvider>
+        <AuditLogScreen />
+      </RestaurantProvider>
+    )
+
+    // Initial load triggered firstPromise (in flight)
+    // Now user quickly changes action filter
+    const actionSelect = screen.getByLabelText(/Filtrar por acción/i)
+    fireEvent.change(actionSelect, { target: { value: "user.create" } })
+
+    // Second call resolves immediately with mockAuditLogs[1]
+    await waitFor(() => {
+      expect(screen.getByText("Creación de usuario")).toBeDefined()
+    })
+
+    // Now first (stale) call resolves with restaurant.update
+    resolveFirst!({
+      items: [mockAuditLogs[0]], // restaurant.update
+      nextCursor: null,
+    })
+
+    // Give microtasks time to execute
+    await new Promise((r) => setTimeout(r, 50))
+
+    // The list must still show the second result, not overwritten by stale first result
+    const table = screen.getByRole("table")
+    expect(within(table).getByText("Creación de usuario")).toBeDefined()
+    expect(within(table).queryByText("Actualización de restaurante")).toBeNull()
+  })
+
+  it("guards against stale 'Cargar más' pagination responses when filter changes", async () => {
+    let resolvePagination: (value: any) => void
+    const paginationPromise = new Promise((resolve) => {
+      resolvePagination = resolve
+    })
+
+    vi.spyOn(apiClient, "fetchAuditLog")
+      .mockResolvedValueOnce({
+        items: [mockAuditLogs[0]],
+        nextCursor: "cursor-1",
+      })
+      .mockReturnValueOnce(paginationPromise as any)
+      .mockResolvedValueOnce({
+        items: [mockAuditLogs[1]],
+        nextCursor: null,
+      })
+
+    render(
+      <RestaurantProvider>
+        <AuditLogScreen />
+      </RestaurantProvider>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Cargar más/i })).toBeDefined()
+    })
+
+    // Click Cargar más (starts in-flight pagination request)
+    fireEvent.click(screen.getByRole("button", { name: /Cargar más/i }))
+
+    // User changes filter while pagination is in flight
+    const actionSelect = screen.getByLabelText(/Filtrar por acción/i)
+    fireEvent.change(actionSelect, { target: { value: "user.create" } })
+
+    await waitFor(() => {
+      const table = screen.getByRole("table")
+      expect(within(table).getByText("Creación de usuario")).toBeDefined()
+    })
+
+    // Now pagination from old filter resolves
+    resolvePagination!({
+      items: [{ ...mockAuditLogs[0], id: "old-paginated-item", targetLabel: "Old Restaurant" }],
+      nextCursor: null,
+    })
+
+    await new Promise((r) => setTimeout(r, 50))
+
+    // The old paginated item must NOT be appended to the new filter list
+    const table = screen.getByRole("table")
+    expect(within(table).queryByText("Old Restaurant")).toBeNull()
+  })
 })
+
+describe("parseLocalDateRange", () => {
+  it("returns undefined for empty or invalid strings", () => {
+    expect(parseLocalDateRange("", false)).toBeUndefined()
+    expect(parseLocalDateRange("invalid", false)).toBeUndefined()
+    expect(parseLocalDateRange("2026-10", false)).toBeUndefined()
+  })
+
+  it("constructs local start of day (00:00:00.000) preserving local calendar day", () => {
+    const iso = parseLocalDateRange("2026-10-02", false)!
+    const d = new Date(iso)
+    expect(d.getFullYear()).toBe(2026)
+    expect(d.getMonth()).toBe(9) // 0-indexed October
+    expect(d.getDate()).toBe(2)
+    expect(d.getHours()).toBe(0)
+    expect(d.getMinutes()).toBe(0)
+    expect(d.getSeconds()).toBe(0)
+    expect(d.getMilliseconds()).toBe(0)
+  })
+
+  it("constructs local end of day (23:59:59.999) preserving local calendar day", () => {
+    const iso = parseLocalDateRange("2026-10-02", true)!
+    const d = new Date(iso)
+    expect(d.getFullYear()).toBe(2026)
+    expect(d.getMonth()).toBe(9) // 0-indexed October
+    expect(d.getDate()).toBe(2)
+    expect(d.getHours()).toBe(23)
+    expect(d.getMinutes()).toBe(59)
+    expect(d.getSeconds()).toBe(59)
+    expect(d.getMilliseconds()).toBe(999)
+  })
+})
+

@@ -22,6 +22,7 @@ import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
 import { CreateUserModal } from "./CreateUserModal"
 import { EditUserModal } from "./EditUserModal"
 import { toast } from "sonner"
+import { Dialog, DialogContent } from "@/components/ui/dialog"
 import {
   COMMON_CURRENCIES,
   COMMON_TIMEZONES,
@@ -234,23 +235,19 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
   }`
 
   return (
-    <>
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="edit-restaurant-title"
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-md overflow-y-auto"
-        onKeyDown={(e) => {
-          if (e.key === "Escape" && !resetModalData && !userToDelete && !isCreateUserOpen && !isSubmitting) {
-            onClose()
-          }
-        }}
-      >
-        <div
-          className={`w-full max-w-2xl rounded-2xl border p-6 shadow-2xl transition-all my-8 max-h-[90vh] overflow-y-auto ${
-            isDark ? "border-slate-800 bg-[#0E1322] text-slate-100" : "border-slate-200 bg-white text-slate-900"
-          }`}
+    <Dialog
+      open={true}
+      onOpenChange={(open) => !open && !resetModalData && !userToDelete && !isCreateUserOpen && !isSubmitting && onClose()}
+    >
+        <DialogContent
+          showCloseButton={false}
+          className="fixed top-1/2 left-1/2 z-50 w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 p-0 border-0 bg-transparent shadow-none"
         >
+          <div
+            className={`w-full max-w-2xl rounded-2xl border p-6 shadow-2xl transition-all my-8 max-h-[90vh] overflow-y-auto ${
+              isDark ? "border-slate-800 bg-[#0E1322] text-slate-100" : "border-slate-200 bg-white text-slate-900"
+            }`}
+          >
           {/* Header */}
           <div className="flex items-center justify-between border-b pb-4 border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-2.5">
@@ -381,6 +378,9 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
                   onChange={(e) => setTimezone(e.target.value)}
                   className={inputClass}
                 >
+                  {timezone && !COMMON_TIMEZONES.some((tz) => tz.value === timezone) && (
+                    <option value={timezone}>{timezone} (actual)</option>
+                  )}
                   <optgroup label="Latinoamérica">
                     {COMMON_TIMEZONES.filter((tz) => tz.group === "Latinoamérica").map((tz) => (
                       <option key={tz.value} value={tz.value}>
@@ -417,6 +417,9 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
                   }}
                   className={inputClass}
                 >
+                  {currency && !COMMON_CURRENCIES.some((c) => c.code === currency) && (
+                    <option value={currency}>{currency} (actual)</option>
+                  )}
                   {COMMON_CURRENCIES.map((c) => (
                     <option key={c.code} value={c.code}>
                       {c.name}
@@ -621,46 +624,46 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
             </div>
           </form>
         </div>
-      </div>
 
-      {/* Submodal: Create User */}
-      <CreateUserModal
-        isOpen={isCreateUserOpen}
-        defaultRestaurantId={restaurant.id}
-        onClose={() => setIsCreateUserOpen(false)}
-        onSuccess={() => loadAdmins(restaurant.id)}
-      />
+        {/* Submodal: Create User */}
+        <CreateUserModal
+          isOpen={isCreateUserOpen}
+          defaultRestaurantId={restaurant.id}
+          onClose={() => setIsCreateUserOpen(false)}
+          onSuccess={() => loadAdmins(restaurant.id)}
+        />
 
-      {/* Submodal: Reset Password */}
-      <ResetPasswordModal
-        isOpen={!!resetModalData}
-        onClose={() => setResetModalData(null)}
-        username={resetModalData?.username || ""}
-        temporaryPassword={resetModalData?.temporaryPassword || ""}
-      />
+        {/* Submodal: Reset Password */}
+        <ResetPasswordModal
+          isOpen={!!resetModalData}
+          onClose={() => setResetModalData(null)}
+          username={resetModalData?.username || ""}
+          temporaryPassword={resetModalData?.temporaryPassword || ""}
+        />
 
-      {/* Submodal: Confirm Delete User */}
-      <ConfirmDeleteModal
-        isOpen={!!userToDelete}
-        onClose={() => setUserToDelete(null)}
-        onConfirm={handleConfirmDeleteAdmin}
-        title="¿Eliminar usuario?"
-        targetName={userToDelete?.username}
-        description={
-          userToDelete
-            ? `¿Estás seguro de que deseas eliminar al usuario "${userToDelete.username}"? Perderá acceso inmediato al sistema.`
-            : undefined
-        }
-        confirmText="Eliminar usuario"
-      />
+        {/* Submodal: Confirm Delete User */}
+        <ConfirmDeleteModal
+          isOpen={!!userToDelete}
+          onClose={() => setUserToDelete(null)}
+          onConfirm={handleConfirmDeleteAdmin}
+          title="¿Eliminar usuario?"
+          targetName={userToDelete?.username}
+          description={
+            userToDelete
+              ? `¿Estás seguro de que deseas eliminar al usuario "${userToDelete.username}"? Perderá acceso inmediato al sistema.`
+              : undefined
+          }
+          confirmText="Eliminar usuario"
+        />
 
-      {/* Submodal: Edit User */}
-      <EditUserModal
-        isOpen={!!userToEdit}
-        onClose={() => setUserToEdit(null)}
-        user={userToEdit}
-        onSuccess={() => loadAdmins(restaurant.id)}
-      />
-    </>
+        {/* Submodal: Edit User */}
+        <EditUserModal
+          isOpen={!!userToEdit}
+          onClose={() => setUserToEdit(null)}
+          user={userToEdit}
+          onSuccess={() => loadAdmins(restaurant.id)}
+        />
+      </DialogContent>
+    </Dialog>
   )
 }

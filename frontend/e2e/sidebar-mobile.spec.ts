@@ -99,7 +99,7 @@ test.describe('Admin Mobile Sidebar Drawer Responsiveness', () => {
     // Close drawer
     const closeBtn = page.locator('button[aria-label="Cerrar menú"], button[title="Cerrar menú"]').first();
     if (await closeBtn.isVisible()) {
-      await closeBtn.click();
+      await closeBtn.click({ force: true });
       await page.waitForTimeout(400);
     }
 

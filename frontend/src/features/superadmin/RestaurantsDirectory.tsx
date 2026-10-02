@@ -19,6 +19,7 @@ import { GlobalPlatformSummary } from "./GlobalPlatformSummary"
 import { CreateRestaurantModal } from "./CreateRestaurantModal"
 import { EditRestaurantModal } from "./EditRestaurantModal"
 import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
+import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { Pagination } from "@/components/ui/pagination"
 import { TableSkeleton } from "@/components/ui/Skeletons"
 import { useAppRouter } from "@/core/router/useAppRouter"
@@ -147,8 +148,12 @@ export const RestaurantsDirectory: React.FC = () => {
         err?.message?.toLowerCase().includes("en uso")
 
       if (isConflict) {
+        if (isSlugConflict && restoreSlug && restoreSlug.trim()) {
+          setSlugConflictError(`El slug «${restoreSlug.trim()}» ya está en uso. Por favor ingresá un nuevo slug para restaurarlo:`)
+        } else {
+          setSlugConflictError("El slug original ya está en uso. Por favor ingresá un nuevo slug para restaurarlo:")
+        }
         setIsSlugConflict(true)
-        setSlugConflictError("El slug original ya está en uso. Por favor ingresá un nuevo slug para restaurarlo:")
       } else {
         toast.error(err?.message || "No se pudo restaurar el restaurante")
       }
@@ -551,22 +556,19 @@ export const RestaurantsDirectory: React.FC = () => {
 
       {/* Modal Restaurar Restaurante */}
       {restaurantToRestore && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="restore-restaurant-title"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-md"
-          onKeyDown={(e) => {
-            if (e.key === "Escape" && !isRestoring) {
-              setRestaurantToRestore(null)
-            }
-          }}
+        <Dialog
+          open={true}
+          onOpenChange={(open) => !open && !isRestoring && setRestaurantToRestore(null)}
         >
-          <div
-            className={`w-full max-w-md rounded-2xl border p-6 shadow-2xl transition-all ${
-              isDark ? "border-slate-800 bg-[#0E1322] text-slate-100" : "border-slate-200 bg-white text-slate-900"
-            }`}
+          <DialogContent
+            showCloseButton={false}
+            className="fixed top-1/2 left-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 p-0 border-0 bg-transparent shadow-none"
           >
+            <div
+              className={`w-full max-w-md rounded-2xl border p-6 shadow-2xl transition-all ${
+                isDark ? "border-slate-800 bg-[#0E1322] text-slate-100" : "border-slate-200 bg-white text-slate-900"
+              }`}
+            >
             <div className="flex items-center justify-between border-b pb-4 border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2.5">
                 <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-md shadow-emerald-600/30">
@@ -594,7 +596,7 @@ export const RestaurantsDirectory: React.FC = () => {
 
             <div className="mt-4 space-y-4 text-xs">
               <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
-                El restaurante volverá en estado PAUSADO y sus administradores serán reactivados automáticamente. Deberás reactivarlo manualmente cuando desees que comience a operar.
+                El restaurante volverá en estado PAUSADO. Sus administradores vuelven con el estado que tenían antes de eliminarlo. Deberás reactivarlo manualmente cuando desees que comience a operar.
               </p>
 
               {isSlugConflict && (
@@ -658,7 +660,8 @@ export const RestaurantsDirectory: React.FC = () => {
               </Button>
             </div>
           </div>
-        </div>
+        </DialogContent>
+      </Dialog>
       )}
     </div>
   )

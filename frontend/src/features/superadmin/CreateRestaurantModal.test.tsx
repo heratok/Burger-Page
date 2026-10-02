@@ -377,5 +377,51 @@ describe("CreateRestaurantModal (TDD)", () => {
       await screen.findByText(/El slug ya está en uso por otro restaurante \(incluso si está pausado\)/i)
     ).toBeDefined()
   })
+
+  it("shows skeleton / neutral loading state without hardcoded counts while templates are loading (Defect 4)", () => {
+    vi.spyOn(apiClient, "listRestaurantTemplates").mockReturnValue(new Promise(() => {}))
+
+    render(
+      <RestaurantProvider>
+        <CreateRestaurantModal isOpen={true} onClose={vi.fn()} />
+      </RestaurantProvider>
+    )
+
+    expect(screen.getByText(/Cargando plantillas/i)).toBeDefined()
+    // Must NOT show any hardcoded numbers
+    expect(screen.queryByText(/6 platos/i)).toBeNull()
+    expect(screen.queryByText(/4 platos/i)).toBeNull()
+    expect(screen.queryByText(/3 platos/i)).toBeNull()
+  })
+
+  it("shows template names without counts and a retry button if template API fails (Defect 4)", async () => {
+    const listSpy = vi.spyOn(apiClient, "listRestaurantTemplates").mockRejectedValue(new Error("Network Error"))
+
+    render(
+      <RestaurantProvider>
+        <CreateRestaurantModal isOpen={true} onClose={vi.fn()} />
+      </RestaurantProvider>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Reintentar/i })).toBeDefined()
+    })
+
+    // Template options are visible so user can still select one
+    expect(screen.getByText(/Hamburguesería/i)).toBeDefined()
+    expect(screen.getByText(/Pizzería/i)).toBeDefined()
+
+    // Must NOT display any hardcoded counts
+    expect(screen.queryByText(/\d+\s*platos/i)).toBeNull()
+    expect(screen.queryByText(/\d+\s*adicionales/i)).toBeNull()
+
+    // Clicking retry attempts to fetch templates again
+    listSpy.mockResolvedValueOnce(mockTemplates)
+    fireEvent.click(screen.getByRole("button", { name: /Reintentar/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText(/4 platos \+ 5 adicionales/i)).toBeDefined()
+    })
+  })
 })
 

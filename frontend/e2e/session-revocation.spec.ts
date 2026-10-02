@@ -53,9 +53,12 @@ test.describe('Session Revocation & Expiration Flow', () => {
       page.getByRole('button', { name: /Actualizar contraseña/i }).click(),
     ]);
 
-    // 5. Land on admin panel
+    // 5. Land on admin panel and ensure page has stabilized
     await expect(page).toHaveURL(/\/admin\/restaurants/);
-    await expect(page.getByRole('button', { name: /Usuarios & Accesos/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Directorio Global de Restaurantes/i })).toBeVisible();
+    await expect(page.getByPlaceholder(/Buscar por nombre, slug o tipo\.\.\./i)).toBeVisible();
+    const usersNavButton = page.locator('aside').getByRole('button', { name: /Usuarios & Accesos/i });
+    await expect(usersNavButton).toBeVisible();
 
     // 6. In the background, revoke the user's session by deactivating the account
     const deactRes = await request.patch(`http://localhost:3001/api/users/${createdUser.id}`, {
@@ -65,8 +68,9 @@ test.describe('Session Revocation & Expiration Flow', () => {
     expect(deactRes.status()).toBe(200);
 
     // 7. Perform an action in the admin UI that makes an authenticated API call
-    // Clicking "Usuarios & Accesos" calls GET /api/users which receives 401
-    await page.getByRole('button', { name: /Usuarios & Accesos/i }).click();
+    // Re-query the navigation button from aside to ensure no stale element handles, then click
+    await expect(usersNavButton).toBeVisible();
+    await usersNavButton.click();
 
     // 8. Assert user is logged out, redirected to admin login, and sees the session expired message
     await expect(page.getByText(/Tu sesión expiró\. Iniciá sesión de nuevo\./i)).toBeVisible({ timeout: 10000 });

@@ -9,6 +9,8 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
+import { mapUserActionError } from "./userActionUtils"
+import { Dialog, DialogContent } from "@/components/ui/dialog"
 
 export interface EditUserModalProps {
   isOpen: boolean
@@ -90,24 +92,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
       onSuccess?.()
       onClose()
     } catch (err: any) {
-      const status = err?.status || (err?.message?.includes("409") ? 409 : err?.message?.includes("404") ? 404 : err?.message?.includes("400") ? 400 : null)
-      const msg = (err?.message || "").toLowerCase()
-
-      if (status === 409 || msg.includes("already exists") || msg.includes("taken") || msg.includes("en uso")) {
-        if (msg.includes("demot") || msg.includes("last active super")) {
-          setErrorMessage("No podés degradar al último Super Administrador activo de la plataforma.")
-        } else if (msg.includes("yourself") || msg.includes("propia cuenta")) {
-          setErrorMessage("No podés degradar ni desactivar tu propia cuenta.")
-        } else {
-          setErrorMessage("El nombre de usuario ya está en uso por otra cuenta.")
-        }
-      } else if (status === 404 || msg.includes("not found")) {
-        setErrorMessage("El usuario o restaurante seleccionado no existe o fue eliminado.")
-      } else if (status === 400 || msg.includes("restaurant_admin must have") || msg.includes("super_admin must")) {
-        setErrorMessage("Un Administrador de Restaurante debe tener un restaurante asignado, mientras que un Super Admin no debe tenerlo.")
-      } else {
-        setErrorMessage(err?.message || "Ocurrió un error al actualizar el usuario.")
-      }
+      setErrorMessage(mapUserActionError(err, "Ocurrió un error al actualizar el usuario."))
     } finally {
       setIsSubmitting(false)
     }
@@ -120,22 +105,16 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
   }`
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="edit-user-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-md"
-      onKeyDown={(e) => {
-        if (e.key === "Escape" && !isSubmitting) {
-          onClose()
-        }
-      }}
-    >
-      <div
-        className={`w-full max-w-lg rounded-2xl border p-6 shadow-2xl transition-all ${
-          isDark ? "border-slate-800 bg-[#0E1322] text-slate-100" : "border-slate-200 bg-white text-slate-900"
-        }`}
+    <Dialog open={true} onOpenChange={(open) => !open && !isSubmitting && onClose()}>
+      <DialogContent
+        showCloseButton={false}
+        className="fixed top-1/2 left-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 p-0 border-0 bg-transparent shadow-none"
       >
+        <div
+          className={`w-full max-w-lg rounded-2xl border p-6 shadow-2xl transition-all ${
+            isDark ? "border-slate-800 bg-[#0E1322] text-slate-100" : "border-slate-200 bg-white text-slate-900"
+          }`}
+        >
         {/* Header */}
         <div className="flex items-center justify-between border-b pb-4 border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2.5">
@@ -292,6 +271,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
           </div>
         </form>
       </div>
-    </div>
+    </DialogContent>
+  </Dialog>
   )
 }
