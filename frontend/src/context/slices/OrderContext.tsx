@@ -1351,19 +1351,34 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return activeRestaurant.orders.filter((o) => o.status === "pending").length
   }, [activeRestaurant.orders])
 
-  const value: OrderContextType = {
-    orders: activeRestaurant.orders,
-    addOrder,
-    updateOrder,
-    updateOrderStatus,
-    updateOrderReceipt,
-    deleteOrder,
-    customers: activeRestaurant.customers,
-    updateCustomer,
-    pendingOrdersCount,
-    isLoadingOrders,
-    refreshOrders,
-  }
+  const value: OrderContextType = useMemo(
+    () => ({
+      orders: activeRestaurant.orders,
+      addOrder,
+      updateOrder,
+      updateOrderStatus,
+      updateOrderReceipt,
+      deleteOrder,
+      customers: activeRestaurant.customers,
+      updateCustomer,
+      pendingOrdersCount,
+      isLoadingOrders,
+      refreshOrders,
+    }),
+    [
+      activeRestaurant.orders,
+      addOrder,
+      updateOrder,
+      updateOrderStatus,
+      updateOrderReceipt,
+      deleteOrder,
+      activeRestaurant.customers,
+      updateCustomer,
+      pendingOrdersCount,
+      isLoadingOrders,
+      refreshOrders,
+    ]
+  )
 
   return <OrderContext.Provider value={value}>{children}</OrderContext.Provider>
 }

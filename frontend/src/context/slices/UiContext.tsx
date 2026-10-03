@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react"
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react"
 import type { AdminTab, AdminTheme, AppView } from "@/types/restaurant"
 
 export interface UiContextType {
@@ -64,17 +64,20 @@ export const UiProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     setAdminTheme((prev) => (prev === "dark" ? "light" : "dark"))
   }, [])
 
-  const value: UiContextType = {
-    activeView,
-    setActiveView,
-    adminTab,
-    setAdminTab,
-    adminTheme,
-    setAdminTheme,
-    toggleAdminTheme,
-    soundEnabled,
-    setSoundEnabled,
-  }
+  const value: UiContextType = useMemo(
+    () => ({
+      activeView,
+      setActiveView,
+      adminTab,
+      setAdminTab,
+      adminTheme,
+      setAdminTheme,
+      toggleAdminTheme,
+      soundEnabled,
+      setSoundEnabled,
+    }),
+    [activeView, setActiveView, adminTab, setAdminTab, adminTheme, setAdminTheme, toggleAdminTheme, soundEnabled, setSoundEnabled]
+  )
 
   return <UiContext.Provider value={value}>{children}</UiContext.Provider>
 }

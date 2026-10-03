@@ -625,24 +625,42 @@ export const TenantProvider: React.FC<{
     }
   }, [envelope.restaurants])
 
-  const value: TenantContextType = {
-    restaurants: envelope.restaurants,
-    activeRestaurant,
-    effectiveRestaurantId,
-    activeRestaurantId: activeRestaurant.id,
-    activeRestaurantSlug: activeRestaurant.slug,
-    superAdminPassword: envelope.superAdminPassword ?? undefined,
-    isSyncing,
-    switchRestaurant,
-    loadRestaurant,
-    createRestaurant,
-    updateRestaurant,
-    deleteRestaurant,
-    updateActiveRestaurantRecord,
-    refreshRestaurants,
-    refreshStoreStatus,
-    globalStats,
-  }
+  const value: TenantContextType = useMemo(
+    () => ({
+      restaurants: envelope.restaurants,
+      activeRestaurant,
+      effectiveRestaurantId,
+      activeRestaurantId: activeRestaurant.id,
+      activeRestaurantSlug: activeRestaurant.slug,
+      superAdminPassword: envelope.superAdminPassword ?? undefined,
+      isSyncing,
+      switchRestaurant,
+      loadRestaurant,
+      createRestaurant,
+      updateRestaurant,
+      deleteRestaurant,
+      updateActiveRestaurantRecord,
+      refreshRestaurants,
+      refreshStoreStatus,
+      globalStats,
+    }),
+    [
+      envelope.restaurants,
+      activeRestaurant,
+      effectiveRestaurantId,
+      envelope.superAdminPassword,
+      isSyncing,
+      switchRestaurant,
+      loadRestaurant,
+      createRestaurant,
+      updateRestaurant,
+      deleteRestaurant,
+      updateActiveRestaurantRecord,
+      refreshRestaurants,
+      refreshStoreStatus,
+      globalStats,
+    ]
+  )
 
   return <TenantContext.Provider value={value}>{children}</TenantContext.Provider>
 }

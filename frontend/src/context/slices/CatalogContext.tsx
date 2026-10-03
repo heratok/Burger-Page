@@ -562,25 +562,46 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
     [categories, activeRestaurant.products, activeRestaurant.slug, activeRestaurant.id, updateActiveRestaurantRecord]
   )
 
-  const value: CatalogContextType = {
-    storeConfig: activeRestaurant.config,
-    updateStoreConfig,
-    resetStoreConfig,
-    categories,
-    addCategory,
-    updateCategory,
-    deleteCategory,
-    products: activeRestaurant.products,
-    addProduct,
-    updateProduct,
-    deleteProduct,
-    toggleProductStock,
-    additions: activeRestaurant.additions,
-    addAddition,
-    updateAddition,
-    deleteAddition,
-    isLoadingCatalog,
-  }
+  const value: CatalogContextType = useMemo(
+    () => ({
+      storeConfig: activeRestaurant.config,
+      updateStoreConfig,
+      resetStoreConfig,
+      categories,
+      addCategory,
+      updateCategory,
+      deleteCategory,
+      products: activeRestaurant.products,
+      addProduct,
+      updateProduct,
+      deleteProduct,
+      toggleProductStock,
+      additions: activeRestaurant.additions,
+      addAddition,
+      updateAddition,
+      deleteAddition,
+      isLoadingCatalog,
+    }),
+    [
+      activeRestaurant.config,
+      updateStoreConfig,
+      resetStoreConfig,
+      categories,
+      addCategory,
+      updateCategory,
+      deleteCategory,
+      activeRestaurant.products,
+      addProduct,
+      updateProduct,
+      deleteProduct,
+      toggleProductStock,
+      activeRestaurant.additions,
+      addAddition,
+      updateAddition,
+      deleteAddition,
+      isLoadingCatalog,
+    ]
+  )
 
   return <CatalogContext.Provider value={value}>{children}</CatalogContext.Provider>
 }

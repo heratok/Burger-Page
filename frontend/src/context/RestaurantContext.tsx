@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useCallback, useMemo } from "react"
 import type {
   StorefrontConfig,
   MenuItem,
@@ -190,27 +190,8 @@ export const useRestaurant = (): RestaurantContextType => {
   const inventorySlice = useInventory()
   const orders = useOrders()
 
-  return {
-    restaurants: tenant.restaurants,
-    activeRestaurant: tenant.activeRestaurant,
-    effectiveRestaurantId: tenant.effectiveRestaurantId,
-    activeRestaurantId: tenant.activeRestaurantId,
-    activeRestaurantSlug: tenant.activeRestaurantSlug,
-    isSyncing: tenant.isSyncing,
-    switchRestaurant: tenant.switchRestaurant,
-    loadRestaurant: tenant.loadRestaurant,
-
-    createRestaurant: tenant.createRestaurant,
-    updateRestaurant: tenant.updateRestaurant,
-    deleteRestaurant: tenant.deleteRestaurant,
-    refreshRestaurants: tenant.refreshRestaurants,
-    refreshStoreStatus: tenant.refreshStoreStatus,
-    globalStats: tenant.globalStats,
-
-    session: auth.session,
-    setSession: auth.setSession,
-    changePassword: auth.changePassword,
-    login: async (username: string, password: string, targetRestaurantIdOrSlug?: string) => {
+  const login = useCallback(
+    async (username: string, password: string, targetRestaurantIdOrSlug?: string) => {
       const res = await auth.login(username, password, targetRestaurantIdOrSlug)
       if (res.success) {
         if (res.role === "super") {
@@ -242,6 +223,31 @@ export const useRestaurant = (): RestaurantContextType => {
       }
       return res
     },
+    [auth.login, tenant.switchRestaurant, tenant.restaurants, ui.setAdminTab, ui.setActiveView]
+  )
+
+  return useMemo<RestaurantContextType>(
+    () => ({
+    restaurants: tenant.restaurants,
+    activeRestaurant: tenant.activeRestaurant,
+    effectiveRestaurantId: tenant.effectiveRestaurantId,
+    activeRestaurantId: tenant.activeRestaurantId,
+    activeRestaurantSlug: tenant.activeRestaurantSlug,
+    isSyncing: tenant.isSyncing,
+    switchRestaurant: tenant.switchRestaurant,
+    loadRestaurant: tenant.loadRestaurant,
+
+    createRestaurant: tenant.createRestaurant,
+    updateRestaurant: tenant.updateRestaurant,
+    deleteRestaurant: tenant.deleteRestaurant,
+    refreshRestaurants: tenant.refreshRestaurants,
+    refreshStoreStatus: tenant.refreshStoreStatus,
+    globalStats: tenant.globalStats,
+
+    session: auth.session,
+    setSession: auth.setSession,
+    changePassword: auth.changePassword,
+    login,
     logout: auth.logout,
 
     storeConfig: catalog.storeConfig,
@@ -303,5 +309,7 @@ export const useRestaurant = (): RestaurantContextType => {
 
     pendingOrdersCount: orders.pendingOrdersCount,
     refreshOrders: orders.refreshOrders,
-  }
+    }),
+    [ui, tenant, auth, catalog, inventorySlice, orders, login]
+  )
 }
