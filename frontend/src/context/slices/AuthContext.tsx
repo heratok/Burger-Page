@@ -62,7 +62,14 @@ export const AuthProvider: React.FC<{
    * composition (RestaurantProvider), keeping this slice storage-agnostic.
    */
   onLogout?: () => void
-}> = ({ children, onLogout }) => {
+  /**
+   * Session-start callback invoked in the SAME synchronous block as the
+   * session write, so state derived from the session (navigation, tabs) is
+   * rebuilt in the same render as the new role and never paired with the
+   * previous session's values.
+   */
+  onLogin?: (role: "super" | "restaurant") => void
+}> = ({ children, onLogout, onLogin }) => {
   const [session, setSession] = useState<AdminSession>(() => {
     try {
       const saved =
@@ -174,6 +181,7 @@ export const AuthProvider: React.FC<{
           mustChangePassword,
           authenticatedAt: new Date().toISOString(),
         })
+        onLogin?.(role)
 
         if (role === "super") {
           toast.success(`Bienvenido, ${result.user.username}`)
@@ -199,7 +207,7 @@ export const AuthProvider: React.FC<{
         }
       }
     },
-    []
+    [onLogin]
   )
 
   const changePassword = useCallback(

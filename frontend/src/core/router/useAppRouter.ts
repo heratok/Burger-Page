@@ -207,10 +207,20 @@ export function useAppRouter() {
     [syncLocation]
   )
 
+  // A storefront URL whose slug is not known yet has no tenant to show: until
+  // the backend answers, rendering the store would paint a placeholder (or a
+  // previous tenant) that may turn out to be a 404. Derived from the CURRENT
+  // URL on every render, so it never lags behind the sync effect.
+  const isResolving =
+    activeView === "store" &&
+    !isNotFound &&
+    resolveRoute(window.location.pathname, restaurants).isNotFound
+
   return {
     activeView,
     adminTab,
     isNotFound,
+    isResolving,
     attemptedSlug,
     loadError,
     retry: () => syncLocation(true),

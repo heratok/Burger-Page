@@ -1,6 +1,5 @@
 import React, { useState } from "react"
 import { useRestaurant } from "@/context/RestaurantContext"
-import { useAuth } from "@/context/RestaurantContext"
 import { useAppRouter } from "@/core/router/useAppRouter"
 import {
   ShieldCheck,
@@ -25,13 +24,12 @@ interface AdminAuthModalProps {
 }
 
 export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose }) => {
-  const { switchRestaurant, refreshRestaurants } = useRestaurant()
-  // M6: the session is written ONLY through AuthContext.login, which performs
-  // the backend call and sets the session from the REAL validated server
-  // response. This modal is the only production caller that previously wrote
-  // setSession from a locally-assembled payload, which would let a console/XSS
-  // path fabricate { role: "super" } and unlock global modules.
-  const { login } = useAuth()
+  // M6: the session is written ONLY through AuthContext.login (wrapped by
+  // useRestaurant().login), which performs the backend call and sets the
+  // session from the REAL validated server response. The wrapper also rebuilds
+  // tenant and navigation state for the new role, so this modal must not call
+  // useAuth().login directly.
+  const { login, refreshRestaurants } = useRestaurant()
   const { navigateTo } = useAppRouter()
 
   const [username, setUsername] = useState("")
@@ -56,25 +54,12 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
       const result = await login(username.trim(), password.trim())
 
       if (result.success && result.role) {
-        if (result.restaurantId) {
-          switchRestaurant(result.restaurantId)
-        }
-        await refreshRestaurants()
         setUsername("")
         setPassword("")
-        if (result.role === "super") {
-          if (window.location.pathname.startsWith("/admin/") && window.location.pathname !== "/admin") {
-            navigateTo(window.location.pathname)
-          } else {
-            navigateTo("/admin/restaurants")
-          }
-        } else {
-          if (window.location.pathname.startsWith("/admin/") && window.location.pathname !== "/admin") {
-            navigateTo(window.location.pathname)
-          } else {
-            navigateTo("/admin/dashboard")
-          }
-        }
+        // Navigate BEFORE any network wait: until the URL matches the new
+        // session, the router would keep resolving the previous one's path.
+        navigateTo(result.landingPath ?? "/admin")
+        await refreshRestaurants()
         setIsLoading(false)
         return
       }
