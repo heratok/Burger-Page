@@ -44,6 +44,26 @@ describe("runOptimisticMutation", () => {
     expect(toast.success).toHaveBeenCalledTimes(1)
   })
 
+  it("does not roll back or show the error toast when onSuccess throws after the server committed", async () => {
+    const rollback = vi.fn()
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {})
+    const result = await runOptimisticMutation({
+      apply: () => "snapshot",
+      call: async () => "server-result",
+      onSuccess: () => {
+        throw new Error("reconcile bug")
+      },
+      rollback,
+      toast: { success: "done", error: "failed" },
+    })
+
+    expect(result).toBe("server-result")
+    expect(rollback).not.toHaveBeenCalled()
+    expect(toast.error).not.toHaveBeenCalled()
+    expect(logged).toHaveBeenCalled()
+    logged.mockRestore()
+  })
+
   it("rolls back and shows the error toast when the call fails", async () => {
     const rollback = vi.fn()
     await runOptimisticMutation({
