@@ -73,6 +73,23 @@ describe("runOptimisticMutation", () => {
     logged.mockRestore()
   })
 
+  it("still shows the confirmed success toast when onSuccess throws (the server did commit)", async () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {})
+    await runOptimisticMutation({
+      apply: () => "snapshot",
+      call: async () => "server-result",
+      onSuccess: () => {
+        throw new Error("reconcile bug")
+      },
+      rollback: vi.fn(),
+      toast: { success: "attached", successTiming: "confirmed", error: "failed" },
+    })
+
+    expect(toast.success).toHaveBeenCalledWith("attached")
+    expect(toast.error).not.toHaveBeenCalled()
+    logged.mockRestore()
+  })
+
   it("rolls back and shows the error toast when the call fails", async () => {
     const rollback = vi.fn()
     await runOptimisticMutation({
