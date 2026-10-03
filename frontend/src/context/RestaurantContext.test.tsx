@@ -392,7 +392,7 @@ describe("useRestaurant.login - post-login tenant reset and route gating", () =>
     // Reset to the neutral placeholder tenant, never the previous session's one.
     expect(result.current.activeRestaurantId).toBe("rest-default")
     expect(result.current.activeRestaurantSlug).toBe("default")
-    expect(result.current.adminTab).toBe("dashboard")
+    expect(result.current.adminTab).toBe("audit")
   })
 
   it("binds a restaurant admin to its own tenant and lands on the dashboard from a non-deep route", async () => {
@@ -433,5 +433,68 @@ describe("useRestaurant.login - post-login tenant reset and route gating", () =>
     })
 
     expect(result.current.adminTab).toBe("orders")
+  })
+})
+
+describe("session switch - navigation state is rebuilt from the new session only", () => {
+  const wrapper = ({ children }: { children: React.ReactNode }) => (
+    <RestaurantProvider repository={createTestRepo()}>{children}</RestaurantProvider>
+  )
+
+  const mockLogin = async (user: Record<string, unknown>) => {
+    const { apiClient } = await import("@/core/api/apiClient")
+    vi.spyOn(apiClient, "login").mockResolvedValue({ success: true, token: "server-token", user } as any)
+  }
+  const superUser = { id: "u1", username: "root", role: "super_admin" }
+  const restaurantUser = {
+    id: "u2",
+    username: "napoli",
+    role: "restaurant_admin",
+    restaurantId: "rest-pizzeria-napoli",
+  }
+
+  beforeEach(() => {
+    localStorage.clear()
+    sessionStorage.clear()
+    vi.restoreAllMocks()
+  })
+
+  afterEach(() => {
+    window.history.pushState({}, "", "/")
+  })
+
+  it("logout drops the previous session's admin tab", async () => {
+    window.history.pushState({}, "", "/admin/audit")
+    await mockLogin(superUser)
+    const { result } = renderHook(() => useRestaurant(), { wrapper })
+    await act(async () => {
+      await result.current.login("root", "pw")
+    })
+    act(() => result.current.setAdminTab("audit"))
+
+    act(() => result.current.logout())
+
+    expect(result.current.session.role).toBe("guest")
+    expect(result.current.adminTab).toBe("dashboard")
+  })
+
+  it.each([
+    ["restaurant admin on a super-only leftover route", restaurantUser, "/admin/audit", "/admin/dashboard", "dashboard"],
+    ["restaurant admin on the admin root", restaurantUser, "/admin", "/admin/dashboard", "dashboard"],
+    ["restaurant admin on an allowed deep route", restaurantUser, "/admin/orders", "/admin/orders", "orders"],
+    ["super admin on the admin root", superUser, "/admin", "/admin/restaurants", "restaurants"],
+    ["super admin on a deep route", superUser, "/admin/audit", "/admin/audit", "audit"],
+  ])("%s lands on a path and tab that agree with each other", async (_label, user, from, landingPath, tab) => {
+    window.history.pushState({}, "", from)
+    await mockLogin(user)
+    const { result } = renderHook(() => useRestaurant(), { wrapper })
+
+    let res: any
+    await act(async () => {
+      res = await result.current.login("u", "pw")
+    })
+
+    expect(res.landingPath).toBe(landingPath)
+    expect(result.current.adminTab).toBe(tab)
   })
 })

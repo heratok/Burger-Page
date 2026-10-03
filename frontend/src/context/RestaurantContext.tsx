@@ -27,6 +27,20 @@ import { resolveRoute } from "@/core/router/useAppRouter"
 // GlobalModuleAccessDenied gate in App.tsx and SupportModeBanner's guard).
 const SUPER_ONLY_ADMIN_TABS = new Set<AdminTab>(["restaurants", "users", "metrics", "audit"])
 
+/**
+ * Where a freshly authenticated session lands. A deep /admin/* route is kept
+ * only when the new role may open it; otherwise the role's home is used.
+ */
+function resolveLandingPath(pathname: string, isSuper: boolean): string {
+  const home = isSuper ? "/admin/restaurants" : "/admin/dashboard"
+  const lower = pathname.toLowerCase().replace(/\/+$/, "")
+  if (!lower.startsWith("/admin/")) return home
+  const tab = resolveRoute(lower, []).adminTab
+  if (!tab) return home
+  if (!isSuper && SUPER_ONLY_ADMIN_TABS.has(tab)) return home
+  return pathname
+}
+
 // Export individual slice hooks for fine-grained subscriptions
 export { useUi } from "./slices/UiContext"
 export { useTenant } from "./slices/TenantContext"
@@ -80,6 +94,8 @@ export interface RestaurantContextType {
     role: "super" | "restaurant" | null
     restaurantId?: string
     error?: string
+    /** Set on success: the path the new session must navigate to. */
+    landingPath?: string
   }>
   changePassword: (
     currentPassword: string,
@@ -163,9 +179,7 @@ export const RestaurantProvider: React.FC<{
 }> = ({ children, repository }) => {
   return (
     <UiProvider>
-      <AuthProvider
-        onLogout={() => (repository ?? defaultTenantRepository).purgeTenantData()}
-      >
+      <SessionScopedAuthProvider repository={repository}>
         <TenantProvider repository={repository}>
           <CatalogProvider>
             <InventoryProvider>
@@ -173,8 +187,40 @@ export const RestaurantProvider: React.FC<{
             </InventoryProvider>
           </CatalogProvider>
         </TenantProvider>
-      </AuthProvider>
+      </SessionScopedAuthProvider>
     </UiProvider>
+  )
+}
+
+/**
+ * Binds the session lifecycle to session-scoped UI state. Navigation belongs
+ * to the session that produced it: it is reset on every session end (logout
+ * and expiry) and rebuilt for the new role atomically with every session start.
+ */
+const SessionScopedAuthProvider: React.FC<{
+  children: React.ReactNode
+  repository?: TenantRepository
+}> = ({ children, repository }) => {
+  const { setAdminTab } = useUi()
+
+  const onLogin = useCallback(
+    (role: "super" | "restaurant") => {
+      const landingPath = resolveLandingPath(window.location.pathname, role === "super")
+      setAdminTab(resolveRoute(landingPath, []).adminTab ?? "dashboard")
+    },
+    [setAdminTab]
+  )
+
+  const onLogout = useCallback(() => {
+    // C3: purge the whole-tenant envelope + persisted active restaurant.
+    ;(repository ?? defaultTenantRepository).purgeTenantData()
+    setAdminTab("dashboard")
+  }, [repository, setAdminTab])
+
+  return (
+    <AuthProvider onLogin={onLogin} onLogout={onLogout}>
+      {children}
+    </AuthProvider>
   )
 }
 
@@ -193,35 +239,26 @@ export const useRestaurant = (): RestaurantContextType => {
   const login = useCallback(
     async (username: string, password: string, targetRestaurantIdOrSlug?: string) => {
       const res = await auth.login(username, password, targetRestaurantIdOrSlug)
-      if (res.success) {
-        if (res.role === "super") {
-          // A super admin session never inherits the previous session's tenant:
-          // activeRestaurantId lives in TenantProvider state, which survives
-          // logout/login in the same tab, so without this reset a stale tenant
-          // from a prior restaurant-admin session would render in
-          // SupportModeBanner/AdminLayout until manually switched.
-          tenant.switchRestaurant("")
-          const isDeepRoute = window.location.pathname.toLowerCase().startsWith("/admin/") && window.location.pathname.toLowerCase() !== "/admin"
-          if (!isDeepRoute) {
-            ui.setAdminTab("restaurants")
-          }
-        } else if (res.role === "restaurant" && res.restaurantId) {
-          tenant.switchRestaurant(res.restaurantId)
-          const pathname = window.location.pathname.toLowerCase()
-          const isDeepRoute = pathname.startsWith("/admin/") && pathname !== "/admin"
-          // A deep route left over from a previous session (e.g. a super
-          // admin was on /admin/audit) must not be honored for this role:
-          // resolve it and fall back to dashboard when it is super-only,
-          // otherwise the stale adminTab briefly renders GlobalModuleAccessDenied.
-          const resolvedTab = isDeepRoute ? resolveRoute(pathname, tenant.restaurants).adminTab : undefined
-          const isSuperOnlyDeepRoute = resolvedTab !== undefined && SUPER_ONLY_ADMIN_TABS.has(resolvedTab)
-          if (!isDeepRoute || isSuperOnlyDeepRoute) {
-            ui.setAdminTab("dashboard")
-          }
-        }
-        ui.setActiveView("admin")
+      if (!res.success) return res
+
+      if (res.role === "super") {
+        // A super admin session never inherits the previous session's tenant:
+        // activeRestaurantId lives in TenantProvider state, which survives
+        // logout/login in the same tab.
+        tenant.switchRestaurant("")
+      } else if (res.role === "restaurant" && res.restaurantId) {
+        tenant.switchRestaurant(res.restaurantId)
       }
-      return res
+
+      // The landing path and the admin tab are derived together from the NEW
+      // role, so they can never disagree. Callers must navigate to landingPath:
+      // leaving a previous session's URL in place lets the router re-resolve it
+      // (e.g. /admin/audit) and render a module this role cannot access.
+      // The admin tab was already set for this landing path by
+      // SessionScopedAuthProvider, in the same render as the session write.
+      const landingPath = resolveLandingPath(window.location.pathname, res.role === "super")
+      ui.setActiveView("admin")
+      return { ...res, landingPath }
     },
     [auth, tenant, ui]
   )
