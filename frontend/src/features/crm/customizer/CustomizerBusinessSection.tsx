@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useState, useMemo } from "react"
 import type { StorefrontConfig } from "@/types/restaurant"
 import { DollarSign, Clock, Globe, PauseCircle, ChevronDown, ShoppingBag, Store } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
@@ -7,6 +7,7 @@ import { WeeklyScheduleEditor } from "./WeeklyScheduleEditor"
 import { DAY_DISPLAY_ORDER, rangesForDay } from "@/lib/storeSchedule"
 import { COMMON_CURRENCIES, getDefaultSymbolForCurrency } from "@/lib/currenciesAndTimezones"
 import { POPULAR_COUNTRY_CODES, splitPhoneNumber, combinePhoneNumber } from "@/lib/countryPhoneCodes"
+import { ModernSelect, type ModernSelectOption } from "@/components/ui/ModernSelect"
 
 const DELIVERY_TIME_PRESETS = ["15 - 30 min", "30 - 45 min", "45 - 60 min", "60+ min"] as const
 
@@ -76,6 +77,44 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
   const openDaysCount = DAY_DISPLAY_ORDER.filter(
     (d) => rangesForDay(draft.schedule, d).length > 0
   ).length
+
+  const countryOptions: ModernSelectOption[] = useMemo(() => {
+    const base: ModernSelectOption[] = POPULAR_COUNTRY_CODES.map((c) => ({
+      value: c.dialCode,
+      label: c.name,
+      badge: `+${c.dialCode}`,
+      flagCode: c.code,
+    }))
+    if (currentDialCode && !base.some((c) => c.value === currentDialCode)) {
+      return [{ value: currentDialCode, label: `+${currentDialCode}`, badge: `+${currentDialCode}` }, ...base]
+    }
+    return base
+  }, [currentDialCode])
+
+  const currencyOptions: ModernSelectOption[] = useMemo(() => {
+    const base: ModernSelectOption[] = COMMON_CURRENCIES.map((curr) => ({
+      value: curr.code,
+      label: curr.name,
+      badge: curr.code,
+      sublabel: curr.defaultSymbol,
+    }))
+    if (draft.currency && !base.some((c) => c.value === draft.currency)) {
+      return [{ value: draft.currency, label: draft.currency, badge: draft.currency }, ...base]
+    }
+    return base
+  }, [draft.currency])
+
+  const timezoneOptions: ModernSelectOption[] = useMemo(() => {
+    const base: ModernSelectOption[] = TIMEZONE_OPTIONS.map((tz) => ({
+      value: tz.value,
+      label: tz.label,
+      group: tz.group,
+    }))
+    if (draft.timezone && !base.some((tz) => tz.value === draft.timezone)) {
+      return [{ value: draft.timezone, label: draft.timezone }, ...base]
+    }
+    return base
+  }, [draft.timezone])
 
   return (
     <div
@@ -168,21 +207,14 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
 
               <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
                 <div className="sm:col-span-5">
-                  <select
-                    aria-label="Indicativo de país"
+                  <ModernSelect
+                    id="business-country-code"
+                    ariaLabel="Indicativo de país"
                     value={currentDialCode}
-                    onChange={(e) => handleDialCodeChange(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 p-2.5 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none cursor-pointer text-xs"
-                  >
-                    {!POPULAR_COUNTRY_CODES.some((c) => c.dialCode === currentDialCode) && currentDialCode && (
-                      <option value={currentDialCode}>+{currentDialCode}</option>
-                    )}
-                    {POPULAR_COUNTRY_CODES.map((c) => (
-                      <option key={c.code} value={c.dialCode}>
-                        {c.flag} {c.name} (+{c.dialCode})
-                      </option>
-                    ))}
-                  </select>
+                    onChange={handleDialCodeChange}
+                    options={countryOptions}
+                    searchPlaceholder="Buscar país o indicativo (+57, Colombia...)"
+                  />
                 </div>
                 <div className="sm:col-span-7">
                   <input
@@ -302,12 +334,11 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
                   >
                     Moneda
                   </label>
-                  <select
+                  <ModernSelect
                     id="business-currency"
-                    aria-label="Moneda"
+                    ariaLabel="Moneda"
                     value={draft.currency || "COP"}
-                    onChange={(e) => {
-                      const nextCurrency = e.target.value
+                    onChange={(nextCurrency) => {
                       const defaultSym = getDefaultSymbolForCurrency(nextCurrency)
                       setDraft((prev) => ({
                         ...prev,
@@ -315,17 +346,9 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
                         currencySymbol: defaultSym,
                       }))
                     }}
-                    className="w-full rounded-xl border border-slate-200 p-2.5 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none cursor-pointer text-xs"
-                  >
-                    {!COMMON_CURRENCIES.some((c) => c.code === draft.currency) && draft.currency && (
-                      <option value={draft.currency}>{draft.currency}</option>
-                    )}
-                    {COMMON_CURRENCIES.map((curr) => (
-                      <option key={curr.code} value={curr.code}>
-                        {curr.name}
-                      </option>
-                    ))}
-                  </select>
+                    options={currencyOptions}
+                    searchPlaceholder="Buscar moneda (COP, USD, MXN...)"
+                  />
                 </div>
                 <div>
                   <label
@@ -419,21 +442,14 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
                 El horario de apertura y cierre se calcula automáticamente con base en la hora de esta región.
               </p>
-              <select
+              <ModernSelect
                 id="business-timezone"
+                ariaLabel="Zona horaria"
                 value={draft.timezone}
-                onChange={(e) => setDraft((prev) => ({ ...prev, timezone: e.target.value }))}
-                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none cursor-pointer"
-              >
-                {!TIMEZONE_OPTIONS.some((tz) => tz.value === draft.timezone) && (
-                  <option value={draft.timezone}>{draft.timezone}</option>
-                )}
-                {TIMEZONE_OPTIONS.map((tz) => (
-                  <option key={tz.value} value={tz.value}>
-                    {tz.label}
-                  </option>
-                ))}
-              </select>
+                onChange={(timezone) => setDraft((prev) => ({ ...prev, timezone }))}
+                options={timezoneOptions}
+                searchPlaceholder="Buscar zona horaria (Bogotá, Madrid, UTC...)"
+              />
             </div>
           </div>
         )}
