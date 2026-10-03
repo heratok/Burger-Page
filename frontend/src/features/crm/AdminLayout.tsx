@@ -165,7 +165,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     },
     {
       id: "customers" as const,
-      label: "Clientes CRM",
+      label: "Clientes",
       icon: Users,
       description: "Base de datos y fidelización",
       badge: undefined,
@@ -317,13 +317,15 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
             </button>
           </div>
 
-          {/* Restaurant Switcher Widget */}
-          <div className="p-2 border-b border-slate-100 dark:border-slate-800/60 shrink-0">
-            <AdminSwitcher
-              collapsed={isSidebarCollapsed}
-              onSelect={() => setIsMobileSidebarOpen(false)}
-            />
-          </div>
+          {/* Restaurant Switcher Widget (Solo para Super Admin que puede alternar entre tiendas) */}
+          {isSuper && (
+            <div className="p-2 border-b border-slate-100 dark:border-slate-800/60 shrink-0">
+              <AdminSwitcher
+                collapsed={isSidebarCollapsed}
+                onSelect={() => setIsMobileSidebarOpen(false)}
+              />
+            </div>
+          )}
 
           {/* Navigation Links */}
           <nav className="flex-1 min-h-0 space-y-1 p-2 overflow-y-auto overscroll-contain" aria-label="Menú Lateral">

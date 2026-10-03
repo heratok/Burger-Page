@@ -420,7 +420,7 @@ describe("Multi-Month Operational Simulation & Strict Export Verification", () =
 
       // 2. Check 4 Export action cards are present
       expect(screen.getByText("Historial de Ventas")).toBeDefined()
-      expect(screen.getByText("Base de Clientes CRM")).toBeDefined()
+      expect(screen.getByText("Base de Clientes")).toBeDefined()
       expect(screen.getByText("Auditoría de Inventario")).toBeDefined()
       expect(screen.getByText("Cuadre de Caja (Z)")).toBeDefined()
 

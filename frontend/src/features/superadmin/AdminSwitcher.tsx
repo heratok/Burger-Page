@@ -22,51 +22,7 @@ export const AdminSwitcher: React.FC<AdminSwitcherProps> = ({ collapsed = false,
   const isSuper = session.role === "super"
 
   if (!isSuper) {
-    if (collapsed) {
-      return (
-        <div
-          title={`${activeRestaurant.config.name} (Admin Local)`}
-          className="flex size-10 items-center justify-center mx-auto rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60 shadow-xs"
-        >
-          {activeRestaurant.config.logoUrl ? (
-            <img
-              src={activeRestaurant.config.logoUrl}
-              alt={activeRestaurant.config.name}
-              className="size-7 rounded-lg object-cover ring-1 ring-slate-200 dark:ring-slate-700"
-            />
-          ) : (
-            <Store className="size-5 text-indigo-500" />
-          )}
-        </div>
-      )
-    }
-
-    return (
-      <div className="rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-900/60 p-2.5 shadow-xs">
-        <div className="flex items-center gap-2">
-          {activeRestaurant.config.logoUrl ? (
-            <img
-              src={activeRestaurant.config.logoUrl}
-              alt={activeRestaurant.config.name}
-              className="size-7 rounded-lg object-cover ring-1 ring-slate-200 dark:ring-slate-700 shadow-xs"
-            />
-          ) : (
-            <div className="flex size-7 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-500">
-              <Store className="size-4" />
-            </div>
-          )}
-          <div className="flex-1 min-w-0">
-            <h4 className="text-xs font-bold truncate text-slate-900 dark:text-white">
-              {activeRestaurant.config.name}
-            </h4>
-            <div className="flex items-center gap-1 text-[10px] text-slate-500 dark:text-slate-400">
-              <Shield className="size-2.5 text-indigo-500" />
-              <span>Admin Local</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
+    return null
   }
 
   const switcherOptions = [
