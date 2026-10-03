@@ -11,6 +11,7 @@ import { Toaster } from "@/components/ui/sonner"
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary"
 import { Button } from "@/components/ui/button"
 import { getStoreThemeStyles } from "@/features/crm/utils/customizerStyles"
+import { useDocumentFavicon } from "@/hooks/useDocumentFavicon"
 import { selectTitleRestaurantName, useDocumentTitle } from "@/hooks/useDocumentTitle"
 
 // Code-split backoffice features from public storefront for minimal initial bundle size
@@ -141,17 +142,17 @@ export function MainRouter() {
   const { adminTab, session, storeConfig, activeRestaurant } = useRestaurant()
   const { activeView, isNotFound, isResolving, attemptedSlug, loadError, retry, navigateTo } = useAppRouter()
 
-  useDocumentTitle(
-    selectTitleRestaurantName({
-      activeView,
-      isNotFound,
-      isResolving,
-      sessionRole: session.role,
-      adminTab,
-      restaurantId: activeRestaurant.id,
-      restaurantName: storeConfig.name,
-    })
-  )
+  const titleRestaurantName = selectTitleRestaurantName({
+    activeView,
+    isNotFound,
+    isResolving,
+    sessionRole: session.role,
+    adminTab,
+    restaurantId: activeRestaurant.id,
+    restaurantName: storeConfig.name,
+  })
+  useDocumentTitle(titleRestaurantName)
+  useDocumentFavicon(titleRestaurantName ? storeConfig.logoUrl : undefined)
 
   // 1. Not Found Route
   if (isNotFound && attemptedSlug) {
