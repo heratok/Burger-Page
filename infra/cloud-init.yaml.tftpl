@@ -1,0 +1,142 @@
+#cloud-config
+package_update: true
+package_upgrade: true
+
+packages:
+  - ca-certificates
+  - curl
+  - gnupg
+  - unattended-upgrades
+
+write_files:
+  - path: /opt/burgerpage/docker-compose.prod.yml
+    permissions: '0644'
+    content: |
+      services:
+        backend:
+          image: ${ghcr_image}:latest
+          restart: unless-stopped
+          env_file: .env
+          expose:
+            - "3001"
+          healthcheck:
+            test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3001/health"]
+            interval: 30s
+            timeout: 5s
+            retries: 3
+        caddy:
+          image: caddy:2-alpine
+          restart: unless-stopped
+          ports:
+            - "80:80"
+            - "443:443"
+          volumes:
+            - ./Caddyfile:/etc/caddy/Caddyfile:ro
+            - caddy-data:/data
+            - caddy-config:/config
+          depends_on:
+            - backend
+      volumes:
+        caddy-data:
+        caddy-config:
+
+  - path: /opt/burgerpage/Caddyfile
+    permissions: '0644'
+    content: |
+      ${fqdn} {
+        reverse_proxy backend:3001 {
+          flush_interval -1
+        }
+      }
+
+  # NO sensible: plantilla sin secretos. El .env real (con DATABASE_URL, SUPABASE_URL/KEY,
+  # JWT_SECRET y GHCR_PAT) lo crea el usuario a mano por SSH, con permisos 600 — ver infra/README.md.
+  # GHCR_USERNAME no es secreto (es público, igual que el nombre del repo) y sí viene precompletado.
+  - path: /opt/burgerpage/.env.example
+    permissions: '0644'
+    content: |
+      NODE_ENV=production
+      PORT=3001
+      HOST=0.0.0.0
+      JWT_SECRET=
+      STORAGE_DRIVER=supabase
+      DATABASE_URL=
+      SUPABASE_URL=
+      SUPABASE_KEY=
+      CORS_ORIGIN=${cors_origin}
+      RATE_LIMIT_MAX=300
+      RATE_LIMIT_WINDOW=1 minute
+      GHCR_USERNAME=${ghcr_username}
+      GHCR_PAT=
+
+  # Script que ejecuta el timer cada 5 min: login a GHCR (solo si GHCR_PAT está seteado en
+  # .env — si el paquete es público, se puede dejar vacío y el pull funciona igual sin login),
+  # pull de la imagen nueva, y recreate de los contenedores si cambió.
+  - path: /opt/burgerpage/deploy.sh
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      set -euo pipefail
+      cd /opt/burgerpage
+      # NO se usa `source .env`: valores con espacios sin comillas (ej. RATE_LIMIT_WINDOW=1 minute)
+      # romperían el parser de bash (bash ejecutaría "minute" como comando). grep/cut no ejecuta nada.
+      GHCR_PAT_VAL=""
+      GHCR_USERNAME_VAL=""
+      if [ -f .env ]; then
+        GHCR_PAT_VAL=$(grep -E '^GHCR_PAT=' .env | head -n1 | cut -d= -f2-)
+        GHCR_USERNAME_VAL=$(grep -E '^GHCR_USERNAME=' .env | head -n1 | cut -d= -f2-)
+      fi
+      if [ -n "$${GHCR_PAT_VAL}" ] && [ -n "$${GHCR_USERNAME_VAL}" ]; then
+        echo "$${GHCR_PAT_VAL}" | docker login ghcr.io -u "$${GHCR_USERNAME_VAL}" --password-stdin
+      fi
+      docker compose -f docker-compose.prod.yml pull
+      docker compose -f docker-compose.prod.yml up -d --remove-orphans
+      docker image prune -f
+
+  - path: /etc/systemd/system/burgerpage-deploy.service
+    permissions: '0644'
+    content: |
+      [Unit]
+      Description=Pull latest Burger Page backend image from GHCR and (re)start
+      After=docker.service
+      Requires=docker.service
+
+      [Service]
+      Type=oneshot
+      WorkingDirectory=/opt/burgerpage
+      ExecStart=/opt/burgerpage/deploy.sh
+
+  - path: /etc/systemd/system/burgerpage-deploy.timer
+    permissions: '0644'
+    content: |
+      [Unit]
+      Description=Run burgerpage-deploy.service every 5 minutes
+
+      [Timer]
+      OnBootSec=30s
+      OnUnitActiveSec=5min
+      Unit=burgerpage-deploy.service
+
+      [Install]
+      WantedBy=timers.target
+
+runcmd:
+  - install -m 0755 -d /etc/apt/keyrings
+  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+  - chmod a+r /etc/apt/keyrings/docker.asc
+  - echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo $VERSION_CODENAME) stable" > /etc/apt/sources.list.d/docker.list
+  - apt-get update -y
+  - apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+  - usermod -aG docker ${admin_username}
+  - chown -R ${admin_username}:${admin_username} /opt/burgerpage
+  - fallocate -l 2G /swapfile
+  - chmod 600 /swapfile
+  - mkswap /swapfile
+  - swapon /swapfile
+  - echo '/swapfile none swap sw 0 0' >> /etc/fstab
+  - sysctl -w vm.swappiness=10
+  - echo 'vm.swappiness=10' >> /etc/sysctl.conf
+  - dpkg-reconfigure -f noninteractive unattended-upgrades
+  - systemctl enable --now unattended-upgrades
+  - systemctl daemon-reload
+  - systemctl enable --now burgerpage-deploy.timer

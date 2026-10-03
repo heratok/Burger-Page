@@ -85,3 +85,11 @@ zap-report*
 
 # Orchestration artifacts (el Gentleman ODD tracking)
 odd/
+
+# Terraform (infra/)
+*.tfstate
+*.tfstate.*
+.terraform/
+*.tfvars
+*.tfplan
+tfplan.out

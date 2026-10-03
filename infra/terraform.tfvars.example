@@ -1,0 +1,13 @@
+location                 = "northcentralus" # verificá tus regiones permitidas: az policy assignment show --name sys.regionrestriction
+resource_group_name      = "burgerpage-rg"
+vm_size                  = "Standard_B2ats_v2" # x64/AMD burstable. Verificá disponibilidad real con:
+                                                # az vm list-skus --location <region> --size Standard_B --all
+vm_image_sku             = "server"            # x64 — server-arm64 solo si cambiás a Standard_B2pts_v2
+admin_username           = "azureuser"
+ssh_public_key_path      = "~/.ssh/burgerpage_azure_rsa.pub" # Azure solo acepta RSA para VMs; generala con:
+                                                              # ssh-keygen -t rsa -b 4096 -f ~/.ssh/burgerpage_azure_rsa -N ""
+my_ip                    = "TU_IP_PUBLICA_AQUI" # ver: curl -s https://api.ipify.org
+domain_name_label_prefix = "burger-api"
+cors_origin              = "https://heratok.app,https://www.heratok.app"
+ghcr_image               = "ghcr.io/heratok/burger-page-backend"
+ghcr_username            = "heratok"
