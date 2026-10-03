@@ -127,8 +127,8 @@ describe("StorefrontCustomizer & Subcomponents (TDD Modularization)", () => {
 
       const { rerender } = render(<CustomizerBusinessSection draft={draft} setDraft={setDraft} />)
 
-      const whatsappInput = screen.getByPlaceholderText("573022575805") as HTMLInputElement
-      fireEvent.change(whatsappInput, { target: { value: "573110000000" } })
+      const whatsappInput = screen.getByLabelText("Número de WhatsApp local") as HTMLInputElement
+      fireEvent.change(whatsappInput, { target: { value: "3110000000" } })
       expect(setDraft).toHaveBeenCalled()
 
       // The free-text hours field is gone, replaced by the weekly editor
@@ -189,12 +189,88 @@ describe("StorefrontCustomizer & Subcomponents (TDD Modularization)", () => {
 
       // Now schedule is open
       expect(screen.getByLabelText("Zona horaria")).toBeDefined()
-      expect(screen.getByPlaceholderText("573022575805")).toBeDefined()
+      expect(screen.getByLabelText("Número de WhatsApp local")).toBeDefined()
 
       // Click "Colapsar todo"
       fireEvent.click(screen.getByRole("button", { name: "Colapsar todo" }))
       expect(screen.queryByLabelText("Zona horaria")).toBeNull()
-      expect(screen.queryByPlaceholderText("573022575805")).toBeNull()
+      expect(screen.queryByLabelText("Número de WhatsApp local")).toBeNull()
+    })
+
+    it("updates draft.whatsappNumber when selecting a different country dial code", () => {
+      let draft: StorefrontConfig = {
+        ...DEFAULT_STORE_CONFIG,
+        whatsappNumber: "573022575805",
+      }
+      const setDraft = vi.fn((updater) => {
+        draft = typeof updater === "function" ? updater(draft) : updater
+      })
+
+      const { rerender } = render(<CustomizerBusinessSection draft={draft} setDraft={setDraft} />)
+
+      const countrySelect = screen.getByLabelText("Indicativo de país") as HTMLSelectElement
+      expect(countrySelect.value).toBe("57")
+
+      // Change country to México (+52)
+      fireEvent.change(countrySelect, { target: { value: "52" } })
+      expect(setDraft).toHaveBeenCalled()
+      expect(draft.whatsappNumber).toBe("523022575805")
+
+      rerender(<CustomizerBusinessSection draft={draft} setDraft={setDraft} />)
+      expect(screen.getAllByText("+523022575805").length).toBeGreaterThan(0)
+    })
+
+    it("updates draft.currency and draft.currencySymbol when changing currency dropdown", () => {
+      let draft: StorefrontConfig = {
+        ...DEFAULT_STORE_CONFIG,
+        currency: "COP",
+        currencySymbol: "$",
+      }
+      const setDraft = vi.fn((updater) => {
+        draft = typeof updater === "function" ? updater(draft) : updater
+      })
+
+      const { rerender } = render(<CustomizerBusinessSection draft={draft} setDraft={setDraft} />)
+
+      const currencySelect = screen.getByLabelText("Moneda") as HTMLSelectElement
+      expect(currencySelect.value).toBe("COP")
+
+      // Change currency to EUR
+      fireEvent.change(currencySelect, { target: { value: "EUR" } })
+      expect(setDraft).toHaveBeenCalled()
+      expect(draft.currency).toBe("EUR")
+      expect(draft.currencySymbol).toBe("€")
+
+      rerender(<CustomizerBusinessSection draft={draft} setDraft={setDraft} />)
+
+      // Test custom symbol override
+      const symbolInput = screen.getByLabelText("Símbolo de moneda") as HTMLInputElement
+      expect(symbolInput.value).toBe("€")
+      fireEvent.change(symbolInput, { target: { value: "EUR€" } })
+      expect(setDraft).toHaveBeenCalled()
+      expect(draft.currencySymbol).toBe("EUR€")
+    })
+
+    it("updates draft.estimatedDeliveryTime when clicking a delivery time pill", () => {
+      let draft: StorefrontConfig = {
+        ...DEFAULT_STORE_CONFIG,
+        estimatedDeliveryTime: "30 - 45 min",
+      }
+      const setDraft = vi.fn((updater) => {
+        draft = typeof updater === "function" ? updater(draft) : updater
+      })
+
+      render(<CustomizerBusinessSection draft={draft} setDraft={setDraft} />)
+
+      const pill1530 = screen.getByRole("button", { name: "15 - 30 min" })
+      fireEvent.click(pill1530)
+      expect(setDraft).toHaveBeenCalled()
+      expect(draft.estimatedDeliveryTime).toBe("15 - 30 min")
+
+      const pill60Plus = screen.getByRole("button", { name: "60+ min" })
+      fireEvent.click(pill60Plus)
+      expect(setDraft).toHaveBeenCalled()
+      expect(draft.estimatedDeliveryTime).toBe("60+ min")
     })
   })
 
