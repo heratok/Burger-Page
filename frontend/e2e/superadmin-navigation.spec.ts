@@ -66,7 +66,7 @@ test.describe('Super Admin Multi-Tenant Navigation, Dedicated SaaS Modules & Imp
     await expect(page.getByRole('button', { name: /Pedidos en Vivo/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /Menú & Carta/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /Stock & Insumos/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /Clientes CRM/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Clientes', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: /Reportes & Cierre/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /Personalizar/i })).toBeVisible();
 

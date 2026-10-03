@@ -92,7 +92,7 @@ describe("AdminLayout - Super Admin Navigation & Global Modules (TDD)", () => {
     expect(screen.getByText(/Pedidos en Vivo/i)).toBeDefined()
     expect(screen.getByText(/Menú & Carta/i)).toBeDefined()
     expect(screen.getByText(/Stock & Insumos/i)).toBeDefined()
-    expect(screen.getByText(/Clientes CRM/i)).toBeDefined()
+    expect(screen.getByText(/^Clientes$/i)).toBeDefined()
     expect(screen.getByText(/Reportes & Cierre/i)).toBeDefined()
     expect(screen.getByText(/Personalizar/i)).toBeDefined()
     expect(screen.getByText(/Mesas & QR/i)).toBeDefined()
@@ -140,9 +140,10 @@ describe("AdminLayout - Super Admin Navigation & Global Modules (TDD)", () => {
     expect(screen.getAllByText(/Dashboard/i).length).toBeGreaterThan(0)
     expect(screen.getByText(/Pedidos en Vivo/i)).toBeDefined()
 
-    // Must NOT see Super Admin controls
+    // Must NOT see Super Admin controls or redundant switcher
     expect(screen.queryByText(/Métricas Globales/i)).toBeNull()
     expect(screen.queryByText(/Volver al Panel Super Admin/i)).toBeNull()
+    expect(screen.queryByText(/Admin Local/i)).toBeNull()
   })
 
   it("allows collapsing and expanding the sidebar on desktop", () => {

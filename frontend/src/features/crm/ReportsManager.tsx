@@ -187,7 +187,7 @@ export const ReportsManager: React.FC = () => {
       { header: "Total Transferencias ($)", accessor: (c) => c.transferTotal },
       { header: "Pedidos Transferencia", accessor: (c) => c.transferOrdersCount },
       { header: "Total Domicilios ($)", accessor: (c) => c.deliveryFeesTotal },
-      { header: "Ticket Promedio ($)", accessor: (c) => c.avgTicket },
+      { header: "Promedio por Pedido ($)", accessor: (c) => c.avgTicket },
       { header: "Fecha Generación", accessor: (c) => c.generatedAt },
     ]
 
@@ -422,7 +422,7 @@ export const ReportsManager: React.FC = () => {
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Ticket Promedio
+              Promedio por Pedido
             </span>
             <span className="flex size-8 items-center justify-center rounded-lg bg-violet-500/10 text-violet-600 dark:bg-violet-500/20 dark:text-violet-400">
               <TrendingUp className="size-4" />
@@ -606,7 +606,7 @@ export const ReportsManager: React.FC = () => {
                       <Users className="size-4" />
                     </span>
                     <h3 className="text-xs font-bold text-slate-900 dark:text-white">
-                      Base de Clientes CRM
+                      Base de Clientes
                     </h3>
                   </div>
                   <p className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">

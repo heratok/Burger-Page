@@ -11,6 +11,7 @@ import { Toaster } from "@/components/ui/sonner"
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary"
 import { Button } from "@/components/ui/button"
 import { getStoreThemeStyles } from "@/features/crm/utils/customizerStyles"
+import { selectTitleRestaurantName, useDocumentTitle } from "@/hooks/useDocumentTitle"
 
 // Code-split backoffice features from public storefront for minimal initial bundle size
 const Home = lazy(() => import("@/features/storefront/Home"))
@@ -137,8 +138,20 @@ function GlobalModuleAccessDenied({ onBackToDashboard }: GlobalModuleAccessDenie
 }
 
 export function MainRouter() {
-  const { adminTab, session } = useRestaurant()
+  const { adminTab, session, storeConfig, activeRestaurant } = useRestaurant()
   const { activeView, isNotFound, isResolving, attemptedSlug, loadError, retry, navigateTo } = useAppRouter()
+
+  useDocumentTitle(
+    selectTitleRestaurantName({
+      activeView,
+      isNotFound,
+      isResolving,
+      sessionRole: session.role,
+      adminTab,
+      restaurantId: activeRestaurant.id,
+      restaurantName: storeConfig.name,
+    })
+  )
 
   // 1. Not Found Route
   if (isNotFound && attemptedSlug) {

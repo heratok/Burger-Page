@@ -44,28 +44,25 @@ describe("ProductCard - closed store", () => {
     expect(onSelect).toHaveBeenCalledTimes(1)
   })
 
-  it("opens image lightbox when clicking zoom button without triggering card selection", () => {
+  it("triggers product selection when clicking the card", () => {
     const onSelect = vi.fn()
     renderCard(false, onSelect)
 
-    const zoomBtn = screen.getByRole("button", { name: "Ampliar foto de Hamburguesa Clásica" })
-    expect(zoomBtn).toBeDefined()
+    const card = screen.getByRole("button", { name: /Agregar Hamburguesa Clásica al carrito/ })
+    fireEvent.click(card)
+    expect(onSelect).toHaveBeenCalledTimes(1)
+  })
 
-    // Lightbox is closed initially
-    expect(screen.queryByLabelText("Foto ampliada de Hamburguesa Clásica")).toBeNull()
+  it("triggers product selection when pressing Enter or Space", () => {
+    const onSelect = vi.fn()
+    renderCard(false, onSelect)
 
-    // Click zoom button
-    fireEvent.click(zoomBtn)
+    const card = screen.getByRole("button", { name: /Agregar Hamburguesa Clásica al carrito/ })
+    fireEvent.keyDown(card, { key: "Enter" })
+    expect(onSelect).toHaveBeenCalledTimes(1)
 
-    // Lightbox opens
-    expect(screen.getByLabelText("Foto ampliada de Hamburguesa Clásica")).toBeDefined()
-    // onSelect was NOT called because propagation was stopped
-    expect(onSelect).not.toHaveBeenCalled()
-
-    // Click close button on lightbox
-    const closeBtn = screen.getByRole("button", { name: "Cerrar vista previa" })
-    fireEvent.click(closeBtn)
-    expect(screen.queryByLabelText("Foto ampliada de Hamburguesa Clásica")).toBeNull()
+    fireEvent.keyDown(card, { key: " " })
+    expect(onSelect).toHaveBeenCalledTimes(2)
   })
 })
 

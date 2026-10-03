@@ -240,7 +240,7 @@ export const DashboardOverview: React.FC = () => {
 
         {/* Average Ticket */}
         <StatCard
-          title="Ticket Promedio"
+          title="Promedio por Pedido"
           value={formatCurrency(metrics.avgTicket)}
           variant="info"
           icon={<TrendingUp className="size-5" />}
@@ -254,7 +254,7 @@ export const DashboardOverview: React.FC = () => {
 
         {/* Customer Base */}
         <StatCard
-          title="Clientes CRM"
+          title="Clientes"
           value={metrics.totalCustomers}
           variant="warning"
           icon={<Users className="size-5" />}

@@ -114,8 +114,8 @@ test.describe('CRM Customer Editing & Backend Persistence Suite', () => {
     await page.reload();
     await page.waitForLoadState('networkidle');
 
-    // 9. If navigated away or sidebar rendered, ensure we are on Clientes CRM
-    const customersNavBtnAfterReload = page.locator('aside button, nav button').filter({ hasText: /Clientes CRM/i }).first();
+    // 9. If navigated away or sidebar rendered, ensure we are on Clientes
+    const customersNavBtnAfterReload = page.locator('aside button, nav button').filter({ hasText: /^\s*Clientes\s*$/i }).first();
     if (await customersNavBtnAfterReload.isVisible().catch(() => false)) {
       const reloadFetchPromise = page.waitForResponse(
         (res) => res.url().includes('/api/customers') && res.request().method() === 'GET' && res.status() === 200,

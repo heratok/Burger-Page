@@ -146,7 +146,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
             <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-3.5 backdrop-blur-md">
               <div className="flex items-center gap-2 text-emerald-400 mb-1">
                 <Users className="size-4" />
-                <span className="text-xs font-bold text-white">Clientes CRM</span>
+                <span className="text-xs font-bold text-white">Clientes</span>
               </div>
               <p className="text-[11px] text-slate-400">Base de clientes y fidelización directa.</p>
             </div>
