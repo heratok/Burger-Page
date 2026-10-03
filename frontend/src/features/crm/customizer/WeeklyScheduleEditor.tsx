@@ -7,14 +7,15 @@ import {
   formatRanges,
   rangesForDay,
   isOvernightRange,
-  copyRangeToWeekdays,
-  copyRangeToWeekend,
+  WEEKDAY_NUMBERS,
+  WEEKEND_NUMBERS,
+  applyRangeToDays,
   is24HourRange,
   setDay24Hours,
   setDayCustomHours,
   setAll24Hours,
 } from "@/lib/storeSchedule"
-import { Clock, Copy, Sparkles, Moon } from "lucide-react"
+import { Clock, Sparkles, Moon, Check } from "lucide-react"
 
 export interface WeeklyScheduleEditorProps {
   schedule: WeeklySchedule
@@ -31,6 +32,25 @@ const DEFAULT_CLOSE = "22:30"
  * day removes all of its ranges.
  */
 export const WeeklyScheduleEditor: React.FC<WeeklyScheduleEditorProps> = ({ schedule, onChange }) => {
+  const [bulkOpen, setBulkOpen] = React.useState("12:00")
+  const [bulkClose, setBulkClose] = React.useState("22:30")
+  const [feedback, setFeedback] = React.useState<string | null>(null)
+  const feedbackTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const showFeedback = (msg: string) => {
+    if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current)
+    setFeedback(msg)
+    feedbackTimerRef.current = setTimeout(() => {
+      setFeedback(null)
+    }, 2000)
+  }
+
+  React.useEffect(() => {
+    return () => {
+      if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current)
+    }
+  }, [])
+
   const withDay = (day: number, ranges: WeeklySchedule): WeeklySchedule => [
     ...schedule.filter((r) => r.dayOfWeek !== day),
     ...ranges,
@@ -46,49 +66,115 @@ export const WeeklyScheduleEditor: React.FC<WeeklyScheduleEditorProps> = ({ sche
     onChange(withDay(day, [{ ...first, [field]: value }, ...extras]))
   }
 
-  const copyToAll = (day: number) => {
-    const [first] = rangesForDay(schedule, day)
-    onChange(DAY_DISPLAY_ORDER.map((d) => ({ dayOfWeek: d, open: first.open, close: first.close })))
-  }
-
   const openDaysCount = DAY_DISPLAY_ORDER.filter((d) => rangesForDay(schedule, d).length > 0).length
 
   return (
     <div className="space-y-3">
-      {/* Quick Presets Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 p-2.5 text-xs">
-        <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 font-medium">
-          <Sparkles className="size-3.5 text-amber-500 shrink-0" aria-hidden="true" />
-          <span>Atajos rápidos:</span>
-          <span className="text-[11px] text-slate-400 dark:text-slate-500">
-            ({openDaysCount}/7 abiertos)
-          </span>
+      {/* Configuración masiva / Horario general */}
+      <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 p-3 text-xs space-y-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-200 font-semibold">
+            <Sparkles className="size-3.5 text-amber-500 shrink-0" aria-hidden="true" />
+            <span>Configuración masiva / Horario general</span>
+            <span className="text-[11px] font-normal text-slate-400 dark:text-slate-500">
+              ({openDaysCount}/7 abiertos)
+            </span>
+          </div>
+          {feedback && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20"
+            >
+              <Check className="size-3 text-emerald-500 shrink-0" aria-hidden="true" />
+              <span>{feedback}</span>
+            </div>
+          )}
         </div>
-        <div className="flex flex-wrap items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => onChange(copyRangeToWeekdays(schedule, 1))}
-            className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 px-2.5 py-1 text-[11px] font-semibold text-slate-700 dark:text-slate-200 transition-colors cursor-pointer shadow-2xs focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
-            aria-label="Lun–Vie igual"
-          >
-            Lun–Vie igual
-          </button>
-          <button
-            type="button"
-            onClick={() => onChange(copyRangeToWeekend(schedule, 6))}
-            className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 px-2.5 py-1 text-[11px] font-semibold text-slate-700 dark:text-slate-200 transition-colors cursor-pointer shadow-2xs focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
-            aria-label="Fin de semana"
-          >
-            Fin de semana
-          </button>
-          <button
-            type="button"
-            onClick={() => onChange(setAll24Hours())}
-            className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 px-2.5 py-1 text-[11px] font-semibold text-slate-700 dark:text-slate-200 transition-colors cursor-pointer shadow-2xs focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
-            aria-label="Todos 24h"
-          >
-            Todos 24h
-          </button>
+
+        <div className="flex flex-wrap items-center justify-between gap-2.5 pt-0.5">
+          {/* Master time inputs */}
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Horario:</span>
+            <input
+              type="time"
+              aria-label="Horario masivo apertura"
+              value={bulkOpen}
+              onChange={(e) => setBulkOpen(e.target.value)}
+              className="h-7 w-[98px] sm:w-[106px] rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white px-2 text-xs font-mono text-center focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none transition-colors shadow-2xs"
+            />
+            <span
+              aria-hidden="true"
+              className="text-slate-400 dark:text-slate-500 text-xs font-semibold select-none"
+            >
+              -
+            </span>
+            <input
+              type="time"
+              aria-label="Horario masivo cierre"
+              value={bulkClose}
+              onChange={(e) => setBulkClose(e.target.value)}
+              className="h-7 w-[98px] sm:w-[106px] rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white px-2 text-xs font-mono text-center focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none transition-colors shadow-2xs"
+            />
+            {isOvernightRange(bulkOpen, bulkClose) && (
+              <span
+                title="Cierra al día siguiente (cruza la medianoche)"
+                className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 shrink-0 select-none whitespace-nowrap"
+              >
+                <Moon className="size-3 text-amber-500 shrink-0" aria-hidden="true" />
+                <span>+1 día</span>
+              </span>
+            )}
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[11px] text-slate-400 dark:text-slate-500 mr-0.5 hidden sm:inline">Aplicar a:</span>
+            <button
+              type="button"
+              onClick={() => {
+                onChange(applyRangeToDays(schedule, DAY_DISPLAY_ORDER, bulkOpen, bulkClose))
+                showFeedback("¡Aplicado a toda la semana!")
+              }}
+              className="rounded-lg border border-indigo-200 dark:border-indigo-800/60 bg-indigo-50/80 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 px-2.5 py-1 text-[11px] font-semibold text-indigo-700 dark:text-indigo-300 transition-colors cursor-pointer shadow-2xs focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
+              aria-label="Toda la semana"
+            >
+              Toda la semana
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onChange(applyRangeToDays(schedule, WEEKDAY_NUMBERS, bulkOpen, bulkClose))
+                showFeedback("¡Aplicado a Lun a Vie!")
+              }}
+              className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 px-2.5 py-1 text-[11px] font-semibold text-slate-700 dark:text-slate-200 transition-colors cursor-pointer shadow-2xs focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
+              aria-label="Lun a Vie"
+            >
+              Lun a Vie
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onChange(applyRangeToDays(schedule, WEEKEND_NUMBERS, bulkOpen, bulkClose))
+                showFeedback("¡Aplicado a Fin de semana!")
+              }}
+              className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 px-2.5 py-1 text-[11px] font-semibold text-slate-700 dark:text-slate-200 transition-colors cursor-pointer shadow-2xs focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
+              aria-label="Fin de semana"
+            >
+              Fin de semana
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onChange(setAll24Hours())
+                showFeedback("¡Todos 24 horas!")
+              }}
+              className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 px-2.5 py-1 text-[11px] font-semibold text-slate-700 dark:text-slate-200 transition-colors cursor-pointer shadow-2xs focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
+              aria-label="Todos 24h"
+            >
+              Todos 24h
+            </button>
+          </div>
         </div>
       </div>
 
@@ -152,20 +238,6 @@ export const WeeklyScheduleEditor: React.FC<WeeklyScheduleEditorProps> = ({ sche
                           24h
                         </button>
                       )
-                    )}
-
-                    {isOpen ? (
-                      <button
-                        type="button"
-                        onClick={() => copyToAll(day)}
-                        aria-label={`Copiar horario de ${name} a todos los días`}
-                        title={`Copiar horario de ${name} a todos los días`}
-                        className="flex items-center justify-center size-7 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-slate-800 dark:hover:text-indigo-400 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
-                      >
-                        <Copy className="size-3.5" aria-hidden="true" />
-                      </button>
-                    ) : (
-                      <div className="size-7" aria-hidden="true" />
                     )}
                   </div>
                 </div>
