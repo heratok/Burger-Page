@@ -1,15 +1,21 @@
 import { test, expect } from '@playwright/test';
+import { TEST_RESTAURANT } from './test-fixture';
 
 test.describe('Burger Craft Storefront E2E User Journey', () => {
   test('should load storefront with restaurant branding and menu products', async ({ page }) => {
     await page.goto('/');
 
-    // Verify main page title and brand
-    await expect(page).toHaveTitle(/Burger Craft|Burger/i);
+    // The platform landing uses the platform title, never a tenant brand
+    await expect(page).toHaveTitle('FoodOS');
 
     // Verify storefront branding or navigation
     const heading = page.getByRole('heading').first();
     await expect(heading).toBeVisible();
+  });
+
+  test('tab title is the restaurant name on its storefront', async ({ page }) => {
+    await page.goto(`/${TEST_RESTAURANT.slug}`);
+    await expect(page).toHaveTitle(TEST_RESTAURANT.name);
   });
 
   test('should verify health status of Fastify backend API directly', async ({ request }) => {

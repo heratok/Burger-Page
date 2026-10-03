@@ -11,6 +11,7 @@ import { Toaster } from "@/components/ui/sonner"
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary"
 import { Button } from "@/components/ui/button"
 import { getStoreThemeStyles } from "@/features/crm/utils/customizerStyles"
+import { useDocumentTitle } from "@/hooks/useDocumentTitle"
 
 // Code-split backoffice features from public storefront for minimal initial bundle size
 const Home = lazy(() => import("@/features/storefront/Home"))
@@ -137,8 +138,19 @@ function GlobalModuleAccessDenied({ onBackToDashboard }: GlobalModuleAccessDenie
 }
 
 export function MainRouter() {
-  const { adminTab, session } = useRestaurant()
+  const { adminTab, session, storeConfig } = useRestaurant()
   const { activeView, isNotFound, isResolving, attemptedSlug, loadError, retry, navigateTo } = useAppRouter()
+
+  // Tenant views (storefront, restaurant admin) show the restaurant name;
+  // platform views (landing, login, super admin modules) show the platform title.
+  const isGlobalAdminTab =
+    adminTab === "restaurants" || adminTab === "users" || adminTab === "metrics" || adminTab === "audit"
+  const isPlatformView =
+    isNotFound ||
+    activeView === "landing" ||
+    (activeView === "admin" && (session.role === "guest" || isGlobalAdminTab)) ||
+    (activeView !== "admin" && isResolving)
+  useDocumentTitle(isPlatformView ? undefined : storeConfig.name)
 
   // 1. Not Found Route
   if (isNotFound && attemptedSlug) {
@@ -191,8 +203,6 @@ export function MainRouter() {
     // /admin/restaurants, /admin/users or /admin/metrics must never render
     // cross-tenant directories or aggregates, so enforce the gate at route level.
     const isSuper = session.role === "super"
-    const isGlobalAdminTab =
-      adminTab === "restaurants" || adminTab === "users" || adminTab === "metrics" || adminTab === "audit"
 
     return (
       <ErrorBoundary>
