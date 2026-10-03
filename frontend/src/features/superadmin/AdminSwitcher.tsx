@@ -1,6 +1,6 @@
 import React from "react"
 import { useRestaurant } from "@/context/RestaurantContext"
-import { Store, Crown, Shield } from "lucide-react"
+import { Store, Crown } from "lucide-react"
 import { useAppRouter } from "@/core/router/useAppRouter"
 import { Select } from "@/components/ui/select"
 
