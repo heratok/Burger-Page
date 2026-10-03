@@ -24,6 +24,7 @@ import { Pagination } from "@/components/ui/pagination"
 import { TableSkeleton } from "@/components/ui/Skeletons"
 import { useAppRouter } from "@/core/router/useAppRouter"
 import { formatCurrency } from "@/lib/utils"
+import { mapUserActionError } from "./userActionUtils"
 
 export const RestaurantsDirectory: React.FC = () => {
   const {
@@ -139,15 +140,10 @@ export const RestaurantsDirectory: React.FC = () => {
       await loadDeletedRestaurants()
       setRestaurantToRestore(null)
     } catch (err: any) {
-      const isConflict =
-        err?.status === 409 ||
-        err?.code === "CONFLICT" ||
-        err?.message?.includes("409") ||
-        err?.message?.toLowerCase().includes("taken") ||
-        err?.message?.toLowerCase().includes("already exists") ||
-        err?.message?.toLowerCase().includes("en uso")
-
-      if (isConflict) {
+      // The backend's RFC7807 error handler always sets status 409 for a
+      // conflict (errorHandler.ts); the message wording is not a contract,
+      // so status is the only reliable signal.
+      if (err?.status === 409) {
         if (isSlugConflict && restoreSlug && restoreSlug.trim()) {
           setSlugConflictError(`El slug «${restoreSlug.trim()}» ya está en uso. Por favor ingresá un nuevo slug para restaurarlo:`)
         } else {
@@ -155,7 +151,7 @@ export const RestaurantsDirectory: React.FC = () => {
         }
         setIsSlugConflict(true)
       } else {
-        toast.error(err?.message || "No se pudo restaurar el restaurante")
+        toast.error(mapUserActionError(err, "No se pudo restaurar el restaurante"))
       }
     } finally {
       setIsRestoring(false)

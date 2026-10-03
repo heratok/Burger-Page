@@ -6,6 +6,7 @@ import { Select } from "@/components/ui/select"
 import { apiClient } from "@/core/api/apiClient"
 import { MIN_PASSWORD_LENGTH } from "@burger-page/contracts"
 import { toast } from "sonner"
+import { mapUserActionError } from "./userActionUtils"
 
 interface CreateUserModalProps {
   isOpen: boolean
@@ -63,8 +64,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
       onSuccess?.()
       onClose()
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Error al crear usuario"
-      toast.error(message)
+      toast.error(mapUserActionError(err, "Error al crear usuario"))
     } finally {
       setIsLoading(false)
     }
