@@ -20,6 +20,31 @@ escriba nada.
   ```
   Tu llave ed25519 personal (`~/.ssh/id_ed25519`) queda intacta y sin usar en este despliegue.
 
+## Acceso SSH — solo vía Tailscale, nunca público
+
+El NSG **no tiene ninguna regla que permita el puerto 22 desde internet** — cae directo a
+`deny-all-inbound`. El acceso es exclusivamente por [Tailscale](https://tailscale.com)
+(instalado a mano en la VM, no vía Terraform — ver más abajo): la VM y tu máquina comparten
+una red mesh privada (WireGuard), así que conectás por la IP `100.x.x.x` de Tailscale sin
+importar desde qué red física estés ni si tu IP pública cambia.
+
+```bash
+# en cualquier máquina ya unida a tu tailnet:
+tailscale status                 # te muestra la IP 100.x.x.x de "burgerpage-vm"
+ssh -i ~/.ssh/burgerpage_azure_rsa azureuser@<esa-ip-100.x.x.x>
+```
+
+Instalación (ya hecha, documentado para reinstalar si se recrea la VM):
+```bash
+curl -fsSL https://tailscale.com/install.sh | sh
+sudo tailscale up     # imprime una URL — abrila en un navegador con tu cuenta de Tailscale para aprobar el dispositivo
+```
+
+**Riesgo a tener en cuenta**: si Tailscale tiene una caída o el estado del cliente en la VM
+se corrompe, no hay SSH público de respaldo. La salida de emergencia es la **Serial Console**
+o **"Run Command"** del portal de Azure (Virtual Machine → Help → Serial console / Run command),
+que no dependen de red en absoluto.
+
 ## Cómo correr
 
 Desde `infra/`:
@@ -82,7 +107,7 @@ en este repo, en el state de Terraform, ni en `custom_data` de la VM. Los creás
 una sola vez, por SSH:
 
 ```bash
-ssh -i ~/.ssh/burgerpage_azure_rsa azureuser@<fqdn>
+ssh -i ~/.ssh/burgerpage_azure_rsa azureuser@<ip-100.x.x.x-de-tailscale>
 sudo -u azureuser cp /opt/burgerpage/.env.example /opt/burgerpage/.env
 nano /opt/burgerpage/.env      # completá los valores reales (ver tabla abajo)
 chmod 600 /opt/burgerpage/.env
@@ -135,7 +160,6 @@ Si cambiás de región, repetí ambas verificaciones (policy + list-skus) antes 
 
 ### Notas importantes
 
-- Si tu IP pública cambia (común en conexiones residenciales), el acceso SSH se pierde. Actualizá `my_ip` en `terraform.tfvars` y volvé a aplicar.
 - La VM tiene `lifecycle { ignore_changes = [custom_data] }`: si editás `cloud-init.yaml.tftpl` después del primer apply (por ejemplo, para cambiar el timer de 5 min o el script de deploy), Terraform NO va a recrear la VM automáticamente (lo que destruiría el `.env` creado a mano). Para aplicar esos cambios a una VM ya existente, hacelos a mano por SSH — copiá el `write_files` actualizado a los mismos paths y corré `systemctl daemon-reload`.
 - El timer (`burgerpage-deploy.timer`) va a fallar silenciosamente (visible con `systemctl status burgerpage-deploy.service` / `journalctl -u burgerpage-deploy.service`) hasta que exista `/opt/burgerpage/.env` real — es esperado, `docker compose` no puede levantar sin él.
 - `Standard_B2ats_v2` tiene **1 GB de RAM** (2 vCPU) — verificado con `az vm list-skus --query "[0].capabilities[?name=='MemoryGB']"`. El swap de 2GB que crea cloud-init es necesario, no opcional, con ese límite tan ajustado. Backend + Caddy corren bien porque la imagen ya viene compilada desde GitHub Actions — la VM nunca compila nada.

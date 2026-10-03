@@ -8,7 +8,7 @@ output "public_ip" {
   value       = azurerm_public_ip.main.ip_address
 }
 
-output "ssh_command" {
-  description = "Comando para conectarte por SSH."
-  value       = "ssh ${var.admin_username}@${azurerm_public_ip.main.fqdn}"
+output "ssh_note" {
+  description = "El puerto 22 NO está expuesto públicamente. Conectate por Tailscale: `tailscale status` desde cualquier otro nodo de tu tailnet te da la IP 100.x.x.x de esta VM, y entrás con `ssh -i ~/.ssh/burgerpage_azure_rsa azureuser@<esa-ip>`."
+  value       = "ver infra/README.md — acceso SSH solo vía Tailscale"
 }

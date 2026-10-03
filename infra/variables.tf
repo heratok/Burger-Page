@@ -34,11 +34,6 @@ variable "ssh_public_key_path" {
   default     = "~/.ssh/burgerpage_azure_rsa.pub"
 }
 
-variable "my_ip" {
-  description = "Tu IP pública actual, para restringir el puerto 22 del NSG solo a tu IP. Si tu IP cambia (común en conexiones residenciales), actualizá esta variable en terraform.tfvars y volvé a aplicar, o perdés acceso SSH."
-  type        = string
-}
-
 variable "domain_name_label_prefix" {
   description = "Prefijo del label DNS de la IP pública. Se le agrega un sufijo random para garantizar unicidad global en Azure (el label de DNS debe ser único en toda la nube, no solo en tu suscripción)."
   type        = string
