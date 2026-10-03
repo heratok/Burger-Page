@@ -223,7 +223,7 @@ export const useRestaurant = (): RestaurantContextType => {
       }
       return res
     },
-    [auth.login, tenant.switchRestaurant, tenant.restaurants, ui.setAdminTab, ui.setActiveView]
+    [auth, tenant, ui]
   )
 
   return useMemo<RestaurantContextType>(
