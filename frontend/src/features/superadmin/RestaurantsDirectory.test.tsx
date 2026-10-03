@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react"
+import { toast } from "sonner"
 import { RestaurantProvider } from "@/context/RestaurantContext"
 import { RestaurantsDirectory } from "./RestaurantsDirectory"
 import { apiClient, type DeletedRestaurantRecord } from "@/core/api/apiClient"
@@ -230,5 +231,40 @@ describe("RestaurantsDirectory - Edit Action (TDD)", () => {
 
     // Message must reflect the attempted slug
     expect(await screen.findByText(/El slug «mi-nuevo-slug» ya está en uso/i)).toBeDefined()
+  })
+
+  async function openRestoreDialog() {
+    render(
+      <RestaurantProvider>
+        <RestaurantsDirectory />
+      </RestaurantProvider>
+    )
+    fireEvent.click(screen.getByRole("button", { name: /Eliminados/i }))
+    expect(await screen.findByText("Pizza Nostra")).toBeDefined()
+    fireEvent.click(screen.getByRole("button", { name: /Restaurar restaurante Pizza Nostra/i }))
+    fireEvent.click(screen.getByRole("button", { name: /Confirmar Restauración/i }))
+  }
+
+  it("re-prompts for a slug when the error has no numeric status but an RFC7807 conflict type", async () => {
+    const conflictError: any = new Error("That slug is already in use")
+    conflictError.body = { type: "https://example.com/probs/conflict", title: "Conflict", status: 409 }
+    vi.spyOn(apiClient, "restoreRestaurant").mockRejectedValueOnce(conflictError)
+
+    await openRestoreDialog()
+
+    expect(await screen.findByText(/El slug original ya está en uso/i)).toBeDefined()
+  })
+
+  it("shows a generic error toast and no slug re-prompt for a non-conflict error", async () => {
+    const serverError: any = new Error("Internal Server Error")
+    serverError.status = 500
+    serverError.body = { type: "https://example.com/probs/internal", title: "Internal", status: 500 }
+    vi.spyOn(apiClient, "restoreRestaurant").mockRejectedValueOnce(serverError)
+    const errorToast = vi.spyOn(toast, "error").mockImplementation(() => "")
+
+    await openRestoreDialog()
+
+    await waitFor(() => expect(errorToast).toHaveBeenCalled())
+    expect(screen.queryByText(/ya está en uso/i)).toBeNull()
   })
 })
