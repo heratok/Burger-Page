@@ -12,6 +12,7 @@ import { createRestaurantSchema, restoreRestaurantSchema, updateRestaurantCatego
 import { ValidationError } from '../../../domain/errors/DomainErrors.js';
 import { omitAdminPassword } from '../../../domain/models/Restaurant.js';
 import { auditActorOf } from '../auditActor.js';
+import { assertOwnsRestaurant } from '../RestaurantOwnershipGuard.js';
 
 /**
  * A9: storefront-only projection of a tenant for the public landing.
@@ -69,15 +70,9 @@ export class RestaurantController {
 
     // restaurant_admin is strictly bound to their assigned restaurant (tenant-scoped)
     if (auth?.role === 'restaurant_admin') {
-      if (!auth.restaurantId) {
-        return reply.status(403).send({
-          type: 'https://example.com/probs/forbidden',
-          title: 'Forbidden',
-          status: 403,
-          detail: 'Restaurant administrator has no assigned restaurant.',
-        });
-      }
-      const restaurant = await this.getRestaurantUseCase.execute(auth.restaurantId);
+      const forbidden = await assertOwnsRestaurant(req, undefined, this.getRestaurantUseCase, 'view your own restaurant');
+      if (forbidden) return reply.status(403).send(forbidden);
+      const restaurant = await this.getRestaurantUseCase.execute(auth.restaurantId!);
       return reply.status(200).send(restaurant ? [restaurant] : []);
     }
 
@@ -161,35 +156,12 @@ export class RestaurantController {
     }
     const auth = req.authContext;
     const params = (req.params || {}) as { slug?: string };
-    let identifier: string;
 
-    if (auth?.role === 'super_admin') {
-      identifier = params.slug || auth?.restaurantId || 'burger-craft';
-    } else {
-      if (!auth?.restaurantId) {
-        return reply.status(403).send({
-          type: 'https://example.com/probs/forbidden',
-          title: 'Forbidden',
-          status: 403,
-          detail: 'Restaurant administrator has no assigned restaurant.',
-        });
-      }
+    const forbidden = await assertOwnsRestaurant(req, params.slug, this.getRestaurantUseCase, 'update your own restaurant categories');
+    if (forbidden) return reply.status(403).send(forbidden);
 
-      if (params.slug && params.slug !== auth.restaurantId) {
-        const assignedRest = await this.getRestaurantUseCase.execute(auth.restaurantId);
-        if (!assignedRest || (assignedRest.id !== params.slug && assignedRest.slug !== params.slug)) {
-          return reply.status(403).send({
-            type: 'https://example.com/probs/forbidden',
-            title: 'Forbidden',
-            status: 403,
-            detail: 'You are only authorized to update your own restaurant categories.',
-          });
-        }
-      }
-
-      // restaurant_admin is strictly bound to their assigned restaurant
-      identifier = params.slug || auth.restaurantId;
-    }
+    // restaurant_admin is strictly bound to their assigned restaurant
+    const identifier = params.slug || auth?.restaurantId || 'burger-craft';
 
     const { categories, renames } = parsed.data;
     const updated = await this.updateCategoriesUseCase.execute(identifier, categories, renames);
@@ -206,28 +178,8 @@ export class RestaurantController {
     const params = (req.params || {}) as { id: string };
     const auth = req.authContext;
 
-    if (auth?.role !== 'super_admin') {
-      if (!auth?.restaurantId) {
-        return reply.status(403).send({
-          type: 'https://example.com/probs/forbidden',
-          title: 'Forbidden',
-          status: 403,
-          detail: 'Restaurant administrator has no assigned restaurant.',
-        });
-      }
-
-      if (auth.restaurantId !== params.id) {
-        const assignedRest = await this.getRestaurantUseCase.execute(auth.restaurantId);
-        if (!assignedRest || (assignedRest.id !== params.id && assignedRest.slug !== params.id)) {
-          return reply.status(403).send({
-            type: 'https://example.com/probs/forbidden',
-            title: 'Forbidden',
-            status: 403,
-            detail: 'You are only authorized to update your own restaurant.',
-          });
-        }
-      }
-    }
+    const forbidden = await assertOwnsRestaurant(req, params.id, this.getRestaurantUseCase, 'update your own restaurant');
+    if (forbidden) return reply.status(403).send(forbidden);
 
     const parsed = updateRestaurantSchema.safeParse(req.body);
     if (!parsed.success) {
