@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from "react"
-import { Plus, Flame, Sparkles, Search, X } from "lucide-react"
+import React from "react"
+import { Plus, Flame, Sparkles } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import type { MenuItem } from "@/types/restaurant"
 import { useRestaurant } from "@/context/RestaurantContext"
 import { LazyImage } from "@/components/ui/LazyImage"
 import { formatCurrency, getContrastForeground } from "@/lib/utils"
-import { resolveImageUrl } from "@/core/storage/supabaseStorage"
 
 export interface ProductCardProps {
   product: MenuItem
@@ -17,19 +16,6 @@ export interface ProductCardProps {
 export default function ProductCard({ product, onSelectProduct, closed = false }: ProductCardProps) {
   const { storeConfig } = useRestaurant()
   const primaryForeground = getContrastForeground(storeConfig.primaryColor)
-  const [isImageExpanded, setIsImageExpanded] = useState(false)
-
-  useEffect(() => {
-    if (!isImageExpanded) return
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.stopPropagation()
-        setIsImageExpanded(false)
-      }
-    }
-    window.addEventListener("keydown", handleKeyDown, true)
-    return () => window.removeEventListener("keydown", handleKeyDown, true)
-  }, [isImageExpanded])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Enter" || e.key === " ") {
@@ -72,8 +58,7 @@ export default function ProductCard({ product, onSelectProduct, closed = false }
   const styleClass = getStyleClass(storeConfig.cardStyle)
 
   return (
-    <>
-      <Card
+    <Card
         role="button"
         tabIndex={0}
         onClick={onSelectProduct}
@@ -129,21 +114,6 @@ export default function ProductCard({ product, onSelectProduct, closed = false }
               </span>
             </div>
           )}
-
-          {/* Magnifying Glass to expand photo (shown when image exists) */}
-          {product.src && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                setIsImageExpanded(true)
-              }}
-              aria-label={`Ampliar foto de ${product.name}`}
-              className="absolute inset-0 m-auto z-10 flex size-8 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-xs opacity-85 sm:opacity-0 group-hover:opacity-100 transition-all hover:scale-110 hover:bg-black/75 cursor-pointer shadow-sm"
-            >
-              <Search className="size-4" strokeWidth={2.5} />
-            </button>
-          )}
         </div>
 
         {/* Right Side: Title, Full Description, Price & Action */}
@@ -195,50 +165,5 @@ export default function ProductCard({ product, onSelectProduct, closed = false }
           </div>
         </div>
       </Card>
-
-      {/* Fullscreen Lightbox Modal */}
-      {isImageExpanded && product.src && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label={`Foto ampliada de ${product.name}`}
-          className="fixed inset-0 z-60 flex items-center justify-center bg-black/90 p-4 backdrop-blur-md animate-in fade-in-0 duration-150"
-          onClick={(e) => {
-            e.stopPropagation()
-            setIsImageExpanded(false)
-          }}
-        >
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              setIsImageExpanded(false)
-            }}
-            aria-label="Cerrar vista previa"
-            className="absolute top-4 right-4 z-70 inline-flex size-11 items-center justify-center rounded-full bg-white/20 hover:bg-white/30 text-white backdrop-blur-md transition-all active:scale-95 cursor-pointer"
-          >
-            <X className="size-6" />
-          </button>
-          <div
-            className="relative max-h-[85vh] max-w-[90vw] overflow-hidden rounded-2xl shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <img
-              src={resolveImageUrl(product.src)}
-              alt={product.name}
-              className="max-h-[85vh] max-w-[90vw] object-contain rounded-2xl select-none"
-            />
-            <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-4 sm:p-5 text-white">
-              <p className="text-base sm:text-lg font-bold">{product.name}</p>
-              {product.description && (
-                <p className="mt-1 text-xs sm:text-sm text-white/85 leading-relaxed">
-                  {product.description}
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-    </>
   )
 }
