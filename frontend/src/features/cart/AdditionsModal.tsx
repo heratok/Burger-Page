@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
+import { createPortal } from "react-dom"
 import { Plus, Minus, X, Maximize2 } from "lucide-react"
 import {
   Dialog,
@@ -44,6 +45,13 @@ export default function AdditionsModal({
   const [cantidad, setCantidad] = useState(initial?.cantidad ?? 1)
   const [observaciones, setObservaciones] = useState(initial?.observacion ?? "")
   const [isImageExpanded, setIsImageExpanded] = useState(false)
+  const lightboxCloseBtnRef = useRef<HTMLButtonElement | null>(null)
+  const expandTriggerRef = useRef<HTMLElement | null>(null)
+
+  const handleOpenLightbox = (e: React.MouseEvent<HTMLElement>) => {
+    expandTriggerRef.current = e.currentTarget
+    setIsImageExpanded(true)
+  }
 
   useEffect(() => {
     if (!isImageExpanded) return
@@ -55,6 +63,14 @@ export default function AdditionsModal({
     }
     window.addEventListener("keydown", handleKeyDown, true)
     return () => window.removeEventListener("keydown", handleKeyDown, true)
+  }, [isImageExpanded])
+
+  useEffect(() => {
+    if (isImageExpanded) {
+      lightboxCloseBtnRef.current?.focus()
+    } else if (expandTriggerRef.current) {
+      expandTriggerRef.current.focus()
+    }
   }, [isImageExpanded])
 
   const availableAdditions = storeAdditions && storeAdditions.length > 0
@@ -125,8 +141,13 @@ export default function AdditionsModal({
   return (
     <Dialog
       open
+      modal={!isImageExpanded}
+      disablePointerDismissal={isImageExpanded}
       onOpenChange={(open) => {
-        if (!open) onClose()
+        if (!open) {
+          if (isImageExpanded) return
+          onClose()
+        }
       }}
     >
       <DialogContent
@@ -161,12 +182,12 @@ export default function AdditionsModal({
               <img
                 src={resolveImageUrl(product.src)}
                 alt={product.name}
-                onClick={() => setIsImageExpanded(true)}
+                onClick={handleOpenLightbox}
                 className="size-full object-cover transition-transform duration-300 group-hover/hero:scale-105 cursor-pointer"
               />
               <button
                 type="button"
-                onClick={() => setIsImageExpanded(true)}
+                onClick={handleOpenLightbox}
                 aria-label="Ampliar imagen"
                 className="absolute bottom-2.5 right-2.5 z-10 inline-flex items-center gap-1.5 rounded-full bg-black/60 hover:bg-black/80 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-md transition-all cursor-pointer active:scale-95 shadow-xs"
               >
@@ -356,45 +377,55 @@ export default function AdditionsModal({
             </Button>
           </div>
         </footer>
+      </DialogContent>
 
-        {/* Fullscreen Lightbox / Expanded Image */}
-        {isImageExpanded && product.src && (
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label={`Foto ampliada de ${product.name}`}
-            className="fixed inset-0 z-60 flex items-center justify-center bg-black/90 p-4 backdrop-blur-md animate-in fade-in-0 duration-150"
-            onClick={() => setIsImageExpanded(false)}
+      {/* Fullscreen Lightbox / Expanded Image */}
+      {isImageExpanded && product.src && typeof document !== "undefined" && createPortal(
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Foto ampliada de ${product.name}`}
+          className="fixed inset-0 z-60 flex items-center justify-center bg-black/90 p-4 backdrop-blur-md animate-in fade-in-0 duration-150"
+          onClick={(e) => {
+            e.stopPropagation()
+            setIsImageExpanded(false)
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <button
+            ref={lightboxCloseBtnRef}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              setIsImageExpanded(false)
+            }}
+            aria-label="Cerrar vista previa"
+            className="absolute top-4 right-4 z-70 inline-flex size-11 items-center justify-center rounded-full bg-white/20 hover:bg-white/30 text-white backdrop-blur-md transition-all active:scale-95 cursor-pointer"
           >
-            <button
-              type="button"
-              onClick={() => setIsImageExpanded(false)}
-              aria-label="Cerrar vista previa"
-              className="absolute top-4 right-4 z-70 inline-flex size-11 items-center justify-center rounded-full bg-white/20 hover:bg-white/30 text-white backdrop-blur-md transition-all active:scale-95 cursor-pointer"
-            >
-              <X className="size-6" />
-            </button>
-            <div
-              className="relative max-h-[85vh] max-w-[90vw] overflow-hidden rounded-2xl shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <img
-                src={resolveImageUrl(product.src)}
-                alt={product.name}
-                className="max-h-[85vh] max-w-[90vw] object-contain rounded-2xl select-none"
-              />
-              <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-4 sm:p-5 text-white">
-                <p className="text-base sm:text-lg font-bold">{product.name}</p>
-                {product.description && (
-                  <p className="mt-1 text-xs sm:text-sm text-white/85 leading-relaxed">
-                    {product.description}
-                  </p>
-                )}
-              </div>
+            <X className="size-6" />
+          </button>
+          <div
+            className="relative max-h-[85vh] max-w-[90vw] overflow-hidden rounded-2xl shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <img
+              src={resolveImageUrl(product.src)}
+              alt={product.name}
+              className="max-h-[85vh] max-w-[90vw] object-contain rounded-2xl select-none"
+            />
+            <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-4 sm:p-5 text-white">
+              <p className="text-base sm:text-lg font-bold">{product.name}</p>
+              {product.description && (
+                <p className="mt-1 text-xs sm:text-sm text-white/85 leading-relaxed">
+                  {product.description}
+                </p>
+              )}
             </div>
           </div>
-        )}
-      </DialogContent>
+        </div>,
+        document.body
+      )}
     </Dialog>
   )
 }

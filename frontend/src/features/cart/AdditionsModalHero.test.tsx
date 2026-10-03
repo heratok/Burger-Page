@@ -56,4 +56,107 @@ describe("AdditionsModal Hero & Lightbox Behavior", () => {
 
     expect(screen.queryByLabelText("Foto ampliada de Tenders Crispy x4")).toBeNull()
   })
+
+  it("closes only the lightbox and keeps AdditionsModal open when Escape is pressed", () => {
+    const handleClose = vi.fn()
+    render(
+      <RestaurantProvider>
+        <AdditionsModal
+          product={dummyProduct}
+          onClose={handleClose}
+          onAddToCart={() => {}}
+        />
+      </RestaurantProvider>
+    )
+
+    const expandBtn = screen.getByRole("button", { name: "Ampliar imagen" })
+    fireEvent.click(expandBtn)
+
+    expect(screen.getByLabelText(`Foto ampliada de ${dummyProduct.name}`)).toBeDefined()
+
+    fireEvent.keyDown(document.activeElement ?? document, { key: "Escape" })
+
+    expect(screen.queryByLabelText(`Foto ampliada de ${dummyProduct.name}`)).toBeNull()
+    expect(handleClose).not.toHaveBeenCalled()
+    expect(document.activeElement).toBe(expandBtn)
+  })
+
+  it("dismisses the lightbox and keeps AdditionsModal open when clicking the lightbox backdrop", () => {
+    const handleClose = vi.fn()
+    render(
+      <RestaurantProvider>
+        <AdditionsModal
+          product={dummyProduct}
+          onClose={handleClose}
+          onAddToCart={() => {}}
+        />
+      </RestaurantProvider>
+    )
+
+    const expandBtn = screen.getByRole("button", { name: "Ampliar imagen" })
+    fireEvent.click(expandBtn)
+
+    const lightbox = screen.getByLabelText(`Foto ampliada de ${dummyProduct.name}`)
+    expect(lightbox).toBeDefined()
+
+    fireEvent.pointerDown(lightbox)
+    fireEvent.mouseDown(lightbox)
+    fireEvent.pointerUp(lightbox)
+    fireEvent.mouseUp(lightbox)
+    fireEvent.click(lightbox)
+
+    expect(screen.queryByLabelText(`Foto ampliada de ${dummyProduct.name}`)).toBeNull()
+    expect(handleClose).not.toHaveBeenCalled()
+    expect(document.activeElement).toBe(expandBtn)
+  })
+
+  it("manages focus and ensures lightbox is accessible when opened and closed", () => {
+    render(
+      <RestaurantProvider>
+        <AdditionsModal
+          product={dummyProduct}
+          onClose={() => {}}
+          onAddToCart={() => {}}
+        />
+      </RestaurantProvider>
+    )
+
+    const expandBtn = screen.getByRole("button", { name: "Ampliar imagen" })
+    fireEvent.click(expandBtn)
+
+    const lightbox = screen.getByLabelText(`Foto ampliada de ${dummyProduct.name}`)
+    const closeBtn = screen.getByRole("button", { name: "Cerrar vista previa" })
+
+    // Focus is moved to the close button
+    expect(document.activeElement).toBe(closeBtn)
+
+    // Lightbox is accessible (not marked aria-hidden="true", does not have inert)
+    expect(lightbox.getAttribute("aria-hidden")).not.toBe("true")
+    expect(lightbox.hasAttribute("inert")).toBe(false)
+
+    // When closed, focus returns to the expand button
+    fireEvent.click(closeBtn)
+    expect(screen.queryByLabelText(`Foto ampliada de ${dummyProduct.name}`)).toBeNull()
+    expect(document.activeElement).toBe(expandBtn)
+  })
+
+  it("renders the lightbox outside the AdditionsModal role=dialog element", () => {
+    render(
+      <RestaurantProvider>
+        <AdditionsModal
+          product={dummyProduct}
+          onClose={() => {}}
+          onAddToCart={() => {}}
+        />
+      </RestaurantProvider>
+    )
+
+    const expandBtn = screen.getByRole("button", { name: "Ampliar imagen" })
+    fireEvent.click(expandBtn)
+
+    const modalDialog = screen.getByRole("dialog", { name: dummyProduct.name })
+    const lightbox = screen.getByRole("dialog", { name: `Foto ampliada de ${dummyProduct.name}` })
+
+    expect(modalDialog.contains(lightbox)).toBe(false)
+  })
 })
