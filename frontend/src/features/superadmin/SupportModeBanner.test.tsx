@@ -134,6 +134,7 @@ describe("SupportModeBanner (TDD)", () => {
       activeView: "admin",
       adminTab: "dashboard",
       isNotFound: false,
+      isResolving: false,
       attemptedSlug: null,
       loadError: false,
       retry: vi.fn(),

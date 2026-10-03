@@ -138,7 +138,7 @@ function GlobalModuleAccessDenied({ onBackToDashboard }: GlobalModuleAccessDenie
 
 export function MainRouter() {
   const { adminTab, session } = useRestaurant()
-  const { activeView, isNotFound, attemptedSlug, loadError, retry, navigateTo } = useAppRouter()
+  const { activeView, isNotFound, isResolving, attemptedSlug, loadError, retry, navigateTo } = useAppRouter()
 
   // 1. Not Found Route
   if (isNotFound && attemptedSlug) {
@@ -236,7 +236,11 @@ export function MainRouter() {
     )
   }
 
-  // 4. Public Tenant Storefront Route
+  // 4. Public Tenant Storefront Route (only once the slug is a known tenant)
+  if (isResolving) {
+    return <StorefrontLoadingFallback />
+  }
+
   return (
     <ErrorBoundary>
       <Suspense fallback={<StorefrontLoadingFallback />}>

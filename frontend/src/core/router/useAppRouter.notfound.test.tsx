@@ -50,3 +50,47 @@ describe("useAppRouter - unknown slug is requested exactly once (F5)", () => {
     expect(slugCalls).toHaveLength(1)
   })
 })
+
+describe("useAppRouter - an unresolved storefront slug is never rendered as a store", () => {
+  let resolve404: () => void = () => {}
+
+  beforeEach(() => {
+    localStorage.clear()
+    sessionStorage.clear()
+    window.history.pushState({}, "", "/rost")
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input)
+        if (url.includes("/restaurants/rost")) {
+          await new Promise<void>((r) => (resolve404 = r))
+          return jsonResponse(404, { title: "Not Found", status: 404, detail: "Restaurant not found" })
+        }
+        if (url.endsWith("/restaurants")) return jsonResponse(200, [])
+        return jsonResponse(404, {})
+      })
+    )
+  })
+
+  afterEach(() => {
+    cleanup()
+    vi.unstubAllGlobals()
+    window.history.pushState({}, "", "/")
+  })
+
+  it("reports the slug as resolving until the backend answers, then as not found", async () => {
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <RestaurantProvider>{children}</RestaurantProvider>
+    )
+    const { result } = renderHook(() => useAppRouter(), { wrapper })
+
+    expect(result.current.isResolving).toBe(true)
+    expect(result.current.isNotFound).toBe(false)
+
+    await waitFor(() => expect(resolve404).not.toBe(undefined))
+    resolve404()
+
+    await waitFor(() => expect(result.current.isNotFound).toBe(true))
+    expect(result.current.isResolving).toBe(false)
+  })
+})
