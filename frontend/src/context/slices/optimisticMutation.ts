@@ -59,6 +59,13 @@ export async function runOptimisticMutation<TSnapshot, TResult = void>(
     const result = await config.call()
     // The server has committed by now: a throw in reconciliation is a client
     // bug, not a rejection, so it must not roll back or show the failure toast.
+    // The success toast (either timing) still reports the committed write.
+    // Assumption: no current call site combines `onSuccess` with
+    // `successTiming: "confirmed"`, and the existing `onSuccess` callbacks only
+    // enqueue state-setter updaters, which run on React's next flush — outside
+    // this try — so this catch is a last-resort guard. If a call site ever
+    // needs a reconciliation failure surfaced to the user, add an explicit
+    // option here rather than changing this default.
     try {
       config.onSuccess?.(result)
     } catch (reconcileErr) {

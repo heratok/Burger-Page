@@ -255,6 +255,16 @@ describe("RestaurantsDirectory - Edit Action (TDD)", () => {
     expect(await screen.findByText(/El slug original ya está en uso/i)).toBeDefined()
   })
 
+  it("re-prompts for a slug when only the RFC7807 body carries status 409", async () => {
+    const conflictError: any = new Error("That slug is already in use")
+    conflictError.body = { title: "Conflict", status: 409 }
+    vi.spyOn(apiClient, "restoreRestaurant").mockRejectedValueOnce(conflictError)
+
+    await openRestoreDialog()
+
+    expect(await screen.findByText(/El slug original ya está en uso/i)).toBeDefined()
+  })
+
   it("shows a generic error toast and no slug re-prompt for a non-conflict error", async () => {
     const serverError: any = new Error("Internal Server Error")
     serverError.status = 500
