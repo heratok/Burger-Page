@@ -28,6 +28,9 @@ export const POPULAR_COUNTRY_CODES: CountryPhoneCode[] = [
   { code: "NI", name: "Nicaragua", dialCode: "505", flag: "🇳🇮" },
 ]
 
+/** Dial code for numbers whose prefix is not in POPULAR_COUNTRY_CODES. */
+export const UNLISTED_DIAL_CODE = ""
+
 export function splitPhoneNumber(
   rawPhone?: string | null,
   defaultDialCode = "57"
@@ -54,7 +57,8 @@ export function splitPhoneNumber(
     }
   }
 
-  return { dialCode: defaultDialCode, nationalNumber: rawCleaned }
+  // Unknown prefix: keep every digit so editing never prepends a guessed code.
+  return { dialCode: UNLISTED_DIAL_CODE, nationalNumber: rawCleaned }
 }
 
 export function combinePhoneNumber(dialCode: string, nationalNumber: string): string {

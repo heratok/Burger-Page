@@ -6,7 +6,12 @@ import { TIMEZONE_OPTIONS } from "@/constants/timezones"
 import { WeeklyScheduleEditor } from "./WeeklyScheduleEditor"
 import { DAY_DISPLAY_ORDER, rangesForDay } from "@/lib/storeSchedule"
 import { COMMON_CURRENCIES, getDefaultSymbolForCurrency } from "@/lib/currenciesAndTimezones"
-import { POPULAR_COUNTRY_CODES, splitPhoneNumber, combinePhoneNumber } from "@/lib/countryPhoneCodes"
+import {
+  POPULAR_COUNTRY_CODES,
+  UNLISTED_DIAL_CODE,
+  splitPhoneNumber,
+  combinePhoneNumber,
+} from "@/lib/countryPhoneCodes"
 import { ModernSelect, type ModernSelectOption } from "@/components/ui/ModernSelect"
 
 const DELIVERY_TIME_PRESETS = ["15 - 30 min", "30 - 45 min", "45 - 60 min", "60+ min"] as const
@@ -85,8 +90,8 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
       badge: `+${c.dialCode}`,
       flagCode: c.code,
     }))
-    if (currentDialCode && !base.some((c) => c.value === currentDialCode)) {
-      return [{ value: currentDialCode, label: `+${currentDialCode}`, badge: `+${currentDialCode}` }, ...base]
+    if (currentDialCode === UNLISTED_DIAL_CODE) {
+      return [{ value: UNLISTED_DIAL_CODE, label: "Otro indicativo", badge: "+" }, ...base]
     }
     return base
   }, [currentDialCode])

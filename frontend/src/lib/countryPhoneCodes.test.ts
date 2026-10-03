@@ -3,6 +3,7 @@ import {
   POPULAR_COUNTRY_CODES,
   splitPhoneNumber,
   combinePhoneNumber,
+  UNLISTED_DIAL_CODE,
 } from "./countryPhoneCodes"
 
 describe("countryPhoneCodes", () => {
@@ -89,15 +90,20 @@ describe("countryPhoneCodes", () => {
       })
     })
 
-    it("falls back to default dialCode when raw number does not match any popular dial code", () => {
+    it("keeps the full number under the unlisted dial code when no popular dial code matches", () => {
       expect(splitPhoneNumber("9876543210")).toEqual({
-        dialCode: "57",
+        dialCode: UNLISTED_DIAL_CODE,
         nationalNumber: "9876543210",
       })
-      expect(splitPhoneNumber("9876543210", "54")).toEqual({
-        dialCode: "54",
-        nationalNumber: "9876543210",
+      expect(splitPhoneNumber("+44 7911 123456", "54")).toEqual({
+        dialCode: UNLISTED_DIAL_CODE,
+        nationalNumber: "447911123456",
       })
+    })
+
+    it("round-trips an unlisted number without adding a dial code", () => {
+      const { dialCode, nationalNumber } = splitPhoneNumber("4930123456")
+      expect(combinePhoneNumber(dialCode, nationalNumber)).toBe("4930123456")
     })
   })
 

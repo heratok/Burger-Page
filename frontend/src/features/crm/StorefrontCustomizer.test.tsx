@@ -220,6 +220,24 @@ describe("StorefrontCustomizer & Subcomponents (TDD Modularization)", () => {
       expect(screen.getAllByText("+523022575805").length).toBeGreaterThan(0)
     })
 
+    it("preserves a WhatsApp number with an unlisted dial code when editing the local number", () => {
+      let draft: StorefrontConfig = {
+        ...DEFAULT_STORE_CONFIG,
+        whatsappNumber: "447911123456",
+      }
+      const setDraft = vi.fn((updater) => {
+        draft = typeof updater === "function" ? updater(draft) : updater
+      })
+
+      render(<CustomizerBusinessSection draft={draft} setDraft={setDraft} />)
+
+      const localInput = screen.getByLabelText("Número de WhatsApp local") as HTMLInputElement
+      expect(localInput.value).toBe("447911123456")
+
+      fireEvent.change(localInput, { target: { value: "447911123457" } })
+      expect(draft.whatsappNumber).toBe("447911123457")
+    })
+
     it("updates draft.currency and draft.currencySymbol when changing currency dropdown", () => {
       let draft: StorefrontConfig = {
         ...DEFAULT_STORE_CONFIG,
