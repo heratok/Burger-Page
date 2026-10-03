@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { SetUserActiveUseCase } from '../../src/application/use-cases/SetUserActiveUseCase.js';
 import { DeleteUserUseCase } from '../../src/application/use-cases/DeleteUserUseCase.js';
 import { ResetUserPasswordUseCase } from '../../src/application/use-cases/ResetUserPasswordUseCase.js';
 import { ChangeOwnPasswordUseCase } from '../../src/application/use-cases/ChangeOwnPasswordUseCase.js';
@@ -36,79 +35,12 @@ describe('User lifecycle use cases', () => {
     await seed(repo, { id: 'ra-1', username: 'owner' });
   });
 
-  describe('SetUserActiveUseCase', () => {
-    it('deactivates and reactivates a user', async () => {
-      const uc = new SetUserActiveUseCase(repo);
-      await uc.execute({ actorId: 'sa-1', targetId: 'ra-1', isActive: false });
-      expect((await repo.findById('ra-1'))?.isActive).toBe(false);
-      await uc.execute({ actorId: 'sa-1', targetId: 'ra-1', isActive: true });
-      expect((await repo.findById('ra-1'))?.isActive).toBe(true);
-    });
-
-    it('throws EntityNotFoundError for an unknown id', async () => {
-      await expect(new SetUserActiveUseCase(repo).execute({ actorId: 'sa-1', targetId: 'nope', isActive: false }))
-        .rejects.toThrow(EntityNotFoundError);
-    });
-
-    it('refuses to let a super admin deactivate itself', async () => {
-      await seed(repo, { id: 'sa-2', username: 'root2', role: 'super_admin', restaurantId: undefined });
-      await expect(new SetUserActiveUseCase(repo).execute({ actorId: 'sa-1', targetId: 'sa-1', isActive: false }))
-        .rejects.toThrow(ConflictError);
-    });
-
-    it('refuses to deactivate the last active super admin', async () => {
-      await expect(new SetUserActiveUseCase(repo).execute({ actorId: 'ghost', targetId: 'sa-1', isActive: false }))
-        .rejects.toThrow(ConflictError);
-    });
-
-    it('allows deactivating a super admin when another active one remains', async () => {
-      await seed(repo, { id: 'sa-2', username: 'root2', role: 'super_admin', restaurantId: undefined });
-      await new SetUserActiveUseCase(repo).execute({ actorId: 'sa-2', targetId: 'sa-1', isActive: false });
-      expect((await repo.findById('sa-1'))?.isActive).toBe(false);
-    });
-
-    it('does not count an inactive super admin as a remaining one', async () => {
-      await seed(repo, { id: 'sa-2', username: 'root2', role: 'super_admin', restaurantId: undefined, isActive: false });
-      await expect(new SetUserActiveUseCase(repo).execute({ actorId: 'ghost', targetId: 'sa-1', isActive: false }))
-        .rejects.toThrow(ConflictError);
-    });
-  });
+  // SetUserActiveUseCase's coverage (self-deactivation guard, last-active-super-admin
+  // guard, atomicity, concurrent deactivation race) now lives in
+  // tests/unit/application/UpdateUserUseCase.test.ts, exercised through the use case
+  // that actually owns isActive (UpdateUserUseCase) instead of the dead one.
 
   describe('atomic guard and narrow writes', () => {
-    it('SetUserActive only flips is_active and never rewrites the stored hash', async () => {
-      const stale = (await repo.findById('ra-1'))!;
-      // A password reset lands after the use case reads the (stale) user.
-      let raced = false;
-      const racing: Pick<InMemoryUserRepository, 'findById'> = {
-        findById: async (id: string) => {
-          if (raced) return repo.findById(id);
-          raced = true;
-          await repo.save({ ...stale, passwordHash: 'reset-hash', mustChangePassword: true });
-          return { ...stale };
-        },
-      };
-      const uc = new SetUserActiveUseCase(Object.assign(Object.create(repo), racing) as InMemoryUserRepository);
-      await uc.execute({ actorId: 'sa-1', targetId: 'ra-1', isActive: false });
-      const after = await repo.findById('ra-1');
-      expect(after?.isActive).toBe(false);
-      expect(after?.passwordHash).toBe('reset-hash');
-      expect(after?.mustChangePassword).toBe(true);
-    });
-
-    it('two concurrent deactivations of the two remaining super admins leave exactly one active', async () => {
-      await seed(repo, { id: 'sa-2', username: 'root2', role: 'super_admin', restaurantId: undefined });
-      const uc = new SetUserActiveUseCase(repo);
-      const results = await Promise.allSettled([
-        uc.execute({ actorId: 'sa-1', targetId: 'sa-2', isActive: false }),
-        uc.execute({ actorId: 'sa-2', targetId: 'sa-1', isActive: false }),
-      ]);
-      expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
-      const rejected = results.find((r) => r.status === 'rejected') as PromiseRejectedResult;
-      expect(rejected.reason).toBeInstanceOf(ConflictError);
-      const active = (await repo.findAll()).filter((u) => u.role === 'super_admin' && u.isActive !== false);
-      expect(active).toHaveLength(1);
-    });
-
     it('two concurrent deletes of the two remaining super admins leave exactly one', async () => {
       await seed(repo, { id: 'sa-2', username: 'root2', role: 'super_admin', restaurantId: undefined });
       const uc = new DeleteUserUseCase(repo);
@@ -247,7 +179,7 @@ describe('User lifecycle use cases', () => {
     });
 
     it('still rejects a deactivated user', async () => {
-      await new SetUserActiveUseCase(repo).execute({ actorId: 'sa-1', targetId: 'ra-1', isActive: false });
+      await repo.setActive('ra-1', false);
       await expect(new AuthenticateUserUseCase(repo, hasher).execute('owner', 'password-1')).rejects.toThrow(UnauthorizedError);
     });
   });

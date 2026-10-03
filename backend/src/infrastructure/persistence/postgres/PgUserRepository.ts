@@ -7,6 +7,7 @@ import {
   RestoredUser,
 } from '../../../domain/ports/out/UserRepository.js';
 import { withTenantContext } from './PgClient.js';
+import { computeRemovesSuperAdminAccess, wouldStripLastActiveSuperAdmin } from '../../../domain/shared/superAdminGuard.js';
 
 function mapRow(row: any): User {
   return {
@@ -128,9 +129,9 @@ export class PgUserRepository implements UserRepository {
       );
       const target = rows[0];
       if (!target) return 'not_found';
-      if (removesAccess && target.role === 'super_admin' && target.is_active) {
-        const others = locked.filter((r) => r.id !== id);
-        if (others.length === 0) return 'last_super_admin';
+      const hasOtherActiveSuperAdmin = locked.some((r) => r.id !== id);
+      if (wouldStripLastActiveSuperAdmin({ role: target.role, isActive: target.is_active }, removesAccess, hasOtherActiveSuperAdmin)) {
+        return 'last_super_admin';
       }
       await write(client);
       return 'done';
@@ -182,8 +183,11 @@ export class PgUserRepository implements UserRepository {
         if (!target) return 'not_found';
         const nextRole = changes.role ?? target.role;
         const nextActive = changes.isActive ?? target.is_active;
-        const losesSuperAdmin = target.role === 'super_admin' && target.is_active && (nextRole !== 'super_admin' || !nextActive);
-        if (losesSuperAdmin && locked.filter((r) => r.id !== id).length === 0) return 'last_super_admin';
+        const removesAccess = computeRemovesSuperAdminAccess(nextRole, nextActive);
+        const hasOtherActiveSuperAdmin = locked.some((r) => r.id !== id);
+        if (wouldStripLastActiveSuperAdmin({ role: target.role, isActive: target.is_active }, removesAccess, hasOtherActiveSuperAdmin)) {
+          return 'last_super_admin';
+        }
 
         const sets: string[] = [];
         const values: unknown[] = [id];
