@@ -30,16 +30,25 @@ describe("runOptimisticMutation", () => {
 
   it("defers the success toast until the server confirms when successTiming is 'confirmed'", async () => {
     const callOrder: string[] = []
+    vi.mocked(toast.success).mockImplementation(() => {
+      callOrder.push("toast")
+      return ""
+    })
     await runOptimisticMutation({
       apply: () => "snapshot",
       call: async () => {
         callOrder.push("call")
+        // Yield so an optimistic-timing toast would have fired by now.
+        await Promise.resolve()
+        expect(toast.success).not.toHaveBeenCalled()
+        callOrder.push("call-resolved")
         return undefined
       },
       rollback: vi.fn(),
       toast: { success: "attached", successTiming: "confirmed", error: "failed" },
     })
 
+    expect(callOrder).toEqual(["call", "call-resolved", "toast"])
     expect(toast.success).toHaveBeenCalledWith("attached")
     expect(toast.success).toHaveBeenCalledTimes(1)
   })
