@@ -107,10 +107,29 @@ export const TenantProvider: React.FC<{
     // No fabricated default tenant: an unknown/absent saved id stays empty
     // until a real tenant is selected (slug route, session or switcher).
     const saved = repository.getActiveRestaurantId("")
-    if (envelope.restaurants.some((r) => r.id === saved || r.slug === saved)) {
-      return saved
+    const record = envelope.restaurants.find((r) => r.id === saved || r.slug === saved)
+    if (!record) return ""
+
+    // On a public storefront URL (anything other than "/" or "/admin*"), a
+    // tenant persisted from a previous visit in this tab must only be kept
+    // when it actually matches this URL's slug. Otherwise the stale tenant
+    // (e.g. a restaurant opened earlier) would render as the storefront for
+    // an instant before route resolution corrects an unrelated/invalid slug
+    // (like a typo) to the not-found screen.
+    let firstSegment = ""
+    try {
+      firstSegment = typeof window !== "undefined"
+        ? window.location.pathname.replace(/^\/+|\/+$/g, "").toLowerCase().split("/")[0]
+        : ""
+    } catch {
+      firstSegment = ""
     }
-    return ""
+    const isPublicSlugRoute = firstSegment !== "" && firstSegment !== "admin"
+    if (isPublicSlugRoute && firstSegment !== record.slug.toLowerCase() && firstSegment !== record.id.toLowerCase()) {
+      return ""
+    }
+
+    return saved
   })
 
   const refreshRestaurants = useCallback(async () => {
