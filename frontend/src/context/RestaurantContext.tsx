@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo } from "react"
+import { QueryClientProvider, useQueryClient, type QueryClient } from "@tanstack/react-query"
 import type {
   StorefrontConfig,
   MenuItem,
@@ -22,6 +23,7 @@ import type { InventoryItem, Supplier } from "@/types/restaurant"
 import type { TenantRepository } from "@/core/storage/TenantRepository"
 import { defaultTenantRepository } from "@/core/storage/TenantRepository"
 import { resolveRoute } from "@/core/router/useAppRouter"
+import { appQueryClient } from "@/core/query/queryClient"
 
 // Tabs exclusive to the platform super admin (kept in sync with the
 // GlobalModuleAccessDenied gate in App.tsx and SupportModeBanner's guard).
@@ -176,19 +178,22 @@ export interface RestaurantContextType {
 export const RestaurantProvider: React.FC<{
   children: React.ReactNode
   repository?: TenantRepository
-}> = ({ children, repository }) => {
+  queryClient?: QueryClient
+}> = ({ children, repository, queryClient = appQueryClient }) => {
   return (
-    <UiProvider>
-      <SessionScopedAuthProvider repository={repository}>
-        <TenantProvider repository={repository}>
-          <CatalogProvider>
-            <InventoryProvider>
-              <OrderProvider>{children}</OrderProvider>
-            </InventoryProvider>
-          </CatalogProvider>
-        </TenantProvider>
-      </SessionScopedAuthProvider>
-    </UiProvider>
+    <QueryClientProvider client={queryClient}>
+      <UiProvider>
+        <SessionScopedAuthProvider repository={repository}>
+          <TenantProvider repository={repository}>
+            <CatalogProvider>
+              <InventoryProvider>
+                <OrderProvider>{children}</OrderProvider>
+              </InventoryProvider>
+            </CatalogProvider>
+          </TenantProvider>
+        </SessionScopedAuthProvider>
+      </UiProvider>
+    </QueryClientProvider>
   )
 }
 
@@ -202,6 +207,7 @@ const SessionScopedAuthProvider: React.FC<{
   repository?: TenantRepository
 }> = ({ children, repository }) => {
   const { setAdminTab } = useUi()
+  const queryClient = useQueryClient()
 
   const onLogin = useCallback(
     (role: "super" | "restaurant") => {
@@ -215,8 +221,10 @@ const SessionScopedAuthProvider: React.FC<{
     // C3: purge the whole-tenant envelope + persisted active restaurant.
     const tenantRepository = repository ?? defaultTenantRepository
     tenantRepository.purgeTenantData()
+    // Server-state cache belongs to the ended session: never serve it to the next role.
+    queryClient.clear()
     setAdminTab("dashboard")
-  }, [repository, setAdminTab])
+  }, [repository, setAdminTab, queryClient])
 
   return (
     <AuthProvider onLogin={onLogin} onLogout={onLogout}>
