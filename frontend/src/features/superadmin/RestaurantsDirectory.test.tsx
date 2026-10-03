@@ -247,7 +247,7 @@ describe("RestaurantsDirectory - Edit Action (TDD)", () => {
 
   it("re-prompts for a slug when the error has no numeric status but an RFC7807 conflict type", async () => {
     const conflictError: any = new Error("That slug is already in use")
-    conflictError.body = { type: "https://example.com/probs/conflict", title: "Conflict", status: 409 }
+    conflictError.body = { type: "https://example.com/probs/conflict", title: "Conflict" }
     vi.spyOn(apiClient, "restoreRestaurant").mockRejectedValueOnce(conflictError)
 
     await openRestoreDialog()

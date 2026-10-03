@@ -30,7 +30,7 @@ describe("runOptimisticMutation", () => {
 
   it("defers the success toast until the server confirms when successTiming is 'confirmed'", async () => {
     const callOrder: string[] = []
-    vi.mocked(toast.success).mockImplementation(() => {
+    vi.mocked(toast.success).mockImplementationOnce(() => {
       callOrder.push("toast")
       return ""
     })
