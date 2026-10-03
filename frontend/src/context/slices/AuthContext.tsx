@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react"
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from "react"
 import type { AdminSession } from "@/types/restaurant"
 import { toast } from "sonner"
 import { apiClient } from "@/core/api/apiClient"
@@ -244,13 +244,16 @@ export const AuthProvider: React.FC<{
     toast.info("Sesión cerrada")
   }, [onLogout])
 
-  const value: AuthContextType = {
-    session,
-    login,
-    changePassword,
-    logout,
-    setSession,
-  }
+  const value: AuthContextType = useMemo(
+    () => ({
+      session,
+      login,
+      changePassword,
+      logout,
+      setSession,
+    }),
+    [session, login, changePassword, logout, setSession]
+  )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

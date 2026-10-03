@@ -386,20 +386,36 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return inventory.reduce((sum, item) => sum + item.currentStock * item.costPerUnit, 0)
   }, [inventory])
 
-  const value: InventoryContextType = {
-    inventory,
-    suppliers,
-    addInventoryItem,
-    updateInventoryItem,
-    deleteInventoryItem,
-    adjustStock,
-    addSupplier,
-    updateSupplier,
-    deleteSupplier,
-    lowStockCount,
-    totalInventoryValue,
-    isLoadingInventory,
-  }
+  const value: InventoryContextType = useMemo(
+    () => ({
+      inventory,
+      suppliers,
+      addInventoryItem,
+      updateInventoryItem,
+      deleteInventoryItem,
+      adjustStock,
+      addSupplier,
+      updateSupplier,
+      deleteSupplier,
+      lowStockCount,
+      totalInventoryValue,
+      isLoadingInventory,
+    }),
+    [
+      inventory,
+      suppliers,
+      addInventoryItem,
+      updateInventoryItem,
+      deleteInventoryItem,
+      adjustStock,
+      addSupplier,
+      updateSupplier,
+      deleteSupplier,
+      lowStockCount,
+      totalInventoryValue,
+      isLoadingInventory,
+    ]
+  )
 
   return <InventoryContext.Provider value={value}>{children}</InventoryContext.Provider>
 }

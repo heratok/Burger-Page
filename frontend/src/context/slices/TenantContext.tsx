@@ -13,6 +13,7 @@ import { apiClient, isNotFoundError } from "@/core/api/apiClient"
 import { useAuth } from "./AuthContext"
 import { splitConfigForApi, scheduleFieldsFromApi } from "@/lib/storeSchedule"
 import { toast } from "sonner"
+import { runOptimisticMutation } from "./optimisticMutation"
 import { nextTempId } from "@/lib/ids"
 
 export interface GlobalPlatformStats {
@@ -535,42 +536,41 @@ export const TenantProvider: React.FC<{
       const target = envelope.restaurants.find((r) => r.id === id || r.slug === id)
       const targetId = target?.id || id
 
-      setEnvelope((prev) => ({
-        ...prev,
-        restaurants: prev.restaurants.map((r) =>
-          r.id === id || r.slug === id ? { ...r, ...updates } : r
-        ),
-      }))
-
-      if (updates.isActive !== undefined) {
-        toast.success(
-          updates.isActive ? "Restaurante activado" : "Restaurante pausado temporalmente"
-        )
-      } else {
-        toast.success("Restaurante actualizado correctamente")
-      }
-
-      try {
-        await apiClient.updateRestaurant(targetId, {
-          name: updates.config?.name || target?.config?.name,
-          slug: updates.slug || target?.slug,
-          tagline: updates.config?.tagline || target?.config?.tagline,
-          whatsappNumber: updates.config?.whatsappNumber || target?.config?.whatsappNumber,
-          primaryColor: updates.config?.primaryColor || target?.config?.primaryColor,
-          theme: updates.config?.bgTheme || target?.config?.bgTheme,
-          isActive: updates.isActive,
-          ...(updates.config
-            ? splitConfigForApi(updates.config)
-            : { config: splitConfigForApi(target?.config ?? {}).config }),
-          categories: updates.categories || target?.categories,
-        })
-      } catch (err) {
-        if (import.meta.env?.MODE !== 'test') {
-          console.warn("Could not update restaurant on backend API, rolling back:", err)
-        }
-        setEnvelope(snapshot)
-        toast.error("No se pudo actualizar el restaurante en el servidor. Cambios revertidos.")
-      }
+      await runOptimisticMutation({
+        apply: () => {
+          setEnvelope((prev) => ({
+            ...prev,
+            restaurants: prev.restaurants.map((r) =>
+              r.id === id || r.slug === id ? { ...r, ...updates } : r
+            ),
+          }))
+        },
+        call: () =>
+          apiClient.updateRestaurant(targetId, {
+            name: updates.config?.name || target?.config?.name,
+            slug: updates.slug || target?.slug,
+            tagline: updates.config?.tagline || target?.config?.tagline,
+            whatsappNumber: updates.config?.whatsappNumber || target?.config?.whatsappNumber,
+            primaryColor: updates.config?.primaryColor || target?.config?.primaryColor,
+            theme: updates.config?.bgTheme || target?.config?.bgTheme,
+            isActive: updates.isActive,
+            ...(updates.config
+              ? splitConfigForApi(updates.config)
+              : { config: splitConfigForApi(target?.config ?? {}).config }),
+            categories: updates.categories || target?.categories,
+          }),
+        rollback: () => setEnvelope(snapshot),
+        toast: {
+          success:
+            updates.isActive !== undefined
+              ? updates.isActive
+                ? "Restaurante activado"
+                : "Restaurante pausado temporalmente"
+              : "Restaurante actualizado correctamente",
+          error: "No se pudo actualizar el restaurante en el servidor. Cambios revertidos.",
+        },
+        warnMessage: "Could not update restaurant on backend API, rolling back:",
+      })
     },
     [envelope]
   )
@@ -578,29 +578,25 @@ export const TenantProvider: React.FC<{
   const deleteRestaurant = useCallback(
     async (id: string) => {
       const snapshot = envelope
-      setEnvelope((prev) => ({
-        ...prev,
-        restaurants: prev.restaurants.map((r) =>
-          (r.id === id || r.slug === id) ? { ...r, isActive: false } : r
-        ),
-      }))
 
-      toast.success("Restaurante eliminado correctamente")
-
-      try {
-        await apiClient.deleteRestaurant(id)
-      } catch (err) {
-        if (isNotFoundError(err)) {
-          // Resource already absent on server: preserve client deletion without rollback
-          return
-        }
-        if (import.meta.env?.MODE !== 'test') {
-          console.warn("Could not soft delete restaurant from backend API, rolling back:", err)
-        }
-        // Rollback state on backend rejection
-        setEnvelope(snapshot)
-        toast.error("No se pudo desactivar el restaurante en el servidor. Cambios revertidos.")
-      }
+      await runOptimisticMutation({
+        apply: () => {
+          setEnvelope((prev) => ({
+            ...prev,
+            restaurants: prev.restaurants.map((r) =>
+              r.id === id || r.slug === id ? { ...r, isActive: false } : r
+            ),
+          }))
+        },
+        call: () => apiClient.deleteRestaurant(id),
+        rollback: () => setEnvelope(snapshot),
+        toast: {
+          success: "Restaurante eliminado correctamente",
+          error: "No se pudo desactivar el restaurante en el servidor. Cambios revertidos.",
+        },
+        skipRollbackIfError: isNotFoundError,
+        warnMessage: "Could not soft delete restaurant from backend API, rolling back:",
+      })
     },
     [envelope]
   )
@@ -629,24 +625,42 @@ export const TenantProvider: React.FC<{
     }
   }, [envelope.restaurants])
 
-  const value: TenantContextType = {
-    restaurants: envelope.restaurants,
-    activeRestaurant,
-    effectiveRestaurantId,
-    activeRestaurantId: activeRestaurant.id,
-    activeRestaurantSlug: activeRestaurant.slug,
-    superAdminPassword: envelope.superAdminPassword ?? undefined,
-    isSyncing,
-    switchRestaurant,
-    loadRestaurant,
-    createRestaurant,
-    updateRestaurant,
-    deleteRestaurant,
-    updateActiveRestaurantRecord,
-    refreshRestaurants,
-    refreshStoreStatus,
-    globalStats,
-  }
+  const value: TenantContextType = useMemo(
+    () => ({
+      restaurants: envelope.restaurants,
+      activeRestaurant,
+      effectiveRestaurantId,
+      activeRestaurantId: activeRestaurant.id,
+      activeRestaurantSlug: activeRestaurant.slug,
+      superAdminPassword: envelope.superAdminPassword ?? undefined,
+      isSyncing,
+      switchRestaurant,
+      loadRestaurant,
+      createRestaurant,
+      updateRestaurant,
+      deleteRestaurant,
+      updateActiveRestaurantRecord,
+      refreshRestaurants,
+      refreshStoreStatus,
+      globalStats,
+    }),
+    [
+      envelope.restaurants,
+      activeRestaurant,
+      effectiveRestaurantId,
+      envelope.superAdminPassword,
+      isSyncing,
+      switchRestaurant,
+      loadRestaurant,
+      createRestaurant,
+      updateRestaurant,
+      deleteRestaurant,
+      updateActiveRestaurantRecord,
+      refreshRestaurants,
+      refreshStoreStatus,
+      globalStats,
+    ]
+  )
 
   return <TenantContext.Provider value={value}>{children}</TenantContext.Provider>
 }
