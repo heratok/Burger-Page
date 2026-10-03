@@ -43,4 +43,29 @@ describe("ProductCard - closed store", () => {
     fireEvent.click(screen.getByRole("button", { name: /Hamburguesa Clásica.*Cerrado/ }))
     expect(onSelect).toHaveBeenCalledTimes(1)
   })
+
+  it("opens image lightbox when clicking zoom button without triggering card selection", () => {
+    const onSelect = vi.fn()
+    renderCard(false, onSelect)
+
+    const zoomBtn = screen.getByRole("button", { name: "Ampliar foto de Hamburguesa Clásica" })
+    expect(zoomBtn).toBeDefined()
+
+    // Lightbox is closed initially
+    expect(screen.queryByLabelText("Foto ampliada de Hamburguesa Clásica")).toBeNull()
+
+    // Click zoom button
+    fireEvent.click(zoomBtn)
+
+    // Lightbox opens
+    expect(screen.getByLabelText("Foto ampliada de Hamburguesa Clásica")).toBeDefined()
+    // onSelect was NOT called because propagation was stopped
+    expect(onSelect).not.toHaveBeenCalled()
+
+    // Click close button on lightbox
+    const closeBtn = screen.getByRole("button", { name: "Cerrar vista previa" })
+    fireEvent.click(closeBtn)
+    expect(screen.queryByLabelText("Foto ampliada de Hamburguesa Clásica")).toBeNull()
+  })
 })
+

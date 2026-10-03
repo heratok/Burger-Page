@@ -353,7 +353,11 @@ export default function Home() {
                     <button
                       type="button"
                       onClick={scrollLeft}
-                      className="absolute left-0 z-30 flex size-6.5 -translate-x-1 sm:-translate-x-2 items-center justify-center rounded-full bg-bg-elevated/95 shadow-md border border-border-subtle text-text-primary hover:bg-bg-elevated-2 transition-all cursor-pointer"
+                      style={{
+                        backgroundColor: "var(--color-bg-elevated)",
+                        borderColor: "var(--color-border-subtle)",
+                      }}
+                      className="absolute left-0 z-30 flex size-6.5 -translate-x-1 sm:-translate-x-2 items-center justify-center rounded-full bg-bg-elevated shadow-md border border-border-subtle text-text-primary hover:bg-bg-elevated-2 transition-all cursor-pointer"
                       aria-label="Desplazar categorías hacia la izquierda"
                     >
                       <ChevronLeft className="size-3.5" />
@@ -425,7 +429,11 @@ export default function Home() {
                     <button
                       type="button"
                       onClick={scrollRight}
-                      className="absolute right-0 z-30 flex size-6.5 translate-x-1 sm:translate-x-2 items-center justify-center rounded-full bg-bg-elevated/95 shadow-md border border-border-subtle text-text-primary hover:bg-bg-elevated-2 transition-all cursor-pointer"
+                      style={{
+                        backgroundColor: "var(--color-bg-elevated)",
+                        borderColor: "var(--color-border-subtle)",
+                      }}
+                      className="absolute right-0 z-30 flex size-6.5 translate-x-1 sm:translate-x-2 items-center justify-center rounded-full bg-bg-elevated shadow-md border border-border-subtle text-text-primary hover:bg-bg-elevated-2 transition-all cursor-pointer"
                       aria-label="Desplazar categorías hacia la derecha"
                     >
                       <ChevronRight className="size-3.5" />
@@ -497,10 +505,10 @@ export default function Home() {
                       {!isCollapsed && (
                         <div
                           id={sectionContentId}
-                          className={`grid gap-4 md:gap-6 ${
+                          className={`grid gap-3 sm:gap-4 lg:gap-5 ${
                             storeConfig.compactGrid
-                              ? "grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
-                              : "grid-cols-1 min-[480px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4"
+                              ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-3"
+                              : "grid-cols-1 md:grid-cols-2"
                           }`}
                           role="list"
                           aria-label={`Productos de ${category}`}

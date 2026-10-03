@@ -1,5 +1,5 @@
-import { useState } from "react"
-import { Plus, Minus, X } from "lucide-react"
+import { useState, useEffect } from "react"
+import { Plus, Minus, X, Maximize2 } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -43,6 +43,19 @@ export default function AdditionsModal({
   const primaryForeground = getContrastForeground(storeConfig.primaryColor)
   const [cantidad, setCantidad] = useState(initial?.cantidad ?? 1)
   const [observaciones, setObservaciones] = useState(initial?.observacion ?? "")
+  const [isImageExpanded, setIsImageExpanded] = useState(false)
+
+  useEffect(() => {
+    if (!isImageExpanded) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation()
+        setIsImageExpanded(false)
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown, true)
+    return () => window.removeEventListener("keydown", handleKeyDown, true)
+  }, [isImageExpanded])
 
   const availableAdditions = storeAdditions && storeAdditions.length > 0
     ? storeAdditions.filter((a) => a.available)
@@ -124,40 +137,69 @@ export default function AdditionsModal({
         }}
         className={`top-auto bottom-0 left-0 flex max-h-[92dvh] w-full max-w-none flex-col overflow-hidden translate-x-0 translate-y-0 gap-0 rounded-t-2xl rounded-b-none border border-border-subtle text-text-primary p-0 sm:top-1/2 sm:bottom-auto sm:left-1/2 sm:max-h-[90dvh] sm:w-[calc(100%-2rem)] sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl data-[side=bottom]:data-ending-style:translate-y-0 data-[side=bottom]:data-starting-style:translate-y-0 shadow-2xl ${fontClass}`}
       >
-        <header
-          style={{ backgroundColor: (themeStyles as any)["--color-bg-surface"] || "var(--color-bg-surface, #F4ECE1)" }}
-          className="flex items-center gap-2.5 sm:gap-3 border-b border-border-subtle p-3.5 sm:p-5 pb-3 sm:pb-4"
+        {/* Floating Close Button */}
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Cerrar"
+          style={{
+            backgroundColor: "var(--color-bg-elevated)",
+            borderColor: "var(--color-border-subtle)",
+          }}
+          className="absolute top-3 right-3 z-30 inline-flex size-9 sm:size-10 items-center justify-center rounded-full border border-border-subtle bg-bg-elevated hover:bg-bg-elevated-2 text-text-muted hover:text-text-primary shadow-md transition-all active:scale-95 cursor-pointer backdrop-blur-md"
         >
-          <img
-            src={resolveImageUrl(product.src)}
-            alt={product.name}
-            className="size-12 sm:size-16 shrink-0 rounded-full bg-bg-elevated-2 object-cover border border-border-subtle"
-          />
-          <div className="min-w-0 flex-1 pr-1.5 sm:pr-2">
-            <DialogTitle className="text-base sm:text-lg font-semibold tracking-tight text-text-primary">
-              {editing ? `Editar ${product.name}` : product.name}
-            </DialogTitle>
-            <DialogDescription className="mt-0.5 line-clamp-2 text-xs sm:text-sm text-text-secondary">
-              {product.description}
-            </DialogDescription>
-            <p style={{ color: storeConfig.primaryColor }} className="mt-1 text-xs sm:text-sm font-bold">
-              {formatCurrency(product.price)}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Cerrar"
-            className="group/button inline-flex size-9 sm:size-11 shrink-0 items-center justify-center rounded-full border border-transparent bg-transparent text-text-muted transition-all outline-none select-none hover:bg-bg-elevated-2 hover:text-text-primary active:scale-95 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 cursor-pointer"
-          >
-            <X className="size-4 sm:size-5" />
-          </button>
-        </header>
+          <X className="size-4 sm:size-5" />
+        </button>
 
         <div
           style={{ backgroundColor: (themeStyles as any)["--color-bg-base"] || "var(--color-bg-base, #FAF6EF)" }}
-          className="scroll-add min-h-0 flex-1 space-y-4 sm:space-y-6 overflow-y-auto overscroll-contain px-3.5 sm:px-5 py-3 sm:py-4"
+          className="scroll-add min-h-0 flex-1 overflow-y-auto overscroll-contain"
         >
+          {/* Hero Image */}
+          {product.src && (
+            <div className="relative w-full aspect-[16/9] sm:aspect-[21/9] max-h-56 sm:max-h-64 overflow-hidden bg-bg-elevated-2 select-none group/hero shrink-0">
+              <img
+                src={resolveImageUrl(product.src)}
+                alt={product.name}
+                onClick={() => setIsImageExpanded(true)}
+                className="size-full object-cover transition-transform duration-300 group-hover/hero:scale-105 cursor-pointer"
+              />
+              <button
+                type="button"
+                onClick={() => setIsImageExpanded(true)}
+                aria-label="Ampliar imagen"
+                className="absolute bottom-2.5 right-2.5 z-10 inline-flex items-center gap-1.5 rounded-full bg-black/60 hover:bg-black/80 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-md transition-all cursor-pointer active:scale-95 shadow-xs"
+              >
+                <Maximize2 className="size-3.5" />
+                <span>Ver foto</span>
+              </button>
+            </div>
+          )}
+
+          {/* Product Header: Title, Price, and Full Description (no line-clamp) */}
+          <header
+            style={{ backgroundColor: (themeStyles as any)["--color-bg-surface"] || "var(--color-bg-surface, #F4ECE1)" }}
+            className="border-b border-border-subtle p-4 sm:p-5"
+          >
+            <div className="flex items-start justify-between gap-3 pr-8">
+              <DialogTitle className="text-lg sm:text-xl font-bold tracking-tight text-text-primary">
+                {editing ? `Editar ${product.name}` : product.name}
+              </DialogTitle>
+              <p
+                style={{ color: storeConfig.primaryColor }}
+                className="text-base sm:text-lg font-black tracking-tight shrink-0"
+              >
+                {formatCurrency(product.price)}
+              </p>
+            </div>
+            {product.description && (
+              <DialogDescription className="mt-2 text-xs sm:text-sm leading-relaxed text-text-secondary whitespace-pre-line">
+                {product.description}
+              </DialogDescription>
+            )}
+          </header>
+
+          <div className="space-y-4 sm:space-y-6 px-3.5 sm:px-5 py-3 sm:py-4">
           {adiciones.length > 0 && (
             <section>
               <div className="mb-3 flex items-center justify-between">
@@ -248,8 +290,9 @@ export default function AdditionsModal({
             </FieldDescription>
           </Field>
         </div>
+      </div>
 
-        <footer
+      <footer
           style={{ backgroundColor: (themeStyles as any)["--color-bg-surface"] || "var(--color-bg-surface, #F4ECE1)" }}
           className="border-t border-border-subtle p-3.5 sm:p-5"
         >
@@ -313,7 +356,46 @@ export default function AdditionsModal({
             </Button>
           </div>
         </footer>
+
+        {/* Fullscreen Lightbox / Expanded Image */}
+        {isImageExpanded && product.src && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Foto ampliada de ${product.name}`}
+            className="fixed inset-0 z-60 flex items-center justify-center bg-black/90 p-4 backdrop-blur-md animate-in fade-in-0 duration-150"
+            onClick={() => setIsImageExpanded(false)}
+          >
+            <button
+              type="button"
+              onClick={() => setIsImageExpanded(false)}
+              aria-label="Cerrar vista previa"
+              className="absolute top-4 right-4 z-70 inline-flex size-11 items-center justify-center rounded-full bg-white/20 hover:bg-white/30 text-white backdrop-blur-md transition-all active:scale-95 cursor-pointer"
+            >
+              <X className="size-6" />
+            </button>
+            <div
+              className="relative max-h-[85vh] max-w-[90vw] overflow-hidden rounded-2xl shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <img
+                src={resolveImageUrl(product.src)}
+                alt={product.name}
+                className="max-h-[85vh] max-w-[90vw] object-contain rounded-2xl select-none"
+              />
+              <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-4 sm:p-5 text-white">
+                <p className="text-base sm:text-lg font-bold">{product.name}</p>
+                {product.description && (
+                  <p className="mt-1 text-xs sm:text-sm text-white/85 leading-relaxed">
+                    {product.description}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   )
 }
+
