@@ -8,6 +8,7 @@ import {
   Loader2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Select } from "@/components/ui/select"
 import { toast } from "sonner"
 import { mapUserActionError } from "./userActionUtils"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
@@ -170,20 +171,19 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
 
           {/* Role */}
           <div className="space-y-1">
-            <label htmlFor="edit-user-role" className="text-xs font-bold text-slate-700 dark:text-slate-300">
-              Rol en la plataforma *
-            </label>
-            <select
+            <Select
               id="edit-user-role"
+              label="Rol en la plataforma *"
               aria-label="Rol en la plataforma"
               value={role}
               disabled={isOwnAccount && role === "super_admin"}
               onChange={(e) => handleRoleChange(e.target.value as typeof role)}
-              className={inputClass}
-            >
-              <option value="super_admin">Super Administrador (Acceso global)</option>
-              <option value="restaurant_admin">Administrador de Restaurante (Local)</option>
-            </select>
+              searchable={false}
+              options={[
+                { value: "super_admin", label: "Super Administrador (Acceso global)" },
+                { value: "restaurant_admin", label: "Administrador de Restaurante (Local)" },
+              ]}
+            />
             {isOwnAccount && role === "super_admin" && (
               <p className="text-[11px] font-semibold text-amber-500 flex items-center gap-1 mt-1">
                 <AlertTriangle className="size-3 shrink-0" />
@@ -194,24 +194,23 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
 
           {/* Restaurant Selector */}
           <div className="space-y-1">
-            <label htmlFor="edit-user-restaurant" className="text-xs font-bold text-slate-700 dark:text-slate-300">
-              Restaurante Asignado *
-            </label>
-            <select
+            <Select
               id="edit-user-restaurant"
+              label="Restaurante Asignado *"
               aria-label="Restaurante Asignado"
               disabled={role === "super_admin"}
               value={role === "super_admin" ? "" : restaurantId}
               onChange={(e) => setRestaurantId(e.target.value)}
-              className={`${inputClass} disabled:opacity-60 disabled:cursor-not-allowed`}
-            >
-              <option value="">-- Seleccionar Restaurante --</option>
-              {restaurants.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.config?.name || r.name} {r.isActive ? "(Operando)" : "(Pausado)"}
-                </option>
-              ))}
-            </select>
+              placeholder="-- Seleccionar Restaurante --"
+              searchable={restaurants.length > 5}
+              options={[
+                { value: "", label: "-- Seleccionar Restaurante --" },
+                ...restaurants.map((r) => ({
+                  value: r.id,
+                  label: `${r.config?.name || r.name} ${r.isActive ? "(Operando)" : "(Pausado)"}`,
+                })),
+              ]}
+            />
             {role === "super_admin" ? (
               <p className="text-[11px] text-slate-400 mt-1">
                 Los Super Administradores tienen acceso global y no se asocian a un local específico.

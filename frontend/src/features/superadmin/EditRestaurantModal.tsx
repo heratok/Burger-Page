@@ -17,6 +17,7 @@ import {
   Pencil,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Select } from "@/components/ui/select"
 import { ResetPasswordModal } from "./ResetPasswordModal"
 import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
 import { CreateUserModal } from "./CreateUserModal"
@@ -368,43 +369,41 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
 
               {/* Zona Horaria */}
               <div className="space-y-1 sm:col-span-2">
-                <label htmlFor="edit-rest-timezone" className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Zona Horaria *
-                </label>
-                <select
+                <Select
                   id="edit-rest-timezone"
+                  label="Zona Horaria *"
                   aria-label="Zona Horaria"
                   value={timezone}
                   onChange={(e) => setTimezone(e.target.value)}
-                  className={inputClass}
-                >
-                  {timezone && !COMMON_TIMEZONES.some((tz) => tz.value === timezone) && (
-                    <option value={timezone}>{timezone} (actual)</option>
-                  )}
-                  <optgroup label="Latinoamérica">
-                    {COMMON_TIMEZONES.filter((tz) => tz.group === "Latinoamérica").map((tz) => (
-                      <option key={tz.value} value={tz.value}>
-                        {tz.label}
-                      </option>
-                    ))}
-                  </optgroup>
-                  <optgroup label="Otras regiones">
-                    {COMMON_TIMEZONES.filter((tz) => tz.group === "Otras regiones").map((tz) => (
-                      <option key={tz.value} value={tz.value}>
-                        {tz.label}
-                      </option>
-                    ))}
-                  </optgroup>
-                </select>
+                  searchable={true}
+                  searchPlaceholder="Buscar zona horaria..."
+                  options={[
+                    ...(timezone && !COMMON_TIMEZONES.some((tz) => tz.value === timezone)
+                      ? [{ value: timezone, label: `${timezone} (actual)` }]
+                      : []),
+                    {
+                      label: "Latinoamérica",
+                      options: COMMON_TIMEZONES.filter((tz) => tz.group === "Latinoamérica").map((tz) => ({
+                        value: tz.value,
+                        label: tz.label,
+                      })),
+                    },
+                    {
+                      label: "Otras regiones",
+                      options: COMMON_TIMEZONES.filter((tz) => tz.group === "Otras regiones").map((tz) => ({
+                        value: tz.value,
+                        label: tz.label,
+                      })),
+                    },
+                  ]}
+                />
               </div>
 
               {/* Moneda y Símbolo */}
               <div className="space-y-1">
-                <label htmlFor="edit-rest-currency" className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Moneda *
-                </label>
-                <select
+                <Select
                   id="edit-rest-currency"
+                  label="Moneda *"
                   aria-label="Moneda"
                   value={currency}
                   onChange={(e) => {
@@ -415,17 +414,19 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
                     }
                     setCurrency(nextCurr)
                   }}
-                  className={inputClass}
-                >
-                  {currency && !COMMON_CURRENCIES.some((c) => c.code === currency) && (
-                    <option value={currency}>{currency} (actual)</option>
-                  )}
-                  {COMMON_CURRENCIES.map((c) => (
-                    <option key={c.code} value={c.code}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
+                  searchable={true}
+                  searchPlaceholder="Buscar moneda..."
+                  options={[
+                    ...(currency && !COMMON_CURRENCIES.some((c) => c.code === currency)
+                      ? [{ value: currency, label: `${currency} (actual)` }]
+                      : []),
+                    ...COMMON_CURRENCIES.map((c) => ({
+                      value: c.code,
+                      label: c.name,
+                      badge: c.code,
+                    })),
+                  ]}
+                />
               </div>
 
               <div className="space-y-1">

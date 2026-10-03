@@ -15,8 +15,11 @@ export interface ModernSelectOption {
 
 export interface ModernSelectProps {
   id?: string
+  name?: string
+  required?: boolean
   label?: string
   ariaLabel?: string
+  "aria-label"?: string
   value: string
   onChange: (value: string) => void
   options: ModernSelectOption[]
@@ -25,9 +28,13 @@ export interface ModernSelectProps {
   searchable?: boolean // default true if options.length > 5
   disabled?: boolean
   size?: "sm" | "md" | "lg"
+  variant?: "default" | "outline" | "filled" | "ghost"
   className?: string
   containerClassName?: string
   menuClassName?: string
+  leftIcon?: React.ReactNode
+  error?: string
+  ref?: React.Ref<HTMLSelectElement>
 }
 
 export const FlagThumbnail: React.FC<{ code: string; alt?: string }> = ({ code, alt }) => {
@@ -61,30 +68,41 @@ export const FlagThumbnail: React.FC<{ code: string; alt?: string }> = ({ code, 
   )
 }
 
-export const ModernSelect: React.FC<ModernSelectProps> = ({
-  id,
-  label,
-  ariaLabel,
-  value,
-  onChange,
-  options,
-  placeholder = "Seleccionar...",
-  searchPlaceholder = "Buscar...",
-  searchable,
-  disabled = false,
-  size = "md",
-  className,
-  containerClassName,
-  menuClassName,
-}) => {
-  const [isOpen, setIsOpen] = useState(false)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [focusedIndex, setFocusedIndex] = useState(-1)
+export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProps>(
+  (
+    {
+      id,
+      name,
+      required,
+      label,
+      ariaLabel,
+      "aria-label": ariaLabelAttr,
+      value,
+      onChange,
+      options,
+      placeholder = "Seleccionar...",
+      searchPlaceholder = "Buscar...",
+      searchable,
+      disabled = false,
+      size = "md",
+      variant = "default",
+      className,
+      containerClassName,
+      menuClassName,
+      leftIcon,
+      error,
+    },
+    ref
+  ) => {
+    const effectiveAriaLabel = ariaLabel || ariaLabelAttr || label
+    const [isOpen, setIsOpen] = useState(false)
+    const [searchQuery, setSearchQuery] = useState("")
+    const [focusedIndex, setFocusedIndex] = useState(-1)
 
-  const containerRef = useRef<HTMLDivElement>(null)
-  const triggerRef = useRef<HTMLButtonElement>(null)
-  const searchInputRef = useRef<HTMLInputElement>(null)
-  const itemRefs = useRef<(HTMLButtonElement | null)[]>([])
+    const containerRef = useRef<HTMLDivElement>(null)
+    const triggerRef = useRef<HTMLButtonElement>(null)
+    const searchInputRef = useRef<HTMLInputElement>(null)
+    const itemRefs = useRef<(HTMLButtonElement | null)[]>([])
 
   const isSearchable = searchable ?? options.length > 5
 
@@ -221,6 +239,17 @@ export const ModernSelect: React.FC<ModernSelectProps> = ({
     lg: "text-sm py-3 px-3.5 min-h-[46px]",
   }[size]
 
+  const variantClasses = {
+    default:
+      "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white hover:border-slate-300 dark:hover:border-slate-600",
+    outline:
+      "border-2 border-slate-200 bg-transparent text-slate-900 hover:border-slate-300 dark:border-slate-700 dark:text-slate-100 dark:hover:border-slate-600",
+    filled:
+      "border-transparent bg-slate-100/90 text-slate-900 hover:bg-slate-200/80 dark:bg-slate-800/80 dark:text-slate-100 dark:hover:bg-slate-800",
+    ghost:
+      "border-transparent bg-transparent text-slate-700 hover:bg-slate-100/80 dark:text-slate-300 dark:hover:bg-slate-800/60",
+  }[variant]
+
   return (
     <div
       ref={containerRef}
@@ -229,8 +258,9 @@ export const ModernSelect: React.FC<ModernSelectProps> = ({
     >
       {label && (
         <label
-          htmlFor={id ? `${id}-trigger` : undefined}
-          className="font-semibold block mb-1 text-slate-800 dark:text-slate-200 text-xs"
+          htmlFor={id}
+          onClick={() => triggerRef.current?.focus()}
+          className="font-semibold block mb-1 text-slate-800 dark:text-slate-200 text-xs cursor-pointer"
         >
           {label}
         </label>
@@ -238,8 +268,12 @@ export const ModernSelect: React.FC<ModernSelectProps> = ({
 
       {/* Accessible hidden native select for testing-library and form synchronization */}
       <select
+        ref={ref}
         id={id}
-        aria-label={ariaLabel || label}
+        name={name}
+        required={required}
+        disabled={disabled}
+        aria-label={effectiveAriaLabel}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         tabIndex={-1}
@@ -248,11 +282,42 @@ export const ModernSelect: React.FC<ModernSelectProps> = ({
         {value && !options.some((o) => o.value === value) && (
           <option value={value}>{value}</option>
         )}
-        {options.map((opt) => (
-          <option key={opt.value} value={opt.value} disabled={opt.disabled}>
-            {opt.label}
-          </option>
-        ))}
+        {(() => {
+          const hasGroups = options.some((o) => o.group)
+          if (!hasGroups) {
+            return options.map((opt) => (
+              <option key={opt.value} value={opt.value} disabled={opt.disabled}>
+                {opt.label}
+              </option>
+            ))
+          }
+          const groups: { name?: string; items: ModernSelectOption[] }[] = []
+          for (const opt of options) {
+            const lastGroup = groups[groups.length - 1]
+            if (lastGroup && lastGroup.name === opt.group) {
+              lastGroup.items.push(opt)
+            } else {
+              groups.push({ name: opt.group, items: [opt] })
+            }
+          }
+          return groups.map((g, idx) =>
+            g.name ? (
+              <optgroup key={`group-${idx}`} label={g.name}>
+                {g.items.map((opt) => (
+                  <option key={opt.value} value={opt.value} disabled={opt.disabled}>
+                    {opt.label}
+                  </option>
+                ))}
+              </optgroup>
+            ) : (
+              g.items.map((opt) => (
+                <option key={opt.value} value={opt.value} disabled={opt.disabled}>
+                  {opt.label}
+                </option>
+              ))
+            )
+          )
+        })()}
       </select>
 
       {/* Modern Dropdown Trigger */}
@@ -268,15 +333,28 @@ export const ModernSelect: React.FC<ModernSelectProps> = ({
         aria-controls={id ? `${id}-menu` : undefined}
         className={cn(
           "w-full flex items-center justify-between gap-2 rounded-xl border transition-all text-left cursor-pointer",
-          "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white",
-          "hover:border-slate-300 dark:hover:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500",
-          isOpen && "ring-2 ring-indigo-500 border-indigo-500 dark:border-indigo-500",
+          variantClasses,
+          error
+            ? isOpen
+              ? "border-rose-500 ring-2 ring-rose-500/20 dark:border-rose-500"
+              : "border-rose-500 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 dark:border-rose-500"
+            : isOpen
+              ? "ring-2 ring-indigo-500 border-indigo-500 dark:border-indigo-500"
+              : "focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500",
           disabled && "opacity-50 cursor-not-allowed pointer-events-none",
           sizeClasses,
           className
         )}
       >
         <div className="flex items-center gap-2 min-w-0 flex-1">
+          {leftIcon && (
+            <span
+              data-testid={id ? `${id}-left-icon` : undefined}
+              className="shrink-0 text-slate-400 dark:text-slate-500 flex items-center justify-center pointer-events-none"
+            >
+              {leftIcon}
+            </span>
+          )}
           {selectedOption ? (
             <>
               {selectedOption.flagCode && (
@@ -306,6 +384,12 @@ export const ModernSelect: React.FC<ModernSelectProps> = ({
           )}
         />
       </button>
+
+      {error && (
+        <span className="text-[11px] font-medium text-rose-500 dark:text-rose-400 block mt-1">
+          {error}
+        </span>
+      )}
 
       {/* Floating Card Menu */}
       {isOpen && (
@@ -411,4 +495,6 @@ export const ModernSelect: React.FC<ModernSelectProps> = ({
       )}
     </div>
   )
-}
+})
+
+ModernSelect.displayName = "ModernSelect"

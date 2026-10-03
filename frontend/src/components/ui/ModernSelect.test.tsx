@@ -274,4 +274,51 @@ describe("ModernSelect Component", () => {
     fireEvent.click(trigger)
     expect(screen.queryByTestId("disabled-select-menu")).toBeNull()
   })
+
+  it("renders leftIcon and error message and applies error styling", () => {
+    render(
+      <ModernSelect
+        id="icon-error-select"
+        ariaLabel="Con Icono"
+        value="57"
+        onChange={vi.fn()}
+        options={SAMPLE_OPTIONS}
+        leftIcon={<span data-testid="custom-left-icon">🌍</span>}
+        error="Este campo es obligatorio"
+      />
+    )
+
+    expect(screen.getByTestId("custom-left-icon")).toBeDefined()
+    expect(screen.getByText("Este campo es obligatorio")).toBeDefined()
+
+    const trigger = screen.getByTestId("icon-error-select-trigger")
+    expect(trigger.className).toContain("border-rose-500")
+  })
+
+  it("forwards ref, name, disabled, and required to the hidden select element", () => {
+    let selectElement: HTMLSelectElement | null = null
+    const refCallback = (el: HTMLSelectElement | null) => {
+      selectElement = el
+    }
+
+    render(
+      <ModernSelect
+        ref={refCallback}
+        id="ref-select"
+        name="test_field"
+        required
+        disabled
+        ariaLabel="Ref Test"
+        value="57"
+        onChange={vi.fn()}
+        options={SAMPLE_OPTIONS}
+      />
+    )
+
+    const el = selectElement as HTMLSelectElement | null
+    expect(el).not.toBeNull()
+    expect(el?.name).toBe("test_field")
+    expect(el?.required).toBe(true)
+    expect(el?.disabled).toBe(true)
+  })
 })

@@ -12,6 +12,7 @@ import {
   Clock,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Select } from "@/components/ui/select"
 import { parseLocalDateRange } from "./auditLogUtils"
 
 const AUDIT_ACTION_LABELS: Record<string, string> = {
@@ -197,12 +198,6 @@ export const AuditLogScreen: React.FC = () => {
     setToDate("")
   }
 
-  const selectClass = `rounded-xl border px-3 py-2 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-    isDark
-      ? "border-slate-800 bg-slate-900 text-slate-200"
-      : "border-slate-200 bg-white text-slate-700"
-  }`
-
   const inputDateClass = `rounded-xl border px-3 py-2 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
     isDark
       ? "border-slate-800 bg-slate-900 text-slate-200"
@@ -257,50 +252,44 @@ export const AuditLogScreen: React.FC = () => {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {/* Action Filter */}
           <div className="space-y-1">
-            <label
-              htmlFor="filter-action"
-              className="text-[11px] font-bold text-slate-500 dark:text-slate-400"
-            >
-              Filtrar por acción
-            </label>
-            <select
+            <Select
               id="filter-action"
+              label="Filtrar por acción"
               aria-label="Filtrar por acción"
               value={actionFilter}
               onChange={(e) => setActionFilter(e.target.value)}
-              className={`w-full ${selectClass}`}
-            >
-              <option value="">Todas las acciones</option>
-              {Object.entries(AUDIT_ACTION_LABELS).map(([actionKey, label]) => (
-                <option key={actionKey} value={actionKey}>
-                  {label}
-                </option>
-              ))}
-            </select>
+              placeholder="Todas las acciones"
+              searchable={true}
+              searchPlaceholder="Buscar acción..."
+              options={[
+                { value: "", label: "Todas las acciones" },
+                ...Object.entries(AUDIT_ACTION_LABELS).map(([actionKey, label]) => ({
+                  value: actionKey,
+                  label,
+                })),
+              ]}
+            />
           </div>
 
           {/* Restaurant Filter */}
           <div className="space-y-1">
-            <label
-              htmlFor="filter-restaurant"
-              className="text-[11px] font-bold text-slate-500 dark:text-slate-400"
-            >
-              Filtrar por restaurante
-            </label>
-            <select
+            <Select
               id="filter-restaurant"
+              label="Filtrar por restaurante"
               aria-label="Filtrar por restaurante"
               value={restaurantFilter}
               onChange={(e) => setRestaurantFilter(e.target.value)}
-              className={`w-full ${selectClass}`}
-            >
-              <option value="">Todos los restaurantes</option>
-              {restaurants.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.config?.name || r.name}
-                </option>
-              ))}
-            </select>
+              placeholder="Todos los restaurantes"
+              searchable={restaurants.length > 5}
+              searchPlaceholder="Buscar restaurante..."
+              options={[
+                { value: "", label: "Todos los restaurantes" },
+                ...restaurants.map((r) => ({
+                  value: r.id,
+                  label: (r.config?.name || r.name) ?? "Restaurante",
+                })),
+              ]}
+            />
           </div>
 
           {/* From Date */}
