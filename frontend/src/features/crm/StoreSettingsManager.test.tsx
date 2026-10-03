@@ -25,9 +25,9 @@ describe("StoreSettingsManager Component", () => {
     expect(screen.getByText("Canales & Reglas de Compra")).toBeDefined()
 
     // Edit WhatsApp
-    const whatsappInput = screen.getByPlaceholderText("573022575805") as HTMLInputElement
-    fireEvent.change(whatsappInput, { target: { value: "573999999999" } })
-    expect(whatsappInput.value).toBe("573999999999")
+    const whatsappInput = screen.getByLabelText("Número de WhatsApp local") as HTMLInputElement
+    fireEvent.change(whatsappInput, { target: { value: "3999999999" } })
+    expect(whatsappInput.value).toBe("3999999999")
 
     // Pending changes badge and discard button should appear
     expect(screen.getByText("Cambios pendientes")).toBeDefined()
@@ -38,6 +38,6 @@ describe("StoreSettingsManager Component", () => {
     fireEvent.click(saveButton)
 
     // After save, changes are applied
-    expect(whatsappInput.value).toBe("573999999999")
+    expect(whatsappInput.value).toBe("3999999999")
   })
 })

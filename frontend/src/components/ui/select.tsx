@@ -1,11 +1,19 @@
 import * as React from "react"
-import { ChevronDown } from "lucide-react"
-import { cn } from "@/lib/utils"
+import {
+  ModernSelect,
+  type ModernSelectOption,
+  type ModernSelectProps,
+} from "./ModernSelect"
 
 export interface SelectOption {
   value: string | number
   label: string
   disabled?: boolean
+  badge?: string
+  icon?: React.ReactNode
+  flagCode?: string
+  sublabel?: string
+  group?: string
 }
 
 export interface SelectGroup {
@@ -14,155 +22,221 @@ export interface SelectGroup {
 }
 
 export interface SelectProps
-  extends Omit<React.SelectHTMLAttributes<HTMLSelectElement>, "size"> {
+  extends Omit<React.SelectHTMLAttributes<HTMLSelectElement>, "size" | "onChange"> {
   label?: string
   error?: string
   leftIcon?: React.ReactNode
   size?: "sm" | "md" | "lg"
   variant?: "default" | "outline" | "filled" | "ghost"
   containerClassName?: string
-  options?: (SelectOption | SelectGroup)[]
+  menuClassName?: string
+  options?: (SelectOption | SelectGroup | ModernSelectOption)[]
+  searchable?: boolean
+  searchPlaceholder?: string
+  placeholder?: string
+  onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void
+}
+
+function parseChildrenToOptions(children: React.ReactNode): ModernSelectOption[] {
+  const result: ModernSelectOption[] = []
+
+  const extractText = (node: React.ReactNode): string => {
+    if (typeof node === "string" || typeof node === "number") return String(node)
+    if (Array.isArray(node)) return node.map(extractText).join("")
+    if (React.isValidElement(node) && node.props && (node.props as any).children) {
+      return extractText((node.props as any).children)
+    }
+    return ""
+  }
+
+  const processNode = (node: React.ReactNode, currentGroup?: string) => {
+    if (!node) return
+
+    React.Children.forEach(node, (child) => {
+      if (!React.isValidElement(child)) return
+
+      // Handle Fragment
+      if (child.type === React.Fragment) {
+        processNode((child.props as any).children, currentGroup)
+        return
+      }
+
+      // Handle optgroup
+      if (
+        child.type === "optgroup" ||
+        (typeof child.type === "string" && child.type.toLowerCase() === "optgroup")
+      ) {
+        const groupLabel = (child.props as any).label || ""
+        processNode((child.props as any).children, groupLabel)
+        return
+      }
+
+      // Handle option
+      if (
+        child.type === "option" ||
+        (typeof child.type === "string" && child.type.toLowerCase() === "option") ||
+        typeof (child.props as any)?.value !== "undefined"
+      ) {
+        const text = extractText((child.props as any).children)
+        const val = String((child.props as any).value ?? text)
+        const label = (child.props as any).label || text || val
+        const disabled = Boolean((child.props as any).disabled)
+        result.push({
+          value: val,
+          label,
+          disabled,
+          ...(currentGroup ? { group: currentGroup } : {}),
+        })
+      }
+    })
+  }
+
+  processNode(children)
+  return result
 }
 
 export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
   (
     {
+      id,
+      name,
+      required,
+      disabled,
       className,
       containerClassName,
+      menuClassName,
       label,
       error,
       leftIcon,
       size = "md",
       variant = "default",
-      disabled,
+      placeholder = "Seleccionar...",
+      searchPlaceholder = "Buscar...",
+      searchable,
       children,
       options,
+      value,
+      defaultValue,
+      onChange,
       ...props
     },
     ref
   ) => {
-    // Size variants
-    const sizeClasses = {
-      sm: "h-8 py-1 text-xs pl-2.5 pr-7 rounded-lg",
-      md: "h-9.5 py-1.5 text-xs sm:text-sm pl-3 pr-8 rounded-xl",
-      lg: "h-11 py-2 text-sm pl-3.5 pr-9 rounded-xl",
-    }
+    // 1. Normalize options or parse children
+    const modernOptions = React.useMemo<ModernSelectOption[]>(() => {
+      if (options && options.length > 0) {
+        const flat: ModernSelectOption[] = []
+        for (const item of options) {
+          if ("options" in item && Array.isArray((item as SelectGroup).options)) {
+            for (const opt of (item as SelectGroup).options) {
+              flat.push({
+                value: String(opt.value),
+                label: opt.label,
+                disabled: opt.disabled,
+                group: (item as SelectGroup).label,
+                badge: (opt as any).badge,
+                icon: (opt as any).icon,
+                flagCode: (opt as any).flagCode,
+                sublabel: (opt as any).sublabel,
+              })
+            }
+          } else {
+            const opt = item as SelectOption | ModernSelectOption
+            flat.push({
+              value: String(opt.value),
+              label: opt.label,
+              disabled: opt.disabled,
+              group: (opt as any).group,
+              badge: (opt as any).badge,
+              icon: (opt as any).icon,
+              flagCode: (opt as any).flagCode,
+              sublabel: (opt as any).sublabel,
+            })
+          }
+        }
+        return flat
+      }
 
-    const iconSizeClasses = {
-      sm: "left-2 size-3.5",
-      md: "left-2.5 size-4",
-      lg: "left-3 size-4.5",
-    }
+      if (children) {
+        return parseChildrenToOptions(children)
+      }
 
-    const rightChevronClasses = {
-      sm: "right-2 size-3.5",
-      md: "right-2.5 size-4",
-      lg: "right-3 size-4.5",
-    }
+      return []
+    }, [options, children])
 
-    const leftPaddingWhenIcon = {
-      sm: "pl-7",
-      md: "pl-8.5",
-      lg: "pl-10",
-    }
+    // 2. Controlled vs Uncontrolled state
+    const [internalVal, setInternalVal] = React.useState<string>(() => {
+      if (value !== undefined && value !== null) return String(value)
+      if (defaultValue !== undefined && defaultValue !== null) return String(defaultValue)
+      return ""
+    })
 
-    // Visual styles for variants
-    const variantClasses = {
-      default:
-        "border border-slate-200/90 bg-white text-slate-800 shadow-xs hover:border-slate-300 focus:border-indigo-500 focus:ring-3 focus:ring-indigo-500/15 dark:border-slate-700/80 dark:bg-[#0E1322] dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-indigo-400 dark:focus:ring-indigo-400/20",
-      outline:
-        "border-2 border-slate-200 bg-transparent text-slate-900 hover:border-slate-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-indigo-400",
-      filled:
-        "border border-transparent bg-slate-100/90 text-slate-900 hover:bg-slate-200/80 focus:border-indigo-500 focus:bg-white focus:ring-3 focus:ring-indigo-500/15 dark:bg-slate-800/80 dark:text-slate-100 dark:hover:bg-slate-800 dark:focus:border-indigo-400 dark:focus:bg-slate-900",
-      ghost:
-        "border-transparent bg-transparent text-slate-700 hover:bg-slate-100/80 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/15 dark:text-slate-300 dark:hover:bg-slate-800/60",
-    }
+    React.useEffect(() => {
+      if (value !== undefined && value !== null) {
+        setInternalVal(String(value))
+      }
+    }, [value])
 
-    const isGroup = (item: SelectOption | SelectGroup): item is SelectGroup => {
-      return "options" in item && Array.isArray((item as SelectGroup).options)
-    }
+    const currentValue = value !== undefined && value !== null ? String(value) : internalVal
+
+    // 3. Synthetic onChange adapter
+    const handleModernChange = React.useCallback(
+      (nextVal: string) => {
+        if (value === undefined) {
+          setInternalVal(nextVal)
+        }
+        if (onChange) {
+          const syntheticEvent = {
+            target: {
+              value: nextVal,
+              name: name || "",
+              id: id || "",
+            },
+            currentTarget: {
+              value: nextVal,
+              name: name || "",
+              id: id || "",
+            },
+            value: nextVal,
+            persist: () => {},
+            preventDefault: () => {},
+            stopPropagation: () => {},
+          } as unknown as React.ChangeEvent<HTMLSelectElement>
+
+          ;(onChange as any)(syntheticEvent, nextVal)
+        }
+      },
+      [value, onChange, name, id]
+    )
 
     return (
-      <div className={cn("relative flex flex-col gap-1 w-full", containerClassName)}>
-        {label && (
-          <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-            {label}
-          </label>
-        )}
-
-        <div className="relative group flex items-center w-full">
-          {leftIcon && (
-            <div
-              className={cn(
-                "pointer-events-none absolute flex items-center justify-center text-slate-400 group-hover:text-slate-600 dark:text-slate-500 dark:group-hover:text-slate-300 transition-colors z-10",
-                iconSizeClasses[size]
-              )}
-            >
-              {leftIcon}
-            </div>
-          )}
-
-          <select
-            ref={ref}
-            disabled={disabled}
-            className={cn(
-              "w-full appearance-none font-medium outline-none transition-all duration-150 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 truncate",
-              sizeClasses[size],
-              variantClasses[variant],
-              leftIcon && leftPaddingWhenIcon[size],
-              error && "border-rose-500 focus:border-rose-500 focus:ring-rose-500/20 dark:border-rose-500",
-              className
-            )}
-            {...props}
-          >
-            {options
-              ? options.map((item, idx) => {
-                  if (isGroup(item)) {
-                    return (
-                      <optgroup key={`group-${idx}`} label={item.label}>
-                        {item.options.map((opt) => (
-                          <option
-                            key={String(opt.value)}
-                            value={opt.value}
-                            disabled={opt.disabled}
-                            title={opt.label}
-                          >
-                            {opt.label}
-                          </option>
-                        ))}
-                      </optgroup>
-                    )
-                  }
-                  return (
-                    <option
-                      key={String(item.value)}
-                      value={item.value}
-                      disabled={item.disabled}
-                      title={item.label}
-                    >
-                      {item.label}
-                    </option>
-                  )
-                })
-              : children}
-          </select>
-
-          <ChevronDown
-            className={cn(
-              "pointer-events-none absolute text-slate-400 group-hover:text-slate-600 dark:text-slate-400 dark:group-hover:text-slate-200 transition-transform duration-200 group-focus-within:rotate-180 z-10",
-              rightChevronClasses[size]
-            )}
-          />
-        </div>
-
-        {error && (
-          <span className="text-[11px] font-medium text-rose-500 dark:text-rose-400">
-            {error}
-          </span>
-        )}
-      </div>
+      <ModernSelect
+        ref={ref}
+        id={id}
+        name={name}
+        required={required}
+        disabled={disabled}
+        aria-label={props["aria-label"]}
+        ariaLabel={props["aria-label"]}
+        label={label}
+        error={error}
+        leftIcon={leftIcon}
+        size={size}
+        variant={variant}
+        placeholder={placeholder}
+        searchPlaceholder={searchPlaceholder}
+        searchable={searchable}
+        className={className}
+        containerClassName={containerClassName}
+        menuClassName={menuClassName}
+        value={currentValue}
+        onChange={handleModernChange}
+        options={modernOptions}
+      />
     )
   }
 )
 
 Select.displayName = "Select"
+
+export { ModernSelect, type ModernSelectOption, type ModernSelectProps }

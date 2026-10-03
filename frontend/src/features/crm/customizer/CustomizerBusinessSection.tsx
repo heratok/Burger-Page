@@ -1,10 +1,20 @@
-import React, { useState } from "react"
+import React, { useState, useMemo } from "react"
 import type { StorefrontConfig } from "@/types/restaurant"
 import { DollarSign, Clock, Globe, PauseCircle, ChevronDown, ShoppingBag, Store } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import { TIMEZONE_OPTIONS } from "@/constants/timezones"
 import { WeeklyScheduleEditor } from "./WeeklyScheduleEditor"
 import { DAY_DISPLAY_ORDER, rangesForDay } from "@/lib/storeSchedule"
+import { COMMON_CURRENCIES, getDefaultSymbolForCurrency } from "@/lib/currenciesAndTimezones"
+import {
+  POPULAR_COUNTRY_CODES,
+  UNLISTED_DIAL_CODE,
+  splitPhoneNumber,
+  combinePhoneNumber,
+} from "@/lib/countryPhoneCodes"
+import { ModernSelect, type ModernSelectOption } from "@/components/ui/ModernSelect"
+
+const DELIVERY_TIME_PRESETS = ["15 - 30 min", "30 - 45 min", "45 - 60 min", "60+ min"] as const
 
 export interface CustomizerBusinessSectionProps {
   draft: StorefrontConfig
@@ -29,6 +39,31 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
     operation: initialOpenSections?.operation ?? true,
   })
 
+  const [selectedDialCode, setSelectedDialCode] = useState(() => {
+    return splitPhoneNumber(draft.whatsappNumber).dialCode
+  })
+
+  const phoneParts = splitPhoneNumber(draft.whatsappNumber, selectedDialCode)
+  const currentDialCode = draft.whatsappNumber ? phoneParts.dialCode : selectedDialCode
+
+  const handleDialCodeChange = (newDialCode: string) => {
+    setSelectedDialCode(newDialCode)
+    const combined = combinePhoneNumber(newDialCode, phoneParts.nationalNumber)
+    setDraft((prev) => ({ ...prev, whatsappNumber: combined }))
+  }
+
+  const handleNationalNumberChange = (rawInput: string) => {
+    if (rawInput.startsWith("+")) {
+      const parsed = splitPhoneNumber(rawInput, currentDialCode)
+      setSelectedDialCode(parsed.dialCode)
+      const combined = combinePhoneNumber(parsed.dialCode, parsed.nationalNumber)
+      setDraft((prev) => ({ ...prev, whatsappNumber: combined }))
+      return
+    }
+    const combined = combinePhoneNumber(currentDialCode, rawInput)
+    setDraft((prev) => ({ ...prev, whatsappNumber: combined }))
+  }
+
   const toggleSection = (key: "channels" | "schedule" | "operation") => {
     setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }))
   }
@@ -47,6 +82,44 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
   const openDaysCount = DAY_DISPLAY_ORDER.filter(
     (d) => rangesForDay(draft.schedule, d).length > 0
   ).length
+
+  const countryOptions: ModernSelectOption[] = useMemo(() => {
+    const base: ModernSelectOption[] = POPULAR_COUNTRY_CODES.map((c) => ({
+      value: c.dialCode,
+      label: c.name,
+      badge: `+${c.dialCode}`,
+      flagCode: c.code,
+    }))
+    if (currentDialCode === UNLISTED_DIAL_CODE) {
+      return [{ value: UNLISTED_DIAL_CODE, label: "Otro indicativo", badge: "+" }, ...base]
+    }
+    return base
+  }, [currentDialCode])
+
+  const currencyOptions: ModernSelectOption[] = useMemo(() => {
+    const base: ModernSelectOption[] = COMMON_CURRENCIES.map((curr) => ({
+      value: curr.code,
+      label: curr.name,
+      badge: curr.code,
+      sublabel: curr.defaultSymbol,
+    }))
+    if (draft.currency && !base.some((c) => c.value === draft.currency)) {
+      return [{ value: draft.currency, label: draft.currency, badge: draft.currency }, ...base]
+    }
+    return base
+  }, [draft.currency])
+
+  const timezoneOptions: ModernSelectOption[] = useMemo(() => {
+    const base: ModernSelectOption[] = TIMEZONE_OPTIONS.map((tz) => ({
+      value: tz.value,
+      label: tz.label,
+      group: tz.group,
+    }))
+    if (draft.timezone && !base.some((tz) => tz.value === draft.timezone)) {
+      return [{ value: draft.timezone, label: draft.timezone }, ...base]
+    }
+    return base
+  }, [draft.timezone])
 
   return (
     <div
@@ -122,80 +195,184 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
           >
             {/* WhatsApp for Orders */}
             <div>
-              <label className="font-semibold block mb-1 text-slate-800 dark:text-slate-200">
-                Número de WhatsApp para Pedidos (con indicativo país)
-              </label>
-              <input
-                type="tel"
-                maxLength={20}
-                value={draft.whatsappNumber}
-                onChange={(e) => setDraft((prev) => ({ ...prev, whatsappNumber: e.target.value }))}
-                placeholder="573022575805"
-                className="w-full rounded-xl border p-2.5 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white font-mono font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-              />
+              <div className="flex items-center justify-between mb-1">
+                <label className="font-semibold block text-slate-800 dark:text-slate-200">
+                  Número de WhatsApp para Pedidos
+                </label>
+                {draft.whatsappNumber ? (
+                  <span className="font-mono text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                    +{draft.whatsappNumber}
+                  </span>
+                ) : (
+                  <span className="text-[11px] text-slate-400 dark:text-slate-500">
+                    Sin WhatsApp configurado
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                <div className="sm:col-span-5">
+                  <ModernSelect
+                    id="business-country-code"
+                    ariaLabel="Indicativo de país"
+                    value={currentDialCode}
+                    onChange={handleDialCodeChange}
+                    options={countryOptions}
+                    searchPlaceholder="Buscar país o indicativo (+57, Colombia...)"
+                  />
+                </div>
+                <div className="sm:col-span-7">
+                  <input
+                    type="tel"
+                    aria-label="Número de WhatsApp local"
+                    maxLength={20}
+                    value={phoneParts.nationalNumber}
+                    onChange={(e) => handleNationalNumberChange(e.target.value)}
+                    placeholder="3022575805"
+                    className="w-full rounded-xl border border-slate-200 p-2.5 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white font-mono font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-xs"
+                  />
+                </div>
+              </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
                 Los pedidos finalizados por los clientes se enviarán formateados a este número.
+                {draft.whatsappNumber && (
+                  <span className="ml-1 text-slate-700 dark:text-slate-300 font-medium">
+                    (Destino: <span className="font-mono font-semibold">+{draft.whatsappNumber}</span>)
+                  </span>
+                )}
               </p>
             </div>
 
             {/* Pricing & Order Thresholds */}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
-                <label className="font-semibold block mb-1 text-slate-800 dark:text-slate-200">
-                  Costo Domicilio Base ($)
+                <label
+                  htmlFor="business-delivery-fee"
+                  className="font-semibold block mb-1 text-slate-800 dark:text-slate-200"
+                >
+                  Costo Domicilio Base
                 </label>
-                <input
-                  type="number"
-                  min={0}
-                  max={10000000}
-                  value={draft.deliveryFee}
-                  onChange={(e) => setDraft((prev) => ({ ...prev, deliveryFee: Number(e.target.value) }))}
-                  className="w-full rounded-xl border p-2.5 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                />
+                <div className="flex rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800 focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500 overflow-hidden bg-white">
+                  <span className="inline-flex items-center px-3 text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 border-r border-slate-200 dark:border-slate-700 font-mono font-semibold text-xs select-none">
+                    {draft.currencySymbol || "$"}
+                  </span>
+                  <input
+                    id="business-delivery-fee"
+                    type="number"
+                    min={0}
+                    max={10000000}
+                    value={draft.deliveryFee}
+                    onChange={(e) => setDraft((prev) => ({ ...prev, deliveryFee: Number(e.target.value) }))}
+                    className="w-full p-2.5 bg-transparent text-slate-900 dark:text-white outline-none font-mono text-xs"
+                  />
+                </div>
               </div>
               <div>
-                <label className="font-semibold block mb-1 text-slate-800 dark:text-slate-200">
-                  Pedido Mínimo de Compra ($)
+                <label
+                  htmlFor="business-min-order"
+                  className="font-semibold block mb-1 text-slate-800 dark:text-slate-200"
+                >
+                  Pedido Mínimo de Compra
                 </label>
-                <input
-                  type="number"
-                  min={0}
-                  max={10000000}
-                  value={draft.minOrderAmount || 0}
-                  onChange={(e) => setDraft((prev) => ({ ...prev, minOrderAmount: Number(e.target.value) }))}
-                  placeholder="20000"
-                  className="w-full rounded-xl border p-2.5 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                />
+                <div className="flex rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800 focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500 overflow-hidden bg-white">
+                  <span className="inline-flex items-center px-3 text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 border-r border-slate-200 dark:border-slate-700 font-mono font-semibold text-xs select-none">
+                    {draft.currencySymbol || "$"}
+                  </span>
+                  <input
+                    id="business-min-order"
+                    type="number"
+                    min={0}
+                    max={10000000}
+                    value={draft.minOrderAmount || 0}
+                    onChange={(e) => setDraft((prev) => ({ ...prev, minOrderAmount: Number(e.target.value) }))}
+                    placeholder="20000"
+                    className="w-full p-2.5 bg-transparent text-slate-900 dark:text-white outline-none font-mono text-xs"
+                  />
+                </div>
               </div>
             </div>
 
             {/* Delivery Estimate & Currency */}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
-                <label className="font-semibold block mb-1 text-slate-800 dark:text-slate-200">
+                <label
+                  htmlFor="business-delivery-time"
+                  className="font-semibold block mb-1 text-slate-800 dark:text-slate-200"
+                >
                   Tiempo Estimado Entrega
                 </label>
                 <input
+                  id="business-delivery-time"
                   type="text"
                   maxLength={50}
                   value={draft.estimatedDeliveryTime}
                   onChange={(e) => setDraft((prev) => ({ ...prev, estimatedDeliveryTime: e.target.value }))}
                   placeholder="30 - 45 min"
-                  className="w-full rounded-xl border p-2.5 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                  className="w-full rounded-xl border border-slate-200 p-2.5 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-xs"
                 />
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {DELIVERY_TIME_PRESETS.map((preset) => {
+                    const isSelected = draft.estimatedDeliveryTime === preset
+                    return (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() => setDraft((prev) => ({ ...prev, estimatedDeliveryTime: preset }))}
+                        className={`px-2 py-1 rounded-lg text-[11px] font-medium transition-colors cursor-pointer border ${
+                          isSelected
+                            ? "bg-indigo-500/15 border-indigo-500/40 text-indigo-700 dark:text-indigo-300 font-semibold"
+                            : "bg-slate-100 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200/80 dark:hover:bg-slate-700"
+                        }`}
+                      >
+                        {preset}
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
-              <div>
-                <label className="font-semibold block mb-1 text-slate-800 dark:text-slate-200">
-                  Símbolo de Moneda
-                </label>
-                <input
-                  type="text"
-                  maxLength={5}
-                  value={draft.currencySymbol || "$"}
-                  onChange={(e) => setDraft((prev) => ({ ...prev, currencySymbol: e.target.value }))}
-                  placeholder="$"
-                  className="w-full rounded-xl border p-2.5 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white font-mono focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                />
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div className="sm:col-span-2">
+                  <label
+                    htmlFor="business-currency"
+                    className="font-semibold block mb-1 text-slate-800 dark:text-slate-200"
+                  >
+                    Moneda
+                  </label>
+                  <ModernSelect
+                    id="business-currency"
+                    ariaLabel="Moneda"
+                    value={draft.currency || "COP"}
+                    onChange={(nextCurrency) => {
+                      const defaultSym = getDefaultSymbolForCurrency(nextCurrency)
+                      setDraft((prev) => ({
+                        ...prev,
+                        currency: nextCurrency,
+                        currencySymbol: defaultSym,
+                      }))
+                    }}
+                    options={currencyOptions}
+                    searchPlaceholder="Buscar moneda (COP, USD, MXN...)"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="business-currency-symbol"
+                    className="font-semibold block mb-1 text-slate-800 dark:text-slate-200"
+                  >
+                    Símbolo
+                  </label>
+                  <input
+                    id="business-currency-symbol"
+                    aria-label="Símbolo de moneda"
+                    type="text"
+                    maxLength={5}
+                    value={draft.currencySymbol || "$"}
+                    onChange={(e) => setDraft((prev) => ({ ...prev, currencySymbol: e.target.value }))}
+                    placeholder="$"
+                    className="w-full rounded-xl border border-slate-200 p-2.5 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white font-mono text-center focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-xs"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -270,21 +447,14 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
                 El horario de apertura y cierre se calcula automáticamente con base en la hora de esta región.
               </p>
-              <select
+              <ModernSelect
                 id="business-timezone"
+                ariaLabel="Zona horaria"
                 value={draft.timezone}
-                onChange={(e) => setDraft((prev) => ({ ...prev, timezone: e.target.value }))}
-                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none cursor-pointer"
-              >
-                {!TIMEZONE_OPTIONS.some((tz) => tz.value === draft.timezone) && (
-                  <option value={draft.timezone}>{draft.timezone}</option>
-                )}
-                {TIMEZONE_OPTIONS.map((tz) => (
-                  <option key={tz.value} value={tz.value}>
-                    {tz.label}
-                  </option>
-                ))}
-              </select>
+                onChange={(timezone) => setDraft((prev) => ({ ...prev, timezone }))}
+                options={timezoneOptions}
+                searchPlaceholder="Buscar zona horaria (Bogotá, Madrid, UTC...)"
+              />
             </div>
           </div>
         )}
@@ -387,7 +557,7 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
                 value={draft.address}
                 onChange={(e) => setDraft((prev) => ({ ...prev, address: e.target.value }))}
                 placeholder="Calle 45 # 22-18"
-                className="w-full rounded-xl border p-2.5 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                className="w-full rounded-xl border border-slate-200 p-2.5 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
               />
             </div>
           </div>

@@ -276,7 +276,7 @@ describe("AuditLogScreen (TDD)", () => {
 
     // Second call resolves immediately with mockAuditLogs[1]
     await waitFor(() => {
-      expect(screen.getByText("Creación de usuario")).toBeDefined()
+      expect(screen.getAllByText("Creación de usuario").length).toBeGreaterThan(0)
     })
 
     // Now first (stale) call resolves with restaurant.update

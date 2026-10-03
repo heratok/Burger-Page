@@ -411,10 +411,10 @@ describe("EditRestaurantModal (TDD)", () => {
 
     const tzSelect = screen.getByLabelText(/Zona Horaria/i) as HTMLSelectElement
     expect(tzSelect.value).toBe("Asia/Tokyo")
-    expect(screen.getByText(/Asia\/Tokyo \(actual\)/i)).toBeDefined()
+    expect(screen.getAllByText(/Asia\/Tokyo \(actual\)/i).length).toBeGreaterThan(0)
 
     const currSelect = screen.getByLabelText(/^Moneda/i) as HTMLSelectElement
     expect(currSelect.value).toBe("JPY")
-    expect(screen.getByText(/JPY \(actual\)/i)).toBeDefined()
+    expect(screen.getAllByText(/JPY \(actual\)/i).length).toBeGreaterThan(0)
   })
 })
