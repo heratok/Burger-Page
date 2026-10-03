@@ -7,6 +7,7 @@ import { apiClient, isNotFoundError } from "@/core/api/apiClient"
 import { toast } from "sonner"
 import { nextTempId } from "@/lib/ids"
 import { splitConfigForApi } from "@/lib/storeSchedule"
+import { runOptimisticMutation } from "./optimisticMutation"
 
 export interface CatalogContextType {
   storeConfig: StorefrontConfig
@@ -118,109 +119,101 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const updateStoreConfig = useCallback(
     (newConfig: Partial<StorefrontConfig>) => {
-      const previousConfig = activeRestaurant?.config
-
-      updateActiveRestaurantRecord((current) => ({
-        ...current,
-        config: { ...current.config, ...newConfig },
-      }))
-      toast.success("Diseño y configuración actualizados")
-
-      if (activeRestaurant?.id) {
-        apiClient
-          .updateRestaurant(activeRestaurant.id, splitConfigForApi(newConfig))
-          .catch((err) => {
-            if (import.meta.env?.MODE !== 'test') {
-              console.warn("Could not persist store config to backend API:", err)
-            }
-            if (previousConfig) {
-              updateActiveRestaurantRecord((current) => ({
-                ...current,
-                config: previousConfig,
-              }))
-            }
-            toast.error("Error al guardar la configuración en el servidor")
-          })
-      }
+      const restaurantId = activeRestaurant?.id
+      void runOptimisticMutation({
+        apply: () => {
+          const previousConfig = activeRestaurant?.config
+          updateActiveRestaurantRecord((current) => ({
+            ...current,
+            config: { ...current.config, ...newConfig },
+          }))
+          return previousConfig
+        },
+        call: () =>
+          restaurantId ? apiClient.updateRestaurant(restaurantId, splitConfigForApi(newConfig)) : Promise.resolve(undefined),
+        rollback: (previousConfig) => {
+          if (!previousConfig) return
+          updateActiveRestaurantRecord((current) => ({ ...current, config: previousConfig }))
+        },
+        toast: {
+          success: "Diseño y configuración actualizados",
+          error: "Error al guardar la configuración en el servidor",
+        },
+        warnMessage: "Could not persist store config to backend API:",
+      })
     },
     [activeRestaurant?.id, activeRestaurant?.config, updateActiveRestaurantRecord]
   )
 
   const resetStoreConfig = useCallback(() => {
-    const previousConfig = activeRestaurant?.config
-
-    updateActiveRestaurantRecord((current) => ({
-      ...current,
-      config: {
-        ...DEFAULT_STORE_CONFIG,
-        // Resetting the design never touches the opening hours or the pause.
-        schedule: current.config.schedule,
-        timezone: current.config.timezone,
-        ordersPaused: current.config.ordersPaused,
+    const restaurantId = activeRestaurant?.id
+    void runOptimisticMutation({
+      apply: () => {
+        const previousConfig = activeRestaurant?.config
+        updateActiveRestaurantRecord((current) => ({
+          ...current,
+          config: {
+            ...DEFAULT_STORE_CONFIG,
+            // Resetting the design never touches the opening hours or the pause.
+            schedule: current.config.schedule,
+            timezone: current.config.timezone,
+            ordersPaused: current.config.ordersPaused,
+          },
+        }))
+        return previousConfig
       },
-    }))
-    toast.info("Diseño restablecido a los valores por defecto")
-
-    if (activeRestaurant?.id) {
-      apiClient
-        .updateRestaurant(activeRestaurant.id, { config: splitConfigForApi(DEFAULT_STORE_CONFIG).config })
-        .catch((err) => {
-          if (import.meta.env?.MODE !== 'test') {
-            console.warn("Could not persist reset store config to backend API:", err)
-          }
-          if (previousConfig) {
-            updateActiveRestaurantRecord((current) => ({
-              ...current,
-              config: previousConfig,
-            }))
-          }
-          toast.error("Error al restablecer la configuración en el servidor")
-        })
-    }
+      call: () =>
+        restaurantId
+          ? apiClient.updateRestaurant(restaurantId, { config: splitConfigForApi(DEFAULT_STORE_CONFIG).config })
+          : Promise.resolve(undefined),
+      rollback: (previousConfig) => {
+        if (!previousConfig) return
+        updateActiveRestaurantRecord((current) => ({ ...current, config: previousConfig }))
+      },
+      toast: { info: "Diseño restablecido a los valores por defecto", error: "Error al restablecer la configuración en el servidor" },
+      warnMessage: "Could not persist reset store config to backend API:",
+    })
   }, [activeRestaurant?.id, activeRestaurant?.config, updateActiveRestaurantRecord])
 
   const addProduct = useCallback(
     (item: Omit<MenuItem, "id">) => {
       const tempId = nextTempId("prod")
       const newItem: MenuItem = { ...item, id: tempId }
-      let previousProducts: MenuItem[] = []
 
-      updateActiveRestaurantRecord((current) => {
-        previousProducts = current.products
-        return {
-          ...current,
-          products: [newItem, ...current.products],
-        }
-      })
-      toast.success(`"${item.name}" agregado al menú`)
-
-      // Sync with backend API
-      apiClient.createProduct({
-        restaurantId: activeRestaurant.id,
-        name: item.name,
-        description: item.description,
-        price: item.price,
-        category: item.category,
-        imageUrl: item.src,
-        isAvailable: item.inStock,
-        isPopular: item.isPopular,
-        isNew: item.isNew,
-        preparationTimeMinutes: item.preparationTimeMinutes,
-      }).then((created) => {
-        updateActiveRestaurantRecord((current) => ({
-          ...current,
-          products: current.products.map((p) => (p.id === tempId ? created : p)),
-        }))
-      }).catch((err) => {
-        if (import.meta.env?.MODE !== 'test') {
-          console.warn("Could not persist product to backend API:", err)
-        }
-        // Rollback to pre-optimistic snapshot
-        updateActiveRestaurantRecord((current) => ({
-          ...current,
-          products: previousProducts,
-        }))
-        toast.error("Error al guardar producto en el servidor")
+      void runOptimisticMutation({
+        apply: () => {
+          updateActiveRestaurantRecord((current) => ({
+            ...current,
+            products: [newItem, ...current.products],
+          }))
+        },
+        call: () =>
+          apiClient.createProduct({
+            restaurantId: activeRestaurant.id,
+            name: item.name,
+            description: item.description,
+            price: item.price,
+            category: item.category,
+            imageUrl: item.src,
+            isAvailable: item.inStock,
+            isPopular: item.isPopular,
+            isNew: item.isNew,
+            preparationTimeMinutes: item.preparationTimeMinutes,
+          }),
+        onSuccess: (created) => {
+          updateActiveRestaurantRecord((current) => ({
+            ...current,
+            products: current.products.map((p) => (p.id === tempId ? created : p)),
+          }))
+        },
+        rollback: () => {
+          updateActiveRestaurantRecord((current) => ({
+            ...current,
+            products: current.products.filter((p) => p.id !== tempId),
+          }))
+        },
+        toast: { success: `"${item.name}" agregado al menú`, error: "Error al guardar producto en el servidor" },
+        warnMessage: "Could not persist product to backend API:",
       })
     },
     [activeRestaurant.id, updateActiveRestaurantRecord]
@@ -228,41 +221,41 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const updateProduct = useCallback(
     (id: string, updates: Partial<MenuItem>) => {
+      // `previousProducts` is captured as a side effect inside the updater
+      // passed to updateActiveRestaurantRecord, which React only invokes when
+      // it next flushes — not synchronously. rollback() runs later (after the
+      // awaited call rejects), by which point the flush has happened and this
+      // closure read is correct; reading it from apply()'s return value would
+      // not be.
       let previousProducts: MenuItem[] = []
-
-      updateActiveRestaurantRecord((current) => {
-        previousProducts = current.products
-        return {
-          ...current,
-          products: current.products.map((p) =>
-            p.id === id ? { ...p, ...updates } : p
-          ),
-        }
-      })
-      toast.success("Producto actualizado")
-
-      // Sync with backend API
-      const payload: Record<string, unknown> = {}
-      if (updates.name !== undefined) payload.name = updates.name
-      if (updates.description !== undefined) payload.description = updates.description
-      if (updates.price !== undefined) payload.price = updates.price
-      if (updates.category !== undefined) payload.category = updates.category
-      if (updates.src !== undefined) payload.imageUrl = updates.src
-      if (updates.inStock !== undefined) payload.isAvailable = updates.inStock
-      if (updates.isPopular !== undefined) payload.isPopular = updates.isPopular
-      if (updates.isNew !== undefined) payload.isNew = updates.isNew
-      if (updates.preparationTimeMinutes !== undefined) payload.preparationTimeMinutes = updates.preparationTimeMinutes
-
-      apiClient.updateProduct(id, payload, activeRestaurant.id).catch((err) => {
-        if (import.meta.env?.MODE !== 'test') {
-          console.warn("Could not update product in backend API:", err)
-        }
-        // Rollback to pre-optimistic snapshot
-        updateActiveRestaurantRecord((current) => ({
-          ...current,
-          products: previousProducts,
-        }))
-        toast.error("Error al actualizar producto en el servidor")
+      void runOptimisticMutation({
+        apply: () => {
+          updateActiveRestaurantRecord((current) => {
+            previousProducts = current.products
+            return {
+              ...current,
+              products: current.products.map((p) => (p.id === id ? { ...p, ...updates } : p)),
+            }
+          })
+        },
+        call: () => {
+          const payload: Record<string, unknown> = {}
+          if (updates.name !== undefined) payload.name = updates.name
+          if (updates.description !== undefined) payload.description = updates.description
+          if (updates.price !== undefined) payload.price = updates.price
+          if (updates.category !== undefined) payload.category = updates.category
+          if (updates.src !== undefined) payload.imageUrl = updates.src
+          if (updates.inStock !== undefined) payload.isAvailable = updates.inStock
+          if (updates.isPopular !== undefined) payload.isPopular = updates.isPopular
+          if (updates.isNew !== undefined) payload.isNew = updates.isNew
+          if (updates.preparationTimeMinutes !== undefined) payload.preparationTimeMinutes = updates.preparationTimeMinutes
+          return apiClient.updateProduct(id, payload, activeRestaurant.id)
+        },
+        rollback: () => {
+          updateActiveRestaurantRecord((current) => ({ ...current, products: previousProducts }))
+        },
+        toast: { success: "Producto actualizado", error: "Error al actualizar producto en el servidor" },
+        warnMessage: "Could not update product in backend API:",
       })
     },
     [activeRestaurant.id, updateActiveRestaurantRecord]
@@ -271,31 +264,20 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const deleteProduct = useCallback(
     (id: string) => {
       let previousProducts: MenuItem[] = []
-
-      updateActiveRestaurantRecord((current) => {
-        previousProducts = current.products
-        return {
-          ...current,
-          products: current.products.filter((p) => p.id !== id),
-        }
-      })
-      toast.success("Producto eliminado del menú")
-
-      // Sync with backend API
-      apiClient.deleteProduct(id, activeRestaurant.id).catch((err) => {
-        if (isNotFoundError(err)) {
-          // Resource already absent on server: preserve client deletion without rollback
-          return
-        }
-        if (import.meta.env?.MODE !== 'test') {
-          console.warn("Could not delete product from backend API:", err)
-        }
-        // Rollback to pre-optimistic snapshot
-        updateActiveRestaurantRecord((current) => ({
-          ...current,
-          products: previousProducts,
-        }))
-        toast.error("Error al eliminar producto del servidor")
+      void runOptimisticMutation({
+        apply: () => {
+          updateActiveRestaurantRecord((current) => {
+            previousProducts = current.products
+            return { ...current, products: current.products.filter((p) => p.id !== id) }
+          })
+        },
+        call: () => apiClient.deleteProduct(id, activeRestaurant.id),
+        rollback: () => {
+          updateActiveRestaurantRecord((current) => ({ ...current, products: previousProducts }))
+        },
+        toast: { success: "Producto eliminado del menú", error: "Error al eliminar producto del servidor" },
+        skipRollbackIfError: isNotFoundError,
+        warnMessage: "Could not delete product from backend API:",
       })
     },
     [activeRestaurant.id, updateActiveRestaurantRecord]
@@ -308,23 +290,26 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
       // Computed from current state OUTSIDE any updater (updaters must be pure).
       const isNowInStock = !target.inStock
 
-      updateActiveRestaurantRecord((current) => ({
-        ...current,
-        products: current.products.map((p) => (p.id === id ? { ...p, inStock: isNowInStock } : p)),
-      }))
-      toast.info(`Producto marcado como ${isNowInStock ? "Disponible" : "Agotado"}`)
-
-      // Sync with backend API (restaurantId is required for super_admin)
-      apiClient.updateProduct(id, { isAvailable: isNowInStock }, activeRestaurant.id).catch((err) => {
-        if (import.meta.env?.MODE !== 'test') {
-          console.warn("Could not update product availability in backend API:", err)
-        }
-        // Roll back only this product's availability, from current state
-        updateActiveRestaurantRecord((current) => ({
-          ...current,
-          products: current.products.map((p) => (p.id === id ? { ...p, inStock: !isNowInStock } : p)),
-        }))
-        toast.error("Error al actualizar disponibilidad en el servidor")
+      void runOptimisticMutation({
+        apply: () => {
+          updateActiveRestaurantRecord((current) => ({
+            ...current,
+            products: current.products.map((p) => (p.id === id ? { ...p, inStock: isNowInStock } : p)),
+          }))
+        },
+        call: () => apiClient.updateProduct(id, { isAvailable: isNowInStock }, activeRestaurant.id),
+        rollback: () => {
+          // Roll back only this product's availability, from current state.
+          updateActiveRestaurantRecord((current) => ({
+            ...current,
+            products: current.products.map((p) => (p.id === id ? { ...p, inStock: !isNowInStock } : p)),
+          }))
+        },
+        toast: {
+          info: `Producto marcado como ${isNowInStock ? "Disponible" : "Agotado"}`,
+          error: "Error al actualizar disponibilidad en el servidor",
+        },
+        warnMessage: "Could not update product availability in backend API:",
       })
     },
     [activeRestaurant.id, activeRestaurant.products, updateActiveRestaurantRecord]
@@ -334,39 +319,36 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
     (item: Omit<AdditionItem, "id">) => {
       const tempId = nextTempId("add")
       const newItem: AdditionItem = { ...item, id: tempId }
-      let previousAdditions: AdditionItem[] = []
-
-      updateActiveRestaurantRecord((current) => {
-        previousAdditions = current.additions
-        return {
-          ...current,
-          additions: [...current.additions, newItem],
-        }
-      })
-      toast.success(`Adicional "${item.name}" creado`)
-
-      // Sync with backend API
       const targetRestId = activeRestaurant?.id
-      apiClient.createAddition({
-        name: item.name,
-        price: item.price,
-        isAvailable: item.available,
-        restaurantId: targetRestId,
-      }).then((created) => {
-        updateActiveRestaurantRecord((current) => ({
-          ...current,
-          additions: current.additions.map((a) => (a.id === tempId ? created : a)),
-        }))
-      }).catch((err) => {
-        if (import.meta.env?.MODE !== 'test') {
-          console.warn("Could not persist addition to backend API:", err)
-        }
-        // Rollback to pre-optimistic snapshot
-        updateActiveRestaurantRecord((current) => ({
-          ...current,
-          additions: previousAdditions,
-        }))
-        toast.error("Error al guardar adicional en el servidor")
+
+      void runOptimisticMutation({
+        apply: () => {
+          updateActiveRestaurantRecord((current) => ({
+            ...current,
+            additions: [...current.additions, newItem],
+          }))
+        },
+        call: () =>
+          apiClient.createAddition({
+            name: item.name,
+            price: item.price,
+            isAvailable: item.available,
+            restaurantId: targetRestId,
+          }),
+        onSuccess: (created) => {
+          updateActiveRestaurantRecord((current) => ({
+            ...current,
+            additions: current.additions.map((a) => (a.id === tempId ? created : a)),
+          }))
+        },
+        rollback: () => {
+          updateActiveRestaurantRecord((current) => ({
+            ...current,
+            additions: current.additions.filter((a) => a.id !== tempId),
+          }))
+        },
+        toast: { success: `Adicional "${item.name}" creado`, error: "Error al guardar adicional en el servidor" },
+        warnMessage: "Could not persist addition to backend API:",
       })
     },
     [activeRestaurant?.id, updateActiveRestaurantRecord]
@@ -374,36 +356,31 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const updateAddition = useCallback(
     (id: string, updates: Partial<AdditionItem>) => {
+      const targetRestId = activeRestaurant?.id
       let previousAdditions: AdditionItem[] = []
 
-      updateActiveRestaurantRecord((current) => {
-        previousAdditions = current.additions
-        return {
-          ...current,
-          additions: current.additions.map((a) =>
-            a.id === id ? { ...a, ...updates } : a
-          ),
-        }
-      })
-      toast.success("Adicional actualizado")
-
-      // Sync with backend API
-      const targetRestId = activeRestaurant?.id
-      apiClient.updateAddition(id, {
-        name: updates.name,
-        price: updates.price,
-        isAvailable: updates.available,
-        restaurantId: targetRestId,
-      }).catch((err) => {
-        if (import.meta.env?.MODE !== 'test') {
-          console.warn("Could not update addition in backend API:", err)
-        }
-        // Rollback to pre-optimistic snapshot
-        updateActiveRestaurantRecord((current) => ({
-          ...current,
-          additions: previousAdditions,
-        }))
-        toast.error("Error al actualizar adicional en el servidor")
+      void runOptimisticMutation({
+        apply: () => {
+          updateActiveRestaurantRecord((current) => {
+            previousAdditions = current.additions
+            return {
+              ...current,
+              additions: current.additions.map((a) => (a.id === id ? { ...a, ...updates } : a)),
+            }
+          })
+        },
+        call: () =>
+          apiClient.updateAddition(id, {
+            name: updates.name,
+            price: updates.price,
+            isAvailable: updates.available,
+            restaurantId: targetRestId,
+          }),
+        rollback: () => {
+          updateActiveRestaurantRecord((current) => ({ ...current, additions: previousAdditions }))
+        },
+        toast: { success: "Adicional actualizado", error: "Error al actualizar adicional en el servidor" },
+        warnMessage: "Could not update addition in backend API:",
       })
     },
     [activeRestaurant?.id, updateActiveRestaurantRecord]
@@ -411,33 +388,23 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const deleteAddition = useCallback(
     (id: string) => {
+      const targetRestId = activeRestaurant?.id
       let previousAdditions: AdditionItem[] = []
 
-      updateActiveRestaurantRecord((current) => {
-        previousAdditions = current.additions
-        return {
-          ...current,
-          additions: current.additions.filter((a) => a.id !== id),
-        }
-      })
-      toast.success("Adicional eliminado")
-
-      // Sync with backend API
-      const targetRestId = activeRestaurant?.id
-      apiClient.deleteAddition(id, targetRestId).catch((err) => {
-        if (isNotFoundError(err)) {
-          // Resource already absent on server: preserve client deletion without rollback
-          return
-        }
-        if (import.meta.env?.MODE !== 'test') {
-          console.warn("Could not delete addition from backend API:", err)
-        }
-        // Rollback to pre-optimistic snapshot
-        updateActiveRestaurantRecord((current) => ({
-          ...current,
-          additions: previousAdditions,
-        }))
-        toast.error("Error al eliminar adicional del servidor")
+      void runOptimisticMutation({
+        apply: () => {
+          updateActiveRestaurantRecord((current) => {
+            previousAdditions = current.additions
+            return { ...current, additions: current.additions.filter((a) => a.id !== id) }
+          })
+        },
+        call: () => apiClient.deleteAddition(id, targetRestId),
+        rollback: () => {
+          updateActiveRestaurantRecord((current) => ({ ...current, additions: previousAdditions }))
+        },
+        toast: { success: "Adicional eliminado", error: "Error al eliminar adicional del servidor" },
+        skipRollbackIfError: isNotFoundError,
+        warnMessage: "Could not delete addition from backend API:",
       })
     },
     [activeRestaurant?.id, updateActiveRestaurantRecord]
@@ -468,24 +435,17 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const previousCategories = categories
       const nextCategories = [...categories, trimmed]
 
-      updateActiveRestaurantRecord((current) => ({
-        ...current,
-        categories: nextCategories,
-      }))
-      toast.success(`Categoría "${trimmed}" creada`)
-
-      apiClient
-        .updateCategories(nextCategories, activeRestaurant.slug || activeRestaurant.id)
-        .catch((err) => {
-          if (import.meta.env?.MODE !== 'test') {
-            console.warn("Could not sync categories to backend API:", err)
-          }
-          updateActiveRestaurantRecord((current) => ({
-            ...current,
-            categories: previousCategories,
-          }))
-          toast.error("Error al guardar categoría en el servidor")
-        })
+      void runOptimisticMutation({
+        apply: () => {
+          updateActiveRestaurantRecord((current) => ({ ...current, categories: nextCategories }))
+        },
+        call: () => apiClient.updateCategories(nextCategories, activeRestaurant.slug || activeRestaurant.id),
+        rollback: () => {
+          updateActiveRestaurantRecord((current) => ({ ...current, categories: previousCategories }))
+        },
+        toast: { success: `Categoría "${trimmed}" creada`, error: "Error al guardar categoría en el servidor" },
+        warnMessage: "Could not sync categories to backend API:",
+      })
     },
     [categories, activeRestaurant.slug, activeRestaurant.id, updateActiveRestaurantRecord]
   )
@@ -512,30 +472,30 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
         p.category?.toLowerCase() === oldName.toLowerCase() ? { ...p, category: trimmedNew } : p
       )
 
-      updateActiveRestaurantRecord((current) => ({
-        ...current,
-        categories: nextCategories,
-        products: nextProducts,
-      }))
-      toast.success(`Categoría renombrada a "${trimmedNew}"`)
-
-      // Single server operation: the backend renames the category row in
-      // place, so its products keep their category (no per-product updates).
-      apiClient
-        .updateCategories(nextCategories, activeRestaurant.slug || activeRestaurant.id, [
-          { from: oldName, to: trimmedNew },
-        ])
-        .catch((err) => {
-          if (import.meta.env?.MODE !== 'test') {
-            console.warn("Could not sync categories to backend API:", err)
-          }
+      void runOptimisticMutation({
+        apply: () => {
+          updateActiveRestaurantRecord((current) => ({
+            ...current,
+            categories: nextCategories,
+            products: nextProducts,
+          }))
+        },
+        // Single server operation: the backend renames the category row in
+        // place, so its products keep their category (no per-product updates).
+        call: () =>
+          apiClient.updateCategories(nextCategories, activeRestaurant.slug || activeRestaurant.id, [
+            { from: oldName, to: trimmedNew },
+          ]),
+        rollback: () => {
           updateActiveRestaurantRecord((current) => ({
             ...current,
             categories: previousCategories,
             products: previousProducts,
           }))
-          toast.error("Error al renombrar categoría en el servidor")
-        })
+        },
+        toast: { success: `Categoría renombrada a "${trimmedNew}"`, error: "Error al renombrar categoría en el servidor" },
+        warnMessage: "Could not sync categories to backend API:",
+      })
     },
     [categories, activeRestaurant.products, activeRestaurant.slug, activeRestaurant.id, updateActiveRestaurantRecord]
   )
@@ -564,61 +524,84 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
           )
         : previousProducts
 
-      updateActiveRestaurantRecord((current) => ({
-        ...current,
-        categories: nextCategories,
-        products: nextProducts,
-      }))
-      toast.success(`Categoría "${categoryName}" eliminada`)
-
-      // Sync affected products to backend API (only when a reassignment target exists)
-      if (fallback) {
-        const affectedProducts = previousProducts.filter((p) => p.category === categoryName)
-        for (const prod of affectedProducts) {
-          apiClient.updateProduct(prod.id, { category: fallback }, activeRestaurant.id).catch((err) => {
-            if (import.meta.env?.MODE !== 'test') {
-              console.warn("Could not sync reassigned product to backend API:", err)
+      void runOptimisticMutation({
+        apply: () => {
+          updateActiveRestaurantRecord((current) => ({
+            ...current,
+            categories: nextCategories,
+            products: nextProducts,
+          }))
+        },
+        call: async () => {
+          // Sync affected products to backend API (only when a reassignment target exists).
+          // Fire-and-forget: a lone product's resync failing never blocks or
+          // rolls back the category deletion itself.
+          if (fallback) {
+            const affectedProducts = previousProducts.filter((p) => p.category === categoryName)
+            for (const prod of affectedProducts) {
+              apiClient.updateProduct(prod.id, { category: fallback }, activeRestaurant.id).catch((err) => {
+                if (import.meta.env?.MODE !== 'test') {
+                  console.warn("Could not sync reassigned product to backend API:", err)
+                }
+              })
             }
-          })
-        }
-      }
-
-      apiClient
-        .updateCategories(nextCategories, activeRestaurant.slug || activeRestaurant.id)
-        .catch((err) => {
-          if (import.meta.env?.MODE !== 'test') {
-            console.warn("Could not sync categories to backend API:", err)
           }
+          return apiClient.updateCategories(nextCategories, activeRestaurant.slug || activeRestaurant.id)
+        },
+        rollback: () => {
           updateActiveRestaurantRecord((current) => ({
             ...current,
             categories: previousCategories,
             products: previousProducts,
           }))
-          toast.error("Error al eliminar categoría del servidor")
-        })
+        },
+        toast: { success: `Categoría "${categoryName}" eliminada`, error: "Error al eliminar categoría del servidor" },
+        warnMessage: "Could not sync categories to backend API:",
+      })
     },
     [categories, activeRestaurant.products, activeRestaurant.slug, activeRestaurant.id, updateActiveRestaurantRecord]
   )
 
-  const value: CatalogContextType = {
-    storeConfig: activeRestaurant.config,
-    updateStoreConfig,
-    resetStoreConfig,
-    categories,
-    addCategory,
-    updateCategory,
-    deleteCategory,
-    products: activeRestaurant.products,
-    addProduct,
-    updateProduct,
-    deleteProduct,
-    toggleProductStock,
-    additions: activeRestaurant.additions,
-    addAddition,
-    updateAddition,
-    deleteAddition,
-    isLoadingCatalog,
-  }
+  const value: CatalogContextType = useMemo(
+    () => ({
+      storeConfig: activeRestaurant.config,
+      updateStoreConfig,
+      resetStoreConfig,
+      categories,
+      addCategory,
+      updateCategory,
+      deleteCategory,
+      products: activeRestaurant.products,
+      addProduct,
+      updateProduct,
+      deleteProduct,
+      toggleProductStock,
+      additions: activeRestaurant.additions,
+      addAddition,
+      updateAddition,
+      deleteAddition,
+      isLoadingCatalog,
+    }),
+    [
+      activeRestaurant.config,
+      updateStoreConfig,
+      resetStoreConfig,
+      categories,
+      addCategory,
+      updateCategory,
+      deleteCategory,
+      activeRestaurant.products,
+      addProduct,
+      updateProduct,
+      deleteProduct,
+      toggleProductStock,
+      activeRestaurant.additions,
+      addAddition,
+      updateAddition,
+      deleteAddition,
+      isLoadingCatalog,
+    ]
+  )
 
   return <CatalogContext.Provider value={value}>{children}</CatalogContext.Provider>
 }

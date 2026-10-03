@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest"
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
 import { seedBlankActiveTenant } from "@/test/fixtures"
 import { renderHook, act, waitFor } from "@testing-library/react"
 import React from "react"
@@ -717,5 +717,67 @@ describe("TenantContext.loadRestaurant - never shows another tenant", () => {
       })
       expect(result.current.activeRestaurant).toBe(before)
     })
+  })
+})
+
+describe("TenantContext - initial activeRestaurantId on public storefront routes", () => {
+  const record = (id: string, slug: string): any => ({
+    id,
+    slug,
+    isActive: true,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    config: { ...DEFAULT_STORE_CONFIG, name: id },
+    categories: [],
+    products: [],
+    additions: [],
+    orders: [],
+    customers: [],
+  })
+
+  const mountAt = (pathname: string) => {
+    window.history.pushState({}, "", pathname)
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>{children}</TenantProvider>
+    )
+    return renderHook(() => useTenant(), { wrapper })
+  }
+
+  beforeEach(() => {
+    localStorage.clear()
+    sessionStorage.clear()
+    vi.restoreAllMocks()
+    vi.spyOn(apiClient, "hasToken").mockReturnValue(false)
+    localStorage.setItem(
+      "burger_page_platform_v2",
+      JSON.stringify({ version: 2, restaurants: [record("rest-alive", "alive"), record("rest-other", "other")] })
+    )
+    localStorage.setItem("burger_page_active_rest_v2", "rest-alive")
+  })
+
+  afterEach(() => {
+    window.history.pushState({}, "", "/")
+  })
+
+  it.each(["/", "/admin", "/admin/orders"])("honors the persisted tenant on the non-storefront route %s", (path) => {
+    const { result } = mountAt(path)
+    expect(result.current.activeRestaurantId).toBe("rest-alive")
+  })
+
+  it.each(["/alive", "/Alive/", "/rest-alive"])("honors the persisted tenant when the storefront URL %s matches its slug or id", (path) => {
+    const { result } = mountAt(path)
+    expect(result.current.activeRestaurantId).toBe("rest-alive")
+  })
+
+  it.each(["/other", "/typo-slug"])("discards the persisted tenant as stale on the storefront URL %s", (path) => {
+    const { result } = mountAt(path)
+    // Empty selection surfaces as the neutral placeholder tenant.
+    expect(result.current.activeRestaurantId).toBe("rest-default")
+  })
+
+  it("stays empty when the persisted id matches no known restaurant, whatever the route", () => {
+    localStorage.setItem("burger_page_active_rest_v2", "rest-ghost")
+    const { result } = mountAt("/")
+    // Empty selection surfaces as the neutral placeholder tenant.
+    expect(result.current.activeRestaurantId).toBe("rest-default")
   })
 })

@@ -11,6 +11,7 @@ import { playNotificationChime } from "@/core/audio/soundEffects"
 import { toast } from "sonner"
 import { formatCurrency, cleanPhoneNumber } from "@/lib/utils"
 import { nextTempId } from "@/lib/ids"
+import { runOptimisticMutation } from "./optimisticMutation"
 
 export interface ServerOrderResult {
   adoptedOrderNumber: number
@@ -1107,229 +1108,211 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   )
 
   const updateOrder = useCallback(
-    async (orderId: string, updates: Partial<Order>) => {
+    (orderId: string, updates: Partial<Order>) => {
       const now = new Date().toISOString()
       const targetRestId = activeRestaurant?.id
+      // Captured as a side effect inside the updateActiveRestaurantRecord
+      // updater, which React only runs when it next flushes — not
+      // synchronously here. rollback() reads it later (after the awaited
+      // call rejects), once that flush has definitely happened.
       let previousOrders: Order[] = []
 
-      // Optimistic local update
-      updateActiveRestaurantRecord((current) => {
-        previousOrders = current.orders
-        return {
-          ...current,
-          orders: current.orders.map((o) =>
-            o.id === orderId
-              ? {
-                  ...o,
-                  ...updates,
-                  updatedAt: now,
-                }
-              : o
-          ),
-        }
-      })
-      toast.success("Venta actualizada correctamente")
-
-      // Backend sync
-      if (apiClient.hasToken() && targetRestId) {
-        try {
-          const updateInput = buildUpdateOrderInput(updates, activeRestaurant.products ?? [])
-          const updatedOrder = await apiClient.updateOrder(orderId, updateInput, targetRestId)
-          if (updatedOrder) {
-            updateActiveRestaurantRecord((current) => ({
+      return runOptimisticMutation({
+        apply: () => {
+          updateActiveRestaurantRecord((current) => {
+            previousOrders = current.orders
+            return {
               ...current,
-              orders: current.orders.map((o) => (o.id === orderId ? mapBackendOrderToDomain(updatedOrder, o) : o)),
-            }))
-          }
-        } catch (err) {
-          if (import.meta.env?.MODE !== 'test') {
-            console.error("Error al actualizar orden en el servidor:", err)
-          }
-          toast.error("No se pudo sincronizar la actualización con el servidor")
-          // Rollback to pre-optimistic snapshot
+              orders: current.orders.map((o) =>
+                o.id === orderId ? { ...o, ...updates, updatedAt: now } : o
+              ),
+            }
+          })
+        },
+        call: () => {
+          if (!apiClient.hasToken() || !targetRestId) return Promise.resolve(undefined)
+          const updateInput = buildUpdateOrderInput(updates, activeRestaurant.products ?? [])
+          return apiClient.updateOrder(orderId, updateInput, targetRestId)
+        },
+        onSuccess: (updatedOrder) => {
+          if (!updatedOrder) return
           updateActiveRestaurantRecord((current) => ({
             ...current,
-            orders: previousOrders,
+            orders: current.orders.map((o) => (o.id === orderId ? mapBackendOrderToDomain(updatedOrder, o) : o)),
           }))
-        }
-      }
+        },
+        rollback: () => {
+          updateActiveRestaurantRecord((current) => ({ ...current, orders: previousOrders }))
+        },
+        toast: {
+          success: "Venta actualizada correctamente",
+          error: "No se pudo sincronizar la actualización con el servidor",
+        },
+        warnMessage: "Error al actualizar orden en el servidor:",
+      }).then(() => undefined)
     },
     [activeRestaurant, updateActiveRestaurantRecord]
   )
 
   const updateOrderStatus = useCallback(
     (orderId: string, newStatus: OrderStatus) => {
-      // Remember only THIS order's previous status so a rejected transition
-      // reverts it alone (a whole-list snapshot would wipe SSE-added orders).
-      const previous = activeRestaurant.orders.find((o) => o.id === orderId)
-      const previousStatus = previous?.status
-      const previousUpdatedAt = previous?.updatedAt
-
-      updateActiveRestaurantRecord((current) => ({
-        ...current,
-        orders: current.orders.map((o) =>
-          o.id === orderId
-            ? { ...o, status: newStatus, updatedAt: new Date().toISOString() }
-            : o
-        ),
-      }))
-      toast.info(`Orden actualizada a: ${newStatus.toUpperCase()}`)
-
-      apiClient.updateOrderStatus(orderId, newStatus, activeRestaurant.id).catch((error) => {
-        if (import.meta.env?.MODE !== 'test') {
-          console.warn(`Could not sync status update for order ${orderId} to backend API:`, error)
-        }
-        // Revert the optimistic status and surface a user-visible error so
-        // the kanban never silently diverges from server state.
-        updateActiveRestaurantRecord((current) => ({
-          ...current,
-          orders: current.orders.map((o) =>
-            // Only undo our own optimistic change: if another update (SSE)
-            // already moved the order elsewhere, leave it alone.
-            o.id === orderId && previousStatus !== undefined && o.status === newStatus
-              ? { ...o, status: previousStatus, updatedAt: previousUpdatedAt ?? o.updatedAt }
-              : o
-          ),
-        }))
-        toast.error(`No se pudo actualizar la orden a: ${newStatus.toUpperCase()}`)
+      void runOptimisticMutation({
+        apply: () => {
+          // Remember only THIS order's previous status so a rejected
+          // transition reverts it alone (a whole-list snapshot would wipe
+          // SSE-added orders). Read directly from the render-scope
+          // activeRestaurant, before the optimistic update applies — not
+          // from inside the updater below, so it's available immediately.
+          const previous = activeRestaurant.orders.find((o) => o.id === orderId)
+          updateActiveRestaurantRecord((current) => ({
+            ...current,
+            orders: current.orders.map((o) =>
+              o.id === orderId
+                ? { ...o, status: newStatus, updatedAt: new Date().toISOString() }
+                : o
+            ),
+          }))
+          return { previousStatus: previous?.status, previousUpdatedAt: previous?.updatedAt }
+        },
+        call: () => apiClient.updateOrderStatus(orderId, newStatus, activeRestaurant.id),
+        rollback: ({ previousStatus, previousUpdatedAt }) => {
+          // Only undo our own optimistic change: if another update (SSE)
+          // already moved the order elsewhere, leave it alone.
+          updateActiveRestaurantRecord((current) => ({
+            ...current,
+            orders: current.orders.map((o) =>
+              o.id === orderId && previousStatus !== undefined && o.status === newStatus
+                ? { ...o, status: previousStatus, updatedAt: previousUpdatedAt ?? o.updatedAt }
+                : o
+            ),
+          }))
+        },
+        toast: {
+          info: `Orden actualizada a: ${newStatus.toUpperCase()}`,
+          error: `No se pudo actualizar la orden a: ${newStatus.toUpperCase()}`,
+        },
+        warnMessage: `Could not sync status update for order ${orderId} to backend API:`,
       })
     },
     [activeRestaurant, updateActiveRestaurantRecord]
   )
 
   const updateOrderReceipt = useCallback(
-    async (orderId: string, receiptUrl: string) => {
-      const previous = activeRestaurant.orders.find((o) => o.id === orderId)
-      const previousReceiptUrl = previous?.receiptUrl
-      const previousUpdatedAt = previous?.updatedAt
-
-      updateActiveRestaurantRecord((current) => ({
-        ...current,
-        orders: current.orders.map((o) =>
-          o.id === orderId
-            ? { ...o, receiptUrl, updatedAt: new Date().toISOString() }
-            : o
-        ),
-      }))
-
-      try {
-        await apiClient.updateOrderReceipt(orderId, receiptUrl, activeRestaurant.id)
-        toast.success("Comprobante adjuntado correctamente")
-      } catch (error) {
-        if (import.meta.env?.MODE !== 'test') {
-          console.warn(`Could not sync receipt update for order ${orderId} to backend API:`, error)
-        }
-        updateActiveRestaurantRecord((current) => ({
-          ...current,
-          orders: current.orders.map((o) =>
-            o.id === orderId && o.receiptUrl === receiptUrl
-              ? { ...o, receiptUrl: previousReceiptUrl, updatedAt: previousUpdatedAt ?? o.updatedAt }
-              : o
-          ),
-        }))
-        toast.error("No se pudo adjuntar el comprobante")
+    (orderId: string, receiptUrl: string) =>
+      runOptimisticMutation({
+        apply: () => {
+          const previous = activeRestaurant.orders.find((o) => o.id === orderId)
+          updateActiveRestaurantRecord((current) => ({
+            ...current,
+            orders: current.orders.map((o) =>
+              o.id === orderId ? { ...o, receiptUrl, updatedAt: new Date().toISOString() } : o
+            ),
+          }))
+          return { previousReceiptUrl: previous?.receiptUrl, previousUpdatedAt: previous?.updatedAt }
+        },
+        call: () => apiClient.updateOrderReceipt(orderId, receiptUrl, activeRestaurant.id),
+        rollback: ({ previousReceiptUrl, previousUpdatedAt }) => {
+          updateActiveRestaurantRecord((current) => ({
+            ...current,
+            orders: current.orders.map((o) =>
+              o.id === orderId && o.receiptUrl === receiptUrl
+                ? { ...o, receiptUrl: previousReceiptUrl, updatedAt: previousUpdatedAt ?? o.updatedAt }
+                : o
+            ),
+          }))
+        },
+        toast: {
+          success: "Comprobante adjuntado correctamente",
+          successTiming: "confirmed",
+          error: "No se pudo adjuntar el comprobante",
+        },
+        warnMessage: `Could not sync receipt update for order ${orderId} to backend API:`,
         // Callers must know the attach failed (they would otherwise report success).
-        throw error
-      }
-    },
+        rethrow: true,
+      }).then(() => undefined),
     [activeRestaurant.id, activeRestaurant.orders, updateActiveRestaurantRecord]
   )
 
   const deleteOrder = useCallback(
-    async (orderId: string) => {
+    (orderId: string) => {
       const targetRestId = activeRestaurant?.id
       let previousOrders: Order[] = []
 
-      // Optimistic update
-      updateActiveRestaurantRecord((current) => {
-        previousOrders = current.orders
-        return {
-          ...current,
-          orders: current.orders.filter((o) => o.id !== orderId),
-        }
-      })
-      toast.success("Orden eliminada")
-
-      if (apiClient.hasToken() && targetRestId) {
-        try {
-          await apiClient.deleteOrder(orderId, targetRestId)
-        } catch (err: any) {
-          if (isNotFoundError(err)) {
-            // Already deleted or never existed in server DB: keep client deletion without rollback
-            return
-          }
-
-          console.error("Error al eliminar orden del servidor:", err)
-          toast.error("No se pudo eliminar la orden del servidor")
-          // Rollback on server error
-          updateActiveRestaurantRecord((current) => ({
-            ...current,
-            orders: previousOrders,
-          }))
-        }
-      }
+      return runOptimisticMutation({
+        apply: () => {
+          updateActiveRestaurantRecord((current) => {
+            previousOrders = current.orders
+            return { ...current, orders: current.orders.filter((o) => o.id !== orderId) }
+          })
+        },
+        call: () => {
+          if (!apiClient.hasToken() || !targetRestId) return Promise.resolve(undefined)
+          return apiClient.deleteOrder(orderId, targetRestId)
+        },
+        rollback: () => {
+          updateActiveRestaurantRecord((current) => ({ ...current, orders: previousOrders }))
+        },
+        toast: { success: "Orden eliminada", error: "No se pudo eliminar la orden del servidor" },
+        skipRollbackIfError: isNotFoundError,
+        warnMessage: "Error al eliminar orden del servidor:",
+      }).then(() => undefined)
     },
     [activeRestaurant?.id, updateActiveRestaurantRecord]
   )
 
   const updateCustomer = useCallback(
-    async (id: string, updates: Partial<Customer>) => {
+    (id: string, updates: Partial<Customer>) => {
       const targetRestId = activeRestaurant?.id
       let previousCustomers: Customer[] = []
 
-      // 1. Optimistic local update
-      updateActiveRestaurantRecord((current) => {
-        previousCustomers = current.customers
-        return {
-          ...current,
-          customers: current.customers.map((c) =>
-            c.id === id ? { ...c, ...updates } : c
-          ),
-        }
-      })
-      toast.success("Ficha del cliente actualizada")
-
-      // 2. Persist to backend if token and restaurant context exist
-      if (apiClient.hasToken() && targetRestId) {
-        try {
+      return runOptimisticMutation({
+        apply: () => {
+          updateActiveRestaurantRecord((current) => {
+            previousCustomers = current.customers
+            return {
+              ...current,
+              customers: current.customers.map((c) => (c.id === id ? { ...c, ...updates } : c)),
+            }
+          })
+        },
+        call: () => {
+          if (!apiClient.hasToken() || !targetRestId) return Promise.resolve(undefined)
           const updateInput: UpdateCustomerInput = {}
           if (updates.nombre !== undefined) updateInput.name = updates.nombre
           if (updates.telefono !== undefined) updateInput.phone = updates.telefono
           if (updates.direccion !== undefined) updateInput.address = updates.direccion
           if (updates.barrio !== undefined) updateInput.barrio = updates.barrio
           if (updates.notes !== undefined) updateInput.notes = updates.notes
-
-          const updatedCustomer = await apiClient.updateCustomer(id, updateInput, targetRestId)
-          if (updatedCustomer) {
-            updateActiveRestaurantRecord((current) => ({
-              ...current,
-              customers: current.customers.map((c) =>
-                c.id === id
-                  ? {
-                      ...c,
-                      id: updatedCustomer.id || c.id,
-                      nombre: updatedCustomer.name ?? c.nombre,
-                      telefono: updatedCustomer.phone ?? c.telefono,
-                      direccion: updatedCustomer.address ?? c.direccion,
-                      barrio: updatedCustomer.barrio ?? c.barrio,
-                      notes: updatedCustomer.notes ?? c.notes,
-                    }
-                  : c
-              ),
-            }))
-          }
-        } catch (err) {
-          if (import.meta.env?.MODE !== 'test') {
-            console.error("Error al actualizar cliente en el servidor:", err)
-          }
-          toast.error("No se pudo sincronizar el cliente con el servidor")
-          // Rollback to pre-optimistic snapshot
+          return apiClient.updateCustomer(id, updateInput, targetRestId)
+        },
+        onSuccess: (updatedCustomer) => {
+          if (!updatedCustomer) return
           updateActiveRestaurantRecord((current) => ({
             ...current,
-            customers: previousCustomers,
+            customers: current.customers.map((c) =>
+              c.id === id
+                ? {
+                    ...c,
+                    id: updatedCustomer.id || c.id,
+                    nombre: updatedCustomer.name ?? c.nombre,
+                    telefono: updatedCustomer.phone ?? c.telefono,
+                    direccion: updatedCustomer.address ?? c.direccion,
+                    barrio: updatedCustomer.barrio ?? c.barrio,
+                    notes: updatedCustomer.notes ?? c.notes,
+                  }
+                : c
+            ),
           }))
-        }
-      }
+        },
+        rollback: () => {
+          updateActiveRestaurantRecord((current) => ({ ...current, customers: previousCustomers }))
+        },
+        toast: {
+          success: "Ficha del cliente actualizada",
+          error: "No se pudo sincronizar el cliente con el servidor",
+        },
+        warnMessage: "Error al actualizar cliente en el servidor:",
+      }).then(() => undefined)
     },
     [activeRestaurant?.id, updateActiveRestaurantRecord]
   )
@@ -1368,19 +1351,34 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return activeRestaurant.orders.filter((o) => o.status === "pending").length
   }, [activeRestaurant.orders])
 
-  const value: OrderContextType = {
-    orders: activeRestaurant.orders,
-    addOrder,
-    updateOrder,
-    updateOrderStatus,
-    updateOrderReceipt,
-    deleteOrder,
-    customers: activeRestaurant.customers,
-    updateCustomer,
-    pendingOrdersCount,
-    isLoadingOrders,
-    refreshOrders,
-  }
+  const value: OrderContextType = useMemo(
+    () => ({
+      orders: activeRestaurant.orders,
+      addOrder,
+      updateOrder,
+      updateOrderStatus,
+      updateOrderReceipt,
+      deleteOrder,
+      customers: activeRestaurant.customers,
+      updateCustomer,
+      pendingOrdersCount,
+      isLoadingOrders,
+      refreshOrders,
+    }),
+    [
+      activeRestaurant.orders,
+      addOrder,
+      updateOrder,
+      updateOrderStatus,
+      updateOrderReceipt,
+      deleteOrder,
+      activeRestaurant.customers,
+      updateCustomer,
+      pendingOrdersCount,
+      isLoadingOrders,
+      refreshOrders,
+    ]
+  )
 
   return <OrderContext.Provider value={value}>{children}</OrderContext.Provider>
 }

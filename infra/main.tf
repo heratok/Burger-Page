@@ -52,17 +52,9 @@ resource "azurerm_network_security_group" "main" {
     destination_address_prefix = "*"
   }
 
-  security_rule {
-    name                       = "allow-ssh-my-ip"
-    priority                   = 120
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "22"
-    source_address_prefix      = "${var.my_ip}/32"
-    destination_address_prefix = "*"
-  }
+  # SSH (22) NO se expone públicamente. El acceso es vía Tailscale (ver infra/README.md) —
+  # el tráfico entra por la interfaz tailscale0 de la VM, fuera del alcance de este NSG,
+  # así que no hace falta ninguna regla de allow acá. Cae a deny-all-inbound por diseño.
 
   security_rule {
     name                       = "deny-all-inbound"

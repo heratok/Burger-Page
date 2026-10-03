@@ -7,6 +7,7 @@ import {
   RestoredUser,
 } from '../../domain/ports/out/UserRepository.js';
 import { initialUsers } from './seedData.js';
+import { computeRemovesSuperAdminAccess, wouldStripLastActiveSuperAdmin } from '../../domain/shared/superAdminGuard.js';
 
 export class InMemoryUserRepository implements UserRepository {
   private users = new Map<string, User>();
@@ -47,17 +48,25 @@ export class InMemoryUserRepository implements UserRepository {
   }
   // The in-memory repo is single-threaded and these methods contain no await,
   // so check + write is atomic, matching the Postgres row-lock semantics.
-  private isLastActiveSuperAdmin(target: User): boolean {
-    if (target.role !== 'super_admin' || target.isActive === false) return false;
-    return ![...this.users.values()].some(
-      (u) => u.id !== target.id && u.role === 'super_admin' && u.isActive !== false
+  private hasOtherActiveSuperAdmin(excludeId: string): boolean {
+    return [...this.users.values()].some(
+      (u) => u.id !== excludeId && u.role === 'super_admin' && u.isActive !== false
     );
   }
 
   async setActive(id: string, isActive: boolean): Promise<GuardedUserChange> {
     const target = this.users.get(id);
     if (!target) return 'not_found';
-    if (!isActive && this.isLastActiveSuperAdmin(target)) return 'last_super_admin';
+    const removesAccess = !isActive;
+    if (
+      wouldStripLastActiveSuperAdmin(
+        { role: target.role, isActive: target.isActive !== false },
+        removesAccess,
+        this.hasOtherActiveSuperAdmin(id)
+      )
+    ) {
+      return 'last_super_admin';
+    }
     this.users.set(id, { ...target, isActive });
     return 'done';
   }
@@ -65,7 +74,15 @@ export class InMemoryUserRepository implements UserRepository {
   async deleteGuarded(id: string): Promise<GuardedUserChange> {
     const target = this.users.get(id);
     if (!target) return 'not_found';
-    if (this.isLastActiveSuperAdmin(target)) return 'last_super_admin';
+    if (
+      wouldStripLastActiveSuperAdmin(
+        { role: target.role, isActive: target.isActive !== false },
+        true,
+        this.hasOtherActiveSuperAdmin(id)
+      )
+    ) {
+      return 'last_super_admin';
+    }
     this.users.delete(id);
     return 'done';
   }
@@ -98,7 +115,14 @@ export class InMemoryUserRepository implements UserRepository {
     if (changes.role !== undefined) next.role = changes.role;
     if (changes.restaurantId !== undefined) next.restaurantId = changes.restaurantId ?? undefined;
     if (changes.isActive !== undefined) next.isActive = changes.isActive;
-    if (this.isLastActiveSuperAdmin(target) && (next.role !== 'super_admin' || next.isActive === false)) {
+    const removesAccess = computeRemovesSuperAdminAccess(next.role, next.isActive !== false);
+    if (
+      wouldStripLastActiveSuperAdmin(
+        { role: target.role, isActive: target.isActive !== false },
+        removesAccess,
+        this.hasOtherActiveSuperAdmin(id)
+      )
+    ) {
       return 'last_super_admin';
     }
     this.users.set(id, next);

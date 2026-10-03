@@ -1,11 +1,11 @@
 import { randomBytes } from 'node:crypto';
 import { AdminAuditRecorder, AuditActor } from '../services/AdminAuditRecorder.js';
+import { RestaurantProvisioning, SeededIds } from '../services/RestaurantProvisioning.js';
 import { ID_PREFIX, newId } from '../../domain/shared/newId.js';
 import { RestaurantRepository } from '../../domain/ports/out/RestaurantRepository.js';
 import { CategoryRepository } from '../../domain/ports/out/CategoryRepository.js';
 import { ProductRepository } from '../../domain/ports/out/ProductRepository.js';
 import { ProductAdditionRepository } from '../../domain/ports/out/ProductAdditionRepository.js';
-import { ProductAddition } from '../../domain/models/ProductAddition.js';
 import { UserRepository } from '../../domain/ports/out/UserRepository.js';
 import { PasswordHasher } from '../../domain/ports/out/PasswordHasher.js';
 import { Restaurant } from '../../domain/models/Restaurant.js';
@@ -15,11 +15,9 @@ import { ConflictError, ValidationError } from '../../domain/errors/DomainErrors
 import { normalizeSlug } from '../../domain/shared/slug.js';
 import { DEFAULT_CURRENCY_SYMBOL, defaultSymbolFor, normalizeCurrency } from '../../domain/shared/currency.js';
 import {
-  RestaurantTemplate,
   SUPPORTED_TEMPLATE_CURRENCIES,
   getRestaurantTemplate,
   isTemplateCurrencySupported,
-  scaleTemplatePrice,
   templateSeedsSampleData,
 } from '../../domain/templates/restaurantTemplates.js';
 import {
@@ -32,6 +30,8 @@ import {
 } from '../../domain/shared/restaurantSchedule.js';
 
 export class CreateRestaurantUseCase {
+  private readonly provisioning: RestaurantProvisioning;
+
   constructor(
     private readonly restaurantRepo: RestaurantRepository,
     private readonly categoryRepo?: CategoryRepository,
@@ -42,7 +42,9 @@ export class CreateRestaurantUseCase {
     private readonly productRepo?: ProductRepository,
     private readonly additionRepo?: ProductAdditionRepository,
     private readonly audit?: AdminAuditRecorder
-  ) {}
+  ) {
+    this.provisioning = new RestaurantProvisioning(restaurantRepo, categoryRepo, productRepo, additionRepo);
+  }
 
   async execute(input: CreateRestaurantInput, callerRole?: UserRole, actor?: AuditActor): Promise<Restaurant> {
     const cleanSlug = normalizeSlug(input.slug);
@@ -163,9 +165,9 @@ export class CreateRestaurantUseCase {
     const seeded: SeededIds = { categories: [], products: [], additions: [] };
     if (template && seedsSampleData) {
       try {
-        await this.seedTemplate(template, newRestaurant.categories ?? [], restaurantId, currency, seeded);
+        await this.provisioning.seedTemplate(template, newRestaurant.categories ?? [], restaurantId, currency, seeded);
       } catch (err) {
-        await this.rollbackTenant(restaurantId, seeded);
+        await this.provisioning.rollbackTenant(restaurantId, seeded);
         throw err;
       }
     }
@@ -189,7 +191,7 @@ export class CreateRestaurantUseCase {
         };
         await this.userRepo.save(adminUser, callerRole ?? 'super_admin');
       } catch (err) {
-        await this.rollbackTenant(restaurantId, seeded);
+        await this.provisioning.rollbackTenant(restaurantId, seeded);
         throw err;
       }
     }
@@ -213,85 +215,6 @@ export class CreateRestaurantUseCase {
 
     return { ...newRestaurant, adminPassword, adminUsername } as Restaurant;
   }
-
-  private async seedTemplate(
-    template: RestaurantTemplate,
-    categoryNames: string[],
-    restaurantId: string,
-    currency: string,
-    seeded: SeededIds
-  ): Promise<void> {
-    const { categoryRepo, productRepo, additionRepo } = this;
-    if (!categoryRepo || !productRepo || !additionRepo) {
-      // A template that promises dishes must never silently create none.
-      throw new ValidationError('Restaurant templates with sample data are not available in this deployment');
-    }
-
-    const categoryIds = new Map<string, string>();
-    for (let i = 0; i < categoryNames.length; i++) {
-      const id = newId(ID_PREFIX.category);
-      await categoryRepo.save({ id, restaurantId, name: categoryNames[i], displayOrder: i, isActive: true });
-      seeded.categories.push(id);
-      categoryIds.set(categoryNames[i].toLowerCase(), id);
-    }
-
-    for (let i = 0; i < template.products.length; i++) {
-      const p = template.products[i];
-      const id = newId(ID_PREFIX.product);
-      seeded.products.push(id);
-      await productRepo.save({
-        id,
-        restaurantId,
-        name: p.name,
-        description: p.description,
-        price: scaleTemplatePrice(p.price, currency),
-        category: p.category,
-        categoryId: categoryIds.get(p.category.toLowerCase()),
-        isAvailable: true,
-        isPopular: p.isPopular ?? false,
-        isNew: p.isNew ?? false,
-        preparationTimeMinutes: p.preparationTimeMinutes ?? 15,
-        displayOrder: i,
-        additions: [],
-      });
-    }
-
-    for (let i = 0; i < template.additions.length; i++) {
-      const a = template.additions[i];
-      const id = newId(ID_PREFIX.addition);
-      seeded.additions.push(id);
-      await additionRepo.save(
-        new ProductAddition(id, restaurantId, a.name, scaleTemplatePrice(a.price, currency), true, undefined, i)
-      );
-    }
-  }
-
-  private async rollbackTenant(restaurantId: string, seeded?: SeededIds): Promise<void> {
-    // Seeded rows go first, best effort: Postgres also cascades them with the
-    // tenant, but the other adapters have no foreign keys to do it.
-    if (seeded) {
-      for (const id of seeded.additions) await this.additionRepo?.delete(id, restaurantId).catch(logCleanup);
-      for (const id of seeded.products) await this.productRepo?.delete(id, restaurantId).catch(logCleanup);
-      for (const id of seeded.categories) await this.categoryRepo?.delete(id, restaurantId).catch(logCleanup);
-    }
-    try {
-      // Prefer physically removing the half-created tenant; adapters without
-      // hardDelete fall back to the (deleted_at) soft delete.
-      await (this.restaurantRepo.hardDelete ?? this.restaurantRepo.delete).call(this.restaurantRepo, restaurantId);
-    } catch (cleanupErr) {
-      console.error(`Could not roll back restaurant ${restaurantId} after a failed create:`, cleanupErr);
-    }
-  }
-}
-
-interface SeededIds {
-  categories: string[];
-  products: string[];
-  additions: string[];
-}
-
-function logCleanup(err: unknown): void {
-  console.error('Could not remove a seeded row while rolling back a failed create:', err);
 }
 
 /** Case-insensitive union keeping the first spelling and the template order first. */

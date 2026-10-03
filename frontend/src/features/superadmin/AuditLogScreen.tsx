@@ -107,6 +107,28 @@ export const AuditLogScreen: React.FC = () => {
     return map
   }, [restaurants])
 
+  // Derived once; the desktop table and mobile cards both render from this
+  // so the two views can't silently drift on what a row's fields mean.
+  const rows = useMemo(
+    () =>
+      items.map((item) => ({
+        item,
+        humanAction: AUDIT_ACTION_LABELS[item.action] || item.action,
+        badgeClass: getActionColorBadge(item.action),
+        restName: item.restaurantId ? restaurantMap.get(item.restaurantId) || item.restaurantId : "Global",
+        dateFormatted: new Date(item.createdAt).toLocaleString("es-CO", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        targetLabel: item.targetLabel || `${item.targetType}: ${item.targetId || ""}`,
+        detailsText: formatAuditDetails(item.details),
+      })),
+    [items, restaurantMap]
+  )
+
   const loadAuditLog = useCallback(async (reset = true, cursorToUse?: string) => {
     let requestId: number
     if (reset) {
@@ -388,68 +410,55 @@ export const AuditLogScreen: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {items.map((item) => {
-                    const humanAction = AUDIT_ACTION_LABELS[item.action] || item.action
-                    const badgeClass = getActionColorBadge(item.action)
-                    const restName = item.restaurantId ? restaurantMap.get(item.restaurantId) || item.restaurantId : "Global"
-                    const dateFormatted = new Date(item.createdAt).toLocaleString("es-CO", {
-                      year: "numeric",
-                      month: "short",
-                      day: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })
+                  {rows.map(({ item, humanAction, badgeClass, restName, dateFormatted, targetLabel, detailsText }) => (
+                    <tr
+                      key={item.id}
+                      className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors"
+                    >
+                      {/* Fecha */}
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                        <div className="flex items-center gap-1.5 font-mono text-[11px]">
+                          <Clock className="size-3 text-slate-400" />
+                          <span>{dateFormatted}</span>
+                        </div>
+                      </td>
 
-                    return (
-                      <tr
-                        key={item.id}
-                        className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors"
-                      >
-                        {/* Fecha */}
-                        <td className="px-4 py-3 text-slate-600 dark:text-slate-300 whitespace-nowrap">
-                          <div className="flex items-center gap-1.5 font-mono text-[11px]">
-                            <Clock className="size-3 text-slate-400" />
-                            <span>{dateFormatted}</span>
-                          </div>
-                        </td>
+                      {/* Actor */}
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1.5 font-semibold text-slate-900 dark:text-white">
+                          <User className="size-3 text-indigo-500" />
+                          <span>{item.actorUsername || item.actorUserId || "Sistema"}</span>
+                        </div>
+                      </td>
 
-                        {/* Actor */}
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-1.5 font-semibold text-slate-900 dark:text-white">
-                            <User className="size-3 text-indigo-500" />
-                            <span>{item.actorUsername || item.actorUserId || "Sistema"}</span>
-                          </div>
-                        </td>
+                      {/* Acción */}
+                      <td className="px-4 py-3">
+                        <span
+                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold border ${badgeClass}`}
+                        >
+                          {humanAction}
+                        </span>
+                      </td>
 
-                        {/* Acción */}
-                        <td className="px-4 py-3">
-                          <span
-                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold border ${badgeClass}`}
-                          >
-                            {humanAction}
-                          </span>
-                        </td>
+                      {/* Objetivo */}
+                      <td className="px-4 py-3 font-semibold text-slate-900 dark:text-white">
+                        <span>{targetLabel}</span>
+                      </td>
 
-                        {/* Objetivo */}
-                        <td className="px-4 py-3 font-semibold text-slate-900 dark:text-white">
-                          <span>{item.targetLabel || `${item.targetType}: ${item.targetId || ""}`}</span>
-                        </td>
+                      {/* Restaurante */}
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
+                        <div className="flex items-center gap-1">
+                          <Store className="size-3 text-slate-400" />
+                          <span>{restName}</span>
+                        </div>
+                      </td>
 
-                        {/* Restaurante */}
-                        <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
-                          <div className="flex items-center gap-1">
-                            <Store className="size-3 text-slate-400" />
-                            <span>{restName}</span>
-                          </div>
-                        </td>
-
-                        {/* Detalles */}
-                        <td className="px-4 py-3 text-slate-500 dark:text-slate-400 max-w-xs truncate">
-                          {formatAuditDetails(item.details)}
-                        </td>
-                      </tr>
-                    )
-                  })}
+                      {/* Detalles */}
+                      <td className="px-4 py-3 text-slate-500 dark:text-slate-400 max-w-xs truncate">
+                        {detailsText}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -457,60 +466,47 @@ export const AuditLogScreen: React.FC = () => {
 
           {/* Mobile Cards View (hidden on md and larger) */}
           <div className="md:hidden space-y-3">
-            {items.map((item) => {
-              const humanAction = AUDIT_ACTION_LABELS[item.action] || item.action
-              const badgeClass = getActionColorBadge(item.action)
-              const restName = item.restaurantId ? restaurantMap.get(item.restaurantId) || item.restaurantId : "Global"
-              const dateFormatted = new Date(item.createdAt).toLocaleString("es-CO", {
-                year: "numeric",
-                month: "short",
-                day: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              })
+            {rows.map(({ item, humanAction, badgeClass, restName, dateFormatted, targetLabel, detailsText }) => (
+              <div
+                key={item.id}
+                className={`rounded-2xl border p-4 shadow-xs space-y-2.5 text-xs ${
+                  isDark ? "border-slate-800 bg-[#0E1322]" : "border-slate-200 bg-white"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span
+                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold border ${badgeClass}`}
+                  >
+                    {humanAction}
+                  </span>
+                  <span className="font-mono text-[10px] text-slate-400 flex items-center gap-1">
+                    <Clock className="size-3" />
+                    {dateFormatted}
+                  </span>
+                </div>
 
-              return (
-                <div
-                  key={item.id}
-                  className={`rounded-2xl border p-4 shadow-xs space-y-2.5 text-xs ${
-                    isDark ? "border-slate-800 bg-[#0E1322]" : "border-slate-200 bg-white"
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span
-                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold border ${badgeClass}`}
-                    >
-                      {humanAction}
-                    </span>
-                    <span className="font-mono text-[10px] text-slate-400 flex items-center gap-1">
-                      <Clock className="size-3" />
-                      {dateFormatted}
-                    </span>
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-1 font-semibold text-slate-900 dark:text-white">
+                    <User className="size-3 text-indigo-500" />
+                    <span>{item.actorUsername || item.actorUserId || "Sistema"}</span>
                   </div>
-
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-1 font-semibold text-slate-900 dark:text-white">
-                      <User className="size-3 text-indigo-500" />
-                      <span>{item.actorUsername || item.actorUserId || "Sistema"}</span>
-                    </div>
-                    <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400 text-[11px]">
-                      <Store className="size-3 text-slate-400" />
-                      <span>{restName}</span>
-                    </div>
-                  </div>
-
-                  <div className="border-t border-slate-100 dark:border-slate-800 pt-2 flex items-center justify-between text-xs">
-                    <span className="font-bold text-slate-800 dark:text-slate-200 truncate">
-                      {item.targetLabel || `${item.targetType}: ${item.targetId || ""}`}
-                    </span>
-                  </div>
-
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/60 p-2 rounded-xl">
-                    {formatAuditDetails(item.details)}
+                  <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400 text-[11px]">
+                    <Store className="size-3 text-slate-400" />
+                    <span>{restName}</span>
                   </div>
                 </div>
-              )
-            })}
+
+                <div className="border-t border-slate-100 dark:border-slate-800 pt-2 flex items-center justify-between text-xs">
+                  <span className="font-bold text-slate-800 dark:text-slate-200 truncate">
+                    {targetLabel}
+                  </span>
+                </div>
+
+                <div className="text-[11px] text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/60 p-2 rounded-xl">
+                  {detailsText}
+                </div>
+              </div>
+            ))}
           </div>
 
           {/* Pagination Controls */}

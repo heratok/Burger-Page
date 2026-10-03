@@ -6,7 +6,6 @@ vm_image_sku             = "server"            # x64 — server-arm64 solo si ca
 admin_username           = "azureuser"
 ssh_public_key_path      = "~/.ssh/burgerpage_azure_rsa.pub" # Azure solo acepta RSA para VMs; generala con:
                                                               # ssh-keygen -t rsa -b 4096 -f ~/.ssh/burgerpage_azure_rsa -N ""
-my_ip                    = "TU_IP_PUBLICA_AQUI" # ver: curl -s https://api.ipify.org
 domain_name_label_prefix = "burger-api"
 cors_origin              = "https://heratok.app,https://www.heratok.app"
 ghcr_image               = "ghcr.io/heratok/burger-page-backend"

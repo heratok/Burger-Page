@@ -120,6 +120,22 @@ describe('Restaurant API & Multi-Tenant Security (Integration)', () => {
     expect(response.statusCode).toBe(403);
   });
 
+  it('GET /api/restaurants with restaurant_admin lacking restaurantId returns 403 Forbidden', async () => {
+    const tokenNoTenant = jwtService.generateToken({
+      id: 'usr-admin-no-tenant-list',
+      username: 'admin_no_tenant_list',
+      role: 'restaurant_admin',
+    });
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/restaurants',
+      headers: { authorization: `Bearer ${tokenNoTenant}` },
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json().detail).toBe('Restaurant administrator has no assigned restaurant.');
+  });
+
   it('anonymous single-restaurant lookups stay public via every storefront route', async () => {
     for (const url of [
       '/api/restaurants/burger-craft',

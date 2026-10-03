@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useCallback, useMemo } from "react"
 import type {
   StorefrontConfig,
   MenuItem,
@@ -21,6 +21,11 @@ import { InventoryProvider, useInventory } from "./slices/InventoryContext"
 import type { InventoryItem, Supplier } from "@/types/restaurant"
 import type { TenantRepository } from "@/core/storage/TenantRepository"
 import { defaultTenantRepository } from "@/core/storage/TenantRepository"
+import { resolveRoute } from "@/core/router/useAppRouter"
+
+// Tabs exclusive to the platform super admin (kept in sync with the
+// GlobalModuleAccessDenied gate in App.tsx and SupportModeBanner's guard).
+const SUPER_ONLY_ADMIN_TABS = new Set<AdminTab>(["restaurants", "users", "metrics", "audit"])
 
 // Export individual slice hooks for fine-grained subscriptions
 export { useUi } from "./slices/UiContext"
@@ -185,7 +190,44 @@ export const useRestaurant = (): RestaurantContextType => {
   const inventorySlice = useInventory()
   const orders = useOrders()
 
-  return {
+  const login = useCallback(
+    async (username: string, password: string, targetRestaurantIdOrSlug?: string) => {
+      const res = await auth.login(username, password, targetRestaurantIdOrSlug)
+      if (res.success) {
+        if (res.role === "super") {
+          // A super admin session never inherits the previous session's tenant:
+          // activeRestaurantId lives in TenantProvider state, which survives
+          // logout/login in the same tab, so without this reset a stale tenant
+          // from a prior restaurant-admin session would render in
+          // SupportModeBanner/AdminLayout until manually switched.
+          tenant.switchRestaurant("")
+          const isDeepRoute = window.location.pathname.toLowerCase().startsWith("/admin/") && window.location.pathname.toLowerCase() !== "/admin"
+          if (!isDeepRoute) {
+            ui.setAdminTab("restaurants")
+          }
+        } else if (res.role === "restaurant" && res.restaurantId) {
+          tenant.switchRestaurant(res.restaurantId)
+          const pathname = window.location.pathname.toLowerCase()
+          const isDeepRoute = pathname.startsWith("/admin/") && pathname !== "/admin"
+          // A deep route left over from a previous session (e.g. a super
+          // admin was on /admin/audit) must not be honored for this role:
+          // resolve it and fall back to dashboard when it is super-only,
+          // otherwise the stale adminTab briefly renders GlobalModuleAccessDenied.
+          const resolvedTab = isDeepRoute ? resolveRoute(pathname, tenant.restaurants).adminTab : undefined
+          const isSuperOnlyDeepRoute = resolvedTab !== undefined && SUPER_ONLY_ADMIN_TABS.has(resolvedTab)
+          if (!isDeepRoute || isSuperOnlyDeepRoute) {
+            ui.setAdminTab("dashboard")
+          }
+        }
+        ui.setActiveView("admin")
+      }
+      return res
+    },
+    [auth, tenant, ui]
+  )
+
+  return useMemo<RestaurantContextType>(
+    () => ({
     restaurants: tenant.restaurants,
     activeRestaurant: tenant.activeRestaurant,
     effectiveRestaurantId: tenant.effectiveRestaurantId,
@@ -205,25 +247,7 @@ export const useRestaurant = (): RestaurantContextType => {
     session: auth.session,
     setSession: auth.setSession,
     changePassword: auth.changePassword,
-    login: async (username: string, password: string, targetRestaurantIdOrSlug?: string) => {
-      const res = await auth.login(username, password, targetRestaurantIdOrSlug)
-      if (res.success) {
-        if (res.role === "super") {
-          const isDeepRoute = window.location.pathname.toLowerCase().startsWith("/admin/") && window.location.pathname.toLowerCase() !== "/admin"
-          if (!isDeepRoute) {
-            ui.setAdminTab("restaurants")
-          }
-        } else if (res.role === "restaurant" && res.restaurantId) {
-          tenant.switchRestaurant(res.restaurantId)
-          const isDeepRoute = window.location.pathname.toLowerCase().startsWith("/admin/") && window.location.pathname.toLowerCase() !== "/admin"
-          if (!isDeepRoute) {
-            ui.setAdminTab("dashboard")
-          }
-        }
-        ui.setActiveView("admin")
-      }
-      return res
-    },
+    login,
     logout: auth.logout,
 
     storeConfig: catalog.storeConfig,
@@ -285,5 +309,7 @@ export const useRestaurant = (): RestaurantContextType => {
 
     pendingOrdersCount: orders.pendingOrdersCount,
     refreshOrders: orders.refreshOrders,
-  }
+    }),
+    [ui, tenant, auth, catalog, inventorySlice, orders, login]
+  )
 }

@@ -103,4 +103,59 @@ describe('UpdateUserUseCase', () => {
     expect(off.isActive).toBe(false);
     await expect(useCase.execute({ actorId: 'root', targetId: 'root', isActive: false })).rejects.toThrow(ConflictError);
   });
+
+  it('never deactivates the last active super admin via isActive alone (409), but may once another is active', async () => {
+    await users.setActive('root2', false);
+    await expect(
+      useCase.execute({ actorId: 'someone-else', targetId: 'root', isActive: false })
+    ).rejects.toThrow(/last active super admin/);
+    expect((await users.findById('root'))?.isActive).not.toBe(false);
+
+    await users.setActive('root2', true);
+    const out = await useCase.execute({ actorId: 'root2', targetId: 'root', isActive: false });
+    expect(out.isActive).toBe(false);
+  });
+
+  it('does not count an already-inactive super admin as a remaining one', async () => {
+    await users.setActive('root2', false);
+    await users.save(user({ id: 'root3', username: 'root3', role: 'super_admin', restaurantId: undefined, isActive: false }));
+    await expect(
+      useCase.execute({ actorId: 'someone-else', targetId: 'root', isActive: false })
+    ).rejects.toThrow(/last active super admin/);
+  });
+
+  it('an isActive-only change never rewrites a concurrently-written hash or mustChangePassword', async () => {
+    const stale = (await users.findById('tenant'))!;
+    // A password reset lands after the use case reads the (stale) user.
+    let raced = false;
+    const racing: Pick<InMemoryUserRepository, 'findById'> = {
+      findById: async (id: string) => {
+        if (raced) return users.findById(id);
+        raced = true;
+        await users.save({ ...stale, passwordHash: 'reset-hash', mustChangePassword: true });
+        return { ...stale };
+      },
+    };
+    const racingUseCase = new UpdateUserUseCase(
+      Object.assign(Object.create(users), racing) as InMemoryUserRepository,
+      restaurants
+    );
+    await racingUseCase.execute({ actorId: 'root', targetId: 'tenant', isActive: false });
+    const after = await users.findById('tenant');
+    expect(after?.isActive).toBe(false);
+    expect(after?.passwordHash).toBe('reset-hash');
+    expect(after?.mustChangePassword).toBe(true);
+  });
+
+  it('two concurrent deactivations of the two remaining super admins leave exactly one active', async () => {
+    const results = await Promise.allSettled([
+      useCase.execute({ actorId: 'root', targetId: 'root2', isActive: false }),
+      useCase.execute({ actorId: 'root2', targetId: 'root', isActive: false }),
+    ]);
+    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+    const rejected = results.find((r) => r.status === 'rejected') as PromiseRejectedResult;
+    expect(rejected.reason).toBeInstanceOf(ConflictError);
+    const active = (await users.findAll()).filter((u) => u.role === 'super_admin' && u.isActive !== false);
+    expect(active).toHaveLength(1);
+  });
 });

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest"
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
 import { renderHook, act, waitFor } from "@testing-library/react"
 import React from "react"
 import { RestaurantProvider, useRestaurant } from "./RestaurantContext"
@@ -333,5 +333,105 @@ describe("RestaurantContext (Multi-Tenant & Super Admin)", () => {
 
     // Verify Pedro Gómez is not in Tacos El Rey
     expect(result.current.customers.some((c) => c.nombre === "Pedro Gómez")).toBe(false)
+  })
+})
+
+describe("useRestaurant.login - post-login tenant reset and route gating", () => {
+  const wrapper = ({ children }: { children: React.ReactNode }) => (
+    <RestaurantProvider repository={createTestRepo()}>{children}</RestaurantProvider>
+  )
+
+  const mockLogin = async (user: Record<string, unknown>) => {
+    const { apiClient } = await import("@/core/api/apiClient")
+    vi.spyOn(apiClient, "login").mockResolvedValue({ success: true, token: "server-token", user } as any)
+  }
+  const superUser = { id: "u1", username: "root", role: "super_admin" }
+  const restaurantUser = {
+    id: "u2",
+    username: "napoli",
+    role: "restaurant_admin",
+    restaurantId: "rest-pizzeria-napoli",
+  }
+
+  beforeEach(() => {
+    localStorage.clear()
+    sessionStorage.clear()
+    vi.restoreAllMocks()
+  })
+
+  afterEach(() => {
+    window.history.pushState({}, "", "/")
+  })
+
+  it("clears a stale persisted tenant on super admin login and lands on the restaurants tab", async () => {
+    window.history.pushState({}, "", "/admin")
+    await mockLogin(superUser)
+    const { result } = renderHook(() => useRestaurant(), { wrapper })
+    expect(result.current.activeRestaurantId).toBe("rest-burger-craft")
+
+    await act(async () => {
+      await result.current.login("root", "pw")
+    })
+
+    // Reset to the neutral placeholder tenant, never the previous session's one.
+    expect(result.current.activeRestaurantId).toBe("rest-default")
+    expect(result.current.activeRestaurantSlug).toBe("default")
+    expect(result.current.adminTab).toBe("restaurants")
+    expect(result.current.activeView).toBe("admin")
+  })
+
+  it("keeps the current tab on a super admin deep route but still resets the tenant", async () => {
+    window.history.pushState({}, "", "/admin/audit")
+    await mockLogin(superUser)
+    const { result } = renderHook(() => useRestaurant(), { wrapper })
+
+    await act(async () => {
+      await result.current.login("root", "pw")
+    })
+
+    // Reset to the neutral placeholder tenant, never the previous session's one.
+    expect(result.current.activeRestaurantId).toBe("rest-default")
+    expect(result.current.activeRestaurantSlug).toBe("default")
+    expect(result.current.adminTab).toBe("dashboard")
+  })
+
+  it("binds a restaurant admin to its own tenant and lands on the dashboard from a non-deep route", async () => {
+    await mockLogin(restaurantUser)
+    const { result } = renderHook(() => useRestaurant(), { wrapper })
+    act(() => result.current.setAdminTab("menu"))
+
+    await act(async () => {
+      await result.current.login("napoli", "pw")
+    })
+
+    expect(result.current.activeRestaurantId).toBe("rest-pizzeria-napoli")
+    expect(result.current.adminTab).toBe("dashboard")
+    expect(result.current.activeView).toBe("admin")
+  })
+
+  it("discards a super-only deep route left over from a previous session for a restaurant admin", async () => {
+    window.history.pushState({}, "", "/admin/audit")
+    await mockLogin(restaurantUser)
+    const { result } = renderHook(() => useRestaurant(), { wrapper })
+    act(() => result.current.setAdminTab("audit"))
+
+    await act(async () => {
+      await result.current.login("napoli", "pw")
+    })
+
+    expect(result.current.adminTab).toBe("dashboard")
+  })
+
+  it("honors a deep route that is not super-only for a restaurant admin", async () => {
+    window.history.pushState({}, "", "/admin/orders")
+    await mockLogin(restaurantUser)
+    const { result } = renderHook(() => useRestaurant(), { wrapper })
+    act(() => result.current.setAdminTab("orders"))
+
+    await act(async () => {
+      await result.current.login("napoli", "pw")
+    })
+
+    expect(result.current.adminTab).toBe("orders")
   })
 })
