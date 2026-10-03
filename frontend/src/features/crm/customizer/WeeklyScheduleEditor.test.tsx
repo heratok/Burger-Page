@@ -84,19 +84,6 @@ describe("WeeklyScheduleEditor", () => {
     ])
   })
 
-  it("copies a day's hours to every day", () => {
-    const onChange = vi.fn()
-    const schedule: WeeklySchedule = [
-      { dayOfWeek: 1, open: "09:00", close: "18:00" },
-      { dayOfWeek: 2, open: "12:00", close: "22:30" },
-    ]
-    render(<WeeklyScheduleEditor schedule={schedule} onChange={onChange} />)
-    fireEvent.click(screen.getByRole("button", { name: "Copiar horario de Lunes a todos los días" }))
-    const next = onChange.mock.calls[0][0] as WeeklySchedule
-    expect(next).toHaveLength(7)
-    expect(next.every((r) => r.open === "09:00" && r.close === "18:00")).toBe(true)
-  })
-
   it("explains that a range can cross midnight", () => {
     render(<WeeklyScheduleEditor schedule={week()} onChange={vi.fn()} />)
     expect(screen.getByText(/20:00 - 02:00/)).toBeDefined()
@@ -111,25 +98,36 @@ describe("WeeklyScheduleEditor", () => {
     expect(r.getByText(/\+1 día|cierra al día siguiente/i)).toBeDefined()
   })
 
-  it("copies Monday hours to all weekdays with the 'Lun–Vie igual' shortcut", () => {
+  it("applies bulk hours to all 7 days with the 'Toda la semana' action", () => {
     const onChange = vi.fn()
     const schedule: WeeklySchedule = [
-      { dayOfWeek: 1, open: "10:00", close: "20:00" },
+      { dayOfWeek: 1, open: "08:00", close: "16:00" },
       { dayOfWeek: 6, open: "14:00", close: "23:00" },
     ]
     render(<WeeklyScheduleEditor schedule={schedule} onChange={onChange} />)
-    fireEvent.click(screen.getByRole("button", { name: /Lun–Vie igual/i }))
+
+    // Verify default bulk hours are 12:00 and 22:30
+    expect((screen.getByLabelText("Horario masivo apertura") as HTMLInputElement).value).toBe("12:00")
+    expect((screen.getByLabelText("Horario masivo cierre") as HTMLInputElement).value).toBe("22:30")
+
+    // Change master inputs
+    fireEvent.change(screen.getByLabelText("Horario masivo apertura"), { target: { value: "11:30" } })
+    fireEvent.change(screen.getByLabelText("Horario masivo cierre"), { target: { value: "23:45" } })
+
+    fireEvent.click(screen.getByRole("button", { name: "Toda la semana" }))
+
     const next = onChange.mock.calls[0][0] as WeeklySchedule
-    const weekdays = [1, 2, 3, 4, 5]
-    for (const d of weekdays) {
-      expect(next.filter((r) => r.dayOfWeek === d)).toEqual([
-        { dayOfWeek: d, open: "10:00", close: "20:00" },
-      ])
+    expect(next).toHaveLength(7)
+    for (let d = 0; d < 7; d++) {
+      expect(next.find((r) => r.dayOfWeek === d)).toEqual({
+        dayOfWeek: d,
+        open: "11:30",
+        close: "23:45",
+      })
     }
-    expect(next.find((r) => r.dayOfWeek === 6)).toEqual({ dayOfWeek: 6, open: "14:00", close: "23:00" })
   })
 
-  it("copies Saturday hours to Sunday with the 'Fin de semana' shortcut", () => {
+  it("applies bulk hours to weekdays (Lun a Vie) leaving weekend untouched", () => {
     const onChange = vi.fn()
     const schedule: WeeklySchedule = [
       { dayOfWeek: 1, open: "10:00", close: "20:00" },
@@ -137,15 +135,64 @@ describe("WeeklyScheduleEditor", () => {
       { dayOfWeek: 0, open: "12:00", close: "18:00" },
     ]
     render(<WeeklyScheduleEditor schedule={schedule} onChange={onChange} />)
-    fireEvent.click(screen.getByRole("button", { name: /Fin de semana/i }))
+
+    fireEvent.change(screen.getByLabelText("Horario masivo apertura"), { target: { value: "09:00" } })
+    fireEvent.change(screen.getByLabelText("Horario masivo cierre"), { target: { value: "17:00" } })
+
+    fireEvent.click(screen.getByRole("button", { name: "Lun a Vie" }))
+
     const next = onChange.mock.calls[0][0] as WeeklySchedule
-    expect(next.filter((r) => r.dayOfWeek === 6)).toEqual([
+    const weekdays = [1, 2, 3, 4, 5]
+    for (const d of weekdays) {
+      expect(next.filter((r) => r.dayOfWeek === d)).toEqual([
+        { dayOfWeek: d, open: "09:00", close: "17:00" },
+      ])
+    }
+    // Weekend days are preserved untouched
+    expect(next.find((r) => r.dayOfWeek === 6)).toEqual({ dayOfWeek: 6, open: "14:00", close: "01:00" })
+    expect(next.find((r) => r.dayOfWeek === 0)).toEqual({ dayOfWeek: 0, open: "12:00", close: "18:00" })
+  })
+
+  it("applies bulk hours to weekend (Fin de semana) leaving weekdays untouched", () => {
+    const onChange = vi.fn()
+    const schedule: WeeklySchedule = [
+      { dayOfWeek: 1, open: "10:00", close: "20:00" },
+      { dayOfWeek: 2, open: "10:00", close: "20:00" },
       { dayOfWeek: 6, open: "14:00", close: "01:00" },
+      { dayOfWeek: 0, open: "12:00", close: "18:00" },
+    ]
+    render(<WeeklyScheduleEditor schedule={schedule} onChange={onChange} />)
+
+    fireEvent.change(screen.getByLabelText("Horario masivo apertura"), { target: { value: "13:00" } })
+    fireEvent.change(screen.getByLabelText("Horario masivo cierre"), { target: { value: "02:00" } })
+
+    fireEvent.click(screen.getByRole("button", { name: "Fin de semana" }))
+
+    const next = onChange.mock.calls[0][0] as WeeklySchedule
+    // Weekend days get bulk hours
+    expect(next.filter((r) => r.dayOfWeek === 6)).toEqual([
+      { dayOfWeek: 6, open: "13:00", close: "02:00" },
     ])
     expect(next.filter((r) => r.dayOfWeek === 0)).toEqual([
-      { dayOfWeek: 0, open: "14:00", close: "01:00" },
+      { dayOfWeek: 0, open: "13:00", close: "02:00" },
     ])
+    // Weekdays are preserved untouched
     expect(next.find((r) => r.dayOfWeek === 1)).toEqual({ dayOfWeek: 1, open: "10:00", close: "20:00" })
+    expect(next.find((r) => r.dayOfWeek === 2)).toEqual({ dayOfWeek: 2, open: "10:00", close: "20:00" })
+  })
+
+  it("displays visual feedback when applying a bulk schedule action", () => {
+    const onChange = vi.fn()
+    render(<WeeklyScheduleEditor schedule={week()} onChange={onChange} />)
+    fireEvent.click(screen.getByRole("button", { name: "Toda la semana" }))
+    expect(screen.getByText("¡Aplicado a toda la semana!")).toBeDefined()
+  })
+
+  it("displays overnight indicator when bulk hours cross midnight", () => {
+    render(<WeeklyScheduleEditor schedule={week()} onChange={vi.fn()} />)
+    fireEvent.change(screen.getByLabelText("Horario masivo apertura"), { target: { value: "20:00" } })
+    fireEvent.change(screen.getByLabelText("Horario masivo cierre"), { target: { value: "03:00" } })
+    expect(screen.getAllByText("+1 día").length).toBeGreaterThan(0)
   })
 
   it("renders a clear '24 horas' badge when a day is 24 hours (open === close)", () => {

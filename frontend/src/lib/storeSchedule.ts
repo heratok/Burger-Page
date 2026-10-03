@@ -161,3 +161,20 @@ export function setDayCustomHours(
 export function setAll24Hours(): WeeklySchedule {
   return DAY_DISPLAY_ORDER.map((day) => ({ dayOfWeek: day, open: "00:00", close: "00:00" }))
 }
+
+/** Applies an opening range to a specified list of days, enabling them if they were closed. */
+export function applyRangeToDays(
+  schedule: WeeklySchedule,
+  targetDays: readonly number[],
+  open: string,
+  close: string
+): WeeklySchedule {
+  const unmodified = schedule.filter((r) => !targetDays.includes(r.dayOfWeek))
+  const updated: WeeklySchedule = targetDays.map((d) => ({
+    dayOfWeek: d,
+    open,
+    close,
+  }))
+  return [...unmodified, ...updated]
+}
+

@@ -17,6 +17,7 @@ import {
   setDay24Hours,
   setDayCustomHours,
   setAll24Hours,
+  applyRangeToDays,
 } from "./storeSchedule"
 import { DEFAULT_STORE_CONFIG } from "@/constants/themePresets"
 
@@ -169,6 +170,57 @@ describe("storeSchedule helpers", () => {
           close: "00:00",
         })
       }
+    })
+  })
+
+  describe("applyRangeToDays", () => {
+    it("applies the opening range to specified target days", () => {
+      const schedule: WeeklySchedule = [
+        { dayOfWeek: 1, open: "08:00", close: "16:00" },
+        { dayOfWeek: 2, open: "08:00", close: "16:00" },
+      ]
+      const result = applyRangeToDays(schedule, [1, 2], "12:00", "22:30")
+      expect(result).toHaveLength(2)
+      expect(result).toEqual(
+        expect.arrayContaining([
+          { dayOfWeek: 1, open: "12:00", close: "22:30" },
+          { dayOfWeek: 2, open: "12:00", close: "22:30" },
+        ])
+      )
+    })
+
+    it("replaces existing ranges (including multiple ranges) on target days", () => {
+      const schedule: WeeklySchedule = [
+        { dayOfWeek: 1, open: "08:00", close: "12:00" },
+        { dayOfWeek: 1, open: "14:00", close: "20:00" },
+      ]
+      const result = applyRangeToDays(schedule, [1], "10:00", "22:00")
+      expect(result).toEqual([{ dayOfWeek: 1, open: "10:00", close: "22:00" }])
+    })
+
+    it("enables closed days that were not previously in the schedule", () => {
+      const schedule: WeeklySchedule = []
+      const result = applyRangeToDays(schedule, [1, 2, 3], "11:00", "21:00")
+      expect(result).toHaveLength(3)
+      expect(result).toEqual(
+        expect.arrayContaining([
+          { dayOfWeek: 1, open: "11:00", close: "21:00" },
+          { dayOfWeek: 2, open: "11:00", close: "21:00" },
+          { dayOfWeek: 3, open: "11:00", close: "21:00" },
+        ])
+      )
+    })
+
+    it("leaves days not in targetDays completely intact", () => {
+      const schedule: WeeklySchedule = [
+        { dayOfWeek: 1, open: "08:00", close: "16:00" },
+        { dayOfWeek: 6, open: "18:00", close: "02:00" },
+        { dayOfWeek: 0, open: "12:00", close: "20:00" },
+      ]
+      const result = applyRangeToDays(schedule, [1], "12:00", "22:30")
+      expect(result.find((r) => r.dayOfWeek === 1)).toEqual({ dayOfWeek: 1, open: "12:00", close: "22:30" })
+      expect(result.find((r) => r.dayOfWeek === 6)).toEqual({ dayOfWeek: 6, open: "18:00", close: "02:00" })
+      expect(result.find((r) => r.dayOfWeek === 0)).toEqual({ dayOfWeek: 0, open: "12:00", close: "20:00" })
     })
   })
 })
