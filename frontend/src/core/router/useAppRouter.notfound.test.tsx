@@ -52,11 +52,12 @@ describe("useAppRouter - unknown slug is requested exactly once (F5)", () => {
 })
 
 describe("useAppRouter - an unresolved storefront slug is never rendered as a store", () => {
-  let resolve404: () => void = () => {}
+  let resolve404: (() => void) | undefined
 
   beforeEach(() => {
     localStorage.clear()
     sessionStorage.clear()
+    resolve404 = undefined
     window.history.pushState({}, "", "/rost")
     vi.stubGlobal(
       "fetch",
@@ -87,10 +88,44 @@ describe("useAppRouter - an unresolved storefront slug is never rendered as a st
     expect(result.current.isResolving).toBe(true)
     expect(result.current.isNotFound).toBe(false)
 
-    await waitFor(() => expect(resolve404).not.toBe(undefined))
-    resolve404()
+    // The slug request is in flight and still unanswered.
+    await waitFor(() => expect(resolve404).toBeDefined())
+    expect(result.current.isResolving).toBe(true)
+    resolve404!()
 
     await waitFor(() => expect(result.current.isNotFound).toBe(true))
     expect(result.current.isResolving).toBe(false)
+  })
+})
+
+describe("useAppRouter - a valid slug not loaded yet resolves into its storefront", () => {
+  afterEach(() => {
+    cleanup()
+    vi.restoreAllMocks()
+    window.history.pushState({}, "", "/")
+  })
+
+  it("reports resolving while the slug loads, then renders the store", async () => {
+    localStorage.clear()
+    sessionStorage.clear()
+    window.history.pushState({}, "", "/casa-nueva")
+    const { apiClient } = await import("@/core/api/apiClient")
+    vi.spyOn(apiClient, "listRestaurants").mockResolvedValue([])
+    let answer: ((value: any) => void) | undefined
+    vi.spyOn(apiClient, "fetchRestaurant").mockReturnValue(new Promise((r) => (answer = r)))
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <RestaurantProvider>{children}</RestaurantProvider>
+    )
+    const { result } = renderHook(() => useAppRouter(), { wrapper })
+
+    await waitFor(() => expect(answer).toBeDefined())
+    expect(result.current.isResolving).toBe(true)
+
+    answer!({ id: "rest-casa-nueva", slug: "casa-nueva", name: "Casa Nueva" })
+
+    await waitFor(() => expect(result.current.isResolving).toBe(false))
+    expect(result.current.isNotFound).toBe(false)
+    expect(result.current.activeView).toBe("store")
   })
 })

@@ -213,7 +213,8 @@ const SessionScopedAuthProvider: React.FC<{
 
   const onLogout = useCallback(() => {
     // C3: purge the whole-tenant envelope + persisted active restaurant.
-    ;(repository ?? defaultTenantRepository).purgeTenantData()
+    const tenantRepository = repository ?? defaultTenantRepository
+    tenantRepository.purgeTenantData()
     setAdminTab("dashboard")
   }, [repository, setAdminTab])
 
