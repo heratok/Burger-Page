@@ -26,6 +26,12 @@ import { useAppRouter } from "@/core/router/useAppRouter"
 import { formatCurrency } from "@/lib/utils"
 import { mapUserActionError } from "./userActionUtils"
 
+function isConflictError(err: any): boolean {
+  if (err?.status === 409 || err?.body?.status === 409) return true
+  const type = err?.body?.type
+  return typeof type === "string" && /\/conflict$/.test(type)
+}
+
 export const RestaurantsDirectory: React.FC = () => {
   const {
     restaurants,
@@ -140,10 +146,10 @@ export const RestaurantsDirectory: React.FC = () => {
       await loadDeletedRestaurants()
       setRestaurantToRestore(null)
     } catch (err: any) {
-      // The backend's RFC7807 error handler always sets status 409 for a
-      // conflict (errorHandler.ts); the message wording is not a contract,
-      // so status is the only reliable signal.
-      if (err?.status === 409) {
+      // The backend's RFC7807 error handler marks a conflict with status 409
+      // and a ".../probs/conflict" type (errorHandler.ts); apiClient exposes the
+      // parsed body as `err.body`. The message wording is not a contract.
+      if (isConflictError(err)) {
         if (isSlugConflict && restoreSlug && restoreSlug.trim()) {
           setSlugConflictError(`El slug «${restoreSlug.trim()}» ya está en uso. Por favor ingresá un nuevo slug para restaurarlo:`)
         } else {

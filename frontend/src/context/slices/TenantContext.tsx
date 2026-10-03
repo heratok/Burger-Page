@@ -15,6 +15,7 @@ import { splitConfigForApi, scheduleFieldsFromApi } from "@/lib/storeSchedule"
 import { toast } from "sonner"
 import { runOptimisticMutation } from "./optimisticMutation"
 import { nextTempId } from "@/lib/ids"
+import { ADMIN_ROOT_PATHS } from "@/core/router/adminRootPaths"
 
 export interface GlobalPlatformStats {
   totalRevenue: number
@@ -111,7 +112,7 @@ export const TenantProvider: React.FC<{
     const record = envelope.restaurants.find((r) => r.id === saved || r.slug === saved)
     if (!record) return ""
 
-    // On a public storefront URL (anything other than "/" or "/admin*"), a
+    // On a public storefront URL (anything other than "/" or the admin roots in ADMIN_ROOT_PATHS), a
     // tenant persisted from a previous visit in this tab must only be kept
     // when it actually matches this URL's slug. Otherwise the stale tenant
     // (e.g. a restaurant opened earlier) would render as the storefront for
@@ -125,7 +126,7 @@ export const TenantProvider: React.FC<{
     } catch {
       firstSegment = ""
     }
-    const isPublicSlugRoute = firstSegment !== "" && firstSegment !== "admin"
+    const isPublicSlugRoute = firstSegment !== "" && !ADMIN_ROOT_PATHS.includes(firstSegment)
     if (isPublicSlugRoute && firstSegment !== record.slug.toLowerCase() && firstSegment !== record.id.toLowerCase()) {
       return ""
     }

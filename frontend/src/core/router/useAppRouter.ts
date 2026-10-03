@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import type { RestaurantRecord, AppView, AdminTab } from "@/types/restaurant"
 import { useRestaurant } from "@/context/RestaurantContext"
+import { ADMIN_ROOT_PATHS } from "./adminRootPaths"
 
 export interface RouteResolution {
   view: AppView
@@ -44,7 +45,7 @@ export function resolveRoute(
   }
 
   // Exact /admin, /login, /signin root backoffice path
-  if (["admin", "login", "signin", "auth"].includes(lowerPath)) {
+  if (ADMIN_ROOT_PATHS.includes(lowerPath)) {
     return {
       view: "admin",
       isNotFound: false,
