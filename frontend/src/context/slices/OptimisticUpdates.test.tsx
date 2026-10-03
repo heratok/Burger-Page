@@ -1,4 +1,5 @@
 import React from "react"
+import { TestQueryProvider } from "@/test/queryClientWrapper"
 import { seedBlankActiveTenant } from "@/test/fixtures"
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { renderHook, act, waitFor } from "@testing-library/react"
@@ -405,9 +406,11 @@ describe("InventoryContext Optimistic Updates & Rollback", () => {
     } as any)
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <TenantProvider>
-        <InventoryProvider>{children}</InventoryProvider>
-      </TenantProvider>
+      <TestQueryProvider>
+        <TenantProvider>
+          <InventoryProvider>{children}</InventoryProvider>
+        </TenantProvider>
+      </TestQueryProvider>
     )
 
     const { result } = renderHook(() => useInventory(), { wrapper })

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest"
 import { seedBlankActiveTenant } from "@/test/fixtures"
 import { renderHook, act, waitFor, render, screen, fireEvent } from "@testing-library/react"
 import React from "react"
+import { TestQueryProvider } from "@/test/queryClientWrapper"
 import { UiProvider, useUi } from "./UiContext"
 import { AuthProvider, useAuth } from "./AuthContext"
 import { DEFAULT_STORE_CONFIG } from "@/constants/themePresets"
@@ -279,9 +280,11 @@ describe("InventoryContext Slice", () => {
     const fetchSpy = vi.spyOn(apiClient, "fetchInventory").mockResolvedValue([] as any)
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <TenantProvider>
-        <InventoryProvider>{children}</InventoryProvider>
-      </TenantProvider>
+      <TestQueryProvider>
+        <TenantProvider>
+          <InventoryProvider>{children}</InventoryProvider>
+        </TenantProvider>
+      </TestQueryProvider>
     )
 
     renderHook(() => useInventory(), { wrapper })
@@ -295,9 +298,11 @@ describe("InventoryContext Slice", () => {
     const { InventoryProvider, useInventory } = await import("./InventoryContext")
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <TenantProvider>
-        <InventoryProvider>{children}</InventoryProvider>
-      </TenantProvider>
+      <TestQueryProvider>
+        <TenantProvider>
+          <InventoryProvider>{children}</InventoryProvider>
+        </TenantProvider>
+      </TestQueryProvider>
     )
 
     const { result } = renderHook(() => useInventory(), { wrapper })
@@ -342,9 +347,11 @@ describe("InventoryContext Slice", () => {
     const updateStockSpy = vi.spyOn(apiClient, "updateInventoryStock").mockResolvedValue({} as any)
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <TenantProvider>
-        <InventoryProvider>{children}</InventoryProvider>
-      </TenantProvider>
+      <TestQueryProvider>
+        <TenantProvider>
+          <InventoryProvider>{children}</InventoryProvider>
+        </TenantProvider>
+      </TestQueryProvider>
     )
 
     const { result } = renderHook(() => useInventory(), { wrapper })
@@ -396,9 +403,11 @@ describe("InventoryContext Slice", () => {
     const deleteSpy = vi.spyOn(apiClient, "deleteSupplier").mockResolvedValue(undefined as any)
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <TenantProvider>
-        <InventoryProvider>{children}</InventoryProvider>
-      </TenantProvider>
+      <TestQueryProvider>
+        <TenantProvider>
+          <InventoryProvider>{children}</InventoryProvider>
+        </TenantProvider>
+      </TestQueryProvider>
     )
 
     const { result } = renderHook(() => useInventory(), { wrapper })
@@ -459,9 +468,11 @@ describe("InventoryContext Slice", () => {
     vi.spyOn(apiClient, "updateInventoryStock").mockRejectedValue(new Error("Network Error: 500"))
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <TenantProvider>
-        <InventoryProvider>{children}</InventoryProvider>
-      </TenantProvider>
+      <TestQueryProvider>
+        <TenantProvider>
+          <InventoryProvider>{children}</InventoryProvider>
+        </TenantProvider>
+      </TestQueryProvider>
     )
 
     const { result } = renderHook(() => useInventory(), { wrapper })
@@ -503,9 +514,11 @@ describe("InventoryContext Slice", () => {
     const updateStockSpy = vi.spyOn(apiClient, "updateInventoryStock").mockResolvedValue({} as any)
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <TenantProvider>
-        <InventoryProvider>{children}</InventoryProvider>
-      </TenantProvider>
+      <TestQueryProvider>
+        <TenantProvider>
+          <InventoryProvider>{children}</InventoryProvider>
+        </TenantProvider>
+      </TestQueryProvider>
     )
 
     const { result } = renderHook(() => useInventory(), { wrapper })
@@ -555,9 +568,11 @@ describe("InventoryContext Slice", () => {
     vi.spyOn(apiClient, "updateInventoryItem").mockRejectedValue(new Error("API Error 500"))
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <TenantProvider>
-        <InventoryProvider>{children}</InventoryProvider>
-      </TenantProvider>
+      <TestQueryProvider>
+        <TenantProvider>
+          <InventoryProvider>{children}</InventoryProvider>
+        </TenantProvider>
+      </TestQueryProvider>
     )
 
     const { result } = renderHook(() => useInventory(), { wrapper })
@@ -598,9 +613,11 @@ describe("InventoryContext Slice", () => {
     vi.spyOn(apiClient, "deleteInventoryItem").mockRejectedValue(new Error("API Error 500"))
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <TenantProvider>
-        <InventoryProvider>{children}</InventoryProvider>
-      </TenantProvider>
+      <TestQueryProvider>
+        <TenantProvider>
+          <InventoryProvider>{children}</InventoryProvider>
+        </TenantProvider>
+      </TestQueryProvider>
     )
 
     const { result } = renderHook(() => useInventory(), { wrapper })
@@ -652,9 +669,11 @@ describe("InventoryContext Slice", () => {
       )
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <TenantProvider>
-        <InventoryProvider>{children}</InventoryProvider>
-      </TenantProvider>
+      <TestQueryProvider>
+        <TenantProvider>
+          <InventoryProvider>{children}</InventoryProvider>
+        </TenantProvider>
+      </TestQueryProvider>
     )
 
     const { result } = renderHook(() => useInventory(), { wrapper })
