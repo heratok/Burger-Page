@@ -758,7 +758,7 @@ describe("TenantContext - initial activeRestaurantId on public storefront routes
     window.history.pushState({}, "", "/")
   })
 
-  it.each(["/", "/admin", "/admin/orders"])("honors the persisted tenant on the non-storefront route %s", (path) => {
+  it.each(["/", "/admin", "/admin/orders", "/login", "/signin", "/auth"])("honors the persisted tenant on the non-storefront route %s", (path) => {
     const { result } = mountAt(path)
     expect(result.current.activeRestaurantId).toBe("rest-alive")
   })
