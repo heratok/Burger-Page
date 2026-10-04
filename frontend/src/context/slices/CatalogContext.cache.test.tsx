@@ -8,7 +8,8 @@ import { keys } from "@/core/query/keys"
 import { STORAGE_KEYS, TenantRepository } from "@/core/storage/TenantRepository"
 import { InMemoryStorageAdapter } from "@/core/storage/StorageAdapter"
 import { PendingOrdersQueue } from "@/core/storage/pendingOrdersQueue"
-import type { MenuItem } from "@/types/restaurant"
+import type { MenuItem, RestaurantRecord } from "@/types/restaurant"
+import { readPersistedQuery } from "@/test/fixtures"
 
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() },
@@ -79,7 +80,7 @@ describe("CatalogContext reads and writes the query cache", () => {
     expect(client.getQueryData<MenuItem[]>(PRODUCTS_KEY)?.find((p) => p.id === "prod-1")?.name).toBe("Burger Doble Queso")
   })
 
-  it("loadEnvelope derives categories from persisted products, then drops products and additions", () => {
+  it("the legacy migration derives categories from the products and moves the menu to the menu keys", () => {
     const adapter = new InMemoryStorageAdapter()
     adapter.setItem(
       STORAGE_KEYS.ENVELOPE,
@@ -90,9 +91,12 @@ describe("CatalogContext reads and writes the query cache", () => {
         ],
       })
     )
-    const [record] = new TenantRepository(adapter, new PendingOrdersQueue(adapter)).loadEnvelope().restaurants
-    expect(record.categories).toEqual(["Clásicas", "Acompañamientos"])
-    expect(record.products).toBeUndefined()
-    expect(record.additions).toBeUndefined()
+    new TenantRepository(adapter, new PendingOrdersQueue(adapter)).migrateLegacyEnvelope()
+    const record = readPersistedQuery<RestaurantRecord>(keys.restaurant("guest", "r1"))
+    expect(record?.categories).toEqual(["Clásicas", "Acompañamientos"])
+    expect(record?.products).toBeUndefined()
+    expect(record?.additions).toBeUndefined()
+    expect(readPersistedQuery(keys.products("r1", "guest", "r1"))).toEqual(TEST_PRODUCTS)
+    expect(readPersistedQuery(keys.additions("r1", "guest", "r1"))).toEqual(TEST_ADDITIONS)
   })
 })

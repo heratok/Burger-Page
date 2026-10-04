@@ -8,7 +8,8 @@ import { keys } from "@/core/query/keys"
 import { STORAGE_KEYS, TenantRepository } from "@/core/storage/TenantRepository"
 import { InMemoryStorageAdapter } from "@/core/storage/StorageAdapter"
 import { PendingOrdersQueue } from "@/core/storage/pendingOrdersQueue"
-import type { InventoryItem, Supplier } from "@/types/restaurant"
+import type { InventoryItem, RestaurantRecord, Supplier } from "@/types/restaurant"
+import { readPersistedQuery } from "@/test/fixtures"
 
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() },
@@ -98,7 +99,7 @@ describe("InventoryContext reads and writes the query cache", () => {
     expect(client.getQueryData<Supplier[]>(keys.suppliers(TENANT, "guest"))?.[0].name).toBe("Sup s1")
   })
 
-  it("loadEnvelope drops inventory and suppliers persisted by the previous version", () => {
+  it("the legacy migration never carries inventory and suppliers over", () => {
     const adapter = new InMemoryStorageAdapter()
     adapter.setItem(
       STORAGE_KEYS.ENVELOPE,
@@ -109,8 +110,11 @@ describe("InventoryContext reads and writes the query cache", () => {
         ],
       })
     )
-    const [record] = new TenantRepository(adapter, new PendingOrdersQueue(adapter)).loadEnvelope().restaurants
-    expect(record.inventory).toBeUndefined()
-    expect(record.suppliers).toBeUndefined()
+    new TenantRepository(adapter, new PendingOrdersQueue(adapter)).migrateLegacyEnvelope()
+    const record = readPersistedQuery<RestaurantRecord>(keys.restaurant("guest", "r1"))
+    expect(record?.id).toBe("r1")
+    expect(record?.inventory).toBeUndefined()
+    expect(record?.suppliers).toBeUndefined()
+    expect(readPersistedQuery(keys.inventory("r1", "guest"))).toBeUndefined()
   })
 })

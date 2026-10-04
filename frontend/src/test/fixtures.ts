@@ -9,7 +9,8 @@ import type {
   Supplier,
 } from "@/types/restaurant"
 import { DEFAULT_STORE_CONFIG } from "@/constants/themePresets"
-import type { QueryClient } from "@tanstack/react-query"
+import { QueryClient } from "@tanstack/react-query"
+import { restorePersistedQueries } from "@/core/query/persistence"
 import type { UserRole } from "@/types/restaurant"
 import { appQueryClient } from "@/core/query/queryClient"
 import { keys } from "@/core/query/keys"
@@ -324,4 +325,13 @@ export function seedRestaurantDirectory(
       client.setQueryData(keys.restaurant(role, record.slug), record)
     }
   }
+}
+
+/** Reads one query's data back from the persisted storefront cache (as a reload would). */
+export function readPersistedQuery<T = unknown>(queryKey: readonly unknown[]): T | undefined {
+  const client = new QueryClient()
+  restorePersistedQueries(client)
+  const data = client.getQueryData<T>(queryKey)
+  client.clear()
+  return data
 }

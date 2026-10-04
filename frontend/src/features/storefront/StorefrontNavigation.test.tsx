@@ -2,14 +2,15 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
 import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react"
 import { RestaurantProvider } from "@/context/RestaurantContext"
 import Home from "@/features/storefront/Home"
-import { TenantRepository } from "@/core/storage/TenantRepository"
+import { TenantRepository, STORAGE_KEYS } from "@/core/storage/TenantRepository"
 import { InMemoryStorageAdapter } from "@/core/storage/StorageAdapter"
 import { TEST_STORAGE_ENVELOPE, seedCatalogsFrom } from "@/test/fixtures"
 
 function createTestRepo() {
   const adapter = new InMemoryStorageAdapter()
+  // Legacy envelope (migrated into the persisted storefront cache on load).
+  adapter.setItem(STORAGE_KEYS.ENVELOPE, JSON.stringify(TEST_STORAGE_ENVELOPE))
   const repo = new TenantRepository(adapter)
-  repo.saveEnvelope(TEST_STORAGE_ENVELOPE)
   repo.setActiveRestaurantId("rest-burger-craft")
   return repo
 }

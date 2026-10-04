@@ -78,7 +78,6 @@ export interface TenantContextType {
   }) => RestaurantRecord | undefined
   updateRestaurant: (id: string, updates: Partial<RestaurantRecord>) => Promise<void>
   deleteRestaurant: (id: string) => Promise<void>
-  updateActiveRestaurantRecord: (updater: (current: RestaurantRecord) => RestaurantRecord) => void
   refreshRestaurants: () => Promise<void>
   /** Storefront polling: refresh schedule, timezone and pause from the public endpoint (silent on failure). */
   refreshStoreStatus: () => Promise<void>
@@ -92,11 +91,13 @@ interface TenantProviderProps {
 }
 
 /**
- * TenantContext stays the persistence root (localStorage envelope, cross-tab
- * sync, effective-tenant rule); only its server calls go through TanStack
- * Query. The composed RestaurantProvider mounts it inside its
- * QueryClientProvider; when it is mounted on its own (isolated slice usage) it
- * falls back to the shared app client so the provider order can never break it.
+ * TenantContext owns the tenant selection (the persisted active restaurant id
+ * and the effective-tenant rule). Restaurant records are server state in the
+ * query cache (directory and per-restaurant entries); the only tenant data
+ * persisted is the active id and the public storefront cache. The composed
+ * RestaurantProvider mounts it inside its QueryClientProvider; when it is
+ * mounted on its own (isolated slice usage) it falls back to the shared app
+ * client so the provider order can never break it.
  */
 export const TenantProvider: React.FC<TenantProviderProps> = (props) => {
   const hasClient = useContext(QueryClientContext) !== undefined
@@ -374,15 +375,6 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
     [queryClient, role, session.role, session.restaurantId, switchRestaurant, fetchTenant]
   )
 
-  const updateActiveRestaurantRecord = useCallback(
-    (updater: (current: RestaurantRecord) => RestaurantRecord) => {
-      // M10: bound to the session-aware effective tenant; never guessed.
-      if (!effectiveRestaurantId) return
-      patchRestaurant(queryClient, role, effectiveRestaurantId, updater)
-    },
-    [queryClient, role, effectiveRestaurantId]
-  )
-
   const createRestaurant = useCallback(
     (data: {
       name: string
@@ -545,7 +537,6 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
       createRestaurant,
       updateRestaurant,
       deleteRestaurant,
-      updateActiveRestaurantRecord,
       refreshRestaurants,
       refreshStoreStatus,
     }),
@@ -559,7 +550,6 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
       createRestaurant,
       updateRestaurant,
       deleteRestaurant,
-      updateActiveRestaurantRecord,
       refreshRestaurants,
       refreshStoreStatus,
     ]

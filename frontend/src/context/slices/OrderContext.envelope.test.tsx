@@ -1,7 +1,8 @@
 import React from "react"
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { renderHook, act, waitFor } from "@testing-library/react"
-import { seedBlankActiveTenant, TEST_ORDERS, TEST_CUSTOMERS } from "@/test/fixtures"
+import { seedBlankActiveTenant, TEST_ORDERS, TEST_CUSTOMERS, readPersistedQuery } from "@/test/fixtures"
+import type { RestaurantRecord } from "@/types/restaurant"
 import { RestaurantProvider, useRestaurant } from "@/context/RestaurantContext"
 import { apiClient } from "@/core/api/apiClient"
 import { TenantRepository, STORAGE_KEYS } from "@/core/storage/TenantRepository"
@@ -48,7 +49,7 @@ describe("orders and customers are no longer part of the tenant envelope", () =>
     expect(result.current.activeRestaurant.orders ?? []).toEqual([])
   })
 
-  it("loadEnvelope drops orders and customers persisted by the previous version", () => {
+  it("the legacy migration never carries orders and customers over", () => {
     const adapter = new InMemoryStorageAdapter()
     adapter.setItem(
       STORAGE_KEYS.ENVELOPE,
@@ -60,10 +61,13 @@ describe("orders and customers are no longer part of the tenant envelope", () =>
       })
     )
     const queue = new PendingOrdersQueue(adapter)
-    const [record] = new TenantRepository(adapter, queue).loadEnvelope().restaurants
+    new TenantRepository(adapter, queue).migrateLegacyEnvelope()
 
-    expect(record.orders ?? []).toEqual([])
-    expect(record.customers ?? []).toEqual([])
+    const record = readPersistedQuery<RestaurantRecord>(keys.restaurant("guest", "r1"))
+    expect(record?.id).toBe("r1")
+    expect(record?.orders).toBeUndefined()
+    expect(record?.customers).toBeUndefined()
+    expect(localStorage.getItem(PERSISTED_QUERIES_KEY)).not.toContain(TEST_ORDERS[0].id)
     expect(queue.list("r1")).toEqual([])
   })
 
