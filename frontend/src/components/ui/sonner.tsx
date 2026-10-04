@@ -5,7 +5,7 @@ export interface ToasterComponentProps extends ToasterProps {
   themeStyles?: React.CSSProperties
 }
 
-const Toaster = ({ theme, themeStyles, ...props }: ToasterComponentProps) => {
+const Toaster = ({ theme, themeStyles, style, ...props }: ToasterComponentProps) => {
   return (
     <Sonner
       theme={theme}
@@ -34,7 +34,7 @@ const Toaster = ({ theme, themeStyles, ...props }: ToasterComponentProps) => {
           "--normal-text": "var(--color-text-primary, #F5F5F7)",
           "--normal-border": "var(--color-border-subtle, #2D3138)",
           "--border-radius": "var(--radius-lg, 16px)",
-          ...props.style,
+          ...style,
         } as React.CSSProperties
       }
       {...props}

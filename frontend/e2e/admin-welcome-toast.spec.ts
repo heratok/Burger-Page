@@ -51,6 +51,27 @@ test.describe('Admin welcome toast does not block the "Nueva Venta" action', () 
 
       await page.getByPlaceholder(/Tu nombre de usuario/i).fill('admin_craft');
       await page.locator('input[type="password"]').fill('craft');
+
+      // Sample every frame from the login click on: Sonner slides a toast in
+      // (and out) from above its resting place, so a toast that rests below
+      // the header can still cross the header buttons while it animates.
+      await page.evaluate(() => {
+        const w = window as unknown as { __toastCoveredNuevaVenta?: boolean };
+        w.__toastCoveredNuevaVenta = false;
+        const sample = () => {
+          const target = [...document.querySelectorAll('button[aria-label="Nueva Venta"]')].find(
+            (b) => b.getBoundingClientRect().width > 0,
+          );
+          if (target) {
+            const r = target.getBoundingClientRect();
+            const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+            if (hit?.closest('[data-sonner-toast]')) w.__toastCoveredNuevaVenta = true;
+          }
+          requestAnimationFrame(sample);
+        };
+        requestAnimationFrame(sample);
+      });
+
       await page.getByRole('button', { name: /Acceder al Panel/i }).click();
 
       const toast = page.locator('[data-sonner-toast]', { hasText: 'Bienvenido al panel de administración' });
@@ -62,6 +83,13 @@ test.describe('Admin welcome toast does not block the "Nueva Venta" action', () 
       // Sonner animates the toast in; measure once it is mounted and the layout settled.
       await expect(toast).toHaveAttribute('data-mounted', 'true');
       await page.waitForTimeout(500);
+
+      // 0) No frame of the enter animation put the toast over the button.
+      const coveredWhileAnimating = await page.evaluate(
+        () => (window as unknown as { __toastCoveredNuevaVenta?: boolean }).__toastCoveredNuevaVenta,
+      );
+      expect(coveredWhileAnimating, 'the toast crossed "Nueva Venta" while animating in').toBe(false);
+
       const box = (await button.boundingBox())!;
       const toastBox = (await toast.boundingBox())!;
       expect(box).not.toBeNull();
