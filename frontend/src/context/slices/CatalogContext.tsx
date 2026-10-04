@@ -9,6 +9,7 @@ import { toast } from "sonner"
 import { nextTempId } from "@/lib/ids"
 import { splitConfigForApi } from "@/lib/storeSchedule"
 import { keys, keyPrefixes } from "@/core/query/keys"
+import { patchRestaurant } from "./restaurantCache"
 import {
   productsQueryOptions,
   additionsQueryOptions,
@@ -82,7 +83,7 @@ const EMPTY_PRODUCTS: MenuItem[] = []
 const EMPTY_ADDITIONS: AdditionItem[] = []
 
 export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { activeRestaurant, updateActiveRestaurantRecord } = useTenant()
+  const { activeRestaurant } = useTenant()
   const { session } = useAuth()
 
   // A1/A2: fetch targets key on the session-aware effective tenant. For a
@@ -152,10 +153,12 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (next.products !== current.products) queryClient.setQueryData(productsKey, next.products)
       if (next.additions !== current.additions) queryClient.setQueryData(additionsKey, next.additions)
       if (next.categories !== current.categories) {
-        updateActiveRestaurantRecord((record) => ({ ...record, categories: next.categories }))
+        if (effectiveId) {
+          patchRestaurant(queryClient, session.role, effectiveId, (record) => ({ ...record, categories: next.categories }))
+        }
       }
     },
-    [readCatalog, queryClient, productsKey, additionsKey, updateActiveRestaurantRecord]
+    [readCatalog, queryClient, productsKey, additionsKey, effectiveId, session.role]
   )
 
   // After the LAST in-flight catalog write settles, pull the authoritative
@@ -230,8 +233,17 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
     mutationKey: TENANT_WRITES_KEY,
     mutationFn: (vars: ConfigWrite) => vars.request,
     onMutate: (vars) => {
+      // The store config is read from the restaurant's keys.restaurant entry:
+      // a lookup in flight predates the write, and every cached copy of the
+      // restaurant gets the optimistic config.
+      void queryClient.cancelQueries({ queryKey: keyPrefixes.restaurant() })
       const previousConfig = activeRestaurant?.config
-      updateActiveRestaurantRecord((current) => ({ ...current, config: vars.apply(current.config) }))
+      if (effectiveId) {
+        patchRestaurant(queryClient, session.role, effectiveId, (current) => ({
+          ...current,
+          config: vars.apply(current.config),
+        }))
+      }
       if (vars.toast.success) toast.success(vars.toast.success)
       else if (vars.toast.info) toast.info(vars.toast.info)
       return { previousConfig }
@@ -239,8 +251,8 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
     onError: (err, vars, context) => {
       warn(vars.warnMessage, err)
       const previousConfig = context?.previousConfig
-      if (previousConfig) {
-        updateActiveRestaurantRecord((current) => ({ ...current, config: previousConfig }))
+      if (previousConfig && effectiveId) {
+        patchRestaurant(queryClient, session.role, effectiveId, (current) => ({ ...current, config: previousConfig }))
       }
       toast.error(vars.toast.error)
     },
