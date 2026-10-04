@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react"
-import { useUi, useTenant, useOrderBoardsByTenant, ordersOf } from "@/context/RestaurantContext"
+import { useUi, useTenant, useOrderBoardsByTenant, ordersOf, useCatalogSizesByTenant } from "@/context/RestaurantContext"
 import type { RestaurantRecord } from "@/types/restaurant"
 import type { DeletedRestaurantRecord } from "@/core/api/apiClient"
 import { toast } from "sonner"
@@ -42,6 +42,7 @@ export const RestaurantsDirectory: React.FC = () => {
   const { restaurants, activeRestaurantId, switchRestaurant, updateRestaurant, deleteRestaurant, refreshRestaurants, isSyncing } = useTenant()
 
   const orderBoards = useOrderBoardsByTenant()
+  const catalogSizes = useCatalogSizesByTenant()
   const { navigateTo } = useAppRouter()
 
   const [activeTab, setActiveTab] = useState<"active" | "deleted">("active")
@@ -334,6 +335,7 @@ export const RestaurantsDirectory: React.FC = () => {
                 <tbody className="divide-y divide-slate-100 dark:border-slate-800">
                   {paginatedRestaurants.map((r) => {
                     const restaurantOrders = ordersOf(orderBoards, r.id)
+                    const catalogSize = catalogSizes.get(r.id) ?? { products: 0, additions: 0 }
                     const totalSales = restaurantOrders
                       .filter((o) => o.status !== "cancelled")
                       .reduce((sum, o) => sum + o.finalTotal, 0)
@@ -399,10 +401,10 @@ export const RestaurantsDirectory: React.FC = () => {
                         {/* Products Count */}
                         <td className="px-4 py-4">
                           <span className="font-semibold text-slate-700 dark:text-slate-200">
-                            {r.products.length} productos
+                            {catalogSize.products} productos
                           </span>
                           <span className="text-[11px] text-slate-400 ml-1">
-                            ({r.additions.length} adiciones)
+                            ({catalogSize.additions} adiciones)
                           </span>
                         </td>
 

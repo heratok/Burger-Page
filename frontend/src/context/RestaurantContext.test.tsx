@@ -4,7 +4,7 @@ import React from "react"
 import { RestaurantProvider, useRestaurant } from "./RestaurantContext"
 import { InMemoryStorageAdapter } from "@/core/storage/StorageAdapter"
 import { TenantRepository, STORAGE_KEYS } from "@/core/storage/TenantRepository"
-import { TEST_STORAGE_ENVELOPE } from "@/test/fixtures"
+import { TEST_STORAGE_ENVELOPE, seedCatalogsFrom } from "@/test/fixtures"
 
 const createTestRepo = () => {
   const adapter = new InMemoryStorageAdapter()
@@ -35,6 +35,8 @@ describe("RestaurantContext (Multi-Tenant & Super Admin)", () => {
   })
 
   it("switches active restaurant by slug and scopes products accordingly", () => {
+    // Catalogs are server state now: they come from the query cache.
+    seedCatalogsFrom(TEST_STORAGE_ENVELOPE)
     const { result } = renderHook(() => useRestaurant(), { wrapper })
 
     // Initially Burger Craft

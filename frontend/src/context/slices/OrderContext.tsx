@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useMemo, useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { hashKey, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import type { Order, OrderStatus, Customer, RestaurantRecord } from "@/types/restaurant"
+import type { Order, OrderStatus, Customer, RestaurantRecord, MenuItem, AdditionItem } from "@/types/restaurant"
 import type { CreateOrderInput, UpdateOrderInput, OrderEvent, UpdateCustomerInput } from "@burger-page/contracts"
 import { ORDER_CLOSED_ERROR_FRAGMENT, ORDER_PAUSED_ERROR_FRAGMENT } from "@burger-page/contracts"
 import { apiClient, isNotFoundError } from "@/core/api/apiClient"
@@ -652,6 +652,21 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     (): OrderBoard => queryClient.getQueryData<OrderBoard>(boardKey) ?? EMPTY_BOARD,
     [queryClient, boardKey]
   )
+  /**
+   * The tenant's catalog as cached by the catalog slice (any storefront slug),
+   * read at call time: order inputs map item names to product/addition ids.
+   */
+  const readCatalog = useCallback(() => {
+    const pick = <T,>(prefix: readonly unknown[]): T[] =>
+      queryClient
+        .getQueriesData<T[]>({ queryKey: prefix })
+        .find(([key, data]) => key[2] === session.role && Array.isArray(data))?.[1] ?? []
+    return {
+      products: pick<MenuItem>(keyPrefixes.products(effectiveId)),
+      additions: pick<AdditionItem>(keyPrefixes.additions(effectiveId)),
+    }
+  }, [queryClient, effectiveId, session.role])
+
   /** Applies an edit to the tenant's queued offline sales too (only when it changes one). */
   const updateQueue = useCallback(
     (updater: (current: OrderBoard) => OrderBoard) => {
@@ -799,7 +814,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const targetRestId = activeRestaurant?.id
       if (!targetRestId) return
       try {
-        const orderInput = buildCreateOrderInput({ ...activeRestaurant, customers: readBoard().customers }, order)
+        const orderInput = buildCreateOrderInput({ ...activeRestaurant, ...readCatalog(), customers: readBoard().customers }, order)
         const createdOrder = await trackRequest(apiClient.createOrder(orderInput), undefined, false)
         // Synced: the sale leaves the queue and joins the cached board.
         pendingOrdersQueue.remove(targetRestId, order.id)
@@ -835,7 +850,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         })
       }
     },
-    [activeRestaurant, updateBoard, readBoard, trackRequest]
+    [activeRestaurant, updateBoard, readBoard, readCatalog, trackRequest]
   )
 
   const retryPendingOrders = useCallback(async () => {
@@ -1029,7 +1044,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       // an error and removes the temporary card so a phantom order is never
       // silently dropped by the next refresh/SSE sync without user visibility.
       try {
-        const orderInput = buildCreateOrderInput({ ...activeRestaurant, customers: readBoard().customers }, newOrder)
+        const orderInput = buildCreateOrderInput({ ...activeRestaurant, ...readCatalog(), customers: readBoard().customers }, newOrder)
 
         trackRequest(apiClient.createOrder(orderInput), undefined, false)
           .then((createdOrder) => {
@@ -1099,14 +1114,14 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       return newOrder
     },
-    [activeRestaurant, updateBoard, readBoard, holdOffline, soundEnabled, trackRequest]
+    [activeRestaurant, updateBoard, readBoard, readCatalog, holdOffline, soundEnabled, trackRequest]
   )
 
   const updateOrder = useCallback(
     (orderId: string, updates: Partial<Order>) => {
       const now = new Date().toISOString()
       const targetRestId = activeRestaurant?.id
-      const products = activeRestaurant.products ?? []
+      const products = readCatalog().products
       return dispatchEdit({
         orderId,
         apply: (board) => ({
@@ -1132,7 +1147,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         () => undefined
       )
     },
-    [activeRestaurant, dispatchEdit]
+    [activeRestaurant, readCatalog, dispatchEdit]
   )
 
   const updateOrderStatus = useCallback(

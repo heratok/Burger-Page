@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from "react"
 import { useQueries, type QueryObserverResult } from "@tanstack/react-query"
-import type { Order } from "@/types/restaurant"
-import { ordersQueryOptions } from "@/core/query/options"
+import type { AdditionItem, MenuItem, Order } from "@/types/restaurant"
+import { ordersQueryOptions, productsQueryOptions, additionsQueryOptions } from "@/core/query/options"
 import { useTenant } from "./TenantContext"
 import { useAuth } from "./AuthContext"
 import type { OrderBoard } from "./orderBoard"
@@ -39,6 +39,46 @@ export function useOrderBoardsByTenant(): Map<string, OrderBoard> {
   )
   return useQueries({
     queries: ids.map((id) => ({ ...ordersQueryOptions(id, session.role), enabled: false })),
+    combine,
+  })
+}
+
+export interface CatalogSize {
+  products: number
+  additions: number
+}
+
+/**
+ * Catalog sizes of every restaurant in the directory, from the cached product
+ * and addition lists this session has read (read-only, never fetches).
+ */
+export function useCatalogSizesByTenant(): Map<string, CatalogSize> {
+  const { restaurants } = useTenant()
+  const { session } = useAuth()
+  const targetsKey = restaurants.map((r) => `${r.id}\u0000${r.slug}`).join("|")
+  const targets = useMemo(
+    () => (targetsKey ? targetsKey.split("|").map((t) => t.split("\u0000") as [string, string]) : []),
+    [targetsKey]
+  )
+  const combine = useCallback(
+    (results: QueryObserverResult<MenuItem[] | AdditionItem[]>[]) => {
+      const sizes = new Map<string, CatalogSize>()
+      targets.forEach(([id], i) => {
+        const products = results[i * 2]?.data
+        const additions = results[i * 2 + 1]?.data
+        if (products || additions) {
+          sizes.set(id, { products: products?.length ?? 0, additions: additions?.length ?? 0 })
+        }
+      })
+      return sizes
+    },
+    [targets]
+  )
+  return useQueries({
+    queries: targets.flatMap(([id, slug]) => [
+      { ...productsQueryOptions(id, session.role, slug), enabled: false },
+      { ...additionsQueryOptions(id, session.role, slug), enabled: false },
+    ]),
     combine,
   })
 }

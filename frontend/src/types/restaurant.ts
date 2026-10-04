@@ -170,8 +170,10 @@ export interface RestaurantRecord {
   adminPassword?: string
   config: StorefrontConfig
   categories?: string[]
-  products: MenuItem[]
-  additions: AdditionItem[]
+  /** @deprecated Server state in the query cache (keys.products); dropped by loadEnvelope. */
+  products?: MenuItem[]
+  /** @deprecated Server state in the query cache (keys.additions); dropped by loadEnvelope. */
+  additions?: AdditionItem[]
   /** @deprecated Server state in the query cache (keys.inventory); dropped by loadEnvelope. */
   inventory?: InventoryItem[]
   /** @deprecated Server state in the query cache (keys.suppliers); dropped by loadEnvelope. */

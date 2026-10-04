@@ -49,8 +49,6 @@ function toRestaurantRecord(fetched: any): RestaurantRecord {
       ...configFromApi(fetched, DEFAULT_STORE_CONFIG),
       name: fetched.name || fetched.config?.name || DEFAULT_STORE_CONFIG.name,
     },
-    products: fetched.products || [],
-    additions: fetched.additions || [],
   }
 }
 
@@ -186,8 +184,6 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
               name: br.name || br.config?.name || local?.config?.name || DEFAULT_STORE_CONFIG.name,
               tagline: br.tagline || br.config?.tagline || local?.config?.tagline || DEFAULT_STORE_CONFIG.tagline,
             },
-            products: local?.products || [],
-            additions: local?.additions || [],
           } as RestaurantRecord
         })
         return {
@@ -359,8 +355,6 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
         isActive: true,
         createdAt: new Date().toISOString(),
         config: DEFAULT_STORE_CONFIG,
-        products: [],
-        additions: [],
       }
     )
   }, [envelope.restaurants, effectiveRestaurantId])
@@ -471,9 +465,7 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
             createdAt: new Date().toISOString(),
             config: DEFAULT_STORE_CONFIG,
             categories: [],
-            products: [],
-            additions: [],
-          }
+                  }
 
         const updated = updater(target)
         // Identity is the id ONLY — slug stays in the record as a display/business
@@ -529,8 +521,6 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
           primaryColor: data.primaryColor || DEFAULT_STORE_CONFIG.primaryColor,
         },
         categories: [],
-        products: [],
-        additions: [],
       }
 
         setEnvelope((prev) => ({

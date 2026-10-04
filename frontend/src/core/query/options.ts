@@ -1,5 +1,5 @@
-import { queryOptions } from "@tanstack/react-query"
-import type { UserRole } from "@/types/restaurant"
+import { queryOptions, type QueryClient, type QueryKey } from "@tanstack/react-query"
+import type { AdditionItem, MenuItem, UserRole } from "@/types/restaurant"
 import { apiClient } from "@/core/api/apiClient"
 import { keys } from "./keys"
 import { reconcileOrderBoard, type BackendBoard, type OrderBoard } from "@/context/slices/orderBoard"
@@ -60,12 +60,30 @@ export const ordersQueryOptions = (tenantId: TenantId, role: UserRole) =>
     networkMode: "always",
   })
 
+/** Shared key of every catalog write (products, additions, categories). */
+export const CATALOG_WRITES_KEY = ["catalog-writes"] as const
+
+/**
+ * A catalog read that lands while a catalog write is in flight predates it and
+ * would wipe its optimistic state: the cached list is kept (the last settling
+ * write always revalidates the catalog).
+ */
+function keepCachedDuringWrites<T>(client: QueryClient, queryKey: QueryKey, fresh: T): T {
+  if (client.isMutating({ mutationKey: CATALOG_WRITES_KEY }) === 0) return fresh
+  const cached = client.getQueryData<T>(queryKey)
+  return cached === undefined ? fresh : cached
+}
+
 export const productsQueryOptions = (tenantId: TenantId, role: UserRole, slug: string | undefined) =>
   queryOptions({
     queryKey: keys.products(tenantId, role, slug),
-    queryFn: () =>
-      logged("Could not fetch products from backend API:", () =>
-        apiClient.fetchProducts({ restaurantId: tenantId, slug })
+    queryFn: async ({ client, queryKey }): Promise<MenuItem[]> =>
+      keepCachedDuringWrites(
+        client,
+        queryKey,
+        await logged("Could not fetch products from backend API:", () =>
+          apiClient.fetchProducts({ restaurantId: tenantId, slug })
+        )
       ),
     retry: false,
   })
@@ -73,9 +91,13 @@ export const productsQueryOptions = (tenantId: TenantId, role: UserRole, slug: s
 export const additionsQueryOptions = (tenantId: TenantId, role: UserRole, slug: string | undefined) =>
   queryOptions({
     queryKey: keys.additions(tenantId, role, slug),
-    queryFn: () =>
-      logged("Could not fetch additions from backend API:", () =>
-        apiClient.fetchAdditions({ restaurantId: tenantId, slug })
+    queryFn: async ({ client, queryKey }): Promise<AdditionItem[]> =>
+      keepCachedDuringWrites(
+        client,
+        queryKey,
+        await logged("Could not fetch additions from backend API:", () =>
+          apiClient.fetchAdditions({ restaurantId: tenantId, slug })
+        )
       ),
     retry: false,
   })
