@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useMemo, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
-import { useIsMutating, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import type { Order, OrderStatus, Customer, RestaurantRecord } from "@/types/restaurant"
+import React, { createContext, useContext, useMemo, useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react"
+import { hashKey, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import type { Order, OrderStatus, Customer, RestaurantRecord, MenuItem, AdditionItem } from "@/types/restaurant"
 import type { CreateOrderInput, UpdateOrderInput, OrderEvent, UpdateCustomerInput } from "@burger-page/contracts"
 import { ORDER_CLOSED_ERROR_FRAGMENT, ORDER_PAUSED_ERROR_FRAGMENT } from "@burger-page/contracts"
 import { apiClient, isNotFoundError } from "@/core/api/apiClient"
@@ -12,7 +12,19 @@ import { playNotificationChime } from "@/core/audio/soundEffects"
 import { toast } from "sonner"
 import { formatCurrency, cleanPhoneNumber } from "@/lib/utils"
 import { nextTempId } from "@/lib/ids"
-import { runOptimisticMutation } from "./optimisticMutation"
+import { keys, keyPrefixes } from "@/core/query/keys"
+import { ordersQueryOptions } from "@/core/query/options"
+import { pendingOrdersQueue } from "@/core/storage/pendingOrdersQueue"
+import {
+  EMPTY_BOARD,
+  ORDER_WRITES_KEY,
+  mapBackendOrderToDomain,
+  computeLoyaltyTier,
+  takeDeferredRead,
+  type OrderBoard,
+} from "./orderBoard"
+
+export { syncBackendOrders, syncBackendCustomers } from "./orderBoard"
 
 export interface ServerOrderResult {
   adoptedOrderNumber: number
@@ -65,100 +77,6 @@ function generateClientOrderId(): string {
   return `cli-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`
 }
 
-function resolveOrderCustomer(boCustomer: any, existing?: Order, matchedCustomer?: any) {
-  if (boCustomer) {
-    return {
-      nombre: boCustomer.nombre || boCustomer.name || existing?.customer?.nombre || 'Cliente',
-      telefono: boCustomer.telefono || boCustomer.phone || existing?.customer?.telefono || '',
-      direccion: boCustomer.direccion || boCustomer.address || existing?.customer?.direccion || '',
-      barrio: boCustomer.barrio || existing?.customer?.barrio || '',
-    }
-  }
-  if (matchedCustomer) {
-    return {
-      nombre: matchedCustomer.nombre,
-      telefono: matchedCustomer.telefono,
-      direccion: matchedCustomer.direccion,
-      barrio: matchedCustomer.barrio,
-    }
-  }
-  return existing?.customer ?? {
-    nombre: 'Cliente',
-    telefono: '',
-    direccion: '',
-    barrio: '',
-  }
-}
-
-function computeLoyaltyTier(totalOrders: number, totalSpent?: number): Customer["loyaltyTier"] {
-  if (totalSpent !== undefined) {
-    if (totalSpent >= 400000 || totalOrders >= 10) return "vip"
-    if (totalSpent >= 250000 || totalOrders >= 6) return "gold"
-    if (totalSpent >= 100000 || totalOrders >= 3) return "silver"
-    return "bronze"
-  }
-  if (totalOrders >= 15) return "vip"
-  if (totalOrders >= 8) return "gold"
-  if (totalOrders >= 3) return "silver"
-  return "bronze"
-}
-
-function mapBackendOrderToDomain(bo: any, existing?: Order, matchedCustomer?: any): Order {
-  const customer = resolveOrderCustomer(bo.customer, existing, matchedCustomer)
-
-  const items = (bo.items && bo.items.length > 0 ? bo.items : existing?.items || []).map((item: any) => {
-    const unitPrice = Number(item.unitPrice ?? item.price ?? 0)
-    const quantity = Number(item.quantity ?? item.cantidad ?? 1)
-    const additions = (item.additions || item.adiciones || []).map((a: any) => ({
-      id: a.id,
-      additionId: a.additionId || a.addition_id,
-      name: a.additionName || a.name || 'Adición',
-      price: Number(a.unitPrice ?? a.price ?? 0),
-      cantidad: Number(a.quantity ?? 1),
-    }))
-    return {
-      id: item.id,
-      productId: item.productId || item.product_id,
-      name: item.productName || item.name || 'Producto',
-      price: unitPrice,
-      cantidad: quantity,
-      // Backend order items carry no per-item total: fall back to the shared
-      // cart/backend formula (price + SUM(add.price * add.cantidad)) * quantity
-      // so priced additions are never dropped from the read-back breakdown
-      // (SUS-01, same semantics as JD-CRIT-01).
-      total: Number(
-        item.total ??
-          calculateLineItemTotal({ price: unitPrice, cantidad: quantity, adiciones: additions })
-      ),
-      observacion: item.observation || item.observacion,
-      src: item.src,
-      adiciones: additions,
-    }
-  })
-
-  return {
-    id: bo.id,
-    orderNumber: bo.orderNumber || existing?.orderNumber || 0,
-    customer,
-    items,
-    total: Number(bo.subtotal ?? bo.total ?? existing?.total ?? 0),
-    deliveryFee: Number(bo.deliveryFee ?? existing?.deliveryFee ?? 0),
-    finalTotal: Number(bo.finalTotal ?? bo.total ?? existing?.finalTotal ?? 0),
-    metodo: (bo.paymentMethod || bo.metodo || existing?.metodo || 'Efectivo') as any,
-    pagoCon: bo.paymentAmount !== undefined ? String(bo.paymentAmount) : (bo.pagoCon ?? existing?.pagoCon),
-    cambio: bo.changeAmount !== undefined ? Number(bo.changeAmount) : (bo.cambio ?? existing?.cambio),
-    comentario: bo.comment || bo.comentario || existing?.comentario,
-    receiptUrl: bo.receiptUrl || existing?.receiptUrl,
-    // The server is the source of truth for the table: an absent field means
-    // "no table" (detached), never "keep the previous local value".
-    ...(bo.tableId ? { tableId: bo.tableId as string } : {}),
-    ...(bo.tableLabel ? { tableLabel: bo.tableLabel as string } : {}),
-    status: (bo.status as OrderStatus) || existing?.status || 'pending',
-    createdAt: bo.createdAt || existing?.createdAt || new Date().toISOString(),
-    updatedAt: bo.updatedAt || existing?.updatedAt || new Date().toISOString(),
-  }
-}
-
 // ============================================================================
 // TOP-LEVEL PURE UPDATERS & MAPPERS (SonarQube typescript:S2004 compliance)
 // ============================================================================
@@ -188,14 +106,14 @@ export function mapSseOrderItem(item: any) {
   }
 }
 
-export function handleOrderDeletedEvent(current: RestaurantRecord, orderId: string): RestaurantRecord {
+export function handleOrderDeletedEvent<T extends OrderBoard>(current: T, orderId: string): T {
   return {
     ...current,
     orders: current.orders.filter((o) => o.id !== orderId),
   }
 }
 
-export function handleOrderReceiptUpdatedEvent(current: RestaurantRecord, event: OrderEvent): RestaurantRecord {
+export function handleOrderReceiptUpdatedEvent<T extends OrderBoard>(current: T, event: OrderEvent): T {
   const payloadReceipt = (event.payload as any)?.receiptUrl
   return {
     ...current,
@@ -211,7 +129,7 @@ export function handleOrderReceiptUpdatedEvent(current: RestaurantRecord, event:
   }
 }
 
-export function handleOrderCreatedEvent(current: RestaurantRecord, event: OrderEvent): RestaurantRecord {
+export function handleOrderCreatedEvent<T extends OrderBoard>(current: T, event: OrderEvent): T {
   if (!event.payload || typeof event.payload !== "object") {
     return current
   }
@@ -264,11 +182,11 @@ export function handleOrderCreatedEvent(current: RestaurantRecord, event: OrderE
   }
 }
 
-export function handleOrderUpdatedEvent(
-  current: RestaurantRecord,
+export function handleOrderUpdatedEvent<T extends OrderBoard>(
+  current: T,
   event: OrderEvent,
   matchIndex: number
-): RestaurantRecord {
+): T {
   const payload = (event.payload as any) || {}
   const nextOrders = current.orders.map((o, idx) => {
     if (idx !== matchIndex) return o
@@ -298,7 +216,7 @@ export function handleOrderUpdatedEvent(
   }
 }
 
-export function updateRestaurantOrderState(current: RestaurantRecord, event: OrderEvent): RestaurantRecord {
+export function updateRestaurantOrderState<T extends OrderBoard>(current: T, event: OrderEvent): T {
   if (event.eventType === "ORDER_DELETED") {
     return handleOrderDeletedEvent(current, event.orderId)
   }
@@ -330,117 +248,6 @@ export function updateRestaurantOrderState(current: RestaurantRecord, event: Ord
   }
 
   return current
-}
-
-export function syncBackendOrders(
-  currentOrders: Order[],
-  backendOrders: any[],
-  currentCustomers: Customer[]
-): Order[] {
-  if (!Array.isArray(backendOrders)) {
-    return currentOrders
-  }
-
-  const existingMap = new Map<string, Order>()
-  currentOrders.forEach((o) => existingMap.set(o.id, o))
-
-  const serverOrders = backendOrders
-    .filter((bo: any) => bo && bo.id)
-    .map((bo: any) => {
-      const existing = existingMap.get(bo.id)
-      const matchedCustomer = currentCustomers.find((c) => c.id === bo.customerId)
-      return mapBackendOrderToDomain(bo, existing, matchedCustomer)
-    })
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-
-  // Offline-created orders (pendingSync) are absent from the server response:
-  // append them after the server cards so a sale entered during an API outage
-  // survives the rebuild and stays retryable (REJ-02). A pending order matched
-  // above by id or orderNumber was already replaced by the merge (the mapped
-  // record omits pendingSync, i.e. "synced") and must not be re-appended.
-  // Plain ghost orders remain dropped exactly as before.
-  const serverIds = new Set(serverOrders.map((o) => o.id))
-  const serverOrderNumbers = new Set(serverOrders.map((o) => o.orderNumber))
-  const pendingLocalOrders = currentOrders.filter(
-    (o) =>
-      o.pendingSync &&
-      !serverIds.has(o.id) &&
-      !serverOrderNumbers.has(o.orderNumber)
-  )
-
-  return [...serverOrders, ...pendingLocalOrders]
-}
-
-export function syncBackendCustomers(
-  currentCustomers: Customer[],
-  backendCustomers: any[],
-  nextOrders: Order[]
-): Customer[] {
-  if (!Array.isArray(backendCustomers)) {
-    return currentCustomers
-  }
-
-  const existingMap = new Map<string, Customer>()
-  currentCustomers.forEach((c) => existingMap.set(c.id, c))
-
-  const customersMap = new Map<string, Customer>()
-
-  backendCustomers.forEach((bc: any) => {
-    if (!bc?.id) return
-
-    const cleanPhone = cleanPhoneNumber(bc.phone || "")
-    const existing =
-      existingMap.get(bc.id) ||
-      Array.from(existingMap.values()).find(
-        (c) => cleanPhoneNumber(c.telefono) === cleanPhone
-      )
-
-    const matchedOrders = nextOrders.filter(
-      (o) => cleanPhoneNumber(o.customer.telefono) === cleanPhone
-    )
-    // Same rule as the DB trigger update_customer_order_metrics: cancelled
-    // orders never count toward orders/spent/last order/loyalty.
-    const custOrders = matchedOrders.filter((o) => o.status !== "cancelled")
-    const totalSpent = custOrders.reduce((sum, o) => sum + (o.finalTotal || o.total || 0), 0)
-    const totalOrders = custOrders.length
-    const lastOrderDate = custOrders[0]?.createdAt || bc.createdAt || new Date().toISOString()
-    const loyaltyTier = computeLoyaltyTier(totalOrders, totalSpent)
-
-    customersMap.set(bc.id, {
-      id: bc.id,
-      nombre: bc.name || existing?.nombre || "Cliente",
-      telefono: bc.phone || existing?.telefono || "",
-      direccion: bc.address ?? existing?.direccion ?? "",
-      barrio: bc.barrio ?? existing?.barrio ?? "",
-      // Keep the stored figures only when no order of this customer is loaded at
-      // all; a customer whose loaded orders are all cancelled really has zero.
-      totalOrders: matchedOrders.length > 0 ? totalOrders : existing?.totalOrders || 0,
-      totalSpent: matchedOrders.length > 0 ? totalSpent : existing?.totalSpent || 0,
-      lastOrderDate,
-      loyaltyTier,
-      notes: bc.notes ?? existing?.notes ?? "",
-    })
-  })
-
-  return Array.from(customersMap.values())
-}
-
-export function syncBackendDataToRestaurant(
-  current: RestaurantRecord,
-  targetRestId: string,
-  backendOrders: any[],
-  backendCustomers: any[]
-): RestaurantRecord {
-  if (current.id !== targetRestId) return current
-
-  const nextOrders = syncBackendOrders(current.orders, backendOrders, current.customers)
-  const nextCustomers = syncBackendCustomers(current.customers, backendCustomers, nextOrders)
-
-  return {
-    ...current,
-    orders: nextOrders,
-    customers: nextCustomers,
-  }
 }
 
 export function recordCustomerForNewOrder(
@@ -487,11 +294,11 @@ export function recordCustomerForNewOrder(
   return nextCustomers
 }
 
-export function addOrderToRestaurant(
-  current: RestaurantRecord,
+export function addOrderToRestaurant<T extends OrderBoard>(
+  current: T,
   newOrder: Order,
   timestamp: string
-): RestaurantRecord {
+): T {
   return {
     ...current,
     orders: [newOrder, ...current.orders],
@@ -598,11 +405,11 @@ export function formatUserFacingOrderError(rawMessage?: string): string {
  * refresh/SSE merge already replaced the temp card, the server card is the only
  * copy and is left untouched.
  */
-export function adoptCreatedOrderToActive(
-  current: RestaurantRecord,
+export function adoptCreatedOrderToActive<T extends OrderBoard>(
+  current: T,
   tempOrderId: string,
   createdOrder: any
-): RestaurantRecord {
+): T {
   const tempStillPresent = current.orders.some((o) => o.id === tempOrderId)
   if (!tempStillPresent) return current
   const withoutSseDuplicate = current.orders.filter((o) => o.id !== createdOrder.id)
@@ -618,6 +425,24 @@ export function adoptCreatedOrderToActive(
           }
         : o
     ),
+  }
+}
+
+/**
+ * A queued offline sale the server accepted on retry joins the board with the
+ * server identity. An SSE echo or a read that already brought the server copy
+ * (same server id) is replaced by it, so the board holds a single card.
+ */
+export function adoptQueuedOrder<T extends OrderBoard>(current: T, queued: Order, createdOrder: any): T {
+  const adopted: Order = {
+    ...queued,
+    id: createdOrder.id,
+    orderNumber: createdOrder.orderNumber ?? queued.orderNumber,
+    pendingSync: false,
+  }
+  return {
+    ...current,
+    orders: [adopted, ...current.orders.filter((o) => o.id !== createdOrder.id && o.id !== queued.id)],
   }
 }
 
@@ -728,10 +553,6 @@ export function buildUpdateOrderInput(
   return updateInput
 }
 
-// Shared key so a settling write can tell whether other order-slice writes are
-// still in flight (every write kind shares it; see revalidate).
-const ORDER_WRITES_KEY = ["order-writes"] as const
-
 // Each write carries its already-dispatched request: the HTTP call fires at the
 // user action (as before, so addOrder stays synchronous) and the mutation
 // tracks it. The callbacks settle the promise the optimistic flow awaits.
@@ -745,37 +566,38 @@ interface OrderWrite {
   reject: (error: unknown) => void
 }
 
-interface Board {
-  orders: any[]
-  customers: any[]
-}
-
 /**
- * Reads the order board: orders plus customers. A failed customers read falls
- * back to an empty list (orders still hydrate); a failed orders read rejects.
+ * One optimistic edit of the cached board: an order edit, status change,
+ * receipt, deletion or customer edit. The edit mutation applies it in
+ * onMutate, undoes it in onError and revalidates in onSettled.
  */
-async function fetchBoard(restaurantId: string): Promise<Board> {
-  try {
-    const [orders, customers] = await Promise.all([
-      apiClient.fetchOrders(restaurantId),
-      apiClient.fetchCustomers(restaurantId).catch((err) => {
-        if (import.meta.env?.MODE !== 'test') {
-          console.warn("Could not fetch customers from backend API:", err)
-        }
-        return [] as any[]
-      }),
-    ])
-    return { orders: Array.isArray(orders) ? [...orders] : (orders as any), customers: [...customers] }
-  } catch (err) {
-    if (import.meta.env?.MODE !== 'test') {
-      console.warn("Could not fetch orders/customers from backend API:", err)
-    }
-    throw err
+interface OrderEdit {
+  /** Order the edit targets; SSE events for it are ignored while it is pending. */
+  orderId?: string
+  apply: (board: OrderBoard) => OrderBoard
+  /** Undoes the edit on the current board; `snapshot` is the board before it. */
+  rollback: (board: OrderBoard, snapshot: OrderBoard) => OrderBoard
+  /** The server call; undefined for a local-only edit (no session or tenant). */
+  request?: () => Promise<any>
+  /** The dispatched call (set by dispatchEdit, at the user action). */
+  pending?: Promise<any>
+  /** Applies the server's answer (when it returns a body). */
+  reconcile?: (board: OrderBoard, result: any) => OrderBoard
+  toast: {
+    /** toast.success, right after apply unless successTiming is "confirmed". */
+    success?: string
+    successTiming?: "optimistic" | "confirmed"
+    /** toast.info right after apply (instead of success). */
+    info?: string
+    error: string
   }
+  /** A failure this returns true for is ignored: no rollback, no error toast. */
+  skipRollbackIfError?: (err: unknown) => boolean
+  warnMessage: string
 }
 
 export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { activeRestaurant, updateActiveRestaurantRecord } = useTenant()
+  const { activeRestaurant } = useTenant()
   const { session } = useAuth()
   const { soundEnabled } = useUi()
 
@@ -795,28 +617,71 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // orders/customers endpoints. The role is part of the key so a cache entry is
   // never served across roles; logout clears the whole client.
   const enabled = Boolean(effectiveId && apiClient.hasToken())
-  const boardKey = useMemo(
-    () => ["orders", effectiveId, session.role] as const,
-    [effectiveId, session.role]
+  const boardKey = useMemo(() => keys.orders(effectiveId, session.role), [effectiveId, session.role])
+
+  // The query cache is the only source of truth for the board: the tenant
+  // record never holds orders or customers, so order activity never touches
+  // the tenant context (and never re-renders its consumers).
+  const boardQuery = useQuery({ ...ordersQueryOptions(effectiveId, session.role), enabled })
+  const board = boardQuery.data
+  const boardOrders = board?.orders ?? EMPTY_BOARD.orders
+  const customers = board?.customers ?? EMPTY_BOARD.customers
+
+  // Offline sales (REJ-02) live in the persisted pending-orders queue, never in
+  // the server cache. They are shown on top of the board until the retry syncs
+  // them; one the server already returned (same id or number) is not repeated.
+  const queuedOrders = useSyncExternalStore(pendingOrdersQueue.subscribe, () =>
+    pendingOrdersQueue.list(effectiveId)
+  )
+  const orders = useMemo(() => {
+    if (queuedOrders.length === 0) return boardOrders
+    const ids = new Set(boardOrders.map((o) => o.id))
+    const numbers = new Set(boardOrders.map((o) => o.orderNumber))
+    const visible = queuedOrders.filter((o) => !ids.has(o.id) && !numbers.has(o.orderNumber))
+    return visible.length > 0 ? [...visible, ...boardOrders] : boardOrders
+  }, [queuedOrders, boardOrders])
+
+  /** Applies a local change (optimistic write, rollback, SSE event) to the cached board. */
+  const updateBoard = useCallback(
+    (updater: (current: OrderBoard) => OrderBoard) => {
+      queryClient.setQueryData<OrderBoard>(boardKey, (current) => updater(current ?? EMPTY_BOARD))
+    },
+    [queryClient, boardKey]
+  )
+  const readBoard = useCallback(
+    (): OrderBoard => queryClient.getQueryData<OrderBoard>(boardKey) ?? EMPTY_BOARD,
+    [queryClient, boardKey]
+  )
+  /**
+   * The tenant's catalog as cached by the catalog slice (any storefront slug),
+   * read at call time: order inputs map item names to product/addition ids.
+   */
+  const readCatalog = useCallback(() => {
+    const pick = <T,>(prefix: readonly unknown[]): T[] =>
+      queryClient
+        .getQueriesData<T[]>({ queryKey: prefix })
+        .find(([key, data]) => key[2] === session.role && Array.isArray(data))?.[1] ?? []
+    return {
+      products: pick<MenuItem>(keyPrefixes.products(effectiveId)),
+      additions: pick<AdditionItem>(keyPrefixes.additions(effectiveId)),
+    }
+  }, [queryClient, effectiveId, session.role])
+
+  /** Applies an edit to the tenant's queued offline sales too (only when it changes one). */
+  const updateQueue = useCallback(
+    (updater: (current: OrderBoard) => OrderBoard) => {
+      const queued = pendingOrdersQueue.list(effectiveId)
+      if (!effectiveId || queued.length === 0) return
+      const next = updater({ orders: queued, customers: [] }).orders
+      const changed = next.length !== queued.length || next.some((o, i) => o !== queued[i])
+      if (changed) pendingOrdersQueue.replace(effectiveId, next)
+    },
+    [effectiveId]
   )
 
-  // Orders and customers are one resource: customer metrics are derived from the
-  // synced orders, so both are read together (as before) and hydrate atomically.
-  // Returning a fresh object per fetch (structural sharing off) lets every
-  // successful fetch re-hydrate the tenant record, like the old explicit sync.
-  const boardQuery = useQuery({
-    queryKey: boardKey,
-    enabled,
-    retry: false,
-    structuralSharing: false,
-    networkMode: "always",
-    queryFn: () => fetchBoard(effectiveId as string),
-  })
-
-  // Initial hydration only: background refetches (SSE catch-up) never flash it.
+  // Initial read only: background refetches (SSE catch-up) never flash it.
   const [isRefreshing, setIsRefreshing] = useState(false)
-  const isLoadingOrders =
-    isRefreshing || (enabled && boardQuery.isLoading && (activeRestaurant.orders?.length ?? 0) === 0)
+  const isLoadingOrders = isRefreshing || (enabled && boardQuery.isLoading && orders.length === 0)
 
   // After the LAST in-flight order write settles (the settling mutation counts
   // itself, hence > 1), pull the authoritative server state of every order
@@ -829,14 +694,16 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // settles last.
   const needsRevalidation = useRef(false)
   const revalidate = useCallback(
-    (vars: OrderWrite, failed: boolean) => {
+    (vars: { revalidate?: boolean }, failed: boolean) => {
       if (!failed && vars.revalidate !== false) needsRevalidation.current = true
       if (queryClient.isMutating({ mutationKey: ORDER_WRITES_KEY }) > 1) return
+      // A read that landed during the writes was not applied: re-read now.
+      if (takeDeferredRead(queryClient, boardKey)) needsRevalidation.current = true
       if (!needsRevalidation.current) return
       needsRevalidation.current = false
-      void queryClient.invalidateQueries({ queryKey: ["orders", effectiveId] })
+      void queryClient.invalidateQueries({ queryKey: keyPrefixes.orders(effectiveId) })
     },
-    [queryClient, effectiveId]
+    [queryClient, effectiveId, boardKey]
   )
 
   const { mutate: trackWrite } = useMutation({
@@ -846,6 +713,70 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     onError: (err, vars) => vars.reject(err),
     onSettled: (_result, err, vars) => revalidate(vars, err !== null),
   })
+
+  // Order edits: onMutate applies the edit to the cache synchronously (the
+  // card moves in the same render as the click) after cancelling any read in
+  // flight, and keeps the pre-edit board as the context; onError restores it
+  // (immediately, also offline: mutations run with networkMode "always");
+  // onSettled asks for the single revalidation once the last write settles.
+  const { mutateAsync: runEdit } = useMutation({
+    mutationKey: ORDER_WRITES_KEY,
+    mutationFn: (edit: OrderEdit) => edit.pending ?? Promise.resolve(undefined),
+    onMutate: (edit) => {
+      void queryClient.cancelQueries({ queryKey: boardKey })
+      const snapshot = readBoard()
+      const queueSnapshot = pendingOrdersQueue.list(effectiveId)
+      updateBoard(edit.apply)
+      updateQueue(edit.apply)
+      if (edit.toast.success && edit.toast.successTiming !== "confirmed") {
+        toast.success(edit.toast.success)
+      } else if (edit.toast.info) {
+        toast.info(edit.toast.info)
+      }
+      return { snapshot, queueSnapshot }
+    },
+    onSuccess: (result, edit) => {
+      // The server already committed: a reconciliation bug must never roll
+      // back or report a failure.
+      try {
+        if (result && edit.reconcile) updateBoard((board) => edit.reconcile!(board, result))
+      } catch (reconcileErr) {
+        console.error("OrderContext: onSuccess reconciliation failed", reconcileErr)
+      }
+      if (edit.toast.success && edit.toast.successTiming === "confirmed") {
+        toast.success(edit.toast.success)
+      }
+    },
+    onError: (err, edit, context) => {
+      if (edit.skipRollbackIfError?.(err)) return
+      if (import.meta.env?.MODE !== "test") console.warn(edit.warnMessage, err)
+      if (context) {
+        updateBoard((board) => edit.rollback(board, context.snapshot))
+        updateQueue((queued) => edit.rollback(queued, { orders: context.queueSnapshot, customers: [] }))
+      }
+      toast.error(edit.toast.error)
+    },
+    onSettled: (_result, err, edit) => revalidate({ revalidate: edit.pending !== undefined }, err !== null),
+  })
+
+  /** Fires the edit's HTTP call at the user action (as before) and runs the edit mutation. */
+  const dispatchEdit = useCallback(
+    (edit: OrderEdit) => {
+      let pending: Promise<any> | undefined
+      if (edit.request) {
+        try {
+          pending = edit.request()
+        } catch (err) {
+          pending = Promise.reject(err)
+        }
+        // The mutation owns the rejection; this only avoids a transient
+        // unhandled-rejection report before it subscribes.
+        pending.catch(() => undefined)
+      }
+      return runEdit({ ...edit, pending })
+    },
+    [runEdit]
+  )
 
   /** Tracks an already-dispatched write; settles exactly like the request. */
   const trackRequest = useCallback(
@@ -858,8 +789,6 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }),
     [trackWrite]
   )
-
-  const pendingWrites = useIsMutating({ mutationKey: ORDER_WRITES_KEY })
 
   // REJ-02: offline-created orders (pendingSync) are flushed automatically once
   // connectivity is proven — after the mount sync and after every successful
@@ -885,24 +814,22 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const targetRestId = activeRestaurant?.id
       if (!targetRestId) return
       try {
-        const orderInput = buildCreateOrderInput(activeRestaurant, order)
+        const orderInput = buildCreateOrderInput({ ...activeRestaurant, ...readCatalog(), customers: readBoard().customers }, order)
         const createdOrder = await trackRequest(apiClient.createOrder(orderInput), undefined, false)
+        // Synced: the sale leaves the queue and joins the cached board.
+        pendingOrdersQueue.remove(targetRestId, order.id)
         if (!createdOrder?.id) {
           // Accepted but no body returned: the order is persisted server-side;
-          // keep the optimistic card and stop treating it as pending.
-          updateActiveRestaurantRecord((current) => ({
+          // keep the card and stop treating it as pending.
+          updateBoard((current) => ({
             ...current,
-            orders: current.orders.map((o) =>
-              o.id === order.id ? { ...o, pendingSync: false } : o
-            ),
+            orders: [{ ...order, pendingSync: false }, ...current.orders.filter((o) => o.id !== order.id)],
           }))
           return
         }
         // Adopt the server identity exactly like addOrder's success path
         // (SSE-duplicate collapse included) and clear the pending flag.
-        updateActiveRestaurantRecord((current) =>
-          adoptCreatedOrderToActive(current, order.id, createdOrder)
-        )
+        updateBoard((current) => adoptQueuedOrder(current, order, createdOrder))
       } catch (error) {
         if (isNetworkFailure(error)) {
           // Still offline: keep the pending flag; the next refresh retries.
@@ -913,10 +840,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (import.meta.env?.MODE !== 'test') {
           console.warn("Server rejected a pending order during retry; removing it:", error)
         }
-        updateActiveRestaurantRecord((current) => ({
-          ...current,
-          orders: current.orders.filter((o) => o.id !== order.id),
-        }))
+        pendingOrdersQueue.remove(targetRestId, order.id)
         const err = error as any
         const description = formatUserFacingOrderError(
           err && typeof err.message === 'string' ? err.message : undefined
@@ -926,7 +850,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         })
       }
     },
-    [activeRestaurant, updateActiveRestaurantRecord, trackRequest]
+    [activeRestaurant, updateBoard, readBoard, readCatalog, trackRequest]
   )
 
   const retryPendingOrders = useCallback(async () => {
@@ -935,7 +859,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // idempotent on clientOrderId, so no session token is required here.
     if (!targetRestId) return
     if (retryInFlightRef.current) return
-    const pendingOrders = activeRestaurant.orders.filter((o) => o.pendingSync)
+    const pendingOrders = pendingOrdersQueue.list(targetRestId)
     if (pendingOrders.length === 0) return
     retryInFlightRef.current = true
     try {
@@ -949,7 +873,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // customers, who never trigger the token-gated refresh-driven retry). Bounded
   // exponential backoff; an 'online' event retries immediately. After the max
   // attempts it stops and tells the user once; the order stays pending.
-  const pendingSyncCount = (activeRestaurant?.orders ?? []).filter((o) => o.pendingSync).length
+  const pendingSyncCount = queuedOrders.length
   const [retryTick, setRetryTick] = useState(0)
   const retryAttemptsRef = useRef(0)
   const lastPendingCountRef = useRef(0)
@@ -997,48 +921,36 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     retryPendingOrdersRef.current = retryPendingOrders
   })
 
-  // The tenant record stays the offline-first store other slices persist and
-  // read; the query result hydrates it. A failed fetch leaves local data
-  // untouched.
-  const board = boardQuery.data
-  const hydrated = useRef<Board | undefined>(undefined)
+  // The first successful read of a tenant proves connectivity: flush the
+  // orders held pendingSync during the outage (REJ-02). Only real reads count,
+  // not local cache writes.
   const retriedFor = useRef<string | undefined>(undefined)
-  const hydrate = useCallback(
-    (targetRestId: string, data: Board) => {
-      hydrated.current = data
-      updateActiveRestaurantRecord((current) =>
-        syncBackendDataToRestaurant(current, targetRestId, data.orders, data.customers)
-      )
-    },
-    [updateActiveRestaurantRecord]
-  )
-  useLayoutEffect(() => {
-    if (!effectiveId || !board || board === hydrated.current) return
-    // Never hydrate over an optimistic write: a response that predates it would
-    // wipe it. Deferred until the writes settle and the revalidation lands.
-    if (queryClient.isMutating({ mutationKey: ORDER_WRITES_KEY }) > 0) return
-    if (queryClient.isFetching({ queryKey: ["orders", effectiveId] }) > 0) return
-    hydrate(effectiveId, board)
-    // The first successful read proves connectivity: flush orders held
-    // pendingSync during the outage (REJ-02).
-    if (retriedFor.current !== effectiveId) {
+  useEffect(() => {
+    if (!effectiveId) return
+    const boardHash = hashKey(boardKey)
+    return queryClient.getQueryCache().subscribe((event) => {
+      if (event.type !== "updated" || event.query.queryHash !== boardHash) return
+      if (event.action.type !== "success" || event.action.manual) return
+      if (retriedFor.current === effectiveId) return
       retriedFor.current = effectiveId
       void retryPendingOrdersRef.current()
-    }
-  }, [effectiveId, board, hydrate, queryClient, pendingWrites, boardQuery.isFetching])
+    })
+  }, [queryClient, boardKey, effectiveId])
 
   // Silent catch-up after an SSE reconnect (no loading flag: staff keep working
   // while the board is reconciled). Invalidation refetches the active read once.
   const catchUpOrdersRef = useRef<() => void>(() => {})
   catchUpOrdersRef.current = () => {
     if (!effectiveId || !apiClient.hasToken()) return
-    void queryClient.invalidateQueries({ queryKey: ["orders", effectiveId] })
+    void queryClient.invalidateQueries({ queryKey: keyPrefixes.orders(effectiveId) })
   }
 
-  // Real-time SSE order stream subscription
+  // Real-time SSE order stream: every event is written straight into the
+  // stream tenant's cached board (same tenant and role as the read).
   useEffect(() => {
     const targetRestId = effectiveId
     if (!targetRestId || !apiClient.hasToken()) return
+    const streamKey = keys.orders(targetRestId, session.role)
 
     const unsubscribe = apiClient.subscribeToOrderStream(
       (event: OrderEvent) => {
@@ -1049,9 +961,13 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const writePending = queryClient
           .getMutationCache()
           .findAll({ mutationKey: ORDER_WRITES_KEY, status: "pending" })
-          .some((m) => (m.state.variables as OrderWrite | undefined)?.orderId === event.orderId)
+          .some((m) => (m.state.variables as { orderId?: string } | undefined)?.orderId === event.orderId)
         if (writePending) return
-        updateActiveRestaurantRecord((current) => updateRestaurantOrderState(current, event))
+        // An event that arrives before the first read starts the board (as
+        // the tenant record did); the read then merges into it.
+        queryClient.setQueryData<OrderBoard>(streamKey, (board) =>
+          updateRestaurantOrderState(board ?? EMPTY_BOARD, event)
+        )
       },
       targetRestId,
       // Events published while the stream was down are lost: catch up silently.
@@ -1063,7 +979,18 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return () => {
       unsubscribe()
     }
-  }, [effectiveId, session, queryClient, updateActiveRestaurantRecord])
+  }, [effectiveId, session, queryClient])
+
+  /** Moves an optimistic sale that could not reach the server into the persisted queue. */
+  const holdOffline = useCallback(
+    (sale: Order) => {
+      if (!effectiveId) return
+      const card = readBoard().orders.find((o) => o.id === sale.id) ?? sale
+      updateBoard((current) => ({ ...current, orders: current.orders.filter((o) => o.id !== sale.id) }))
+      pendingOrdersQueue.add(effectiveId, { ...card, pendingSync: true })
+    },
+    [effectiveId, readBoard, updateBoard]
+  )
 
   const addOrder = useCallback(
     (orderData: Omit<Order, "id" | "orderNumber" | "createdAt" | "updatedAt">) => {
@@ -1105,7 +1032,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       ;(newOrder as Order & { clientOrderId?: string }).clientOrderId = clientOrderId
       lastSaleAttemptRef.current = { key: attemptKey, at: Date.now(), order: newOrder }
 
-      updateActiveRestaurantRecord((current) => addOrderToRestaurant(current, newOrder, now))
+      updateBoard((current) => addOrderToRestaurant(current, newOrder, now))
 
       if (soundEnabled) {
         playNotificationChime()
@@ -1117,7 +1044,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       // an error and removes the temporary card so a phantom order is never
       // silently dropped by the next refresh/SSE sync without user visibility.
       try {
-        const orderInput = buildCreateOrderInput(activeRestaurant, newOrder)
+        const orderInput = buildCreateOrderInput({ ...activeRestaurant, ...readCatalog(), customers: readBoard().customers }, newOrder)
 
         trackRequest(apiClient.createOrder(orderInput), undefined, false)
           .then((createdOrder) => {
@@ -1131,9 +1058,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               resolveServer({ adoptedOrderNumber, createdOrder })
               return
             }
-            updateActiveRestaurantRecord((current) =>
-              adoptCreatedOrderToActive(current, newOrder.id, createdOrder)
-            )
+            updateBoard((current) => adoptCreatedOrderToActive(current, newOrder.id, createdOrder))
             toast.success(`Orden #${adoptedOrderNumber} registrada`, {
               description: `${newOrder.customer.nombre} - ${formatCurrency(newOrder.finalTotal)}`,
             })
@@ -1142,21 +1067,16 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           .catch((error) => {
             if (isNetworkFailure(error)) {
               // Pure connectivity failure (offline, 'Failed to fetch'): the
-              // sale must not be destroyed with no record and no retry — keep
-              // the optimistic card marked pendingSync and flush it once a
-              // fetch/refresh proves connectivity again (REJ-02).
+              // sale must not be destroyed with no record and no retry — move
+              // the optimistic card to the persisted pending-orders queue and
+              // flush it once connectivity is proven again (REJ-02).
               if (import.meta.env?.MODE !== 'test') {
                 console.warn(
                   "Could not sync order to backend API; keeping the order pending local sync:",
                   error
                 )
               }
-              updateActiveRestaurantRecord((current) => ({
-                ...current,
-                orders: current.orders.map((o) =>
-                  o.id === newOrder.id ? { ...o, pendingSync: true } : o
-                ),
-              }))
+              holdOffline(newOrder)
               toast.warning('Sin conexión: la venta quedó guardada localmente y se sincronizará automáticamente')
               resolveServer({ adoptedOrderNumber: newOrder.orderNumber, offline: true })
               return
@@ -1167,7 +1087,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             // The server rejected the order (unavailable product, min order,
             // cash below final total, tenant mismatch...): surface it and drop
             // the temporary card instead of pretending the sale succeeded.
-            updateActiveRestaurantRecord((current) => ({
+            updateBoard((current) => ({
               ...current,
               orders: current.orders.filter((o) => o.id !== newOrder.id),
             }))
@@ -1187,135 +1107,106 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         // Input preparation never reached the server (local condition): treat
         // it like an offline failure and keep the sale pending sync instead of
         // deleting it (REJ-02).
-        updateActiveRestaurantRecord((current) => ({
-          ...current,
-          orders: current.orders.map((o) =>
-            o.id === newOrder.id ? { ...o, pendingSync: true } : o
-          ),
-        }))
+        holdOffline(newOrder)
         toast.warning('Sin conexión: la venta quedó guardada localmente y se sincronizará automáticamente')
         resolveServer({ adoptedOrderNumber: newOrder.orderNumber, offline: true })
       }
 
       return newOrder
     },
-    [activeRestaurant, updateActiveRestaurantRecord, soundEnabled, trackRequest]
+    [activeRestaurant, updateBoard, readBoard, readCatalog, holdOffline, soundEnabled, trackRequest]
   )
 
   const updateOrder = useCallback(
     (orderId: string, updates: Partial<Order>) => {
       const now = new Date().toISOString()
       const targetRestId = activeRestaurant?.id
-      // Captured as a side effect inside the updateActiveRestaurantRecord
-      // updater, which React only runs when it next flushes — not
-      // synchronously here. rollback() reads it later (after the awaited
-      // call rejects), once that flush has definitely happened.
-      let previousOrders: Order[] = []
-
-      return runOptimisticMutation({
-        apply: () => {
-          updateActiveRestaurantRecord((current) => {
-            previousOrders = current.orders
-            return {
-              ...current,
-              orders: current.orders.map((o) =>
-                o.id === orderId ? { ...o, ...updates, updatedAt: now } : o
-              ),
-            }
-          })
-        },
-        call: () => {
-          if (!apiClient.hasToken() || !targetRestId) return Promise.resolve(undefined)
-          const updateInput = buildUpdateOrderInput(updates, activeRestaurant.products ?? [])
-          return trackRequest(apiClient.updateOrder(orderId, updateInput, targetRestId), orderId)
-        },
-        onSuccess: (updatedOrder) => {
-          if (!updatedOrder) return
-          updateActiveRestaurantRecord((current) => ({
-            ...current,
-            orders: current.orders.map((o) => (o.id === orderId ? mapBackendOrderToDomain(updatedOrder, o) : o)),
-          }))
-        },
-        rollback: () => {
-          updateActiveRestaurantRecord((current) => ({ ...current, orders: previousOrders }))
-        },
+      const products = readCatalog().products
+      return dispatchEdit({
+        orderId,
+        apply: (board) => ({
+          ...board,
+          orders: board.orders.map((o) => (o.id === orderId ? { ...o, ...updates, updatedAt: now } : o)),
+        }),
+        rollback: (board, snapshot) => ({ ...board, orders: snapshot.orders }),
+        request:
+          apiClient.hasToken() && targetRestId
+            ? () => apiClient.updateOrder(orderId, buildUpdateOrderInput(updates, products), targetRestId)
+            : undefined,
+        reconcile: (board, updatedOrder) => ({
+          ...board,
+          orders: board.orders.map((o) => (o.id === orderId ? mapBackendOrderToDomain(updatedOrder, o) : o)),
+        }),
         toast: {
           success: "Venta actualizada correctamente",
           error: "No se pudo sincronizar la actualización con el servidor",
         },
         warnMessage: "Error al actualizar orden en el servidor:",
-      }).then(() => undefined)
+      }).then(
+        () => undefined,
+        () => undefined
+      )
     },
-    [activeRestaurant, updateActiveRestaurantRecord, trackRequest]
+    [activeRestaurant, readCatalog, dispatchEdit]
   )
 
   const updateOrderStatus = useCallback(
     (orderId: string, newStatus: OrderStatus) => {
-      void runOptimisticMutation({
-        apply: () => {
-          // Remember only THIS order's previous status so a rejected
-          // transition reverts it alone (a whole-list snapshot would wipe
-          // SSE-added orders). Read directly from the render-scope
-          // activeRestaurant, before the optimistic update applies — not
-          // from inside the updater below, so it's available immediately.
-          const previous = activeRestaurant.orders.find((o) => o.id === orderId)
-          updateActiveRestaurantRecord((current) => ({
-            ...current,
-            orders: current.orders.map((o) =>
-              o.id === orderId
-                ? { ...o, status: newStatus, updatedAt: new Date().toISOString() }
+      const now = new Date().toISOString()
+      const restaurantId = activeRestaurant.id
+      dispatchEdit({
+        orderId,
+        apply: (board) => ({
+          ...board,
+          orders: board.orders.map((o) => (o.id === orderId ? { ...o, status: newStatus, updatedAt: now } : o)),
+        }),
+        // Only THIS order's previous status is restored (a whole-list snapshot
+        // would wipe SSE-added orders), and only while it still holds our
+        // value: if another update (SSE) moved it elsewhere, leave it alone.
+        rollback: (board, snapshot) => {
+          const previous = snapshot.orders.find((o) => o.id === orderId)
+          return {
+            ...board,
+            orders: board.orders.map((o) =>
+              o.id === orderId && previous && o.status === newStatus
+                ? { ...o, status: previous.status, updatedAt: previous.updatedAt ?? o.updatedAt }
                 : o
             ),
-          }))
-          return { previousStatus: previous?.status, previousUpdatedAt: previous?.updatedAt }
+          }
         },
-        call: () => trackRequest(apiClient.updateOrderStatus(orderId, newStatus, activeRestaurant.id), orderId),
-        rollback: ({ previousStatus, previousUpdatedAt }) => {
-          // Only undo our own optimistic change: if another update (SSE)
-          // already moved the order elsewhere, leave it alone.
-          updateActiveRestaurantRecord((current) => ({
-            ...current,
-            orders: current.orders.map((o) =>
-              o.id === orderId && previousStatus !== undefined && o.status === newStatus
-                ? { ...o, status: previousStatus, updatedAt: previousUpdatedAt ?? o.updatedAt }
-                : o
-            ),
-          }))
-        },
+        request: () => apiClient.updateOrderStatus(orderId, newStatus, restaurantId),
         toast: {
           info: `Orden actualizada a: ${newStatus.toUpperCase()}`,
           error: `No se pudo actualizar la orden a: ${newStatus.toUpperCase()}`,
         },
         warnMessage: `Could not sync status update for order ${orderId} to backend API:`,
-      })
+      }).catch(() => undefined)
     },
-    [activeRestaurant, updateActiveRestaurantRecord, trackRequest]
+    [activeRestaurant.id, dispatchEdit]
   )
 
   const updateOrderReceipt = useCallback(
-    (orderId: string, receiptUrl: string) =>
-      runOptimisticMutation({
-        apply: () => {
-          const previous = activeRestaurant.orders.find((o) => o.id === orderId)
-          updateActiveRestaurantRecord((current) => ({
-            ...current,
-            orders: current.orders.map((o) =>
-              o.id === orderId ? { ...o, receiptUrl, updatedAt: new Date().toISOString() } : o
-            ),
-          }))
-          return { previousReceiptUrl: previous?.receiptUrl, previousUpdatedAt: previous?.updatedAt }
-        },
-        call: () => trackRequest(apiClient.updateOrderReceipt(orderId, receiptUrl, activeRestaurant.id), orderId),
-        rollback: ({ previousReceiptUrl, previousUpdatedAt }) => {
-          updateActiveRestaurantRecord((current) => ({
-            ...current,
-            orders: current.orders.map((o) =>
+    (orderId: string, receiptUrl: string) => {
+      const now = new Date().toISOString()
+      const restaurantId = activeRestaurant.id
+      return dispatchEdit({
+        orderId,
+        apply: (board) => ({
+          ...board,
+          orders: board.orders.map((o) => (o.id === orderId ? { ...o, receiptUrl, updatedAt: now } : o)),
+        }),
+        rollback: (board, snapshot) => {
+          const previous = snapshot.orders.find((o) => o.id === orderId)
+          return {
+            ...board,
+            orders: board.orders.map((o) =>
               o.id === orderId && o.receiptUrl === receiptUrl
-                ? { ...o, receiptUrl: previousReceiptUrl, updatedAt: previousUpdatedAt ?? o.updatedAt }
+                ? { ...o, receiptUrl: previous?.receiptUrl, updatedAt: previous?.updatedAt ?? o.updatedAt }
                 : o
             ),
-          }))
+          }
         },
+        request: () => apiClient.updateOrderReceipt(orderId, receiptUrl, restaurantId),
         toast: {
           success: "Comprobante adjuntado correctamente",
           successTiming: "confirmed",
@@ -1323,95 +1214,79 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         },
         warnMessage: `Could not sync receipt update for order ${orderId} to backend API:`,
         // Callers must know the attach failed (they would otherwise report success).
-        rethrow: true,
-      }).then(() => undefined),
-    [activeRestaurant.id, activeRestaurant.orders, updateActiveRestaurantRecord, trackRequest]
+      }).then(() => undefined)
+    },
+    [activeRestaurant.id, dispatchEdit]
   )
 
   const deleteOrder = useCallback(
     (orderId: string) => {
       const targetRestId = activeRestaurant?.id
-      let previousOrders: Order[] = []
-
-      return runOptimisticMutation({
-        apply: () => {
-          updateActiveRestaurantRecord((current) => {
-            previousOrders = current.orders
-            return { ...current, orders: current.orders.filter((o) => o.id !== orderId) }
-          })
-        },
-        call: () => {
-          if (!apiClient.hasToken() || !targetRestId) return Promise.resolve(undefined)
-          return trackRequest(apiClient.deleteOrder(orderId, targetRestId), orderId)
-        },
-        rollback: () => {
-          updateActiveRestaurantRecord((current) => ({ ...current, orders: previousOrders }))
-        },
+      return dispatchEdit({
+        orderId,
+        apply: (board) => ({ ...board, orders: board.orders.filter((o) => o.id !== orderId) }),
+        rollback: (board, snapshot) => ({ ...board, orders: snapshot.orders }),
+        request:
+          apiClient.hasToken() && targetRestId ? () => apiClient.deleteOrder(orderId, targetRestId) : undefined,
         toast: { success: "Orden eliminada", error: "No se pudo eliminar la orden del servidor" },
         skipRollbackIfError: isNotFoundError,
         warnMessage: "Error al eliminar orden del servidor:",
-      }).then(() => undefined)
+      }).then(
+        () => undefined,
+        () => undefined
+      )
     },
-    [activeRestaurant?.id, updateActiveRestaurantRecord, trackRequest]
+    [activeRestaurant?.id, dispatchEdit]
   )
 
   const updateCustomer = useCallback(
     (id: string, updates: Partial<Customer>) => {
       const targetRestId = activeRestaurant?.id
-      let previousCustomers: Customer[] = []
+      const updateInput: UpdateCustomerInput = {}
+      if (updates.nombre !== undefined) updateInput.name = updates.nombre
+      if (updates.telefono !== undefined) updateInput.phone = updates.telefono
+      if (updates.direccion !== undefined) updateInput.address = updates.direccion
+      if (updates.barrio !== undefined) updateInput.barrio = updates.barrio
+      if (updates.notes !== undefined) updateInput.notes = updates.notes
 
-      return runOptimisticMutation({
-        apply: () => {
-          updateActiveRestaurantRecord((current) => {
-            previousCustomers = current.customers
-            return {
-              ...current,
-              customers: current.customers.map((c) => (c.id === id ? { ...c, ...updates } : c)),
-            }
-          })
-        },
-        call: () => {
-          if (!apiClient.hasToken() || !targetRestId) return Promise.resolve(undefined)
-          const updateInput: UpdateCustomerInput = {}
-          if (updates.nombre !== undefined) updateInput.name = updates.nombre
-          if (updates.telefono !== undefined) updateInput.phone = updates.telefono
-          if (updates.direccion !== undefined) updateInput.address = updates.direccion
-          if (updates.barrio !== undefined) updateInput.barrio = updates.barrio
-          if (updates.notes !== undefined) updateInput.notes = updates.notes
-          return trackRequest(apiClient.updateCustomer(id, updateInput, targetRestId))
-        },
-        onSuccess: (updatedCustomer) => {
-          if (!updatedCustomer) return
-          updateActiveRestaurantRecord((current) => ({
-            ...current,
-            customers: current.customers.map((c) =>
-              c.id === id
-                ? {
-                    ...c,
-                    id: updatedCustomer.id || c.id,
-                    nombre: updatedCustomer.name ?? c.nombre,
-                    telefono: updatedCustomer.phone ?? c.telefono,
-                    direccion: updatedCustomer.address ?? c.direccion,
-                    barrio: updatedCustomer.barrio ?? c.barrio,
-                    notes: updatedCustomer.notes ?? c.notes,
-                  }
-                : c
-            ),
-          }))
-        },
-        rollback: () => {
-          updateActiveRestaurantRecord((current) => ({ ...current, customers: previousCustomers }))
-        },
+      return dispatchEdit({
+        apply: (board) => ({
+          ...board,
+          customers: board.customers.map((c) => (c.id === id ? { ...c, ...updates } : c)),
+        }),
+        rollback: (board, snapshot) => ({ ...board, customers: snapshot.customers }),
+        request:
+          apiClient.hasToken() && targetRestId
+            ? () => apiClient.updateCustomer(id, updateInput, targetRestId)
+            : undefined,
+        reconcile: (board, updatedCustomer) => ({
+          ...board,
+          customers: board.customers.map((c) =>
+            c.id === id
+              ? {
+                  ...c,
+                  id: updatedCustomer.id || c.id,
+                  nombre: updatedCustomer.name ?? c.nombre,
+                  telefono: updatedCustomer.phone ?? c.telefono,
+                  direccion: updatedCustomer.address ?? c.direccion,
+                  barrio: updatedCustomer.barrio ?? c.barrio,
+                  notes: updatedCustomer.notes ?? c.notes,
+                }
+              : c
+          ),
+        }),
         toast: {
           success: "Ficha del cliente actualizada",
           error: "No se pudo sincronizar el cliente con el servidor",
         },
         warnMessage: "Error al actualizar cliente en el servidor:",
-      }).then(() => undefined)
+      }).then(
+        () => undefined,
+        () => undefined
+      )
     },
-    [activeRestaurant?.id, updateActiveRestaurantRecord, trackRequest]
+    [activeRestaurant?.id, dispatchEdit]
   )
-
 
   const refreshOrders = useCallback(async () => {
     const targetRestId = effectiveId
@@ -1419,19 +1294,12 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setIsRefreshing(true)
     try {
       // staleTime 0: an explicit refresh always asks the server (concurrent
-      // reads share the request in flight); the hydration effect applies it.
-      const fresh = await queryClient.fetchQuery({
-        queryKey: boardKey,
-        queryFn: () => fetchBoard(targetRestId),
+      // reads share the request in flight); the result lands in the cache
+      // before the pending-order retry adopts server identities.
+      await queryClient.fetchQuery({
+        ...ordersQueryOptions(targetRestId, session.role),
         staleTime: 0,
-        structuralSharing: false,
-        networkMode: "always",
       })
-      // Applied here (not left to the hydration effect) so the sync is queued
-      // before the pending-order retry adopts server identities, as before.
-      if (queryClient.isMutating({ mutationKey: ORDER_WRITES_KEY }) === 0) {
-        hydrate(targetRestId, fresh)
-      }
       // A successful refresh proves connectivity: flush offline-created orders
       // held as pendingSync (REJ-02).
       await retryPendingOrders()
@@ -1442,34 +1310,34 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } finally {
       setIsRefreshing(false)
     }
-  }, [effectiveId, queryClient, boardKey, hydrate, retryPendingOrders])
+  }, [effectiveId, session.role, queryClient, retryPendingOrders])
 
   const pendingOrdersCount = useMemo(() => {
-    return activeRestaurant.orders.filter((o) => o.status === "pending").length
-  }, [activeRestaurant.orders])
+    return orders.filter((o) => o.status === "pending").length
+  }, [orders])
 
   const value: OrderContextType = useMemo(
     () => ({
-      orders: activeRestaurant.orders,
+      orders,
       addOrder,
       updateOrder,
       updateOrderStatus,
       updateOrderReceipt,
       deleteOrder,
-      customers: activeRestaurant.customers,
+      customers,
       updateCustomer,
       pendingOrdersCount,
       isLoadingOrders,
       refreshOrders,
     }),
     [
-      activeRestaurant.orders,
+      orders,
       addOrder,
       updateOrder,
       updateOrderStatus,
       updateOrderReceipt,
       deleteOrder,
-      activeRestaurant.customers,
+      customers,
       updateCustomer,
       pendingOrdersCount,
       isLoadingOrders,

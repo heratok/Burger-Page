@@ -30,7 +30,12 @@ describe("OrderContext Pure Reducers & Updaters (TDD Tests)", () => {
     seedBlankActiveTenant()
   })
 
-  const createMockRestaurant = (orders: Order[] = [], customers: Customer[] = []): RestaurantRecord => ({
+  // The board helpers take any { orders, customers } holder (the cached
+  // board); a record carrying both is one.
+  const createMockRestaurant = (
+    orders: Order[] = [],
+    customers: Customer[] = []
+  ): RestaurantRecord & { orders: Order[]; customers: Customer[] } => ({
     id: "rest-burger-craft",
     slug: "burger-craft",
     adminPassword: "craft",

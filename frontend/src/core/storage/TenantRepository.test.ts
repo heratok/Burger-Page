@@ -1,103 +1,105 @@
 import { describe, it, expect, beforeEach } from "vitest"
-import {
-  TenantRepository,
-  DEFAULT_ENVELOPE,
-  STORAGE_KEYS,
-} from "./TenantRepository"
+import { TenantRepository, STORAGE_KEYS } from "./TenantRepository"
 import { InMemoryStorageAdapter } from "./StorageAdapter"
-import { TEST_STORAGE_ENVELOPE } from "@/test/fixtures"
+import { PendingOrdersQueue } from "./pendingOrdersQueue"
+import { TEST_STORAGE_ENVELOPE, readPersistedQuery } from "@/test/fixtures"
+import { keys } from "@/core/query/keys"
+import { PERSISTED_QUERIES_KEY } from "@/core/query/persistence"
+import type { RestaurantRecord } from "@/types/restaurant"
 
-describe("TenantRepository with InMemoryStorageAdapter", () => {
+describe("TenantRepository: active restaurant and legacy envelope retirement", () => {
   let adapter: InMemoryStorageAdapter
+  let queue: PendingOrdersQueue
   let repo: TenantRepository
 
   beforeEach(() => {
+    localStorage.clear()
     adapter = new InMemoryStorageAdapter()
-    repo = new TenantRepository(adapter)
+    queue = new PendingOrdersQueue(adapter)
+    repo = new TenantRepository(adapter, queue)
   })
 
-  it("returns DEFAULT_ENVELOPE when storage is empty", () => {
-    const envelope = repo.loadEnvelope()
-    expect(envelope.version).toBe(2)
-    expect(envelope.restaurants).toHaveLength(0)
+  const seedLegacy = (envelope: unknown) => adapter.setItem(STORAGE_KEYS.ENVELOPE, JSON.stringify(envelope))
+
+  it("persists and retrieves the active restaurant id (the only tenant state it keeps)", () => {
+    repo.setActiveRestaurantId("rest-test-123")
+    expect(repo.getActiveRestaurantId()).toBe("rest-test-123")
   })
 
-  it("persists and reloads modified envelope", () => {
-    repo.saveEnvelope(TEST_STORAGE_ENVELOPE)
-
-    const reloaded = repo.loadEnvelope()
-    expect(reloaded.restaurants).toHaveLength(TEST_STORAGE_ENVELOPE.restaurants.length)
-    expect(reloaded.restaurants[0].id).toBe(TEST_STORAGE_ENVELOPE.restaurants[0].id)
+  it("exposes no envelope read/write API any more", () => {
+    expect("loadEnvelope" in repo).toBe(false)
+    expect("saveEnvelope" in repo).toBe(false)
+    expect("findRestaurant" in repo).toBe(false)
   })
 
-  it("persists and retrieves active restaurant ID", () => {
-    expect(repo.getActiveRestaurantId()).toBe("")
-    expect(repo.getActiveRestaurantId("rest-x")).toBe("rest-x")
+  it("moves a legacy envelope's public storefront data to the persisted cache and removes the envelope", () => {
+    seedLegacy(TEST_STORAGE_ENVELOPE)
 
-    repo.setActiveRestaurantId("pizzeria-napoli")
-    expect(repo.getActiveRestaurantId()).toBe("pizzeria-napoli")
+    repo.migrateLegacyEnvelope()
+
+    expect(adapter.getItem(STORAGE_KEYS.ENVELOPE)).toBeNull()
+    const legacy = TEST_STORAGE_ENVELOPE.restaurants[0]
+    const record = readPersistedQuery<RestaurantRecord>(keys.restaurant("guest", legacy.slug))
+    expect(record?.id).toBe(legacy.id)
+    expect(record?.config.name).toBe(legacy.config.name)
+    expect(readPersistedQuery(keys.products(legacy.id, "guest", legacy.slug))).toEqual(legacy.products)
   })
 
-  it("finds a restaurant by ID or slug case-insensitively", () => {
-    const foundBySlug = repo.findRestaurant(TEST_STORAGE_ENVELOPE, "BURGER-CRAFT")
-    expect(foundBySlug).toBeDefined()
-    expect(foundBySlug?.slug).toBe("burger-craft")
+  it("never carries orders, customers, stock, suppliers or the admin password over", () => {
+    seedLegacy({
+      version: 2,
+      superAdminPassword: "platform-secret",
+      restaurants: TEST_STORAGE_ENVELOPE.restaurants.map((r) => ({ ...r, adminPassword: "legacy-secret" })),
+    })
 
-    const foundById = repo.findRestaurant(TEST_STORAGE_ENVELOPE, "rest-burger-craft")
-    expect(foundById).toBeDefined()
+    repo.migrateLegacyEnvelope()
+
+    const persisted = localStorage.getItem(PERSISTED_QUERIES_KEY) ?? ""
+    expect(persisted).not.toContain("secret")
+    for (const r of TEST_STORAGE_ENVELOPE.restaurants) {
+      for (const o of r.orders ?? []) expect(persisted).not.toContain(o.id)
+      for (const c of r.customers ?? []) expect(persisted).not.toContain(c.telefono)
+      for (const i of r.inventory ?? []) expect(persisted).not.toContain(i.name)
+      for (const s of r.suppliers ?? []) expect(persisted).not.toContain(s.name)
+    }
   })
 
-  it("falls back to DEFAULT_ENVELOPE if stored data is corrupted JSON", () => {
-    adapter.setItem(STORAGE_KEYS.ENVELOPE, "{ invalid json corrupt")
-    const envelope = repo.loadEnvelope()
-    expect(envelope.version).toBe(2)
-    expect(envelope.restaurants).toHaveLength(DEFAULT_ENVELOPE.restaurants.length)
-  })
-})
+  it("moves legacy pendingSync sales to the pending-orders queue", () => {
+    const [first] = TEST_STORAGE_ENVELOPE.restaurants
+    seedLegacy({
+      version: 2,
+      restaurants: [{ ...first, orders: [{ ...first.orders![0], id: "ord-offline", pendingSync: true }] }],
+    })
 
-describe("TenantRepository category migration (no fabricated default)", () => {
-  let adapter: InMemoryStorageAdapter
-  let repo: TenantRepository
+    repo.migrateLegacyEnvelope()
 
-  beforeEach(() => {
-    adapter = new InMemoryStorageAdapter()
-    repo = new TenantRepository(adapter)
+    expect(queue.list(first.id).map((o) => o.id)).toEqual(["ord-offline"])
   })
 
-  it("derives categories from products when the record has none", () => {
-    adapter.setItem(
-      STORAGE_KEYS.ENVELOPE,
-      JSON.stringify({
-        version: 2,
-        restaurants: [
-          {
-            id: "rest-1",
-            slug: "rest-1",
-            products: [
-              { category: "Burgers" },
-              { category: "Bebidas" },
-              { category: "Burgers" },
-            ],
-          },
-        ],
-      })
-    )
+  it("derives categories from the legacy products when the record has none", () => {
+    seedLegacy({
+      version: 2,
+      restaurants: [
+        {
+          id: "rest-1",
+          slug: "rest-1",
+          products: [{ category: "Burgers" }, { category: "Bebidas" }, { category: "Burgers" }],
+        },
+      ],
+    })
 
-    const envelope = repo.loadEnvelope()
-    expect(envelope.restaurants[0].categories).toEqual(["Burgers", "Bebidas"])
+    repo.migrateLegacyEnvelope()
+
+    expect(readPersistedQuery<RestaurantRecord>(keys.restaurant("guest", "rest-1"))?.categories).toEqual([
+      "Burgers",
+      "Bebidas",
+    ])
   })
 
-  it("keeps an empty list when there are no categories and no products", () => {
-    adapter.setItem(
-      STORAGE_KEYS.ENVELOPE,
-      JSON.stringify({
-        version: 2,
-        restaurants: [{ id: "rest-1", slug: "rest-1", products: [] }],
-      })
-    )
-
-    const envelope = repo.loadEnvelope()
-    expect(envelope.restaurants[0].categories).toEqual([])
+  it("drops a corrupted legacy envelope without failing", () => {
+    adapter.setItem(STORAGE_KEYS.ENVELOPE, "{not-json")
+    expect(() => repo.migrateLegacyEnvelope()).not.toThrow()
+    expect(adapter.getItem(STORAGE_KEYS.ENVELOPE)).toBeNull()
   })
 })
 

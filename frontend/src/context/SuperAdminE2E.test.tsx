@@ -4,7 +4,7 @@ import React from "react"
 import { RestaurantProvider, useRestaurant } from "./RestaurantContext"
 import { InMemoryStorageAdapter } from "@/core/storage/StorageAdapter"
 import { TenantRepository, STORAGE_KEYS } from "@/core/storage/TenantRepository"
-import { TEST_STORAGE_ENVELOPE } from "@/test/fixtures"
+import { TEST_STORAGE_ENVELOPE, seedRestaurantDirectory } from "@/test/fixtures"
 import { MainRouter } from "@/App"
 import * as routerModule from "@/core/router/useAppRouter"
 import type { AdminTab } from "@/types/restaurant"
@@ -33,6 +33,8 @@ describe("Super Admin - Creación y Aislamiento de Nuevos Restaurantes E2E", () 
     sessionStorage.clear()
     vi.restoreAllMocks()
     await hermeticApi()
+    // After login the super admin reads the platform directory (server state).
+    seedRestaurantDirectory(TEST_STORAGE_ENVELOPE.restaurants, ["super"])
   })
 
   const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -128,9 +130,11 @@ describe("Super Admin - Creación y Aislamiento de Nuevos Restaurantes E2E", () 
     expect(result.current.products.some((p) => p.name.includes("Acevichado"))).toBe(false)
     expect(result.current.customers.some((c) => c.nombre === "Andrea Restrepo")).toBe(false)
 
-    // 8. Verificar que las métricas globales del Super Admin suman todos los locales
+    // 8. Verificar que las métricas globales del Super Admin suman todos los locales.
+    // Los pedidos son estado del servidor (caché de consultas): solo cuentan los
+    // tableros leídos en esta sesión, aquí el de Sushi Express con su orden.
     expect(result.current.globalStats.totalRestaurants).toBe(5)
-    expect(result.current.globalStats.totalOrders).toBe(3)
+    expect(result.current.globalStats.totalOrders).toBe(1)
   })
 
   it("permite al Super Admin pausar/activar y eliminar restaurantes de la red", () => {
@@ -175,6 +179,8 @@ describe("SUS-04 - Route-level gating of global SaaS modules in MainRouter", () 
     sessionStorage.clear()
     vi.restoreAllMocks()
     await hermeticApi()
+    // After login the super admin reads the platform directory (server state).
+    seedRestaurantDirectory(TEST_STORAGE_ENVELOPE.restaurants, ["super"])
   })
 
   afterEach(() => {

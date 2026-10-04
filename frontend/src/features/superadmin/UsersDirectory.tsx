@@ -21,9 +21,16 @@ import { CreateUserModal } from "./CreateUserModal"
 import { EditUserModal } from "./EditUserModal"
 import { ResetPasswordModal } from "./ResetPasswordModal"
 import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
-import { apiClient, ApiUserRecord } from "@/core/api/apiClient"
+import type { ApiUserRecord } from "@/core/api/apiClient"
 import { toast } from "sonner"
 import { mapUserActionError } from "./userActionUtils"
+import {
+  useUsersQuery,
+  useInvalidateUsers,
+  useSetUserActiveMutation,
+  useDeleteUserMutation,
+  useResetUserPasswordMutation,
+} from "./hooks/useUsersQuery"
 
 
 function parseJwtPayload(token?: string): { userId?: string; username?: string; role?: string } | null {
@@ -48,8 +55,13 @@ export const UsersDirectory: React.FC = () => {
   const { adminTheme } = useUi()
   const { session } = useAuth()
   const { restaurants } = useTenant()
-  const [users, setUsers] = useState<ApiUserRecord[]>([])
-  const [isLoading, setIsLoading] = useState<boolean>(true)
+  const usersQuery = useUsersQuery()
+  const users = useMemo(() => usersQuery.data ?? [], [usersQuery.data])
+  const isLoading = usersQuery.isLoading
+  const reloadUsers = useInvalidateUsers()
+  const { mutateAsync: setUserActive } = useSetUserActiveMutation()
+  const { mutateAsync: deleteUser } = useDeleteUserMutation()
+  const { mutateAsync: resetUserPassword } = useResetUserPasswordMutation()
   const [searchTerm, setSearchTerm] = useState("")
   const [roleFilter, setRoleFilter] = useState<string>("ALL")
   const [restaurantFilter, setRestaurantFilter] = useState<string>("ALL")
@@ -63,22 +75,12 @@ export const UsersDirectory: React.FC = () => {
 
   const isDark = adminTheme === "dark"
 
-  const loadUsers = async () => {
-    setIsLoading(true)
-    try {
-      const fetched = await apiClient.listUsers()
-      setUsers(fetched || [])
-    } catch (err: any) {
-      toast.error(mapUserActionError(err, "No se pudo cargar la lista de usuarios"))
-      setUsers([])
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
+  // One toast per failed read (errorUpdatedAt changes on every failure).
+  const { error: loadError, errorUpdatedAt } = usersQuery
   useEffect(() => {
-    loadUsers()
-  }, [])
+    if (!loadError) return
+    toast.error(mapUserActionError(loadError, "No se pudo cargar la lista de usuarios"))
+  }, [loadError, errorUpdatedAt])
 
   const restaurantMap = useMemo(() => {
     const map = new Map<string, string>()
@@ -126,10 +128,7 @@ export const UsersDirectory: React.FC = () => {
     const nextActive = u.isActive === false
     setActionLoadingId(u.id)
     try {
-      const updated = await apiClient.setUserActive(u.id, nextActive)
-      setUsers((prev) =>
-        prev.map((item) => (item.id === u.id ? { ...item, isActive: updated.isActive } : item))
-      )
+      await setUserActive({ id: u.id, isActive: nextActive })
       toast.success(
         nextActive
           ? `Usuario "${u.username}" activado con éxito`
@@ -150,7 +149,7 @@ export const UsersDirectory: React.FC = () => {
   const handleResetPassword = async (u: ApiUserRecord) => {
     setActionLoadingId(u.id)
     try {
-      const res = await apiClient.resetUserPassword(u.id)
+      const res = await resetUserPassword(u.id)
       setResetModalData({ username: u.username, temporaryPassword: res.temporaryPassword })
       toast.success(`Contraseña de "${u.username}" restablecida correctamente`)
     } catch (err: any) {
@@ -166,8 +165,7 @@ export const UsersDirectory: React.FC = () => {
     setUserToDelete(null)
     setActionLoadingId(target.id)
     try {
-      await apiClient.deleteUser(target.id)
-      setUsers((prev) => prev.filter((item) => item.id !== target.id))
+      await deleteUser(target.id)
       toast.success(`Usuario "${target.username}" eliminado con éxito`)
     } catch (err: any) {
       toast.error(mapUserActionError(err, "No se pudo eliminar el usuario"))
@@ -522,7 +520,7 @@ export const UsersDirectory: React.FC = () => {
         isOpen={isCreateUserOpen}
         onClose={() => {
           setIsCreateUserOpen(false)
-          loadUsers()
+          void reloadUsers()
         }}
       />
 
@@ -557,7 +555,7 @@ export const UsersDirectory: React.FC = () => {
           isOpen={Boolean(userToEdit)}
           onClose={() => setUserToEdit(null)}
           user={userToEdit}
-          onSuccess={loadUsers}
+          onSuccess={() => void reloadUsers()}
         />
       )}
     </div>

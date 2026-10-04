@@ -464,7 +464,7 @@ function CustomerInputs(props: Readonly<CustomerInputsProps>) {
 }
 
 export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClose, orderToEdit }) => {
-  const { activeRestaurant, storeConfig, adminTheme, addOrder, updateOrder, setAdminTab } = useRestaurant()
+  const { activeRestaurant, storeConfig, adminTheme, orders, products, additions, addOrder, updateOrder, setAdminTab } = useRestaurant()
   const isDark = adminTheme === "dark"
 
   // Mobile Tab State
@@ -522,16 +522,16 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
   // orders already in context; the order being edited does not occupy it.
   const occupiedTableIds = useMemo(() => {
     const ids = new Set<string>()
-    for (const order of activeRestaurant.orders ?? []) {
+    for (const order of orders) {
       if (order.tableId && ACTIVE_ORDER_STATUSES.has(order.status) && order.id !== orderToEdit?.id) {
         ids.add(order.tableId)
       }
     }
     return ids
-  }, [activeRestaurant.orders, orderToEdit?.id])
+  }, [orders, orderToEdit?.id])
 
   // Products from active restaurant
-  const catalogProducts = useMemo(() => activeRestaurant.products ?? [], [activeRestaurant.products])
+  const catalogProducts = products
 
   // Extract unique categories from catalog
   const categories = useMemo(() => {
@@ -572,12 +572,12 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
 
   const currentModalAdditionsTotal = useMemo(() => {
     if (!customizingProduct) return 0
-    const availableAdditions = activeRestaurant.additions ?? []
+    const availableAdditions = additions
     return Object.entries(customAdditions).reduce((sum, [addId, qty]) => {
       const found = availableAdditions.find((a) => a.id === addId)
       return sum + (found ? found.price * qty : 0)
     }, 0)
-  }, [customizingProduct, customAdditions, activeRestaurant.additions])
+  }, [customizingProduct, customAdditions, additions])
 
   const currentModalItemTotal = (customizingProduct?.price ?? 0) + currentModalAdditionsTotal
 
@@ -663,7 +663,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
       description: "",
       inStock: true,
     }
-    const additionsMap = buildCartItemAdditionsMap(item, activeRestaurant.additions ?? [])
+    const additionsMap = buildCartItemAdditionsMap(item, additions)
     setCustomizingProduct(product)
     setEditingCartItemIndex(index)
     setCustomAdditions(additionsMap)
@@ -673,7 +673,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
   const handleConfirmCustomizedItem = () => {
     if (!customizingProduct) return
 
-    const additionsList = buildSelectedAdditionsList(customAdditions, activeRestaurant.additions ?? [])
+    const additionsList = buildSelectedAdditionsList(customAdditions, additions)
 
     if (editingCartItemIndex !== null && editingCartItemIndex >= 0) {
       setSelectedItems((prev) => {
@@ -1101,7 +1101,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
               ) : (
                 <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                   {filteredProducts.map((product) => {
-                    const hasAdditions = (activeRestaurant.additions ?? []).length > 0
+                    const hasAdditions = additions.length > 0
                     const inCartCount = selectedItems
                       .filter((i) => i.menuItemId === product.id)
                       .reduce((sum, i) => sum + i.cantidad, 0)
@@ -1337,7 +1337,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                               {formatCOP(item.total)}
                             </span>
 
-                            {(activeRestaurant.additions || []).length > 0 && (
+                            {additions.length > 0 && (
                               <button
                                 type="button"
                                 onClick={() => handleEditCartItem(index)}
@@ -1657,13 +1657,13 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                     </span>
                   </div>
 
-                  {(activeRestaurant.additions ?? []).length === 0 ? (
+                  {additions.length === 0 ? (
                     <p className="text-xs text-slate-400 italic py-2">
                       No hay adiciones registradas para este local.
                     </p>
                   ) : (
                     <div className="space-y-1.5">
-                      {(activeRestaurant.additions ?? []).map((addition) => {
+                      {additions.map((addition) => {
                         const qty = customAdditions[addition.id] || 0
                         const isSelected = qty > 0
 

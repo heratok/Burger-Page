@@ -1,7 +1,7 @@
-import React, { useState, useMemo, useEffect, useCallback } from "react"
-import { useUi, useTenant } from "@/context/RestaurantContext"
+import React, { useState, useMemo, useEffect } from "react"
+import { useUi, useTenant, useOrderBoardsByTenant, ordersOf, useCatalogSizesByTenant } from "@/context/RestaurantContext"
 import type { RestaurantRecord } from "@/types/restaurant"
-import { apiClient, type DeletedRestaurantRecord } from "@/core/api/apiClient"
+import type { DeletedRestaurantRecord } from "@/core/api/apiClient"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import {
@@ -25,6 +25,11 @@ import { TableSkeleton } from "@/components/ui/Skeletons"
 import { useAppRouter } from "@/core/router/useAppRouter"
 import { formatCurrency } from "@/lib/utils"
 import { mapUserActionError } from "./userActionUtils"
+import {
+  useDeletedRestaurantsQuery,
+  useInvalidateRestaurantLists,
+  useRestoreRestaurantMutation,
+} from "./hooks/useDeletedRestaurantsQuery"
 
 function isConflictError(err: any): boolean {
   if (err?.status === 409 || err?.body?.status === 409) return true
@@ -36,6 +41,8 @@ export const RestaurantsDirectory: React.FC = () => {
   const { adminTheme } = useUi()
   const { restaurants, activeRestaurantId, switchRestaurant, updateRestaurant, deleteRestaurant, refreshRestaurants, isSyncing } = useTenant()
 
+  const orderBoards = useOrderBoardsByTenant()
+  const catalogSizes = useCatalogSizesByTenant()
   const { navigateTo } = useAppRouter()
 
   const [activeTab, setActiveTab] = useState<"active" | "deleted">("active")
@@ -48,8 +55,11 @@ export const RestaurantsDirectory: React.FC = () => {
   const [pageSize, setPageSize] = useState(10)
 
   // Deleted restaurants state
-  const [deletedRestaurants, setDeletedRestaurants] = useState<DeletedRestaurantRecord[]>([])
-  const [isLoadingDeleted, setIsLoadingDeleted] = useState(false)
+  const deletedQuery = useDeletedRestaurantsQuery()
+  const deletedRestaurants = useMemo(() => deletedQuery.data ?? [], [deletedQuery.data])
+  const isLoadingDeleted = deletedQuery.isLoading
+  const invalidateRestaurantLists = useInvalidateRestaurantLists()
+  const { mutateAsync: restoreRestaurant } = useRestoreRestaurantMutation()
   const [restaurantToRestore, setRestaurantToRestore] = useState<DeletedRestaurantRecord | null>(null)
   const [restoreSlug, setRestoreSlug] = useState("")
   const [isSlugConflict, setIsSlugConflict] = useState(false)
@@ -58,22 +68,12 @@ export const RestaurantsDirectory: React.FC = () => {
 
   const isDark = adminTheme === "dark"
 
-  const loadDeletedRestaurants = useCallback(async () => {
-    setIsLoadingDeleted(true)
-    try {
-      const data = await apiClient.listDeletedRestaurants()
-      setDeletedRestaurants(data || [])
-    } catch {
-      toast.error("No se pudieron cargar los restaurantes eliminados")
-      setDeletedRestaurants([])
-    } finally {
-      setIsLoadingDeleted(false)
-    }
-  }, [])
-
+  // One toast per failed read (errorUpdatedAt changes on every failure).
+  const { error: deletedError, errorUpdatedAt: deletedErrorAt } = deletedQuery
   useEffect(() => {
-    loadDeletedRestaurants()
-  }, [loadDeletedRestaurants])
+    if (!deletedError) return
+    toast.error("No se pudieron cargar los restaurantes eliminados")
+  }, [deletedError, deletedErrorAt])
 
   const filteredRestaurants = useMemo(() => {
     const term = searchTerm.toLowerCase().trim();
@@ -127,15 +127,14 @@ export const RestaurantsDirectory: React.FC = () => {
     if (!restaurantToRestore) return
     setIsRestoring(true)
     try {
-      const payload = isSlugConflict && restoreSlug.trim() ? { slug: restoreSlug.trim().toLowerCase() } : {}
-      const res = await apiClient.restoreRestaurant(restaurantToRestore.id, payload)
+      const slug = isSlugConflict && restoreSlug.trim() ? restoreSlug.trim().toLowerCase() : undefined
+      const res = await restoreRestaurant({ id: restaurantToRestore.id, slug })
       if (res.renamedUsers && res.renamedUsers.length > 0) {
         const names = res.renamedUsers.map((u) => `El usuario ${u.from} volvió como ${u.to}`).join(", ")
         toast.info(`Restaurado con éxito. Nota: ${names}`, { duration: 6000 })
       }
       toast.success(`Restaurante "${restaurantToRestore.name}" restaurado correctamente`)
       await refreshRestaurants()
-      await loadDeletedRestaurants()
       setRestaurantToRestore(null)
     } catch (err: any) {
       // The backend's RFC7807 error handler marks a conflict with status 409
@@ -194,7 +193,7 @@ export const RestaurantsDirectory: React.FC = () => {
                   onClick={() => {
                     setActiveTab("deleted")
                     setCurrentPage(1)
-                    loadDeletedRestaurants()
+                    void invalidateRestaurantLists()
                   }}
                   className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
                     activeTab === "deleted"
@@ -335,7 +334,9 @@ export const RestaurantsDirectory: React.FC = () => {
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:border-slate-800">
                   {paginatedRestaurants.map((r) => {
-                    const totalSales = r.orders
+                    const restaurantOrders = ordersOf(orderBoards, r.id)
+                    const catalogSize = catalogSizes.get(r.id) ?? { products: 0, additions: 0 }
+                    const totalSales = restaurantOrders
                       .filter((o) => o.status !== "cancelled")
                       .reduce((sum, o) => sum + o.finalTotal, 0)
                     const isSelected = r.id === activeRestaurantId
@@ -400,10 +401,10 @@ export const RestaurantsDirectory: React.FC = () => {
                         {/* Products Count */}
                         <td className="px-4 py-4">
                           <span className="font-semibold text-slate-700 dark:text-slate-200">
-                            {r.products.length} productos
+                            {catalogSize.products} productos
                           </span>
                           <span className="text-[11px] text-slate-400 ml-1">
-                            ({r.additions.length} adiciones)
+                            ({catalogSize.additions} adiciones)
                           </span>
                         </td>
 
@@ -415,7 +416,7 @@ export const RestaurantsDirectory: React.FC = () => {
                         {/* Orders count */}
                         <td className="px-4 py-4">
                           <span className="rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 font-bold text-slate-700 dark:text-slate-300">
-                            {r.orders.length} pedidos
+                            {restaurantOrders.length} pedidos
                           </span>
                         </td>
 
@@ -528,7 +529,7 @@ export const RestaurantsDirectory: React.FC = () => {
             try {
               await deleteRestaurant(idToDelete)
               await refreshRestaurants()
-              await loadDeletedRestaurants()
+              await invalidateRestaurantLists()
             } finally {
               setDeletingIds((prev) => {
                 const next = new Set(prev)

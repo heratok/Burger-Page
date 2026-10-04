@@ -103,6 +103,10 @@ test.describe('Menu & Categories Full CRUD & Customization E2E Suite', () => {
       });
     });
 
+    // The restaurant payload carries the owner's stored categories (like the
+    // real backend); a categories write replaces them.
+    let serverCategories = ['Hamburguesas', 'Acompañamientos', 'Bebidas'];
+
     await page.route('**/api/restaurants**', async (route) => {
       if (route.request().method() === 'GET') {
         await route.fulfill({
@@ -114,6 +118,7 @@ test.describe('Menu & Categories Full CRUD & Customization E2E Suite', () => {
               slug: 'burger-craft',
               name: 'Burger Craft',
               isActive: true,
+              categories: serverCategories,
               config: {
                 name: 'Burger Craft',
                 tagline: 'Cocina artesanal de autor',
@@ -127,7 +132,42 @@ test.describe('Menu & Categories Full CRUD & Customization E2E Suite', () => {
       }
     });
 
+    // Stateful catalog: the post-write re-sync reads back what the writes
+    // did (a category rename moves its products in place, as the backend
+    // does, and a created product is listed), like the real server.
+    const serverProducts = [
+      {
+        id: 'prod-1',
+        name: 'Hamburguesa Clásica Artesanal',
+        description: 'Carne 180g con queso cheddar',
+        price: 26000,
+        category: 'Hamburguesas',
+        imageUrl: '',
+        isAvailable: true,
+        isPopular: true,
+        isNew: false,
+      },
+      {
+        id: 'prod-2',
+        name: 'Papas Rústicas al Romero',
+        description: 'Crujientes con romero',
+        price: 9000,
+        category: 'Acompañamientos',
+        imageUrl: '',
+        isAvailable: true,
+        isPopular: false,
+        isNew: false,
+      },
+    ];
+
     await page.route('**/api/restaurant/**/categories', async (route) => {
+      const body = route.request().postDataJSON?.() ?? {};
+      if (Array.isArray(body?.categories)) serverCategories = body.categories;
+      for (const { from, to } of body?.renames ?? []) {
+        for (const product of serverProducts) {
+          if (product.category === from) product.category = to;
+        }
+      }
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -138,52 +178,31 @@ test.describe('Menu & Categories Full CRUD & Customization E2E Suite', () => {
     await page.route('**/api/products**', async (route) => {
       if (route.request().method() === 'POST') {
         const body = route.request().postDataJSON();
+        const created = {
+          id: 'prod-new-e2e',
+          name: body?.name || 'Volcán de Chocolate y Arequipe',
+          price: body?.price || 16000,
+          category: body?.category || 'Postres Artesanales',
+          description: body?.description || '',
+          imageUrl: body?.imageUrl || '',
+          isAvailable: true,
+          isPopular: false,
+          isNew: false,
+        };
+        serverProducts.push(created);
         await route.fulfill({
           status: 201,
           contentType: 'application/json',
-          body: JSON.stringify({
-            id: 'prod-new-e2e',
-            name: body?.name || 'Volcán de Chocolate y Arequipe',
-            price: body?.price || 16000,
-            category: body?.category || 'Postres Artesanales',
-            description: body?.description || '',
-            imageUrl: body?.imageUrl || '',
-            isAvailable: true,
-            isPopular: false,
-            isNew: false,
-          }),
+          body: JSON.stringify(created),
         });
       } else if (route.request().method() === 'GET') {
         // Authoritative sync rebuilds the admin catalog from the backend:
-        // serve the envelope's products (backend shape) so 'Hamburguesa
+        // serve the current server products (backend shape) so 'Hamburguesa
         // Clásica Artesanal' and 'Papas Rústicas al Romero' render.
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify([
-            {
-              id: 'prod-1',
-              name: 'Hamburguesa Clásica Artesanal',
-              description: 'Carne 180g con queso cheddar',
-              price: 26000,
-              category: 'Hamburguesas',
-              imageUrl: '',
-              isAvailable: true,
-              isPopular: true,
-              isNew: false,
-            },
-            {
-              id: 'prod-2',
-              name: 'Papas Rústicas al Romero',
-              description: 'Crujientes con romero',
-              price: 9000,
-              category: 'Acompañamientos',
-              imageUrl: '',
-              isAvailable: true,
-              isPopular: false,
-              isNew: false,
-            },
-          ]),
+          body: JSON.stringify(serverProducts),
         });
       } else {
         await route.continue();
