@@ -48,6 +48,12 @@ import { AdminAuditRecorder } from '../../application/services/AdminAuditRecorde
 import { ListAuditLogUseCase } from '../../application/use-cases/ListAuditLogUseCase.js';
 import { AuditLogController } from './controllers/AuditLogController.js';
 import { auditLogRoutes } from './routes/auditLog.routes.js';
+import { PgPlatformStatsRepository } from '../persistence/postgres/PgPlatformStatsRepository.js';
+import { ComposedPlatformStatsRepository } from '../persistence/ComposedPlatformStatsRepository.js';
+import { PlatformStatsRepository } from '../../domain/ports/out/PlatformStatsRepository.js';
+import { GetPlatformStatsUseCase } from '../../application/use-cases/GetPlatformStatsUseCase.js';
+import { PlatformStatsController } from './controllers/PlatformStatsController.js';
+import { platformStatsRoutes } from './routes/platformStats.routes.js';
 import { RestaurantRepository } from '../../domain/ports/out/RestaurantRepository.js';
 import { CategoryRepository } from '../../domain/ports/out/CategoryRepository.js';
 import { ProductRepository } from '../../domain/ports/out/ProductRepository.js';
@@ -152,6 +158,7 @@ export interface AppDependencies {
   restaurantTableController: RestaurantTableController;
   userController: UserController;
   auditLogController: AuditLogController;
+  platformStatsController: PlatformStatsController;
   additionController: ProductAdditionController;
   /** Repository-backed JWT revalidation (SUS-14): wired into the auth
    *  middlewares by buildApp so sessions are re-checked against storage. */
@@ -195,6 +202,7 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
   let supplierRepo: SupplierRepository;
   let tableRepo: RestaurantTableRepository;
   let auditRepo: AuditLogRepository;
+  let platformStatsRepo: PlatformStatsRepository | undefined;
 
   if (dataRunsOnPostgres(selectedDriver)) {
     // S5: the 'supabase' driver no longer talks to Supabase PostgREST with the
@@ -220,6 +228,7 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
     supplierRepo = new PgSupplierRepository();
     tableRepo = new PgRestaurantTableRepository();
     auditRepo = new PgAuditLogRepository();
+    platformStatsRepo = new PgPlatformStatsRepository();
   } else if (selectedDriver === 'sqlite') {
     const db = createSqliteDatabase(dbPath || process.env.DATABASE_PATH || ':memory:');
     restaurantRepo = new SqliteRestaurantRepository(db);
@@ -247,6 +256,8 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
     tableRepo = new InMemoryRestaurantTableRepository();
     auditRepo = new InMemoryAuditLogRepository();
   }
+  // The in-process drivers fold their own repositories; Postgres aggregates in SQL.
+  platformStatsRepo ??= new ComposedPlatformStatsRepository(restaurantRepo, orderRepo, customerRepo);
 
   // Use Cases
   const hasher: PasswordHasher = new CryptoPasswordHasher();
@@ -387,6 +398,7 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
       new ChangeOwnPasswordUseCase(userRepo, hasher)
     ),
     auditLogController: new AuditLogController(new ListAuditLogUseCase(auditRepo)),
+    platformStatsController: new PlatformStatsController(new GetPlatformStatsUseCase(platformStatsRepo)),
     additionController: new ProductAdditionController(
       listAdditions,
       getAdditionById,
@@ -548,6 +560,7 @@ export function buildApp(
         { name: 'Customers', description: 'Customer profiles and loyalty tiers' },
         { name: 'Users', description: 'User management and authentication' },
         { name: 'Audit log', description: 'Append-only trail of super admin actions' },
+        { name: 'Platform stats', description: 'Platform-wide totals for the super admin' },
         { name: 'Storage', description: 'Storage and media presigned URLs' },
         { name: 'Health', description: 'Server health status' },
       ]
@@ -668,6 +681,7 @@ export function buildApp(
     api.register(restaurantTableRoutes, { prefix: '/tables', controller: deps.restaurantTableController });
     api.register(userRoutes, { prefix: '/users', controller: deps.userController });
     api.register(auditLogRoutes, { prefix: '/audit-log', controller: deps.auditLogController });
+    api.register(platformStatsRoutes, { prefix: '/platform-stats', controller: deps.platformStatsController });
     api.register(storageRoutes, { prefix: '/storage' });
   }, { prefix: '/api' });
 
