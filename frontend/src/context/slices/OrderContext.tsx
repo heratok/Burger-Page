@@ -904,10 +904,12 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     void queryClient.invalidateQueries({ queryKey: keyPrefixes.orders(effectiveId) })
   }
 
-  // Real-time SSE order stream subscription
+  // Real-time SSE order stream: every event is written straight into the
+  // stream tenant's cached board (same tenant and role as the read).
   useEffect(() => {
     const targetRestId = effectiveId
     if (!targetRestId || !apiClient.hasToken()) return
+    const streamKey = keys.orders(targetRestId, session.role)
 
     const unsubscribe = apiClient.subscribeToOrderStream(
       (event: OrderEvent) => {
@@ -918,9 +920,13 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const writePending = queryClient
           .getMutationCache()
           .findAll({ mutationKey: ORDER_WRITES_KEY, status: "pending" })
-          .some((m) => (m.state.variables as OrderWrite | undefined)?.orderId === event.orderId)
+          .some((m) => (m.state.variables as { orderId?: string } | undefined)?.orderId === event.orderId)
         if (writePending) return
-        updateBoard((current) => updateRestaurantOrderState(current, event))
+        // An event that arrives before the first read starts the board (as
+        // the tenant record did); the read then merges into it.
+        queryClient.setQueryData<OrderBoard>(streamKey, (board) =>
+          updateRestaurantOrderState(board ?? EMPTY_BOARD, event)
+        )
       },
       targetRestId,
       // Events published while the stream was down are lost: catch up silently.
@@ -932,7 +938,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return () => {
       unsubscribe()
     }
-  }, [effectiveId, session, queryClient, updateBoard])
+  }, [effectiveId, session, queryClient])
 
   const addOrder = useCallback(
     (orderData: Omit<Order, "id" | "orderNumber" | "createdAt" | "updatedAt">) => {
