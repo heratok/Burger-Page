@@ -416,4 +416,48 @@ export const auditLogPageSchema = z.object({
 });
 export type AuditLogPage = z.infer<typeof auditLogPageSchema>;
 
+// ==========================================
+// PLATFORM STATS (super admin)
+// ==========================================
+
+/** A real calendar date written as YYYY-MM-DD (UTC day). */
+const isoCalendarDate = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected a YYYY-MM-DD date')
+  .refine((value) => {
+    const parsed = new Date(`${value}T00:00:00.000Z`);
+    // Date rejects 2026-02-30 outright, but rolls 2026-02-29 over to March.
+    return !Number.isNaN(parsed.getTime()) && parsed.toISOString().startsWith(value);
+  }, 'Not a real calendar date');
+
+/**
+ * Query string of GET /platform-stats. `from`/`to` are inclusive UTC calendar
+ * days and only narrow the ORDERS counted (revenue and order count); the
+ * restaurant and customer totals are always the current platform totals.
+ */
+export const platformStatsQuerySchema = z
+  .object({
+    from: isoCalendarDate.optional(),
+    to: isoCalendarDate.optional(),
+  })
+  .refine((q) => !q.from || !q.to || q.from <= q.to, {
+    message: '`from` must not be after `to`',
+    path: ['from'],
+  });
+export type PlatformStatsQuery = z.infer<typeof platformStatsQuerySchema>;
+
+/**
+ * Platform-wide totals across live (not soft-deleted) restaurants.
+ * totalRevenue sums final_total of non-cancelled orders; totalOrders counts
+ * every order, cancelled included.
+ */
+export const platformStatsSchema = z.object({
+  totalRevenue: z.number().nonnegative(),
+  totalOrders: z.number().int().nonnegative(),
+  totalCustomers: z.number().int().nonnegative(),
+  totalRestaurants: z.number().int().nonnegative(),
+  activeRestaurants: z.number().int().nonnegative(),
+});
+export type PlatformStats = z.infer<typeof platformStatsSchema>;
+
 export * from './schedule.js';
