@@ -4,7 +4,7 @@ import { RestaurantProvider } from "@/context/RestaurantContext"
 import { OrdersKanban } from "./OrdersKanban"
 import { InMemoryStorageAdapter } from "@/core/storage/StorageAdapter"
 import { TenantRepository, STORAGE_KEYS } from "@/core/storage/TenantRepository"
-import { TEST_STORAGE_ENVELOPE } from "@/test/fixtures"
+import { TEST_STORAGE_ENVELOPE, seedOrderBoard } from "@/test/fixtures"
 
 const createPopulatedTestRepo = () => {
   const adapter = new InMemoryStorageAdapter()
@@ -52,36 +52,31 @@ describe("OrdersKanban Component (TDD Tests)", () => {
   })
 
   it("finds an order by the name of its table", () => {
-    const envelope = {
-      ...TEST_STORAGE_ENVELOPE,
-      restaurants: TEST_STORAGE_ENVELOPE.restaurants.map((r, index) =>
-        index === 0
-          ? {
-              ...r,
-              orders: [
-                {
-                  id: "ord-table-search",
-                  orderNumber: 9001,
-                  customer: { nombre: "Cliente Salón", telefono: "N/A", direccion: "Salón", barrio: "Local" },
-                  items: [],
-                  total: 1000,
-                  deliveryFee: 0,
-                  finalTotal: 1000,
-                  metodo: "Efectivo" as const,
-                  status: "pending" as const,
-                  tableId: "tbl_1",
-                  tableLabel: "Terraza Zeta",
-                  createdAt: new Date().toISOString(),
-                  updatedAt: new Date().toISOString(),
-                },
-              ],
-            }
-          : r
-      ),
-    }
     const adapter = new InMemoryStorageAdapter()
-    adapter.setItem(STORAGE_KEYS.ENVELOPE, JSON.stringify(envelope))
-    adapter.setItem(STORAGE_KEYS.ACTIVE_REST, envelope.restaurants[0].id)
+    adapter.setItem(STORAGE_KEYS.ENVELOPE, JSON.stringify(TEST_STORAGE_ENVELOPE))
+    adapter.setItem(STORAGE_KEYS.ACTIVE_REST, TEST_STORAGE_ENVELOPE.restaurants[0].id)
+    // Orders are server state now: they come from the cached board.
+    seedOrderBoard(
+      [
+        {
+          id: "ord-table-search",
+          orderNumber: 9001,
+          customer: { nombre: "Cliente Salón", telefono: "N/A", direccion: "Salón", barrio: "Local" },
+          items: [],
+          total: 1000,
+          deliveryFee: 0,
+          finalTotal: 1000,
+          metodo: "Efectivo" as const,
+          status: "pending" as const,
+          tableId: "tbl_1",
+          tableLabel: "Terraza Zeta",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+      [],
+      TEST_STORAGE_ENVELOPE.restaurants[0].id
+    )
 
     render(
       <RestaurantProvider repository={new TenantRepository(adapter)}>

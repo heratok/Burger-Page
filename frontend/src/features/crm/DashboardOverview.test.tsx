@@ -4,7 +4,7 @@ import { RestaurantProvider } from "@/context/RestaurantContext"
 import { DashboardOverview } from "./DashboardOverview"
 import { InMemoryStorageAdapter } from "@/core/storage/StorageAdapter"
 import { TenantRepository, STORAGE_KEYS } from "@/core/storage/TenantRepository"
-import { TEST_STORAGE_ENVELOPE } from "@/test/fixtures"
+import { TEST_STORAGE_ENVELOPE, TEST_ORDERS, TEST_CUSTOMERS, seedOrderBoard } from "@/test/fixtures"
 import type { StorageEnvelopeV2 } from "@/types/restaurant"
 
 const createEmptyTestRepo = () => {
@@ -62,6 +62,8 @@ describe("DashboardOverview - Real Data & Empty State", () => {
   })
 
   it("renders dynamic bars and metrics when valid orders exist in the envelope", () => {
+    // Orders are server state now: they come from the cached board.
+    seedOrderBoard(TEST_ORDERS, TEST_CUSTOMERS)
     render(
       <RestaurantProvider repository={createPopulatedTestRepo()}>
         <DashboardOverview />

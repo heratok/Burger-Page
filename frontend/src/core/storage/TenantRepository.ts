@@ -57,16 +57,18 @@ export class TenantRepository {
   }
 
   /**
-   * Offline sales (pendingSync) persisted inside a tenant record by an older
-   * version move to the pending-orders queue, which owns them now.
+   * Orders and customers persisted inside a tenant record by an older version
+   * are dropped: they are server state now (query cache). Offline sales
+   * (pendingSync) among them move to the pending-orders queue first.
    */
   private movePendingOrdersToQueue(record: RestaurantRecord): RestaurantRecord {
+    if (record.orders === undefined && record.customers === undefined) return record
     const orders = Array.isArray(record.orders) ? record.orders : []
     const pending = orders.filter((o) => o.pendingSync)
-    if (pending.length === 0) return record
     // Oldest first, so the queue keeps the newest sale on top.
     for (const order of [...pending].reverse()) this.pendingQueue.add(record.id, order)
-    return { ...record, orders: orders.filter((o) => !o.pendingSync) }
+    const { orders: _serverOrders, customers: _serverCustomers, ...rest } = record
+    return rest
   }
 
   saveEnvelope(envelope: StorageEnvelopeV2): void {

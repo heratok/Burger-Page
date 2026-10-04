@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react"
-import { useUi, useTenant } from "@/context/RestaurantContext"
+import { useUi, useTenant, useOrderBoardsByTenant, ordersOf } from "@/context/RestaurantContext"
 import type { RestaurantRecord } from "@/types/restaurant"
 import type { DeletedRestaurantRecord } from "@/core/api/apiClient"
 import { toast } from "sonner"
@@ -41,6 +41,7 @@ export const RestaurantsDirectory: React.FC = () => {
   const { adminTheme } = useUi()
   const { restaurants, activeRestaurantId, switchRestaurant, updateRestaurant, deleteRestaurant, refreshRestaurants, isSyncing } = useTenant()
 
+  const orderBoards = useOrderBoardsByTenant()
   const { navigateTo } = useAppRouter()
 
   const [activeTab, setActiveTab] = useState<"active" | "deleted">("active")
@@ -332,7 +333,8 @@ export const RestaurantsDirectory: React.FC = () => {
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:border-slate-800">
                   {paginatedRestaurants.map((r) => {
-                    const totalSales = r.orders
+                    const restaurantOrders = ordersOf(orderBoards, r.id)
+                    const totalSales = restaurantOrders
                       .filter((o) => o.status !== "cancelled")
                       .reduce((sum, o) => sum + o.finalTotal, 0)
                     const isSelected = r.id === activeRestaurantId
@@ -412,7 +414,7 @@ export const RestaurantsDirectory: React.FC = () => {
                         {/* Orders count */}
                         <td className="px-4 py-4">
                           <span className="rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 font-bold text-slate-700 dark:text-slate-300">
-                            {r.orders.length} pedidos
+                            {restaurantOrders.length} pedidos
                           </span>
                         </td>
 

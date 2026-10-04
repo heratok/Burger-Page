@@ -9,6 +9,10 @@ import type {
   Supplier,
 } from "@/types/restaurant"
 import { DEFAULT_STORE_CONFIG } from "@/constants/themePresets"
+import type { QueryClient } from "@tanstack/react-query"
+import type { UserRole } from "@/types/restaurant"
+import { appQueryClient } from "@/core/query/queryClient"
+import { keys } from "@/core/query/keys"
 
 export const TEST_PRODUCTS: MenuItem[] = [
   {
@@ -241,4 +245,19 @@ export function seedBlankActiveTenant(
     JSON.stringify({ version: 2, restaurants: [blank] })
   )
   localStorage.setItem("burger_page_active_rest_v2", id)
+}
+
+/**
+ * Orders and customers are server state: tests that need a populated board
+ * seed the query cache (fresh, so the mount does not refetch over it) instead
+ * of the tenant envelope, which no longer carries them.
+ */
+export function seedOrderBoard(
+  orders: Order[],
+  customers: Customer[] = [],
+  tenantId = "rest-burger-craft",
+  role: UserRole = "guest",
+  client: QueryClient = appQueryClient,
+): void {
+  client.setQueryData(keys.orders(tenantId, role), { orders, customers })
 }

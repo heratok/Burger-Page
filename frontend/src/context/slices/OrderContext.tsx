@@ -597,7 +597,7 @@ interface OrderEdit {
 }
 
 export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { activeRestaurant, updateActiveRestaurantRecord } = useTenant()
+  const { activeRestaurant } = useTenant()
   const { session } = useAuth()
   const { soundEnabled } = useUi()
 
@@ -619,19 +619,10 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const enabled = Boolean(effectiveId && apiClient.hasToken())
   const boardKey = useMemo(() => keys.orders(effectiveId, session.role), [effectiveId, session.role])
 
-  // The query cache is the source of truth for the board. While the tenant
-  // record still persists orders (offline-first reloads), it seeds the cache
-  // once, as stale data that is re-read immediately.
-  const seedRecord = activeRestaurant.id === effectiveId ? activeRestaurant : undefined
-  const boardQuery = useQuery({
-    ...ordersQueryOptions(effectiveId, session.role),
-    enabled,
-    initialData: () =>
-      seedRecord && (seedRecord.orders.length > 0 || seedRecord.customers.length > 0)
-        ? { orders: seedRecord.orders, customers: seedRecord.customers }
-        : undefined,
-    initialDataUpdatedAt: 0,
-  })
+  // The query cache is the only source of truth for the board: the tenant
+  // record never holds orders or customers, so order activity never touches
+  // the tenant context (and never re-renders its consumers).
+  const boardQuery = useQuery({ ...ordersQueryOptions(effectiveId, session.role), enabled })
   const board = boardQuery.data
   const boardOrders = board?.orders ?? EMPTY_BOARD.orders
   const customers = board?.customers ?? EMPTY_BOARD.customers
@@ -672,17 +663,6 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     },
     [effectiveId]
   )
-
-  // Dual write: the tenant record keeps a copy of the board (persistence and
-  // the consumers that still read it) until it is retired.
-  useEffect(() => {
-    if (!board || !effectiveId) return
-    updateActiveRestaurantRecord((current) =>
-      current.orders === board.orders && current.customers === board.customers
-        ? current
-        : { ...current, orders: board.orders, customers: board.customers }
-    )
-  }, [board, effectiveId, updateActiveRestaurantRecord])
 
   // Initial read only: background refetches (SSE catch-up) never flash it.
   const [isRefreshing, setIsRefreshing] = useState(false)

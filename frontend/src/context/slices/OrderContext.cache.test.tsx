@@ -11,7 +11,7 @@ vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() },
 }))
 
-import { TenantProvider, useTenant } from "./TenantContext"
+import { TenantProvider } from "./TenantContext"
 import { UiProvider } from "./UiContext"
 import { OrderProvider, useOrders } from "./OrderContext"
 import { apiClient } from "@/core/api/apiClient"
@@ -117,16 +117,5 @@ describe("OrderContext reads orders and customers from the query cache", () => {
 
     expect(result.current.orders.find((o) => o.id === "B")?.status).toBe("cooking")
     expect(result.current.orders.find((o) => o.id === "A")).toBe(orderA)
-  })
-
-  it("still mirrors the cached board into the tenant record (dual write)", async () => {
-    vi.spyOn(apiClient, "hasToken").mockReturnValue(true)
-    vi.spyOn(apiClient, "fetchOrders").mockResolvedValue([backendOrder("A", 1)] as any)
-    vi.spyOn(apiClient, "fetchCustomers").mockResolvedValue([])
-    const { wrapper } = setup()
-    const { result } = renderHook(() => ({ orders: useOrders(), tenant: useTenant() }), { wrapper })
-
-    await waitFor(() => expect(result.current.orders.orders).toHaveLength(1))
-    await waitFor(() => expect(result.current.tenant.activeRestaurant.orders.map((o) => o.id)).toEqual(["A"]))
   })
 })

@@ -128,9 +128,11 @@ describe("Super Admin - Creación y Aislamiento de Nuevos Restaurantes E2E", () 
     expect(result.current.products.some((p) => p.name.includes("Acevichado"))).toBe(false)
     expect(result.current.customers.some((c) => c.nombre === "Andrea Restrepo")).toBe(false)
 
-    // 8. Verificar que las métricas globales del Super Admin suman todos los locales
+    // 8. Verificar que las métricas globales del Super Admin suman todos los locales.
+    // Los pedidos son estado del servidor (caché de consultas): solo cuentan los
+    // tableros leídos en esta sesión, aquí el de Sushi Express con su orden.
     expect(result.current.globalStats.totalRestaurants).toBe(5)
-    expect(result.current.globalStats.totalOrders).toBe(3)
+    expect(result.current.globalStats.totalOrders).toBe(1)
   })
 
   it("permite al Super Admin pausar/activar y eliminar restaurantes de la red", () => {
