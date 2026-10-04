@@ -14,6 +14,8 @@ describe("query key factory", () => {
     expect(keys.restaurants("super")).toEqual(["restaurants", "super"])
     expect(keys.restaurant("guest", "burger")).toEqual(["restaurant", "guest", "burger"])
     expect(keys.restaurantStatus("guest", "burger")).toEqual(["restaurant-status", "guest", "burger"])
+    expect(keys.users("super")).toEqual(["users", "super"])
+    expect(keys.users("super", "rest-1")).toEqual(["users", "super", "rest-1"])
   })
 
   it("never lets two tenants or two roles share a key", () => {
@@ -44,6 +46,8 @@ describe("query key factory", () => {
     expect(startsWith(keys.restaurants("super"), keyPrefixes.restaurants())).toBe(true)
     expect(startsWith(keys.restaurant("super", "x"), keyPrefixes.restaurant())).toBe(true)
     expect(startsWith(keys.restaurantStatus("super", "x"), keyPrefixes.restaurantStatus())).toBe(true)
+    expect(startsWith(keys.users("super", "r"), keys.users("super"))).toBe(true)
+    expect(startsWith(keys.users("super"), keyPrefixes.users())).toBe(true)
     // A tenant prefix never matches another tenant's key.
     expect(startsWith(keys.orders("other", "super"), keyPrefixes.orders("t"))).toBe(false)
   })
