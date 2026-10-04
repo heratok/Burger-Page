@@ -21,6 +21,19 @@ describe("query key factory", () => {
     expect(keys.users("super", "rest-1")).toEqual(["users", "super", "rest-1"])
   })
 
+  it("builds the platform stats key with the session role and the date range", () => {
+    expect(keys.platformStats("super", {})).toEqual(["platform-stats", "super", {}])
+    expect(keys.platformStats("super", { from: "2026-01-01", to: "2026-01-31" })).toEqual([
+      "platform-stats",
+      "super",
+      { from: "2026-01-01", to: "2026-01-31" },
+    ])
+    // Never shared across roles or ranges; the prefix matches every one of them.
+    expect(keys.platformStats("super", {})).not.toEqual(keys.platformStats("restaurant", {}))
+    expect(keys.platformStats("super", {})).not.toEqual(keys.platformStats("super", { from: "2026-01-01" }))
+    expect(keyPrefixes.platformStats()).toEqual(["platform-stats"])
+  })
+
   it("never lets two tenants or two roles share a key", () => {
     const tenantScoped = [keys.orders, keys.inventory, keys.suppliers, keys.tables] as const
     for (const build of tenantScoped) {

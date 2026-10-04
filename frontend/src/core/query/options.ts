@@ -71,6 +71,21 @@ export const ordersQueryOptions = (tenantId: TenantId, role: UserRole) =>
   })
 
 /**
+ * Platform-wide totals computed by the server (super admin only; the caller
+ * gates it with `enabled`). Never persisted: its key carries a non-guest role,
+ * which the persistence whitelist rejects. No retry: a failure shows as an
+ * error state the user can reload from, not a silent loop.
+ */
+export const platformStatsQueryOptions = (role: UserRole, range: { from?: string; to?: string } = {}) =>
+  queryOptions({
+    queryKey: keys.platformStats(role, range),
+    queryFn: () =>
+      logged("Could not fetch platform stats from backend API:", () => apiClient.fetchPlatformStats(range)),
+    retry: false,
+    staleTime: 30_000,
+  })
+
+/**
  * Shared key of every write to tenant records (restaurant edits, store
  * config): a directory read that lands while one is pending is deferred.
  */

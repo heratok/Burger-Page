@@ -26,6 +26,9 @@ export const keys = {
   /** Platform audit log (super admin); one entry per filter combination. */
   auditLog: (role: UserRole, filters: Record<string, string | undefined>) =>
     ["audit-log", role, filters] as const,
+  /** Platform-wide totals (super admin); one entry per date range. */
+  platformStats: (role: UserRole, range: { from?: string; to?: string }) =>
+    ["platform-stats", role, range] as const,
   /** Platform users (super admin); scoped to one restaurant when an id is given. */
   users: (role: UserRole, restaurantId?: string) =>
     (restaurantId === undefined ? ["users", role] : ["users", role, restaurantId]) as readonly unknown[],
@@ -45,6 +48,7 @@ export const keyPrefixes = {
   deletedRestaurants: () => ["deleted-restaurants"] as const,
   users: () => ["users"] as const,
   auditLog: () => ["audit-log"] as const,
+  platformStats: () => ["platform-stats"] as const,
 }
 
 /** Resources a public storefront renders: the restaurant record by slug and its menu. */

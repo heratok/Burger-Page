@@ -2,7 +2,7 @@ import { useCallback } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { apiClient, type DeletedRestaurantRecord } from "@/core/api/apiClient"
 import { useAuth } from "@/context/slices/AuthContext"
-import { keys } from "@/core/query/keys"
+import { keys, keyPrefixes } from "@/core/query/keys"
 
 /** Soft-deleted restaurants shown in the directory's restore tab. */
 export function useDeletedRestaurantsQuery() {
@@ -26,6 +26,8 @@ export function useInvalidateRestaurantLists() {
       Promise.all([
         queryClient.invalidateQueries({ queryKey: keys.deletedRestaurants(session.role) }),
         queryClient.invalidateQueries({ queryKey: keys.restaurants(session.role) }),
+        // A restored restaurant counts in the platform totals again.
+        queryClient.invalidateQueries({ queryKey: keyPrefixes.platformStats() }),
       ]),
     [queryClient, session.role]
   )

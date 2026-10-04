@@ -22,6 +22,8 @@ import type {
   AuditLogQuery,
   AuditLogPage,
   AuditLogItem,
+  PlatformStats,
+  PlatformStatsQuery,
 } from '@burger-page/contracts'
 
 export type {
@@ -29,6 +31,8 @@ export type {
   AuditLogQuery,
   AuditLogPage,
   AuditLogItem,
+  PlatformStats,
+  PlatformStatsQuery,
 }
 
 export interface DeletedRestaurantRecord {
@@ -916,6 +920,15 @@ export class ApiClient {
     if (query?.to) params.set('to', query.to)
     const qs = params.toString() ? `?${params.toString()}` : ''
     return this.request<AuditLogPage>(`/audit-log${qs}`)
+  }
+
+  /** Platform-wide totals (super admin only); from/to are inclusive YYYY-MM-DD days that narrow the orders. */
+  async fetchPlatformStats(query?: PlatformStatsQuery): Promise<PlatformStats> {
+    const params = new URLSearchParams()
+    if (query?.from) params.set('from', query.from)
+    if (query?.to) params.set('to', query.to)
+    const qs = params.toString() ? `?${params.toString()}` : ''
+    return this.request<PlatformStats>(`/platform-stats${qs}`)
   }
 
   async getPresignedUploadUrl(params: {

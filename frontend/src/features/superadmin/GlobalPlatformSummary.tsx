@@ -12,11 +12,15 @@ export const GlobalPlatformSummary: React.FC<GlobalPlatformSummaryProps> = ({ on
   const { adminTheme } = useUi()
   const globalStats = useGlobalStats()
   const isDark = adminTheme === "dark"
+  // Until the server answers (or when it fails) the numbers are placeholders:
+  // showing them as real zeros would be wrong.
+  const hasTotals = !globalStats.isLoading && !globalStats.isError
+  const orPlaceholder = (value: string) => (hasTotals ? value : "—")
 
   const cards = [
     {
       title: "Facturación Global Plataforma",
-      value: formatCurrency(globalStats.totalRevenue),
+      value: orPlaceholder(formatCurrency(globalStats.totalRevenue)),
       sub: "Ventas acumuladas de todos los restaurantes",
       icon: <DollarSign className="size-5 text-emerald-500" />,
       badge: "+24.8% este mes",
@@ -24,7 +28,7 @@ export const GlobalPlatformSummary: React.FC<GlobalPlatformSummaryProps> = ({ on
     },
     {
       title: "Órdenes Procesadas",
-      value: globalStats.totalOrders.toString(),
+      value: orPlaceholder(globalStats.totalOrders.toString()),
       sub: "Total de pedidos registrados en red",
       icon: <ShoppingBag className="size-5 text-indigo-500" />,
       badge: "100% en tiempo real",
@@ -32,7 +36,7 @@ export const GlobalPlatformSummary: React.FC<GlobalPlatformSummaryProps> = ({ on
     },
     {
       title: "Restaurantes Activos",
-      value: `${globalStats.activeRestaurants} / ${globalStats.totalRestaurants}`,
+      value: orPlaceholder(`${globalStats.activeRestaurants} / ${globalStats.totalRestaurants}`),
       sub: "Locales gastronómicos operando",
       icon: <Store className="size-5 text-amber-500" />,
       badge: "SaaS Multi-Tenant",
@@ -40,7 +44,7 @@ export const GlobalPlatformSummary: React.FC<GlobalPlatformSummaryProps> = ({ on
     },
     {
       title: "Clientes en Base de Datos",
-      value: globalStats.totalCustomers.toString(),
+      value: orPlaceholder(globalStats.totalCustomers.toString()),
       sub: "Contactos consolidados para WhatsApp",
       icon: <Users className="size-5 text-purple-500" />,
       badge: "Fidelización activa",
@@ -80,6 +84,15 @@ export const GlobalPlatformSummary: React.FC<GlobalPlatformSummaryProps> = ({ on
           <span>Nuevo Restaurante</span>
         </Button>
       </div>
+
+      {globalStats.isError && (
+        <p
+          role="alert"
+          className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-xs font-semibold text-rose-600 dark:text-rose-400"
+        >
+          No se pudieron cargar las métricas de la plataforma. Recargá la página para reintentar.
+        </p>
+      )}
 
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
