@@ -165,7 +165,7 @@ test.describe('Manual Sale POS Modal - Mobile & Desktop Responsiveness with Addi
     // Open Nueva Venta POS modal
     const nuevaVentaBtn = page.getByRole('button', { name: /Nueva Venta/i }).first();
     await expect(nuevaVentaBtn).toBeVisible({ timeout: 10000 });
-    await nuevaVentaBtn.click({ force: true });
+    await nuevaVentaBtn.click();
 
     // Verify modal is open
     await expect(page.getByText(/Punto de Venta/i)).toBeVisible();
@@ -260,7 +260,7 @@ test.describe('Manual Sale POS Modal - Mobile & Desktop Responsiveness with Addi
     // Open Nueva Venta POS modal
     const nuevaVentaBtn = page.getByRole('button', { name: /Nueva Venta/i }).first();
     await expect(nuevaVentaBtn).toBeVisible({ timeout: 10000 });
-    await nuevaVentaBtn.click({ force: true });
+    await nuevaVentaBtn.click();
 
     // Quick add standard product
     await page.getByRole('button', { name: /^Agregar$/i }).first().click();
