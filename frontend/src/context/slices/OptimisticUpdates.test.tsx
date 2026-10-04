@@ -1,4 +1,5 @@
 import React from "react"
+import { TestQueryProvider } from "@/test/queryClientWrapper"
 import { seedBlankActiveTenant } from "@/test/fixtures"
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { renderHook, act, waitFor } from "@testing-library/react"
@@ -152,9 +153,11 @@ describe("CatalogContext Additions Optimistic Updates & Rollback", () => {
     vi.spyOn(apiClient, "createAddition").mockRejectedValue(new Error("API Error 500"))
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <TenantProvider>
-        <CatalogProvider>{children}</CatalogProvider>
-      </TenantProvider>
+      <TestQueryProvider>
+        <TenantProvider>
+          <CatalogProvider>{children}</CatalogProvider>
+        </TenantProvider>
+      </TestQueryProvider>
     )
 
     const { result } = renderHook(() => useCatalog(), { wrapper })
@@ -183,9 +186,11 @@ describe("CatalogContext Additions Optimistic Updates & Rollback", () => {
     })
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <TenantProvider>
-        <CatalogProvider>{children}</CatalogProvider>
-      </TenantProvider>
+      <TestQueryProvider>
+        <TenantProvider>
+          <CatalogProvider>{children}</CatalogProvider>
+        </TenantProvider>
+      </TestQueryProvider>
     )
 
     const { result } = renderHook(() => useCatalog(), { wrapper })
@@ -238,9 +243,11 @@ describe("CatalogContext Additions Optimistic Updates & Rollback", () => {
     })
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <TenantProvider>
-        <CatalogProvider>{children}</CatalogProvider>
-      </TenantProvider>
+      <TestQueryProvider>
+        <TenantProvider>
+          <CatalogProvider>{children}</CatalogProvider>
+        </TenantProvider>
+      </TestQueryProvider>
     )
 
     const { result } = renderHook(() => useCatalog(), { wrapper })
@@ -288,9 +295,11 @@ describe("CatalogContext Additions Optimistic Updates & Rollback", () => {
     })
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <TenantProvider>
-        <CatalogProvider>{children}</CatalogProvider>
-      </TenantProvider>
+      <TestQueryProvider>
+        <TenantProvider>
+          <CatalogProvider>{children}</CatalogProvider>
+        </TenantProvider>
+      </TestQueryProvider>
     )
 
     const { result } = renderHook(() => useCatalog(), { wrapper })
@@ -338,9 +347,11 @@ describe("CatalogContext Additions Optimistic Updates & Rollback", () => {
     } as any)
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <TenantProvider>
-        <CatalogProvider>{children}</CatalogProvider>
-      </TenantProvider>
+      <TestQueryProvider>
+        <TenantProvider>
+          <CatalogProvider>{children}</CatalogProvider>
+        </TenantProvider>
+      </TestQueryProvider>
     )
 
     const { result } = renderHook(() => useCatalog(), { wrapper })
@@ -405,9 +416,11 @@ describe("InventoryContext Optimistic Updates & Rollback", () => {
     } as any)
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <TenantProvider>
-        <InventoryProvider>{children}</InventoryProvider>
-      </TenantProvider>
+      <TestQueryProvider>
+        <TenantProvider>
+          <InventoryProvider>{children}</InventoryProvider>
+        </TenantProvider>
+      </TestQueryProvider>
     )
 
     const { result } = renderHook(() => useInventory(), { wrapper })

@@ -1,4 +1,5 @@
 import React from "react"
+import { TestQueryProvider } from "@/test/queryClientWrapper"
 import { seedBlankActiveTenant } from "@/test/fixtures"
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { renderHook, act, waitFor } from "@testing-library/react"
@@ -13,9 +14,11 @@ import { InventoryProvider, useInventory } from "./InventoryContext"
 import { apiClient } from "@/core/api/apiClient"
 
 const wrapper = ({ children }: { children: React.ReactNode }) => (
-  <TenantProvider>
-    <InventoryProvider>{children}</InventoryProvider>
-  </TenantProvider>
+  <TestQueryProvider>
+    <TenantProvider>
+      <InventoryProvider>{children}</InventoryProvider>
+    </TenantProvider>
+  </TestQueryProvider>
 )
 
 const newItem = (name: string, stock: number) => ({

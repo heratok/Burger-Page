@@ -67,14 +67,24 @@ export async function mockBackendGets(page: Page, data: MockedEnvelopeData): Pro
   }
 }
 
-/** Fulfills order state transitions (PATCH .../orders/:id/status) locally. */
-export async function mockOrderStatusTransitions(page: Page): Promise<void> {
+/**
+ * Fulfills order state transitions (PATCH .../orders/:id/status) locally.
+ * Pass the same `orders` array given to `mockBackendGets` to keep the mock
+ * stateful like the real backend: the app re-syncs orders after a write
+ * settles, and a stale GET would otherwise revert the transition.
+ */
+export async function mockOrderStatusTransitions(page: Page, orders?: MockedOrder[]): Promise<void> {
   await page.route('**/api/orders/*/status*', async (route) => {
     if (route.request().method() !== 'PATCH') return route.continue()
     const body = route.request().postDataJSON?.() ?? {}
+    // pathname: /api/orders/:id/status
+    const segments = new URL(route.request().url()).pathname.split('/')
+    const id = decodeURIComponent(segments[segments.length - 2] ?? '')
+    const stored = orders?.find((o) => o.id === id)
+    if (stored && body.status) stored.status = body.status
     return route.fulfill({
       status: 200,
-      json: { id: route.request().url().split('/').pop(), status: body.status },
+      json: stored ?? { id, status: body.status },
     })
   })
 }

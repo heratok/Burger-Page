@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest"
 import { seedBlankActiveTenant } from "@/test/fixtures"
 import { renderHook, act, waitFor, render, screen, fireEvent } from "@testing-library/react"
 import React from "react"
+import { TestQueryProvider } from "@/test/queryClientWrapper"
 import { UiProvider, useUi } from "./UiContext"
 import { AuthProvider, useAuth } from "./AuthContext"
 import { DEFAULT_STORE_CONFIG } from "@/constants/themePresets"
@@ -279,9 +280,11 @@ describe("InventoryContext Slice", () => {
     const fetchSpy = vi.spyOn(apiClient, "fetchInventory").mockResolvedValue([] as any)
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <TenantProvider>
-        <InventoryProvider>{children}</InventoryProvider>
-      </TenantProvider>
+      <TestQueryProvider>
+        <TenantProvider>
+          <InventoryProvider>{children}</InventoryProvider>
+        </TenantProvider>
+      </TestQueryProvider>
     )
 
     renderHook(() => useInventory(), { wrapper })
@@ -295,9 +298,11 @@ describe("InventoryContext Slice", () => {
     const { InventoryProvider, useInventory } = await import("./InventoryContext")
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <TenantProvider>
-        <InventoryProvider>{children}</InventoryProvider>
-      </TenantProvider>
+      <TestQueryProvider>
+        <TenantProvider>
+          <InventoryProvider>{children}</InventoryProvider>
+        </TenantProvider>
+      </TestQueryProvider>
     )
 
     const { result } = renderHook(() => useInventory(), { wrapper })
@@ -342,9 +347,11 @@ describe("InventoryContext Slice", () => {
     const updateStockSpy = vi.spyOn(apiClient, "updateInventoryStock").mockResolvedValue({} as any)
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <TenantProvider>
-        <InventoryProvider>{children}</InventoryProvider>
-      </TenantProvider>
+      <TestQueryProvider>
+        <TenantProvider>
+          <InventoryProvider>{children}</InventoryProvider>
+        </TenantProvider>
+      </TestQueryProvider>
     )
 
     const { result } = renderHook(() => useInventory(), { wrapper })
@@ -396,9 +403,11 @@ describe("InventoryContext Slice", () => {
     const deleteSpy = vi.spyOn(apiClient, "deleteSupplier").mockResolvedValue(undefined as any)
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <TenantProvider>
-        <InventoryProvider>{children}</InventoryProvider>
-      </TenantProvider>
+      <TestQueryProvider>
+        <TenantProvider>
+          <InventoryProvider>{children}</InventoryProvider>
+        </TenantProvider>
+      </TestQueryProvider>
     )
 
     const { result } = renderHook(() => useInventory(), { wrapper })
@@ -459,9 +468,11 @@ describe("InventoryContext Slice", () => {
     vi.spyOn(apiClient, "updateInventoryStock").mockRejectedValue(new Error("Network Error: 500"))
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <TenantProvider>
-        <InventoryProvider>{children}</InventoryProvider>
-      </TenantProvider>
+      <TestQueryProvider>
+        <TenantProvider>
+          <InventoryProvider>{children}</InventoryProvider>
+        </TenantProvider>
+      </TestQueryProvider>
     )
 
     const { result } = renderHook(() => useInventory(), { wrapper })
@@ -503,9 +514,11 @@ describe("InventoryContext Slice", () => {
     const updateStockSpy = vi.spyOn(apiClient, "updateInventoryStock").mockResolvedValue({} as any)
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <TenantProvider>
-        <InventoryProvider>{children}</InventoryProvider>
-      </TenantProvider>
+      <TestQueryProvider>
+        <TenantProvider>
+          <InventoryProvider>{children}</InventoryProvider>
+        </TenantProvider>
+      </TestQueryProvider>
     )
 
     const { result } = renderHook(() => useInventory(), { wrapper })
@@ -555,9 +568,11 @@ describe("InventoryContext Slice", () => {
     vi.spyOn(apiClient, "updateInventoryItem").mockRejectedValue(new Error("API Error 500"))
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <TenantProvider>
-        <InventoryProvider>{children}</InventoryProvider>
-      </TenantProvider>
+      <TestQueryProvider>
+        <TenantProvider>
+          <InventoryProvider>{children}</InventoryProvider>
+        </TenantProvider>
+      </TestQueryProvider>
     )
 
     const { result } = renderHook(() => useInventory(), { wrapper })
@@ -598,9 +613,11 @@ describe("InventoryContext Slice", () => {
     vi.spyOn(apiClient, "deleteInventoryItem").mockRejectedValue(new Error("API Error 500"))
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <TenantProvider>
-        <InventoryProvider>{children}</InventoryProvider>
-      </TenantProvider>
+      <TestQueryProvider>
+        <TenantProvider>
+          <InventoryProvider>{children}</InventoryProvider>
+        </TenantProvider>
+      </TestQueryProvider>
     )
 
     const { result } = renderHook(() => useInventory(), { wrapper })
@@ -652,9 +669,11 @@ describe("InventoryContext Slice", () => {
       )
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <TenantProvider>
-        <InventoryProvider>{children}</InventoryProvider>
-      </TenantProvider>
+      <TestQueryProvider>
+        <TenantProvider>
+          <InventoryProvider>{children}</InventoryProvider>
+        </TenantProvider>
+      </TestQueryProvider>
     )
 
     const { result } = renderHook(() => useInventory(), { wrapper })
@@ -1439,9 +1458,11 @@ describe("CatalogContext Slice - Storefront Configuration Persistence & Rollback
     const updateRestaurantSpy = vi.spyOn(apiClient, "updateRestaurant").mockResolvedValue({} as any)
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <TenantProvider>
-        <CatalogProvider>{children}</CatalogProvider>
-      </TenantProvider>
+      <TestQueryProvider>
+        <TenantProvider>
+          <CatalogProvider>{children}</CatalogProvider>
+        </TenantProvider>
+      </TestQueryProvider>
     )
 
     const { result } = renderHook(() => useCatalog(), { wrapper })
@@ -1473,9 +1494,11 @@ describe("CatalogContext Slice - Storefront Configuration Persistence & Rollback
 
     const updateRestaurantSpy = vi.spyOn(apiClient, "updateRestaurant").mockResolvedValue({} as any)
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <TenantProvider>
-        <CatalogProvider>{children}</CatalogProvider>
-      </TenantProvider>
+      <TestQueryProvider>
+        <TenantProvider>
+          <CatalogProvider>{children}</CatalogProvider>
+        </TenantProvider>
+      </TestQueryProvider>
     )
     const { result } = renderHook(() => useCatalog(), { wrapper })
 
@@ -1500,9 +1523,11 @@ describe("CatalogContext Slice - Storefront Configuration Persistence & Rollback
 
     const updateRestaurantSpy = vi.spyOn(apiClient, "updateRestaurant").mockResolvedValue({} as any)
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <TenantProvider>
-        <CatalogProvider>{children}</CatalogProvider>
-      </TenantProvider>
+      <TestQueryProvider>
+        <TenantProvider>
+          <CatalogProvider>{children}</CatalogProvider>
+        </TenantProvider>
+      </TestQueryProvider>
     )
     const { result } = renderHook(() => useCatalog(), { wrapper })
 
@@ -1530,9 +1555,11 @@ describe("CatalogContext Slice - Storefront Configuration Persistence & Rollback
     vi.spyOn(apiClient, "updateRestaurant").mockRejectedValue(new Error("Network Error 500"))
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <TenantProvider>
-        <CatalogProvider>{children}</CatalogProvider>
-      </TenantProvider>
+      <TestQueryProvider>
+        <TenantProvider>
+          <CatalogProvider>{children}</CatalogProvider>
+        </TenantProvider>
+      </TestQueryProvider>
     )
 
     const { result } = renderHook(() => useCatalog(), { wrapper })
@@ -1555,9 +1582,11 @@ describe("CatalogContext Slice - Storefront Configuration Persistence & Rollback
     const updateRestaurantSpy = vi.spyOn(apiClient, "updateRestaurant").mockResolvedValue({} as any)
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <TenantProvider>
-        <CatalogProvider>{children}</CatalogProvider>
-      </TenantProvider>
+      <TestQueryProvider>
+        <TenantProvider>
+          <CatalogProvider>{children}</CatalogProvider>
+        </TenantProvider>
+      </TestQueryProvider>
     )
 
     const { result } = renderHook(() => useCatalog(), { wrapper })
@@ -1588,9 +1617,11 @@ describe("CatalogContext Slice - Storefront Configuration Persistence & Rollback
     const updateRestaurantSpy = vi.spyOn(apiClient, "updateRestaurant").mockResolvedValue({} as any)
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <TenantProvider>
-        <CatalogProvider>{children}</CatalogProvider>
-      </TenantProvider>
+      <TestQueryProvider>
+        <TenantProvider>
+          <CatalogProvider>{children}</CatalogProvider>
+        </TenantProvider>
+      </TestQueryProvider>
     )
 
     const { result } = renderHook(() => useCatalog(), { wrapper })
@@ -1641,9 +1672,11 @@ describe("CatalogContext Slice - Dynamic Category Management", () => {
     const updateProductSpy = vi.spyOn(apiClient, "updateProduct").mockResolvedValue({} as any)
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <TenantProvider>
-        <CatalogProvider>{children}</CatalogProvider>
-      </TenantProvider>
+      <TestQueryProvider>
+        <TenantProvider>
+          <CatalogProvider>{children}</CatalogProvider>
+        </TenantProvider>
+      </TestQueryProvider>
     )
 
     const { result } = renderHook(() => useCatalog(), { wrapper })
@@ -1728,9 +1761,11 @@ describe("CatalogContext Slice - Dynamic Category Management", () => {
     vi.spyOn(apiClient, "updateCategories").mockRejectedValue(new Error("API Error 500"))
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <TenantProvider>
-        <CatalogProvider>{children}</CatalogProvider>
-      </TenantProvider>
+      <TestQueryProvider>
+        <TenantProvider>
+          <CatalogProvider>{children}</CatalogProvider>
+        </TenantProvider>
+      </TestQueryProvider>
     )
 
     const { result } = renderHook(() => useCatalog(), { wrapper })
@@ -1752,9 +1787,11 @@ describe("CatalogContext Slice - Dynamic Category Management", () => {
     const updateCategoriesSpy = vi.spyOn(apiClient, "updateCategories").mockResolvedValue({ categories: [] })
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <TenantProvider>
-        <CatalogProvider>{children}</CatalogProvider>
-      </TenantProvider>
+      <TestQueryProvider>
+        <TenantProvider>
+          <CatalogProvider>{children}</CatalogProvider>
+        </TenantProvider>
+      </TestQueryProvider>
     )
 
     const { result } = renderHook(() => useCatalog(), { wrapper })
@@ -1799,9 +1836,11 @@ describe("CatalogContext Slice - Dynamic Category Management", () => {
     const updateCategoriesSpy = vi.spyOn(apiClient, "updateCategories").mockResolvedValue({ categories: [] })
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <TenantProvider>
-        <CatalogProvider>{children}</CatalogProvider>
-      </TenantProvider>
+      <TestQueryProvider>
+        <TenantProvider>
+          <CatalogProvider>{children}</CatalogProvider>
+        </TenantProvider>
+      </TestQueryProvider>
     )
 
     const { result } = renderHook(() => useCatalog(), { wrapper })
@@ -1866,9 +1905,11 @@ describe("CatalogContext Slice - Dynamic Category Management", () => {
     const deleteAdditionSpy = vi.spyOn(apiClient, "deleteAddition").mockResolvedValue(undefined)
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <TenantProvider>
-        <CatalogProvider>{children}</CatalogProvider>
-      </TenantProvider>
+      <TestQueryProvider>
+        <TenantProvider>
+          <CatalogProvider>{children}</CatalogProvider>
+        </TenantProvider>
+      </TestQueryProvider>
     )
 
     const { result } = renderHook(() => useCatalog(), { wrapper })
@@ -1935,9 +1976,11 @@ describe("CatalogContext Slice - Dynamic Category Management", () => {
       )
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <TenantProvider>
-        <CatalogProvider>{children}</CatalogProvider>
-      </TenantProvider>
+      <TestQueryProvider>
+        <TenantProvider>
+          <CatalogProvider>{children}</CatalogProvider>
+        </TenantProvider>
+      </TestQueryProvider>
     )
 
     const { result } = renderHook(() => useCatalog(), { wrapper })
@@ -2001,9 +2044,11 @@ describe("CatalogContext Slice - Dynamic Category Management", () => {
     const errorSpy = vi.spyOn(toast, "error")
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <TenantProvider>
-        <CatalogProvider>{children}</CatalogProvider>
-      </TenantProvider>
+      <TestQueryProvider>
+        <TenantProvider>
+          <CatalogProvider>{children}</CatalogProvider>
+        </TenantProvider>
+      </TestQueryProvider>
     )
 
     const { result } = renderHook(() => useCatalog(), { wrapper })
@@ -2047,9 +2092,11 @@ describe("CatalogContext Slice - Dynamic Category Management", () => {
       .mockResolvedValue({ categories: [] })
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <TenantProvider>
-        <CatalogProvider>{children}</CatalogProvider>
-      </TenantProvider>
+      <TestQueryProvider>
+        <TenantProvider>
+          <CatalogProvider>{children}</CatalogProvider>
+        </TenantProvider>
+      </TestQueryProvider>
     )
 
     const { result } = renderHook(() => useCatalog(), { wrapper })
@@ -2076,9 +2123,11 @@ describe("CatalogContext Slice - Dynamic Category Management", () => {
     vi.spyOn(apiClient, "updateCategories").mockResolvedValue({ categories: [] })
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <TenantProvider>
-        <CatalogProvider>{children}</CatalogProvider>
-      </TenantProvider>
+      <TestQueryProvider>
+        <TenantProvider>
+          <CatalogProvider>{children}</CatalogProvider>
+        </TenantProvider>
+      </TestQueryProvider>
     )
 
     const { result } = renderHook(() => useCatalog(), { wrapper })
