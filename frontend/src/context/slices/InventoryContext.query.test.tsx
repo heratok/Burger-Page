@@ -102,6 +102,35 @@ describe("InventoryContext server state (TanStack Query)", () => {
     await waitFor(() => expect(result.current.inventory[0].currentStock).toBe(9))
   })
 
+  it("keeps the loading flag off during the background refetch after a write", async () => {
+    const fetchSpy = vi.spyOn(apiClient, "fetchInventory").mockResolvedValue([serverItem])
+    vi.spyOn(apiClient, "updateInventoryStock").mockResolvedValue({} as any)
+    const { wrapper } = setup()
+    const loadingStates: boolean[] = []
+    const { result } = renderHook(
+      () => {
+        const inv = useInventory()
+        loadingStates.push(inv.isLoadingInventory)
+        return inv
+      },
+      { wrapper }
+    )
+    await waitFor(() => expect(result.current.isLoadingInventory).toBe(false))
+    loadingStates.length = 0
+
+    // Hold the background refetch open so an in-flight render is observable.
+    let releaseRefetch: (items: any[]) => void = () => {}
+    fetchSpy.mockImplementation(() => new Promise((resolve) => (releaseRefetch = resolve)))
+    act(() => result.current.adjustStock("srv-1", 5))
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(2))
+    await act(() => new Promise((r) => setTimeout(r, 20)))
+    expect(result.current.isLoadingInventory).toBe(false)
+
+    await act(async () => releaseRefetch([{ ...serverItem, currentStock: 9 }]))
+    await waitFor(() => expect(result.current.inventory[0].currentStock).toBe(9))
+    expect(loadingStates).not.toContain(true)
+  })
+
   it("rolls back a failed write immediately while the browser reports offline", async () => {
     vi.spyOn(apiClient, "fetchInventory").mockResolvedValue([serverItem])
     vi.spyOn(apiClient, "updateInventoryStock").mockRejectedValue(new Error("network down"))

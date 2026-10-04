@@ -123,7 +123,9 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     },
   })
 
-  const isLoadingInventory = enabled && (inventoryQuery.isFetching || suppliersQuery.isFetching)
+  // Initial hydration only (isLoading = no data yet and fetching); background
+  // refetches after writes must not flash the loading state.
+  const isLoadingInventory = enabled && (inventoryQuery.isLoading || suppliersQuery.isLoading)
 
   // The tenant record stays the offline-first store other slices persist and
   // read; query results hydrate it. A failed fetch leaves local data untouched.
