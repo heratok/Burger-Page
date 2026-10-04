@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react"
+import React, { useCallback, useEffect, useMemo } from "react"
 import { QueryClientProvider, useQueryClient, type QueryClient } from "@tanstack/react-query"
 import type {
   StorefrontConfig,
@@ -25,11 +25,7 @@ import type { TenantRepository } from "@/core/storage/TenantRepository"
 import { defaultTenantRepository } from "@/core/storage/TenantRepository"
 import { resolveRoute } from "@/core/router/useAppRouter"
 import { appQueryClient } from "@/core/query/queryClient"
-import {
-  clearPersistedQueries,
-  restorePersistedQueries,
-  subscribePersistedQueries,
-} from "@/core/query/persistence"
+import { clearPersistedQueries, subscribePersistedQueries } from "@/core/query/persistence"
 
 // Tabs exclusive to the platform super admin (kept in sync with the
 // GlobalModuleAccessDenied gate in App.tsx and SupportModeBanner's guard).
@@ -189,8 +185,8 @@ export const RestaurantProvider: React.FC<{
 }> = ({ children, repository, queryClient = appQueryClient }) => {
   // Only the public storefront (guest restaurant record and menu) is
   // persisted, so a reload while offline still shows the last menu. It is
-  // restored before the first render and saved on every cache change.
-  useState(() => restorePersistedQueries(queryClient))
+  // saved on every cache change (TenantProvider restores it before its first
+  // read).
   useEffect(() => subscribePersistedQueries(queryClient), [queryClient])
   return (
     <QueryClientProvider client={queryClient}>

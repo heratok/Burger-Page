@@ -5,7 +5,7 @@ import { RestaurantProvider, useRestaurant } from "@/context/RestaurantContext"
 import { SupportModeBanner } from "./SupportModeBanner"
 import * as routerModule from "@/core/router/useAppRouter"
 
-import { seedBlankActiveTenant } from "@/test/fixtures"
+import { seedBlankActiveTenant, seedRestaurantDirectory } from "@/test/fixtures"
 
 describe("SupportModeBanner (TDD)", () => {
   beforeEach(() => {
@@ -19,7 +19,8 @@ describe("SupportModeBanner (TDD)", () => {
   })
 
   it("renders banner with restaurant name and 'Volver al panel' when super admin enters a restaurant admin", () => {
-    seedBlankActiveTenant("rest-burger-craft", "burger-craft", { name: "Burger Craft" })
+    // Super admin sessions read tenants from the directory (server state).
+    seedRestaurantDirectory([seedBlankActiveTenant("rest-burger-craft", "burger-craft", { name: "Burger Craft" })], ["super"])
     sessionStorage.setItem(
       "burger_page_session_v2",
       JSON.stringify({ role: "super", username: "superadmin", authenticatedAt: new Date().toISOString() })
@@ -77,7 +78,8 @@ describe("SupportModeBanner (TDD)", () => {
   })
 
   it("does not show banner for super admin on super admin screens (restaurants, users, metrics, audit)", () => {
-    seedBlankActiveTenant("rest-burger-craft", "burger-craft", { name: "Burger Craft" })
+    // Super admin sessions read tenants from the directory (server state).
+    seedRestaurantDirectory([seedBlankActiveTenant("rest-burger-craft", "burger-craft", { name: "Burger Craft" })], ["super"])
     sessionStorage.setItem(
       "burger_page_session_v2",
       JSON.stringify({ role: "super", username: "superadmin", authenticatedAt: new Date().toISOString() })
@@ -123,7 +125,8 @@ describe("SupportModeBanner (TDD)", () => {
   })
 
   it("clicking 'Volver al panel' leaves tenant context and navigates to /admin/restaurants", () => {
-    seedBlankActiveTenant("rest-burger-craft", "burger-craft", { name: "Burger Craft" })
+    // Super admin sessions read tenants from the directory (server state).
+    seedRestaurantDirectory([seedBlankActiveTenant("rest-burger-craft", "burger-craft", { name: "Burger Craft" })], ["super"])
     sessionStorage.setItem(
       "burger_page_session_v2",
       JSON.stringify({ role: "super", username: "superadmin", authenticatedAt: new Date().toISOString() })

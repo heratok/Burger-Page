@@ -1,4 +1,4 @@
-import { hydrate, type QueryClient } from "@tanstack/react-query"
+import { QueryClient, dehydrate, hydrate } from "@tanstack/react-query"
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister"
 import {
   persistQueryClientSubscribe,
@@ -10,7 +10,7 @@ import { isPublicStorefrontKey } from "./keys"
 /** localStorage key of the persisted (storefront-only) query cache. */
 export const PERSISTED_QUERIES_KEY = "burger_page_query_cache_v1"
 /** Cache version: bump it when a persisted query's data shape changes. */
-export const PERSIST_BUSTER = "storefront-v1"
+export const PERSIST_BUSTER = "storefront-v2"
 /** A persisted cache older than this is discarded on restore. */
 export const PERSIST_MAX_AGE = 24 * 60 * 60 * 1000
 
@@ -62,18 +62,15 @@ export async function clearPersistedQueries(): Promise<void> {
   await queryPersister.removeClient()
 }
 
-const restoredClients = new WeakSet<QueryClient>()
-
 /**
- * Restores the persisted storefront cache into a client, synchronously and
- * once, before its first render: the last menu is on screen immediately and
- * no query waits on an async restore. A cache that is expired (maxAge),
+ * Restores the persisted storefront cache into a client, synchronously, before
+ * the tenant layer first reads it: the last storefront is on screen immediately
+ * and no query waits on an async restore. Restoring never overwrites newer
+ * cached data (hydrate keeps the most recent). A cache that is expired (maxAge),
  * busted (another cache version) or unreadable is dropped, and only
  * whitelisted storefront queries are ever hydrated back.
  */
 export function restorePersistedQueries(client: QueryClient): void {
-  if (restoredClients.has(client)) return
-  restoredClients.add(client)
   try {
     const persisted = queryPersister.restoreClient() as PersistedClient | undefined
     if (!persisted?.timestamp) return
@@ -94,4 +91,22 @@ export function restorePersistedQueries(client: QueryClient): void {
 /** Saves the whitelisted queries whenever the cache changes; returns the unsubscribe. */
 export function subscribePersistedQueries(client: QueryClient): () => void {
   return persistQueryClientSubscribe({ queryClient: client, ...storefrontPersistOptions })
+}
+
+/**
+ * Writes entries into the persisted storefront cache right away (no throttle),
+ * on top of what is already persisted. Used to migrate data persisted by an
+ * older version; the same whitelist applies.
+ */
+export function writePersistedQueries(seed: (client: QueryClient) => void): void {
+  const client = new QueryClient()
+  restorePersistedQueries(client)
+  seed(client)
+  const clientState = dehydrate(client, storefrontPersistOptions.dehydrateOptions)
+  const persisted: PersistedClient = { timestamp: Date.now(), buster: PERSIST_BUSTER, clientState }
+  guardedStorage?.setItem(
+    PERSISTED_QUERIES_KEY,
+    clientState.queries.length === 0 ? SKIP : JSON.stringify(persisted)
+  )
+  client.clear()
 }

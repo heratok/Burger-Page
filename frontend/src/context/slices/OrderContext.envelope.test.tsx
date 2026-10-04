@@ -9,8 +9,8 @@ import { InMemoryStorageAdapter } from "@/core/storage/StorageAdapter"
 import { PendingOrdersQueue } from "@/core/storage/pendingOrdersQueue"
 import { appQueryClient } from "@/core/query/queryClient"
 import { keys } from "@/core/query/keys"
+import { PERSISTED_QUERIES_KEY } from "@/core/query/persistence"
 
-const envelopeRecord = () => JSON.parse(localStorage.getItem(STORAGE_KEYS.ENVELOPE)!).restaurants[0]
 
 describe("orders and customers are no longer part of the tenant envelope", () => {
   beforeEach(() => {
@@ -41,9 +41,10 @@ describe("orders and customers are no longer part of the tenant envelope", () =>
     await waitFor(() => expect(result.current.orders.map((o) => o.id)).toEqual(["srv-1"]))
     expect(result.current.customers).toHaveLength(1)
 
-    const record = envelopeRecord()
-    expect(record.orders ?? []).toEqual([])
-    expect(record.customers ?? []).toEqual([])
+    // No tenant envelope is written at all, and the order is not in the
+    // persisted (storefront-only) query cache either.
+    expect(localStorage.getItem(STORAGE_KEYS.ENVELOPE)).toBeNull()
+    expect(localStorage.getItem(PERSISTED_QUERIES_KEY) ?? "").not.toContain("srv-1")
     expect(result.current.activeRestaurant.orders ?? []).toEqual([])
   })
 

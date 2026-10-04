@@ -79,8 +79,8 @@ describe("InventoryContext reads and writes the query cache", () => {
     expect(cancelSpy).toHaveBeenCalledWith({ queryKey: keys.inventory(TENANT, "guest") })
     expect(client.getQueryData<InventoryItem[]>(keys.inventory(TENANT, "guest"))?.[0].currentStock).toBe(4)
     expect(result.current.tenant.activeRestaurant).toBe(record)
-    const persisted = JSON.parse(localStorage.getItem(STORAGE_KEYS.ENVELOPE)!).restaurants[0]
-    expect(persisted.inventory ?? []).toEqual([])
+    // No tenant envelope is written at all any more.
+    expect(localStorage.getItem(STORAGE_KEYS.ENVELOPE)).toBeNull()
   })
 
   it("a rejected supplier edit restores the cached list", async () => {

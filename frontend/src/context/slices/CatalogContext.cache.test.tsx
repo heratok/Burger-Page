@@ -63,8 +63,8 @@ describe("CatalogContext reads and writes the query cache", () => {
     expect(cancelSpy).toHaveBeenCalledWith({ queryKey: PRODUCTS_KEY })
     expect(client.getQueryData<MenuItem[]>(PRODUCTS_KEY)?.find((p) => p.id === "prod-1")?.inStock).toBe(false)
     expect(result.current.tenant.activeRestaurant).toBe(record)
-    const persisted = JSON.parse(localStorage.getItem(STORAGE_KEYS.ENVELOPE)!).restaurants[0]
-    expect(persisted.products ?? []).toEqual([])
+    // No tenant envelope is written at all any more.
+    expect(localStorage.getItem(STORAGE_KEYS.ENVELOPE)).toBeNull()
   })
 
   it("a rejected product edit restores the cached snapshot and shows the error toast", async () => {

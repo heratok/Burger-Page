@@ -1,16 +1,13 @@
-import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, useRef } from "react"
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react"
 import {
   QueryClientContext,
   QueryClientProvider,
   hashKey,
   useMutation,
+  useQuery,
   useQueryClient,
 } from "@tanstack/react-query"
-import type {
-  RestaurantRecord,
-  StorefrontConfig,
-  StorageEnvelopeV2,
-} from "@/types/restaurant"
+import type { RestaurantRecord } from "@/types/restaurant"
 import { DEFAULT_STORE_CONFIG } from "@/constants/themePresets"
 import {
   TenantRepository,
@@ -24,7 +21,21 @@ import { runOptimisticMutation } from "./optimisticMutation"
 import { nextTempId } from "@/lib/ids"
 import { ADMIN_ROOT_PATHS } from "@/core/router/adminRootPaths"
 import { appQueryClient } from "@/core/query/queryClient"
-import { keyPrefixes } from "@/core/query/keys"
+import { keys, keyPrefixes } from "@/core/query/keys"
+import { takeDeferredRead } from "@/core/query/deferredReads"
+import { restorePersistedQueries } from "@/core/query/persistence"
+import {
+  addToDirectory,
+  forgetRestaurant,
+  knownRestaurants,
+  resolveRestaurant,
+  useResolvedRestaurant,
+  patchRestaurant,
+  restoreRestaurant,
+  seedRestaurant,
+  snapshotRestaurant,
+  useKnownRestaurants,
+} from "./restaurantCache"
 import {
   restaurantsQueryOptions,
   restaurantQueryOptions,
@@ -33,26 +44,6 @@ import {
 } from "@/core/query/options"
 
 export type LoadRestaurantOutcome = "ok" | "not-found" | "error"
-
-/** Merges the public/admin payload into a storefront config: schedule fields come from the top level, the legacy text is dropped. */
-function configFromApi(fetched: any, base: StorefrontConfig): StorefrontConfig {
-  const { openingHours: _legacyText, ...config } = (fetched.config || {}) as Record<string, unknown>
-  return { ...base, ...config, ...scheduleFieldsFromApi({ ...base, ...fetched }) } as StorefrontConfig
-}
-
-function toRestaurantRecord(fetched: any): RestaurantRecord {
-  return {
-    id: fetched.id,
-    slug: fetched.slug,
-    isActive: fetched.isActive !== undefined ? Boolean(fetched.isActive) : true,
-    createdAt: fetched.createdAt || new Date().toISOString(),
-    categories: fetched.categories || [],
-    config: {
-      ...configFromApi(fetched, DEFAULT_STORE_CONFIG),
-      name: fetched.name || fetched.config?.name || DEFAULT_STORE_CONFIG.name,
-    },
-  }
-}
 
 export interface TenantContextType {
   restaurants: RestaurantRecord[]
@@ -66,7 +57,6 @@ export interface TenantContextType {
   effectiveRestaurantId: string
   activeRestaurantId: string
   activeRestaurantSlug: string
-  superAdminPassword?: string
   isSyncing: boolean
   switchRestaurant: (idOrSlug: string) => void
   /**
@@ -114,6 +104,26 @@ export const TenantProvider: React.FC<TenantProviderProps> = (props) => {
   return hasClient ? inner : <QueryClientProvider client={appQueryClient}>{inner}</QueryClientProvider>
 }
 
+/** Placeholder while no tenant is active (never fetched, never written). */
+const NO_RESTAURANT: RestaurantRecord = {
+  id: "rest-default",
+  slug: "default",
+  isActive: true,
+  createdAt: new Date(0).toISOString(),
+  config: DEFAULT_STORE_CONFIG,
+}
+
+/** First path segment of the current URL ("" on "/" or without a window). */
+function currentFirstSegment(): string {
+  try {
+    return typeof window !== "undefined"
+      ? window.location.pathname.replace(/^\/+|\/+$/g, "").toLowerCase().split("/")[0]
+      : ""
+  } catch {
+    return ""
+  }
+}
+
 const TenantProviderInner: React.FC<TenantProviderProps> = ({
   children,
   repository = defaultTenantRepository,
@@ -121,120 +131,81 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
   const queryClient = useQueryClient()
   const { session } = useAuth()
   const role = session.role
-  const [envelope, setEnvelope] = useState<StorageEnvelopeV2>(() =>
-    repository.loadEnvelope()
-  )
-  const [isSyncing, setIsSyncing] = useState<boolean>(false)
+
+  // The public storefront cache persisted for offline reloads is restored
+  // before anything below reads the cache (synchronous storage), after the
+  // envelope persisted by older versions is migrated into it.
+  useState(() => {
+    // Restaurant records ARE the tenant context: a looked-up or restored entry
+    // usually has no observer, and must not be garbage-collected from under
+    // the active tenant (logout still clears the whole client).
+    queryClient.setQueryDefaults(keyPrefixes.restaurant(), { gcTime: Infinity })
+    queryClient.setQueryDefaults(keyPrefixes.restaurants(), { gcTime: Infinity })
+    repository.migrateLegacyEnvelope()
+    restorePersistedQueries(queryClient)
+  })
+
+  const restaurants = useKnownRestaurants(queryClient, role)
 
   const [activeRestaurantId, setActiveRestaurantId] = useState<string>(() => {
-    // No fabricated default tenant: an unknown/absent saved id stays empty
-    // until a real tenant is selected (slug route, session or switcher).
+    // No fabricated default tenant: an absent saved id stays empty until a
+    // real tenant is selected (slug route, session or switcher).
     const saved = repository.getActiveRestaurantId("")
-    const record = envelope.restaurants.find((r) => r.id === saved || r.slug === saved)
-    if (!record) return ""
-
-    // On a public storefront URL (anything other than "/" or the admin roots in ADMIN_ROOT_PATHS), a
-    // tenant persisted from a previous visit in this tab must only be kept
-    // when it actually matches this URL's slug. Otherwise the stale tenant
-    // (e.g. a restaurant opened earlier) would render as the storefront for
-    // an instant before route resolution corrects an unrelated/invalid slug
-    // (like a typo) to the not-found screen.
-    let firstSegment = ""
-    try {
-      firstSegment = typeof window !== "undefined"
-        ? window.location.pathname.replace(/^\/+|\/+$/g, "").toLowerCase().split("/")[0]
-        : ""
-    } catch {
-      firstSegment = ""
-    }
+    if (!saved) return ""
+    const record = resolveRestaurant(queryClient, role, saved)
+    const firstSegment = currentFirstSegment()
     const isPublicSlugRoute = firstSegment !== "" && !ADMIN_ROOT_PATHS.includes(firstSegment)
+    if (!record) {
+      // An admin's saved tenant is confirmed by the directory read (cleared
+      // below if it is not there); anyone else needs a known record.
+      return !isPublicSlugRoute && apiClient.hasToken() ? saved : ""
+    }
+    // On a public storefront URL (anything other than "/" or the admin roots
+    // in ADMIN_ROOT_PATHS), a tenant persisted from a previous visit must only
+    // be kept when it matches this URL's slug: otherwise a stale tenant would
+    // render as the storefront for an instant before route resolution
+    // corrects an unrelated/invalid slug to the not-found screen.
     if (isPublicSlugRoute && firstSegment !== record.slug.toLowerCase() && firstSegment !== record.id.toLowerCase()) {
       return ""
     }
-
-    return saved
+    return record.id
   })
 
-  // Merges the backend directory into the envelope. SUS-20: never re-merge the
-  // one-time admin password — not from backend responses and not from legacy
-  // local records; the secret must not ride along on refresh.
-  const applyDirectory = useCallback(
-    (backendRestaurants: any[]) => {
-      setEnvelope((prev) => {
-        const diskEnvelope = repository.loadEnvelope()
-        const merged = backendRestaurants.map((br: any) => {
-          const local =
-            prev.restaurants.find((r) => r.id === br.id || r.slug === br.slug) ||
-            diskEnvelope.restaurants.find((r) => r.id === br.id || r.slug === br.slug)
-          const { adminPassword: _legacySecret, ...safeLocal } =
-            local || ({} as Partial<RestaurantRecord>)
-          return {
-            ...safeLocal,
-            id: br.id,
-            slug: br.slug,
-            isActive: br.isActive !== undefined ? Boolean(br.isActive) : true,
-            createdAt: br.createdAt || local?.createdAt || new Date().toISOString(),
-            // Zero categories is a valid persisted state: when the backend
-            // sends a list (even []), it wins over stale local storage. Only
-            // fall back to local when the backend omitted categories entirely.
-            categories: Array.isArray(br.categories) ? br.categories : local?.categories ?? [],
-            config: {
-              ...configFromApi(br, { ...DEFAULT_STORE_CONFIG, ...(local?.config || {}) }),
-              name: br.name || br.config?.name || local?.config?.name || DEFAULT_STORE_CONFIG.name,
-              tagline: br.tagline || br.config?.tagline || local?.config?.tagline || DEFAULT_STORE_CONFIG.tagline,
-            },
-          } as RestaurantRecord
-        })
-        return {
-          ...prev,
-          restaurants: merged,
-        }
-      })
-    },
-    [repository]
-  )
-
-  // A directory response that lands while a restaurant write is in flight would
-  // wipe its optimistic edit: it is dropped and the directory is pulled again
-  // once the last write settles.
-  const directoryDeferred = useRef(false)
+  // The platform directory is private (admin-only): anonymous visitors
+  // (landing, storefront, not-found, checkout) never request it; their tenant
+  // comes from the public by-slug lookup. The role is part of the key, so the
+  // directory is never served across sessions. Every mount (login, tenant
+  // admin reload) asks the server again.
+  const directoryQuery = useQuery({
+    ...restaurantsQueryOptions(role),
+    enabled: apiClient.hasToken() && !session.mustChangePassword,
+    staleTime: 0,
+  })
+  const isSyncing = directoryQuery.isFetching
 
   const refreshRestaurants = useCallback(async () => {
-    // The platform directory is private (admin-only): anonymous visitors
-    // (landing, storefront, not-found, checkout) never request it. Their
-    // tenant comes from the public by-slug lookup instead.
     if (!apiClient.hasToken()) return
-    setIsSyncing(true)
     try {
       // staleTime 0: an explicit refresh always asks the server (concurrent
-      // refreshes share the in-flight request). The role in the key keeps the
-      // cache from crossing sessions.
-      const backendRestaurants = await queryClient.fetchQuery({
-        ...restaurantsQueryOptions(role),
-        staleTime: 0,
-      })
-      if (Array.isArray(backendRestaurants)) {
-        if (queryClient.isMutating({ mutationKey: TENANT_WRITES_KEY }) > 0) {
-          directoryDeferred.current = true
-        } else {
-          applyDirectory(backendRestaurants)
-        }
-      }
+      // refreshes share the in-flight request).
+      await queryClient.fetchQuery({ ...restaurantsQueryOptions(role), staleTime: 0 })
     } catch (err) {
-      if (import.meta.env?.MODE !== 'test') {
+      if (import.meta.env?.MODE !== "test") {
         console.warn("Could not sync restaurants from backend API:", err)
       }
-    } finally {
-      setIsSyncing(false)
     }
-  }, [queryClient, role, applyDirectory])
+  }, [queryClient, role])
 
   // Public by-slug/id lookup shared by route resolution and the switcher
   // fallback: concurrent lookups of the same tenant share one request and a
-  // fresh result is reused briefly. Failures are never cached.
+  // fresh result is reused briefly. Failures are never cached. The record is
+  // also registered under its id, which is what the active tenant is keyed by.
   const fetchTenant = useCallback(
-    (idOrSlug: string) =>
-      queryClient.fetchQuery(restaurantQueryOptions(role, idOrSlug)),
+    async (idOrSlug: string): Promise<RestaurantRecord | null> => {
+      const record = await queryClient.fetchQuery(restaurantQueryOptions(role, idOrSlug))
+      if (record) seedRestaurant(queryClient, role, record)
+      return record
+    },
     [queryClient, role]
   )
 
@@ -249,8 +220,6 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
   // slice) settles through this listener: cached lookups predate the write,
   // and once the last one settles a directory read deferred during the writes
   // is pulled again.
-  const refreshRestaurantsRef = useRef(refreshRestaurants)
-  refreshRestaurantsRef.current = refreshRestaurants
   useEffect(() => {
     const writesHash = hashKey(TENANT_WRITES_KEY)
     return queryClient.getMutationCache().subscribe((event) => {
@@ -261,12 +230,12 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
       void queryClient.invalidateQueries({ queryKey: keyPrefixes.restaurant() })
       void queryClient.invalidateQueries({ queryKey: keyPrefixes.restaurantStatus() })
       if (queryClient.isMutating({ mutationKey: TENANT_WRITES_KEY }) > 0) return
-      if (directoryDeferred.current) {
-        directoryDeferred.current = false
-        void refreshRestaurantsRef.current()
+      if (takeDeferredRead(queryClient, keys.restaurants(role))) {
+        void queryClient.invalidateQueries({ queryKey: keys.restaurants(role) })
       }
     })
-  }, [queryClient])
+  }, [queryClient, role])
+
   const dispatchWrite = useCallback(
     <T,>(request: Promise<T>): Promise<T> => {
       // The mutation owns the rejection; this only avoids a transient
@@ -276,7 +245,6 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
     },
     [trackWrite]
   )
-
 
   // A1/A2: a restaurant-bound session owns its tenant — the effective tenant
   // is ALWAYS session.restaurantId, so a stale persisted activeRestaurant can
@@ -288,20 +256,29 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
       ? session.restaurantId
       : activeRestaurantId
 
-  // Sync with Backend DB on mount and when authentication session changes
+  // An admin's saved tenant that the directory does not list is dropped.
+  const directoryLoaded = directoryQuery.data !== undefined
   useEffect(() => {
-    if (session.mustChangePassword) return
-    refreshRestaurants()
-  }, [refreshRestaurants, session])
+    if (!directoryLoaded || !activeRestaurantId) return
+    if (!resolveRestaurant(queryClient, role, activeRestaurantId)) setActiveRestaurantId("")
+  }, [directoryLoaded, activeRestaurantId, queryClient, role, restaurants])
+
+  useEffect(() => {
+    repository.setActiveRestaurantId(activeRestaurantId)
+  }, [activeRestaurantId, repository])
+
+  // The active restaurant (and its store config) is read from its
+  // keys.restaurant entry; the placeholder only stands in while none is known.
+  const activeRestaurant = useResolvedRestaurant(queryClient, role, effectiveRestaurantId) ?? NO_RESTAURANT
 
   // Storefront-only refresh of the schedule, timezone and pause flag from the
   // public by-slug endpoint, so customers on other devices see a pause or a new
   // schedule without reloading. Merges ONLY those fields (cart, catalog and the
-  // rest of the config are untouched), keeps the same envelope reference when
-  // nothing changed (no re-render, no localStorage write), and is silent on
-  // failure so the last known data keeps working.
+  // rest of the config are untouched), leaves the cache untouched when nothing
+  // changed (no re-render), and is silent on failure so the last known data
+  // keeps working.
   const refreshStoreStatus = useCallback(async (): Promise<void> => {
-    const current = envelope.restaurants.find((r) => r.id === effectiveRestaurantId)
+    const current = resolveRestaurant(queryClient, role, effectiveRestaurantId)
     if (!current?.slug) return
     try {
       const fetched: any = await queryClient.fetchQuery({
@@ -310,65 +287,19 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
       })
       if (!fetched || fetched.id !== current.id) return
       const next = scheduleFieldsFromApi(fetched as any)
-      setEnvelope((prev) => {
-        const target = prev.restaurants.find((r) => r.id === current.id)
-        if (!target) return prev
-        const cfg = target.config
-        if (
-          JSON.stringify(cfg.schedule) === JSON.stringify(next.schedule) &&
-          cfg.timezone === next.timezone &&
-          Boolean(cfg.ordersPaused) === next.ordersPaused
-        ) {
-          return prev
-        }
-        return {
-          ...prev,
-          restaurants: prev.restaurants.map((r) =>
-            r.id === current.id ? { ...r, config: { ...r.config, ...next } } : r
-          ),
-        }
-      })
+      const cfg = current.config
+      if (
+        JSON.stringify(cfg.schedule) === JSON.stringify(next.schedule) &&
+        cfg.timezone === next.timezone &&
+        Boolean(cfg.ordersPaused) === next.ordersPaused
+      ) {
+        return
+      }
+      patchRestaurant(queryClient, role, current.id, (r) => ({ ...r, config: { ...r.config, ...next } }))
     } catch {
       // Silent: keep the last known schedule.
     }
-  }, [envelope.restaurants, effectiveRestaurantId, queryClient, role])
-
-  // Cross-tab synchronization via storage event
-  useEffect(() => {
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === "burger_page_platform_v2") {
-        const updated = repository.loadEnvelope()
-        setEnvelope(updated)
-      }
-    }
-    window.addEventListener("storage", handleStorageChange)
-    return () => window.removeEventListener("storage", handleStorageChange)
-  }, [repository])
-
-  useEffect(() => {
-    repository.saveEnvelope(envelope)
-  }, [envelope, repository])
-
-  useEffect(() => {
-    repository.setActiveRestaurantId(activeRestaurantId)
-  }, [activeRestaurantId, repository])
-
-  const activeRestaurant = useMemo(() => {
-    const found =
-      envelope.restaurants.find(
-        (r) => r.id === effectiveRestaurantId || r.slug === effectiveRestaurantId
-      )
-
-    return (
-      found || {
-        id: "rest-default",
-        slug: "default",
-        isActive: true,
-        createdAt: new Date().toISOString(),
-        config: DEFAULT_STORE_CONFIG,
-      }
-    )
-  }, [envelope.restaurants, effectiveRestaurantId])
+  }, [effectiveRestaurantId, queryClient, role])
 
   const switchRestaurant = useCallback(
     (idOrSlug: string) => {
@@ -376,16 +307,14 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
         setActiveRestaurantId("")
         return
       }
-      const target = envelope.restaurants.find(
-        (r) => r.id === idOrSlug || r.slug === idOrSlug
-      )
+      const target = resolveRestaurant(queryClient, role, idOrSlug)
       // M5: a restaurant admin must never live-switch the active tenant (neither
       // by direct /slug navigation nor via the fetch fallback below). Only their
       // own session-bound restaurant is allowed; guests (storefront/landing) and
       // super admins keep the full switcher behavior.
-      // The own tenant may not be in the local envelope yet (first visit, cleared
-      // storage, list still in flight): that is NOT a foreign request. It is
-      // fetched below and only a record that resolves to ANOTHER tenant warns.
+      // The own tenant may not be known yet (first visit, list still in
+      // flight): that is NOT a foreign request. It is fetched below and only a
+      // record that resolves to ANOTHER tenant warns.
       const ownId = session.role === "restaurant" ? session.restaurantId : undefined
       if (ownId && target && target.id !== ownId) {
         toast.warning("Solo podés operar tu propio restaurante")
@@ -393,58 +322,45 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
       }
       if (target) {
         setActiveRestaurantId(target.id)
-      } else {
-        fetchTenant(idOrSlug)
-          .then((fetched: any) => {
-            if (fetched && fetched.id) {
-              if (ownId && fetched.id !== ownId) {
-                toast.warning("Solo podés operar tu propio restaurante")
-                return
-              }
-              const formatted = toRestaurantRecord(fetched)
-              setEnvelope((prev) =>
-                prev.restaurants.some((r) => r.id === fetched.id || r.slug === fetched.slug)
-                  ? prev
-                  : { ...prev, restaurants: [formatted, ...prev.restaurants] }
-              )
-              setActiveRestaurantId(fetched.id)
-            }
-          })
-          .catch((err) => {
-            if (import.meta.env?.MODE !== "test") {
-              console.warn("Could not load restaurant from backend API:", err)
-            }
-            toast.error("No se pudo cargar el restaurante. Intentá de nuevo.")
-          })
+        return
       }
+      fetchTenant(idOrSlug)
+        .then((fetched) => {
+          if (fetched && fetched.id) {
+            if (ownId && fetched.id !== ownId) {
+              forgetRestaurant(queryClient, role, fetched, idOrSlug)
+              toast.warning("Solo podés operar tu propio restaurante")
+              return
+            }
+            setActiveRestaurantId(fetched.id)
+          }
+        })
+        .catch((err) => {
+          if (import.meta.env?.MODE !== "test") {
+            console.warn("Could not load restaurant from backend API:", err)
+          }
+          toast.error("No se pudo cargar el restaurante. Intentá de nuevo.")
+        })
     },
-    [envelope.restaurants, session.role, session.restaurantId, fetchTenant]
+    [queryClient, role, session.role, session.restaurantId, fetchTenant]
   )
 
   const loadRestaurant = useCallback(
     async (idOrSlug: string): Promise<LoadRestaurantOutcome> => {
-      const lower = idOrSlug.toLowerCase()
-      const known = envelope.restaurants.find(
-        (r) => r.id === idOrSlug || r.slug.toLowerCase() === lower
-      )
+      const known = resolveRestaurant(queryClient, role, idOrSlug)
       if (known) {
         switchRestaurant(known.id)
         return "ok"
       }
       try {
-        const fetched: any = await fetchTenant(idOrSlug)
+        const fetched = await fetchTenant(idOrSlug)
         if (!fetched || !fetched.id) return "not-found"
         // Same guard as switchRestaurant: a restaurant admin never live-switches.
         if (session.role === "restaurant" && session.restaurantId !== fetched.id) {
+          forgetRestaurant(queryClient, role, fetched, idOrSlug)
           toast.warning("Solo podés operar tu propio restaurante")
           return "ok"
         }
-        const formatted = toRestaurantRecord(fetched)
-        setEnvelope((prev) =>
-          prev.restaurants.some((r) => r.id === fetched.id || r.slug === fetched.slug)
-            ? prev
-            : { ...prev, restaurants: [formatted, ...prev.restaurants] }
-        )
         setActiveRestaurantId(fetched.id)
         return "ok"
       } catch (err) {
@@ -455,42 +371,16 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
         return "error"
       }
     },
-    [envelope.restaurants, session.role, session.restaurantId, switchRestaurant, fetchTenant]
+    [queryClient, role, session.role, session.restaurantId, switchRestaurant, fetchTenant]
   )
 
   const updateActiveRestaurantRecord = useCallback(
     (updater: (current: RestaurantRecord) => RestaurantRecord) => {
-      setEnvelope((prev) => {
-        // M10: bind the mutation to the session-aware effective tenant. When the
-        // target is a stub/unknown id (e.g. the record vanished after a backend
-        // refresh), create a NEW record with id targetId instead of silently
-        // redirecting the write to prev.restaurants[0] (another tenant's record).
-        const targetId = effectiveRestaurantId
-        // No active tenant yet: there is nothing to mutate (never guess one).
-        if (!targetId) return prev
-        const target =
-          prev.restaurants.find((r) => r.id === targetId) || {
-            id: targetId,
-            slug: targetId.replace(/^rest-/, ""),
-            isActive: true,
-            createdAt: new Date().toISOString(),
-            config: DEFAULT_STORE_CONFIG,
-            categories: [],
-                  }
-
-        const updated = updater(target)
-        // Identity is the id ONLY — slug stays in the record as a display/business
-        // key but is never an identity key for mutations (M10).
-        const exists = prev.restaurants.some((r) => r.id === target.id)
-        return {
-          ...prev,
-          restaurants: exists
-            ? prev.restaurants.map((r) => (r.id === target.id ? updated : r))
-            : [updated, ...prev.restaurants],
-        }
-      })
+      // M10: bound to the session-aware effective tenant; never guessed.
+      if (!effectiveRestaurantId) return
+      patchRestaurant(queryClient, role, effectiveRestaurantId, updater)
     },
-    [effectiveRestaurantId]
+    [queryClient, role, effectiveRestaurantId]
   )
 
   const createRestaurant = useCallback(
@@ -512,9 +402,8 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
 
       // M9: reject duplicate slugs client-side before any write. A slug is the
       // public storefront URL key — two tenants sharing it would make mutations
-      // and lookups ambiguous, so the envelope (and backend) must never receive
-      // a second tenant with the same slug.
-      if (envelope.restaurants.some((r) => r.slug === cleanSlug)) {
+      // and lookups ambiguous.
+      if (knownRestaurants(queryClient, role).some((r) => r.slug === cleanSlug)) {
         toast.error("Ya existe un restaurante con ese slug")
         return undefined
       }
@@ -534,11 +423,7 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
         categories: [],
       }
 
-        setEnvelope((prev) => ({
-          ...prev,
-          restaurants: [...prev.restaurants, newRecord],
-        }))
-
+      addToDirectory(queryClient, role, newRecord)
       setActiveRestaurantId(newRecord.id)
 
       apiClient
@@ -560,39 +445,25 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
             // SUS-02: the backend provisions the admin user and returns the
             // one-time credentials in the 201 create response. SUS-20: those
             // credentials are surfaced exactly once via the toast below and
-            // must NEVER enter the envelope record (the envelope is persisted
-            // to localStorage); only the harmless adminUsername metadata stays.
+            // must NEVER enter a cached record; only the harmless
+            // adminUsername metadata stays.
             const createdCreds = created as { adminUsername?: string; adminPassword?: string }
             const credentials =
               createdCreds.adminUsername && createdCreds.adminPassword
                 ? { adminUsername: createdCreds.adminUsername, adminPassword: createdCreds.adminPassword }
                 : undefined
-            setEnvelope((prev) => {
-              const { adminPassword: _oneTimeSecret, ...safeCreated } = created
-              const exists = prev.restaurants.some((r) => r.id === created.id || r.id === newRecord.id);
-              if (exists) {
-                return {
-                  ...prev,
-                  restaurants: prev.restaurants.map((r) =>
-                    r.id === newRecord.id ? { ...r, ...safeCreated, id: created.id } : r
-                  ),
-                };
-              }
-              return {
-                ...prev,
-                restaurants: [...prev.restaurants, { ...newRecord, ...safeCreated, id: created.id }],
-              };
-            });
+            const { adminPassword: _oneTimeSecret, ...safeCreated } = created
+            patchRestaurant(queryClient, role, newRecord.id, (r) => ({ ...r, ...safeCreated, id: created.id }))
             if (credentials) {
               toast.success("Restaurante creado con éxito", {
                 description: `Usuario: ${credentials.adminUsername} — Clave: ${credentials.adminPassword}`,
               })
             }
           }
-          await refreshRestaurants();
+          await refreshRestaurants()
         })
         .catch((err) => {
-          if (import.meta.env?.MODE !== 'test') {
+          if (import.meta.env?.MODE !== "test") {
             console.warn("Could not persist restaurant to backend API:", err)
           }
         })
@@ -600,24 +471,17 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
       toast.success(`Restaurante "${data.name}" creado exitosamente`)
       return newRecord
     },
-    [refreshRestaurants, envelope.restaurants]
+    [queryClient, role, refreshRestaurants]
   )
 
   const updateRestaurant = useCallback(
     async (id: string, updates: Partial<RestaurantRecord>) => {
-      const snapshot = envelope
-      const target = envelope.restaurants.find((r) => r.id === id || r.slug === id)
+      const target = resolveRestaurant(queryClient, role, id)
       const targetId = target?.id || id
+      const snapshot = snapshotRestaurant(queryClient, role, targetId)
 
       await runOptimisticMutation({
-        apply: () => {
-          setEnvelope((prev) => ({
-            ...prev,
-            restaurants: prev.restaurants.map((r) =>
-              r.id === id || r.slug === id ? { ...r, ...updates } : r
-            ),
-          }))
-        },
+        apply: () => patchRestaurant(queryClient, role, targetId, (r) => ({ ...r, ...updates })),
         call: () =>
           dispatchWrite(apiClient.updateRestaurant(targetId, {
             name: updates.config?.name || target?.config?.name,
@@ -632,7 +496,7 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
               : { config: splitConfigForApi(target?.config ?? {}).config }),
             categories: updates.categories || target?.categories,
           })),
-        rollback: () => setEnvelope(snapshot),
+        rollback: () => restoreRestaurant(queryClient, role, snapshot),
         toast: {
           success:
             updates.isActive !== undefined
@@ -645,24 +509,18 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
         warnMessage: "Could not update restaurant on backend API, rolling back:",
       })
     },
-    [envelope, dispatchWrite]
+    [queryClient, role, dispatchWrite]
   )
 
   const deleteRestaurant = useCallback(
     async (id: string) => {
-      const snapshot = envelope
+      const targetId = resolveRestaurant(queryClient, role, id)?.id || id
+      const snapshot = snapshotRestaurant(queryClient, role, targetId)
 
       await runOptimisticMutation({
-        apply: () => {
-          setEnvelope((prev) => ({
-            ...prev,
-            restaurants: prev.restaurants.map((r) =>
-              r.id === id || r.slug === id ? { ...r, isActive: false } : r
-            ),
-          }))
-        },
+        apply: () => patchRestaurant(queryClient, role, targetId, (r) => ({ ...r, isActive: false })),
         call: () => dispatchWrite(apiClient.deleteRestaurant(id)),
-        rollback: () => setEnvelope(snapshot),
+        rollback: () => restoreRestaurant(queryClient, role, snapshot),
         toast: {
           success: "Restaurante eliminado correctamente",
           error: "No se pudo desactivar el restaurante en el servidor. Cambios revertidos.",
@@ -671,17 +529,16 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
         warnMessage: "Could not soft delete restaurant from backend API, rolling back:",
       })
     },
-    [envelope, dispatchWrite]
+    [queryClient, role, dispatchWrite]
   )
 
   const value: TenantContextType = useMemo(
     () => ({
-      restaurants: envelope.restaurants,
+      restaurants,
       activeRestaurant,
       effectiveRestaurantId,
       activeRestaurantId: activeRestaurant.id,
       activeRestaurantSlug: activeRestaurant.slug,
-      superAdminPassword: envelope.superAdminPassword ?? undefined,
       isSyncing,
       switchRestaurant,
       loadRestaurant,
@@ -693,10 +550,9 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
       refreshStoreStatus,
     }),
     [
-      envelope.restaurants,
+      restaurants,
       activeRestaurant,
       effectiveRestaurantId,
-      envelope.superAdminPassword,
       isSyncing,
       switchRestaurant,
       loadRestaurant,

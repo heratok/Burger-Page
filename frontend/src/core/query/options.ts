@@ -1,9 +1,11 @@
 import { queryOptions, type QueryClient, type QueryKey } from "@tanstack/react-query"
-import type { AdditionItem, MenuItem, UserRole } from "@/types/restaurant"
+import type { AdditionItem, MenuItem, RestaurantRecord, UserRole } from "@/types/restaurant"
 import { apiClient } from "@/core/api/apiClient"
 import { keys } from "./keys"
 import { PERSIST_MAX_AGE } from "./persistence"
 import { reconcileOrderBoard, type BackendBoard, type OrderBoard } from "@/context/slices/orderBoard"
+import { seedDirectory, toRestaurantRecord } from "@/context/slices/restaurantCache"
+import { deferRead } from "./deferredReads"
 
 /**
  * Per-resource query options: the key, the fetcher and the options every read
@@ -134,19 +136,36 @@ export const suppliersQueryOptions = (tenantId: TenantId, role: UserRole) =>
     retry: false,
   })
 
-/** Private platform directory (admin-only). */
+/**
+ * Private platform directory (admin-only), as domain records. Each read seeds
+ * the keys.restaurant entry of every listed restaurant. A read that lands while
+ * a tenant write is pending predates it: the cached directory is kept and the
+ * read is remembered, so the last settling write re-reads it once.
+ */
 export const restaurantsQueryOptions = (role: UserRole) =>
   queryOptions({
     queryKey: keys.restaurants(role),
-    queryFn: async () => (await apiClient.listRestaurants()) ?? null,
+    queryFn: async ({ client, queryKey }): Promise<RestaurantRecord[]> => {
+      const backend = await apiClient.listRestaurants()
+      const cached = client.getQueryData<RestaurantRecord[]>(queryKey)
+      if (!Array.isArray(backend)) return cached ?? []
+      if (cached && client.isMutating({ mutationKey: TENANT_WRITES_KEY }) > 0) {
+        deferRead(client, queryKey)
+        return cached
+      }
+      return seedDirectory(client, role, backend)
+    },
   })
 
-/** Public by-slug/id tenant lookup. */
+/** Public by-slug/id tenant lookup, as a domain record (null when the API answers nothing). */
 export const restaurantQueryOptions = (role: UserRole, idOrSlug: string) =>
   queryOptions({
     queryKey: keys.restaurant(role, idOrSlug),
     ...storefrontGcTime(role),
-    queryFn: async () => (await apiClient.fetchRestaurant(idOrSlug)) ?? null,
+    queryFn: async ({ client, queryKey }): Promise<RestaurantRecord | null> => {
+      const fetched = await apiClient.fetchRestaurant(idOrSlug)
+      return fetched ? toRestaurantRecord(fetched, client.getQueryData<RestaurantRecord>(queryKey) ?? undefined) : null
+    },
   })
 
 /** Storefront status poll (schedule, timezone, pause) through the public endpoint. */

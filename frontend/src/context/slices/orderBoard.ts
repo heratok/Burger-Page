@@ -1,4 +1,7 @@
-import { hashKey, type QueryClient, type QueryKey } from "@tanstack/react-query"
+import type { QueryClient, QueryKey } from "@tanstack/react-query"
+import { deferRead } from "@/core/query/deferredReads"
+
+export { takeDeferredRead } from "@/core/query/deferredReads"
 import type { Order, OrderStatus, Customer } from "@/types/restaurant"
 import { calculateLineItemTotal } from "@/features/cart/cartEngine"
 import { cleanPhoneNumber } from "@/lib/utils"
@@ -212,19 +215,6 @@ export function syncBackendCustomers(
   return Array.from(customersMap.values())
 }
 
-// Reads that landed while an order write was in flight, per client: they were
-// not applied (see reconcileOrderBoard) and must be re-read once writes settle.
-const deferredReads = new WeakMap<QueryClient, Set<string>>()
-
-/** True (once) when a read of this tenant's board was deferred by a pending write. */
-export function takeDeferredRead(client: QueryClient, queryKey: QueryKey): boolean {
-  const set = deferredReads.get(client)
-  const hash = hashKey(queryKey)
-  if (!set?.has(hash)) return false
-  set.delete(hash)
-  return true
-}
-
 /**
  * Turns a server read into the cached board, merged with what is cached now
  * (server fields win, local fallbacks fill the gaps, pendingSync sales stay).
@@ -239,9 +229,7 @@ export function reconcileOrderBoard(
 ): OrderBoard {
   const current = client.getQueryData<OrderBoard>(queryKey)
   if (current && client.isMutating({ mutationKey: ORDER_WRITES_KEY }) > 0) {
-    const set = deferredReads.get(client) ?? new Set<string>()
-    set.add(hashKey(queryKey))
-    deferredReads.set(client, set)
+    deferRead(client, queryKey)
     return current
   }
   const base = current ?? EMPTY_BOARD
