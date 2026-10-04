@@ -1,10 +1,12 @@
 import React from "react"
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { renderHook, act, waitFor } from "@testing-library/react"
-import { QueryClientProvider } from "@tanstack/react-query"
+import { QueryClientProvider, onlineManager } from "@tanstack/react-query"
 import type { OrderEvent } from "@burger-page/contracts"
 import { seedBlankActiveTenant } from "@/test/fixtures"
 import { createTestQueryClient } from "@/test/testQueryClient"
+import { createQueryClient } from "@/core/query/queryClient"
+import { toast } from "sonner"
 
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() },
@@ -247,5 +249,172 @@ describe("OrderContext reads and SSE catch-up (TanStack Query)", () => {
     const { result } = renderHook(() => useOrders(), { wrapper })
     await waitFor(() => expect(result.current.isLoadingOrders).toBe(false))
     expect(result.current.orders).toEqual([])
+  })
+})
+
+const WRITES_KEY = ["order-writes"]
+const statusOf = (r: { current: { orders: any[] } }, id: string) => r.current.orders.find((o) => o.id === id)?.status
+
+describe("OrderContext writes (TanStack Query mutations)", () => {
+  beforeEach(() => {
+    localStorage.clear()
+    seedBlankActiveTenant()
+    vi.restoreAllMocks()
+    vi.mocked(toast.error).mockClear()
+    vi.mocked(toast.success).mockClear()
+    mockSse()
+    vi.spyOn(apiClient, "hasToken").mockReturnValue(true)
+    vi.spyOn(apiClient, "fetchCustomers").mockResolvedValue([])
+  })
+
+  async function ready(orders: any[], client = createTestQueryClient()) {
+    const fetchOrders = vi
+      .spyOn(apiClient, "fetchOrders")
+      .mockImplementation(async () => orders.map((o) => ({ ...o })) as any)
+    const { wrapper } = setup(client)
+    const hook = renderHook(() => useOrders(), { wrapper })
+    await waitFor(() => expect(hook.result.current.orders).toHaveLength(orders.length))
+    return { ...hook, client, fetchOrders }
+  }
+
+  it("tracks every write as a mutation while it is in flight", async () => {
+    const { result, client } = await ready([backendOrder("A", 1)])
+    let release!: (v: any) => void
+    vi.spyOn(apiClient, "updateOrderStatus").mockImplementation(() => new Promise((res) => (release = res)))
+
+    act(() => result.current.updateOrderStatus("A", "cooking"))
+    await waitFor(() => expect(client.isMutating({ mutationKey: WRITES_KEY })).toBe(1))
+    await act(async () => release({}))
+    await waitFor(() => expect(client.isMutating({ mutationKey: WRITES_KEY })).toBe(0))
+  })
+
+  it("revalidates once, only after the last in-flight write settles", async () => {
+    const { result, fetchOrders } = await ready([backendOrder("A", 1), backendOrder("B", 2)])
+    const releases: Array<(v: any) => void> = []
+    vi.spyOn(apiClient, "updateOrderStatus").mockImplementation(() => new Promise((res) => releases.push(res)))
+    expect(fetchOrders).toHaveBeenCalledTimes(1)
+
+    act(() => {
+      result.current.updateOrderStatus("A", "cooking")
+      result.current.updateOrderStatus("B", "cooking")
+    })
+    await waitFor(() => expect(releases).toHaveLength(2))
+    await act(async () => releases[0]({}))
+    await act(() => new Promise((r) => setTimeout(r, 30)))
+    expect(fetchOrders).toHaveBeenCalledTimes(1)
+
+    await act(async () => releases[1]({}))
+    await waitFor(() => expect(fetchOrders).toHaveBeenCalledTimes(2))
+  })
+
+  it("revalidates every order resource (orders and customers) after a customer write", async () => {
+    const { result, fetchOrders } = await ready([backendOrder("A", 1)])
+    const fetchCustomers = vi.mocked(apiClient.fetchCustomers)
+    vi.spyOn(apiClient, "updateCustomer").mockResolvedValue({} as any)
+    const before = fetchCustomers.mock.calls.length
+
+    await act(async () => {
+      await result.current.updateCustomer("c1", { notes: "vip" })
+    })
+    await waitFor(() => expect(fetchOrders).toHaveBeenCalledTimes(2))
+    expect(fetchCustomers.mock.calls.length).toBe(before + 1)
+  })
+
+  it("an SSE event for an order with a pending status change does not revert the optimistic value", async () => {
+    const { result, fetchOrders } = await ready([backendOrder("A", 1), backendOrder("C", 3)])
+    let release!: (v: any) => void
+    vi.spyOn(apiClient, "updateOrderStatus").mockImplementation(() => new Promise((res) => (release = res)))
+
+    act(() => result.current.updateOrderStatus("A", "cooking"))
+    expect(statusOf(result, "A")).toBe("cooking")
+
+    act(() => {
+      // Stale echo for A (pending write) and a legitimate event for C.
+      sse.onEvent!({ eventType: "ORDER_STATUS_UPDATED", orderId: "A", status: "pending", timestamp: new Date().toISOString() } as any)
+      sse.onEvent!({ eventType: "ORDER_STATUS_UPDATED", orderId: "C", status: "delivered", timestamp: new Date().toISOString() } as any)
+    })
+    expect(statusOf(result, "A")).toBe("cooking")
+    expect(statusOf(result, "C")).toBe("delivered")
+
+    // The server settles on cooking; the settle revalidation reconciles.
+    fetchOrders.mockImplementation(async () => [backendOrder("A", 1, "cooking"), backendOrder("C", 3, "delivered")] as any)
+    await act(async () => release({}))
+    await waitFor(() => expect(fetchOrders).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(statusOf(result, "A")).toBe("cooking"))
+  })
+
+  it("a refetch that lands while a write is pending does not wipe the optimistic edit and is applied after it settles", async () => {
+    const { result, fetchOrders } = await ready([backendOrder("A", 1)])
+    let release!: (v: any) => void
+    vi.spyOn(apiClient, "updateOrderStatus").mockImplementation(() => new Promise((res) => (release = res)))
+
+    act(() => result.current.updateOrderStatus("A", "cooking"))
+    // SSE reconnect catch-up returns the OLD status while the write is pending.
+    act(() => sse.onReconnect!())
+    await waitFor(() => expect(fetchOrders).toHaveBeenCalledTimes(2))
+    await act(() => new Promise((r) => setTimeout(r, 30)))
+    expect(statusOf(result, "A")).toBe("cooking")
+
+    fetchOrders.mockImplementation(async () => [backendOrder("A", 1, "cooking")] as any)
+    await act(async () => release({}))
+    await waitFor(() => expect(fetchOrders).toHaveBeenCalledTimes(3))
+    await waitFor(() => expect(statusOf(result, "A")).toBe("cooking"))
+  })
+
+  it("rolls back a failed order update, delete and customer update", async () => {
+    const { result } = await ready([backendOrder("A", 1)])
+    vi.spyOn(apiClient, "updateOrder").mockRejectedValue(new Error("boom"))
+    vi.spyOn(apiClient, "deleteOrder").mockRejectedValue(new Error("boom"))
+    vi.spyOn(apiClient, "updateCustomer").mockRejectedValue(new Error("boom"))
+
+    await act(async () => {
+      await result.current.updateOrder("A", { comentario: "nuevo" })
+    })
+    expect(result.current.orders[0].comentario).toBeUndefined()
+
+    await act(async () => {
+      await result.current.deleteOrder("A")
+    })
+    expect(result.current.orders.map((o) => o.id)).toEqual(["A"])
+    expect(toast.error).toHaveBeenCalledTimes(2)
+  })
+
+  it("rolls back a failed write immediately while the browser reports offline", async () => {
+    const { result } = await ready([backendOrder("A", 1)], createQueryClient())
+    vi.spyOn(apiClient, "updateOrderStatus").mockRejectedValue(new Error("network down"))
+
+    onlineManager.setOnline(false)
+    try {
+      act(() => result.current.updateOrderStatus("A", "cooking"))
+      await waitFor(() => expect(toast.error).toHaveBeenCalled())
+      expect(statusOf(result, "A")).toBe("pending")
+    } finally {
+      onlineManager.setOnline(true)
+    }
+  })
+
+  it("anonymous checkout keeps an offline sale pending and never requests private endpoints", async () => {
+    vi.mocked(apiClient.hasToken).mockReturnValue(false)
+    const fetchOrders = vi.spyOn(apiClient, "fetchOrders").mockResolvedValue([] as any)
+    vi.spyOn(apiClient, "createOrder").mockRejectedValue(new TypeError("Failed to fetch"))
+    const { wrapper } = setup()
+    const { result } = renderHook(() => useOrders(), { wrapper })
+
+    let placed!: ReturnType<typeof result.current.addOrder>
+    act(() => {
+      placed = result.current.addOrder({
+        customer: { nombre: "Anon", telefono: "3001112222", direccion: "Calle 1", barrio: "Centro" },
+        items: [],
+        total: 10000,
+        deliveryFee: 0,
+        finalTotal: 10000,
+        metodo: "Efectivo",
+        status: "pending",
+      } as any)
+    })
+    const server = await placed.serverPromise
+    expect(server?.offline).toBe(true)
+    await waitFor(() => expect(result.current.orders[0].pendingSync).toBe(true))
+    expect(fetchOrders).not.toHaveBeenCalled()
   })
 })

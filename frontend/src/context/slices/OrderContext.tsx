@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useMemo, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
-import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { useIsMutating, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type { Order, OrderStatus, Customer, RestaurantRecord } from "@/types/restaurant"
 import type { CreateOrderInput, UpdateOrderInput, OrderEvent, UpdateCustomerInput } from "@burger-page/contracts"
 import { ORDER_CLOSED_ERROR_FRAGMENT, ORDER_PAUSED_ERROR_FRAGMENT } from "@burger-page/contracts"
@@ -728,6 +728,23 @@ export function buildUpdateOrderInput(
   return updateInput
 }
 
+// Shared key so a settling write can tell whether other order-slice writes are
+// still in flight (every write kind shares it; see revalidate).
+const ORDER_WRITES_KEY = ["order-writes"] as const
+
+// Each write carries its already-dispatched request: the HTTP call fires at the
+// user action (as before, so addOrder stays synchronous) and the mutation
+// tracks it. The callbacks settle the promise the optimistic flow awaits.
+interface OrderWrite {
+  request: Promise<unknown>
+  /** Order the write targets; SSE events for it are deferred while it is pending. */
+  orderId?: string
+  /** False for order creation: the response already carries the server identity (no SSE can target its temp id either). */
+  revalidate?: boolean
+  resolve: (result: any) => void
+  reject: (error: unknown) => void
+}
+
 interface Board {
   orders: any[]
   customers: any[]
@@ -801,6 +818,49 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const isLoadingOrders =
     isRefreshing || (enabled && boardQuery.isLoading && (activeRestaurant.orders?.length ?? 0) === 0)
 
+  // After the LAST in-flight order write settles (the settling mutation counts
+  // itself, hence > 1), pull the authoritative server state of every order
+  // resource (orders and customers share one key, so none can be skipped).
+  // Creations (addOrder and its offline retry) never ask for one: they adopt
+  // the server identity from the response and the SSE echo is deduplicated.
+  // A failed write never asks for one either: its rollback already restored the
+  // pre-write state and nothing changed server-side. A revalidating write that
+  // settles while others are in flight leaves the flag set for whichever write
+  // settles last.
+  const needsRevalidation = useRef(false)
+  const revalidate = useCallback(
+    (vars: OrderWrite, failed: boolean) => {
+      if (!failed && vars.revalidate !== false) needsRevalidation.current = true
+      if (queryClient.isMutating({ mutationKey: ORDER_WRITES_KEY }) > 1) return
+      if (!needsRevalidation.current) return
+      needsRevalidation.current = false
+      void queryClient.invalidateQueries({ queryKey: ["orders", effectiveId] })
+    },
+    [queryClient, effectiveId]
+  )
+
+  const { mutate: trackWrite } = useMutation({
+    mutationKey: ORDER_WRITES_KEY,
+    mutationFn: (vars: OrderWrite) => vars.request,
+    onSuccess: (result, vars) => vars.resolve(result),
+    onError: (err, vars) => vars.reject(err),
+    onSettled: (_result, err, vars) => revalidate(vars, err !== null),
+  })
+
+  /** Tracks an already-dispatched write; settles exactly like the request. */
+  const trackRequest = useCallback(
+    <T,>(request: Promise<T>, orderId?: string, revalidateOnSettle = true): Promise<T> =>
+      new Promise<T>((resolve, reject) => {
+        // The mutation owns the rejection; this only avoids a transient
+        // unhandled-rejection report before it subscribes.
+        request.catch(() => undefined)
+        trackWrite({ request, orderId, revalidate: revalidateOnSettle, resolve, reject })
+      }),
+    [trackWrite]
+  )
+
+  const pendingWrites = useIsMutating({ mutationKey: ORDER_WRITES_KEY })
+
   // REJ-02: offline-created orders (pendingSync) are flushed automatically once
   // connectivity is proven — after the mount sync and after every successful
   // refresh. One create attempt per order per invocation, guarded against
@@ -826,7 +886,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (!targetRestId) return
       try {
         const orderInput = buildCreateOrderInput(activeRestaurant, order)
-        const createdOrder = await apiClient.createOrder(orderInput)
+        const createdOrder = await trackRequest(apiClient.createOrder(orderInput), undefined, false)
         if (!createdOrder?.id) {
           // Accepted but no body returned: the order is persisted server-side;
           // keep the optimistic card and stop treating it as pending.
@@ -866,7 +926,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         })
       }
     },
-    [activeRestaurant, updateActiveRestaurantRecord]
+    [activeRestaurant, updateActiveRestaurantRecord, trackRequest]
   )
 
   const retryPendingOrders = useCallback(async () => {
@@ -954,6 +1014,10 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   )
   useLayoutEffect(() => {
     if (!effectiveId || !board || board === hydrated.current) return
+    // Never hydrate over an optimistic write: a response that predates it would
+    // wipe it. Deferred until the writes settle and the revalidation lands.
+    if (queryClient.isMutating({ mutationKey: ORDER_WRITES_KEY }) > 0) return
+    if (queryClient.isFetching({ queryKey: ["orders", effectiveId] }) > 0) return
     hydrate(effectiveId, board)
     // The first successful read proves connectivity: flush orders held
     // pendingSync during the outage (REJ-02).
@@ -961,7 +1025,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       retriedFor.current = effectiveId
       void retryPendingOrdersRef.current()
     }
-  }, [effectiveId, board, hydrate])
+  }, [effectiveId, board, hydrate, queryClient, pendingWrites, boardQuery.isFetching])
 
   // Silent catch-up after an SSE reconnect (no loading flag: staff keep working
   // while the board is reconciled). Invalidation refetches the active read once.
@@ -979,6 +1043,14 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const unsubscribe = apiClient.subscribeToOrderStream(
       (event: OrderEvent) => {
         if (!event || !event.orderId) return
+        // An order with a pending write keeps its optimistic state: the settle
+        // revalidation reconciles it with the server, so a stale echo can
+        // never revert it.
+        const writePending = queryClient
+          .getMutationCache()
+          .findAll({ mutationKey: ORDER_WRITES_KEY, status: "pending" })
+          .some((m) => (m.state.variables as OrderWrite | undefined)?.orderId === event.orderId)
+        if (writePending) return
         updateActiveRestaurantRecord((current) => updateRestaurantOrderState(current, event))
       },
       targetRestId,
@@ -991,7 +1063,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return () => {
       unsubscribe()
     }
-  }, [effectiveId, session, updateActiveRestaurantRecord])
+  }, [effectiveId, session, queryClient, updateActiveRestaurantRecord])
 
   const addOrder = useCallback(
     (orderData: Omit<Order, "id" | "orderNumber" | "createdAt" | "updatedAt">) => {
@@ -1047,8 +1119,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       try {
         const orderInput = buildCreateOrderInput(activeRestaurant, newOrder)
 
-        apiClient
-          .createOrder(orderInput)
+        trackRequest(apiClient.createOrder(orderInput), undefined, false)
           .then((createdOrder) => {
             const adoptedOrderNumber = createdOrder?.orderNumber ?? newOrder.orderNumber
             if (!createdOrder?.id) {
@@ -1128,7 +1199,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       return newOrder
     },
-    [activeRestaurant, updateActiveRestaurantRecord, soundEnabled]
+    [activeRestaurant, updateActiveRestaurantRecord, soundEnabled, trackRequest]
   )
 
   const updateOrder = useCallback(
@@ -1156,7 +1227,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         call: () => {
           if (!apiClient.hasToken() || !targetRestId) return Promise.resolve(undefined)
           const updateInput = buildUpdateOrderInput(updates, activeRestaurant.products ?? [])
-          return apiClient.updateOrder(orderId, updateInput, targetRestId)
+          return trackRequest(apiClient.updateOrder(orderId, updateInput, targetRestId), orderId)
         },
         onSuccess: (updatedOrder) => {
           if (!updatedOrder) return
@@ -1175,7 +1246,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         warnMessage: "Error al actualizar orden en el servidor:",
       }).then(() => undefined)
     },
-    [activeRestaurant, updateActiveRestaurantRecord]
+    [activeRestaurant, updateActiveRestaurantRecord, trackRequest]
   )
 
   const updateOrderStatus = useCallback(
@@ -1198,7 +1269,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           }))
           return { previousStatus: previous?.status, previousUpdatedAt: previous?.updatedAt }
         },
-        call: () => apiClient.updateOrderStatus(orderId, newStatus, activeRestaurant.id),
+        call: () => trackRequest(apiClient.updateOrderStatus(orderId, newStatus, activeRestaurant.id), orderId),
         rollback: ({ previousStatus, previousUpdatedAt }) => {
           // Only undo our own optimistic change: if another update (SSE)
           // already moved the order elsewhere, leave it alone.
@@ -1218,7 +1289,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         warnMessage: `Could not sync status update for order ${orderId} to backend API:`,
       })
     },
-    [activeRestaurant, updateActiveRestaurantRecord]
+    [activeRestaurant, updateActiveRestaurantRecord, trackRequest]
   )
 
   const updateOrderReceipt = useCallback(
@@ -1234,7 +1305,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           }))
           return { previousReceiptUrl: previous?.receiptUrl, previousUpdatedAt: previous?.updatedAt }
         },
-        call: () => apiClient.updateOrderReceipt(orderId, receiptUrl, activeRestaurant.id),
+        call: () => trackRequest(apiClient.updateOrderReceipt(orderId, receiptUrl, activeRestaurant.id), orderId),
         rollback: ({ previousReceiptUrl, previousUpdatedAt }) => {
           updateActiveRestaurantRecord((current) => ({
             ...current,
@@ -1254,7 +1325,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         // Callers must know the attach failed (they would otherwise report success).
         rethrow: true,
       }).then(() => undefined),
-    [activeRestaurant.id, activeRestaurant.orders, updateActiveRestaurantRecord]
+    [activeRestaurant.id, activeRestaurant.orders, updateActiveRestaurantRecord, trackRequest]
   )
 
   const deleteOrder = useCallback(
@@ -1271,7 +1342,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         },
         call: () => {
           if (!apiClient.hasToken() || !targetRestId) return Promise.resolve(undefined)
-          return apiClient.deleteOrder(orderId, targetRestId)
+          return trackRequest(apiClient.deleteOrder(orderId, targetRestId), orderId)
         },
         rollback: () => {
           updateActiveRestaurantRecord((current) => ({ ...current, orders: previousOrders }))
@@ -1281,7 +1352,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         warnMessage: "Error al eliminar orden del servidor:",
       }).then(() => undefined)
     },
-    [activeRestaurant?.id, updateActiveRestaurantRecord]
+    [activeRestaurant?.id, updateActiveRestaurantRecord, trackRequest]
   )
 
   const updateCustomer = useCallback(
@@ -1307,7 +1378,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           if (updates.direccion !== undefined) updateInput.address = updates.direccion
           if (updates.barrio !== undefined) updateInput.barrio = updates.barrio
           if (updates.notes !== undefined) updateInput.notes = updates.notes
-          return apiClient.updateCustomer(id, updateInput, targetRestId)
+          return trackRequest(apiClient.updateCustomer(id, updateInput, targetRestId))
         },
         onSuccess: (updatedCustomer) => {
           if (!updatedCustomer) return
@@ -1338,7 +1409,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         warnMessage: "Error al actualizar cliente en el servidor:",
       }).then(() => undefined)
     },
-    [activeRestaurant?.id, updateActiveRestaurantRecord]
+    [activeRestaurant?.id, updateActiveRestaurantRecord, trackRequest]
   )
 
 
@@ -1358,7 +1429,9 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       })
       // Applied here (not left to the hydration effect) so the sync is queued
       // before the pending-order retry adopts server identities, as before.
-      hydrate(targetRestId, fresh)
+      if (queryClient.isMutating({ mutationKey: ORDER_WRITES_KEY }) === 0) {
+        hydrate(targetRestId, fresh)
+      }
       // A successful refresh proves connectivity: flush offline-created orders
       // held as pendingSync (REJ-02).
       await retryPendingOrders()
