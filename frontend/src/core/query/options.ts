@@ -2,6 +2,7 @@ import { queryOptions, type QueryClient, type QueryKey } from "@tanstack/react-q
 import type { AdditionItem, MenuItem, UserRole } from "@/types/restaurant"
 import { apiClient } from "@/core/api/apiClient"
 import { keys } from "./keys"
+import { PERSIST_MAX_AGE } from "./persistence"
 import { reconcileOrderBoard, type BackendBoard, type OrderBoard } from "@/context/slices/orderBoard"
 
 /**
@@ -11,6 +12,13 @@ import { reconcileOrderBoard, type BackendBoard, type OrderBoard } from "@/conte
  * their refresh points (login, tenant switch, post-write revalidation).
  */
 type TenantId = string | undefined
+
+/**
+ * Guest storefront reads are persisted for offline reloads: they stay in the
+ * cache as long as the persisted copy may be restored (24h), so an unobserved
+ * one is not garbage-collected out of the persisted snapshot.
+ */
+const storefrontGcTime = (role: UserRole) => (role === "guest" ? { gcTime: PERSIST_MAX_AGE } : {})
 
 const warn = (message: string, err: unknown) => {
   if (import.meta.env?.MODE !== "test") {
@@ -83,6 +91,7 @@ function keepCachedDuringWrites<T>(client: QueryClient, queryKey: QueryKey, fres
 export const productsQueryOptions = (tenantId: TenantId, role: UserRole, slug: string | undefined) =>
   queryOptions({
     queryKey: keys.products(tenantId, role, slug),
+    ...storefrontGcTime(role),
     queryFn: async ({ client, queryKey }): Promise<MenuItem[]> =>
       keepCachedDuringWrites(
         client,
@@ -97,6 +106,7 @@ export const productsQueryOptions = (tenantId: TenantId, role: UserRole, slug: s
 export const additionsQueryOptions = (tenantId: TenantId, role: UserRole, slug: string | undefined) =>
   queryOptions({
     queryKey: keys.additions(tenantId, role, slug),
+    ...storefrontGcTime(role),
     queryFn: async ({ client, queryKey }): Promise<AdditionItem[]> =>
       keepCachedDuringWrites(
         client,
@@ -135,6 +145,7 @@ export const restaurantsQueryOptions = (role: UserRole) =>
 export const restaurantQueryOptions = (role: UserRole, idOrSlug: string) =>
   queryOptions({
     queryKey: keys.restaurant(role, idOrSlug),
+    ...storefrontGcTime(role),
     queryFn: async () => (await apiClient.fetchRestaurant(idOrSlug)) ?? null,
   })
 

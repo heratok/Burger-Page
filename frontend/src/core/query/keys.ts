@@ -46,3 +46,18 @@ export const keyPrefixes = {
   users: () => ["users"] as const,
   auditLog: () => ["audit-log"] as const,
 }
+
+/** Resources a public storefront renders: the restaurant record by slug and its menu. */
+const STOREFRONT_RESOURCES = new Set(["restaurant", "products", "additions"])
+
+/**
+ * True only for keys of public storefront data read as a guest: the only
+ * queries that may outlive the session (persisted for offline reloads).
+ */
+export function isPublicStorefrontKey(key: readonly unknown[]): boolean {
+  const [resource] = key
+  if (typeof resource !== "string" || !STOREFRONT_RESOURCES.has(resource)) return false
+  // keys.restaurant(role, idOrSlug); keys.products/additions(tenantId, role, slug)
+  const role = resource === "restaurant" ? key[1] : key[2]
+  return role === "guest"
+}
