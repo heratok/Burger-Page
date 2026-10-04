@@ -166,8 +166,10 @@ test.describe('Kanban Board - High Load & Responsiveness Suite', () => {
     // Authoritative-backend runtime: the sync pulls orders/customers from the
     // API, so serve the envelope's 60 orders through the mocked GETs and
     // deterministically fulfill status transitions and POS order creation.
+    // One shared array: status transitions update what later GETs return.
+    const backendOrders = toBackendOrders(bulkOrders)
     await mockBackendGets(page, {
-      orders: toBackendOrders(bulkOrders),
+      orders: backendOrders,
       customers: [],
       products: [
         {
@@ -183,7 +185,7 @@ test.describe('Kanban Board - High Load & Responsiveness Suite', () => {
         },
       ],
     })
-    await mockOrderStatusTransitions(page)
+    await mockOrderStatusTransitions(page, backendOrders)
 
     // Registered after the GET mocks: Playwright matches the most recent
     // handler per URL, and the method guard keeps both routes cooperative.
