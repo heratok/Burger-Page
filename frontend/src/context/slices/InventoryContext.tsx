@@ -6,7 +6,7 @@ import { useTenant } from "./TenantContext"
 import { useAuth } from "./AuthContext"
 import { toast } from "sonner"
 import { nextTempId } from "@/lib/ids"
-import { keyPrefixes } from "@/core/query/keys"
+import { keys, keyPrefixes } from "@/core/query/keys"
 import { inventoryQueryOptions, suppliersQueryOptions } from "@/core/query/options"
 
 export interface InventoryContextType {
@@ -56,34 +56,36 @@ type Inv = Awaited<ReturnType<typeof apiClient.createInventoryItem>>
 type Sup = Awaited<ReturnType<typeof apiClient.createSupplier>>
 
 interface CreateItemVars extends WithRequest<Inv> {
-  tempId: string
-  name: string
+  newItem: InventoryItem
 }
 interface UpdateItemVars extends WithRequest<unknown> {
   id: string
-  previousFields: Record<string, unknown>
+  updates: Partial<InventoryItem>
   fallbackName: string | undefined
 }
 interface DeleteItemVars extends WithRequest<unknown> {
   id: string
-  previousInventory: InventoryItem[]
 }
 interface AdjustStockVars extends WithRequest<unknown> {
   id: string
-  appliedDelta: number
+  deltaQuantity: number
 }
 interface CreateSupplierVars extends WithRequest<Sup> {
-  tempId: string
+  newSupplier: Supplier
 }
 interface UpdateSupplierVars extends WithRequest<unknown> {
-  snapshot: { previous: Supplier[] }
+  id: string
+  updates: Partial<Supplier>
 }
 interface DeleteSupplierVars extends WithRequest<unknown> {
-  snapshot: { previous: Supplier[] }
+  id: string
 }
 
+const EMPTY_INVENTORY: InventoryItem[] = []
+const EMPTY_SUPPLIERS: Supplier[] = []
+
 export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { activeRestaurant, updateActiveRestaurantRecord } = useTenant()
+  const { activeRestaurant } = useTenant()
   const { session } = useAuth()
   const queryClient = useQueryClient()
 
@@ -97,32 +99,41 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // No tenant or no token, no fetch. The role is part of the key so a cache
   // entry can never be served across roles.
   const enabled = Boolean(effectiveId && apiClient.hasToken())
+  const inventoryKey = useMemo(() => keys.inventory(effectiveId, session.role), [effectiveId, session.role])
+  const suppliersKey = useMemo(() => keys.suppliers(effectiveId, session.role), [effectiveId, session.role])
 
   const inventoryQuery = useQuery({ ...inventoryQueryOptions(effectiveId, session.role), enabled })
   const suppliersQuery = useQuery({ ...suppliersQueryOptions(effectiveId, session.role), enabled })
 
-  // Initial hydration only (isLoading = no data yet and fetching); background
+  // Initial read only (isLoading = no data yet and fetching); background
   // refetches after writes must not flash the loading state.
   const isLoadingInventory = enabled && (inventoryQuery.isLoading || suppliersQuery.isLoading)
 
-  // The tenant record stays the offline-first store other slices persist and
-  // read; query results hydrate it. A failed fetch leaves local data untouched.
-  const backendInventory = inventoryQuery.data
-  const backendSuppliers = suppliersQuery.data
-  React.useEffect(() => {
-    if (!effectiveId) return
-    const hasInventory = Array.isArray(backendInventory)
-    const hasSuppliers = Array.isArray(backendSuppliers)
-    if (!hasInventory && !hasSuppliers) return
-    updateActiveRestaurantRecord((current) => {
-      if (current.id !== effectiveId) return current
-      return {
-        ...current,
-        ...(hasInventory ? { inventory: backendInventory } : {}),
-        ...(hasSuppliers ? { suppliers: backendSuppliers } : {}),
-      }
-    })
-  }, [effectiveId, backendInventory, backendSuppliers, updateActiveRestaurantRecord])
+  // The query cache is the only source of truth: a failed read keeps the last
+  // cached lists, and the tenant record never holds stock or suppliers.
+  const inventory: InventoryItem[] = inventoryQuery.data ?? EMPTY_INVENTORY
+  const suppliers: Supplier[] = suppliersQuery.data ?? EMPTY_SUPPLIERS
+
+  /** Local change to the cached inventory (optimistic write or rollback). */
+  const setInventory = useCallback(
+    (updater: (current: InventoryItem[]) => InventoryItem[]) => {
+      queryClient.setQueryData<InventoryItem[]>(inventoryKey, (current) => updater(current ?? EMPTY_INVENTORY))
+    },
+    [queryClient, inventoryKey]
+  )
+  const setSuppliers = useCallback(
+    (updater: (current: Supplier[]) => Supplier[]) => {
+      queryClient.setQueryData<Supplier[]>(suppliersKey, (current) => updater(current ?? EMPTY_SUPPLIERS))
+    },
+    [queryClient, suppliersKey]
+  )
+  /** A read in flight predates the write: cancel it (the settle revalidation re-reads). */
+  const cancelReads = useCallback(
+    (key: readonly unknown[]) => {
+      void queryClient.cancelQueries({ queryKey: key })
+    },
+    [queryClient]
+  )
 
   // After a write settles, pull the authoritative server state. While other
   // writes are still in flight the refetch is skipped (the settling mutation
@@ -136,33 +147,25 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     [queryClient, effectiveId]
   )
 
-  const inventory: InventoryItem[] = useMemo(() => {
-    return activeRestaurant.inventory || []
-  }, [activeRestaurant.inventory])
-
-  const suppliers: Supplier[] = useMemo(() => {
-    return activeRestaurant.suppliers || []
-  }, [activeRestaurant.suppliers])
-
+  // Each mutation applies its optimistic change in onMutate (synchronously, in
+  // the same render as the user action) and owns its rollback in onError.
   const { mutate: createItem } = useMutation({
     mutationKey: MUTATION_KEY,
     mutationFn: (vars: CreateItemVars) => vars.request,
-    onSuccess: (created, { tempId }) => {
+    onMutate: ({ newItem }) => {
+      cancelReads(inventoryKey)
+      setInventory((current) => [newItem, ...current])
+    },
+    onSuccess: (created, { newItem }) => {
       if (created && created.id) {
-        updateActiveRestaurantRecord((current) => ({
-          ...current,
-          inventory: (current.inventory || []).map((i) => (i.id === tempId ? created : i)),
-        }))
+        setInventory((current) => current.map((i) => (i.id === newItem.id ? created : i)))
       }
     },
-    onError: (err, { tempId, name }) => {
+    onError: (err, { newItem }) => {
       warn("Could not persist inventory item to backend API:", err)
       // Remove only the optimistic item; other concurrent changes stay.
-      updateActiveRestaurantRecord((current) => ({
-        ...current,
-        inventory: (current.inventory || []).filter((i) => i.id !== tempId),
-      }))
-      toast.error(conflictMessage(err, name, "Error al guardar insumo en el servidor"))
+      setInventory((current) => current.filter((i) => i.id !== newItem.id))
+      toast.error(conflictMessage(err, newItem.name, "Error al guardar insumo en el servidor"))
     },
     onSettled: () => revalidate("inventory"),
   })
@@ -170,14 +173,26 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const { mutate: updateItem } = useMutation({
     mutationKey: MUTATION_KEY,
     mutationFn: (vars: UpdateItemVars) => vars.request,
-    onError: (error, { id, previousFields, fallbackName }) => {
+    onMutate: ({ id, updates }) => {
+      cancelReads(inventoryKey)
+      // Remember only this item's previous values for the touched fields.
+      const target = (queryClient.getQueryData<InventoryItem[]>(inventoryKey) ?? EMPTY_INVENTORY).find(
+        (i) => i.id === id
+      )
+      const previousFields: Record<string, unknown> = {}
+      if (target) {
+        for (const key of Object.keys(updates) as (keyof InventoryItem)[]) {
+          previousFields[key] = target[key]
+        }
+      }
+      setInventory((current) => current.map((item) => (item.id === id ? { ...item, ...updates } : item)))
+      return { previousFields }
+    },
+    onError: (error, { id, fallbackName }, context) => {
       warn(`Could not sync inventory item ${id} updates to backend:`, error)
-      updateActiveRestaurantRecord((current) => ({
-        ...current,
-        inventory: (current.inventory || []).map((item) =>
-          item.id === id ? { ...item, ...previousFields } : item
-        ),
-      }))
+      setInventory((current) =>
+        current.map((item) => (item.id === id ? { ...item, ...context?.previousFields } : item))
+      )
       toast.error(conflictMessage(error, fallbackName, "Error al actualizar insumo en el servidor"))
     },
     onSettled: () => revalidate("inventory"),
@@ -186,16 +201,19 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const { mutate: deleteItem } = useMutation({
     mutationKey: MUTATION_KEY,
     mutationFn: (vars: DeleteItemVars) => vars.request,
-    onError: (error, { id, previousInventory }) => {
+    onMutate: ({ id }) => {
+      cancelReads(inventoryKey)
+      const previousInventory = queryClient.getQueryData<InventoryItem[]>(inventoryKey) ?? EMPTY_INVENTORY
+      setInventory((current) => current.filter((item) => item.id !== id))
+      return { previousInventory }
+    },
+    onError: (error, { id }, context) => {
       if (isNotFoundError(error)) {
         // Resource already absent on server: preserve client deletion without rollback
         return
       }
       warn(`Could not delete inventory item ${id} from backend:`, error)
-      updateActiveRestaurantRecord((current) => ({
-        ...current,
-        inventory: previousInventory,
-      }))
+      if (context) setInventory(() => context.previousInventory)
       toast.error("Error al eliminar insumo del servidor")
     },
     onSettled: () => revalidate("inventory"),
@@ -204,18 +222,38 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const { mutate: adjustItemStock } = useMutation({
     mutationKey: MUTATION_KEY,
     mutationFn: (vars: AdjustStockVars) => vars.request,
-    onError: (error, { id, appliedDelta }) => {
+    onMutate: ({ id, deltaQuantity }) => {
+      cancelReads(inventoryKey)
+      const target = (queryClient.getQueryData<InventoryItem[]>(inventoryKey) ?? EMPTY_INVENTORY).find(
+        (i) => i.id === id
+      )
+      // Delta actually applied optimistically (the local stock never goes below 0).
+      const appliedDelta = target
+        ? round(Math.max(0, round(target.currentStock + deltaQuantity)) - target.currentStock)
+        : 0
+      setInventory((current) =>
+        current.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                currentStock: Math.max(0, round(item.currentStock + deltaQuantity)),
+                lastRestockedAt: deltaQuantity > 0 ? new Date().toISOString() : item.lastRestockedAt,
+              }
+            : item
+        )
+      )
+      return { appliedDelta }
+    },
+    onError: (error, { id }, context) => {
       warn(`Could not sync adjust stock for ${id} to backend:`, error)
       // Undo only this adjust, relative to the CURRENT state, so other
       // accepted adjusts and edits are preserved.
-      updateActiveRestaurantRecord((current) => ({
-        ...current,
-        inventory: (current.inventory || []).map((item) =>
-          item.id === id
-            ? { ...item, currentStock: Math.max(0, round(item.currentStock - appliedDelta)) }
-            : item
-        ),
-      }))
+      const appliedDelta = context?.appliedDelta ?? 0
+      setInventory((current) =>
+        current.map((item) =>
+          item.id === id ? { ...item, currentStock: Math.max(0, round(item.currentStock - appliedDelta)) } : item
+        )
+      )
       toast.error("Error al sincronizar el inventario con el servidor")
     },
     onSettled: () => revalidate("inventory"),
@@ -224,20 +262,18 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const { mutate: createSupplierRequest } = useMutation({
     mutationKey: MUTATION_KEY,
     mutationFn: (vars: CreateSupplierVars) => vars.request,
-    onSuccess: (created, { tempId }) => {
+    onMutate: ({ newSupplier }) => {
+      cancelReads(suppliersKey)
+      setSuppliers((current) => [newSupplier, ...current])
+    },
+    onSuccess: (created, { newSupplier }) => {
       if (created?.id) {
-        updateActiveRestaurantRecord((current) => ({
-          ...current,
-          suppliers: (current.suppliers || []).map((s) => (s.id === tempId ? created : s)),
-        }))
+        setSuppliers((current) => current.map((s) => (s.id === newSupplier.id ? created : s)))
       }
     },
-    onError: (err, { tempId }) => {
+    onError: (err, { newSupplier }) => {
       warn("Could not sync supplier creation to backend API:", err)
-      updateActiveRestaurantRecord((current) => ({
-        ...current,
-        suppliers: (current.suppliers || []).filter((s) => s.id !== tempId),
-      }))
+      setSuppliers((current) => current.filter((s) => s.id !== newSupplier.id))
       toast.error("Error al registrar proveedor en el servidor")
     },
     onSettled: () => revalidate("suppliers"),
@@ -246,12 +282,15 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const { mutate: updateSupplierRequest } = useMutation({
     mutationKey: MUTATION_KEY,
     mutationFn: (vars: UpdateSupplierVars) => vars.request,
-    onError: (err, { snapshot }) => {
+    onMutate: ({ id, updates }) => {
+      cancelReads(suppliersKey)
+      const previous = queryClient.getQueryData<Supplier[]>(suppliersKey) ?? EMPTY_SUPPLIERS
+      setSuppliers((current) => current.map((sup) => (sup.id === id ? { ...sup, ...updates } : sup)))
+      return { previous }
+    },
+    onError: (err, _vars, context) => {
       warn("Could not sync supplier update to backend API:", err)
-      updateActiveRestaurantRecord((current) => ({
-        ...current,
-        suppliers: snapshot.previous,
-      }))
+      if (context) setSuppliers(() => context.previous)
       toast.error("Error al actualizar proveedor en el servidor")
     },
     onSettled: () => revalidate("suppliers"),
@@ -260,36 +299,31 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const { mutate: deleteSupplierRequest } = useMutation({
     mutationKey: MUTATION_KEY,
     mutationFn: (vars: DeleteSupplierVars) => vars.request,
-    onError: (err, { snapshot }) => {
+    onMutate: ({ id }) => {
+      cancelReads(suppliersKey)
+      const previous = queryClient.getQueryData<Supplier[]>(suppliersKey) ?? EMPTY_SUPPLIERS
+      setSuppliers((current) => current.filter((sup) => sup.id !== id))
+      return { previous }
+    },
+    onError: (err, _vars, context) => {
       warn("Could not sync supplier deletion to backend API:", err)
-      updateActiveRestaurantRecord((current) => ({
-        ...current,
-        suppliers: snapshot.previous,
-      }))
+      if (context) setSuppliers(() => context.previous)
       toast.error("Error al eliminar proveedor en el servidor")
     },
     onSettled: () => revalidate("suppliers"),
   })
 
-  // Optimistic edits are applied synchronously to the tenant record (the
-  // mutation lifecycle itself is async); each mutation owns persist/rollback.
+  // The HTTP call fires at the user action (as before); the mutation applies
+  // the optimistic change and owns persist/rollback.
   const addInventoryItem = useCallback(
     (item: Omit<InventoryItem, "id">) => {
-      const tempId = nextTempId("inv")
       const newItem: InventoryItem = {
         ...item,
-        id: tempId,
+        id: nextTempId("inv"),
         lastRestockedAt: new Date().toISOString(),
       }
-      updateActiveRestaurantRecord((current) => ({
-        ...current,
-        inventory: [newItem, ...(current.inventory || [])],
-      }))
-      toast.success(`Insumo "${item.name}" agregado al inventario`)
-
       createItem({
-        tempId,
-        name: item.name,
+        newItem,
         request: apiClient.createInventoryItem({
           restaurantId: activeRestaurant.id,
           name: item.name,
@@ -301,160 +335,82 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           costPerUnit: item.costPerUnit,
         }),
       })
+      toast.success(`Insumo "${item.name}" agregado al inventario`)
     },
-    [activeRestaurant.id, updateActiveRestaurantRecord, createItem]
+    [activeRestaurant.id, createItem]
   )
 
   const updateInventoryItem = useCallback(
     (id: string, updates: Partial<InventoryItem>) => {
-      // Remember only this item's previous values for the touched fields.
-      const target = (activeRestaurant?.inventory || []).find((i) => i.id === id)
-      const previousFields: Record<string, unknown> = {}
-      if (target) {
-        for (const key of Object.keys(updates) as (keyof InventoryItem)[]) {
-          previousFields[key] = target[key]
-        }
-      }
-
-      updateActiveRestaurantRecord((current) => ({
-        ...current,
-        inventory: (current.inventory || []).map((item) =>
-          item.id === id ? { ...item, ...updates } : item
-        ),
-      }))
-      toast.success("Insumo actualizado")
-
+      const target = inventory.find((i) => i.id === id)
       const payload: Record<string, unknown> = { ...updates }
       if (updates.currentStock !== undefined) {
         payload.quantity = updates.currentStock
         delete payload.currentStock
       }
-
       updateItem({
         id,
-        previousFields,
+        updates,
         fallbackName: updates.name ?? target?.name,
         request: apiClient.updateInventoryItem(id, payload as any, activeRestaurant.id),
       })
+      toast.success("Insumo actualizado")
     },
-    [activeRestaurant.id, activeRestaurant.inventory, updateActiveRestaurantRecord, updateItem]
+    [activeRestaurant.id, inventory, updateItem]
   )
 
   const deleteInventoryItem = useCallback(
     (id: string) => {
-      const previousInventory = activeRestaurant?.inventory || []
-
-      updateActiveRestaurantRecord((current) => ({
-        ...current,
-        inventory: (current.inventory || []).filter((item) => item.id !== id),
-      }))
+      deleteItem({ id, request: apiClient.deleteInventoryItem(id, activeRestaurant.id) })
       toast.success("Insumo eliminado del inventario")
-
-      deleteItem({
-        id,
-        previousInventory,
-        request: apiClient.deleteInventoryItem(id, activeRestaurant.id),
-      })
     },
-    [activeRestaurant.id, activeRestaurant.inventory, updateActiveRestaurantRecord, deleteItem]
+    [activeRestaurant.id, deleteItem]
   )
 
   const adjustStock = useCallback(
     (id: string, deltaQuantity: number) => {
-      const target = (activeRestaurant?.inventory || []).find((i) => i.id === id)
+      const target = inventory.find((i) => i.id === id)
       if (!target) return
-      // Delta actually applied optimistically (the local stock never goes below 0).
       const newStock = Math.max(0, round(target.currentStock + deltaQuantity))
-      const appliedDelta = round(newStock - target.currentStock)
-
-      updateActiveRestaurantRecord((current) => ({
-        ...current,
-        inventory: (current.inventory || []).map((item) =>
-          item.id === id
-            ? {
-                ...item,
-                currentStock: Math.max(0, round(item.currentStock + deltaQuantity)),
-                lastRestockedAt: deltaQuantity > 0 ? new Date().toISOString() : item.lastRestockedAt,
-              }
-            : item
-        ),
-      }))
+      adjustItemStock({
+        id,
+        deltaQuantity,
+        request: apiClient.updateInventoryStock(id, deltaQuantity, activeRestaurant.id),
+      })
       if (deltaQuantity > 0) {
         toast.success(`+${deltaQuantity} añadido a "${target.name}" (Total: ${newStock})`)
       } else {
         toast.info(`${deltaQuantity} descontado de "${target.name}" (Total: ${newStock})`)
       }
-
-      adjustItemStock({
-        id,
-        appliedDelta,
-        request: apiClient.updateInventoryStock(id, deltaQuantity, activeRestaurant.id),
-      })
     },
-    [activeRestaurant.id, activeRestaurant.inventory, updateActiveRestaurantRecord, adjustItemStock]
+    [activeRestaurant.id, inventory, adjustItemStock]
   )
 
   const addSupplier = useCallback(
     (supplier: Omit<Supplier, "id">) => {
-      const tempId = nextTempId("sup")
-      const newSup: Supplier = {
-        ...supplier,
-        id: tempId,
-      }
-      updateActiveRestaurantRecord((current) => ({
-        ...current,
-        suppliers: [newSup, ...(current.suppliers || [])],
-      }))
-      toast.success(`Proveedor "${supplier.name}" registrado`)
-
       createSupplierRequest({
-        tempId,
+        newSupplier: { ...supplier, id: nextTempId("sup") },
         request: apiClient.createSupplier(supplier, activeRestaurant.id),
       })
+      toast.success(`Proveedor "${supplier.name}" registrado`)
     },
-    [activeRestaurant.id, updateActiveRestaurantRecord, createSupplierRequest]
+    [activeRestaurant.id, createSupplierRequest]
   )
 
   const updateSupplier = useCallback(
     (id: string, updates: Partial<Supplier>) => {
-      const snapshot = { previous: [] as Supplier[] }
-      updateActiveRestaurantRecord((current) => {
-        snapshot.previous = current.suppliers || []
-        return {
-          ...current,
-          suppliers: (current.suppliers || []).map((sup) =>
-            sup.id === id ? { ...sup, ...updates } : sup
-          ),
-        }
-      })
+      updateSupplierRequest({ id, updates, request: apiClient.updateSupplier(id, updates, activeRestaurant.id) })
       toast.success("Proveedor actualizado")
-
-      updateSupplierRequest({
-        snapshot,
-        request: apiClient.updateSupplier(id, updates, activeRestaurant.id),
-      })
     },
-    [activeRestaurant.id, updateActiveRestaurantRecord, updateSupplierRequest]
+    [activeRestaurant.id, updateSupplierRequest]
   )
 
   const deleteSupplier = useCallback(
     (id: string) => {
-      const snapshot = { previous: [] as Supplier[] }
-      updateActiveRestaurantRecord((current) => {
-        snapshot.previous = current.suppliers || []
-        return {
-          ...current,
-          suppliers: (current.suppliers || []).filter((sup) => sup.id !== id),
-        }
-      })
+      deleteSupplierRequest({ id, request: apiClient.deleteSupplier(id, activeRestaurant.id) })
       toast.success("Proveedor eliminado")
-
-      deleteSupplierRequest({
-        snapshot,
-        request: apiClient.deleteSupplier(id, activeRestaurant.id),
-      })
     },
-    [activeRestaurant.id, updateActiveRestaurantRecord, deleteSupplierRequest]
+    [activeRestaurant.id, deleteSupplierRequest]
   )
 
   const lowStockCount = useMemo(() => {

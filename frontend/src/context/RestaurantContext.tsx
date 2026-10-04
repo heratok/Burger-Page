@@ -15,7 +15,7 @@ import type {
 } from "@/types/restaurant"
 import { UiProvider, useUi } from "./slices/UiContext"
 import { TenantProvider, useTenant } from "./slices/TenantContext"
-import { useGlobalStats, type GlobalPlatformStats } from "./slices/orderBoards"
+import { useGlobalStats, type GlobalPlatformStats } from "./slices/directoryCaches"
 import { AuthProvider, useAuth } from "./slices/AuthContext"
 import { CatalogProvider, useCatalog } from "./slices/CatalogContext"
 import { OrderProvider, useOrders, type PlacedOrder } from "./slices/OrderContext"
@@ -51,7 +51,7 @@ export { useAuth } from "./slices/AuthContext"
 export { useCatalog } from "./slices/CatalogContext"
 export { useOrders } from "./slices/OrderContext"
 export { useInventory } from "./slices/InventoryContext"
-export { useGlobalStats, useOrderBoardsByTenant, ordersOf } from "./slices/orderBoards"
+export { useGlobalStats, useOrderBoardsByTenant, ordersOf, useCatalogSizesByTenant } from "./slices/directoryCaches"
 
 export interface RestaurantContextType {
   // Global Multi-Tenant State

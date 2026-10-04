@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useCallback, useMemo, useLayoutEffect, useRef } from "react"
-import { useIsMutating, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import React, { createContext, useContext, useCallback, useMemo } from "react"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type { StorefrontConfig, MenuItem, AdditionItem } from "@/types/restaurant"
 import { DEFAULT_STORE_CONFIG } from "@/constants/themePresets"
 import { useTenant } from "./TenantContext"
@@ -8,9 +8,13 @@ import { apiClient, isNotFoundError } from "@/core/api/apiClient"
 import { toast } from "sonner"
 import { nextTempId } from "@/lib/ids"
 import { splitConfigForApi } from "@/lib/storeSchedule"
-import { runOptimisticMutation, type OptimisticMutationConfig } from "./optimisticMutation"
-import { keyPrefixes } from "@/core/query/keys"
-import { productsQueryOptions, additionsQueryOptions } from "@/core/query/options"
+import { keys, keyPrefixes } from "@/core/query/keys"
+import {
+  productsQueryOptions,
+  additionsQueryOptions,
+  CATALOG_WRITES_KEY,
+  TENANT_WRITES_KEY,
+} from "@/core/query/options"
 
 export interface CatalogContextType {
   storeConfig: StorefrontConfig
@@ -40,16 +44,42 @@ const warn = (message: string, err: unknown) => {
   }
 }
 
-// Shared mutation key so settled writes can tell whether others are in flight.
-const CATALOG_MUTATION_KEY = ["catalog-writes"] as const
-
-// Every write carries its already-dispatched request: the HTTP call fires at
-// the user action (as before) and the mutation tracks it for settle/rollback.
-interface CatalogWrite {
-  request: Promise<unknown>
-  onSuccess?: (result: unknown) => void
-  onFailure: (err: unknown) => void
+/** The editable catalog: cached products and additions, stored categories. */
+interface CatalogState {
+  products: MenuItem[]
+  additions: AdditionItem[]
+  /** Owner-created categories (tenant directory data, not a query). */
+  categories: string[]
 }
+
+/**
+ * One optimistic catalog write. The catalog mutation applies it in onMutate,
+ * undoes it in onError and revalidates in onSettled. The request is already
+ * dispatched: the HTTP call fires at the user action (as before).
+ */
+interface CatalogEdit {
+  apply: (state: CatalogState) => CatalogState
+  /** Undoes the edit on the current state; `snapshot` is the state before it. */
+  rollback: (state: CatalogState, snapshot: CatalogState) => CatalogState
+  request: Promise<unknown>
+  /** Applies the server's answer (e.g. temp id -> real id). */
+  reconcile?: (state: CatalogState, result: any) => CatalogState
+  toast: { success?: string; info?: string; error: string }
+  /** A failure this returns true for is ignored: no rollback, no error toast. */
+  skipRollbackIfError?: (err: unknown) => boolean
+  warnMessage: string
+}
+
+/** One optimistic store-config write (design/settings of the tenant record). */
+interface ConfigWrite {
+  apply: (config: StorefrontConfig) => StorefrontConfig
+  request: Promise<unknown>
+  toast: { success?: string; info?: string; error: string }
+  warnMessage: string
+}
+
+const EMPTY_PRODUCTS: MenuItem[] = []
+const EMPTY_ADDITIONS: AdditionItem[] = []
 
 export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { activeRestaurant, updateActiveRestaurantRecord } = useTenant()
@@ -87,135 +117,157 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
     enabled,
   })
 
-  // Initial hydration only (isLoading = no data yet and fetching); background
+  // Initial read only (isLoading = no data yet and fetching); background
   // refetches after writes must not flash the loading state.
   const isLoadingCatalog = enabled && (productsQuery.isLoading || additionsQuery.isLoading)
 
-  // The tenant record stays the offline-first store other slices persist and
-  // read; query results hydrate it. A failed fetch leaves local data untouched.
-  // Hydration is skipped while a catalog write is pending or the resource is
-  // refetching, so a response that predates an optimistic edit can never wipe
-  // it; it runs once the writes settle and the revalidation lands.
-  const backendProducts = productsQuery.data
-  const backendAdditions = additionsQuery.data
-  const pendingWrites = useIsMutating({ mutationKey: CATALOG_MUTATION_KEY })
-  const hydrated = useRef<{ products?: MenuItem[]; additions?: AdditionItem[] }>({})
-  useLayoutEffect(() => {
-    if (!effectiveId || effectiveId === "rest-default") return
-    // Fresh reads: the hook values in the deps only schedule this effect.
-    if (queryClient.isMutating({ mutationKey: CATALOG_MUTATION_KEY }) > 0) return
-    const isIdle = (resource: "products" | "additions") =>
-      queryClient.isFetching({ queryKey: keyPrefixes[resource](effectiveId) }) === 0
-    const products =
-      Array.isArray(backendProducts) && backendProducts !== hydrated.current.products && isIdle("products")
-        ? backendProducts
-        : undefined
-    const additions =
-      Array.isArray(backendAdditions) && backendAdditions !== hydrated.current.additions && isIdle("additions")
-        ? backendAdditions
-        : undefined
-    if (!products && !additions) return
-    if (products) hydrated.current.products = products
-    if (additions) hydrated.current.additions = additions
-    updateActiveRestaurantRecord((current) => {
-      if (current.id !== effectiveId && current.slug !== effectiveSlug) {
-        return current
+  // The query cache is the only source of truth for products and additions: a
+  // failed read keeps the last cached lists, and the tenant record never holds
+  // them. Stored categories stay with the tenant record.
+  const productsKey = useMemo(
+    () => keys.products(effectiveId, session.role, effectiveSlug),
+    [effectiveId, session.role, effectiveSlug]
+  )
+  const additionsKey = useMemo(
+    () => keys.additions(effectiveId, session.role, effectiveSlug),
+    [effectiveId, session.role, effectiveSlug]
+  )
+  const products = productsQuery.data ?? EMPTY_PRODUCTS
+  const additions = additionsQuery.data ?? EMPTY_ADDITIONS
+  const storedCategories = activeRestaurant.categories
+
+  const readCatalog = useCallback(
+    (): CatalogState => ({
+      products: queryClient.getQueryData<MenuItem[]>(productsKey) ?? EMPTY_PRODUCTS,
+      additions: queryClient.getQueryData<AdditionItem[]>(additionsKey) ?? EMPTY_ADDITIONS,
+      categories: storedCategories ?? [],
+    }),
+    [queryClient, productsKey, additionsKey, storedCategories]
+  )
+  /** Writes what an edit changed: lists to the cache, categories to the tenant record. */
+  const writeCatalog = useCallback(
+    (update: (state: CatalogState) => CatalogState) => {
+      const current = readCatalog()
+      const next = update(current)
+      if (next.products !== current.products) queryClient.setQueryData(productsKey, next.products)
+      if (next.additions !== current.additions) queryClient.setQueryData(additionsKey, next.additions)
+      if (next.categories !== current.categories) {
+        updateActiveRestaurantRecord((record) => ({ ...record, categories: next.categories }))
       }
-      return {
-        ...current,
-        ...(products ? { products } : {}),
-        ...(additions ? { additions } : {}),
-      }
-    })
-  }, [
-    effectiveId,
-    effectiveSlug,
-    backendProducts,
-    backendAdditions,
-    productsQuery.isFetching,
-    additionsQuery.isFetching,
-    pendingWrites,
-    queryClient,
-    updateActiveRestaurantRecord,
-  ])
+    },
+    [readCatalog, queryClient, productsKey, additionsKey, updateActiveRestaurantRecord]
+  )
 
   // After the LAST in-flight catalog write settles, pull the authoritative
   // server state of every catalog resource (the settling mutation counts
   // itself, hence > 1). One shared key plus invalidating all resources means
   // no resource can be left unrevalidated by another one's write.
   const revalidate = useCallback(() => {
-    if (queryClient.isMutating({ mutationKey: CATALOG_MUTATION_KEY }) > 1) return
+    if (queryClient.isMutating({ mutationKey: CATALOG_WRITES_KEY }) > 1) return
     void queryClient.invalidateQueries({ queryKey: keyPrefixes.products(effectiveId) })
     void queryClient.invalidateQueries({ queryKey: keyPrefixes.additions(effectiveId) })
   }, [queryClient, effectiveId])
 
-  const { mutate: trackWrite } = useMutation({
-    mutationKey: CATALOG_MUTATION_KEY,
-    mutationFn: (vars: CatalogWrite) => vars.request,
-    onSuccess: (result, vars) => {
+  // onMutate cancels in-flight catalog reads, keeps the pre-write state as the
+  // context and applies the edit synchronously (same render as the action);
+  // onError restores it (also offline: mutations run with networkMode
+  // "always"); onSettled asks for the single revalidation.
+  const { mutate: runCatalogEdit } = useMutation({
+    mutationKey: CATALOG_WRITES_KEY,
+    mutationFn: (edit: CatalogEdit) => edit.request,
+    onMutate: (edit) => {
+      void queryClient.cancelQueries({ queryKey: productsKey })
+      void queryClient.cancelQueries({ queryKey: additionsKey })
+      const snapshot = readCatalog()
+      writeCatalog(edit.apply)
+      if (edit.toast.success) {
+        toast.success(edit.toast.success)
+      } else if (edit.toast.info) {
+        toast.info(edit.toast.info)
+      }
+      return { snapshot }
+    },
+    onSuccess: (result, edit) => {
+      // The server already committed: a client-side reconciliation bug must
+      // never roll back or report a failure.
       try {
-        vars.onSuccess?.(result)
+        if (edit.reconcile) writeCatalog((state) => edit.reconcile!(state, result))
       } catch (reconcileErr) {
-        // The server already committed: a client-side reconciliation bug must
-        // never roll back or report a failure.
         console.error("CatalogContext: onSuccess reconciliation failed", reconcileErr)
       }
     },
-    onError: (err, vars) => vars.onFailure(err),
+    onError: (err, edit, context) => {
+      if (edit.skipRollbackIfError?.(err)) return
+      warn(edit.warnMessage, err)
+      if (context) writeCatalog((state) => edit.rollback(state, context.snapshot))
+      toast.error(edit.toast.error)
+    },
     onSettled: () => revalidate(),
   })
 
-  // Same sequencing as runOptimisticMutation (apply, toast, call, rollback and
-  // error toast) with the request tracked by a mutation.
+  /** Dispatches the HTTP call at the user action and runs the catalog edit. */
   const runWrite = useCallback(
-    <TSnapshot, TResult = void>(config: OptimisticMutationConfig<TSnapshot, TResult>) => {
-      const snapshot = config.apply()
-      if (config.toast?.success) {
-        toast.success(config.toast.success)
-      } else if (config.toast?.info) {
-        toast.info(config.toast.info)
-      }
-      let request: Promise<TResult>
+    (edit: Omit<CatalogEdit, "request"> & { call: () => Promise<unknown> }) => {
+      let request: Promise<unknown>
       try {
-        request = config.call()
+        request = edit.call()
       } catch (err) {
         request = Promise.reject(err)
       }
       // The mutation owns the rejection; this only avoids a transient
       // unhandled-rejection report before it subscribes.
       request.catch(() => undefined)
-      trackWrite({
-        request,
-        onSuccess: config.onSuccess as ((result: unknown) => void) | undefined,
-        onFailure: (err) => {
-          if (config.skipRollbackIfError?.(err)) return
-          if (config.warnMessage) warn(config.warnMessage, err)
-          config.rollback(snapshot)
-          if (config.toast?.error) toast.error(config.toast.error)
-        },
-      })
+      runCatalogEdit({ ...edit, request })
     },
-    [trackWrite]
+    [runCatalogEdit]
+  )
+
+  // Store config is tenant record data: its writes share TENANT_WRITES_KEY
+  // with the restaurant edits, so a directory read that lands while one is
+  // pending is deferred instead of reverting it, and the settled write marks
+  // the cached restaurant lookups stale (TenantContext's write listener).
+  const { mutate: writeConfig } = useMutation({
+    mutationKey: TENANT_WRITES_KEY,
+    mutationFn: (vars: ConfigWrite) => vars.request,
+    onMutate: (vars) => {
+      const previousConfig = activeRestaurant?.config
+      updateActiveRestaurantRecord((current) => ({ ...current, config: vars.apply(current.config) }))
+      if (vars.toast.success) toast.success(vars.toast.success)
+      else if (vars.toast.info) toast.info(vars.toast.info)
+      return { previousConfig }
+    },
+    onError: (err, vars, context) => {
+      warn(vars.warnMessage, err)
+      const previousConfig = context?.previousConfig
+      if (previousConfig) {
+        updateActiveRestaurantRecord((current) => ({ ...current, config: previousConfig }))
+      }
+      toast.error(vars.toast.error)
+    },
+  })
+
+  /** Fires the config request at the user action and runs the tracked write. */
+  const runConfigWrite = useCallback(
+    (write: Omit<ConfigWrite, "request"> & { call: () => Promise<unknown> }) => {
+      let request: Promise<unknown>
+      try {
+        request = write.call()
+      } catch (err) {
+        request = Promise.reject(err)
+      }
+      request.catch(() => undefined)
+      writeConfig({ ...write, request })
+    },
+    [writeConfig]
   )
 
   const updateStoreConfig = useCallback(
     (newConfig: Partial<StorefrontConfig>) => {
       const restaurantId = activeRestaurant?.id
-      void runOptimisticMutation({
-        apply: () => {
-          const previousConfig = activeRestaurant?.config
-          updateActiveRestaurantRecord((current) => ({
-            ...current,
-            config: { ...current.config, ...newConfig },
-          }))
-          return previousConfig
-        },
+      runConfigWrite({
+        apply: (config) => ({ ...config, ...newConfig }),
         call: () =>
           restaurantId ? apiClient.updateRestaurant(restaurantId, splitConfigForApi(newConfig)) : Promise.resolve(undefined),
-        rollback: (previousConfig) => {
-          if (!previousConfig) return
-          updateActiveRestaurantRecord((current) => ({ ...current, config: previousConfig }))
-        },
         toast: {
           success: "Diseño y configuración actualizados",
           error: "Error al guardar la configuración en el servidor",
@@ -223,38 +275,27 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
         warnMessage: "Could not persist store config to backend API:",
       })
     },
-    [activeRestaurant?.id, activeRestaurant?.config, updateActiveRestaurantRecord]
+    [activeRestaurant?.id, runConfigWrite]
   )
 
   const resetStoreConfig = useCallback(() => {
     const restaurantId = activeRestaurant?.id
-    void runOptimisticMutation({
-      apply: () => {
-        const previousConfig = activeRestaurant?.config
-        updateActiveRestaurantRecord((current) => ({
-          ...current,
-          config: {
-            ...DEFAULT_STORE_CONFIG,
-            // Resetting the design never touches the opening hours or the pause.
-            schedule: current.config.schedule,
-            timezone: current.config.timezone,
-            ordersPaused: current.config.ordersPaused,
-          },
-        }))
-        return previousConfig
-      },
+    runConfigWrite({
+      apply: (config) => ({
+        ...DEFAULT_STORE_CONFIG,
+        // Resetting the design never touches the opening hours or the pause.
+        schedule: config.schedule,
+        timezone: config.timezone,
+        ordersPaused: config.ordersPaused,
+      }),
       call: () =>
         restaurantId
           ? apiClient.updateRestaurant(restaurantId, { config: splitConfigForApi(DEFAULT_STORE_CONFIG).config })
           : Promise.resolve(undefined),
-      rollback: (previousConfig) => {
-        if (!previousConfig) return
-        updateActiveRestaurantRecord((current) => ({ ...current, config: previousConfig }))
-      },
       toast: { info: "Diseño restablecido a los valores por defecto", error: "Error al restablecer la configuración en el servidor" },
       warnMessage: "Could not persist reset store config to backend API:",
     })
-  }, [activeRestaurant?.id, activeRestaurant?.config, updateActiveRestaurantRecord])
+  }, [activeRestaurant?.id, runConfigWrite])
 
   const addProduct = useCallback(
     (item: Omit<MenuItem, "id">) => {
@@ -262,12 +303,7 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const newItem: MenuItem = { ...item, id: tempId }
 
       runWrite({
-        apply: () => {
-          updateActiveRestaurantRecord((current) => ({
-            ...current,
-            products: [newItem, ...current.products],
-          }))
-        },
+        apply: (state) => ({ ...state, products: [newItem, ...state.products] }),
         call: () =>
           apiClient.createProduct({
             restaurantId: activeRestaurant.id,
@@ -281,44 +317,25 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
             isNew: item.isNew,
             preparationTimeMinutes: item.preparationTimeMinutes,
           }),
-        onSuccess: (created) => {
-          updateActiveRestaurantRecord((current) => ({
-            ...current,
-            products: current.products.map((p) => (p.id === tempId ? created : p)),
-          }))
-        },
-        rollback: () => {
-          updateActiveRestaurantRecord((current) => ({
-            ...current,
-            products: current.products.filter((p) => p.id !== tempId),
-          }))
-        },
+        reconcile: (state, created) => ({
+          ...state,
+          products: state.products.map((p) => (p.id === tempId ? created : p)),
+        }),
+        rollback: (state) => ({ ...state, products: state.products.filter((p) => p.id !== tempId) }),
         toast: { success: `"${item.name}" agregado al menú`, error: "Error al guardar producto en el servidor" },
         warnMessage: "Could not persist product to backend API:",
       })
     },
-    [activeRestaurant.id, updateActiveRestaurantRecord, runWrite]
+    [activeRestaurant.id, runWrite]
   )
 
   const updateProduct = useCallback(
     (id: string, updates: Partial<MenuItem>) => {
-      // `previousProducts` is captured as a side effect inside the updater
-      // passed to updateActiveRestaurantRecord, which React only invokes when
-      // it next flushes — not synchronously. rollback() runs later (after the
-      // awaited call rejects), by which point the flush has happened and this
-      // closure read is correct; reading it from apply()'s return value would
-      // not be.
-      let previousProducts: MenuItem[] = []
       runWrite({
-        apply: () => {
-          updateActiveRestaurantRecord((current) => {
-            previousProducts = current.products
-            return {
-              ...current,
-              products: current.products.map((p) => (p.id === id ? { ...p, ...updates } : p)),
-            }
-          })
-        },
+        apply: (state) => ({
+          ...state,
+          products: state.products.map((p) => (p.id === id ? { ...p, ...updates } : p)),
+        }),
         call: () => {
           const payload: Record<string, unknown> = {}
           if (updates.name !== undefined) payload.name = updates.name
@@ -332,60 +349,46 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
           if (updates.preparationTimeMinutes !== undefined) payload.preparationTimeMinutes = updates.preparationTimeMinutes
           return apiClient.updateProduct(id, payload, activeRestaurant.id)
         },
-        rollback: () => {
-          updateActiveRestaurantRecord((current) => ({ ...current, products: previousProducts }))
-        },
+        rollback: (state, snapshot) => ({ ...state, products: snapshot.products }),
         toast: { success: "Producto actualizado", error: "Error al actualizar producto en el servidor" },
         warnMessage: "Could not update product in backend API:",
       })
     },
-    [activeRestaurant.id, updateActiveRestaurantRecord, runWrite]
+    [activeRestaurant.id, runWrite]
   )
 
   const deleteProduct = useCallback(
     (id: string) => {
-      let previousProducts: MenuItem[] = []
       runWrite({
-        apply: () => {
-          updateActiveRestaurantRecord((current) => {
-            previousProducts = current.products
-            return { ...current, products: current.products.filter((p) => p.id !== id) }
-          })
-        },
+        apply: (state) => ({ ...state, products: state.products.filter((p) => p.id !== id) }),
         call: () => apiClient.deleteProduct(id, activeRestaurant.id),
-        rollback: () => {
-          updateActiveRestaurantRecord((current) => ({ ...current, products: previousProducts }))
-        },
+        rollback: (state, snapshot) => ({ ...state, products: snapshot.products }),
         toast: { success: "Producto eliminado del menú", error: "Error al eliminar producto del servidor" },
         skipRollbackIfError: isNotFoundError,
         warnMessage: "Could not delete product from backend API:",
       })
     },
-    [activeRestaurant.id, updateActiveRestaurantRecord, runWrite]
+    [activeRestaurant.id, runWrite]
   )
 
   const toggleProductStock = useCallback(
     (id: string) => {
-      const target = activeRestaurant.products.find((p) => p.id === id)
+      const target = products.find((p) => p.id === id)
       if (!target) return
       // Computed from current state OUTSIDE any updater (updaters must be pure).
       const isNowInStock = !target.inStock
 
       runWrite({
-        apply: () => {
-          updateActiveRestaurantRecord((current) => ({
-            ...current,
-            products: current.products.map((p) => (p.id === id ? { ...p, inStock: isNowInStock } : p)),
-          }))
-        },
+        apply: (state) => ({
+          ...state,
+          products: state.products.map((p) => (p.id === id ? { ...p, inStock: isNowInStock } : p)),
+        }),
         call: () => apiClient.updateProduct(id, { isAvailable: isNowInStock }, activeRestaurant.id),
-        rollback: () => {
-          // Roll back only this product's availability, from current state.
-          updateActiveRestaurantRecord((current) => ({
-            ...current,
-            products: current.products.map((p) => (p.id === id ? { ...p, inStock: !isNowInStock } : p)),
-          }))
-        },
+        // Roll back only this product's availability, from current state.
+        rollback: (state) => ({
+          ...state,
+          products: state.products.map((p) => (p.id === id ? { ...p, inStock: !isNowInStock } : p)),
+        }),
         toast: {
           info: `Producto marcado como ${isNowInStock ? "Disponible" : "Agotado"}`,
           error: "Error al actualizar disponibilidad en el servidor",
@@ -393,7 +396,7 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
         warnMessage: "Could not update product availability in backend API:",
       })
     },
-    [activeRestaurant.id, activeRestaurant.products, updateActiveRestaurantRecord, runWrite]
+    [activeRestaurant.id, products, runWrite]
   )
 
   const addAddition = useCallback(
@@ -403,12 +406,7 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const targetRestId = activeRestaurant?.id
 
       runWrite({
-        apply: () => {
-          updateActiveRestaurantRecord((current) => ({
-            ...current,
-            additions: [...current.additions, newItem],
-          }))
-        },
+        apply: (state) => ({ ...state, additions: [...state.additions, newItem] }),
         call: () =>
           apiClient.createAddition({
             name: item.name,
@@ -416,40 +414,26 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
             isAvailable: item.available,
             restaurantId: targetRestId,
           }),
-        onSuccess: (created) => {
-          updateActiveRestaurantRecord((current) => ({
-            ...current,
-            additions: current.additions.map((a) => (a.id === tempId ? created : a)),
-          }))
-        },
-        rollback: () => {
-          updateActiveRestaurantRecord((current) => ({
-            ...current,
-            additions: current.additions.filter((a) => a.id !== tempId),
-          }))
-        },
+        reconcile: (state, created) => ({
+          ...state,
+          additions: state.additions.map((a) => (a.id === tempId ? created : a)),
+        }),
+        rollback: (state) => ({ ...state, additions: state.additions.filter((a) => a.id !== tempId) }),
         toast: { success: `Adicional "${item.name}" creado`, error: "Error al guardar adicional en el servidor" },
         warnMessage: "Could not persist addition to backend API:",
       })
     },
-    [activeRestaurant?.id, updateActiveRestaurantRecord, runWrite]
+    [activeRestaurant?.id, runWrite]
   )
 
   const updateAddition = useCallback(
     (id: string, updates: Partial<AdditionItem>) => {
       const targetRestId = activeRestaurant?.id
-      let previousAdditions: AdditionItem[] = []
-
       runWrite({
-        apply: () => {
-          updateActiveRestaurantRecord((current) => {
-            previousAdditions = current.additions
-            return {
-              ...current,
-              additions: current.additions.map((a) => (a.id === id ? { ...a, ...updates } : a)),
-            }
-          })
-        },
+        apply: (state) => ({
+          ...state,
+          additions: state.additions.map((a) => (a.id === id ? { ...a, ...updates } : a)),
+        }),
         call: () =>
           apiClient.updateAddition(id, {
             name: updates.name,
@@ -457,38 +441,27 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
             isAvailable: updates.available,
             restaurantId: targetRestId,
           }),
-        rollback: () => {
-          updateActiveRestaurantRecord((current) => ({ ...current, additions: previousAdditions }))
-        },
+        rollback: (state, snapshot) => ({ ...state, additions: snapshot.additions }),
         toast: { success: "Adicional actualizado", error: "Error al actualizar adicional en el servidor" },
         warnMessage: "Could not update addition in backend API:",
       })
     },
-    [activeRestaurant?.id, updateActiveRestaurantRecord, runWrite]
+    [activeRestaurant?.id, runWrite]
   )
 
   const deleteAddition = useCallback(
     (id: string) => {
       const targetRestId = activeRestaurant?.id
-      let previousAdditions: AdditionItem[] = []
-
       runWrite({
-        apply: () => {
-          updateActiveRestaurantRecord((current) => {
-            previousAdditions = current.additions
-            return { ...current, additions: current.additions.filter((a) => a.id !== id) }
-          })
-        },
+        apply: (state) => ({ ...state, additions: state.additions.filter((a) => a.id !== id) }),
         call: () => apiClient.deleteAddition(id, targetRestId),
-        rollback: () => {
-          updateActiveRestaurantRecord((current) => ({ ...current, additions: previousAdditions }))
-        },
+        rollback: (state, snapshot) => ({ ...state, additions: snapshot.additions }),
         toast: { success: "Adicional eliminado", error: "Error al eliminar adicional del servidor" },
         skipRollbackIfError: isNotFoundError,
         warnMessage: "Could not delete addition from backend API:",
       })
     },
-    [activeRestaurant?.id, updateActiveRestaurantRecord, runWrite]
+    [activeRestaurant?.id, runWrite]
   )
 
   // The category list is the UNION of owner-created categories and the
@@ -497,10 +470,10 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // they can never disagree. It may legitimately be empty (a restaurant with
   // zero categories): no default is fabricated here.
   const categories = useMemo(() => {
-    const stored = activeRestaurant.categories || []
-    const fromProducts = activeRestaurant.products.map((p) => p.category).filter(Boolean)
+    const stored = storedCategories || []
+    const fromProducts = products.map((p) => p.category).filter(Boolean)
     return Array.from(new Set([...stored, ...fromProducts]))
-  }, [activeRestaurant.categories, activeRestaurant.products])
+  }, [storedCategories, products])
 
   const addCategory = useCallback(
     (categoryName: string) => {
@@ -517,18 +490,14 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const nextCategories = [...categories, trimmed]
 
       runWrite({
-        apply: () => {
-          updateActiveRestaurantRecord((current) => ({ ...current, categories: nextCategories }))
-        },
+        apply: (state) => ({ ...state, categories: nextCategories }),
         call: () => apiClient.updateCategories(nextCategories, activeRestaurant.slug || activeRestaurant.id),
-        rollback: () => {
-          updateActiveRestaurantRecord((current) => ({ ...current, categories: previousCategories }))
-        },
+        rollback: (state) => ({ ...state, categories: previousCategories }),
         toast: { success: `Categoría "${trimmed}" creada`, error: "Error al guardar categoría en el servidor" },
         warnMessage: "Could not sync categories to backend API:",
       })
     },
-    [categories, activeRestaurant.slug, activeRestaurant.id, updateActiveRestaurantRecord, runWrite]
+    [categories, activeRestaurant.slug, activeRestaurant.id, runWrite]
   )
 
   const updateCategory = useCallback(
@@ -546,7 +515,7 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return
       }
       const previousCategories = categories
-      const previousProducts = activeRestaurant.products || []
+      const previousProducts = products
 
       const nextCategories = categories.map((c) => (c.toLowerCase() === oldName.toLowerCase() ? trimmedNew : c))
       const nextProducts = previousProducts.map((p) =>
@@ -554,31 +523,19 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
       )
 
       runWrite({
-        apply: () => {
-          updateActiveRestaurantRecord((current) => ({
-            ...current,
-            categories: nextCategories,
-            products: nextProducts,
-          }))
-        },
+        apply: (state) => ({ ...state, categories: nextCategories, products: nextProducts }),
         // Single server operation: the backend renames the category row in
         // place, so its products keep their category (no per-product updates).
         call: () =>
           apiClient.updateCategories(nextCategories, activeRestaurant.slug || activeRestaurant.id, [
             { from: oldName, to: trimmedNew },
           ]),
-        rollback: () => {
-          updateActiveRestaurantRecord((current) => ({
-            ...current,
-            categories: previousCategories,
-            products: previousProducts,
-          }))
-        },
+        rollback: (state) => ({ ...state, categories: previousCategories, products: previousProducts }),
         toast: { success: `Categoría renombrada a "${trimmedNew}"`, error: "Error al renombrar categoría en el servidor" },
         warnMessage: "Could not sync categories to backend API:",
       })
     },
-    [categories, activeRestaurant.products, activeRestaurant.slug, activeRestaurant.id, updateActiveRestaurantRecord, runWrite]
+    [categories, products, activeRestaurant.slug, activeRestaurant.id, runWrite]
   )
 
   const deleteCategory = useCallback(
@@ -586,7 +543,7 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
       // Rule (ii): the LAST category cannot be deleted while it still has
       // products assigned. If it has none, deletion is allowed and the list
       // may become empty. The guard validates the SAME union list the UI shows.
-      const hasProducts = activeRestaurant.products.some((p) => p.category === categoryName)
+      const hasProducts = products.some((p) => p.category === categoryName)
       if (categories.length <= 1 && hasProducts) {
         toast.error(
           "No se puede eliminar la última categoría porque tiene productos asignados. Mové o eliminá esos productos primero."
@@ -594,7 +551,7 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return
       }
       const previousCategories = categories
-      const previousProducts = activeRestaurant.products || []
+      const previousProducts = products
 
       const nextCategories = categories.filter((c) => c !== categoryName)
       // No fabricated fallback: only reassign products when a target exists.
@@ -606,13 +563,7 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
         : previousProducts
 
       runWrite({
-        apply: () => {
-          updateActiveRestaurantRecord((current) => ({
-            ...current,
-            categories: nextCategories,
-            products: nextProducts,
-          }))
-        },
+        apply: (state) => ({ ...state, categories: nextCategories, products: nextProducts }),
         call: async () => {
           // Sync affected products to backend API (only when a reassignment target exists).
           // Fire-and-forget: a lone product's resync failing never blocks or
@@ -634,18 +585,12 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
           await Promise.all(resyncs)
           return result
         },
-        rollback: () => {
-          updateActiveRestaurantRecord((current) => ({
-            ...current,
-            categories: previousCategories,
-            products: previousProducts,
-          }))
-        },
+        rollback: (state) => ({ ...state, categories: previousCategories, products: previousProducts }),
         toast: { success: `Categoría "${categoryName}" eliminada`, error: "Error al eliminar categoría del servidor" },
         warnMessage: "Could not sync categories to backend API:",
       })
     },
-    [categories, activeRestaurant.products, activeRestaurant.slug, activeRestaurant.id, updateActiveRestaurantRecord, runWrite]
+    [categories, products, activeRestaurant.slug, activeRestaurant.id, runWrite]
   )
 
   const value: CatalogContextType = useMemo(
@@ -657,12 +602,12 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
       addCategory,
       updateCategory,
       deleteCategory,
-      products: activeRestaurant.products,
+      products,
       addProduct,
       updateProduct,
       deleteProduct,
       toggleProductStock,
-      additions: activeRestaurant.additions,
+      additions,
       addAddition,
       updateAddition,
       deleteAddition,
@@ -676,12 +621,12 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
       addCategory,
       updateCategory,
       deleteCategory,
-      activeRestaurant.products,
+      products,
       addProduct,
       updateProduct,
       deleteProduct,
       toggleProductStock,
-      activeRestaurant.additions,
+      additions,
       addAddition,
       updateAddition,
       deleteAddition,

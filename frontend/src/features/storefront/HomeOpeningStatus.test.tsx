@@ -3,13 +3,12 @@ import { render, screen, cleanup, fireEvent } from "@testing-library/react"
 import { RestaurantProvider } from "@/context/RestaurantContext"
 import Home from "@/features/storefront/Home"
 import { apiClient } from "@/core/api/apiClient"
-import { seedBlankActiveTenant, TEST_PRODUCTS } from "@/test/fixtures"
+import { seedBlankActiveTenant, seedCatalog, TEST_PRODUCTS } from "@/test/fixtures"
 
 function seedWithProducts(overrides = {}) {
   seedBlankActiveTenant("rest-burger-craft", "burger-craft", overrides)
-  const platform = JSON.parse(localStorage.getItem("burger_page_platform_v2")!)
-  platform.restaurants[0].products = TEST_PRODUCTS
-  localStorage.setItem("burger_page_platform_v2", JSON.stringify(platform))
+  // The catalog is server state now: it comes from the query cache.
+  seedCatalog(TEST_PRODUCTS)
 }
 
 describe("Home - opening status", () => {

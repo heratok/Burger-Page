@@ -12,6 +12,23 @@ export const DEFAULT_ENVELOPE: StorageEnvelopeV2 = {
   restaurants: [],
 }
 
+/**
+ * Catalog, stock and suppliers persisted inside a tenant record by an older
+ * version are dropped: they are server state now (query cache). Categories
+ * stay: they are owner data of the tenant record.
+ */
+function dropServerState(record: RestaurantRecord): RestaurantRecord {
+  const {
+    products: _products,
+    additions: _additions,
+    inventory: _inventory,
+    suppliers: _suppliers,
+    ...rest
+  } = record
+  const changed = [_products, _additions, _inventory, _suppliers].some((field) => field !== undefined)
+  return changed ? rest : record
+}
+
 export class TenantRepository {
   private adapter: StorageAdapter
   private pendingQueue: PendingOrdersQueue
@@ -32,17 +49,17 @@ export class TenantRepository {
           parsed.restaurants.length > 0
         ) {
           const migratedRestaurants = parsed.restaurants.map((stored) => {
-            const r = this.movePendingOrdersToQueue(stored)
+            let r = this.movePendingOrdersToQueue(stored)
             if (!r.categories || r.categories.length === 0) {
               const fromProducts = Array.from(new Set((r.products || []).map((p) => p.category).filter(Boolean)))
               // Derive from products, or keep it empty. A category the owner
               // never created must not be fabricated here.
-              return {
+              r = {
                 ...r,
                 categories: fromProducts,
               }
             }
-            return r
+            return dropServerState(r)
           })
           return {
             ...parsed,

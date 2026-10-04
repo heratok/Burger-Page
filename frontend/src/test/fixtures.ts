@@ -261,3 +261,40 @@ export function seedOrderBoard(
 ): void {
   client.setQueryData(keys.orders(tenantId, role), { orders, customers })
 }
+
+/** Seeds a tenant's cached inventory and suppliers (server state, not envelope data). */
+export function seedInventory(
+  inventory: InventoryItem[],
+  suppliers: Supplier[] = [],
+  tenantId = "rest-burger-craft",
+  role: UserRole = "guest",
+  client: QueryClient = appQueryClient,
+): void {
+  client.setQueryData(keys.inventory(tenantId, role), inventory)
+  client.setQueryData(keys.suppliers(tenantId, role), suppliers)
+}
+
+/** Seeds a tenant's cached catalog (server state, not envelope data). */
+export function seedCatalog(
+  products: MenuItem[],
+  additions: AdditionItem[] = [],
+  tenantId = "rest-burger-craft",
+  slug = "burger-craft",
+  role: UserRole = "guest",
+  client: QueryClient = appQueryClient,
+): void {
+  client.setQueryData(keys.products(tenantId, role, slug), products)
+  client.setQueryData(keys.additions(tenantId, role, slug), additions)
+}
+
+/**
+ * Seeds the cached catalog of every restaurant of an envelope fixture that
+ * lists products or additions (fixtures written when the envelope held them).
+ */
+export function seedCatalogsFrom(envelope: StorageEnvelopeV2, role: UserRole = "guest", client: QueryClient = appQueryClient): void {
+  for (const r of envelope.restaurants) {
+    if (r.products?.length || r.additions?.length) {
+      seedCatalog(r.products ?? [], r.additions ?? [], r.id, r.slug, role, client)
+    }
+  }
+}

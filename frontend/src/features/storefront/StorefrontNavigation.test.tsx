@@ -4,7 +4,7 @@ import { RestaurantProvider } from "@/context/RestaurantContext"
 import Home from "@/features/storefront/Home"
 import { TenantRepository } from "@/core/storage/TenantRepository"
 import { InMemoryStorageAdapter } from "@/core/storage/StorageAdapter"
-import { TEST_STORAGE_ENVELOPE } from "@/test/fixtures"
+import { TEST_STORAGE_ENVELOPE, seedCatalogsFrom } from "@/test/fixtures"
 
 function createTestRepo() {
   const adapter = new InMemoryStorageAdapter()
@@ -17,6 +17,8 @@ function createTestRepo() {
 describe("Storefront Navigation & Cart / Checkout Flow", () => {
   beforeEach(() => {
     localStorage.clear()
+    // Catalogs are server state now: they come from the query cache.
+    seedCatalogsFrom(TEST_STORAGE_ENVELOPE)
     vi.clearAllMocks()
   })
 

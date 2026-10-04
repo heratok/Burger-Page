@@ -5,7 +5,7 @@ import { ManualSaleModal } from "./ManualSaleModal"
 import { toast } from "sonner"
 import { InMemoryStorageAdapter } from "@/core/storage/StorageAdapter"
 import { TenantRepository, STORAGE_KEYS } from "@/core/storage/TenantRepository"
-import { TEST_STORAGE_ENVELOPE, seedOrderBoard } from "@/test/fixtures"
+import { TEST_STORAGE_ENVELOPE, seedOrderBoard, seedCatalogsFrom } from "@/test/fixtures"
 
 const createTestRepo = () => {
   const adapter = new InMemoryStorageAdapter()
@@ -26,6 +26,8 @@ vi.mock("sonner", () => ({
 describe("ManualSaleModal - Point of Sale (POS) Component", () => {
   beforeEach(() => {
     localStorage.clear()
+    // Catalogs are server state now: they come from the query cache.
+    seedCatalogsFrom(TEST_STORAGE_ENVELOPE)
     sessionStorage.clear()
     vi.clearAllMocks()
   })
