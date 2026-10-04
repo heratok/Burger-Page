@@ -11,11 +11,14 @@ import { toast } from "sonner"
 import { TenantProvider } from "./TenantContext"
 import { CatalogProvider, useCatalog } from "./CatalogContext"
 import { apiClient } from "@/core/api/apiClient"
+import { TestQueryProvider } from "@/test/queryClientWrapper"
 
 const wrapper = ({ children }: { children: React.ReactNode }) => (
-  <TenantProvider>
-    <CatalogProvider>{children}</CatalogProvider>
-  </TenantProvider>
+  <TestQueryProvider>
+    <TenantProvider>
+      <CatalogProvider>{children}</CatalogProvider>
+    </TenantProvider>
+  </TestQueryProvider>
 )
 
 async function setupWithProduct() {
