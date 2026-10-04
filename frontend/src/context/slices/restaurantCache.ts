@@ -158,11 +158,19 @@ export function addToDirectory(client: QueryClient, role: UserRole, record: Rest
 const sameList = (a: RestaurantRecord[], b: RestaurantRecord[]) =>
   a.length === b.length && a.every((r, i) => r === b[i])
 
-/** Subscribes to changes of the restaurant entries and the directory. */
+/**
+ * Subscribes to changes of the restaurant entries and the directory. Only
+ * events that can change their data notify: a query that useQuery builds
+ * (empty) or observes while a component renders must not re-render the
+ * subscribers in the middle of that render.
+ */
 const subscribeRestaurants = (client: QueryClient) => (notify: () => void) =>
   client.getQueryCache().subscribe((event) => {
     const resource = event.query.queryKey[0]
-    if (resource === "restaurant" || resource === "restaurants") notify()
+    if (resource !== "restaurant" && resource !== "restaurants") return
+    const changesData =
+      event.type === "updated" || event.type === "removed" || (event.type === "added" && event.query.state.data !== undefined)
+    if (changesData) notify()
   })
 
 /** One restaurant (by id or slug) as cached for a role, re-rendering when its record changes. */

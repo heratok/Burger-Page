@@ -163,8 +163,11 @@ export const restaurantQueryOptions = (role: UserRole, idOrSlug: string) =>
     queryKey: keys.restaurant(role, idOrSlug),
     ...storefrontGcTime(role),
     queryFn: async ({ client, queryKey }): Promise<RestaurantRecord | null> => {
-      const fetched = await apiClient.fetchRestaurant(idOrSlug)
-      return fetched ? toRestaurantRecord(fetched, client.getQueryData<RestaurantRecord>(queryKey) ?? undefined) : null
+      const fetched: any = await apiClient.fetchRestaurant(idOrSlug)
+      // Only a single restaurant payload is a tenant: anything else (no id or
+      // slug, a list) is not-found, like the lookup was before it was cached.
+      const isRestaurant = fetched && !Array.isArray(fetched) && typeof fetched.id === "string" && typeof fetched.slug === "string"
+      return isRestaurant ? toRestaurantRecord(fetched, client.getQueryData<RestaurantRecord>(queryKey) ?? undefined) : null
     },
   })
 

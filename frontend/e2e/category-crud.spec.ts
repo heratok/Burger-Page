@@ -103,6 +103,10 @@ test.describe('Menu & Categories Full CRUD & Customization E2E Suite', () => {
       });
     });
 
+    // The restaurant payload carries the owner's stored categories (like the
+    // real backend); a categories write replaces them.
+    let serverCategories = ['Hamburguesas', 'Acompañamientos', 'Bebidas'];
+
     await page.route('**/api/restaurants**', async (route) => {
       if (route.request().method() === 'GET') {
         await route.fulfill({
@@ -114,6 +118,7 @@ test.describe('Menu & Categories Full CRUD & Customization E2E Suite', () => {
               slug: 'burger-craft',
               name: 'Burger Craft',
               isActive: true,
+              categories: serverCategories,
               config: {
                 name: 'Burger Craft',
                 tagline: 'Cocina artesanal de autor',
@@ -157,6 +162,7 @@ test.describe('Menu & Categories Full CRUD & Customization E2E Suite', () => {
 
     await page.route('**/api/restaurant/**/categories', async (route) => {
       const body = route.request().postDataJSON?.() ?? {};
+      if (Array.isArray(body?.categories)) serverCategories = body.categories;
       for (const { from, to } of body?.renames ?? []) {
         for (const product of serverProducts) {
           if (product.category === from) product.category = to;

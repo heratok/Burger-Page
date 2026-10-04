@@ -12,7 +12,7 @@ vi.mock("sonner", () => ({
 }))
 
 import { TenantProvider, useTenant } from "./TenantContext"
-import { AuthProvider } from "./AuthContext"
+import { AuthProvider, useAuth } from "./AuthContext"
 import { apiClient } from "@/core/api/apiClient"
 
 const record = (id: string, slug: string, name = id): RestaurantRecord => ({
@@ -108,6 +108,34 @@ describe("TenantContext reads restaurants from the query cache", () => {
     })
   })
 
+  it("a login (new role, new directory query) never updates the provider while it renders", async () => {
+    vi.spyOn(apiClient, "hasToken").mockReturnValue(true)
+    vi.spyOn(apiClient, "listRestaurants").mockResolvedValue([{ id: "rest-a", slug: "a", name: "Alpha", isActive: true }] as any)
+    vi.spyOn(apiClient, "login").mockResolvedValue({
+      success: true,
+      token: "t",
+      user: { id: "u1", username: "root", role: "super_admin" },
+    } as any)
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
+    const client = createTestQueryClient()
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <QueryClientProvider client={client}>
+        <AuthProvider>
+          <TenantProvider>{children}</TenantProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    )
+    const { result } = renderHook(() => ({ auth: useAuth(), tenant: useTenant() }), { wrapper })
+
+    await act(async () => {
+      await result.current.auth.login("root", "admin")
+    })
+    await waitFor(() => expect(result.current.tenant.restaurants).toHaveLength(1))
+
+    const renderPhaseUpdates = consoleError.mock.calls.filter((args) => String(args[0]).includes("Cannot update a component"))
+    expect(renderPhaseUpdates).toEqual([])
+  })
+
   describe("as a storefront visitor", () => {
     beforeEach(() => {
       vi.spyOn(apiClient, "hasToken").mockReturnValue(false)
@@ -147,6 +175,20 @@ describe("TenantContext reads restaurants from the query cache", () => {
       } finally {
         vi.useRealTimers()
       }
+    })
+
+    it("a lookup payload that is not a restaurant (no id, or a list) is not-found and never cached", async () => {
+      vi.spyOn(apiClient, "fetchRestaurant").mockResolvedValue([{ id: "rest-x", slug: "x" }] as any)
+      const { client, result } = setup()
+
+      let outcome!: string
+      await act(async () => {
+        outcome = await result.current.loadRestaurant("x")
+      })
+
+      expect(outcome).toBe("not-found")
+      expect(result.current.restaurants).toEqual([])
+      expect(client.getQueryData(keys.restaurant("guest", "x"))).toBeNull()
     })
 
     it("a known restaurant is switched to without another request", async () => {
