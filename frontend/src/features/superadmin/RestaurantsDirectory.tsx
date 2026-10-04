@@ -1,7 +1,7 @@
-import React, { useState, useMemo, useEffect, useCallback } from "react"
+import React, { useState, useMemo, useEffect } from "react"
 import { useUi, useTenant } from "@/context/RestaurantContext"
 import type { RestaurantRecord } from "@/types/restaurant"
-import { apiClient, type DeletedRestaurantRecord } from "@/core/api/apiClient"
+import type { DeletedRestaurantRecord } from "@/core/api/apiClient"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import {
@@ -25,6 +25,11 @@ import { TableSkeleton } from "@/components/ui/Skeletons"
 import { useAppRouter } from "@/core/router/useAppRouter"
 import { formatCurrency } from "@/lib/utils"
 import { mapUserActionError } from "./userActionUtils"
+import {
+  useDeletedRestaurantsQuery,
+  useInvalidateRestaurantLists,
+  useRestoreRestaurantMutation,
+} from "./hooks/useDeletedRestaurantsQuery"
 
 function isConflictError(err: any): boolean {
   if (err?.status === 409 || err?.body?.status === 409) return true
@@ -48,8 +53,11 @@ export const RestaurantsDirectory: React.FC = () => {
   const [pageSize, setPageSize] = useState(10)
 
   // Deleted restaurants state
-  const [deletedRestaurants, setDeletedRestaurants] = useState<DeletedRestaurantRecord[]>([])
-  const [isLoadingDeleted, setIsLoadingDeleted] = useState(false)
+  const deletedQuery = useDeletedRestaurantsQuery()
+  const deletedRestaurants = useMemo(() => deletedQuery.data ?? [], [deletedQuery.data])
+  const isLoadingDeleted = deletedQuery.isLoading
+  const invalidateRestaurantLists = useInvalidateRestaurantLists()
+  const { mutateAsync: restoreRestaurant } = useRestoreRestaurantMutation()
   const [restaurantToRestore, setRestaurantToRestore] = useState<DeletedRestaurantRecord | null>(null)
   const [restoreSlug, setRestoreSlug] = useState("")
   const [isSlugConflict, setIsSlugConflict] = useState(false)
@@ -58,22 +66,12 @@ export const RestaurantsDirectory: React.FC = () => {
 
   const isDark = adminTheme === "dark"
 
-  const loadDeletedRestaurants = useCallback(async () => {
-    setIsLoadingDeleted(true)
-    try {
-      const data = await apiClient.listDeletedRestaurants()
-      setDeletedRestaurants(data || [])
-    } catch {
-      toast.error("No se pudieron cargar los restaurantes eliminados")
-      setDeletedRestaurants([])
-    } finally {
-      setIsLoadingDeleted(false)
-    }
-  }, [])
-
+  // One toast per failed read (errorUpdatedAt changes on every failure).
+  const { error: deletedError, errorUpdatedAt: deletedErrorAt } = deletedQuery
   useEffect(() => {
-    loadDeletedRestaurants()
-  }, [loadDeletedRestaurants])
+    if (!deletedError) return
+    toast.error("No se pudieron cargar los restaurantes eliminados")
+  }, [deletedError, deletedErrorAt])
 
   const filteredRestaurants = useMemo(() => {
     const term = searchTerm.toLowerCase().trim();
@@ -127,15 +125,14 @@ export const RestaurantsDirectory: React.FC = () => {
     if (!restaurantToRestore) return
     setIsRestoring(true)
     try {
-      const payload = isSlugConflict && restoreSlug.trim() ? { slug: restoreSlug.trim().toLowerCase() } : {}
-      const res = await apiClient.restoreRestaurant(restaurantToRestore.id, payload)
+      const slug = isSlugConflict && restoreSlug.trim() ? restoreSlug.trim().toLowerCase() : undefined
+      const res = await restoreRestaurant({ id: restaurantToRestore.id, slug })
       if (res.renamedUsers && res.renamedUsers.length > 0) {
         const names = res.renamedUsers.map((u) => `El usuario ${u.from} volvió como ${u.to}`).join(", ")
         toast.info(`Restaurado con éxito. Nota: ${names}`, { duration: 6000 })
       }
       toast.success(`Restaurante "${restaurantToRestore.name}" restaurado correctamente`)
       await refreshRestaurants()
-      await loadDeletedRestaurants()
       setRestaurantToRestore(null)
     } catch (err: any) {
       // The backend's RFC7807 error handler marks a conflict with status 409
@@ -194,7 +191,7 @@ export const RestaurantsDirectory: React.FC = () => {
                   onClick={() => {
                     setActiveTab("deleted")
                     setCurrentPage(1)
-                    loadDeletedRestaurants()
+                    void invalidateRestaurantLists()
                   }}
                   className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
                     activeTab === "deleted"
@@ -528,7 +525,7 @@ export const RestaurantsDirectory: React.FC = () => {
             try {
               await deleteRestaurant(idToDelete)
               await refreshRestaurants()
-              await loadDeletedRestaurants()
+              await invalidateRestaurantLists()
             } finally {
               setDeletingIds((prev) => {
                 const next = new Set(prev)

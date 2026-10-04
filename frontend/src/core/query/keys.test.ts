@@ -15,6 +15,7 @@ describe("query key factory", () => {
     expect(keys.restaurant("guest", "burger")).toEqual(["restaurant", "guest", "burger"])
     expect(keys.restaurantStatus("guest", "burger")).toEqual(["restaurant-status", "guest", "burger"])
     expect(keys.users("super")).toEqual(["users", "super"])
+    expect(keys.deletedRestaurants("super")).toEqual(["deleted-restaurants", "super"])
     expect(keys.users("super", "rest-1")).toEqual(["users", "super", "rest-1"])
   })
 
@@ -48,6 +49,7 @@ describe("query key factory", () => {
     expect(startsWith(keys.restaurantStatus("super", "x"), keyPrefixes.restaurantStatus())).toBe(true)
     expect(startsWith(keys.users("super", "r"), keys.users("super"))).toBe(true)
     expect(startsWith(keys.users("super"), keyPrefixes.users())).toBe(true)
+    expect(startsWith(keys.deletedRestaurants("super"), keyPrefixes.deletedRestaurants())).toBe(true)
     // A tenant prefix never matches another tenant's key.
     expect(startsWith(keys.orders("other", "super"), keyPrefixes.orders("t"))).toBe(false)
   })
