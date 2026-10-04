@@ -2,6 +2,7 @@ import { queryOptions } from "@tanstack/react-query"
 import type { UserRole } from "@/types/restaurant"
 import { apiClient } from "@/core/api/apiClient"
 import { keys } from "./keys"
+import { reconcileOrderBoard, type BackendBoard, type OrderBoard } from "@/context/slices/orderBoard"
 
 /**
  * Per-resource query options: the key, the fetcher and the options every read
@@ -27,16 +28,11 @@ async function logged<T>(message: string, read: () => Promise<T>): Promise<T> {
   }
 }
 
-export interface Board {
-  orders: any[]
-  customers: any[]
-}
-
 /**
  * Reads the order board: orders plus customers. A failed customers read falls
  * back to an empty list (orders still hydrate); a failed orders read rejects.
  */
-async function fetchBoard(restaurantId: string): Promise<Board> {
+async function fetchBoard(restaurantId: string): Promise<BackendBoard> {
   return logged("Could not fetch orders/customers from backend API:", async () => {
     const [orders, customers] = await Promise.all([
       apiClient.fetchOrders(restaurantId),
@@ -50,16 +46,17 @@ async function fetchBoard(restaurantId: string): Promise<Board> {
 }
 
 // Orders and customers are one resource: customer metrics are derived from the
-// synced orders, so both are read together and hydrate atomically. Returning a
-// fresh object per fetch (structural sharing off) lets every successful fetch
-// re-hydrate the tenant record. networkMode "always": the board is read even
-// when navigator.onLine says otherwise (the fetch itself decides).
+// synced orders, so both are read together and cached as one domain board,
+// merged with what is cached (see reconcileOrderBoard). Structural sharing
+// keeps the identity of every order a refetch did not change. networkMode
+// "always": the board is read even when navigator.onLine says otherwise (the
+// fetch itself decides).
 export const ordersQueryOptions = (tenantId: TenantId, role: UserRole) =>
   queryOptions({
     queryKey: keys.orders(tenantId, role),
-    queryFn: () => fetchBoard(tenantId as string),
+    queryFn: async ({ client, queryKey }): Promise<OrderBoard> =>
+      reconcileOrderBoard(client, queryKey, await fetchBoard(tenantId as string)),
     retry: false,
-    structuralSharing: false,
     networkMode: "always",
   })
 

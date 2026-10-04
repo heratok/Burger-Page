@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from "vitest"
+import { QueryClient } from "@tanstack/react-query"
 import { apiClient } from "@/core/api/apiClient"
 import { keys } from "./keys"
 import {
@@ -36,16 +37,20 @@ describe("per-resource query options", () => {
     }
   })
 
-  it("reads the order board regardless of navigator.onLine and without structural sharing", () => {
+  it("reads the order board regardless of navigator.onLine, with structural sharing", () => {
     const opts = ordersQueryOptions("t", "restaurant")
     expect(opts.networkMode).toBe("always")
-    expect(opts.structuralSharing).toBe(false)
+    // Structural sharing stays on: unchanged orders keep their identity.
+    expect(opts.structuralSharing).toBeUndefined()
   })
 
-  it("reads orders and customers together; a failed customers read falls back to []", async () => {
-    vi.spyOn(apiClient, "fetchOrders").mockResolvedValue([{ id: "o1" }] as any)
+  it("reads orders and customers together into a domain board; a failed customers read falls back to []", async () => {
+    vi.spyOn(apiClient, "fetchOrders").mockResolvedValue([{ id: "o1", orderNumber: 7, status: "pending" }] as any)
     vi.spyOn(apiClient, "fetchCustomers").mockRejectedValue(new Error("boom"))
-    const board = await (ordersQueryOptions("t", "restaurant").queryFn as any)()
-    expect(board).toEqual({ orders: [{ id: "o1" }], customers: [] })
+    const opts = ordersQueryOptions("t", "restaurant")
+    const client = new QueryClient()
+    const board = await (opts.queryFn as any)({ client, queryKey: opts.queryKey })
+    expect(board.orders.map((o: any) => [o.id, o.orderNumber, o.status])).toEqual([["o1", 7, "pending"]])
+    expect(board.customers).toEqual([])
   })
 })
