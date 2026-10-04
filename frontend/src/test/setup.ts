@@ -3,9 +3,10 @@ import { cleanup } from '@testing-library/react'
 import { notifyManager } from '@tanstack/react-query'
 import { appQueryClient, MUTATION_DEFAULTS } from '@/core/query/queryClient'
 
-// Query observers are notified in a microtask instead of a setTimeout(0), so a
-// cache update made inside act() is rendered before act() returns.
-notifyManager.setScheduler(queueMicrotask)
+// Query observers are notified synchronously instead of after a setTimeout(0),
+// so a cache update made inside act() (sync or async) is rendered before act()
+// returns, exactly like a React state update.
+notifyManager.setScheduler((callback) => callback())
 
 const originalFetch = globalThis.fetch
 

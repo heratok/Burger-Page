@@ -464,7 +464,7 @@ function CustomerInputs(props: Readonly<CustomerInputsProps>) {
 }
 
 export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClose, orderToEdit }) => {
-  const { activeRestaurant, storeConfig, adminTheme, addOrder, updateOrder, setAdminTab } = useRestaurant()
+  const { activeRestaurant, storeConfig, adminTheme, orders, addOrder, updateOrder, setAdminTab } = useRestaurant()
   const isDark = adminTheme === "dark"
 
   // Mobile Tab State
@@ -522,13 +522,13 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
   // orders already in context; the order being edited does not occupy it.
   const occupiedTableIds = useMemo(() => {
     const ids = new Set<string>()
-    for (const order of activeRestaurant.orders ?? []) {
+    for (const order of orders) {
       if (order.tableId && ACTIVE_ORDER_STATUSES.has(order.status) && order.id !== orderToEdit?.id) {
         ids.add(order.tableId)
       }
     }
     return ids
-  }, [activeRestaurant.orders, orderToEdit?.id])
+  }, [orders, orderToEdit?.id])
 
   // Products from active restaurant
   const catalogProducts = useMemo(() => activeRestaurant.products ?? [], [activeRestaurant.products])

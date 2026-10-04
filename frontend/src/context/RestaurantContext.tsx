@@ -14,7 +14,8 @@ import type {
   AdminSession,
 } from "@/types/restaurant"
 import { UiProvider, useUi } from "./slices/UiContext"
-import { TenantProvider, useTenant, type GlobalPlatformStats } from "./slices/TenantContext"
+import { TenantProvider, useTenant } from "./slices/TenantContext"
+import { useGlobalStats, type GlobalPlatformStats } from "./slices/orderBoards"
 import { AuthProvider, useAuth } from "./slices/AuthContext"
 import { CatalogProvider, useCatalog } from "./slices/CatalogContext"
 import { OrderProvider, useOrders, type PlacedOrder } from "./slices/OrderContext"
@@ -50,6 +51,7 @@ export { useAuth } from "./slices/AuthContext"
 export { useCatalog } from "./slices/CatalogContext"
 export { useOrders } from "./slices/OrderContext"
 export { useInventory } from "./slices/InventoryContext"
+export { useGlobalStats, useOrderBoardsByTenant, ordersOf } from "./slices/orderBoards"
 
 export interface RestaurantContextType {
   // Global Multi-Tenant State
@@ -244,6 +246,7 @@ export const useRestaurant = (): RestaurantContextType => {
   const catalog = useCatalog()
   const inventorySlice = useInventory()
   const orders = useOrders()
+  const globalStats = useGlobalStats()
 
   const login = useCallback(
     async (username: string, password: string, targetRestaurantIdOrSlug?: string) => {
@@ -288,7 +291,7 @@ export const useRestaurant = (): RestaurantContextType => {
     deleteRestaurant: tenant.deleteRestaurant,
     refreshRestaurants: tenant.refreshRestaurants,
     refreshStoreStatus: tenant.refreshStoreStatus,
-    globalStats: tenant.globalStats,
+    globalStats,
 
     session: auth.session,
     setSession: auth.setSession,
@@ -356,6 +359,6 @@ export const useRestaurant = (): RestaurantContextType => {
     pendingOrdersCount: orders.pendingOrdersCount,
     refreshOrders: orders.refreshOrders,
     }),
-    [ui, tenant, auth, catalog, inventorySlice, orders, login]
+    [ui, tenant, auth, catalog, inventorySlice, orders, globalStats, login]
   )
 }

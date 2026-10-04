@@ -30,14 +30,6 @@ import {
   restaurantStatusQueryOptions,
 } from "@/core/query/options"
 
-export interface GlobalPlatformStats {
-  totalRevenue: number
-  totalOrders: number
-  totalRestaurants: number
-  activeRestaurants: number
-  totalCustomers: number
-}
-
 export type LoadRestaurantOutcome = "ok" | "not-found" | "error"
 
 /** Merges the public/admin payload into a storefront config: schedule fields come from the top level, the legacy text is dropped. */
@@ -59,8 +51,6 @@ function toRestaurantRecord(fetched: any): RestaurantRecord {
     },
     products: fetched.products || [],
     additions: fetched.additions || [],
-    orders: fetched.orders || [],
-    customers: fetched.customers || [],
     inventory: fetched.inventory || [],
     suppliers: fetched.suppliers || [],
   }
@@ -104,7 +94,6 @@ export interface TenantContextType {
   refreshRestaurants: () => Promise<void>
   /** Storefront polling: refresh schedule, timezone and pause from the public endpoint (silent on failure). */
   refreshStoreStatus: () => Promise<void>
-  globalStats: GlobalPlatformStats
 }
 
 const TenantContext = createContext<TenantContextType | undefined>(undefined)
@@ -201,8 +190,6 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
             },
             products: local?.products || [],
             additions: local?.additions || [],
-            orders: local?.orders || [],
-            customers: local?.customers || [],
             inventory: local?.inventory || [],
             suppliers: local?.suppliers || [],
           } as RestaurantRecord
@@ -378,8 +365,6 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
         config: DEFAULT_STORE_CONFIG,
         products: [],
         additions: [],
-        orders: [],
-        customers: [],
       }
     )
   }, [envelope.restaurants, effectiveRestaurantId])
@@ -492,8 +477,6 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
             categories: [],
             products: [],
             additions: [],
-            orders: [],
-            customers: [],
             inventory: [],
             suppliers: [],
           }
@@ -554,8 +537,6 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
         categories: [],
         products: [],
         additions: [],
-        orders: [],
-        customers: [],
       }
 
         setEnvelope((prev) => ({
@@ -698,30 +679,6 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
     [envelope, dispatchWrite]
   )
 
-  const globalStats = useMemo<GlobalPlatformStats>(() => {
-    let totalRevenue = 0
-    let totalOrders = 0
-    let totalCustomers = 0
-
-    envelope.restaurants.forEach((r) => {
-      const orders = r.orders || []
-      const customers = r.customers || []
-      totalRevenue += orders
-        .filter((o) => o.status !== "cancelled")
-        .reduce((sum, o) => sum + (o.finalTotal || 0), 0)
-      totalOrders += orders.length
-      totalCustomers += customers.length
-    })
-
-    return {
-      totalRevenue,
-      totalOrders,
-      totalRestaurants: envelope.restaurants.length,
-      activeRestaurants: envelope.restaurants.filter((r) => r.isActive).length,
-      totalCustomers,
-    }
-  }, [envelope.restaurants])
-
   const value: TenantContextType = useMemo(
     () => ({
       restaurants: envelope.restaurants,
@@ -739,7 +696,6 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
       updateActiveRestaurantRecord,
       refreshRestaurants,
       refreshStoreStatus,
-      globalStats,
     }),
     [
       envelope.restaurants,
@@ -755,7 +711,6 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
       updateActiveRestaurantRecord,
       refreshRestaurants,
       refreshStoreStatus,
-      globalStats,
     ]
   )
 

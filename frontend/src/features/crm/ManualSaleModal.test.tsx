@@ -5,7 +5,7 @@ import { ManualSaleModal } from "./ManualSaleModal"
 import { toast } from "sonner"
 import { InMemoryStorageAdapter } from "@/core/storage/StorageAdapter"
 import { TenantRepository, STORAGE_KEYS } from "@/core/storage/TenantRepository"
-import { TEST_STORAGE_ENVELOPE } from "@/test/fixtures"
+import { TEST_STORAGE_ENVELOPE, seedOrderBoard } from "@/test/fixtures"
 
 const createTestRepo = () => {
   const adapter = new InMemoryStorageAdapter()
@@ -481,51 +481,42 @@ describe("ManualSaleModal - Point of Sale (POS) Component", () => {
 
     it("marks a table with an order in progress as occupied but still selectable", async () => {
       await mockBackend()
-      const envelope = {
-        ...TEST_STORAGE_ENVELOPE,
-        restaurants: TEST_STORAGE_ENVELOPE.restaurants.map((r) =>
-          r.id === "rest-burger-craft"
-            ? {
-                ...r,
-                orders: [
-                  {
-                    id: "ord-busy",
-                    orderNumber: 1,
-                    customer: { nombre: "Cliente Salón", telefono: "N/A", direccion: "Salón", barrio: "Local" },
-                    items: [],
-                    total: 0,
-                    deliveryFee: 0,
-                    finalTotal: 0,
-                    metodo: "Efectivo" as const,
-                    status: "cooking" as const,
-                    tableId: "tbl_1",
-                    tableLabel: "Mesa 1",
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString(),
-                  },
-                  {
-                    id: "ord-done",
-                    orderNumber: 2,
-                    customer: { nombre: "Cliente Salón", telefono: "N/A", direccion: "Salón", barrio: "Local" },
-                    items: [],
-                    total: 0,
-                    deliveryFee: 0,
-                    finalTotal: 0,
-                    metodo: "Efectivo" as const,
-                    status: "delivered" as const,
-                    tableId: "tbl_2",
-                    tableLabel: "Mesa 2",
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString(),
-                  },
-                ],
-              }
-            : r
-        ),
-      }
       const adapter = new InMemoryStorageAdapter()
-      adapter.setItem(STORAGE_KEYS.ENVELOPE, JSON.stringify(envelope))
+      adapter.setItem(STORAGE_KEYS.ENVELOPE, JSON.stringify(TEST_STORAGE_ENVELOPE))
       adapter.setItem(STORAGE_KEYS.ACTIVE_REST, "rest-burger-craft")
+      // Orders are server state now: they come from the cached board.
+      seedOrderBoard([
+        {
+          id: "ord-busy",
+          orderNumber: 1,
+          customer: { nombre: "Cliente Salón", telefono: "N/A", direccion: "Salón", barrio: "Local" },
+          items: [],
+          total: 0,
+          deliveryFee: 0,
+          finalTotal: 0,
+          metodo: "Efectivo" as const,
+          status: "cooking" as const,
+          tableId: "tbl_1",
+          tableLabel: "Mesa 1",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          id: "ord-done",
+          orderNumber: 2,
+          customer: { nombre: "Cliente Salón", telefono: "N/A", direccion: "Salón", barrio: "Local" },
+          items: [],
+          total: 0,
+          deliveryFee: 0,
+          finalTotal: 0,
+          metodo: "Efectivo" as const,
+          status: "delivered" as const,
+          tableId: "tbl_2",
+          tableLabel: "Mesa 2",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ])
 
       render(
         <RestaurantProvider repository={new TenantRepository(adapter)}>

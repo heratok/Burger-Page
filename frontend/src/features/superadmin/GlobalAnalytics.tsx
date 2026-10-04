@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { useUi, useTenant } from "@/context/RestaurantContext"
+import { useUi, useTenant, useOrderBoardsByTenant, ordersOf } from "@/context/RestaurantContext"
 import {
   TrendingUp,
   DollarSign,
@@ -16,6 +16,7 @@ import { formatCurrency } from "@/lib/utils"
 export const GlobalAnalytics: React.FC = () => {
   const { adminTheme } = useUi()
   const { restaurants, switchRestaurant } = useTenant()
+  const orderBoards = useOrderBoardsByTenant()
   const { navigateTo } = useAppRouter()
   const [period, setPeriod] = useState<string>("ALL")
 
@@ -28,8 +29,9 @@ export const GlobalAnalytics: React.FC = () => {
 
     // Restaurant breakdown
     const breakdown = restaurants.map((r) => {
-      const revenue = r.orders?.reduce((sum, o) => sum + (o.total || 0), 0) || 0
-      const ordersCount = r.orders?.length || 0
+      const restaurantOrders = ordersOf(orderBoards, r.id)
+      const revenue = restaurantOrders.reduce((sum, o) => sum + (o.total || 0), 0)
+      const ordersCount = restaurantOrders.length
 
       totalRevenue += revenue
       totalOrders += ordersCount
@@ -59,7 +61,7 @@ export const GlobalAnalytics: React.FC = () => {
       totalTenants: restaurants.length,
       breakdown,
     }
-  }, [restaurants])
+  }, [restaurants, orderBoards])
 
   const handleManage = (restaurantId: string) => {
     switchRestaurant(restaurantId)

@@ -174,8 +174,14 @@ export interface RestaurantRecord {
   additions: AdditionItem[]
   inventory?: InventoryItem[]
   suppliers?: Supplier[]
-  orders: Order[]
-  customers: Customer[]
+  /**
+   * @deprecated Orders and customers are server state in the query cache
+   * (keys.orders); offline sales live in the pending-orders queue. Only
+   * envelopes persisted by older versions carry these; loadEnvelope drops them.
+   */
+  orders?: Order[]
+  /** @deprecated See `orders`. */
+  customers?: Customer[]
   isActive: boolean
   createdAt: string
 }
