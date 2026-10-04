@@ -5,7 +5,7 @@ import { RestaurantsDirectory } from "../RestaurantsDirectory"
 import { RestaurantProvider } from "@/context/RestaurantContext"
 import { apiClient, type DeletedRestaurantRecord } from "@/core/api/apiClient"
 import { appQueryClient } from "@/core/query/queryClient"
-import { keys } from "@/core/query/keys"
+import { keys, keyPrefixes } from "@/core/query/keys"
 import { DEFAULT_STORE_CONFIG } from "@/constants/themePresets"
 
 const deleted: DeletedRestaurantRecord = {
@@ -80,6 +80,8 @@ describe("RestaurantsDirectory deleted restaurants (query)", () => {
     expect(listSpy.mock.calls.length).toBeGreaterThan(callsBeforeRestore)
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: keys.restaurants("guest") })
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: keys.deletedRestaurants("guest") })
+    // A restored restaurant counts in the platform totals again.
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: keyPrefixes.platformStats() })
   })
 
   it("shows the error toast and the empty deleted tab when the list cannot be read", async () => {

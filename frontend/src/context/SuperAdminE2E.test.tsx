@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
-import { renderHook, act, render, screen, cleanup, fireEvent } from "@testing-library/react"
+import { renderHook, act, render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react"
 import React from "react"
 import { RestaurantProvider, useRestaurant } from "./RestaurantContext"
 import { InMemoryStorageAdapter } from "@/core/storage/StorageAdapter"
@@ -17,9 +17,14 @@ const createTestRepo = () => {
 
 // Hermetic test environment: refresh-on-session-change must never hit a
 // real local backend during tests (TDD isolation).
+// What the platform stats endpoint answers; tests change it to simulate the
+// server's totals moving after a write.
+let serverStats = { totalRevenue: 64800, totalOrders: 1, cancelledOrders: 0, totalCustomers: 1, totalRestaurants: 5, activeRestaurants: 5 }
+
 const hermeticApi = async () => {
   const { apiClient } = await import("@/core/api/apiClient")
   vi.spyOn(apiClient, "listRestaurants").mockRejectedValue(new Error("no backend in tests"))
+  vi.spyOn(apiClient, "fetchPlatformStats").mockImplementation(async () => ({ ...serverStats }))
   vi.spyOn(apiClient, "login").mockResolvedValue({
     success: true,
     token: "server-token",
@@ -32,6 +37,7 @@ describe("Super Admin - Creación y Aislamiento de Nuevos Restaurantes E2E", () 
     localStorage.clear()
     sessionStorage.clear()
     vi.restoreAllMocks()
+    serverStats = { totalRevenue: 64800, totalOrders: 1, cancelledOrders: 0, totalCustomers: 1, totalRestaurants: 5, activeRestaurants: 5 }
     await hermeticApi()
     // After login the super admin reads the platform directory (server state).
     seedRestaurantDirectory(TEST_STORAGE_ENVELOPE.restaurants, ["super"])
@@ -131,14 +137,19 @@ describe("Super Admin - Creación y Aislamiento de Nuevos Restaurantes E2E", () 
     expect(result.current.customers.some((c) => c.nombre === "Andrea Restrepo")).toBe(false)
 
     // 8. Verificar que las métricas globales del Super Admin suman todos los locales.
-    // Los pedidos son estado del servidor (caché de consultas): solo cuentan los
-    // tableros leídos en esta sesión, aquí el de Sushi Express con su orden.
-    expect(result.current.globalStats.totalRestaurants).toBe(5)
+    // Los totales los calcula el servidor sobre toda la plataforma (no sobre lo
+    // que este navegador alcanzó a cargar) y se leen con la sesión de Super Admin.
+    await waitFor(() => expect(result.current.globalStats.totalRestaurants).toBe(5))
     expect(result.current.globalStats.totalOrders).toBe(1)
   })
 
-  it("permite al Super Admin pausar/activar y eliminar restaurantes de la red", () => {
+  it("permite al Super Admin pausar/activar y eliminar restaurantes de la red", async () => {
     const { result } = renderHook(() => useRestaurant(), { wrapper })
+
+    await act(async () => {
+      await result.current.login("root", "admin")
+    })
+    await waitFor(() => expect(result.current.globalStats.activeRestaurants).toBe(5))
 
     // Crear un restaurante temporal
     let tempRest: any
@@ -161,7 +172,9 @@ describe("Super Admin - Creación y Aislamiento de Nuevos Restaurantes E2E", () 
 
     const found = result.current.restaurants.find((r) => r.id === tempRest.id)
     expect(found?.isActive).toBe(false)
-    expect(result.current.globalStats.activeRestaurants).toBe(4)
+    // Pausing a restaurant changes the platform totals: they are read again from the server.
+    serverStats = { ...serverStats, activeRestaurants: 4 }
+    await waitFor(() => expect(result.current.globalStats.activeRestaurants).toBe(4))
 
     // Eliminar el restaurante (Soft Delete - permanece en directorio pero inactivo)
     act(() => {

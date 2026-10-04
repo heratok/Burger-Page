@@ -33,6 +33,8 @@ describe("storefront query persistence", () => {
       keys.deletedRestaurants("guest"),
       keys.users("guest"),
       keys.auditLog("guest", {}),
+      keys.platformStats("guest", {}),
+      keys.platformStats("super", {}),
       keys.restaurantStatus("guest", "burger"),
     ]) {
       expect(isPublicStorefrontKey(key)).toBe(false)
@@ -49,6 +51,7 @@ describe("storefront query persistence", () => {
     client.setQueryData(keys.suppliers("r1", "restaurant"), [{ id: "s1" }])
     client.setQueryData(keys.users("super"), [{ id: "u1" }])
     client.setQueryData(keys.restaurants("super"), [{ id: "r1" }])
+    client.setQueryData(keys.platformStats("super", {}), { totalRevenue: 1, totalOrders: 1, totalCustomers: 1, totalRestaurants: 1, activeRestaurants: 1 })
     client.setQueryData(keys.products("r1", "restaurant", "burger"), [{ id: "p-admin" }])
 
     await persistQueryClientSave({ queryClient: client, ...storefrontPersistOptions })

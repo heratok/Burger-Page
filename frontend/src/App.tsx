@@ -8,6 +8,7 @@ import {
   StorefrontLoadingFallback,
 } from "@/components/ui/LoadingFallbacks"
 import { Toaster } from "@/components/ui/sonner"
+import { getToasterOffset } from "@/components/ui/toaster-offset"
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary"
 import { Button } from "@/components/ui/button"
 import { getStoreThemeStyles } from "@/features/crm/utils/customizerStyles"
@@ -295,11 +296,15 @@ export function AppToaster() {
     themeStyles = getStoreThemeStyles(storeConfig.bgTheme, storeConfig.primaryColor)
   }
 
+  const offset = getToasterOffset(activeView)
+
   return (
     <Toaster
       theme={sonnerTheme}
       themeStyles={themeStyles}
       position="top-right"
+      {...(offset.top !== undefined && { offset: { top: offset.top } })}
+      {...(offset.mobileTop !== undefined && { mobileOffset: { top: offset.mobileTop } })}
       richColors
       closeButton
     />

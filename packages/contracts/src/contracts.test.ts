@@ -14,6 +14,8 @@ import {
   auditLogQuerySchema,
   auditLogItemSchema,
   auditLogPageSchema,
+  platformStatsQuerySchema,
+  platformStatsSchema,
 } from './index.js';
 
 describe('@burger-page/contracts', () => {
@@ -178,6 +180,40 @@ describe('restaurant schedule contracts', () => {
       expect(auditLogItemSchema.safeParse(item).success).toBe(true);
       expect(auditLogPageSchema.safeParse({ items: [item], nextCursor: null }).success).toBe(true);
       expect(auditLogItemSchema.safeParse({ ...item, targetType: 'order' }).success).toBe(false);
+    });
+  });
+  describe('platform stats', () => {
+    const stats = { totalRevenue: 125000.5, totalOrders: 12, cancelledOrders: 2, totalCustomers: 7, totalRestaurants: 3, activeRestaurants: 2 };
+
+    it('accepts an empty query and ISO calendar dates', () => {
+      expect(platformStatsQuerySchema.safeParse({}).success).toBe(true);
+      expect(platformStatsQuerySchema.safeParse({ from: '2026-01-01', to: '2026-01-31' }).success).toBe(true);
+      expect(platformStatsQuerySchema.safeParse({ from: '2026-03-05', to: '2026-03-05' }).success).toBe(true);
+    });
+
+    it('rejects anything that is not a real YYYY-MM-DD date', () => {
+      expect(platformStatsQuerySchema.safeParse({ from: 'yesterday' }).success).toBe(false);
+      expect(platformStatsQuerySchema.safeParse({ from: '2026-1-1' }).success).toBe(false);
+      expect(platformStatsQuerySchema.safeParse({ to: '2026-02-30' }).success).toBe(false);
+      expect(platformStatsQuerySchema.safeParse({ to: '2026-02-29' }).success).toBe(false);
+      expect(platformStatsQuerySchema.safeParse({ to: '2028-02-29' }).success).toBe(true);
+      expect(platformStatsQuerySchema.safeParse({ to: '2026-01-01T00:00:00.000Z' }).success).toBe(false);
+    });
+
+    it('rejects a range whose start is after its end', () => {
+      expect(platformStatsQuerySchema.safeParse({ from: '2026-02-01', to: '2026-01-31' }).success).toBe(false);
+    });
+
+    it('describes the stats payload', () => {
+      expect(platformStatsSchema.safeParse(stats).success).toBe(true);
+      expect(platformStatsSchema.safeParse({ ...stats, totalOrders: -1 }).success).toBe(false);
+      expect(platformStatsSchema.safeParse({ ...stats, totalOrders: 1.5 }).success).toBe(false);
+      expect(platformStatsSchema.safeParse({ ...stats, cancelledOrders: -1 }).success).toBe(false);
+      expect(platformStatsSchema.safeParse({ ...stats, cancelledOrders: 0.5 }).success).toBe(false);
+      const { cancelledOrders: _noCancelled, ...withoutCancelled } = stats;
+      expect(platformStatsSchema.safeParse(withoutCancelled).success).toBe(false);
+      const { totalCustomers: _omit, ...missing } = stats;
+      expect(platformStatsSchema.safeParse(missing).success).toBe(false);
     });
   });
 });

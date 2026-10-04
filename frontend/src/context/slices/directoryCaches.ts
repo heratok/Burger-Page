@@ -1,7 +1,12 @@
 import { useCallback, useMemo } from "react"
-import { useQueries, type QueryObserverResult } from "@tanstack/react-query"
+import { useQueries, useQuery, type QueryObserverResult } from "@tanstack/react-query"
 import type { AdditionItem, MenuItem, Order } from "@/types/restaurant"
-import { ordersQueryOptions, productsQueryOptions, additionsQueryOptions } from "@/core/query/options"
+import {
+  ordersQueryOptions,
+  productsQueryOptions,
+  additionsQueryOptions,
+  platformStatsQueryOptions,
+} from "@/core/query/options"
 import { useTenant } from "./TenantContext"
 import { useAuth } from "./AuthContext"
 import type { OrderBoard } from "./orderBoard"
@@ -87,28 +92,32 @@ export function useCatalogSizesByTenant(): Map<string, CatalogSize> {
 export const ordersOf = (boards: Map<string, OrderBoard>, restaurantId: string): Order[] =>
   boards.get(restaurantId)?.orders ?? []
 
-/** Platform totals: directory counts plus the order boards read in this session. */
-export function useGlobalStats(): GlobalPlatformStats {
-  const { restaurants } = useTenant()
-  const boards = useOrderBoardsByTenant()
+/** What the platform stats query is doing, next to the totals themselves. */
+export interface GlobalPlatformStatsResult extends GlobalPlatformStats {
+  /** True while the first read is in flight (the numbers are placeholders until then). */
+  isLoading: boolean
+  /** True when the read failed (the numbers are placeholders, not real zeros). */
+  isError: boolean
+}
 
-  return useMemo(() => {
-    let totalRevenue = 0
-    let totalOrders = 0
-    let totalCustomers = 0
-    boards.forEach((board) => {
-      totalRevenue += board.orders
-        .filter((o) => o.status !== "cancelled")
-        .reduce((sum, o) => sum + (o.finalTotal || 0), 0)
-      totalOrders += board.orders.length
-      totalCustomers += board.customers.length
-    })
-    return {
-      totalRevenue,
-      totalOrders,
-      totalRestaurants: restaurants.length,
-      activeRestaurants: restaurants.filter((r) => r.isActive).length,
-      totalCustomers,
-    }
-  }, [boards, restaurants])
+const NO_STATS: GlobalPlatformStats = {
+  totalRevenue: 0,
+  totalOrders: 0,
+  totalCustomers: 0,
+  totalRestaurants: 0,
+  activeRestaurants: 0,
+}
+
+/**
+ * Platform totals, computed by the server over every live restaurant (not
+ * just what this browser has loaded). Only a super admin session reads them;
+ * every other role gets the empty placeholder and no request is made.
+ */
+export function useGlobalStats(): GlobalPlatformStatsResult {
+  const { session } = useAuth()
+  const { data, isLoading, isError } = useQuery({
+    ...platformStatsQueryOptions(session.role),
+    enabled: session.role === "super",
+  })
+  return useMemo(() => ({ ...(data ?? NO_STATS), isLoading, isError }), [data, isLoading, isError])
 }

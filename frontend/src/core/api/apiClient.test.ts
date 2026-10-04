@@ -33,6 +33,31 @@ describe('ApiClient', () => {
     expect(JSON.parse(init.body)).toEqual({ categories: ['B'], renames: [{ from: 'A', to: 'B' }] })
   })
 
+  describe('platform stats', () => {
+    const stats = { totalRevenue: 10, totalOrders: 2, cancelledOrders: 1, totalCustomers: 1, totalRestaurants: 3, activeRestaurants: 2 }
+
+    it('reads the platform totals without a query string by default', async () => {
+      mockResponse(stats)
+      await expect(client.fetchPlatformStats()).resolves.toEqual(stats)
+      const [url, init] = (globalThis.fetch as any).mock.calls[0]
+      expect(url).toBe('http://localhost:3001/api/platform-stats')
+      expect(init?.method ?? 'GET').toBe('GET')
+    })
+
+    it('sends the optional from/to date range', async () => {
+      mockResponse(stats)
+      await client.fetchPlatformStats({ from: '2026-01-01', to: '2026-01-31' })
+      expect((globalThis.fetch as any).mock.calls[0][0]).toBe(
+        'http://localhost:3001/api/platform-stats?from=2026-01-01&to=2026-01-31'
+      )
+    })
+
+    it('surfaces a server refusal as an error', async () => {
+      mockResponse({ message: 'Forbidden' }, false, 403, 'Forbidden')
+      await expect(client.fetchPlatformStats()).rejects.toThrow()
+    })
+  })
+
   describe('restaurant tables', () => {
     const raw = { id: 'tbl_1', restaurantId: 'r1', name: 'Mesa 1', sortOrder: 2, isActive: true, createdAt: 'x', updatedAt: 'y' }
     const mapped = { id: 'tbl_1', name: 'Mesa 1', sortOrder: 2, isActive: true }

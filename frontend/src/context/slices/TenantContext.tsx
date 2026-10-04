@@ -190,6 +190,8 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
       // staleTime 0: an explicit refresh always asks the server (concurrent
       // refreshes share the in-flight request).
       await queryClient.fetchQuery({ ...restaurantsQueryOptions(role), staleTime: 0 })
+      // The directory changed (a restaurant was created, say): so did the platform totals.
+      void queryClient.invalidateQueries({ queryKey: keyPrefixes.platformStats() })
     } catch (err) {
       if (import.meta.env?.MODE !== "test") {
         console.warn("Could not sync restaurants from backend API:", err)
@@ -230,6 +232,8 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
       if (!key || hashKey(key) !== writesHash) return
       void queryClient.invalidateQueries({ queryKey: keyPrefixes.restaurant() })
       void queryClient.invalidateQueries({ queryKey: keyPrefixes.restaurantStatus() })
+      // Pausing, editing or deleting a restaurant moves the platform totals.
+      void queryClient.invalidateQueries({ queryKey: keyPrefixes.platformStats() })
       if (queryClient.isMutating({ mutationKey: TENANT_WRITES_KEY }) > 0) return
       if (takeDeferredRead(queryClient, keys.restaurants(role))) {
         void queryClient.invalidateQueries({ queryKey: keys.restaurants(role) })
