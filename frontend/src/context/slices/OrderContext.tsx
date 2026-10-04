@@ -12,7 +12,6 @@ import { playNotificationChime } from "@/core/audio/soundEffects"
 import { toast } from "sonner"
 import { formatCurrency, cleanPhoneNumber } from "@/lib/utils"
 import { nextTempId } from "@/lib/ids"
-import { runOptimisticMutation } from "./optimisticMutation"
 import { keys, keyPrefixes } from "@/core/query/keys"
 import { ordersQueryOptions } from "@/core/query/options"
 import {
@@ -548,6 +547,36 @@ interface OrderWrite {
   reject: (error: unknown) => void
 }
 
+/**
+ * One optimistic edit of the cached board: an order edit, status change,
+ * receipt, deletion or customer edit. The edit mutation applies it in
+ * onMutate, undoes it in onError and revalidates in onSettled.
+ */
+interface OrderEdit {
+  /** Order the edit targets; SSE events for it are ignored while it is pending. */
+  orderId?: string
+  apply: (board: OrderBoard) => OrderBoard
+  /** Undoes the edit on the current board; `snapshot` is the board before it. */
+  rollback: (board: OrderBoard, snapshot: OrderBoard) => OrderBoard
+  /** The server call; undefined for a local-only edit (no session or tenant). */
+  request?: () => Promise<any>
+  /** The dispatched call (set by dispatchEdit, at the user action). */
+  pending?: Promise<any>
+  /** Applies the server's answer (when it returns a body). */
+  reconcile?: (board: OrderBoard, result: any) => OrderBoard
+  toast: {
+    /** toast.success, right after apply unless successTiming is "confirmed". */
+    success?: string
+    successTiming?: "optimistic" | "confirmed"
+    /** toast.info right after apply (instead of success). */
+    info?: string
+    error: string
+  }
+  /** A failure this returns true for is ignored: no rollback, no error toast. */
+  skipRollbackIfError?: (err: unknown) => boolean
+  warnMessage: string
+}
+
 export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { activeRestaurant, updateActiveRestaurantRecord } = useTenant()
   const { session } = useAuth()
@@ -626,7 +655,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // settles last.
   const needsRevalidation = useRef(false)
   const revalidate = useCallback(
-    (vars: OrderWrite, failed: boolean) => {
+    (vars: { revalidate?: boolean }, failed: boolean) => {
       if (!failed && vars.revalidate !== false) needsRevalidation.current = true
       if (queryClient.isMutating({ mutationKey: ORDER_WRITES_KEY }) > 1) return
       // A read that landed during the writes was not applied: re-read now.
@@ -645,6 +674,65 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     onError: (err, vars) => vars.reject(err),
     onSettled: (_result, err, vars) => revalidate(vars, err !== null),
   })
+
+  // Order edits: onMutate applies the edit to the cache synchronously (the
+  // card moves in the same render as the click) after cancelling any read in
+  // flight, and keeps the pre-edit board as the context; onError restores it
+  // (immediately, also offline: mutations run with networkMode "always");
+  // onSettled asks for the single revalidation once the last write settles.
+  const { mutateAsync: runEdit } = useMutation({
+    mutationKey: ORDER_WRITES_KEY,
+    mutationFn: (edit: OrderEdit) => edit.pending ?? Promise.resolve(undefined),
+    onMutate: (edit) => {
+      void queryClient.cancelQueries({ queryKey: boardKey })
+      const snapshot = readBoard()
+      updateBoard(edit.apply)
+      if (edit.toast.success && edit.toast.successTiming !== "confirmed") {
+        toast.success(edit.toast.success)
+      } else if (edit.toast.info) {
+        toast.info(edit.toast.info)
+      }
+      return { snapshot }
+    },
+    onSuccess: (result, edit) => {
+      // The server already committed: a reconciliation bug must never roll
+      // back or report a failure.
+      try {
+        if (result && edit.reconcile) updateBoard((board) => edit.reconcile!(board, result))
+      } catch (reconcileErr) {
+        console.error("OrderContext: onSuccess reconciliation failed", reconcileErr)
+      }
+      if (edit.toast.success && edit.toast.successTiming === "confirmed") {
+        toast.success(edit.toast.success)
+      }
+    },
+    onError: (err, edit, context) => {
+      if (edit.skipRollbackIfError?.(err)) return
+      if (import.meta.env?.MODE !== "test") console.warn(edit.warnMessage, err)
+      if (context) updateBoard((board) => edit.rollback(board, context.snapshot))
+      toast.error(edit.toast.error)
+    },
+    onSettled: (_result, err, edit) => revalidate({ revalidate: edit.pending !== undefined }, err !== null),
+  })
+
+  /** Fires the edit's HTTP call at the user action (as before) and runs the edit mutation. */
+  const dispatchEdit = useCallback(
+    (edit: OrderEdit) => {
+      let pending: Promise<any> | undefined
+      if (edit.request) {
+        try {
+          pending = edit.request()
+        } catch (err) {
+          pending = Promise.reject(err)
+        }
+        // The mutation owns the rejection; this only avoids a transient
+        // unhandled-rejection report before it subscribes.
+        pending.catch(() => undefined)
+      }
+      return runEdit({ ...edit, pending })
+    },
+    [runEdit]
+  )
 
   /** Tracks an already-dispatched write; settles exactly like the request. */
   const trackRequest = useCallback(
@@ -985,112 +1073,92 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     (orderId: string, updates: Partial<Order>) => {
       const now = new Date().toISOString()
       const targetRestId = activeRestaurant?.id
-      // Captured inside the (synchronous) cache updater; rollback() restores it.
-      let previousOrders: Order[] = []
-
-      return runOptimisticMutation({
-        apply: () => {
-          updateBoard((current) => {
-            previousOrders = current.orders
-            return {
-              ...current,
-              orders: current.orders.map((o) =>
-                o.id === orderId ? { ...o, ...updates, updatedAt: now } : o
-              ),
-            }
-          })
-        },
-        call: () => {
-          if (!apiClient.hasToken() || !targetRestId) return Promise.resolve(undefined)
-          const updateInput = buildUpdateOrderInput(updates, activeRestaurant.products ?? [])
-          return trackRequest(apiClient.updateOrder(orderId, updateInput, targetRestId), orderId)
-        },
-        onSuccess: (updatedOrder) => {
-          if (!updatedOrder) return
-          updateBoard((current) => ({
-            ...current,
-            orders: current.orders.map((o) => (o.id === orderId ? mapBackendOrderToDomain(updatedOrder, o) : o)),
-          }))
-        },
-        rollback: () => {
-          updateBoard((current) => ({ ...current, orders: previousOrders }))
-        },
+      const products = activeRestaurant.products ?? []
+      return dispatchEdit({
+        orderId,
+        apply: (board) => ({
+          ...board,
+          orders: board.orders.map((o) => (o.id === orderId ? { ...o, ...updates, updatedAt: now } : o)),
+        }),
+        rollback: (board, snapshot) => ({ ...board, orders: snapshot.orders }),
+        request:
+          apiClient.hasToken() && targetRestId
+            ? () => apiClient.updateOrder(orderId, buildUpdateOrderInput(updates, products), targetRestId)
+            : undefined,
+        reconcile: (board, updatedOrder) => ({
+          ...board,
+          orders: board.orders.map((o) => (o.id === orderId ? mapBackendOrderToDomain(updatedOrder, o) : o)),
+        }),
         toast: {
           success: "Venta actualizada correctamente",
           error: "No se pudo sincronizar la actualización con el servidor",
         },
         warnMessage: "Error al actualizar orden en el servidor:",
-      }).then(() => undefined)
+      }).then(
+        () => undefined,
+        () => undefined
+      )
     },
-    [activeRestaurant, updateBoard, trackRequest]
+    [activeRestaurant, dispatchEdit]
   )
 
   const updateOrderStatus = useCallback(
     (orderId: string, newStatus: OrderStatus) => {
-      void runOptimisticMutation({
-        apply: () => {
-          // Remember only THIS order's previous status so a rejected
-          // transition reverts it alone (a whole-list snapshot would wipe
-          // SSE-added orders). Read from the cache before the optimistic
-          // update applies.
-          const previous = readBoard().orders.find((o) => o.id === orderId)
-          updateBoard((current) => ({
-            ...current,
-            orders: current.orders.map((o) =>
-              o.id === orderId
-                ? { ...o, status: newStatus, updatedAt: new Date().toISOString() }
+      const now = new Date().toISOString()
+      const restaurantId = activeRestaurant.id
+      dispatchEdit({
+        orderId,
+        apply: (board) => ({
+          ...board,
+          orders: board.orders.map((o) => (o.id === orderId ? { ...o, status: newStatus, updatedAt: now } : o)),
+        }),
+        // Only THIS order's previous status is restored (a whole-list snapshot
+        // would wipe SSE-added orders), and only while it still holds our
+        // value: if another update (SSE) moved it elsewhere, leave it alone.
+        rollback: (board, snapshot) => {
+          const previous = snapshot.orders.find((o) => o.id === orderId)
+          return {
+            ...board,
+            orders: board.orders.map((o) =>
+              o.id === orderId && previous && o.status === newStatus
+                ? { ...o, status: previous.status, updatedAt: previous.updatedAt ?? o.updatedAt }
                 : o
             ),
-          }))
-          return { previousStatus: previous?.status, previousUpdatedAt: previous?.updatedAt }
+          }
         },
-        call: () => trackRequest(apiClient.updateOrderStatus(orderId, newStatus, activeRestaurant.id), orderId),
-        rollback: ({ previousStatus, previousUpdatedAt }) => {
-          // Only undo our own optimistic change: if another update (SSE)
-          // already moved the order elsewhere, leave it alone.
-          updateBoard((current) => ({
-            ...current,
-            orders: current.orders.map((o) =>
-              o.id === orderId && previousStatus !== undefined && o.status === newStatus
-                ? { ...o, status: previousStatus, updatedAt: previousUpdatedAt ?? o.updatedAt }
-                : o
-            ),
-          }))
-        },
+        request: () => apiClient.updateOrderStatus(orderId, newStatus, restaurantId),
         toast: {
           info: `Orden actualizada a: ${newStatus.toUpperCase()}`,
           error: `No se pudo actualizar la orden a: ${newStatus.toUpperCase()}`,
         },
         warnMessage: `Could not sync status update for order ${orderId} to backend API:`,
-      })
+      }).catch(() => undefined)
     },
-    [activeRestaurant, updateBoard, readBoard, trackRequest]
+    [activeRestaurant.id, dispatchEdit]
   )
 
   const updateOrderReceipt = useCallback(
-    (orderId: string, receiptUrl: string) =>
-      runOptimisticMutation({
-        apply: () => {
-          const previous = readBoard().orders.find((o) => o.id === orderId)
-          updateBoard((current) => ({
-            ...current,
-            orders: current.orders.map((o) =>
-              o.id === orderId ? { ...o, receiptUrl, updatedAt: new Date().toISOString() } : o
-            ),
-          }))
-          return { previousReceiptUrl: previous?.receiptUrl, previousUpdatedAt: previous?.updatedAt }
-        },
-        call: () => trackRequest(apiClient.updateOrderReceipt(orderId, receiptUrl, activeRestaurant.id), orderId),
-        rollback: ({ previousReceiptUrl, previousUpdatedAt }) => {
-          updateBoard((current) => ({
-            ...current,
-            orders: current.orders.map((o) =>
+    (orderId: string, receiptUrl: string) => {
+      const now = new Date().toISOString()
+      const restaurantId = activeRestaurant.id
+      return dispatchEdit({
+        orderId,
+        apply: (board) => ({
+          ...board,
+          orders: board.orders.map((o) => (o.id === orderId ? { ...o, receiptUrl, updatedAt: now } : o)),
+        }),
+        rollback: (board, snapshot) => {
+          const previous = snapshot.orders.find((o) => o.id === orderId)
+          return {
+            ...board,
+            orders: board.orders.map((o) =>
               o.id === orderId && o.receiptUrl === receiptUrl
-                ? { ...o, receiptUrl: previousReceiptUrl, updatedAt: previousUpdatedAt ?? o.updatedAt }
+                ? { ...o, receiptUrl: previous?.receiptUrl, updatedAt: previous?.updatedAt ?? o.updatedAt }
                 : o
             ),
-          }))
+          }
         },
+        request: () => apiClient.updateOrderReceipt(orderId, receiptUrl, restaurantId),
         toast: {
           success: "Comprobante adjuntado correctamente",
           successTiming: "confirmed",
@@ -1098,95 +1166,79 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         },
         warnMessage: `Could not sync receipt update for order ${orderId} to backend API:`,
         // Callers must know the attach failed (they would otherwise report success).
-        rethrow: true,
-      }).then(() => undefined),
-    [activeRestaurant.id, readBoard, updateBoard, trackRequest]
+      }).then(() => undefined)
+    },
+    [activeRestaurant.id, dispatchEdit]
   )
 
   const deleteOrder = useCallback(
     (orderId: string) => {
       const targetRestId = activeRestaurant?.id
-      let previousOrders: Order[] = []
-
-      return runOptimisticMutation({
-        apply: () => {
-          updateBoard((current) => {
-            previousOrders = current.orders
-            return { ...current, orders: current.orders.filter((o) => o.id !== orderId) }
-          })
-        },
-        call: () => {
-          if (!apiClient.hasToken() || !targetRestId) return Promise.resolve(undefined)
-          return trackRequest(apiClient.deleteOrder(orderId, targetRestId), orderId)
-        },
-        rollback: () => {
-          updateBoard((current) => ({ ...current, orders: previousOrders }))
-        },
+      return dispatchEdit({
+        orderId,
+        apply: (board) => ({ ...board, orders: board.orders.filter((o) => o.id !== orderId) }),
+        rollback: (board, snapshot) => ({ ...board, orders: snapshot.orders }),
+        request:
+          apiClient.hasToken() && targetRestId ? () => apiClient.deleteOrder(orderId, targetRestId) : undefined,
         toast: { success: "Orden eliminada", error: "No se pudo eliminar la orden del servidor" },
         skipRollbackIfError: isNotFoundError,
         warnMessage: "Error al eliminar orden del servidor:",
-      }).then(() => undefined)
+      }).then(
+        () => undefined,
+        () => undefined
+      )
     },
-    [activeRestaurant?.id, updateBoard, trackRequest]
+    [activeRestaurant?.id, dispatchEdit]
   )
 
   const updateCustomer = useCallback(
     (id: string, updates: Partial<Customer>) => {
       const targetRestId = activeRestaurant?.id
-      let previousCustomers: Customer[] = []
+      const updateInput: UpdateCustomerInput = {}
+      if (updates.nombre !== undefined) updateInput.name = updates.nombre
+      if (updates.telefono !== undefined) updateInput.phone = updates.telefono
+      if (updates.direccion !== undefined) updateInput.address = updates.direccion
+      if (updates.barrio !== undefined) updateInput.barrio = updates.barrio
+      if (updates.notes !== undefined) updateInput.notes = updates.notes
 
-      return runOptimisticMutation({
-        apply: () => {
-          updateBoard((current) => {
-            previousCustomers = current.customers
-            return {
-              ...current,
-              customers: current.customers.map((c) => (c.id === id ? { ...c, ...updates } : c)),
-            }
-          })
-        },
-        call: () => {
-          if (!apiClient.hasToken() || !targetRestId) return Promise.resolve(undefined)
-          const updateInput: UpdateCustomerInput = {}
-          if (updates.nombre !== undefined) updateInput.name = updates.nombre
-          if (updates.telefono !== undefined) updateInput.phone = updates.telefono
-          if (updates.direccion !== undefined) updateInput.address = updates.direccion
-          if (updates.barrio !== undefined) updateInput.barrio = updates.barrio
-          if (updates.notes !== undefined) updateInput.notes = updates.notes
-          return trackRequest(apiClient.updateCustomer(id, updateInput, targetRestId))
-        },
-        onSuccess: (updatedCustomer) => {
-          if (!updatedCustomer) return
-          updateBoard((current) => ({
-            ...current,
-            customers: current.customers.map((c) =>
-              c.id === id
-                ? {
-                    ...c,
-                    id: updatedCustomer.id || c.id,
-                    nombre: updatedCustomer.name ?? c.nombre,
-                    telefono: updatedCustomer.phone ?? c.telefono,
-                    direccion: updatedCustomer.address ?? c.direccion,
-                    barrio: updatedCustomer.barrio ?? c.barrio,
-                    notes: updatedCustomer.notes ?? c.notes,
-                  }
-                : c
-            ),
-          }))
-        },
-        rollback: () => {
-          updateBoard((current) => ({ ...current, customers: previousCustomers }))
-        },
+      return dispatchEdit({
+        apply: (board) => ({
+          ...board,
+          customers: board.customers.map((c) => (c.id === id ? { ...c, ...updates } : c)),
+        }),
+        rollback: (board, snapshot) => ({ ...board, customers: snapshot.customers }),
+        request:
+          apiClient.hasToken() && targetRestId
+            ? () => apiClient.updateCustomer(id, updateInput, targetRestId)
+            : undefined,
+        reconcile: (board, updatedCustomer) => ({
+          ...board,
+          customers: board.customers.map((c) =>
+            c.id === id
+              ? {
+                  ...c,
+                  id: updatedCustomer.id || c.id,
+                  nombre: updatedCustomer.name ?? c.nombre,
+                  telefono: updatedCustomer.phone ?? c.telefono,
+                  direccion: updatedCustomer.address ?? c.direccion,
+                  barrio: updatedCustomer.barrio ?? c.barrio,
+                  notes: updatedCustomer.notes ?? c.notes,
+                }
+              : c
+          ),
+        }),
         toast: {
           success: "Ficha del cliente actualizada",
           error: "No se pudo sincronizar el cliente con el servidor",
         },
         warnMessage: "Error al actualizar cliente en el servidor:",
-      }).then(() => undefined)
+      }).then(
+        () => undefined,
+        () => undefined
+      )
     },
-    [activeRestaurant?.id, updateBoard, trackRequest]
+    [activeRestaurant?.id, dispatchEdit]
   )
-
 
   const refreshOrders = useCallback(async () => {
     const targetRestId = effectiveId
