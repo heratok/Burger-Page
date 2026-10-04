@@ -1,6 +1,6 @@
 import { beforeEach, afterEach, vi } from 'vitest'
 import { cleanup } from '@testing-library/react'
-import { appQueryClient } from '@/core/query/queryClient'
+import { appQueryClient, MUTATION_DEFAULTS } from '@/core/query/queryClient'
 
 const originalFetch = globalThis.fetch
 
@@ -8,7 +8,7 @@ const originalFetch = globalThis.fetch
 // cache is dropped after each test so tenants never leak between tests.
 appQueryClient.setDefaultOptions({
   queries: { retry: false, staleTime: 30_000, refetchOnWindowFocus: false },
-  mutations: { retry: false },
+  mutations: { ...MUTATION_DEFAULTS, retry: false },
 })
 
 beforeEach(() => {

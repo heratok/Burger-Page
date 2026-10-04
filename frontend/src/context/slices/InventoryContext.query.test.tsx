@@ -1,9 +1,11 @@
 import React from "react"
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { renderHook, act, waitFor } from "@testing-library/react"
-import { QueryClientProvider } from "@tanstack/react-query"
+import { QueryClientProvider, onlineManager } from "@tanstack/react-query"
+import { toast } from "sonner"
 import { seedBlankActiveTenant } from "@/test/fixtures"
 import { createTestQueryClient } from "@/test/testQueryClient"
+import { createQueryClient } from "@/core/query/queryClient"
 
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() },
@@ -98,5 +100,22 @@ describe("InventoryContext server state (TanStack Query)", () => {
     act(() => result.current.adjustStock("srv-1", 5))
     await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(2))
     await waitFor(() => expect(result.current.inventory[0].currentStock).toBe(9))
+  })
+
+  it("rolls back a failed write immediately while the browser reports offline", async () => {
+    vi.spyOn(apiClient, "fetchInventory").mockResolvedValue([serverItem])
+    vi.spyOn(apiClient, "updateInventoryStock").mockRejectedValue(new Error("network down"))
+    const { wrapper } = setup(createQueryClient())
+    const { result } = renderHook(() => useInventory(), { wrapper })
+    await waitFor(() => expect(result.current.inventory).toHaveLength(1))
+
+    onlineManager.setOnline(false)
+    try {
+      act(() => result.current.adjustStock("srv-1", 5))
+      await waitFor(() => expect(toast.error).toHaveBeenCalled())
+      expect(result.current.inventory[0].currentStock).toBe(4)
+    } finally {
+      onlineManager.setOnline(true)
+    }
   })
 })
