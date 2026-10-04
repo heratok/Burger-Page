@@ -22,6 +22,9 @@ export const keys = {
   restaurantStatus: (role: UserRole, slug: string) => ["restaurant-status", role, slug] as const,
   /** Soft-deleted restaurants (super admin restore tab). */
   deletedRestaurants: (role: UserRole) => ["deleted-restaurants", role] as const,
+  /** Platform audit log (super admin); one entry per filter combination. */
+  auditLog: (role: UserRole, filters: Record<string, string | undefined>) =>
+    ["audit-log", role, filters] as const,
   /** Platform users (super admin); scoped to one restaurant when an id is given. */
   users: (role: UserRole, restaurantId?: string) =>
     (restaurantId === undefined ? ["users", role] : ["users", role, restaurantId]) as readonly unknown[],
@@ -39,4 +42,5 @@ export const keyPrefixes = {
   restaurantStatus: () => ["restaurant-status"] as const,
   deletedRestaurants: () => ["deleted-restaurants"] as const,
   users: () => ["users"] as const,
+  auditLog: () => ["audit-log"] as const,
 }

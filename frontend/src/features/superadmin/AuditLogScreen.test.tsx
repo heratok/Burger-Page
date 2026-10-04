@@ -108,9 +108,11 @@ describe("AuditLogScreen (TDD)", () => {
     expect(screen.getByText(/Registro de Auditoría/i)).toBeDefined()
 
     await waitFor(() => {
-      // Human-readable Spanish actions
-      expect(screen.getAllByText("Actualización de restaurante").length).toBeGreaterThan(0)
-      expect(screen.getAllByText("Creación de usuario").length).toBeGreaterThan(0)
+      // Human-readable Spanish actions (inside the loaded table: the action
+      // filter's <option>s carry the same labels before any row arrives)
+      const table = screen.getByRole("table")
+      expect(within(table).getAllByText("Actualización de restaurante").length).toBeGreaterThan(0)
+      expect(within(table).getAllByText("Creación de usuario").length).toBeGreaterThan(0)
     })
 
     // Actor and target

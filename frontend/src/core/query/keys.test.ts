@@ -16,6 +16,7 @@ describe("query key factory", () => {
     expect(keys.restaurantStatus("guest", "burger")).toEqual(["restaurant-status", "guest", "burger"])
     expect(keys.users("super")).toEqual(["users", "super"])
     expect(keys.deletedRestaurants("super")).toEqual(["deleted-restaurants", "super"])
+    expect(keys.auditLog("super", { action: "user.create" })).toEqual(["audit-log", "super", { action: "user.create" }])
     expect(keys.users("super", "rest-1")).toEqual(["users", "super", "rest-1"])
   })
 
