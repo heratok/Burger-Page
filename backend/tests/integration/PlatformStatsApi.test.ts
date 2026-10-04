@@ -12,7 +12,7 @@ const superToken = jwt.generateToken({ id: 'user-superadmin', username: 'admin',
 const tenantToken = jwt.generateToken({ id: 'user-admin-craft', username: 'admin_craft', role: 'restaurant_admin', restaurantId: 'burger-craft' });
 const auth = (token: string) => ({ authorization: `Bearer ${token}` });
 
-const STATS = { totalRevenue: 1234.5, totalOrders: 9, totalCustomers: 4, totalRestaurants: 3, activeRestaurants: 2 };
+const STATS = { totalRevenue: 1234.5, totalOrders: 9, cancelledOrders: 2, totalCustomers: 4, totalRestaurants: 3, activeRestaurants: 2 };
 
 describe('GET /api/platform-stats (stubbed repository)', () => {
   let app: FastifyInstance;
@@ -139,10 +139,37 @@ describe('GET /api/platform-stats (real memory-driver wiring)', () => {
     expect(after.totalRevenue - before.totalRevenue).toBeCloseTo(order.json().finalTotal, 2);
   });
 
+  it('moves a cancelled order out of totalOrders and revenue into cancelledOrders', async () => {
+    const tenantAuth = auth(tenantToken);
+    const product = (
+      await app.inject({
+        method: 'POST',
+        url: '/api/products',
+        headers: tenantAuth,
+        payload: { name: 'Cancel Burger', price: 10, description: 'x', categoryId: 'cat-1', category: 'Burgers', isAvailable: true, additions: [] },
+      })
+    ).json();
+    const order = (
+      await app.inject({
+        method: 'POST',
+        url: '/api/orders',
+        payload: { restaurantId: 'burger-craft', items: [{ productId: product.id, quantity: 1, additions: [] }], paymentMethod: 'Efectivo', paymentAmount: 100 },
+      })
+    ).json();
+    const placed = await stats();
+
+    const cancelled = await app.inject({ method: 'PATCH', url: `/api/orders/${order.id}/status`, headers: tenantAuth, payload: { status: 'cancelled' } });
+    expect(cancelled.statusCode).toBe(200);
+    const after = await stats();
+    expect(after.totalOrders).toBe(placed.totalOrders - 1);
+    expect(after.cancelledOrders).toBe(placed.cancelledOrders + 1);
+    expect(placed.totalRevenue - after.totalRevenue).toBeCloseTo(order.finalTotal, 2);
+  });
+
   it('narrows the orders to a date range: a window in the past sees none of today\'s orders', async () => {
     const res = await app.inject({ method: 'GET', url: '/api/platform-stats?from=2000-01-01&to=2000-12-31', headers: auth(superToken) });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toMatchObject({ totalOrders: 0, totalRevenue: 0 });
+    expect(res.json()).toMatchObject({ totalOrders: 0, cancelledOrders: 0, totalRevenue: 0 });
     // restaurant totals are not touched by the range
     expect(res.json().totalRestaurants).toBe((await stats()).totalRestaurants);
   });

@@ -3,7 +3,7 @@ import { GetPlatformStatsUseCase } from '../../../src/application/use-cases/GetP
 import type { PlatformStatsRepository } from '../../../src/domain/ports/out/PlatformStatsRepository.js';
 import { ValidationError } from '../../../src/domain/errors/DomainErrors.js';
 
-const STATS = { totalRevenue: 1500.5, totalOrders: 3, totalCustomers: 2, totalRestaurants: 4, activeRestaurants: 3 };
+const STATS = { totalRevenue: 1500.5, totalOrders: 3, cancelledOrders: 1, totalCustomers: 2, totalRestaurants: 4, activeRestaurants: 3 };
 
 function setup() {
   const repo: PlatformStatsRepository = { get: vi.fn().mockResolvedValue(STATS) };
@@ -14,6 +14,8 @@ describe('GetPlatformStatsUseCase', () => {
   it('returns what the repository reports, unfiltered by default', async () => {
     const { repo, useCase } = setup();
     await expect(useCase.execute()).resolves.toEqual(STATS);
+    // cancelledOrders travels with the totals untouched
+    await expect(useCase.execute()).resolves.toHaveProperty('cancelledOrders', 1);
     expect(repo.get).toHaveBeenCalledWith({});
   });
 

@@ -15,7 +15,7 @@ export async function platformStatsRoutes(app: FastifyInstance, opts: PlatformSt
       tags: ['Platform stats'],
       summary: 'Platform-wide totals',
       description:
-        'Super admin only. Totals across live restaurants (soft-deleted ones and their orders and customers are excluded). totalRevenue sums final_total of non-cancelled orders; totalOrders counts every order, cancelled included. from/to are inclusive UTC calendar days (YYYY-MM-DD) that only narrow the orders counted; restaurant and customer totals are never filtered.',
+        'Super admin only. Totals across live restaurants (soft-deleted ones and their orders and customers are excluded). totalRevenue sums final_total of non-cancelled orders; totalOrders counts non-cancelled orders; cancelledOrders counts cancelled ones. from/to are inclusive UTC calendar days (YYYY-MM-DD) that only narrow the orders counted (all three); restaurant and customer totals are never filtered.',
       querystring: {
         type: 'object',
         properties: {
@@ -29,6 +29,7 @@ export async function platformStatsRoutes(app: FastifyInstance, opts: PlatformSt
           properties: {
             totalRevenue: { type: 'number' },
             totalOrders: { type: 'integer' },
+            cancelledOrders: { type: 'integer' },
             totalCustomers: { type: 'integer' },
             totalRestaurants: { type: 'integer' },
             activeRestaurants: { type: 'integer' },

@@ -19,7 +19,8 @@ const SQL = `
   ),
   o AS (
     SELECT COALESCE(SUM(ord.final_total) FILTER (WHERE ord.status <> 'cancelled'), 0)::float8 AS revenue,
-           COUNT(*)::int AS orders
+           (COUNT(*) FILTER (WHERE ord.status <> 'cancelled'))::int AS orders,
+           (COUNT(*) FILTER (WHERE ord.status = 'cancelled'))::int AS cancelled
       FROM public.orders ord
       JOIN live ON live.id = ord.restaurant_id
      WHERE ($1::timestamptz IS NULL OR ord.created_at >= $1::timestamptz)
@@ -35,7 +36,7 @@ const SQL = `
            (COUNT(*) FILTER (WHERE is_active))::int AS active
       FROM live
   )
-  SELECT o.revenue, o.orders, c.customers, r.restaurants, r.active
+  SELECT o.revenue, o.orders, o.cancelled, c.customers, r.restaurants, r.active
     FROM o, c, r`;
 
 export class PgPlatformStatsRepository implements PlatformStatsRepository {
@@ -47,6 +48,7 @@ export class PgPlatformStatsRepository implements PlatformStatsRepository {
     return {
       totalRevenue: row.revenue,
       totalOrders: row.orders,
+      cancelledOrders: row.cancelled,
       totalCustomers: row.customers,
       totalRestaurants: row.restaurants,
       activeRestaurants: row.active,

@@ -30,10 +30,11 @@ function build() {
 }
 
 describe('ComposedPlatformStatsRepository (memory/sqlite drivers)', () => {
-  it('totals live restaurants only; revenue skips cancelled orders but the order count keeps them', async () => {
+  it('totals live restaurants only; cancelled orders are counted apart, never in revenue or totalOrders', async () => {
     expect(await build().get({})).toEqual({
       totalRevenue: 175,
-      totalOrders: 4,
+      totalOrders: 3,
+      cancelledOrders: 1,
       totalCustomers: 3,
       totalRestaurants: 2,
       activeRestaurants: 1,
@@ -42,8 +43,8 @@ describe('ComposedPlatformStatsRepository (memory/sqlite drivers)', () => {
 
   it('applies the half-open orders window and leaves restaurant and customer totals alone', async () => {
     const stats = await build().get({ ordersFrom: '2026-01-11T00:00:00.000Z', ordersBefore: '2026-02-01T00:00:00.000Z' });
-    // cancelled r1 order (counted, no money) + r2 order on the last millisecond; the Feb-1 order is excluded
-    expect(stats).toEqual({ totalRevenue: 25, totalOrders: 2, totalCustomers: 3, totalRestaurants: 2, activeRestaurants: 1 });
+    // r2 order on the last millisecond is the only live one; the cancelled r1 order is counted apart; the Feb-1 order is excluded
+    expect(stats).toEqual({ totalRevenue: 25, totalOrders: 1, cancelledOrders: 1, totalCustomers: 3, totalRestaurants: 2, activeRestaurants: 1 });
   });
 
   it('is all zeros on an empty platform', async () => {
@@ -52,6 +53,6 @@ describe('ComposedPlatformStatsRepository (memory/sqlite drivers)', () => {
       {} as OrderRepository,
       {} as CustomerRepository
     );
-    expect(await empty.get({})).toEqual({ totalRevenue: 0, totalOrders: 0, totalCustomers: 0, totalRestaurants: 0, activeRestaurants: 0 });
+    expect(await empty.get({})).toEqual({ totalRevenue: 0, totalOrders: 0, cancelledOrders: 0, totalCustomers: 0, totalRestaurants: 0, activeRestaurants: 0 });
   });
 });

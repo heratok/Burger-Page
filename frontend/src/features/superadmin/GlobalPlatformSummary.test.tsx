@@ -5,7 +5,7 @@ import { RestaurantProvider } from "@/context/RestaurantContext"
 import { apiClient } from "@/core/api/apiClient"
 import { appQueryClient } from "@/core/query/queryClient"
 
-const STATS = { totalRevenue: 1234567, totalOrders: 321, totalCustomers: 123, totalRestaurants: 17, activeRestaurants: 12 }
+const STATS = { totalRevenue: 1234567, totalOrders: 321, cancelledOrders: 8, totalCustomers: 123, totalRestaurants: 17, activeRestaurants: 12 }
 
 const renderSummary = () =>
   render(

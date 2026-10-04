@@ -183,7 +183,7 @@ describe('restaurant schedule contracts', () => {
     });
   });
   describe('platform stats', () => {
-    const stats = { totalRevenue: 125000.5, totalOrders: 12, totalCustomers: 7, totalRestaurants: 3, activeRestaurants: 2 };
+    const stats = { totalRevenue: 125000.5, totalOrders: 12, cancelledOrders: 2, totalCustomers: 7, totalRestaurants: 3, activeRestaurants: 2 };
 
     it('accepts an empty query and ISO calendar dates', () => {
       expect(platformStatsQuerySchema.safeParse({}).success).toBe(true);
@@ -208,6 +208,10 @@ describe('restaurant schedule contracts', () => {
       expect(platformStatsSchema.safeParse(stats).success).toBe(true);
       expect(platformStatsSchema.safeParse({ ...stats, totalOrders: -1 }).success).toBe(false);
       expect(platformStatsSchema.safeParse({ ...stats, totalOrders: 1.5 }).success).toBe(false);
+      expect(platformStatsSchema.safeParse({ ...stats, cancelledOrders: -1 }).success).toBe(false);
+      expect(platformStatsSchema.safeParse({ ...stats, cancelledOrders: 0.5 }).success).toBe(false);
+      const { cancelledOrders: _noCancelled, ...withoutCancelled } = stats;
+      expect(platformStatsSchema.safeParse(withoutCancelled).success).toBe(false);
       const { totalCustomers: _omit, ...missing } = stats;
       expect(platformStatsSchema.safeParse(missing).success).toBe(false);
     });

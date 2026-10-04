@@ -76,8 +76,10 @@ describe('PgPlatformStatsRepository (real Postgres, app_user role under RLS)', (
     // Exactly on the exclusive upper bound, and after the window.
     await order(LIVE, 'delivered', 20, '1999-07-01T00:00:00.000Z');
     await order(LIVE, 'delivered', 1000, '2000-01-01T00:00:00Z');
+    await order(LIVE, 'cancelled', 333, '2000-01-01T00:00:00Z');
     // A deleted restaurant's orders never count.
     await order(DELETED, 'delivered', 7777, '1999-06-15T12:00:00Z');
+    await order(DELETED, 'cancelled', 4444, '1999-06-15T12:00:00Z');
   });
 
   afterAll(async () => {
@@ -96,8 +98,9 @@ describe('PgPlatformStatsRepository (real Postgres, app_user role under RLS)', (
     // delivered 100 + pending 50 + inactive 25 + lower-bound 10 + last-ms 5; cancelled 999,
     // the exclusive upper bound, the later order and the deleted restaurant's order are out.
     expect(stats.totalRevenue).toBeCloseTo(190, 2);
-    // those 5 + the cancelled one (cancelled orders are counted, only their money is not)
-    expect(stats.totalOrders).toBe(6);
+    // totalOrders excludes cancelled orders; those are counted apart (deleted restaurant's cancelled one is out)
+    expect(stats.totalOrders).toBe(5);
+    expect(stats.cancelledOrders).toBe(1);
   });
 
   it('returns numbers, not Postgres numeric/bigint strings', async () => {
@@ -118,11 +121,14 @@ describe('PgPlatformStatsRepository (real Postgres, app_user role under RLS)', (
     // Nothing else in the database predates 1999, so a lower-unbounded window is exact.
     const beforeOnly = await repo.get({ ordersBefore: '1999-07-01T00:00:00.000Z' });
     expect(beforeOnly.totalRevenue).toBeCloseTo(190, 2);
-    expect(beforeOnly.totalOrders).toBe(6);
+    expect(beforeOnly.totalOrders).toBe(5);
+    expect(beforeOnly.cancelledOrders).toBe(1);
     // Upper-unbounded: the difference between two lower bounds isolates my two later orders (20 and 1000).
     const fromJuly99 = await repo.get({ ordersFrom: '1999-07-01T00:00:00.000Z' });
     const fromJan00After = await repo.get({ ordersFrom: '2000-01-02T00:00:00.000Z' });
     expect(fromJuly99.totalOrders - fromJan00After.totalOrders).toBe(2);
+    // ...and the one cancelled order of 2000-01-01
+    expect(fromJuly99.cancelledOrders - fromJan00After.cancelledOrders).toBe(1);
     expect(fromJuly99.totalRevenue - fromJan00After.totalRevenue).toBeCloseTo(1020, 2);
   });
 
@@ -135,8 +141,10 @@ describe('PgPlatformStatsRepository (real Postgres, app_user role under RLS)', (
     expect(after.activeRestaurants - baseline.activeRestaurants).toBe(1);
     // 2 + 1 customers; the deleted restaurant's 3 are excluded.
     expect(after.totalCustomers - baseline.totalCustomers).toBe(3);
-    // 8 orders of live restaurants (cancelled included); the deleted one's is excluded.
-    expect(after.totalOrders - baseline.totalOrders).toBe(8);
+    // 7 non-cancelled orders of live restaurants; the deleted restaurant's is excluded.
+    expect(after.totalOrders - baseline.totalOrders).toBe(7);
+    // 2 cancelled orders of live restaurants (window + 2000-01-01); the deleted restaurant's is excluded.
+    expect(after.cancelledOrders - baseline.cancelledOrders).toBe(2);
     // 100+50+25+10+5+20+1000 = 1210; cancelled 999 and deleted 7777 excluded.
     expect(after.totalRevenue - baseline.totalRevenue).toBeCloseTo(1210, 2);
   });

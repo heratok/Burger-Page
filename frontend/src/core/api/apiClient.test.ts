@@ -34,7 +34,7 @@ describe('ApiClient', () => {
   })
 
   describe('platform stats', () => {
-    const stats = { totalRevenue: 10, totalOrders: 2, totalCustomers: 1, totalRestaurants: 3, activeRestaurants: 2 }
+    const stats = { totalRevenue: 10, totalOrders: 2, cancelledOrders: 1, totalCustomers: 1, totalRestaurants: 3, activeRestaurants: 2 }
 
     it('reads the platform totals without a query string by default', async () => {
       mockResponse(stats)

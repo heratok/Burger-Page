@@ -7,7 +7,7 @@ import { appQueryClient } from "@/core/query/queryClient"
 import { keys } from "@/core/query/keys"
 import { TEST_ORDERS, TEST_CUSTOMERS } from "@/test/fixtures"
 
-const SERVER_STATS = { totalRevenue: 987654.5, totalOrders: 321, totalCustomers: 123, totalRestaurants: 17, activeRestaurants: 12 }
+const SERVER_STATS = { totalRevenue: 987654.5, totalOrders: 321, cancelledOrders: 8, totalCustomers: 123, totalRestaurants: 17, activeRestaurants: 12 }
 
 const SESSION_KEY = "burger_page_session_v2"
 

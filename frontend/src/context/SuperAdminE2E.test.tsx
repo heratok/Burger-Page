@@ -19,7 +19,7 @@ const createTestRepo = () => {
 // real local backend during tests (TDD isolation).
 // What the platform stats endpoint answers; tests change it to simulate the
 // server's totals moving after a write.
-let serverStats = { totalRevenue: 64800, totalOrders: 1, totalCustomers: 1, totalRestaurants: 5, activeRestaurants: 5 }
+let serverStats = { totalRevenue: 64800, totalOrders: 1, cancelledOrders: 0, totalCustomers: 1, totalRestaurants: 5, activeRestaurants: 5 }
 
 const hermeticApi = async () => {
   const { apiClient } = await import("@/core/api/apiClient")
@@ -37,7 +37,7 @@ describe("Super Admin - Creación y Aislamiento de Nuevos Restaurantes E2E", () 
     localStorage.clear()
     sessionStorage.clear()
     vi.restoreAllMocks()
-    serverStats = { totalRevenue: 64800, totalOrders: 1, totalCustomers: 1, totalRestaurants: 5, activeRestaurants: 5 }
+    serverStats = { totalRevenue: 64800, totalOrders: 1, cancelledOrders: 0, totalCustomers: 1, totalRestaurants: 5, activeRestaurants: 5 }
     await hermeticApi()
     // After login the super admin reads the platform directory (server state).
     seedRestaurantDirectory(TEST_STORAGE_ENVELOPE.restaurants, ["super"])

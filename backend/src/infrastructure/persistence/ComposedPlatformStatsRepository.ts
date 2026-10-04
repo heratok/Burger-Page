@@ -27,6 +27,7 @@ export class ComposedPlatformStatsRepository implements PlatformStatsRepository 
     const stats: PlatformStats = {
       totalRevenue: 0,
       totalOrders: 0,
+      cancelledOrders: 0,
       totalCustomers: 0,
       totalRestaurants: live.length,
       activeRestaurants: live.filter((r) => r.isActive).length,
@@ -42,8 +43,12 @@ export class ComposedPlatformStatsRepository implements PlatformStatsRepository 
         const at = new Date(order.createdAt).getTime();
         if (from !== undefined && at < from) continue;
         if (before !== undefined && at >= before) continue;
-        stats.totalOrders += 1;
-        if (order.status !== 'cancelled') stats.totalRevenue += order.finalTotal;
+        if (order.status === 'cancelled') {
+          stats.cancelledOrders += 1;
+        } else {
+          stats.totalOrders += 1;
+          stats.totalRevenue += order.finalTotal;
+        }
       }
     }
     return stats;

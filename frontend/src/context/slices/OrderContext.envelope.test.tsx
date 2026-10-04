@@ -77,6 +77,7 @@ describe("orders and customers are no longer part of the tenant envelope", () =>
     vi.spyOn(apiClient, "fetchPlatformStats").mockResolvedValue({
       totalRevenue: 500,
       totalOrders: 42,
+      cancelledOrders: 4,
       totalCustomers: 9,
       totalRestaurants: 3,
       activeRestaurants: 2,

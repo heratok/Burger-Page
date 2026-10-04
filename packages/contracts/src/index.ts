@@ -449,11 +449,13 @@ export type PlatformStatsQuery = z.infer<typeof platformStatsQuerySchema>;
 /**
  * Platform-wide totals across live (not soft-deleted) restaurants.
  * totalRevenue sums final_total of non-cancelled orders; totalOrders counts
- * every order, cancelled included.
+ * non-cancelled orders; cancelledOrders counts the cancelled ones. The orders
+ * window (from/to) applies to all three.
  */
 export const platformStatsSchema = z.object({
   totalRevenue: z.number().nonnegative(),
   totalOrders: z.number().int().nonnegative(),
+  cancelledOrders: z.number().int().nonnegative(),
   totalCustomers: z.number().int().nonnegative(),
   totalRestaurants: z.number().int().nonnegative(),
   activeRestaurants: z.number().int().nonnegative(),
