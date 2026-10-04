@@ -1,6 +1,6 @@
 import { lazy, Suspense } from "react"
 import { ShieldAlert } from "lucide-react"
-import { RestaurantProvider, useRestaurant } from "@/context/RestaurantContext"
+import { RestaurantProvider, useUi, useAuth, useTenant, useCatalog } from "@/context/RestaurantContext"
 import { useAppRouter } from "@/core/router/useAppRouter"
 import {
   AdminLoadingFallback,
@@ -139,7 +139,10 @@ function GlobalModuleAccessDenied({ onBackToDashboard }: GlobalModuleAccessDenie
 }
 
 export function MainRouter() {
-  const { adminTab, session, storeConfig, activeRestaurant } = useRestaurant()
+  const { adminTab } = useUi()
+  const { session } = useAuth()
+  const { activeRestaurant } = useTenant()
+  const { storeConfig } = useCatalog()
   const { activeView, isNotFound, isResolving, attemptedSlug, loadError, retry, navigateTo } = useAppRouter()
 
   const titleRestaurantName = selectTitleRestaurantName({
@@ -265,7 +268,8 @@ export function MainRouter() {
 }
 
 export function AppToaster() {
-  const { activeView, adminTheme, storeConfig } = useRestaurant()
+  const { activeView, adminTheme } = useUi()
+  const { storeConfig } = useCatalog()
 
   let sonnerTheme: "light" | "dark" = "dark"
   let themeStyles: React.CSSProperties | undefined

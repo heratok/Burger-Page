@@ -1,5 +1,5 @@
 import React from "react"
-import { useRestaurant } from "@/context/RestaurantContext"
+import { useUi, useTenant } from "@/context/RestaurantContext"
 import { DollarSign, ShoppingBag, Store, Users, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { formatCurrency } from "@/lib/utils"
@@ -9,7 +9,8 @@ interface GlobalPlatformSummaryProps {
 }
 
 export const GlobalPlatformSummary: React.FC<GlobalPlatformSummaryProps> = ({ onOpenCreateModal }) => {
-  const { globalStats, adminTheme } = useRestaurant()
+  const { adminTheme } = useUi()
+  const { globalStats } = useTenant()
   const isDark = adminTheme === "dark"
 
   const cards = [

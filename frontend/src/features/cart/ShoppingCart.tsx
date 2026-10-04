@@ -2,7 +2,7 @@ import { Pencil, Trash2, ArrowLeft, AlertTriangle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import EmptyCart from "./EmptyCart"
 import type { CartItem } from "./cartEngine"
-import { useRestaurant } from "@/context/RestaurantContext"
+import { useCatalog } from "@/context/RestaurantContext"
 import { useStoreOpenStatus } from "@/hooks/useStoreOpenStatus"
 import { closedMessage } from "@/lib/storeSchedule"
 import { formatCurrency, getContrastForeground } from "@/lib/utils"
@@ -25,7 +25,7 @@ function ShoppingCart({
   onDeleteCart,
   onEditItem,
 }: ShoppingCartProps) {
-  const { storeConfig } = useRestaurant()
+  const { storeConfig } = useCatalog()
 
   const handleBackToMenu = () => {
     onClose()

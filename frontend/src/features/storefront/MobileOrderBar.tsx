@@ -1,6 +1,6 @@
 import { ShoppingCart } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { useRestaurant } from "@/context/RestaurantContext"
+import { useCatalog } from "@/context/RestaurantContext"
 import { formatCurrency, getContrastForeground } from "@/lib/utils"
 
 export interface MobileOrderBarProps {
@@ -14,7 +14,7 @@ export default function MobileOrderBar({
   itemCount,
   total = 0,
 }: MobileOrderBarProps) {
-  const { storeConfig } = useRestaurant()
+  const { storeConfig } = useCatalog()
   const primaryForeground = getContrastForeground(storeConfig.primaryColor)
   const label = `Ver orden, ${itemCount} ${itemCount === 1 ? "producto" : "productos"}, total ${formatCurrency(total)}`
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react"
-import { useRestaurant } from "@/context/RestaurantContext"
+import { useUi, useAuth, useTenant } from "@/context/RestaurantContext"
 import type { RestaurantRecord } from "@/types/restaurant"
 import { apiClient, type ApiUserRecord } from "@/core/api/apiClient"
 import { mapUserActionError } from "./userActionUtils"
@@ -45,7 +45,9 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
   restaurant,
   onSaved,
 }) => {
-  const { adminTheme, refreshRestaurants, session } = useRestaurant()
+  const { adminTheme } = useUi()
+  const { session } = useAuth()
+  const { refreshRestaurants } = useTenant()
 
   const [name, setName] = useState("")
   const [tagline, setTagline] = useState("")

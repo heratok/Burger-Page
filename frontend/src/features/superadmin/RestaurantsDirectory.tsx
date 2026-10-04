@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react"
-import { useRestaurant } from "@/context/RestaurantContext"
+import { useUi, useTenant } from "@/context/RestaurantContext"
 import type { RestaurantRecord } from "@/types/restaurant"
 import { apiClient, type DeletedRestaurantRecord } from "@/core/api/apiClient"
 import { toast } from "sonner"
@@ -33,16 +33,8 @@ function isConflictError(err: any): boolean {
 }
 
 export const RestaurantsDirectory: React.FC = () => {
-  const {
-    restaurants,
-    activeRestaurantId,
-    switchRestaurant,
-    updateRestaurant,
-    deleteRestaurant,
-    refreshRestaurants,
-    isSyncing,
-    adminTheme,
-  } = useRestaurant()
+  const { adminTheme } = useUi()
+  const { restaurants, activeRestaurantId, switchRestaurant, updateRestaurant, deleteRestaurant, refreshRestaurants, isSyncing } = useTenant()
 
   const { navigateTo } = useAppRouter()
 

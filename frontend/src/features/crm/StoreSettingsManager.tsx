@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react"
-import { useRestaurant } from "@/context/RestaurantContext"
+import { useUi, useCatalog } from "@/context/RestaurantContext"
 import { Settings, Save, RotateCcw, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { CustomizerBusinessSection } from "./customizer/CustomizerBusinessSection"
@@ -7,7 +7,8 @@ import type { StorefrontConfig } from "@/types/restaurant"
 import { toast } from "sonner"
 
 export const StoreSettingsManager: React.FC = () => {
-  const { storeConfig, updateStoreConfig, adminTheme } = useRestaurant()
+  const { adminTheme } = useUi()
+  const { storeConfig, updateStoreConfig } = useCatalog()
   const isDark = adminTheme === "dark"
 
   const [draft, setDraft] = useState<StorefrontConfig>(storeConfig)

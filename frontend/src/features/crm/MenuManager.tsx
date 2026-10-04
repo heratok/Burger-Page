@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react"
-import { useRestaurant } from "@/context/RestaurantContext"
+import { useUi, useTenant, useCatalog } from "@/context/RestaurantContext"
 import { useMenuFilter } from "./hooks/useMenuFilter"
 import type { MenuItem, AdditionItem } from "@/types/restaurant"
 import { Plus } from "lucide-react"
@@ -19,8 +19,9 @@ import {
 } from "./menu"
 
 export const MenuManager: React.FC = () => {
+  const { adminTheme } = useUi()
+  const { activeRestaurant } = useTenant()
   const {
-    activeRestaurant,
     products,
     addProduct,
     updateProduct,
@@ -34,9 +35,8 @@ export const MenuManager: React.FC = () => {
     addCategory,
     updateCategory,
     deleteCategory,
-    adminTheme,
     isLoadingCatalog,
-  } = useRestaurant()
+  } = useCatalog()
 
   const [activeSubTab, setActiveSubTab] = useState<"dishes" | "additions">("dishes")
   const [productToDelete, setProductToDelete] = useState<MenuItem | null>(null)

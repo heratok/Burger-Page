@@ -1,5 +1,5 @@
 import React, { useState } from "react"
-import { useRestaurant } from "@/context/RestaurantContext"
+import { useUi, useAuth } from "@/context/RestaurantContext"
 import { MIN_PASSWORD_LENGTH } from "@burger-page/contracts"
 import {
   Lock,
@@ -32,7 +32,8 @@ export const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({
 }) => {
   const activeForced = forced ?? isForced
   const handleClose = onClose || onCancel
-  const { session, changePassword, logout, adminTheme } = useRestaurant()
+  const { adminTheme } = useUi()
+  const { session, changePassword, logout } = useAuth()
   const { navigateTo } = useAppRouter()
   const isDark = adminTheme === "dark"
 
