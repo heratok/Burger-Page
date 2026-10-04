@@ -6,6 +6,7 @@ describe("query key factory", () => {
     expect(keys.orders("rest-1", "restaurant")).toEqual(["orders", "rest-1", "restaurant"])
     expect(keys.inventory("rest-1", "super")).toEqual(["inventory", "rest-1", "super"])
     expect(keys.suppliers("rest-1", "guest")).toEqual(["suppliers", "rest-1", "guest"])
+    expect(keys.tables("rest-1", "restaurant")).toEqual(["tables", "rest-1", "restaurant"])
     expect(keys.products("rest-1", "guest", "burger")).toEqual(["products", "rest-1", "guest", "burger"])
     expect(keys.additions("rest-1", "guest", undefined)).toEqual(["additions", "rest-1", "guest", undefined])
   })
@@ -21,7 +22,7 @@ describe("query key factory", () => {
   })
 
   it("never lets two tenants or two roles share a key", () => {
-    const tenantScoped = [keys.orders, keys.inventory, keys.suppliers] as const
+    const tenantScoped = [keys.orders, keys.inventory, keys.suppliers, keys.tables] as const
     for (const build of tenantScoped) {
       expect(build("a", "restaurant")).not.toEqual(build("b", "restaurant"))
       expect(build("a", "restaurant")).not.toEqual(build("a", "super"))
@@ -45,6 +46,7 @@ describe("query key factory", () => {
     expect(startsWith(keys.additions("t", "super", "s"), keyPrefixes.additions("t"))).toBe(true)
     expect(startsWith(keys.inventory("t", "super"), keyPrefixes.inventory("t"))).toBe(true)
     expect(startsWith(keys.suppliers("t", "super"), keyPrefixes.suppliers("t"))).toBe(true)
+    expect(startsWith(keys.tables("t", "super"), keyPrefixes.tables("t"))).toBe(true)
     expect(startsWith(keys.restaurants("super"), keyPrefixes.restaurants())).toBe(true)
     expect(startsWith(keys.restaurant("super", "x"), keyPrefixes.restaurant())).toBe(true)
     expect(startsWith(keys.restaurantStatus("super", "x"), keyPrefixes.restaurantStatus())).toBe(true)
