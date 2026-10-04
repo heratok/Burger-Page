@@ -1,8 +1,15 @@
-import React, { useState, useEffect, useCallback } from "react"
+import React, { useState, useEffect } from "react"
 import { useUi, useAuth, useTenant } from "@/context/RestaurantContext"
 import type { RestaurantRecord } from "@/types/restaurant"
 import { apiClient, type ApiUserRecord } from "@/core/api/apiClient"
 import { mapUserActionError } from "./userActionUtils"
+import {
+  useUsersQuery,
+  useInvalidateUsers,
+  useSetUserActiveMutation,
+  useDeleteUserMutation,
+  useResetUserPasswordMutation,
+} from "./hooks/useUsersQuery"
 import {
   X,
   Store,
@@ -62,8 +69,6 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
   const [slugError, setSlugError] = useState<string | null>(null)
 
   // Restaurant administrators state
-  const [admins, setAdmins] = useState<ApiUserRecord[]>([])
-  const [isLoadingAdmins, setIsLoadingAdmins] = useState(false)
   const [isCreateUserOpen, setIsCreateUserOpen] = useState(false)
   const [resetModalData, setResetModalData] = useState<{ username: string; temporaryPassword?: string } | null>(null)
   const [userToDelete, setUserToDelete] = useState<ApiUserRecord | null>(null)
@@ -72,18 +77,22 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
 
   const isDark = adminTheme === "dark"
 
-  const loadAdmins = useCallback(async (restaurantId: string) => {
-    setIsLoadingAdmins(true)
-    try {
-      const users = await apiClient.listUsers(restaurantId)
-      setAdmins(users || [])
-    } catch (err: any) {
-      toast.error(mapUserActionError(err, "No se pudieron cargar los administradores"))
-      setAdmins([])
-    } finally {
-      setIsLoadingAdmins(false)
-    }
-  }, [])
+  // Read only while the modal is open; shares keys.users(role) with the
+  // global directory, so a write in either place revalidates both lists.
+  const adminsQuery = useUsersQuery(restaurant?.id, { enabled: Boolean(isOpen && restaurant) })
+  const admins = adminsQuery.data ?? []
+  const isLoadingAdmins = adminsQuery.isLoading
+  const reloadAdmins = useInvalidateUsers()
+  const { mutateAsync: setUserActive } = useSetUserActiveMutation()
+  const { mutateAsync: deleteUser } = useDeleteUserMutation()
+  const { mutateAsync: resetUserPassword } = useResetUserPasswordMutation()
+
+  // One toast per failed read (errorUpdatedAt changes on every failure).
+  const { error: adminsError, errorUpdatedAt: adminsErrorAt } = adminsQuery
+  useEffect(() => {
+    if (!adminsError) return
+    toast.error(mapUserActionError(adminsError, "No se pudieron cargar los administradores"))
+  }, [adminsError, adminsErrorAt])
 
   useEffect(() => {
     if (restaurant && isOpen) {
@@ -99,9 +108,8 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
       setCurrencySymbol(initialSym)
       setErrorMessage(null)
       setSlugError(null)
-      loadAdmins(restaurant.id)
     }
-  }, [restaurant, isOpen, loadAdmins])
+  }, [restaurant, isOpen])
 
   if (!isOpen || !restaurant) return null
 
@@ -112,10 +120,7 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
     const nextActive = admin.isActive === false
     setActionLoadingId(admin.id)
     try {
-      const updated = await apiClient.setUserActive(admin.id, nextActive)
-      setAdmins((prev) =>
-        prev.map((item) => (item.id === admin.id ? { ...item, isActive: updated.isActive } : item))
-      )
+      await setUserActive({ id: admin.id, isActive: nextActive })
       toast.success(
         nextActive
           ? `Usuario "${admin.username}" activado con éxito`
@@ -136,7 +141,7 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
   const handleResetAdminPassword = async (admin: ApiUserRecord) => {
     setActionLoadingId(admin.id)
     try {
-      const res = await apiClient.resetUserPassword(admin.id)
+      const res = await resetUserPassword(admin.id)
       setResetModalData({ username: admin.username, temporaryPassword: res.temporaryPassword })
       toast.success(`Contraseña de "${admin.username}" restablecida correctamente`)
     } catch (err: any) {
@@ -152,8 +157,7 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
     setUserToDelete(null)
     setActionLoadingId(target.id)
     try {
-      await apiClient.deleteUser(target.id)
-      setAdmins((prev) => prev.filter((item) => item.id !== target.id))
+      await deleteUser(target.id)
       toast.success(`Usuario "${target.username}" eliminado con éxito`)
     } catch (err: any) {
       toast.error(mapUserActionError(err, "No se pudo eliminar el usuario"))
@@ -633,7 +637,7 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
           isOpen={isCreateUserOpen}
           defaultRestaurantId={restaurant.id}
           onClose={() => setIsCreateUserOpen(false)}
-          onSuccess={() => loadAdmins(restaurant.id)}
+          onSuccess={() => void reloadAdmins()}
         />
 
         {/* Submodal: Reset Password */}
@@ -664,7 +668,7 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
           isOpen={!!userToEdit}
           onClose={() => setUserToEdit(null)}
           user={userToEdit}
-          onSuccess={() => loadAdmins(restaurant.id)}
+          onSuccess={() => void reloadAdmins()}
         />
       </DialogContent>
     </Dialog>
