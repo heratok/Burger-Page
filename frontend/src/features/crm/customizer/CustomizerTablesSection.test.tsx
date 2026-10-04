@@ -2,10 +2,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, waitFor, fireEvent, within } from "@testing-library/react"
 import { apiClient } from "@/core/api/apiClient"
 import { CustomizerTablesSection } from "./CustomizerTablesSection"
+import { TestQueryProvider } from "@/test/queryClientWrapper"
 
 const t = (id: string, name: string, sortOrder = 0, isActive = true) => ({ id, name, sortOrder, isActive })
 
-const renderSection = () => render(<CustomizerTablesSection restaurantId="rest-1" />)
+const renderSection = () => render(<CustomizerTablesSection restaurantId="rest-1" />, { wrapper: TestQueryProvider })
 
 describe("CustomizerTablesSection", () => {
   beforeEach(() => {

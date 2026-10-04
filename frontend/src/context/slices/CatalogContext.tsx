@@ -9,6 +9,8 @@ import { toast } from "sonner"
 import { nextTempId } from "@/lib/ids"
 import { splitConfigForApi } from "@/lib/storeSchedule"
 import { runOptimisticMutation, type OptimisticMutationConfig } from "./optimisticMutation"
+import { keyPrefixes } from "@/core/query/keys"
+import { productsQueryOptions, additionsQueryOptions } from "@/core/query/options"
 
 export interface CatalogContextType {
   storeConfig: StorefrontConfig
@@ -77,30 +79,12 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const enabled = Boolean(effectiveId && effectiveId !== "rest-default")
 
   const productsQuery = useQuery({
-    queryKey: ["products", effectiveId, session.role, effectiveSlug],
+    ...productsQueryOptions(effectiveId, session.role, effectiveSlug),
     enabled,
-    retry: false,
-    queryFn: async () => {
-      try {
-        return await apiClient.fetchProducts({ restaurantId: effectiveId, slug: effectiveSlug })
-      } catch (err) {
-        warn("Could not fetch products from backend API:", err)
-        throw err
-      }
-    },
   })
   const additionsQuery = useQuery({
-    queryKey: ["additions", effectiveId, session.role, effectiveSlug],
+    ...additionsQueryOptions(effectiveId, session.role, effectiveSlug),
     enabled,
-    retry: false,
-    queryFn: async () => {
-      try {
-        return await apiClient.fetchAdditions({ restaurantId: effectiveId, slug: effectiveSlug })
-      } catch (err) {
-        warn("Could not fetch additions from backend API:", err)
-        throw err
-      }
-    },
   })
 
   // Initial hydration only (isLoading = no data yet and fetching); background
@@ -121,7 +105,7 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
     // Fresh reads: the hook values in the deps only schedule this effect.
     if (queryClient.isMutating({ mutationKey: CATALOG_MUTATION_KEY }) > 0) return
     const isIdle = (resource: "products" | "additions") =>
-      queryClient.isFetching({ queryKey: [resource, effectiveId] }) === 0
+      queryClient.isFetching({ queryKey: keyPrefixes[resource](effectiveId) }) === 0
     const products =
       Array.isArray(backendProducts) && backendProducts !== hydrated.current.products && isIdle("products")
         ? backendProducts
@@ -161,8 +145,8 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // no resource can be left unrevalidated by another one's write.
   const revalidate = useCallback(() => {
     if (queryClient.isMutating({ mutationKey: CATALOG_MUTATION_KEY }) > 1) return
-    void queryClient.invalidateQueries({ queryKey: ["products", effectiveId] })
-    void queryClient.invalidateQueries({ queryKey: ["additions", effectiveId] })
+    void queryClient.invalidateQueries({ queryKey: keyPrefixes.products(effectiveId) })
+    void queryClient.invalidateQueries({ queryKey: keyPrefixes.additions(effectiveId) })
   }, [queryClient, effectiveId])
 
   const { mutate: trackWrite } = useMutation({

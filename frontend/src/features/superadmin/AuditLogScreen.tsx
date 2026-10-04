@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react"
+import React, { useState, useMemo } from "react"
 import { useUi, useTenant } from "@/context/RestaurantContext"
-import { apiClient, type AuditLogItem } from "@/core/api/apiClient"
+import type { AuditLogItem } from "@/core/api/apiClient"
 import {
   ClipboardList,
   Filter,
@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Select } from "@/components/ui/select"
 import { parseLocalDateRange } from "./auditLogUtils"
+import { useAuditLogQuery } from "./hooks/useAuditLogQuery"
 
 const AUDIT_ACTION_LABELS: Record<string, string> = {
   "restaurant.create": "Creación de restaurante",
@@ -89,19 +90,26 @@ export const AuditLogScreen: React.FC = () => {
   const { restaurants } = useTenant()
   const isDark = adminTheme === "dark"
 
-  const [items, setItems] = useState<AuditLogItem[]>([])
-  const [nextCursor, setNextCursor] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState<boolean>(true)
-  const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false)
-  const [error, setError] = useState<string | null>(null)
-
   // Filters
   const [actionFilter, setActionFilter] = useState<string>("")
   const [restaurantFilter, setRestaurantFilter] = useState<string>("")
   const [fromDate, setFromDate] = useState<string>("")
   const [toDate, setToDate] = useState<string>("")
 
-  const activeRequestIdRef = useRef(0)
+  const auditQuery = useAuditLogQuery({
+    action: actionFilter || undefined,
+    restaurantId: restaurantFilter || undefined,
+    from: fromDate ? parseLocalDateRange(fromDate, false) : undefined,
+    to: toDate ? parseLocalDateRange(toDate, true) : undefined,
+  })
+  const { data, hasNextPage, isFetchingNextPage, fetchNextPage, reload } = auditQuery
+  const items: AuditLogItem[] = useMemo(() => data?.pages.flatMap((page) => page.items || []) ?? [], [data])
+  const isLoadingMore = isFetchingNextPage
+  // A first-page read (initial, filter change or reload); "load more" has its own flag.
+  const isLoading = auditQuery.isFetching && !isFetchingNextPage
+  const error = auditQuery.error
+    ? (auditQuery.error as Error).message || "Ocurrió un error al cargar el registro de auditoría."
+    : null
 
   const restaurantMap = useMemo(() => {
     const map = new Map<string, string>()
@@ -131,64 +139,9 @@ export const AuditLogScreen: React.FC = () => {
     [items, restaurantMap]
   )
 
-  const loadAuditLog = useCallback(async (reset = true, cursorToUse?: string) => {
-    let requestId: number
-    if (reset) {
-      setIsLoading(true)
-      setError(null)
-      requestId = ++activeRequestIdRef.current
-    } else {
-      setIsLoadingMore(true)
-      requestId = activeRequestIdRef.current
-    }
-
-    try {
-      const query: any = {
-        limit: 25,
-      }
-      if (cursorToUse) query.cursor = cursorToUse
-      if (actionFilter) query.action = actionFilter
-      if (restaurantFilter) query.restaurantId = restaurantFilter
-      if (fromDate) {
-        const fromIso = parseLocalDateRange(fromDate, false)
-        if (fromIso) query.from = fromIso
-      }
-      if (toDate) {
-        const toIso = parseLocalDateRange(toDate, true)
-        if (toIso) query.to = toIso
-      }
-
-      const res = await apiClient.fetchAuditLog(query)
-      if (requestId !== activeRequestIdRef.current) {
-        return
-      }
-
-      if (reset) {
-        setItems(res.items || [])
-      } else {
-        setItems((prev) => [...prev, ...(res.items || [])])
-      }
-      setNextCursor(res.nextCursor || null)
-    } catch (err: any) {
-      if (requestId !== activeRequestIdRef.current) {
-        return
-      }
-      setError(err?.message || "Ocurrió un error al cargar el registro de auditoría.")
-    } finally {
-      if (requestId === activeRequestIdRef.current) {
-        setIsLoading(false)
-        setIsLoadingMore(false)
-      }
-    }
-  }, [actionFilter, restaurantFilter, fromDate, toDate])
-
-  useEffect(() => {
-    loadAuditLog(true)
-  }, [loadAuditLog])
-
   const handleLoadMore = () => {
-    if (nextCursor && !isLoading && !isLoadingMore) {
-      loadAuditLog(false, nextCursor)
+    if (hasNextPage && !isLoading && !isLoadingMore) {
+      void fetchNextPage()
     }
   }
 
@@ -230,7 +183,7 @@ export const AuditLogScreen: React.FC = () => {
 
         <button
           type="button"
-          onClick={() => loadAuditLog(true)}
+          onClick={() => void reload()}
           disabled={isLoading}
           className="inline-flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 px-3.5 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer self-start sm:self-auto"
         >
@@ -354,7 +307,7 @@ export const AuditLogScreen: React.FC = () => {
           <Button
             type="button"
             variant="outline"
-            onClick={() => loadAuditLog(true)}
+            onClick={() => void reload()}
             className="mt-2 text-xs"
           >
             Reintentar
@@ -500,7 +453,7 @@ export const AuditLogScreen: React.FC = () => {
           </div>
 
           {/* Pagination Controls */}
-          {nextCursor && (
+          {hasNextPage && (
             <div className="flex justify-center pt-2">
               <Button
                 type="button"

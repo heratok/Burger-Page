@@ -6,6 +6,8 @@ import { useTenant } from "./TenantContext"
 import { useAuth } from "./AuthContext"
 import { toast } from "sonner"
 import { nextTempId } from "@/lib/ids"
+import { keyPrefixes } from "@/core/query/keys"
+import { inventoryQueryOptions, suppliersQueryOptions } from "@/core/query/options"
 
 export interface InventoryContextType {
   inventory: InventoryItem[]
@@ -96,32 +98,8 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // entry can never be served across roles.
   const enabled = Boolean(effectiveId && apiClient.hasToken())
 
-  const inventoryQuery = useQuery({
-    queryKey: ["inventory", effectiveId, session.role],
-    enabled,
-    retry: false,
-    queryFn: async () => {
-      try {
-        return await apiClient.fetchInventory(effectiveId)
-      } catch (err) {
-        warn("Could not fetch inventory from backend API:", err)
-        throw err
-      }
-    },
-  })
-  const suppliersQuery = useQuery({
-    queryKey: ["suppliers", effectiveId, session.role],
-    enabled,
-    retry: false,
-    queryFn: async () => {
-      try {
-        return await apiClient.fetchSuppliers(effectiveId)
-      } catch (err) {
-        warn("Could not fetch suppliers from backend API:", err)
-        throw err
-      }
-    },
-  })
+  const inventoryQuery = useQuery({ ...inventoryQueryOptions(effectiveId, session.role), enabled })
+  const suppliersQuery = useQuery({ ...suppliersQueryOptions(effectiveId, session.role), enabled })
 
   // Initial hydration only (isLoading = no data yet and fetching); background
   // refetches after writes must not flash the loading state.
@@ -153,7 +131,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const revalidate = useCallback(
     (key: "inventory" | "suppliers") => {
       if (queryClient.isMutating({ mutationKey: MUTATION_KEY }) > 1) return
-      void queryClient.invalidateQueries({ queryKey: [key, effectiveId] })
+      void queryClient.invalidateQueries({ queryKey: keyPrefixes[key](effectiveId) })
     },
     [queryClient, effectiveId]
   )

@@ -23,6 +23,12 @@ import { runOptimisticMutation } from "./optimisticMutation"
 import { nextTempId } from "@/lib/ids"
 import { ADMIN_ROOT_PATHS } from "@/core/router/adminRootPaths"
 import { appQueryClient } from "@/core/query/queryClient"
+import { keyPrefixes } from "@/core/query/keys"
+import {
+  restaurantsQueryOptions,
+  restaurantQueryOptions,
+  restaurantStatusQueryOptions,
+} from "@/core/query/options"
 
 export interface GlobalPlatformStats {
   totalRevenue: number
@@ -226,9 +232,8 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
       // refreshes share the in-flight request). The role in the key keeps the
       // cache from crossing sessions.
       const backendRestaurants = await queryClient.fetchQuery({
-        queryKey: ["restaurants", role],
+        ...restaurantsQueryOptions(role),
         staleTime: 0,
-        queryFn: async () => (await apiClient.listRestaurants()) ?? null,
       })
       if (Array.isArray(backendRestaurants)) {
         if (queryClient.isMutating({ mutationKey: TENANT_WRITES_KEY }) > 0) {
@@ -251,10 +256,7 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
   // fresh result is reused briefly. Failures are never cached.
   const fetchTenant = useCallback(
     (idOrSlug: string) =>
-      queryClient.fetchQuery({
-        queryKey: ["restaurant", role, idOrSlug],
-        queryFn: async () => (await apiClient.fetchRestaurant(idOrSlug)) ?? null,
-      }),
+      queryClient.fetchQuery(restaurantQueryOptions(role, idOrSlug)),
     [queryClient, role]
   )
 
@@ -265,8 +267,8 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
     mutationFn: (request: Promise<unknown>) => request,
     onSettled: () => {
       // Cached lookups predate the write.
-      void queryClient.invalidateQueries({ queryKey: ["restaurant"] })
-      void queryClient.invalidateQueries({ queryKey: ["restaurant-status"] })
+      void queryClient.invalidateQueries({ queryKey: keyPrefixes.restaurant() })
+      void queryClient.invalidateQueries({ queryKey: keyPrefixes.restaurantStatus() })
       // The settling mutation counts itself, hence > 1.
       if (queryClient.isMutating({ mutationKey: TENANT_WRITES_KEY }) > 1) return
       if (directoryDeferred.current) {
@@ -313,9 +315,8 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
     if (!current?.slug) return
     try {
       const fetched: any = await queryClient.fetchQuery({
-        queryKey: ["restaurant-status", role, current.slug],
+        ...restaurantStatusQueryOptions(role, current.slug),
         staleTime: 0,
-        queryFn: async () => (await apiClient.fetchRestaurant(current.slug)) ?? null,
       })
       if (!fetched || fetched.id !== current.id) return
       const next = scheduleFieldsFromApi(fetched as any)

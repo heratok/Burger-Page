@@ -3,6 +3,7 @@ import { renderHook, act, waitFor } from "@testing-library/react"
 import { toast } from "sonner"
 import { apiClient } from "@/core/api/apiClient"
 import { useRestaurantTables } from "./useRestaurantTables"
+import { TestQueryProvider } from "@/test/queryClientWrapper"
 
 const t = (id: string, name: string, sortOrder = 0, isActive = true) => ({ id, name, sortOrder, isActive })
 
@@ -15,7 +16,7 @@ describe("useRestaurantTables", () => {
   it("loads the tables of the restaurant", async () => {
     const fetchSpy = vi.spyOn(apiClient, "fetchTables").mockResolvedValue([t("a", "Mesa 1")])
 
-    const { result } = renderHook(() => useRestaurantTables("rest-1"))
+    const { result } = renderHook(() => useRestaurantTables("rest-1"), { wrapper: TestQueryProvider })
 
     expect(result.current.isLoading).toBe(true)
     await waitFor(() => expect(result.current.isLoading).toBe(false))
@@ -27,7 +28,7 @@ describe("useRestaurantTables", () => {
     vi.spyOn(apiClient, "hasToken").mockReturnValue(false)
     const fetchSpy = vi.spyOn(apiClient, "fetchTables").mockResolvedValue([])
 
-    const { result } = renderHook(() => useRestaurantTables("rest-1"))
+    const { result } = renderHook(() => useRestaurantTables("rest-1"), { wrapper: TestQueryProvider })
 
     expect(fetchSpy).not.toHaveBeenCalled()
     expect(result.current.isLoading).toBe(false)
@@ -36,7 +37,7 @@ describe("useRestaurantTables", () => {
   it("does not fetch without a restaurant", () => {
     const fetchSpy = vi.spyOn(apiClient, "fetchTables").mockResolvedValue([])
 
-    const { result } = renderHook(() => useRestaurantTables(undefined))
+    const { result } = renderHook(() => useRestaurantTables(undefined), { wrapper: TestQueryProvider })
 
     expect(fetchSpy).not.toHaveBeenCalled()
     expect(result.current.tables).toEqual([])
@@ -45,7 +46,7 @@ describe("useRestaurantTables", () => {
   it("exposes a load error and keeps an empty list", async () => {
     vi.spyOn(apiClient, "fetchTables").mockRejectedValue(new Error("boom"))
 
-    const { result } = renderHook(() => useRestaurantTables("rest-1"))
+    const { result } = renderHook(() => useRestaurantTables("rest-1"), { wrapper: TestQueryProvider })
 
     await waitFor(() => expect(result.current.isLoading).toBe(false))
     expect(result.current.loadError).toBe("boom")
@@ -55,7 +56,7 @@ describe("useRestaurantTables", () => {
   it("creates a table at the end and returns it", async () => {
     vi.spyOn(apiClient, "fetchTables").mockResolvedValue([t("a", "Mesa 1")])
     vi.spyOn(apiClient, "createTable").mockResolvedValue(t("b", "Mesa 2", 1))
-    const { result } = renderHook(() => useRestaurantTables("rest-1"))
+    const { result } = renderHook(() => useRestaurantTables("rest-1"), { wrapper: TestQueryProvider })
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
     let created: unknown
@@ -72,7 +73,7 @@ describe("useRestaurantTables", () => {
     vi.spyOn(apiClient, "fetchTables").mockResolvedValue([])
     vi.spyOn(apiClient, "createTable").mockRejectedValue(new Error("Ya existe una mesa llamada 'Mesa 1'."))
     const errorToast = vi.spyOn(toast, "error").mockImplementation((() => "") as any)
-    const { result } = renderHook(() => useRestaurantTables("rest-1"))
+    const { result } = renderHook(() => useRestaurantTables("rest-1"), { wrapper: TestQueryProvider })
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
     let created: unknown = "unset"
@@ -91,7 +92,7 @@ describe("useRestaurantTables", () => {
       ...(id === "a" ? t("a", "Mesa 1") : t("b", "Mesa 2", 1)),
       ...data,
     }))
-    const { result } = renderHook(() => useRestaurantTables("rest-1"))
+    const { result } = renderHook(() => useRestaurantTables("rest-1"), { wrapper: TestQueryProvider })
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
     await act(async () => {
@@ -106,7 +107,7 @@ describe("useRestaurantTables", () => {
     vi.spyOn(apiClient, "fetchTables").mockResolvedValue([t("a", "A"), t("b", "B", 1), t("c", "C", 2)])
     const reorder = vi.spyOn(apiClient, "reorderTables").mockResolvedValue([t("b", "B"), t("a", "A", 1), t("c", "C", 2)])
     vi.spyOn(toast, "error").mockImplementation((() => "") as any)
-    const { result } = renderHook(() => useRestaurantTables("rest-1"))
+    const { result } = renderHook(() => useRestaurantTables("rest-1"), { wrapper: TestQueryProvider })
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
     await act(async () => {
@@ -125,7 +126,7 @@ describe("useRestaurantTables", () => {
   it("ignores a move past either end", async () => {
     vi.spyOn(apiClient, "fetchTables").mockResolvedValue([t("a", "A"), t("b", "B", 1)])
     const reorder = vi.spyOn(apiClient, "reorderTables").mockResolvedValue([])
-    const { result } = renderHook(() => useRestaurantTables("rest-1"))
+    const { result } = renderHook(() => useRestaurantTables("rest-1"), { wrapper: TestQueryProvider })
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
     await act(async () => {
@@ -139,7 +140,7 @@ describe("useRestaurantTables", () => {
   it("deletes a table", async () => {
     vi.spyOn(apiClient, "fetchTables").mockResolvedValue([t("a", "A"), t("b", "B", 1)])
     vi.spyOn(apiClient, "deleteTable").mockResolvedValue(undefined)
-    const { result } = renderHook(() => useRestaurantTables("rest-1"))
+    const { result } = renderHook(() => useRestaurantTables("rest-1"), { wrapper: TestQueryProvider })
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
     await act(async () => {

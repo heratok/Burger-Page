@@ -13,6 +13,8 @@ import { toast } from "sonner"
 import { formatCurrency, cleanPhoneNumber } from "@/lib/utils"
 import { nextTempId } from "@/lib/ids"
 import { runOptimisticMutation } from "./optimisticMutation"
+import { keyPrefixes } from "@/core/query/keys"
+import { ordersQueryOptions, type Board } from "@/core/query/options"
 
 export interface ServerOrderResult {
   adoptedOrderNumber: number
@@ -745,35 +747,6 @@ interface OrderWrite {
   reject: (error: unknown) => void
 }
 
-interface Board {
-  orders: any[]
-  customers: any[]
-}
-
-/**
- * Reads the order board: orders plus customers. A failed customers read falls
- * back to an empty list (orders still hydrate); a failed orders read rejects.
- */
-async function fetchBoard(restaurantId: string): Promise<Board> {
-  try {
-    const [orders, customers] = await Promise.all([
-      apiClient.fetchOrders(restaurantId),
-      apiClient.fetchCustomers(restaurantId).catch((err) => {
-        if (import.meta.env?.MODE !== 'test') {
-          console.warn("Could not fetch customers from backend API:", err)
-        }
-        return [] as any[]
-      }),
-    ])
-    return { orders: Array.isArray(orders) ? [...orders] : (orders as any), customers: [...customers] }
-  } catch (err) {
-    if (import.meta.env?.MODE !== 'test') {
-      console.warn("Could not fetch orders/customers from backend API:", err)
-    }
-    throw err
-  }
-}
-
 export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { activeRestaurant, updateActiveRestaurantRecord } = useTenant()
   const { session } = useAuth()
@@ -795,23 +768,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // orders/customers endpoints. The role is part of the key so a cache entry is
   // never served across roles; logout clears the whole client.
   const enabled = Boolean(effectiveId && apiClient.hasToken())
-  const boardKey = useMemo(
-    () => ["orders", effectiveId, session.role] as const,
-    [effectiveId, session.role]
-  )
-
-  // Orders and customers are one resource: customer metrics are derived from the
-  // synced orders, so both are read together (as before) and hydrate atomically.
-  // Returning a fresh object per fetch (structural sharing off) lets every
-  // successful fetch re-hydrate the tenant record, like the old explicit sync.
-  const boardQuery = useQuery({
-    queryKey: boardKey,
-    enabled,
-    retry: false,
-    structuralSharing: false,
-    networkMode: "always",
-    queryFn: () => fetchBoard(effectiveId as string),
-  })
+  const boardQuery = useQuery({ ...ordersQueryOptions(effectiveId, session.role), enabled })
 
   // Initial hydration only: background refetches (SSE catch-up) never flash it.
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -834,7 +791,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (queryClient.isMutating({ mutationKey: ORDER_WRITES_KEY }) > 1) return
       if (!needsRevalidation.current) return
       needsRevalidation.current = false
-      void queryClient.invalidateQueries({ queryKey: ["orders", effectiveId] })
+      void queryClient.invalidateQueries({ queryKey: keyPrefixes.orders(effectiveId) })
     },
     [queryClient, effectiveId]
   )
@@ -1017,7 +974,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // Never hydrate over an optimistic write: a response that predates it would
     // wipe it. Deferred until the writes settle and the revalidation lands.
     if (queryClient.isMutating({ mutationKey: ORDER_WRITES_KEY }) > 0) return
-    if (queryClient.isFetching({ queryKey: ["orders", effectiveId] }) > 0) return
+    if (queryClient.isFetching({ queryKey: keyPrefixes.orders(effectiveId) }) > 0) return
     hydrate(effectiveId, board)
     // The first successful read proves connectivity: flush orders held
     // pendingSync during the outage (REJ-02).
@@ -1032,7 +989,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const catchUpOrdersRef = useRef<() => void>(() => {})
   catchUpOrdersRef.current = () => {
     if (!effectiveId || !apiClient.hasToken()) return
-    void queryClient.invalidateQueries({ queryKey: ["orders", effectiveId] })
+    void queryClient.invalidateQueries({ queryKey: keyPrefixes.orders(effectiveId) })
   }
 
   // Real-time SSE order stream subscription
@@ -1421,11 +1378,8 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       // staleTime 0: an explicit refresh always asks the server (concurrent
       // reads share the request in flight); the hydration effect applies it.
       const fresh = await queryClient.fetchQuery({
-        queryKey: boardKey,
-        queryFn: () => fetchBoard(targetRestId),
+        ...ordersQueryOptions(targetRestId, session.role),
         staleTime: 0,
-        structuralSharing: false,
-        networkMode: "always",
       })
       // Applied here (not left to the hydration effect) so the sync is queued
       // before the pending-order retry adopts server identities, as before.
@@ -1442,7 +1396,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } finally {
       setIsRefreshing(false)
     }
-  }, [effectiveId, queryClient, boardKey, hydrate, retryPendingOrders])
+  }, [effectiveId, session.role, queryClient, hydrate, retryPendingOrders])
 
   const pendingOrdersCount = useMemo(() => {
     return activeRestaurant.orders.filter((o) => o.status === "pending").length
