@@ -71,20 +71,29 @@ describe("orders and customers are no longer part of the tenant envelope", () =>
     expect(queue.list("r1")).toEqual([])
   })
 
-  it("platform stats count the order boards read in this session", async () => {
+  it("platform stats come from the server, never from the order boards read in this session", async () => {
+    sessionStorage.setItem("burger_page_session_v2", JSON.stringify({ role: "super", authenticatedAt: new Date().toISOString() }))
+    vi.spyOn(apiClient, "listRestaurants").mockResolvedValue([])
+    vi.spyOn(apiClient, "fetchPlatformStats").mockResolvedValue({
+      totalRevenue: 500,
+      totalOrders: 42,
+      totalCustomers: 9,
+      totalRestaurants: 3,
+      activeRestaurants: 2,
+    })
     const { result } = renderHook(() => useRestaurant(), {
       wrapper: ({ children }: { children: React.ReactNode }) => <RestaurantProvider>{children}</RestaurantProvider>,
     })
-    expect(result.current.globalStats.totalOrders).toBe(0)
+    await waitFor(() => expect(result.current.globalStats.totalOrders).toBe(42))
 
     act(() => {
-      appQueryClient.setQueryData(keys.orders("rest-burger-craft", "guest"), {
+      appQueryClient.setQueryData(keys.orders("rest-burger-craft", "super"), {
         orders: TEST_ORDERS,
         customers: TEST_CUSTOMERS,
       })
     })
 
-    expect(result.current.globalStats.totalOrders).toBe(TEST_ORDERS.length)
-    expect(result.current.globalStats.totalCustomers).toBe(TEST_CUSTOMERS.length)
+    expect(result.current.globalStats.totalOrders).toBe(42)
+    expect(result.current.globalStats.totalCustomers).toBe(9)
   })
 })
