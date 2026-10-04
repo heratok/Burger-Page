@@ -3,12 +3,14 @@ import { render, screen, fireEvent, cleanup } from "@testing-library/react"
 import { InventoryManager } from "./InventoryManager"
 import { RestaurantProvider } from "@/context/RestaurantContext"
 import { STORAGE_KEYS } from "@/core/storage/TenantRepository"
-import { TEST_STORAGE_ENVELOPE } from "@/test/fixtures"
+import { TEST_STORAGE_ENVELOPE, TEST_INVENTORY, TEST_SUPPLIERS, seedInventory } from "@/test/fixtures"
 
 describe("InventoryManager - Theme Contrast and Supplier Notes Legibility (TDD)", () => {
   beforeEach(() => {
     localStorage.clear()
     localStorage.setItem(STORAGE_KEYS.ENVELOPE, JSON.stringify(TEST_STORAGE_ENVELOPE))
+    // Stock and suppliers are server state now: they come from the query cache.
+    seedInventory(TEST_INVENTORY, TEST_SUPPLIERS, "rest_e2e_fixture")
   })
 
   afterEach(() => {

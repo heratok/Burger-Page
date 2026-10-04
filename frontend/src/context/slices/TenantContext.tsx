@@ -51,8 +51,6 @@ function toRestaurantRecord(fetched: any): RestaurantRecord {
     },
     products: fetched.products || [],
     additions: fetched.additions || [],
-    inventory: fetched.inventory || [],
-    suppliers: fetched.suppliers || [],
   }
 }
 
@@ -190,8 +188,6 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
             },
             products: local?.products || [],
             additions: local?.additions || [],
-            inventory: local?.inventory || [],
-            suppliers: local?.suppliers || [],
           } as RestaurantRecord
         })
         return {
@@ -477,8 +473,6 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
             categories: [],
             products: [],
             additions: [],
-            inventory: [],
-            suppliers: [],
           }
 
         const updated = updater(target)

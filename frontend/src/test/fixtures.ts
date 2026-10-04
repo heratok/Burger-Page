@@ -261,3 +261,15 @@ export function seedOrderBoard(
 ): void {
   client.setQueryData(keys.orders(tenantId, role), { orders, customers })
 }
+
+/** Seeds a tenant's cached inventory and suppliers (server state, not envelope data). */
+export function seedInventory(
+  inventory: InventoryItem[],
+  suppliers: Supplier[] = [],
+  tenantId = "rest-burger-craft",
+  role: UserRole = "guest",
+  client: QueryClient = appQueryClient,
+): void {
+  client.setQueryData(keys.inventory(tenantId, role), inventory)
+  client.setQueryData(keys.suppliers(tenantId, role), suppliers)
+}
