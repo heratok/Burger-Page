@@ -375,7 +375,7 @@ test.describe('Manual Sale Transfer Receipt - POS & Order History', () => {
     // Open POS
     const nuevaVentaBtn = page.getByRole('button', { name: /Nueva Venta/i }).first();
     await expect(nuevaVentaBtn).toBeVisible({ timeout: 10000 });
-    await nuevaVentaBtn.click({ force: true });
+    await nuevaVentaBtn.click();
 
     // Add product
     await page.getByRole('button', { name: /^Agregar$/i }).first().click();
