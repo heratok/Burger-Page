@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useMemo, useCall
 import {
   QueryClientContext,
   QueryClientProvider,
+  hashKey,
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query"
@@ -28,6 +29,7 @@ import {
   restaurantsQueryOptions,
   restaurantQueryOptions,
   restaurantStatusQueryOptions,
+  TENANT_WRITES_KEY,
 } from "@/core/query/options"
 
 export type LoadRestaurantOutcome = "ok" | "not-found" | "error"
@@ -93,9 +95,6 @@ export interface TenantContextType {
 }
 
 const TenantContext = createContext<TenantContextType | undefined>(undefined)
-
-// Shared mutation key so a settling write can tell whether others are in flight.
-const TENANT_WRITES_KEY = ["tenant-writes"] as const
 
 interface TenantProviderProps {
   children: React.ReactNode
@@ -244,18 +243,30 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
   const { mutateAsync: trackWrite } = useMutation({
     mutationKey: TENANT_WRITES_KEY,
     mutationFn: (request: Promise<unknown>) => request,
-    onSettled: () => {
-      // Cached lookups predate the write.
+  })
+
+  // Every tenant write (restaurant edits here, store config in the catalog
+  // slice) settles through this listener: cached lookups predate the write,
+  // and once the last one settles a directory read deferred during the writes
+  // is pulled again.
+  const refreshRestaurantsRef = useRef(refreshRestaurants)
+  refreshRestaurantsRef.current = refreshRestaurants
+  useEffect(() => {
+    const writesHash = hashKey(TENANT_WRITES_KEY)
+    return queryClient.getMutationCache().subscribe((event) => {
+      if (event.type !== "updated") return
+      if (event.action.type !== "success" && event.action.type !== "error") return
+      const key = event.mutation.options.mutationKey
+      if (!key || hashKey(key) !== writesHash) return
       void queryClient.invalidateQueries({ queryKey: keyPrefixes.restaurant() })
       void queryClient.invalidateQueries({ queryKey: keyPrefixes.restaurantStatus() })
-      // The settling mutation counts itself, hence > 1.
-      if (queryClient.isMutating({ mutationKey: TENANT_WRITES_KEY }) > 1) return
+      if (queryClient.isMutating({ mutationKey: TENANT_WRITES_KEY }) > 0) return
       if (directoryDeferred.current) {
         directoryDeferred.current = false
-        void refreshRestaurants()
+        void refreshRestaurantsRef.current()
       }
-    },
-  })
+    })
+  }, [queryClient])
   const dispatchWrite = useCallback(
     <T,>(request: Promise<T>): Promise<T> => {
       // The mutation owns the rejection; this only avoids a transient

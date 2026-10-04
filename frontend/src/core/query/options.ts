@@ -60,6 +60,12 @@ export const ordersQueryOptions = (tenantId: TenantId, role: UserRole) =>
     networkMode: "always",
   })
 
+/**
+ * Shared key of every write to tenant records (restaurant edits, store
+ * config): a directory read that lands while one is pending is deferred.
+ */
+export const TENANT_WRITES_KEY = ["tenant-writes"] as const
+
 /** Shared key of every catalog write (products, additions, categories). */
 export const CATALOG_WRITES_KEY = ["catalog-writes"] as const
 

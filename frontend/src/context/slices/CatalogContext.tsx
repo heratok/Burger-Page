@@ -8,9 +8,13 @@ import { apiClient, isNotFoundError } from "@/core/api/apiClient"
 import { toast } from "sonner"
 import { nextTempId } from "@/lib/ids"
 import { splitConfigForApi } from "@/lib/storeSchedule"
-import { runOptimisticMutation } from "./optimisticMutation"
 import { keys, keyPrefixes } from "@/core/query/keys"
-import { productsQueryOptions, additionsQueryOptions, CATALOG_WRITES_KEY } from "@/core/query/options"
+import {
+  productsQueryOptions,
+  additionsQueryOptions,
+  CATALOG_WRITES_KEY,
+  TENANT_WRITES_KEY,
+} from "@/core/query/options"
 
 export interface CatalogContextType {
   storeConfig: StorefrontConfig
@@ -63,6 +67,14 @@ interface CatalogEdit {
   toast: { success?: string; info?: string; error: string }
   /** A failure this returns true for is ignored: no rollback, no error toast. */
   skipRollbackIfError?: (err: unknown) => boolean
+  warnMessage: string
+}
+
+/** One optimistic store-config write (design/settings of the tenant record). */
+interface ConfigWrite {
+  apply: (config: StorefrontConfig) => StorefrontConfig
+  request: Promise<unknown>
+  toast: { success?: string; info?: string; error: string }
   warnMessage: string
 }
 
@@ -210,24 +222,52 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
     [runCatalogEdit]
   )
 
+  // Store config is tenant record data: its writes share TENANT_WRITES_KEY
+  // with the restaurant edits, so a directory read that lands while one is
+  // pending is deferred instead of reverting it, and the settled write marks
+  // the cached restaurant lookups stale (TenantContext's write listener).
+  const { mutate: writeConfig } = useMutation({
+    mutationKey: TENANT_WRITES_KEY,
+    mutationFn: (vars: ConfigWrite) => vars.request,
+    onMutate: (vars) => {
+      const previousConfig = activeRestaurant?.config
+      updateActiveRestaurantRecord((current) => ({ ...current, config: vars.apply(current.config) }))
+      if (vars.toast.success) toast.success(vars.toast.success)
+      else if (vars.toast.info) toast.info(vars.toast.info)
+      return { previousConfig }
+    },
+    onError: (err, vars, context) => {
+      warn(vars.warnMessage, err)
+      const previousConfig = context?.previousConfig
+      if (previousConfig) {
+        updateActiveRestaurantRecord((current) => ({ ...current, config: previousConfig }))
+      }
+      toast.error(vars.toast.error)
+    },
+  })
+
+  /** Fires the config request at the user action and runs the tracked write. */
+  const runConfigWrite = useCallback(
+    (write: Omit<ConfigWrite, "request"> & { call: () => Promise<unknown> }) => {
+      let request: Promise<unknown>
+      try {
+        request = write.call()
+      } catch (err) {
+        request = Promise.reject(err)
+      }
+      request.catch(() => undefined)
+      writeConfig({ ...write, request })
+    },
+    [writeConfig]
+  )
+
   const updateStoreConfig = useCallback(
     (newConfig: Partial<StorefrontConfig>) => {
       const restaurantId = activeRestaurant?.id
-      void runOptimisticMutation({
-        apply: () => {
-          const previousConfig = activeRestaurant?.config
-          updateActiveRestaurantRecord((current) => ({
-            ...current,
-            config: { ...current.config, ...newConfig },
-          }))
-          return previousConfig
-        },
+      runConfigWrite({
+        apply: (config) => ({ ...config, ...newConfig }),
         call: () =>
           restaurantId ? apiClient.updateRestaurant(restaurantId, splitConfigForApi(newConfig)) : Promise.resolve(undefined),
-        rollback: (previousConfig) => {
-          if (!previousConfig) return
-          updateActiveRestaurantRecord((current) => ({ ...current, config: previousConfig }))
-        },
         toast: {
           success: "Diseño y configuración actualizados",
           error: "Error al guardar la configuración en el servidor",
@@ -235,38 +275,27 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
         warnMessage: "Could not persist store config to backend API:",
       })
     },
-    [activeRestaurant?.id, activeRestaurant?.config, updateActiveRestaurantRecord]
+    [activeRestaurant?.id, runConfigWrite]
   )
 
   const resetStoreConfig = useCallback(() => {
     const restaurantId = activeRestaurant?.id
-    void runOptimisticMutation({
-      apply: () => {
-        const previousConfig = activeRestaurant?.config
-        updateActiveRestaurantRecord((current) => ({
-          ...current,
-          config: {
-            ...DEFAULT_STORE_CONFIG,
-            // Resetting the design never touches the opening hours or the pause.
-            schedule: current.config.schedule,
-            timezone: current.config.timezone,
-            ordersPaused: current.config.ordersPaused,
-          },
-        }))
-        return previousConfig
-      },
+    runConfigWrite({
+      apply: (config) => ({
+        ...DEFAULT_STORE_CONFIG,
+        // Resetting the design never touches the opening hours or the pause.
+        schedule: config.schedule,
+        timezone: config.timezone,
+        ordersPaused: config.ordersPaused,
+      }),
       call: () =>
         restaurantId
           ? apiClient.updateRestaurant(restaurantId, { config: splitConfigForApi(DEFAULT_STORE_CONFIG).config })
           : Promise.resolve(undefined),
-      rollback: (previousConfig) => {
-        if (!previousConfig) return
-        updateActiveRestaurantRecord((current) => ({ ...current, config: previousConfig }))
-      },
       toast: { info: "Diseño restablecido a los valores por defecto", error: "Error al restablecer la configuración en el servidor" },
       warnMessage: "Could not persist reset store config to backend API:",
     })
-  }, [activeRestaurant?.id, activeRestaurant?.config, updateActiveRestaurantRecord])
+  }, [activeRestaurant?.id, runConfigWrite])
 
   const addProduct = useCallback(
     (item: Omit<MenuItem, "id">) => {
