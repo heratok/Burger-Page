@@ -23,7 +23,12 @@ import { runOptimisticMutation } from "./optimisticMutation"
 import { nextTempId } from "@/lib/ids"
 import { ADMIN_ROOT_PATHS } from "@/core/router/adminRootPaths"
 import { appQueryClient } from "@/core/query/queryClient"
-import { keys, keyPrefixes } from "@/core/query/keys"
+import { keyPrefixes } from "@/core/query/keys"
+import {
+  restaurantsQueryOptions,
+  restaurantQueryOptions,
+  restaurantStatusQueryOptions,
+} from "@/core/query/options"
 
 export interface GlobalPlatformStats {
   totalRevenue: number
@@ -227,9 +232,8 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
       // refreshes share the in-flight request). The role in the key keeps the
       // cache from crossing sessions.
       const backendRestaurants = await queryClient.fetchQuery({
-        queryKey: keys.restaurants(role),
+        ...restaurantsQueryOptions(role),
         staleTime: 0,
-        queryFn: async () => (await apiClient.listRestaurants()) ?? null,
       })
       if (Array.isArray(backendRestaurants)) {
         if (queryClient.isMutating({ mutationKey: TENANT_WRITES_KEY }) > 0) {
@@ -252,10 +256,7 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
   // fresh result is reused briefly. Failures are never cached.
   const fetchTenant = useCallback(
     (idOrSlug: string) =>
-      queryClient.fetchQuery({
-        queryKey: keys.restaurant(role, idOrSlug),
-        queryFn: async () => (await apiClient.fetchRestaurant(idOrSlug)) ?? null,
-      }),
+      queryClient.fetchQuery(restaurantQueryOptions(role, idOrSlug)),
     [queryClient, role]
   )
 
@@ -314,9 +315,8 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
     if (!current?.slug) return
     try {
       const fetched: any = await queryClient.fetchQuery({
-        queryKey: keys.restaurantStatus(role, current.slug),
+        ...restaurantStatusQueryOptions(role, current.slug),
         staleTime: 0,
-        queryFn: async () => (await apiClient.fetchRestaurant(current.slug)) ?? null,
       })
       if (!fetched || fetched.id !== current.id) return
       const next = scheduleFieldsFromApi(fetched as any)

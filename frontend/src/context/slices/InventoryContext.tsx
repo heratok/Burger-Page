@@ -6,7 +6,8 @@ import { useTenant } from "./TenantContext"
 import { useAuth } from "./AuthContext"
 import { toast } from "sonner"
 import { nextTempId } from "@/lib/ids"
-import { keys, keyPrefixes } from "@/core/query/keys"
+import { keyPrefixes } from "@/core/query/keys"
+import { inventoryQueryOptions, suppliersQueryOptions } from "@/core/query/options"
 
 export interface InventoryContextType {
   inventory: InventoryItem[]
@@ -97,32 +98,8 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // entry can never be served across roles.
   const enabled = Boolean(effectiveId && apiClient.hasToken())
 
-  const inventoryQuery = useQuery({
-    queryKey: keys.inventory(effectiveId, session.role),
-    enabled,
-    retry: false,
-    queryFn: async () => {
-      try {
-        return await apiClient.fetchInventory(effectiveId)
-      } catch (err) {
-        warn("Could not fetch inventory from backend API:", err)
-        throw err
-      }
-    },
-  })
-  const suppliersQuery = useQuery({
-    queryKey: keys.suppliers(effectiveId, session.role),
-    enabled,
-    retry: false,
-    queryFn: async () => {
-      try {
-        return await apiClient.fetchSuppliers(effectiveId)
-      } catch (err) {
-        warn("Could not fetch suppliers from backend API:", err)
-        throw err
-      }
-    },
-  })
+  const inventoryQuery = useQuery({ ...inventoryQueryOptions(effectiveId, session.role), enabled })
+  const suppliersQuery = useQuery({ ...suppliersQueryOptions(effectiveId, session.role), enabled })
 
   // Initial hydration only (isLoading = no data yet and fetching); background
   // refetches after writes must not flash the loading state.

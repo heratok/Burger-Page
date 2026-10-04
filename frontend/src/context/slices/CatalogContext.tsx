@@ -9,7 +9,8 @@ import { toast } from "sonner"
 import { nextTempId } from "@/lib/ids"
 import { splitConfigForApi } from "@/lib/storeSchedule"
 import { runOptimisticMutation, type OptimisticMutationConfig } from "./optimisticMutation"
-import { keys, keyPrefixes } from "@/core/query/keys"
+import { keyPrefixes } from "@/core/query/keys"
+import { productsQueryOptions, additionsQueryOptions } from "@/core/query/options"
 
 export interface CatalogContextType {
   storeConfig: StorefrontConfig
@@ -78,30 +79,12 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const enabled = Boolean(effectiveId && effectiveId !== "rest-default")
 
   const productsQuery = useQuery({
-    queryKey: keys.products(effectiveId, session.role, effectiveSlug),
+    ...productsQueryOptions(effectiveId, session.role, effectiveSlug),
     enabled,
-    retry: false,
-    queryFn: async () => {
-      try {
-        return await apiClient.fetchProducts({ restaurantId: effectiveId, slug: effectiveSlug })
-      } catch (err) {
-        warn("Could not fetch products from backend API:", err)
-        throw err
-      }
-    },
   })
   const additionsQuery = useQuery({
-    queryKey: keys.additions(effectiveId, session.role, effectiveSlug),
+    ...additionsQueryOptions(effectiveId, session.role, effectiveSlug),
     enabled,
-    retry: false,
-    queryFn: async () => {
-      try {
-        return await apiClient.fetchAdditions({ restaurantId: effectiveId, slug: effectiveSlug })
-      } catch (err) {
-        warn("Could not fetch additions from backend API:", err)
-        throw err
-      }
-    },
   })
 
   // Initial hydration only (isLoading = no data yet and fetching); background
