@@ -141,12 +141,15 @@ test.describe('Order Edit in Backoffice POS - Responsive Verification (320px, 39
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
+    // Stateful like the real backend: a successful PUT changes what later
+    // GETs return, because the app re-syncs orders after a write settles.
+    let serverOrder: Record<string, any> = order101;
     await page.route('**/api/orders?*', async (route) => {
       if (route.request().method() !== 'GET') return route.continue();
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([order101]),
+        body: JSON.stringify([serverOrder]),
       });
     });
     await page.route('**/api/orders', async (route) => {
@@ -154,7 +157,7 @@ test.describe('Order Edit in Backoffice POS - Responsive Verification (320px, 39
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([order101]),
+        body: JSON.stringify([serverOrder]),
       });
     });
     // Editing the order does PUT /api/orders/:id — fulfill it so the save
@@ -162,14 +165,15 @@ test.describe('Order Edit in Backoffice POS - Responsive Verification (320px, 39
     await page.route('**/api/orders/*', async (route) => {
       if (route.request().method() !== 'PUT') return route.continue();
       const payload = route.request().postDataJSON?.() ?? {};
+      serverOrder = {
+        ...serverOrder,
+        ...payload,
+        customer: { ...serverOrder.customer, name: payload.customer?.name ?? serverOrder.customer.name },
+      };
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({
-          ...order101,
-          ...payload,
-          customer: { name: payload.customer?.name ?? order101.customer.name },
-        }),
+        body: JSON.stringify(serverOrder),
       });
     });
 
