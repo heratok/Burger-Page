@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useMemo, useCallback, useEffect, useRef, useState } from "react"
+import React, { createContext, useContext, useMemo, useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { hashKey, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type { Order, OrderStatus, Customer, RestaurantRecord } from "@/types/restaurant"
 import type { CreateOrderInput, UpdateOrderInput, OrderEvent, UpdateCustomerInput } from "@burger-page/contracts"
@@ -14,6 +14,7 @@ import { formatCurrency, cleanPhoneNumber } from "@/lib/utils"
 import { nextTempId } from "@/lib/ids"
 import { keys, keyPrefixes } from "@/core/query/keys"
 import { ordersQueryOptions } from "@/core/query/options"
+import { pendingOrdersQueue } from "@/core/storage/pendingOrdersQueue"
 import {
   EMPTY_BOARD,
   ORDER_WRITES_KEY,
@@ -427,6 +428,24 @@ export function adoptCreatedOrderToActive<T extends OrderBoard>(
   }
 }
 
+/**
+ * A queued offline sale the server accepted on retry joins the board with the
+ * server identity. An SSE echo or a read that already brought the server copy
+ * (same server id) is replaced by it, so the board holds a single card.
+ */
+export function adoptQueuedOrder<T extends OrderBoard>(current: T, queued: Order, createdOrder: any): T {
+  const adopted: Order = {
+    ...queued,
+    id: createdOrder.id,
+    orderNumber: createdOrder.orderNumber ?? queued.orderNumber,
+    pendingSync: false,
+  }
+  return {
+    ...current,
+    orders: [adopted, ...current.orders.filter((o) => o.id !== createdOrder.id && o.id !== queued.id)],
+  }
+}
+
 function buildCreateOrderItem(item: any, products: any[], additions: any[]) {
   const matchedProduct = products?.find(
     (p) => p.name.toLowerCase() === item.name.toLowerCase() || p.id === item.id
@@ -614,8 +633,22 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     initialDataUpdatedAt: 0,
   })
   const board = boardQuery.data
-  const orders = board?.orders ?? EMPTY_BOARD.orders
+  const boardOrders = board?.orders ?? EMPTY_BOARD.orders
   const customers = board?.customers ?? EMPTY_BOARD.customers
+
+  // Offline sales (REJ-02) live in the persisted pending-orders queue, never in
+  // the server cache. They are shown on top of the board until the retry syncs
+  // them; one the server already returned (same id or number) is not repeated.
+  const queuedOrders = useSyncExternalStore(pendingOrdersQueue.subscribe, () =>
+    pendingOrdersQueue.list(effectiveId)
+  )
+  const orders = useMemo(() => {
+    if (queuedOrders.length === 0) return boardOrders
+    const ids = new Set(boardOrders.map((o) => o.id))
+    const numbers = new Set(boardOrders.map((o) => o.orderNumber))
+    const visible = queuedOrders.filter((o) => !ids.has(o.id) && !numbers.has(o.orderNumber))
+    return visible.length > 0 ? [...visible, ...boardOrders] : boardOrders
+  }, [queuedOrders, boardOrders])
 
   /** Applies a local change (optimistic write, rollback, SSE event) to the cached board. */
   const updateBoard = useCallback(
@@ -627,6 +660,17 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const readBoard = useCallback(
     (): OrderBoard => queryClient.getQueryData<OrderBoard>(boardKey) ?? EMPTY_BOARD,
     [queryClient, boardKey]
+  )
+  /** Applies an edit to the tenant's queued offline sales too (only when it changes one). */
+  const updateQueue = useCallback(
+    (updater: (current: OrderBoard) => OrderBoard) => {
+      const queued = pendingOrdersQueue.list(effectiveId)
+      if (!effectiveId || queued.length === 0) return
+      const next = updater({ orders: queued, customers: [] }).orders
+      const changed = next.length !== queued.length || next.some((o, i) => o !== queued[i])
+      if (changed) pendingOrdersQueue.replace(effectiveId, next)
+    },
+    [effectiveId]
   )
 
   // Dual write: the tenant record keeps a copy of the board (persistence and
@@ -686,13 +730,15 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     onMutate: (edit) => {
       void queryClient.cancelQueries({ queryKey: boardKey })
       const snapshot = readBoard()
+      const queueSnapshot = pendingOrdersQueue.list(effectiveId)
       updateBoard(edit.apply)
+      updateQueue(edit.apply)
       if (edit.toast.success && edit.toast.successTiming !== "confirmed") {
         toast.success(edit.toast.success)
       } else if (edit.toast.info) {
         toast.info(edit.toast.info)
       }
-      return { snapshot }
+      return { snapshot, queueSnapshot }
     },
     onSuccess: (result, edit) => {
       // The server already committed: a reconciliation bug must never roll
@@ -709,7 +755,10 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     onError: (err, edit, context) => {
       if (edit.skipRollbackIfError?.(err)) return
       if (import.meta.env?.MODE !== "test") console.warn(edit.warnMessage, err)
-      if (context) updateBoard((board) => edit.rollback(board, context.snapshot))
+      if (context) {
+        updateBoard((board) => edit.rollback(board, context.snapshot))
+        updateQueue((queued) => edit.rollback(queued, { orders: context.queueSnapshot, customers: [] }))
+      }
       toast.error(edit.toast.error)
     },
     onSettled: (_result, err, edit) => revalidate({ revalidate: edit.pending !== undefined }, err !== null),
@@ -772,20 +821,20 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       try {
         const orderInput = buildCreateOrderInput({ ...activeRestaurant, customers: readBoard().customers }, order)
         const createdOrder = await trackRequest(apiClient.createOrder(orderInput), undefined, false)
+        // Synced: the sale leaves the queue and joins the cached board.
+        pendingOrdersQueue.remove(targetRestId, order.id)
         if (!createdOrder?.id) {
           // Accepted but no body returned: the order is persisted server-side;
-          // keep the optimistic card and stop treating it as pending.
+          // keep the card and stop treating it as pending.
           updateBoard((current) => ({
             ...current,
-            orders: current.orders.map((o) =>
-              o.id === order.id ? { ...o, pendingSync: false } : o
-            ),
+            orders: [{ ...order, pendingSync: false }, ...current.orders.filter((o) => o.id !== order.id)],
           }))
           return
         }
         // Adopt the server identity exactly like addOrder's success path
         // (SSE-duplicate collapse included) and clear the pending flag.
-        updateBoard((current) => adoptCreatedOrderToActive(current, order.id, createdOrder))
+        updateBoard((current) => adoptQueuedOrder(current, order, createdOrder))
       } catch (error) {
         if (isNetworkFailure(error)) {
           // Still offline: keep the pending flag; the next refresh retries.
@@ -796,10 +845,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (import.meta.env?.MODE !== 'test') {
           console.warn("Server rejected a pending order during retry; removing it:", error)
         }
-        updateBoard((current) => ({
-          ...current,
-          orders: current.orders.filter((o) => o.id !== order.id),
-        }))
+        pendingOrdersQueue.remove(targetRestId, order.id)
         const err = error as any
         const description = formatUserFacingOrderError(
           err && typeof err.message === 'string' ? err.message : undefined
@@ -818,7 +864,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // idempotent on clientOrderId, so no session token is required here.
     if (!targetRestId) return
     if (retryInFlightRef.current) return
-    const pendingOrders = readBoard().orders.filter((o) => o.pendingSync)
+    const pendingOrders = pendingOrdersQueue.list(targetRestId)
     if (pendingOrders.length === 0) return
     retryInFlightRef.current = true
     try {
@@ -826,13 +872,13 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } finally {
       retryInFlightRef.current = false
     }
-  }, [activeRestaurant, readBoard, attemptPendingOrderSync])
+  }, [activeRestaurant, attemptPendingOrderSync])
 
   // Timer-driven retry for pending orders (covers anonymous storefront
   // customers, who never trigger the token-gated refresh-driven retry). Bounded
   // exponential backoff; an 'online' event retries immediately. After the max
   // attempts it stops and tells the user once; the order stays pending.
-  const pendingSyncCount = orders.filter((o) => o.pendingSync).length
+  const pendingSyncCount = queuedOrders.length
   const [retryTick, setRetryTick] = useState(0)
   const retryAttemptsRef = useRef(0)
   const lastPendingCountRef = useRef(0)
@@ -940,6 +986,17 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [effectiveId, session, queryClient])
 
+  /** Moves an optimistic sale that could not reach the server into the persisted queue. */
+  const holdOffline = useCallback(
+    (sale: Order) => {
+      if (!effectiveId) return
+      const card = readBoard().orders.find((o) => o.id === sale.id) ?? sale
+      updateBoard((current) => ({ ...current, orders: current.orders.filter((o) => o.id !== sale.id) }))
+      pendingOrdersQueue.add(effectiveId, { ...card, pendingSync: true })
+    },
+    [effectiveId, readBoard, updateBoard]
+  )
+
   const addOrder = useCallback(
     (orderData: Omit<Order, "id" | "orderNumber" | "createdAt" | "updatedAt">) => {
       const attemptKey = JSON.stringify(orderData)
@@ -1015,21 +1072,16 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           .catch((error) => {
             if (isNetworkFailure(error)) {
               // Pure connectivity failure (offline, 'Failed to fetch'): the
-              // sale must not be destroyed with no record and no retry — keep
-              // the optimistic card marked pendingSync and flush it once a
-              // fetch/refresh proves connectivity again (REJ-02).
+              // sale must not be destroyed with no record and no retry — move
+              // the optimistic card to the persisted pending-orders queue and
+              // flush it once connectivity is proven again (REJ-02).
               if (import.meta.env?.MODE !== 'test') {
                 console.warn(
                   "Could not sync order to backend API; keeping the order pending local sync:",
                   error
                 )
               }
-              updateBoard((current) => ({
-                ...current,
-                orders: current.orders.map((o) =>
-                  o.id === newOrder.id ? { ...o, pendingSync: true } : o
-                ),
-              }))
+              holdOffline(newOrder)
               toast.warning('Sin conexión: la venta quedó guardada localmente y se sincronizará automáticamente')
               resolveServer({ adoptedOrderNumber: newOrder.orderNumber, offline: true })
               return
@@ -1060,19 +1112,14 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         // Input preparation never reached the server (local condition): treat
         // it like an offline failure and keep the sale pending sync instead of
         // deleting it (REJ-02).
-        updateBoard((current) => ({
-          ...current,
-          orders: current.orders.map((o) =>
-            o.id === newOrder.id ? { ...o, pendingSync: true } : o
-          ),
-        }))
+        holdOffline(newOrder)
         toast.warning('Sin conexión: la venta quedó guardada localmente y se sincronizará automáticamente')
         resolveServer({ adoptedOrderNumber: newOrder.orderNumber, offline: true })
       }
 
       return newOrder
     },
-    [activeRestaurant, updateBoard, readBoard, soundEnabled, trackRequest]
+    [activeRestaurant, updateBoard, readBoard, holdOffline, soundEnabled, trackRequest]
   )
 
   const updateOrder = useCallback(

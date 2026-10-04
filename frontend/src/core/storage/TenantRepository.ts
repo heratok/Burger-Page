@@ -1,5 +1,6 @@
 import type { RestaurantRecord, StorageEnvelopeV2 } from "@/types/restaurant"
 import { type StorageAdapter, LocalStorageAdapter } from "./StorageAdapter"
+import { PendingOrdersQueue, pendingOrdersQueue } from "./pendingOrdersQueue"
 
 export const STORAGE_KEYS = {
   ENVELOPE: "burger_page_platform_v2",
@@ -13,9 +14,11 @@ export const DEFAULT_ENVELOPE: StorageEnvelopeV2 = {
 
 export class TenantRepository {
   private adapter: StorageAdapter
+  private pendingQueue: PendingOrdersQueue
 
-  constructor(adapter: StorageAdapter = new LocalStorageAdapter()) {
+  constructor(adapter: StorageAdapter = new LocalStorageAdapter(), pendingQueue: PendingOrdersQueue = pendingOrdersQueue) {
     this.adapter = adapter
+    this.pendingQueue = pendingQueue
   }
 
   loadEnvelope(): StorageEnvelopeV2 {
@@ -28,7 +31,8 @@ export class TenantRepository {
           Array.isArray(parsed.restaurants) &&
           parsed.restaurants.length > 0
         ) {
-          const migratedRestaurants = parsed.restaurants.map((r) => {
+          const migratedRestaurants = parsed.restaurants.map((stored) => {
+            const r = this.movePendingOrdersToQueue(stored)
             if (!r.categories || r.categories.length === 0) {
               const fromProducts = Array.from(new Set((r.products || []).map((p) => p.category).filter(Boolean)))
               // Derive from products, or keep it empty. A category the owner
@@ -50,6 +54,19 @@ export class TenantRepository {
     } catch {
       return DEFAULT_ENVELOPE
     }
+  }
+
+  /**
+   * Offline sales (pendingSync) persisted inside a tenant record by an older
+   * version move to the pending-orders queue, which owns them now.
+   */
+  private movePendingOrdersToQueue(record: RestaurantRecord): RestaurantRecord {
+    const orders = Array.isArray(record.orders) ? record.orders : []
+    const pending = orders.filter((o) => o.pendingSync)
+    if (pending.length === 0) return record
+    // Oldest first, so the queue keeps the newest sale on top.
+    for (const order of [...pending].reverse()) this.pendingQueue.add(record.id, order)
+    return { ...record, orders: orders.filter((o) => !o.pendingSync) }
   }
 
   saveEnvelope(envelope: StorageEnvelopeV2): void {
@@ -82,8 +99,8 @@ export class TenantRepository {
 
   /**
    * C3 tenant-isolation purge: removes the whole-platform envelope (orders,
-   * customers, inventory, suppliers of every tenant) AND the persisted active
-   * restaurant id at once, through the storage adapter. It is invoked only at
+   * customers, inventory, suppliers of every tenant), every tenant's queue of
+   * unsynced offline sales AND the persisted active restaurant id at once. It is invoked only at
    * session end (logout) by AuthProvider's onLogout callback; guest/super
    * storefront caching is intentionally untouched because nothing calls this
    * outside the session-end path.
@@ -92,6 +109,7 @@ export class TenantRepository {
     try {
       this.adapter.removeItem(STORAGE_KEYS.ENVELOPE)
       this.adapter.removeItem(STORAGE_KEYS.ACTIVE_REST)
+      this.pendingQueue.purge()
     } catch (err) {
       console.error("Failed to purge tenant data from storage:", err)
     }
