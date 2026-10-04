@@ -6,6 +6,7 @@ import { toast } from "sonner"
 import { seedBlankActiveTenant } from "@/test/fixtures"
 import { createTestQueryClient } from "@/test/testQueryClient"
 import { DEFAULT_STORE_CONFIG } from "@/constants/themePresets"
+import { PERSISTED_QUERIES_KEY } from "@/core/query/persistence"
 
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() },
@@ -132,7 +133,10 @@ describe("TenantContext server calls (TanStack Query)", () => {
       const { result } = renderHook(() => useTenant(), { wrapper })
       await waitFor(() => expect(result.current.restaurants[0]?.config.name).toBe("A"))
       expect(JSON.stringify(result.current.restaurants)).not.toContain("secret")
-      expect(localStorage.getItem("burger_page_platform_v2")).not.toContain("secret")
+      // The legacy envelope is migrated and removed; nothing persisted (the
+      // storefront query cache included) may carry the secret.
+      expect(localStorage.getItem("burger_page_platform_v2")).toBeNull()
+      expect(localStorage.getItem(PERSISTED_QUERIES_KEY) ?? "").not.toContain("secret")
     })
 
     it("defers merging a stale directory response while a write is pending, then refetches", async () => {
@@ -289,9 +293,12 @@ describe("TenantContext server calls (TanStack Query)", () => {
       await act(async () => {
         await result.current.loadRestaurant("new-place")
       })
+      // The resolved record is registered under the slug and the id, both
+      // keyed by the session role.
       const keys = client.getQueryCache().findAll({ queryKey: ["restaurant"] }).map((q) => q.queryKey)
-      expect(keys).toHaveLength(1)
-      expect(keys[0]).toEqual(expect.arrayContaining(["guest", "new-place"]))
+      expect(keys).toHaveLength(2)
+      expect(keys).toContainEqual(["restaurant", "guest", "new-place"])
+      expect(keys).toContainEqual(["restaurant", "guest", "rest-new"])
     })
 
     it("does not cache a failed lookup: not-found then found on retry", async () => {
@@ -429,16 +436,6 @@ describe("TenantContext server calls (TanStack Query)", () => {
       expect(result.current.effectiveRestaurantId).toBe("")
     })
 
-    it("keeps cross-tab storage sync", async () => {
-      const { wrapper } = setup()
-      const { result } = renderHook(() => useTenant(), { wrapper })
-      const next = { version: 2, restaurants: [makeRecord("rest-x", "x", "From other tab")] }
-      localStorage.setItem("burger_page_platform_v2", JSON.stringify(next))
-      act(() => {
-        window.dispatchEvent(new StorageEvent("storage", { key: "burger_page_platform_v2" }))
-      })
-      await waitFor(() => expect(result.current.restaurants.map((r) => r.id)).toEqual(["rest-x"]))
-    })
   })
 
   describe("provider order", () => {

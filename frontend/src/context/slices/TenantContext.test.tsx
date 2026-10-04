@@ -1,9 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
-import { seedBlankActiveTenant } from "@/test/fixtures"
+import { seedBlankActiveTenant, seedRestaurantDirectory } from "@/test/fixtures"
 import { renderHook, act, waitFor } from "@testing-library/react"
 import React from "react"
 import { TenantProvider, useTenant } from "./TenantContext"
 import { AuthProvider } from "./AuthContext"
+import { CatalogProvider, useCatalog } from "./CatalogContext"
 import { toast } from "sonner"
 import { apiClient } from "@/core/api/apiClient"
 import { DEFAULT_STORE_CONFIG } from "@/constants/themePresets"
@@ -359,6 +360,11 @@ describe("TenantContext - effective tenant derivation and mutation identity (A1/
       "burger_page_session_v2",
       JSON.stringify({ role: "restaurant", restaurantId: "rest-own", authenticatedAt: new Date().toISOString() })
     )
+    // A restaurant session reads tenants from its directory (server state).
+    seedRestaurantDirectory(
+      [makeRestaurant("rest-own", "own", "Own"), makeRestaurant("rest-other", "other", "Other")],
+      ["restaurant"]
+    )
     vi.spyOn(apiClient, "listRestaurants").mockRejectedValue(new Error("no backend in tests"))
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -462,7 +468,21 @@ describe("TenantContext - effective tenant derivation and mutation identity (A1/
     })
   })
 
-  it("creates a fresh record for a stub/unknown active id instead of mutating restaurants[0] (M10)", async () => {
+  it("exposes no envelope writer: the active record is written through the restaurant cache", () => {
+    const wrapper = ({ children }: { children: React.ReactNode }) => <TenantProvider>{children}</TenantProvider>
+    const { result } = renderHook(() => useTenant(), { wrapper })
+    expect("updateActiveRestaurantRecord" in result.current).toBe(false)
+  })
+
+  // The active record's remaining writer is the store config (catalog slice).
+  const tenantAndCatalog = ({ children }: { children: React.ReactNode }) => (
+    <TenantProvider>
+      <CatalogProvider>{children}</CatalogProvider>
+    </TenantProvider>
+  )
+  const useTenantAndCatalog = () => ({ ...useTenant(), catalog: useCatalog() })
+
+  it("never redirects a write for a stale active id to restaurants[0] (M10)", async () => {
     seedEnvelope([
       makeRestaurant("rest-alive", "alive", "Alive"),
       makeRestaurant("rest-gone", "gone", "Gone"),
@@ -473,10 +493,8 @@ describe("TenantContext - effective tenant derivation and mutation identity (A1/
       { id: "rest-alive", slug: "alive", name: "Alive" },
     ] as any)
 
-    const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <TenantProvider>{children}</TenantProvider>
-    )
-    const { result } = renderHook(() => useTenant(), { wrapper })
+    vi.spyOn(apiClient, "updateRestaurant").mockResolvedValue({} as any)
+    const { result } = renderHook(useTenantAndCatalog, { wrapper: tenantAndCatalog })
 
     // Backend refresh removes rest-gone while the active id stays stale.
     await waitFor(() => {
@@ -484,19 +502,16 @@ describe("TenantContext - effective tenant derivation and mutation identity (A1/
     })
 
     act(() => {
-      result.current.updateActiveRestaurantRecord((current) => ({
-        ...current,
-        config: { ...current.config, tagline: "REWROTE" },
-      }))
+      result.current.catalog.updateStoreConfig({ tagline: "REWROTE" })
     })
 
-    // restaurants[0] (rest-alive) must NEVER absorb the write.
+    // restaurants[0] (rest-alive) must NEVER absorb the write. The stale id
+    // the directory no longer lists is dropped, so the write targets nothing
+    // (records are server state now: no local record is fabricated for it).
     const alive = result.current.restaurants.find((r) => r.id === "rest-alive")
     expect(alive?.config.tagline).not.toBe("REWROTE")
-    // A brand-new record with the target id is created instead.
-    const recreated = result.current.restaurants.find((r) => r.id === "rest-gone")
-    expect(recreated).toBeDefined()
-    expect(recreated?.config.tagline).toBe("REWROTE")
+    expect(result.current.restaurants.some((r) => r.config.tagline === "REWROTE")).toBe(false)
+    expect(result.current.restaurants.some((r) => r.id === "rest-gone")).toBe(false)
   })
 
   it("matches mutations by id only, never redirecting by slug (M10)", async () => {
@@ -507,16 +522,11 @@ describe("TenantContext - effective tenant derivation and mutation identity (A1/
     localStorage.setItem("burger_page_active_rest_v2", "rest-b")
     vi.spyOn(apiClient, "listRestaurants").mockRejectedValue(new Error("no backend in tests"))
 
-    const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <TenantProvider>{children}</TenantProvider>
-    )
-    const { result } = renderHook(() => useTenant(), { wrapper })
+    vi.spyOn(apiClient, "updateRestaurant").mockResolvedValue({} as any)
+    const { result } = renderHook(useTenantAndCatalog, { wrapper: tenantAndCatalog })
 
     act(() => {
-      result.current.updateActiveRestaurantRecord((current) => ({
-        ...current,
-        config: { ...current.config, name: "B Renamed" },
-      }))
+      result.current.catalog.updateStoreConfig({ name: "B Renamed" })
     })
 
     const a = result.current.restaurants.find((r) => r.id === "rest-a")

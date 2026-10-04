@@ -170,18 +170,18 @@ export interface RestaurantRecord {
   adminPassword?: string
   config: StorefrontConfig
   categories?: string[]
-  /** @deprecated Server state in the query cache (keys.products); dropped by loadEnvelope. */
+  /** @deprecated Server state in the query cache (keys.products); legacy field, never carried over by the envelope migration. */
   products?: MenuItem[]
-  /** @deprecated Server state in the query cache (keys.additions); dropped by loadEnvelope. */
+  /** @deprecated Server state in the query cache (keys.additions); legacy field, never carried over by the envelope migration. */
   additions?: AdditionItem[]
-  /** @deprecated Server state in the query cache (keys.inventory); dropped by loadEnvelope. */
+  /** @deprecated Server state in the query cache (keys.inventory); legacy field, never carried over by the envelope migration. */
   inventory?: InventoryItem[]
-  /** @deprecated Server state in the query cache (keys.suppliers); dropped by loadEnvelope. */
+  /** @deprecated Server state in the query cache (keys.suppliers); legacy field, never carried over by the envelope migration. */
   suppliers?: Supplier[]
   /**
    * @deprecated Orders and customers are server state in the query cache
    * (keys.orders); offline sales live in the pending-orders queue. Only
-   * envelopes persisted by older versions carry these; loadEnvelope drops them.
+   * envelopes persisted by older versions carry these; the envelope migration drops them.
    */
   orders?: Order[]
   /** @deprecated See `orders`. */
@@ -201,6 +201,11 @@ export interface AdminSession {
   authenticatedAt?: string
 }
 
+/**
+ * @deprecated Legacy tenant envelope (localStorage "burger_page_platform_v2")
+ * persisted by older versions. Read once by TenantRepository.migrateLegacyEnvelope
+ * and removed; nothing writes it any more.
+ */
 export interface StorageEnvelopeV2 {
   version: 2
   superAdminPassword?: string

@@ -4,7 +4,8 @@ import React from "react"
 import { RestaurantProvider, useRestaurant } from "./RestaurantContext"
 import { InMemoryStorageAdapter } from "@/core/storage/StorageAdapter"
 import { TenantRepository, STORAGE_KEYS } from "@/core/storage/TenantRepository"
-import { TEST_STORAGE_ENVELOPE, seedCatalogsFrom } from "@/test/fixtures"
+import { TEST_STORAGE_ENVELOPE, seedCatalogsFrom, seedRestaurantDirectory } from "@/test/fixtures"
+import { PERSISTED_QUERIES_KEY } from "@/core/query/persistence"
 
 const createTestRepo = () => {
   const adapter = new InMemoryStorageAdapter()
@@ -148,7 +149,11 @@ describe("RestaurantContext (Multi-Tenant & Super Admin)", () => {
     )
     const { result } = renderHook(() => useRestaurant(), { wrapper: w })
 
-    expect(adapter.getItem(STORAGE_KEYS.ENVELOPE)).not.toBeNull()
+    // The legacy envelope is migrated on load: its public storefront data now
+    // lives in the persisted query cache.
+    expect(adapter.getItem(STORAGE_KEYS.ENVELOPE)).toBeNull()
+    expect(localStorage.getItem(PERSISTED_QUERIES_KEY)).not.toBeNull()
+    expect(adapter.getItem(STORAGE_KEYS.ACTIVE_REST)).not.toBeNull()
 
     act(() => {
       result.current.logout()
@@ -161,6 +166,7 @@ describe("RestaurantContext (Multi-Tenant & Super Admin)", () => {
     expect(purgeSpy).toHaveBeenCalledTimes(1)
     expect(adapter.getItem(STORAGE_KEYS.ENVELOPE)).toBeNull()
     expect(adapter.getItem(STORAGE_KEYS.ACTIVE_REST)).toBeNull()
+    expect(localStorage.getItem(PERSISTED_QUERIES_KEY)).toBeNull()
   })
 
   it("derives effectiveRestaurantId from the session for restaurant admins, ignoring a stale persisted active restaurant, and binds first-render fetches to the session tenant (A1)", async () => {
@@ -182,7 +188,8 @@ describe("RestaurantContext (Multi-Tenant & Super Admin)", () => {
 
     const { apiClient } = await import("@/core/api/apiClient")
     vi.spyOn(apiClient, "hasToken").mockReturnValue(true)
-    // Keep the seeded envelope stable: the mount refresh must not rewrite it.
+    // A restaurant session reads its tenant from the directory (server state).
+    seedRestaurantDirectory(TEST_STORAGE_ENVELOPE.restaurants, ["restaurant"])
     vi.spyOn(apiClient, "listRestaurants").mockRejectedValue(new Error("no backend in tests"))
     const fetchOrdersSpy = vi.spyOn(apiClient, "fetchOrders").mockResolvedValue([])
     const fetchCustomersSpy = vi.spyOn(apiClient, "fetchCustomers").mockResolvedValue([])
@@ -222,7 +229,9 @@ describe("RestaurantContext (Multi-Tenant & Super Admin)", () => {
     expect(result.current.effectiveRestaurantId).toBe("rest-tacos-el-rey")
     expect(result.current.activeRestaurant.slug).toBe("tacos-el-rey")
 
-    // Same rule for super admin: the persisted switch must still win.
+    // Same rule for super admin: the persisted switch must still win (its
+    // records come from the super directory, server state).
+    seedRestaurantDirectory(TEST_STORAGE_ENVELOPE.restaurants, ["super"])
     act(() => {
       result.current.setSession({ role: "super", authenticatedAt: new Date().toISOString() })
     })
@@ -239,6 +248,7 @@ describe("RestaurantContext (Multi-Tenant & Super Admin)", () => {
         authenticatedAt: new Date().toISOString(),
       })
     )
+    seedRestaurantDirectory(TEST_STORAGE_ENVELOPE.restaurants, ["restaurant"])
     const { result } = renderHook(() => useRestaurant(), {
       wrapper: ({ children }: { children: React.ReactNode }) => (
         <RestaurantProvider repository={createTestRepo()}>{children}</RestaurantProvider>
@@ -399,6 +409,7 @@ describe("useRestaurant.login - post-login tenant reset and route gating", () =>
 
   it("binds a restaurant admin to its own tenant and lands on the dashboard from a non-deep route", async () => {
     await mockLogin(restaurantUser)
+    seedRestaurantDirectory(TEST_STORAGE_ENVELOPE.restaurants, ["restaurant"])
     const { result } = renderHook(() => useRestaurant(), { wrapper })
     act(() => result.current.setAdminTab("menu"))
 

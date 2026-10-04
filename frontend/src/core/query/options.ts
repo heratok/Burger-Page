@@ -1,8 +1,11 @@
 import { queryOptions, type QueryClient, type QueryKey } from "@tanstack/react-query"
-import type { AdditionItem, MenuItem, UserRole } from "@/types/restaurant"
+import type { AdditionItem, MenuItem, RestaurantRecord, UserRole } from "@/types/restaurant"
 import { apiClient } from "@/core/api/apiClient"
 import { keys } from "./keys"
+import { PERSIST_MAX_AGE } from "./persistence"
 import { reconcileOrderBoard, type BackendBoard, type OrderBoard } from "@/context/slices/orderBoard"
+import { seedDirectory, toRestaurantRecord } from "@/context/slices/restaurantCache"
+import { deferRead } from "./deferredReads"
 
 /**
  * Per-resource query options: the key, the fetcher and the options every read
@@ -11,6 +14,13 @@ import { reconcileOrderBoard, type BackendBoard, type OrderBoard } from "@/conte
  * their refresh points (login, tenant switch, post-write revalidation).
  */
 type TenantId = string | undefined
+
+/**
+ * Guest storefront reads are persisted for offline reloads: they stay in the
+ * cache as long as the persisted copy may be restored (24h), so an unobserved
+ * one is not garbage-collected out of the persisted snapshot.
+ */
+const storefrontGcTime = (role: UserRole) => (role === "guest" ? { gcTime: PERSIST_MAX_AGE } : {})
 
 const warn = (message: string, err: unknown) => {
   if (import.meta.env?.MODE !== "test") {
@@ -83,6 +93,7 @@ function keepCachedDuringWrites<T>(client: QueryClient, queryKey: QueryKey, fres
 export const productsQueryOptions = (tenantId: TenantId, role: UserRole, slug: string | undefined) =>
   queryOptions({
     queryKey: keys.products(tenantId, role, slug),
+    ...storefrontGcTime(role),
     queryFn: async ({ client, queryKey }): Promise<MenuItem[]> =>
       keepCachedDuringWrites(
         client,
@@ -97,6 +108,7 @@ export const productsQueryOptions = (tenantId: TenantId, role: UserRole, slug: s
 export const additionsQueryOptions = (tenantId: TenantId, role: UserRole, slug: string | undefined) =>
   queryOptions({
     queryKey: keys.additions(tenantId, role, slug),
+    ...storefrontGcTime(role),
     queryFn: async ({ client, queryKey }): Promise<AdditionItem[]> =>
       keepCachedDuringWrites(
         client,
@@ -124,18 +136,39 @@ export const suppliersQueryOptions = (tenantId: TenantId, role: UserRole) =>
     retry: false,
   })
 
-/** Private platform directory (admin-only). */
+/**
+ * Private platform directory (admin-only), as domain records. Each read seeds
+ * the keys.restaurant entry of every listed restaurant. A read that lands while
+ * a tenant write is pending predates it: the cached directory is kept and the
+ * read is remembered, so the last settling write re-reads it once.
+ */
 export const restaurantsQueryOptions = (role: UserRole) =>
   queryOptions({
     queryKey: keys.restaurants(role),
-    queryFn: async () => (await apiClient.listRestaurants()) ?? null,
+    queryFn: async ({ client, queryKey }): Promise<RestaurantRecord[]> => {
+      const backend = await apiClient.listRestaurants()
+      const cached = client.getQueryData<RestaurantRecord[]>(queryKey)
+      if (!Array.isArray(backend)) return cached ?? []
+      if (cached && client.isMutating({ mutationKey: TENANT_WRITES_KEY }) > 0) {
+        deferRead(client, queryKey)
+        return cached
+      }
+      return seedDirectory(client, role, backend)
+    },
   })
 
-/** Public by-slug/id tenant lookup. */
+/** Public by-slug/id tenant lookup, as a domain record (null when the API answers nothing). */
 export const restaurantQueryOptions = (role: UserRole, idOrSlug: string) =>
   queryOptions({
     queryKey: keys.restaurant(role, idOrSlug),
-    queryFn: async () => (await apiClient.fetchRestaurant(idOrSlug)) ?? null,
+    ...storefrontGcTime(role),
+    queryFn: async ({ client, queryKey }): Promise<RestaurantRecord | null> => {
+      const fetched: any = await apiClient.fetchRestaurant(idOrSlug)
+      // Only a single restaurant payload is a tenant: anything else (no id or
+      // slug, a list) is not-found, like the lookup was before it was cached.
+      const isRestaurant = fetched && !Array.isArray(fetched) && typeof fetched.id === "string" && typeof fetched.slug === "string"
+      return isRestaurant ? toRestaurantRecord(fetched, client.getQueryData<RestaurantRecord>(queryKey) ?? undefined) : null
+    },
   })
 
 /** Storefront status poll (schedule, timezone, pause) through the public endpoint. */

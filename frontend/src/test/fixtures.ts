@@ -9,7 +9,8 @@ import type {
   Supplier,
 } from "@/types/restaurant"
 import { DEFAULT_STORE_CONFIG } from "@/constants/themePresets"
-import type { QueryClient } from "@tanstack/react-query"
+import { QueryClient } from "@tanstack/react-query"
+import { restorePersistedQueries } from "@/core/query/persistence"
 import type { UserRole } from "@/types/restaurant"
 import { appQueryClient } from "@/core/query/queryClient"
 import { keys } from "@/core/query/keys"
@@ -225,7 +226,7 @@ export function seedBlankActiveTenant(
   id = "rest-burger-craft",
   slug = "burger-craft",
   configOverrides: Partial<RestaurantRecord["config"]> = {},
-): void {
+): RestaurantRecord {
   const blank: RestaurantRecord = {
     id,
     slug,
@@ -245,6 +246,7 @@ export function seedBlankActiveTenant(
     JSON.stringify({ version: 2, restaurants: [blank] })
   )
   localStorage.setItem("burger_page_active_rest_v2", id)
+  return blank
 }
 
 /**
@@ -297,4 +299,39 @@ export function seedCatalogsFrom(envelope: StorageEnvelopeV2, role: UserRole = "
       seedCatalog(r.products ?? [], r.additions ?? [], r.id, r.slug, role, client)
     }
   }
+}
+
+/** The public restaurant record of a fixture (fixtures still list legacy envelope fields). */
+export function publicRecord(r: RestaurantRecord): RestaurantRecord {
+  const { products: _p, additions: _a, orders: _o, customers: _c, inventory: _i, suppliers: _s, adminPassword: _pw, ...record } = r
+  return record
+}
+
+/**
+ * Admin sessions read restaurants from the directory (server state, never
+ * persisted): seeds keys.restaurants(role) and each restaurant's entry, as a
+ * directory read would.
+ */
+export function seedRestaurantDirectory(
+  records: RestaurantRecord[],
+  roles: UserRole[] = ["super", "restaurant"],
+  client: QueryClient = appQueryClient,
+): void {
+  const list = records.map(publicRecord)
+  for (const role of roles) {
+    client.setQueryData(keys.restaurants(role), list)
+    for (const record of list) {
+      client.setQueryData(keys.restaurant(role, record.id), record)
+      client.setQueryData(keys.restaurant(role, record.slug), record)
+    }
+  }
+}
+
+/** Reads one query's data back from the persisted storefront cache (as a reload would). */
+export function readPersistedQuery<T = unknown>(queryKey: readonly unknown[]): T | undefined {
+  const client = new QueryClient()
+  restorePersistedQueries(client)
+  const data = client.getQueryData<T>(queryKey)
+  client.clear()
+  return data
 }

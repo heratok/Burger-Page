@@ -4,7 +4,8 @@ import { renderHook, act, waitFor } from "@testing-library/react"
 import { QueryClientProvider, type QueryClient } from "@tanstack/react-query"
 import { createTestQueryClient } from "@/test/testQueryClient"
 import { DEFAULT_STORE_CONFIG } from "@/constants/themePresets"
-import { keys } from "@/core/query/keys"
+import { keys, keyPrefixes } from "@/core/query/keys"
+import type { RestaurantRecord } from "@/types/restaurant"
 import { TENANT_WRITES_KEY } from "@/core/query/options"
 
 vi.mock("sonner", () => ({
@@ -122,5 +123,30 @@ describe("store config writes are tracked tenant mutations", () => {
     await waitFor(() =>
       expect(client.getQueryCache().find({ queryKey: keys.restaurant("super", "a") })?.state.isInvalidated).toBe(true)
     )
+  })
+
+  it("writes the config into the keys.restaurant entry it is read from, after cancelling restaurant reads", async () => {
+    vi.spyOn(apiClient, "updateRestaurant").mockImplementation(() => new Promise(() => {}))
+    const { client, result } = setup()
+    await waitFor(() => expect(result.current.tenant.restaurants).toHaveLength(1))
+    const cancelSpy = vi.spyOn(client, "cancelQueries")
+
+    act(() => result.current.catalog.updateStoreConfig({ primaryColor: "#444444" }))
+
+    expect(cancelSpy).toHaveBeenCalledWith({ queryKey: keyPrefixes.restaurant() })
+    expect(client.getQueryData<RestaurantRecord>(keys.restaurant("super", "rest-a"))?.config.primaryColor).toBe("#444444")
+    expect(result.current.catalog.storeConfig.primaryColor).toBe("#444444")
+  })
+
+  it("a rejected config write restores the cached restaurant entry", async () => {
+    vi.spyOn(apiClient, "updateRestaurant").mockRejectedValue(new Error("boom"))
+    const { client, result } = setup()
+    await waitFor(() => expect(result.current.tenant.restaurants).toHaveLength(1))
+    const before = client.getQueryData<RestaurantRecord>(keys.restaurant("super", "rest-a"))
+
+    act(() => result.current.catalog.resetStoreConfig())
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalled())
+    expect(client.getQueryData<RestaurantRecord>(keys.restaurant("super", "rest-a"))).toEqual(before)
   })
 })

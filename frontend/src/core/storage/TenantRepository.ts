@@ -1,13 +1,15 @@
 import type { RestaurantRecord, StorageEnvelopeV2 } from "@/types/restaurant"
 import { type StorageAdapter, LocalStorageAdapter } from "./StorageAdapter"
 import { PendingOrdersQueue, pendingOrdersQueue } from "./pendingOrdersQueue"
+import { keys } from "@/core/query/keys"
+import { writePersistedQueries } from "@/core/query/persistence"
 
 export const STORAGE_KEYS = {
   ENVELOPE: "burger_page_platform_v2",
   ACTIVE_REST: "burger_page_active_rest_v2",
 } as const
 
-export const DEFAULT_ENVELOPE: StorageEnvelopeV2 = {
+const NO_LEGACY_ENVELOPE: StorageEnvelopeV2 = {
   version: 2,
   restaurants: [],
 }
@@ -38,7 +40,8 @@ export class TenantRepository {
     this.pendingQueue = pendingQueue
   }
 
-  loadEnvelope(): StorageEnvelopeV2 {
+  /** Reads the legacy envelope (migration only), its records cleaned up. */
+  private readLegacyEnvelope(): StorageEnvelopeV2 {
     try {
       const raw = this.adapter.getItem(STORAGE_KEYS.ENVELOPE)
       if (raw) {
@@ -67,9 +70,9 @@ export class TenantRepository {
           }
         }
       }
-      return DEFAULT_ENVELOPE
+      return NO_LEGACY_ENVELOPE
     } catch {
-      return DEFAULT_ENVELOPE
+      return NO_LEGACY_ENVELOPE
     }
   }
 
@@ -88,22 +91,43 @@ export class TenantRepository {
     return rest
   }
 
-  saveEnvelope(envelope: StorageEnvelopeV2): void {
+  /**
+   * Retires the tenant envelope persisted by older versions (call once on
+   * load): unsynced offline sales move to the pending-orders queue, the public
+   * storefront data (restaurant records and menus, never orders, customers or
+   * stock) moves to the persisted storefront query cache as stale data under
+   * guest keys, and the envelope key is removed.
+   */
+  migrateLegacyEnvelope(): void {
+    const raw = this.adapter.getItem(STORAGE_KEYS.ENVELOPE)
+    if (raw === null) return
     try {
-      // SUS-20: the one-time admin password is a secret and must never be
-      // persisted at rest inside the localStorage envelope. Sanitize at the
-      // persistence boundary so that no caller (current or future) can leak
-      // it into storage, even if a record still carries it in memory.
-      const sanitized: StorageEnvelopeV2 = {
-        ...envelope,
-        restaurants: envelope.restaurants.map((r) => {
-          const { adminPassword: _oneTimeSecret, ...safeRecord } = r
-          return safeRecord
-        }),
-      }
-      this.adapter.setItem(STORAGE_KEYS.ENVELOPE, JSON.stringify(sanitized))
+      const envelope = this.readLegacyEnvelope()
+      const legacy = (JSON.parse(raw)?.restaurants ?? []) as RestaurantRecord[]
+      writePersistedQueries((client) => {
+        envelope.restaurants.forEach((stored, i) => {
+          // SUS-20: only the public fields move; a legacy record may still
+          // carry the one-time admin password.
+          const record: RestaurantRecord = {
+            id: stored.id,
+            slug: stored.slug,
+            isActive: stored.isActive,
+            createdAt: stored.createdAt,
+            config: stored.config,
+            categories: stored.categories ?? [],
+          }
+          const { products, additions } = legacy[i] ?? {}
+          const options = { updatedAt: 0 }
+          client.setQueryData(keys.restaurant("guest", record.id), record, options)
+          client.setQueryData(keys.restaurant("guest", record.slug), record, options)
+          if (products?.length) client.setQueryData(keys.products(record.id, "guest", record.slug), products, options)
+          if (additions?.length) client.setQueryData(keys.additions(record.id, "guest", record.slug), additions, options)
+        })
+      })
     } catch (err) {
-      console.error("Failed to save storage envelope to localStorage (quota exceeded or storage blocked):", err)
+      console.error("Failed to migrate the legacy tenant envelope:", err)
+    } finally {
+      this.adapter.removeItem(STORAGE_KEYS.ENVELOPE)
     }
   }
 
@@ -132,17 +156,6 @@ export class TenantRepository {
     } catch (err) {
       console.error("Failed to purge tenant data from storage:", err)
     }
-  }
-
-  findRestaurant(
-    envelope: StorageEnvelopeV2,
-    idOrSlug: string
-  ): RestaurantRecord | undefined {
-    return envelope.restaurants.find(
-      (r) =>
-        r.id.toLowerCase() === idOrSlug.toLowerCase() ||
-        r.slug.toLowerCase() === idOrSlug.toLowerCase()
-    )
   }
 }
 
