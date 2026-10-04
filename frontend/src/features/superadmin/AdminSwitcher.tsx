@@ -1,5 +1,5 @@
 import React from "react"
-import { useRestaurant } from "@/context/RestaurantContext"
+import { useUi, useAuth, useTenant } from "@/context/RestaurantContext"
 import { Store, Crown } from "lucide-react"
 import { useAppRouter } from "@/core/router/useAppRouter"
 import { Select } from "@/components/ui/select"
@@ -10,13 +10,9 @@ export interface AdminSwitcherProps {
 }
 
 export const AdminSwitcher: React.FC<AdminSwitcherProps> = ({ collapsed = false, onSelect }) => {
-  const {
-    restaurants,
-    activeRestaurant,
-    switchRestaurant,
-    session,
-    adminTab,
-  } = useRestaurant()
+  const { adminTab } = useUi()
+  const { session } = useAuth()
+  const { restaurants, activeRestaurant, switchRestaurant } = useTenant()
 
   const { navigateTo } = useAppRouter()
   const isSuper = session.role === "super"

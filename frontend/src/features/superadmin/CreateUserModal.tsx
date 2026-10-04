@@ -1,5 +1,5 @@
 import React, { useState } from "react"
-import { useRestaurant } from "@/context/RestaurantContext"
+import { useUi, useTenant } from "@/context/RestaurantContext"
 import { UserPlus, X, Shield, Store } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Select } from "@/components/ui/select"
@@ -21,7 +21,8 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
   defaultRestaurantId,
   onSuccess,
 }) => {
-  const { restaurants, adminTheme } = useRestaurant()
+  const { adminTheme } = useUi()
+  const { restaurants } = useTenant()
 
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")

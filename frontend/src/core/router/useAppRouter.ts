@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import type { RestaurantRecord, AppView, AdminTab } from "@/types/restaurant"
-import { useRestaurant } from "@/context/RestaurantContext"
+import { useUi, useTenant } from "@/context/RestaurantContext"
 import { ADMIN_ROOT_PATHS } from "./adminRootPaths"
 
 export interface RouteResolution {
@@ -120,15 +120,8 @@ export function resolveRoute(
  * Custom router hook managing browser history, path syncing, deep-linking, and tenant switching.
  */
 export function useAppRouter() {
-  const {
-    restaurants,
-    switchRestaurant,
-    loadRestaurant,
-    setActiveView,
-    activeView,
-    adminTab,
-    setAdminTab,
-  } = useRestaurant()
+  const { setActiveView, activeView, adminTab, setAdminTab } = useUi()
+  const { restaurants, switchRestaurant, loadRestaurant } = useTenant()
   const [attemptedSlug, setAttemptedSlug] = useState<string | null>(null)
   const [isNotFound, setIsNotFound] = useState(false)
   const [loadError, setLoadError] = useState(false)

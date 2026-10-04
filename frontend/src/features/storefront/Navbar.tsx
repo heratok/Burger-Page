@@ -1,5 +1,5 @@
 import { ShoppingCart } from "lucide-react"
-import { useRestaurant } from "@/context/RestaurantContext"
+import { useCatalog } from "@/context/RestaurantContext"
 import { formatCurrency, formatWhatsAppPhone, getContrastForeground } from "@/lib/utils"
 
 interface NavbarProps {
@@ -10,7 +10,7 @@ interface NavbarProps {
 }
 
 export default function Navbar({ cantidad, total, onOpenCart, onGoToMenu }: NavbarProps) {
-  const { storeConfig } = useRestaurant()
+  const { storeConfig } = useCatalog()
   const primaryForeground = getContrastForeground(storeConfig.primaryColor)
 
   const cartLabel = `Ver orden, ${cantidad} ${cantidad === 1 ? "producto" : "productos"}, total ${formatCurrency(total)}`

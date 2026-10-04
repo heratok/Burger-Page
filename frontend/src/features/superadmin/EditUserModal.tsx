@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react"
-import { useRestaurant } from "@/context/RestaurantContext"
+import { useUi, useAuth, useTenant } from "@/context/RestaurantContext"
 import { apiClient, type ApiUserRecord } from "@/core/api/apiClient"
 import {
   X,
@@ -26,7 +26,9 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
   user,
   onSuccess,
 }) => {
-  const { restaurants, adminTheme, session } = useRestaurant()
+  const { adminTheme } = useUi()
+  const { session } = useAuth()
+  const { restaurants } = useTenant()
 
   const [username, setUsername] = useState("")
   const [role, setRole] = useState<"super_admin" | "restaurant_admin">("restaurant_admin")

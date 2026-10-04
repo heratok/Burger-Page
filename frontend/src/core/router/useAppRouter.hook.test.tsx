@@ -17,7 +17,8 @@ const restaurantContext = {
   setAdminTab,
 }
 vi.mock("@/context/RestaurantContext", () => ({
-  useRestaurant: () => restaurantContext,
+  useUi: () => restaurantContext,
+  useTenant: () => restaurantContext,
 }))
 
 import { useAppRouter } from "./useAppRouter"
