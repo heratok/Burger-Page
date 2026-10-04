@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useMemo, useCallback, useEffect, useRef, useState } from "react"
+import React, { createContext, useContext, useMemo, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import type { Order, OrderStatus, Customer, RestaurantRecord } from "@/types/restaurant"
 import type { CreateOrderInput, UpdateOrderInput, OrderEvent, UpdateCustomerInput } from "@burger-page/contracts"
 import { ORDER_CLOSED_ERROR_FRAGMENT, ORDER_PAUSED_ERROR_FRAGMENT } from "@burger-page/contracts"
@@ -727,6 +728,35 @@ export function buildUpdateOrderInput(
   return updateInput
 }
 
+interface Board {
+  orders: any[]
+  customers: any[]
+}
+
+/**
+ * Reads the order board: orders plus customers. A failed customers read falls
+ * back to an empty list (orders still hydrate); a failed orders read rejects.
+ */
+async function fetchBoard(restaurantId: string): Promise<Board> {
+  try {
+    const [orders, customers] = await Promise.all([
+      apiClient.fetchOrders(restaurantId),
+      apiClient.fetchCustomers(restaurantId).catch((err) => {
+        if (import.meta.env?.MODE !== 'test') {
+          console.warn("Could not fetch customers from backend API:", err)
+        }
+        return [] as any[]
+      }),
+    ])
+    return { orders: Array.isArray(orders) ? [...orders] : (orders as any), customers: [...customers] }
+  } catch (err) {
+    if (import.meta.env?.MODE !== 'test') {
+      console.warn("Could not fetch orders/customers from backend API:", err)
+    }
+    throw err
+  }
+}
+
 export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { activeRestaurant, updateActiveRestaurantRecord } = useTenant()
   const { session } = useAuth()
@@ -741,13 +771,35 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       ? session.restaurantId
       : activeRestaurant?.id
 
-  const [isLoadingOrders, setIsLoadingOrders] = useState<boolean>(() => {
-    return Boolean(
-      apiClient.hasToken() &&
-        effectiveId &&
-        (!activeRestaurant.orders || activeRestaurant.orders.length === 0)
-    )
+  const queryClient = useQueryClient()
+
+  // Same gating as before the migration: a session token and a tenant. An
+  // anonymous storefront visitor (public checkout) never requests the private
+  // orders/customers endpoints. The role is part of the key so a cache entry is
+  // never served across roles; logout clears the whole client.
+  const enabled = Boolean(effectiveId && apiClient.hasToken())
+  const boardKey = useMemo(
+    () => ["orders", effectiveId, session.role] as const,
+    [effectiveId, session.role]
+  )
+
+  // Orders and customers are one resource: customer metrics are derived from the
+  // synced orders, so both are read together (as before) and hydrate atomically.
+  // Returning a fresh object per fetch (structural sharing off) lets every
+  // successful fetch re-hydrate the tenant record, like the old explicit sync.
+  const boardQuery = useQuery({
+    queryKey: boardKey,
+    enabled,
+    retry: false,
+    structuralSharing: false,
+    networkMode: "always",
+    queryFn: () => fetchBoard(effectiveId as string),
   })
+
+  // Initial hydration only: background refetches (SSE catch-up) never flash it.
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const isLoadingOrders =
+    isRefreshing || (enabled && boardQuery.isLoading && (activeRestaurant.orders?.length ?? 0) === 0)
 
   // REJ-02: offline-created orders (pendingSync) are flushed automatically once
   // connectivity is proven — after the mount sync and after every successful
@@ -885,66 +937,38 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     retryPendingOrdersRef.current = retryPendingOrders
   })
 
-  // Synchronize orders & customers with backend if token & restaurant context exist
-  useEffect(() => {
-    if (!apiClient.hasToken() || !effectiveId) return
-
-    let isCancelled = false
-    const targetRestId = effectiveId
-
-    Promise.all([
-      apiClient.fetchOrders(targetRestId),
-      apiClient.fetchCustomers(targetRestId).catch((err) => {
-        if (import.meta.env?.MODE !== 'test') {
-          console.warn("Could not fetch customers from backend API:", err)
-        }
-        return []
-      }),
-    ])
-      .then(([backendOrders, backendCustomers]) => {
-        if (isCancelled) return
-        updateActiveRestaurantRecord((current) =>
-          syncBackendDataToRestaurant(current, targetRestId, backendOrders, backendCustomers)
-        )
-        // The fetch just proved connectivity: flush orders held pendingSync
-        // during the outage (REJ-02).
-        void retryPendingOrdersRef.current()
-      })
-      .catch((err) => {
-        if (import.meta.env?.MODE !== 'test') {
-          console.warn("Could not fetch orders/customers from backend API:", err)
-        }
-      })
-      .finally(() => {
-        if (!isCancelled) {
-          setIsLoadingOrders(false)
-        }
-      })
-
-    return () => {
-      isCancelled = true
-    }
-  }, [effectiveId, session, updateActiveRestaurantRecord])
-
-  // Silent refetch used after an SSE reconnect (no loading flag: staff keep
-  // working while the board is reconciled).
-  const catchUpOrdersRef = useRef<() => Promise<void>>(async () => {})
-  catchUpOrdersRef.current = async () => {
-    const targetRestId = effectiveId
-    if (!targetRestId || !apiClient.hasToken()) return
-    try {
-      const [backendOrders, backendCustomers] = await Promise.all([
-        apiClient.fetchOrders(targetRestId),
-        apiClient.fetchCustomers(targetRestId).catch(() => []),
-      ])
+  // The tenant record stays the offline-first store other slices persist and
+  // read; the query result hydrates it. A failed fetch leaves local data
+  // untouched.
+  const board = boardQuery.data
+  const hydrated = useRef<Board | undefined>(undefined)
+  const retriedFor = useRef<string | undefined>(undefined)
+  const hydrate = useCallback(
+    (targetRestId: string, data: Board) => {
+      hydrated.current = data
       updateActiveRestaurantRecord((current) =>
-        syncBackendDataToRestaurant(current, targetRestId, backendOrders, backendCustomers)
+        syncBackendDataToRestaurant(current, targetRestId, data.orders, data.customers)
       )
-    } catch (err) {
-      if (import.meta.env?.MODE !== 'test') {
-        console.warn("Could not catch up orders after SSE reconnect:", err)
-      }
+    },
+    [updateActiveRestaurantRecord]
+  )
+  useLayoutEffect(() => {
+    if (!effectiveId || !board || board === hydrated.current) return
+    hydrate(effectiveId, board)
+    // The first successful read proves connectivity: flush orders held
+    // pendingSync during the outage (REJ-02).
+    if (retriedFor.current !== effectiveId) {
+      retriedFor.current = effectiveId
+      void retryPendingOrdersRef.current()
     }
+  }, [effectiveId, board, hydrate])
+
+  // Silent catch-up after an SSE reconnect (no loading flag: staff keep working
+  // while the board is reconciled). Invalidation refetches the active read once.
+  const catchUpOrdersRef = useRef<() => void>(() => {})
+  catchUpOrdersRef.current = () => {
+    if (!effectiveId || !apiClient.hasToken()) return
+    void queryClient.invalidateQueries({ queryKey: ["orders", effectiveId] })
   }
 
   // Real-time SSE order stream subscription
@@ -960,7 +984,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       targetRestId,
       // Events published while the stream was down are lost: catch up silently.
       () => {
-        void catchUpOrdersRef.current()
+        catchUpOrdersRef.current()
       }
     )
 
@@ -1321,20 +1345,20 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const refreshOrders = useCallback(async () => {
     const targetRestId = effectiveId
     if (!targetRestId || !apiClient.hasToken()) return
-    setIsLoadingOrders(true)
+    setIsRefreshing(true)
     try {
-      const [backendOrders, backendCustomers] = await Promise.all([
-        apiClient.fetchOrders(targetRestId),
-        apiClient.fetchCustomers(targetRestId).catch((err) => {
-          if (import.meta.env?.MODE !== 'test') {
-            console.warn("Could not fetch customers from backend API:", err)
-          }
-          return []
-        }),
-      ])
-      updateActiveRestaurantRecord((current) =>
-        syncBackendDataToRestaurant(current, targetRestId, backendOrders, backendCustomers)
-      )
+      // staleTime 0: an explicit refresh always asks the server (concurrent
+      // reads share the request in flight); the hydration effect applies it.
+      const fresh = await queryClient.fetchQuery({
+        queryKey: boardKey,
+        queryFn: () => fetchBoard(targetRestId),
+        staleTime: 0,
+        structuralSharing: false,
+        networkMode: "always",
+      })
+      // Applied here (not left to the hydration effect) so the sync is queued
+      // before the pending-order retry adopts server identities, as before.
+      hydrate(targetRestId, fresh)
       // A successful refresh proves connectivity: flush offline-created orders
       // held as pendingSync (REJ-02).
       await retryPendingOrders()
@@ -1343,9 +1367,9 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         console.warn("Could not refresh orders from backend API:", err)
       }
     } finally {
-      setIsLoadingOrders(false)
+      setIsRefreshing(false)
     }
-  }, [effectiveId, updateActiveRestaurantRecord, retryPendingOrders])
+  }, [effectiveId, queryClient, boardKey, hydrate, retryPendingOrders])
 
   const pendingOrdersCount = useMemo(() => {
     return activeRestaurant.orders.filter((o) => o.status === "pending").length
