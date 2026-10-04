@@ -23,6 +23,7 @@ import { runOptimisticMutation } from "./optimisticMutation"
 import { nextTempId } from "@/lib/ids"
 import { ADMIN_ROOT_PATHS } from "@/core/router/adminRootPaths"
 import { appQueryClient } from "@/core/query/queryClient"
+import { keys, keyPrefixes } from "@/core/query/keys"
 
 export interface GlobalPlatformStats {
   totalRevenue: number
@@ -226,7 +227,7 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
       // refreshes share the in-flight request). The role in the key keeps the
       // cache from crossing sessions.
       const backendRestaurants = await queryClient.fetchQuery({
-        queryKey: ["restaurants", role],
+        queryKey: keys.restaurants(role),
         staleTime: 0,
         queryFn: async () => (await apiClient.listRestaurants()) ?? null,
       })
@@ -252,7 +253,7 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
   const fetchTenant = useCallback(
     (idOrSlug: string) =>
       queryClient.fetchQuery({
-        queryKey: ["restaurant", role, idOrSlug],
+        queryKey: keys.restaurant(role, idOrSlug),
         queryFn: async () => (await apiClient.fetchRestaurant(idOrSlug)) ?? null,
       }),
     [queryClient, role]
@@ -265,8 +266,8 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
     mutationFn: (request: Promise<unknown>) => request,
     onSettled: () => {
       // Cached lookups predate the write.
-      void queryClient.invalidateQueries({ queryKey: ["restaurant"] })
-      void queryClient.invalidateQueries({ queryKey: ["restaurant-status"] })
+      void queryClient.invalidateQueries({ queryKey: keyPrefixes.restaurant() })
+      void queryClient.invalidateQueries({ queryKey: keyPrefixes.restaurantStatus() })
       // The settling mutation counts itself, hence > 1.
       if (queryClient.isMutating({ mutationKey: TENANT_WRITES_KEY }) > 1) return
       if (directoryDeferred.current) {
@@ -313,7 +314,7 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
     if (!current?.slug) return
     try {
       const fetched: any = await queryClient.fetchQuery({
-        queryKey: ["restaurant-status", role, current.slug],
+        queryKey: keys.restaurantStatus(role, current.slug),
         staleTime: 0,
         queryFn: async () => (await apiClient.fetchRestaurant(current.slug)) ?? null,
       })

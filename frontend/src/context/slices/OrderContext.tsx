@@ -13,6 +13,7 @@ import { toast } from "sonner"
 import { formatCurrency, cleanPhoneNumber } from "@/lib/utils"
 import { nextTempId } from "@/lib/ids"
 import { runOptimisticMutation } from "./optimisticMutation"
+import { keys, keyPrefixes } from "@/core/query/keys"
 
 export interface ServerOrderResult {
   adoptedOrderNumber: number
@@ -796,7 +797,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // never served across roles; logout clears the whole client.
   const enabled = Boolean(effectiveId && apiClient.hasToken())
   const boardKey = useMemo(
-    () => ["orders", effectiveId, session.role] as const,
+    () => keys.orders(effectiveId, session.role),
     [effectiveId, session.role]
   )
 
@@ -834,7 +835,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (queryClient.isMutating({ mutationKey: ORDER_WRITES_KEY }) > 1) return
       if (!needsRevalidation.current) return
       needsRevalidation.current = false
-      void queryClient.invalidateQueries({ queryKey: ["orders", effectiveId] })
+      void queryClient.invalidateQueries({ queryKey: keyPrefixes.orders(effectiveId) })
     },
     [queryClient, effectiveId]
   )
@@ -1017,7 +1018,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // Never hydrate over an optimistic write: a response that predates it would
     // wipe it. Deferred until the writes settle and the revalidation lands.
     if (queryClient.isMutating({ mutationKey: ORDER_WRITES_KEY }) > 0) return
-    if (queryClient.isFetching({ queryKey: ["orders", effectiveId] }) > 0) return
+    if (queryClient.isFetching({ queryKey: keyPrefixes.orders(effectiveId) }) > 0) return
     hydrate(effectiveId, board)
     // The first successful read proves connectivity: flush orders held
     // pendingSync during the outage (REJ-02).
@@ -1032,7 +1033,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const catchUpOrdersRef = useRef<() => void>(() => {})
   catchUpOrdersRef.current = () => {
     if (!effectiveId || !apiClient.hasToken()) return
-    void queryClient.invalidateQueries({ queryKey: ["orders", effectiveId] })
+    void queryClient.invalidateQueries({ queryKey: keyPrefixes.orders(effectiveId) })
   }
 
   // Real-time SSE order stream subscription

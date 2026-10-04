@@ -6,6 +6,7 @@ import { useTenant } from "./TenantContext"
 import { useAuth } from "./AuthContext"
 import { toast } from "sonner"
 import { nextTempId } from "@/lib/ids"
+import { keys, keyPrefixes } from "@/core/query/keys"
 
 export interface InventoryContextType {
   inventory: InventoryItem[]
@@ -97,7 +98,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const enabled = Boolean(effectiveId && apiClient.hasToken())
 
   const inventoryQuery = useQuery({
-    queryKey: ["inventory", effectiveId, session.role],
+    queryKey: keys.inventory(effectiveId, session.role),
     enabled,
     retry: false,
     queryFn: async () => {
@@ -110,7 +111,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     },
   })
   const suppliersQuery = useQuery({
-    queryKey: ["suppliers", effectiveId, session.role],
+    queryKey: keys.suppliers(effectiveId, session.role),
     enabled,
     retry: false,
     queryFn: async () => {
@@ -153,7 +154,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const revalidate = useCallback(
     (key: "inventory" | "suppliers") => {
       if (queryClient.isMutating({ mutationKey: MUTATION_KEY }) > 1) return
-      void queryClient.invalidateQueries({ queryKey: [key, effectiveId] })
+      void queryClient.invalidateQueries({ queryKey: keyPrefixes[key](effectiveId) })
     },
     [queryClient, effectiveId]
   )
