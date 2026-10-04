@@ -39,7 +39,7 @@ import {
   isMobileDevice,
 } from "./whatsapp"
 import { cartItemToOrderItem, type CartItem } from "./cartEngine"
-import { useRestaurant } from "@/context/RestaurantContext"
+import { useCatalog, useRestaurant } from "@/context/RestaurantContext"
 import { useStoreOpenStatus } from "@/hooks/useStoreOpenStatus"
 import { closedMessage } from "@/lib/storeSchedule"
 import { formatCurrency, getContrastForeground } from "@/lib/utils"
@@ -488,7 +488,7 @@ interface FormSummaryProps {
 }
 
 function FormSummary({ cartItems, subtotal, deliveryFee, total }: FormSummaryProps) {
-  const { storeConfig } = useRestaurant()
+  const { storeConfig } = useCatalog()
   const [open, setOpen] = useState(true)
 
   return (

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { useRestaurant } from "@/context/RestaurantContext"
+import { useUi, useTenant } from "@/context/RestaurantContext"
 import {
   TrendingUp,
   DollarSign,
@@ -14,7 +14,8 @@ import { useAppRouter } from "@/core/router/useAppRouter"
 import { formatCurrency } from "@/lib/utils"
 
 export const GlobalAnalytics: React.FC = () => {
-  const { restaurants, adminTheme, switchRestaurant } = useRestaurant()
+  const { adminTheme } = useUi()
+  const { restaurants, switchRestaurant } = useTenant()
   const { navigateTo } = useAppRouter()
   const [period, setPeriod] = useState<string>("ALL")
 

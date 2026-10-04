@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 import { Utensils, Flame, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react"
 import ProductCard from "./ProductCard"
@@ -18,13 +18,14 @@ import { StoreStatus } from "./StoreStatus"
 import { useStoreOpenStatus } from "@/hooks/useStoreOpenStatus"
 import { useStoreStatusRefresh } from "@/hooks/useStoreStatusRefresh"
 import { closedMessage } from "@/lib/storeSchedule"
-import { useRestaurant } from "@/context/RestaurantContext"
+import { useTenant, useCatalog } from "@/context/RestaurantContext"
 import { getFontFamilyClass, getStoreThemeStyles } from "@/features/crm/utils/customizerStyles"
 import { getContrastForeground } from "@/lib/utils"
 import { useHorizontalScroll } from "@/hooks/useHorizontalScroll"
 
 export default function Home() {
-  const { products, storeConfig, categories: contextCategories, activeRestaurant, refreshStoreStatus } = useRestaurant()
+  const { activeRestaurant, refreshStoreStatus } = useTenant()
+  const { products, storeConfig, categories: contextCategories } = useCatalog()
   useStoreStatusRefresh(refreshStoreStatus)
   const openStatus = useStoreOpenStatus(storeConfig)
   const {
@@ -137,11 +138,11 @@ export default function Home() {
     setCartItems(updatedItems)
   }
 
-  const handleProductClick = (product: MenuItem) => {
+  const handleProductClick = useCallback((product: MenuItem) => {
     setSelectedProduct(product)
     setEditingIndex(null)
     setIsAdditionsModalOpen(true)
-  }
+  }, [])
 
   const handleEditCartItem = (index: number) => {
     const item = cartItems[index]
@@ -517,7 +518,7 @@ export default function Home() {
                             <div role="listitem" key={product.id || product.name} className="h-full w-full flex flex-col">
                               <ProductCard
                                 product={product}
-                                onSelectProduct={() => handleProductClick(product)}
+                                onSelectProduct={handleProductClick}
                                 closed={!openStatus.isOpen}
                               />
                             </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react"
-import { useRestaurant } from "@/context/RestaurantContext"
+import { useUi, useAuth, useTenant } from "@/context/RestaurantContext"
 import {
   Users,
   Search,
@@ -45,7 +45,9 @@ function parseJwtPayload(token?: string): { userId?: string; username?: string; 
 }
 
 export const UsersDirectory: React.FC = () => {
-  const { restaurants, adminTheme, session } = useRestaurant()
+  const { adminTheme } = useUi()
+  const { session } = useAuth()
+  const { restaurants } = useTenant()
   const [users, setUsers] = useState<ApiUserRecord[]>([])
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [searchTerm, setSearchTerm] = useState("")

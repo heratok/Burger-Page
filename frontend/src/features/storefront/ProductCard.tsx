@@ -1,26 +1,29 @@
-import React from "react"
+import React, { memo } from "react"
 import { Plus, Flame, Sparkles } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import type { MenuItem } from "@/types/restaurant"
-import { useRestaurant } from "@/context/RestaurantContext"
+import { useCatalog } from "@/context/RestaurantContext"
 import { LazyImage } from "@/components/ui/LazyImage"
 import { formatCurrency, getContrastForeground } from "@/lib/utils"
 
 export interface ProductCardProps {
   product: MenuItem
-  onSelectProduct: () => void
+  /** Receives the card's product so callers can pass one stable handler to every card. */
+  onSelectProduct: (product: MenuItem) => void
   /** Store closed or paused: the product can be browsed but not added. */
   closed?: boolean
 }
 
-export default function ProductCard({ product, onSelectProduct, closed = false }: ProductCardProps) {
-  const { storeConfig } = useRestaurant()
+// Memoized: the storefront grid re-renders on every search keystroke and cart
+// change, but a card only needs to update when its own props or the theme change.
+const ProductCard = memo(function ProductCard({ product, onSelectProduct, closed = false }: ProductCardProps) {
+  const { storeConfig } = useCatalog()
   const primaryForeground = getContrastForeground(storeConfig.primaryColor)
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault()
-      onSelectProduct()
+      onSelectProduct(product)
     }
   }
 
@@ -61,7 +64,7 @@ export default function ProductCard({ product, onSelectProduct, closed = false }
     <Card
         role="button"
         tabIndex={0}
-        onClick={onSelectProduct}
+        onClick={() => onSelectProduct(product)}
         onKeyDown={handleKeyDown}
         aria-label={
           closed
@@ -166,4 +169,6 @@ export default function ProductCard({ product, onSelectProduct, closed = false }
         </div>
       </Card>
   )
-}
+})
+
+export default ProductCard

@@ -1,5 +1,5 @@
 import React from "react"
-import { useRestaurant } from "@/context/RestaurantContext"
+import { useUi, useAuth, useTenant } from "@/context/RestaurantContext"
 import { useAppRouter } from "@/core/router/useAppRouter"
 import { ShieldAlert, ArrowLeft } from "lucide-react"
 
@@ -12,7 +12,9 @@ export const SupportModeBanner: React.FC<SupportModeBannerProps> = ({
   restaurantName: propRestaurantName,
   onReturn: propOnReturn,
 }) => {
-  const { session, activeRestaurant, activeRestaurantId, adminTab, switchRestaurant } = useRestaurant()
+  const { adminTab } = useUi()
+  const { session } = useAuth()
+  const { activeRestaurant, activeRestaurantId, switchRestaurant } = useTenant()
   const { navigateTo } = useAppRouter()
 
   const isSuper = session.role === "super"

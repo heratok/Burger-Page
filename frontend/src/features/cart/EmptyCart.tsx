@@ -6,7 +6,7 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty"
 import { Button } from "@/components/ui/button"
-import { useRestaurant } from "@/context/RestaurantContext"
+import { useCatalog } from "@/context/RestaurantContext"
 import { getContrastForeground } from "@/lib/utils"
 
 interface EmptyCartProps {
@@ -14,7 +14,7 @@ interface EmptyCartProps {
 }
 
 export default function EmptyCart({ onBackToMenu }: EmptyCartProps) {
-  const { storeConfig } = useRestaurant()
+  const { storeConfig } = useCatalog()
   const primaryForeground = getContrastForeground(storeConfig.primaryColor)
 
   return (

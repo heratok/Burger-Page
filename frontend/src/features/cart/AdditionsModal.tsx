@@ -15,7 +15,7 @@ import type { MenuItem } from "@/types/restaurant"
 import { createCartItem, type CartAddition, type CartItem } from "./cartEngine"
 import CharacterCounter from "@/components/CharacterCounter"
 import { LIMITS } from "@/lib/validation"
-import { useRestaurant } from "@/context/RestaurantContext"
+import { useCatalog } from "@/context/RestaurantContext"
 import { formatCurrency, getContrastForeground } from "@/lib/utils"
 import { resolveImageUrl } from "@/core/storage/supabaseStorage"
 import { getFontFamilyClass, getStoreThemeStyles } from "@/features/crm/utils/customizerStyles"
@@ -38,7 +38,7 @@ export default function AdditionsModal({
   initial,
   closed = false,
 }: AdditionsModalProps) {
-  const { additions: storeAdditions, storeConfig } = useRestaurant()
+  const { additions: storeAdditions, storeConfig } = useCatalog()
   const themeStyles = getStoreThemeStyles(storeConfig.bgTheme, storeConfig.primaryColor)
   const fontClass = getFontFamilyClass(storeConfig.fontFamily)
   const primaryForeground = getContrastForeground(storeConfig.primaryColor)

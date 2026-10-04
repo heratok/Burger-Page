@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react"
-import { useRestaurant } from "@/context/RestaurantContext"
+import { useUi, useTenant } from "@/context/RestaurantContext"
 import { apiClient, type AuditLogItem } from "@/core/api/apiClient"
 import {
   ClipboardList,
@@ -85,7 +85,8 @@ function formatAuditDetails(details?: Record<string, unknown>): string {
 }
 
 export const AuditLogScreen: React.FC = () => {
-  const { restaurants, adminTheme } = useRestaurant()
+  const { adminTheme } = useUi()
+  const { restaurants } = useTenant()
   const isDark = adminTheme === "dark"
 
   const [items, setItems] = useState<AuditLogItem[]>([])

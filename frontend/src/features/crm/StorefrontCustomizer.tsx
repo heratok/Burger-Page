@@ -1,5 +1,5 @@
 import React from "react"
-import { useRestaurant } from "@/context/RestaurantContext"
+import { useUi, useTenant, useCatalog } from "@/context/RestaurantContext"
 import { Palette, RotateCcw, Save, Sparkles, ImageIcon, Sliders } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useCustomizerDraft } from "./hooks/useCustomizerDraft"
@@ -21,15 +21,9 @@ const CUSTOMIZER_TABS = [
 ] as const
 
 export const StorefrontCustomizer: React.FC = () => {
-  const {
-    storeConfig,
-    updateStoreConfig,
-    resetStoreConfig,
-    products,
-    setActiveView,
-    adminTheme,
-    activeRestaurant,
-  } = useRestaurant()
+  const { setActiveView, adminTheme } = useUi()
+  const { activeRestaurant } = useTenant()
+  const { storeConfig, updateStoreConfig, resetStoreConfig, products } = useCatalog()
 
   const {
     draft,

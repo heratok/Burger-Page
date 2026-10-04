@@ -1,10 +1,11 @@
 import React from "react"
-import { useRestaurant } from "@/context/RestaurantContext"
+import { useUi, useTenant } from "@/context/RestaurantContext"
 import { LayoutGrid } from "lucide-react"
 import { CustomizerTablesSection } from "./customizer/CustomizerTablesSection"
 
 export const TablesManager: React.FC = () => {
-  const { activeRestaurant, adminTheme } = useRestaurant()
+  const { adminTheme } = useUi()
+  const { activeRestaurant } = useTenant()
   const isDark = adminTheme === "dark"
 
   return (

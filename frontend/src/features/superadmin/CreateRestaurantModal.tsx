@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react"
-import { useRestaurant } from "@/context/RestaurantContext"
+import { useUi, useTenant } from "@/context/RestaurantContext"
 import { MIN_PASSWORD_LENGTH, type RestaurantTemplateSummary } from "@burger-page/contracts"
 import {
   Store,
@@ -39,7 +39,8 @@ interface CreateRestaurantModalProps {
 }
 
 export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ isOpen, onClose }) => {
-  const { adminTheme, refreshRestaurants } = useRestaurant()
+  const { adminTheme } = useUi()
+  const { refreshRestaurants } = useTenant()
 
   const [name, setName] = useState("")
   const [slug, setSlug] = useState("")
