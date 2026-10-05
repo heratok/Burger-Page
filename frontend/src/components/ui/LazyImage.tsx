@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react"
+import React, { useState, useLayoutEffect, useMemo, useRef } from "react"
 import { cn } from "@/lib/utils"
 import { Skeleton } from "./skeleton"
 import { ImageIcon } from "lucide-react"
@@ -31,13 +31,22 @@ export const LazyImage: React.FC<LazyImageProps> = ({
   ...props
 }) => {
   const resolvedSrc = useMemo(() => resolveImageUrl(src), [src])
-  const [isLoading, setIsLoading] = useState(true)
-  const [hasError, setHasError] = useState(false)
+  // Status is keyed by the src it belongs to, so a src change is "loading"
+  // again without a reset effect that could run after the new image's load
+  // event already fired (cached images) and leave the skeleton up forever.
+  const [loadedSrc, setLoadedSrc] = useState<string | null>(null)
+  const [failedSrc, setFailedSrc] = useState<string | null>(null)
+  const imgRef = useRef<HTMLImageElement>(null)
+  const isLoading = loadedSrc !== resolvedSrc
+  const hasError = failedSrc === resolvedSrc
 
-  // Reset states if resolvedSrc changes
-  useEffect(() => {
-    setIsLoading(true)
-    setHasError(false)
+  // A cached image can finish before React attaches onLoad/onError: catch up
+  // from the element's own state.
+  useLayoutEffect(() => {
+    const img = imgRef.current
+    if (!img || !img.complete) return
+    if (img.naturalWidth > 0) setLoadedSrc(resolvedSrc)
+    else setFailedSrc(resolvedSrc)
   }, [resolvedSrc])
 
   if (!resolvedSrc || hasError) {
@@ -61,15 +70,13 @@ export const LazyImage: React.FC<LazyImageProps> = ({
         <Skeleton className="absolute inset-0 size-full rounded-none" />
       )}
       <img
+        ref={imgRef}
         src={resolvedSrc}
         alt={alt}
         loading="lazy"
         decoding="async"
-        onLoad={() => setIsLoading(false)}
-        onError={() => {
-          setIsLoading(false)
-          setHasError(true)
-        }}
+        onLoad={() => setLoadedSrc(resolvedSrc)}
+        onError={() => setFailedSrc(resolvedSrc)}
         className={cn(
           "transition-opacity duration-300",
           isLoading ? "opacity-0" : "opacity-100",

@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { LazyImage } from './LazyImage';
 
@@ -52,5 +52,29 @@ describe('LazyImage Component with Skeleton Loading', () => {
     fireEvent.error(img);
 
     expect(screen.getByTestId('lazy-image-fallback')).toBeDefined();
+  });
+
+  it('drops the skeleton for an image that was already loaded before onLoad was attached (cache hit)', () => {
+    const complete = vi.spyOn(HTMLImageElement.prototype, 'complete', 'get').mockReturnValue(true);
+    const width = vi.spyOn(HTMLImageElement.prototype, 'naturalWidth', 'get').mockReturnValue(800);
+    try {
+      const { container } = render(<LazyImage src="https://example.com/cached.jpg" alt="Cached" />);
+      expect(container.querySelector('[data-slot="skeleton"]')).toBeNull();
+      expect(screen.getByRole('img', { name: 'Cached' }).className).toContain('opacity-100');
+    } finally {
+      complete.mockRestore();
+      width.mockRestore();
+    }
+  });
+
+  it('shows the skeleton again for a new src and clears it when that one loads', () => {
+    const { container, rerender } = render(<LazyImage src="https://example.com/a.jpg" alt="Pic" />);
+    fireEvent.load(screen.getByRole('img', { name: 'Pic' }));
+    expect(container.querySelector('[data-slot="skeleton"]')).toBeNull();
+
+    rerender(<LazyImage src="https://example.com/b.jpg" alt="Pic" />);
+    expect(container.querySelector('[data-slot="skeleton"]')).not.toBeNull();
+    fireEvent.load(screen.getByRole('img', { name: 'Pic' }));
+    expect(container.querySelector('[data-slot="skeleton"]')).toBeNull();
   });
 });
