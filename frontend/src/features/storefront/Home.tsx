@@ -25,7 +25,7 @@ import { useHorizontalScroll } from "@/hooks/useHorizontalScroll"
 
 export default function Home() {
   const { activeRestaurant, refreshStoreStatus } = useTenant()
-  const { products, storeConfig, categories: contextCategories } = useCatalog()
+  const { products, storeConfig, categories: contextCategories, isLoadingCatalog } = useCatalog()
   useStoreStatusRefresh(refreshStoreStatus)
   const openStatus = useStoreOpenStatus(storeConfig)
   const {
@@ -290,7 +290,7 @@ export default function Home() {
           showMobileBar ? "pb-44 sm:pb-6" : "pb-12"
         }`}
       >
-        {loading ? (
+        {loading || isLoadingCatalog ? (
           <LoadingPage />
         ) : showFullScreen ? (
           isCartOpen ? (
