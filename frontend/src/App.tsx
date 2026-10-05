@@ -5,18 +5,24 @@ import { useAppRouter } from "@/core/router/useAppRouter"
 import {
   AdminLoadingFallback,
   LandingLoadingFallback,
-  StorefrontLoadingFallback,
+  StoreBootLoader,
 } from "@/components/ui/LoadingFallbacks"
 import { Toaster } from "@/components/ui/sonner"
 import { getToasterClipPath, getToasterOffset } from "@/components/ui/toaster-offset"
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary"
 import { Button } from "@/components/ui/button"
 import { getStoreThemeStyles } from "@/features/crm/utils/customizerStyles"
+import { ADMIN_ROOT_PATHS } from "@/core/router/adminRootPaths"
 import { useDocumentFavicon } from "@/hooks/useDocumentFavicon"
 import { selectTitleRestaurantName, useDocumentTitle } from "@/hooks/useDocumentTitle"
 
 // Code-split backoffice features from public storefront for minimal initial bundle size
-const Home = lazy(() => import("@/features/storefront/Home"))
+const loadHome = () => import("@/features/storefront/Home")
+const loadRestaurantNotFound = () =>
+  import("@/features/crm/RestaurantNotFound").then((m) => ({
+    default: m.RestaurantNotFound,
+  }))
+const Home = lazy(loadHome)
 const LandingPage = lazy(() => import("@/features/landing/LandingPage"))
 const AdminLayout = lazy(() =>
   import("@/features/crm/AdminLayout").then((m) => ({ default: m.AdminLayout }))
@@ -66,11 +72,19 @@ const StoreSettingsManager = lazy(() =>
     default: m.StoreSettingsManager,
   }))
 )
-const RestaurantNotFound = lazy(() =>
-  import("@/features/crm/RestaurantNotFound").then((m) => ({
-    default: m.RestaurantNotFound,
-  }))
-)
+const RestaurantNotFound = lazy(loadRestaurantNotFound)
+
+// A /:slug visit ends in either the storefront or the not-found screen, and
+// which one is only known after the tenant lookup. Download both chunks now,
+// in parallel with that lookup, so neither adds a second loading phase.
+// (Imports are cached, so the lazy() calls above reuse these downloads.)
+if (typeof window !== "undefined") {
+  const path = window.location.pathname.replace(/^\/+|\/+$/g, "").toLowerCase()
+  if (path && !ADMIN_ROOT_PATHS.includes(path) && !path.startsWith("admin/")) {
+    void loadHome().catch(() => undefined)
+    void loadRestaurantNotFound().catch(() => undefined)
+  }
+}
 const RestaurantsDirectory = lazy(() =>
   import("@/features/superadmin/RestaurantsDirectory").then((m) => ({
     default: m.RestaurantsDirectory,
@@ -162,7 +176,7 @@ export function MainRouter() {
   if (isNotFound && attemptedSlug) {
     return (
       <ErrorBoundary>
-        <Suspense fallback={<AdminLoadingFallback />}>
+        <Suspense fallback={<StoreBootLoader />}>
           <RestaurantNotFound attemptedSlug={attemptedSlug} loadError={loadError} onRetry={retry} />
         </Suspense>
       </ErrorBoundary>
@@ -256,12 +270,12 @@ export function MainRouter() {
 
   // 4. Public Tenant Storefront Route (only once the slug is a known tenant)
   if (isResolving) {
-    return <StorefrontLoadingFallback />
+    return <StoreBootLoader />
   }
 
   return (
     <ErrorBoundary>
-      <Suspense fallback={<StorefrontLoadingFallback />}>
+      <Suspense fallback={<StoreBootLoader />}>
         <Home />
       </Suspense>
     </ErrorBoundary>

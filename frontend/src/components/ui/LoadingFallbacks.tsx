@@ -40,6 +40,25 @@ export const LandingLoadingFallback: React.FC = () => {
 }
 
 /**
+ * Neutral boot loader for /:slug while the tenant is unknown (lookup in flight,
+ * route chunk downloading). It carries no store look, so a not-found slug never
+ * flashes a fake store, and it reuses the platform base colors (the same as the
+ * page background) so nothing flashes before the store's own theme applies.
+ */
+export const StoreBootLoader: React.FC = () => {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      aria-label="Cargando"
+      className="flex min-h-screen w-full items-center justify-center bg-bg-base"
+    >
+      <Loader2 className="size-7 animate-spin text-text-muted" aria-hidden="true" />
+    </div>
+  )
+}
+
+/**
  * Storefront food product cards skeleton loader (only for /:slug).
  */
 export const StorefrontLoadingFallback: React.FC = () => {
