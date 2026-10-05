@@ -47,7 +47,6 @@ export default function Home() {
   const [selectedProduct, setSelectedProduct] = useState<MenuItem>(products[0])
   const [searchText, setSearchText] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL")
-  const [loading, setLoading] = useState(true)
   // Until a real tenant is active the catalog query is disabled (isLoadingCatalog
   // is false and products is empty), which would flash the empty-results state.
   const tenantPending = !activeRestaurant?.id || activeRestaurant.id === "rest-default"
@@ -229,11 +228,6 @@ export default function Home() {
     return result
   }, [categories, filteredProducts, selectedCategory])
 
-  useEffect(() => {
-    const t = window.setTimeout(() => setLoading(false), 300)
-    return () => window.clearTimeout(t)
-  }, [])
-
   const showFullScreen = isCartOpen || isCheckoutOpen
   const showMobileBar = cartItems.length > 0 && !showFullScreen
 
@@ -293,7 +287,7 @@ export default function Home() {
           showMobileBar ? "pb-44 sm:pb-6" : "pb-12"
         }`}
       >
-        {loading || tenantPending || isLoadingCatalog ? (
+        {tenantPending || isLoadingCatalog ? (
           <LoadingPage />
         ) : showFullScreen ? (
           isCartOpen ? (
