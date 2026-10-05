@@ -25,7 +25,7 @@ import { useHorizontalScroll } from "@/hooks/useHorizontalScroll"
 
 export default function Home() {
   const { activeRestaurant, refreshStoreStatus } = useTenant()
-  const { products, storeConfig, categories: contextCategories } = useCatalog()
+  const { products, storeConfig, categories: contextCategories, isLoadingCatalog } = useCatalog()
   useStoreStatusRefresh(refreshStoreStatus)
   const openStatus = useStoreOpenStatus(storeConfig)
   const {
@@ -48,6 +48,9 @@ export default function Home() {
   const [searchText, setSearchText] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL")
   const [loading, setLoading] = useState(true)
+  // Until a real tenant is active the catalog query is disabled (isLoadingCatalog
+  // is false and products is empty), which would flash the empty-results state.
+  const tenantPending = !activeRestaurant?.id || activeRestaurant.id === "rest-default"
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set())
 
@@ -290,7 +293,7 @@ export default function Home() {
           showMobileBar ? "pb-44 sm:pb-6" : "pb-12"
         }`}
       >
-        {loading ? (
+        {loading || tenantPending || isLoadingCatalog ? (
           <LoadingPage />
         ) : showFullScreen ? (
           isCartOpen ? (
