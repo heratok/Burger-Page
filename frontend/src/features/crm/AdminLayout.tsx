@@ -290,7 +290,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 ) : (
                   <div
                     title={isSidebarCollapsed ? `${storeConfig.name} (Panel de Control)` : undefined}
-                    className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 text-white font-bold text-xs shrink-0 shadow-xs"
+                    className="flex size-9 items-center justify-center rounded-xl bg-orange-500 text-white font-bold text-xs shrink-0 shadow-xs"
                   >
                     <Store className="size-4.5" />
                   </div>
@@ -299,7 +299,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                   <span className="font-bold tracking-tight text-xs truncate text-slate-900 dark:text-white">
                     {storeConfig.name}
                   </span>
-                  <span className="text-[9px] font-semibold tracking-wider uppercase text-indigo-600 dark:text-indigo-400">
+                  <span className="text-[9px] font-semibold tracking-wider uppercase text-orange-600 dark:text-orange-400">
                     Panel de Control
                   </span>
                 </div>

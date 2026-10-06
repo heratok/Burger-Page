@@ -358,12 +358,9 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                             <CheckCircle2 className="size-7" />
                           </div>
                         ) : (
-                          <>
-                            <div className="absolute size-16 rounded-2xl bg-gradient-to-tr from-indigo-500/40 via-purple-500/30 to-pink-500/30 blur-lg animate-pulse" />
-                            <div className="relative flex size-14 items-center justify-center rounded-2xl bg-slate-900/90 border border-white/15 text-indigo-400 shadow-2xl">
-                              <Loader2 className="size-7 animate-spin text-indigo-400" />
-                            </div>
-                          </>
+                          <div className="relative flex size-14 items-center justify-center rounded-2xl bg-slate-900 border border-slate-700 text-orange-400 shadow-xl">
+                            <Loader2 className="size-7 animate-spin text-orange-400" />
+                          </div>
                         )}
                       </div>
 
@@ -386,7 +383,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
 
                       {imageUploadStatus !== "success" && (
                         <div className="h-1.5 w-48 max-w-full overflow-hidden rounded-full bg-slate-800 border border-white/10">
-                          <div className="h-full w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 rounded-full animate-pulse" />
+                          <div className="h-full w-full bg-orange-500 rounded-full animate-pulse" />
                         </div>
                       )}
                     </div>
@@ -448,12 +445,9 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                           <CheckCircle2 className="size-7" />
                         </div>
                       ) : (
-                        <>
-                          <div className="absolute size-16 rounded-2xl bg-gradient-to-tr from-indigo-500/40 via-purple-500/30 to-pink-500/30 blur-lg animate-pulse" />
-                          <div className="relative flex size-14 items-center justify-center rounded-2xl bg-slate-900/90 border border-white/15 text-indigo-400 shadow-2xl">
-                            <Loader2 className="size-7 animate-spin text-indigo-400" />
-                          </div>
-                        </>
+                        <div className="relative flex size-14 items-center justify-center rounded-2xl bg-slate-900 border border-slate-700 text-orange-400 shadow-xl">
+                          <Loader2 className="size-7 animate-spin text-orange-400" />
+                        </div>
                       )}
                     </div>
 
@@ -476,7 +470,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
 
                     {imageUploadStatus !== "success" && (
                       <div className="mt-3.5 h-1.5 w-48 max-w-full overflow-hidden rounded-full bg-slate-800 border border-white/10">
-                        <div className="h-full w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 rounded-full animate-pulse" />
+                        <div className="h-full w-full bg-orange-500 rounded-full animate-pulse" />
                       </div>
                     )}
                   </div>

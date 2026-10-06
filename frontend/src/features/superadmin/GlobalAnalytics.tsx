@@ -243,7 +243,7 @@ export const GlobalAnalytics: React.FC = () => {
                       <div className="flex items-center gap-2">
                         <div className="h-2 w-24 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                           <div
-                            className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full transition-all duration-500"
+                            className="h-full bg-orange-500 rounded-full transition-all duration-300"
                             style={{ width: `${Math.max(percentage, 5)}%` }}
                           />
                         </div>

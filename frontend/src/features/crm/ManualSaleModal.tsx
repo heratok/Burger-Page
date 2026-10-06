@@ -1230,7 +1230,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                     onClick={() => setServiceType("mostrador")}
                     className={`flex items-center justify-center gap-1 sm:gap-1.5 rounded-lg py-1.5 text-xs font-bold transition-all cursor-pointer ${
                       serviceType === "mostrador"
-                        ? "bg-white dark:bg-orange-500 text-slate-900 dark:text-white shadow-xs"
+                        ? "bg-orange-500 text-white shadow-xs"
                         : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                     }`}
                   >
@@ -1243,7 +1243,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                     onClick={() => setServiceType("mesa")}
                     className={`flex items-center justify-center gap-1 sm:gap-1.5 rounded-lg py-1.5 text-xs font-bold transition-all cursor-pointer ${
                       serviceType === "mesa"
-                        ? "bg-white dark:bg-orange-500 text-slate-900 dark:text-white shadow-xs"
+                        ? "bg-orange-500 text-white shadow-xs"
                         : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                     }`}
                   >
@@ -1256,7 +1256,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                     onClick={() => setServiceType("domicilio")}
                     className={`flex items-center justify-center gap-1 sm:gap-1.5 rounded-lg py-1.5 text-xs font-bold transition-all cursor-pointer ${
                       serviceType === "domicilio"
-                        ? "bg-white dark:bg-orange-500 text-slate-900 dark:text-white shadow-xs"
+                        ? "bg-orange-500 text-white shadow-xs"
                         : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                     }`}
                   >

@@ -116,7 +116,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
 
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white leading-tight">
             Gestión Centralizada para{" "}
-            <span className="bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500 bg-clip-text text-transparent">
+            <span className="text-amber-400">
               Restaurantes
             </span>
           </h1>
@@ -249,7 +249,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="w-full gap-2 rounded-2xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-violet-600 py-3 text-xs font-bold text-white shadow-xl shadow-indigo-600/25 hover:from-indigo-700 hover:to-violet-700 transition-all cursor-pointer"
+                className="w-full gap-2 rounded-xl bg-orange-500 hover:bg-orange-600 py-3 text-xs font-bold text-white shadow-lg shadow-orange-500/25 transition-all cursor-pointer"
               >
                 <span>{isLoading ? "Verificando..." : "Acceder al Panel"}</span>
                 <ArrowRight className="size-4" />
