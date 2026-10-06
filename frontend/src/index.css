@@ -97,6 +97,44 @@
   }
 }
 
+@utility border-brand-orange-subtle {
+  border-color: rgba(249, 115, 22, 0.25);
+}
+:is(.dark) .border-brand-orange-subtle {
+  border-color: rgba(251, 146, 60, 0.3);
+}
+
+/* Prevent Chromium OKLab anti-aliasing color-fringing on rounded borders */
+@layer utilities {
+  .border-orange-500\/10 { border-color: rgba(249, 115, 22, 0.1) !important; }
+  .border-orange-500\/15 { border-color: rgba(249, 115, 22, 0.15) !important; }
+  .border-orange-500\/20 { border-color: rgba(249, 115, 22, 0.2) !important; }
+  .border-orange-500\/25 { border-color: rgba(249, 115, 22, 0.25) !important; }
+  .border-orange-500\/30 { border-color: rgba(249, 115, 22, 0.3) !important; }
+  .border-orange-500\/40 { border-color: rgba(249, 115, 22, 0.4) !important; }
+  .border-orange-500\/50 { border-color: rgba(249, 115, 22, 0.5) !important; }
+  .border-orange-500\/60 { border-color: rgba(249, 115, 22, 0.6) !important; }
+  .border-orange-700\/20 { border-color: rgba(194, 65, 12, 0.2) !important; }
+
+  :is(.dark) .border-orange-500\/10 { border-color: rgba(251, 146, 60, 0.15) !important; }
+  :is(.dark) .border-orange-500\/15 { border-color: rgba(251, 146, 60, 0.2) !important; }
+  :is(.dark) .border-orange-500\/20 { border-color: rgba(251, 146, 60, 0.25) !important; }
+  :is(.dark) .border-orange-500\/25 { border-color: rgba(251, 146, 60, 0.3) !important; }
+  :is(.dark) .border-orange-500\/30 { border-color: rgba(251, 146, 60, 0.35) !important; }
+  :is(.dark) .border-orange-500\/40 { border-color: rgba(251, 146, 60, 0.45) !important; }
+  :is(.dark) .border-orange-500\/50 { border-color: rgba(251, 146, 60, 0.55) !important; }
+  :is(.dark) .border-orange-500\/60 { border-color: rgba(251, 146, 60, 0.65) !important; }
+  :is(.dark) .border-orange-700\/20 { border-color: rgba(234, 88, 12, 0.3) !important; }
+
+  .hover\:border-orange-500\/40:hover { border-color: rgba(249, 115, 22, 0.4) !important; }
+  .hover\:border-orange-500\/50:hover { border-color: rgba(249, 115, 22, 0.5) !important; }
+  .hover\:border-orange-500\/60:hover { border-color: rgba(249, 115, 22, 0.6) !important; }
+
+  :is(.dark) .dark\:hover\:border-orange-500\/40:hover { border-color: rgba(251, 146, 60, 0.45) !important; }
+  :is(.dark) .dark\:hover\:border-orange-500\/50:hover { border-color: rgba(251, 146, 60, 0.55) !important; }
+  :is(.dark) .dark\:hover\:border-orange-500\/60:hover { border-color: rgba(251, 146, 60, 0.65) !important; }
+}
+
 /* scroll-fade */
 @property --scroll-fade-t {
   syntax: "<length-percentage>";
