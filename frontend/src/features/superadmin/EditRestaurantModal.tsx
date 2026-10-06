@@ -533,7 +533,7 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
                             onClick={() => setUserToEdit(admin)}
                             title="Editar usuario"
                             aria-label={`Editar usuario ${admin.username}`}
-                            className="rounded-lg p-1.5 text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-950/40 dark:hover:text-indigo-400 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-indigo-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-indigo-400 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             <Pencil className="size-3.5" />
                           </button>
@@ -558,7 +558,7 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
                             className={`rounded-lg p-1.5 transition-colors cursor-pointer ${
                               admin.isActive !== false
                                 ? "text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
-                                : "text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                                : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
                             } disabled:opacity-50 disabled:cursor-not-allowed`}
                           >
                             <Power className="size-3.5" />
@@ -575,7 +575,7 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
                                 : "Restablecer contraseña"
                             }
                             aria-label={`Restablecer contraseña de ${admin.username}`}
-                            className="rounded-lg p-1.5 text-slate-400 hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-950/40 dark:hover:text-amber-400 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-amber-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-amber-400 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             <KeyRound className="size-3.5" />
                           </button>
@@ -591,7 +591,7 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
                                 : "Eliminar usuario"
                             }
                             aria-label={`Eliminar usuario ${admin.username}`}
-                            className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 dark:hover:text-rose-400 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-rose-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-rose-400 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             <Trash2 className="size-3.5" />
                           </button>

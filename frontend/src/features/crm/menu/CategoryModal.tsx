@@ -168,7 +168,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
                             setEditingCategoryName(cat)
                             setEditCategoryInputValue(cat)
                           }}
-                          className="rounded-lg p-1 text-slate-400 hover:bg-indigo-100 hover:text-indigo-600 dark:hover:bg-indigo-950/40 cursor-pointer"
+                          className="rounded-lg p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white cursor-pointer"
                           title="Renombrar categoría"
                         >
                           <Edit2 className="size-3.5" />
@@ -176,7 +176,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
                         <button
                           type="button"
                           onClick={() => setCategoryToDelete(cat)}
-                          className="rounded-lg p-1 text-slate-400 hover:bg-rose-100 hover:text-rose-600 dark:hover:bg-rose-950/40 cursor-pointer"
+                          className="rounded-lg p-1 text-slate-500 hover:bg-slate-100 hover:text-rose-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-rose-400 cursor-pointer"
                           title="Eliminar categoría"
                         >
                           <Trash2 className="size-3.5" />

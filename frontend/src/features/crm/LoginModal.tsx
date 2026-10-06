@@ -63,7 +63,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       <div className="w-full max-w-sm rounded-2xl border border-slate-800 bg-[#0E1322] p-6 shadow-2xl">
         {/* Header */}
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 shadow-lg shadow-indigo-600/30">
+          <div className="mx-auto mb-3 flex size-14 items-center justify-center rounded-2xl bg-orange-500 shadow-lg shadow-orange-500/25">
             <Lock className="size-7 text-white" />
           </div>
           <h2 className="text-lg font-bold text-white">Panel de Administración</h2>
@@ -121,7 +121,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           <button
             type="submit"
             disabled={isLoading || !username.trim() || !password.trim()}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-600/25 transition-all hover:shadow-indigo-600/40 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-orange-500 hover:bg-orange-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-orange-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? (
               <>

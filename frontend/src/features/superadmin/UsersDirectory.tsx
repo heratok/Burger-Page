@@ -486,7 +486,7 @@ export const UsersDirectory: React.FC = () => {
                               onClick={() => setUserToDelete(u)}
                               title={isSelf ? "No puedes eliminar tu propia cuenta" : "Eliminar usuario"}
                               aria-label="Eliminar usuario"
-                              className="h-7 size-7 p-0 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/20 dark:hover:text-rose-400 cursor-pointer disabled:opacity-30 disabled:pointer-events-none"
+                              className="h-7 size-7 p-0 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-rose-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-rose-400 cursor-pointer disabled:opacity-30 disabled:pointer-events-none"
                             >
                               <Trash2 className="size-3.5" />
                             </Button>

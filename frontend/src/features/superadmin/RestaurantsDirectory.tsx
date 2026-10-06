@@ -457,7 +457,7 @@ export const RestaurantsDirectory: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => setRestaurantToDelete(r)}
-                              className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/20 dark:hover:text-rose-400 transition-colors cursor-pointer"
+                              className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-rose-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-rose-400 transition-colors cursor-pointer"
                               title="Eliminar restaurante"
                               aria-label={`Eliminar restaurante ${r.config.name}`}
                             >

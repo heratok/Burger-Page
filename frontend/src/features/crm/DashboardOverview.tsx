@@ -318,10 +318,10 @@ export const DashboardOverview: React.FC = () => {
                   <div className="w-full max-w-[44px] rounded-t-lg bg-slate-100 dark:bg-slate-800 overflow-hidden h-36 flex items-end">
                     <div
                       style={{ height: `${item.height}%` }}
-                      className={`w-full rounded-t-lg transition-all duration-500 group-hover:opacity-80 ${
+                      className={`w-full rounded-t-lg transition-all duration-300 group-hover:opacity-80 ${
                         idx === chartDays.items.length - 1
-                          ? "bg-gradient-to-t from-orange-500 to-amber-400"
-                          : "bg-gradient-to-t from-indigo-600 to-violet-400"
+                          ? "bg-orange-500"
+                          : "bg-slate-300 dark:bg-slate-700"
                       }`}
                     />
                   </div>

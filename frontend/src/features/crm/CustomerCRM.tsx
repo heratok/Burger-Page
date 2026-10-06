@@ -153,7 +153,7 @@ export const CustomerCRM: React.FC = () => {
             Promedio Pedidos / Cliente
           </span>
           <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-black text-indigo-600 dark:text-indigo-400">
+            <span className="text-2xl font-black text-slate-900 dark:text-white">
               {stats.avgOrders}
             </span>
             <span className="text-xs text-slate-500 dark:text-slate-400">órdenes</span>
