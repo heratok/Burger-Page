@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { render, screen, cleanup } from "@testing-library/react"
+import { render, screen, cleanup, fireEvent } from "@testing-library/react"
 import { RestaurantProvider } from "@/context/RestaurantContext"
 import LandingPage from "./LandingPage"
 
@@ -58,5 +58,14 @@ describe("LandingPage - private platform directory", () => {
     renderLanding()
     await new Promise((r) => setTimeout(r, 100))
     expect(calls.filter((u) => /\/restaurants\/?$/.test(u))).toHaveLength(0)
+  })
+
+  it("toggles between light and dark theme and persists choice", () => {
+    renderLanding()
+    const toggleBtn = screen.getByLabelText("Cambiar a tema oscuro")
+    expect(toggleBtn).toBeTruthy()
+    fireEvent.click(toggleBtn)
+    expect(localStorage.getItem("foodos_landing_theme")).toBe("dark")
+    expect(screen.getByLabelText("Cambiar a tema claro")).toBeTruthy()
   })
 })
