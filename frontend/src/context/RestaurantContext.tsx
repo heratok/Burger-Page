@@ -250,8 +250,14 @@ const SessionScopedAuthProvider: React.FC<{
     setAdminTab("dashboard")
   }, [repository, setAdminTab, queryClient])
 
+  // Reads made while the password change was pending were refused with 403:
+  // refetch the active queries now that the session token is fully privileged.
+  const onPasswordChanged = useCallback(() => {
+    void queryClient.invalidateQueries()
+  }, [queryClient])
+
   return (
-    <AuthProvider onLogin={onLogin} onLogout={onLogout}>
+    <AuthProvider onLogin={onLogin} onLogout={onLogout} onPasswordChanged={onPasswordChanged}>
       {children}
     </AuthProvider>
   )

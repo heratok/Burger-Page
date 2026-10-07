@@ -167,4 +167,52 @@ describe("AuthContext RBAC - permissions and can() helper", () => {
   })
 })
 
+describe("AuthContext forced password change", () => {
+  beforeEach(() => {
+    localStorage.clear()
+    sessionStorage.clear()
+    vi.restoreAllMocks()
+  })
+
+  const seedForcedSession = () =>
+    sessionStorage.setItem(
+      SESSION_KEY,
+      JSON.stringify({ role: "staff", userId: "usr-1", username: "mesero", mustChangePassword: true })
+    )
+
+  const renderWithCallback = (onPasswordChanged: () => void) =>
+    renderHook(() => useAuth(), {
+      wrapper: ({ children }) => <AuthProvider onPasswordChanged={onPasswordChanged}>{children}</AuthProvider>,
+    })
+
+  it("notifies onPasswordChanged after a successful change so session-scoped data is re-read with the fresh token", async () => {
+    const { apiClient } = await import("@/core/api/apiClient")
+    seedForcedSession()
+    vi.spyOn(apiClient, "changeOwnPassword").mockResolvedValue({ success: true, token: "fresh-token" })
+    const onPasswordChanged = vi.fn()
+    const { result } = renderWithCallback(onPasswordChanged)
+
+    await act(async () => {
+      await result.current.changePassword("temp-pass", "new-secret-1")
+    })
+
+    expect(result.current.session.mustChangePassword).toBe(false)
+    expect(onPasswordChanged).toHaveBeenCalledTimes(1)
+  })
+
+  it("does not notify onPasswordChanged when the change is rejected", async () => {
+    const { apiClient } = await import("@/core/api/apiClient")
+    seedForcedSession()
+    vi.spyOn(apiClient, "changeOwnPassword").mockResolvedValue({ success: false } as any)
+    const onPasswordChanged = vi.fn()
+    const { result } = renderWithCallback(onPasswordChanged)
+
+    await act(async () => {
+      await result.current.changePassword("temp-pass", "new-secret-1")
+    })
+
+    expect(onPasswordChanged).not.toHaveBeenCalled()
+  })
+})
+
 
