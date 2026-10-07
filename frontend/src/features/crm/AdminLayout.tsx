@@ -28,12 +28,14 @@ import {
   Settings,
   KeyRound,
   ClipboardList,
+  ShieldCheck,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { AdminSwitcher, CreateRestaurantModal, CreateUserModal, ChangePasswordScreen, SupportModeBanner } from "@/features/superadmin"
-import { useAppRouter } from "@/core/router/useAppRouter"
+import { useAppRouter, isTabAllowed } from "@/core/router/useAppRouter"
 import { AdminContentFallback } from "@/components/ui/LoadingFallbacks"
 import { ManualSaleModal } from "./ManualSaleModal"
+
 
 interface AdminLayoutProps {
   children: React.ReactNode
@@ -53,6 +55,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     pendingOrdersCount,
     lowStockCount,
     session,
+    can,
     logout,
   } = useRestaurant()
 
@@ -84,10 +87,11 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   }
 
   useEffect(() => {
-    if (session.role === "restaurant" && session.restaurantId && activeRestaurant.id !== session.restaurantId) {
+    if ((session.role === "restaurant" || session.role === "staff") && session.restaurantId && activeRestaurant.id !== session.restaurantId) {
       switchRestaurant(session.restaurantId)
     }
   }, [session, activeRestaurant.id, switchRestaurant])
+
 
   const isDark = adminTheme === "dark"
   const isSuper = session.role === "super"
@@ -178,6 +182,20 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       badge: undefined,
     },
     {
+      id: "equipo" as const,
+      label: "Equipo",
+      icon: Users,
+      description: "Personal y accesos del restaurante",
+      badge: undefined,
+    },
+    {
+      id: "roles" as const,
+      label: "Roles",
+      icon: ShieldCheck,
+      description: "Cargos y permisos del equipo",
+      badge: undefined,
+    },
+    {
       id: "customizer" as const,
       label: "Personalizar",
       icon: Palette,
@@ -193,8 +211,17 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     },
   ]
 
-  const navItems = isSuperGlobalMode ? globalNavItems : restaurantNavItems
-  const activeItem = navItems.find((item) => item.id === adminTab) || navItems[0]
+  const allowedRestaurantNavItems = restaurantNavItems.filter((item) => {
+    if (session.role === "super") return true
+    return isTabAllowed(item.id, can, session.role)
+  })
+
+  const navItems = isSuperGlobalMode ? globalNavItems : allowedRestaurantNavItems
+  const activeItem =
+    navItems.find((item) => item.id === adminTab) ||
+    navItems[0] ||
+    ({ id: adminTab, label: "Panel", icon: LayoutDashboard, description: "", badge: undefined } as const)
+
 
   return (
     <div

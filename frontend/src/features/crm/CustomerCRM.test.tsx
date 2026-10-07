@@ -21,6 +21,8 @@ const customers: Customer[] = [
   },
 ]
 
+const mockCan = vi.fn().mockReturnValue(true)
+
 vi.mock("@/context/RestaurantContext", () => ({
   useRestaurant: () => ({
     customers,
@@ -30,14 +32,20 @@ vi.mock("@/context/RestaurantContext", () => ({
     storeConfig: { name: "Burger" },
     adminTheme: "light",
     isLoadingOrders: false,
+    can: mockCan,
+  }),
+  useAuth: () => ({
+    can: mockCan,
   }),
 }))
 
 describe("CustomerCRM edit and delete", () => {
   beforeEach(() => {
+    mockCan.mockReturnValue(true)
     updateCustomer.mockReset().mockResolvedValue(undefined)
     deleteCustomer.mockReset().mockResolvedValue(undefined)
   })
+
 
   afterEach(() => cleanup())
 
@@ -102,4 +110,41 @@ describe("CustomerCRM edit and delete", () => {
 
     await waitFor(() => expect(deleteCustomer).toHaveBeenCalledWith("cust-1"))
   })
+
+  describe("Financial metrics gating (finance.view)", () => {
+    it("displays financial metrics and customer spend when user has finance.view", () => {
+      mockCan.mockImplementation((perm: string) => perm === "finance.view")
+      render(<CustomerCRM />)
+
+      // Top metric card
+      expect(screen.getByText("Gasto Acumulado")).toBeDefined()
+      // Table column header
+      expect(screen.getByText("Gasto Total")).toBeDefined()
+      // Formatted values ($84.000 in top card and table)
+      expect(screen.getAllByText(/\$?\s*84\.000/).length).toBeGreaterThanOrEqual(1)
+
+      // Customer details modal
+      fireEvent.click(screen.getByTitle("Ficha del cliente"))
+      expect(screen.getByText("Inversión Total")).toBeDefined()
+    })
+
+    it("hides financial metrics and customer spend when user lacks finance.view", () => {
+      mockCan.mockReturnValue(false) // lacks finance.view
+      render(<CustomerCRM />)
+
+      // Top metric card must NOT be displayed
+      expect(screen.queryByText("Gasto Acumulado")).toBeNull()
+      // Table column header must NOT be displayed
+      expect(screen.queryByText("Gasto Total")).toBeNull()
+      // Formatted customer spend must NOT be displayed
+      expect(screen.queryByText(/\$?\s*84\.000/)).toBeNull()
+
+      // Customer details modal must NOT show total investment
+      fireEvent.click(screen.getByTitle("Ficha del cliente"))
+      expect(screen.queryByText("Inversión Total")).toBeNull()
+      // But non-financial stats like Total Pedidos must remain
+      expect(screen.getAllByText("Total Pedidos").length).toBeGreaterThan(0)
+    })
+  })
 })
+

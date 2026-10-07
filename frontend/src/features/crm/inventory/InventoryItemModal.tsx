@@ -35,6 +35,7 @@ export interface InventoryItemModalProps {
   isDark: boolean
   onClose: () => void
   onSave: (data: InventoryItemFormData) => void
+  canViewFinance?: boolean
 }
 
 export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({
@@ -44,6 +45,7 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({
   isDark,
   onClose,
   onSave,
+  canViewFinance = true,
 }) => {
   const [formData, setFormData] = useState<{
     name: string
@@ -184,7 +186,7 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className={`grid ${canViewFinance ? "grid-cols-3" : "grid-cols-2"} gap-3`}>
             <div>
               <label className={`block font-semibold mb-1 ${isDark ? "text-slate-200" : "text-slate-700"}`}>
                 Stock Actual
@@ -228,26 +230,28 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({
               />
             </div>
 
-            <div>
-              <label className={`block font-semibold mb-1 ${isDark ? "text-slate-200" : "text-slate-700"}`}>
-                Costo Unitario ($)
-              </label>
-              <input
-                type="number"
-                min="0"
-                max={50000000}
-                required
-                value={formData.costPerUnit}
-                onChange={(e) =>
-                  setFormData({ ...formData, costPerUnit: Number(e.target.value) })
-                }
-                className={`w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                  isDark
-                    ? "border-slate-700 bg-slate-800 text-white"
-                    : "border-slate-300 bg-white text-slate-900"
-                }`}
-              />
-            </div>
+            {canViewFinance && (
+              <div>
+                <label className={`block font-semibold mb-1 ${isDark ? "text-slate-200" : "text-slate-700"}`}>
+                  Costo Unitario ($)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max={50000000}
+                  required
+                  value={formData.costPerUnit}
+                  onChange={(e) =>
+                    setFormData({ ...formData, costPerUnit: Number(e.target.value) })
+                  }
+                  className={`w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                    isDark
+                      ? "border-slate-700 bg-slate-800 text-white"
+                      : "border-slate-300 bg-white text-slate-900"
+                  }`}
+                />
+              </div>
+            )}
           </div>
 
           <Select

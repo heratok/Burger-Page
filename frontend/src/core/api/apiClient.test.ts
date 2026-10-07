@@ -743,4 +743,58 @@ describe('ApiClient', () => {
         }
       })
     })
+
+    describe('User permissions and session preservation (RBAC)', () => {
+      it('login preserves user permissions and roleId from backend response', async () => {
+        (globalThis.fetch as any).mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            success: true,
+            token: 'staff-token',
+            user: {
+              id: 'staff-1',
+              username: 'cocinero',
+              role: 'restaurant_staff',
+              restaurantId: 'rest-1',
+              roleId: 'role-kitchen',
+              permissions: ['orders.view', 'orders.manage'],
+              mustChangePassword: false,
+            },
+          }),
+        })
+
+        const res = await client.login('cocinero', 'secret123')
+        expect(res.success).toBe(true)
+        expect(res.user?.permissions).toEqual(['orders.view', 'orders.manage'])
+        expect(res.user?.roleId).toBe('role-kitchen')
+        expect(client.getToken()).toBe('staff-token')
+      })
+
+      it('getMe sends GET /users/me and returns user with permissions and roleId', async () => {
+        client.setToken('auth-token')
+        let requestedUrl = ''
+        ;(globalThis.fetch as any).mockImplementationOnce(async (url: string) => {
+          requestedUrl = url
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              id: 'staff-1',
+              username: 'cocinero',
+              role: 'restaurant_staff',
+              restaurantId: 'rest-1',
+              roleId: 'role-kitchen',
+              permissions: ['orders.view', 'orders.manage'],
+            }),
+          }
+        })
+
+        const me = await (client as any).getMe()
+        expect(requestedUrl).toBe('http://localhost:3001/api/users/me')
+        expect(me.username).toBe('cocinero')
+        expect(me.permissions).toEqual(['orders.view', 'orders.manage'])
+      })
+    })
   })
+

@@ -1,10 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from "react"
-import type { AdminSession } from "@/types/restaurant"
+import type { AdminSession, UserRole } from "@/types/restaurant"
+import { type Permission, PERMISSIONS } from "@burger-page/contracts"
 import { toast } from "sonner"
 import { apiClient } from "@/core/api/apiClient"
 
 export interface AuthContextType {
   session: AdminSession
+  permissions: Permission[]
+  can: (permission: Permission) => boolean
   /**
    * Authenticates against the backend. There is intentionally NO local
    * password fallback: default or leaked credentials must never grant
@@ -16,7 +19,7 @@ export interface AuthContextType {
     targetRestaurantIdOrSlug?: string
   ) => Promise<{
     success: boolean
-    role: "super" | "restaurant" | null
+    role: "super" | "restaurant" | "staff" | null
     restaurantId?: string
     mustChangePassword?: boolean
     error?: string
@@ -28,6 +31,7 @@ export interface AuthContextType {
   logout: () => void
   setSession: React.Dispatch<React.SetStateAction<AdminSession>>
 }
+
 
 function parseJwtPayload(token?: string): { userId?: string; username?: string; role?: string } | null {
   if (!token) return null
@@ -68,7 +72,7 @@ export const AuthProvider: React.FC<{
    * rebuilt in the same render as the new role and never paired with the
    * previous session's values.
    */
-  onLogin?: (role: "super" | "restaurant") => void
+  onLogin?: (role: "super" | "restaurant" | "staff") => void
 }> = ({ children, onLogout, onLogin }) => {
   const [session, setSession] = useState<AdminSession>(() => {
     try {
@@ -142,6 +146,27 @@ export const AuthProvider: React.FC<{
     })
   }, [onLogout])
 
+  const can = useCallback(
+    (permission: Permission): boolean => {
+      if (session.role === "super") return true
+      if (session.permissions) {
+        return session.permissions.includes(permission)
+      }
+      if (session.role === "restaurant") {
+        return true
+      }
+      return false
+    },
+    [session.role, session.permissions]
+  )
+
+  const permissions = useMemo<Permission[]>(() => {
+    if (session.role === "super" || session.role === "restaurant") {
+      return [...PERMISSIONS]
+    }
+    return session.permissions ?? []
+  }, [session.role, session.permissions])
+
   const login = useCallback(
     async (
       username: string,
@@ -149,7 +174,7 @@ export const AuthProvider: React.FC<{
       targetRestaurantIdOrSlug?: string
     ): Promise<{
       success: boolean
-      role: "super" | "restaurant" | null
+      role: "super" | "restaurant" | "staff" | null
       restaurantId?: string
       mustChangePassword?: boolean
       error?: string
@@ -171,13 +196,16 @@ export const AuthProvider: React.FC<{
         }
 
         const isSuper = result.user.role === "super_admin"
-        const role = isSuper ? ("super" as const) : ("restaurant" as const)
+        const isStaff = result.user.role === "restaurant_staff"
+        const role: UserRole = isSuper ? ("super" as const) : isStaff ? ("staff" as const) : ("restaurant" as const)
         const mustChangePassword = Boolean(result.user.mustChangePassword)
         setSession({
           role,
           userId: result.user.id,
           username: result.user.username,
           restaurantId: result.user.restaurantId,
+          roleId: result.user.roleId,
+          permissions: result.user.permissions as Permission[] | undefined,
           mustChangePassword,
           authenticatedAt: new Date().toISOString(),
         })
@@ -255,12 +283,14 @@ export const AuthProvider: React.FC<{
   const value: AuthContextType = useMemo(
     () => ({
       session,
+      permissions,
+      can,
       login,
       changePassword,
       logout,
       setSession,
     }),
-    [session, login, changePassword, logout, setSession]
+    [session, permissions, can, login, changePassword, logout, setSession]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
@@ -270,6 +300,8 @@ const DEFAULT_GUEST_SESSION: AdminSession = Object.freeze({ role: "guest" })
 
 const DEFAULT_AUTH_CONTEXT: AuthContextType = Object.freeze({
   session: DEFAULT_GUEST_SESSION,
+  permissions: [],
+  can: () => false,
   login: async () => ({ success: false, role: null }),
   changePassword: async () => ({ success: false }),
   logout: () => {},
@@ -280,3 +312,4 @@ export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext)
   return context || DEFAULT_AUTH_CONTEXT
 }
+

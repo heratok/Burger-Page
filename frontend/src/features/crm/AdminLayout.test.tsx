@@ -220,4 +220,66 @@ describe("AdminLayout - Super Admin Navigation & Global Modules (TDD)", () => {
     expect(screen.getByText(/Actualizar Contraseña/i)).toBeDefined()
     expect(screen.getByRole("button", { name: /Cancelar/i })).toBeDefined()
   })
+
+  it("filters navigation items for staff user according to permissions", () => {
+    sessionStorage.setItem(
+      "burger_page_session_v2",
+      JSON.stringify({
+        role: "staff",
+        restaurantId: "burger-craft",
+        username: "cocinero",
+        permissions: ["orders.view", "orders.manage"],
+        authenticatedAt: new Date().toISOString(),
+      })
+    )
+
+    render(
+      <RestaurantProvider>
+        <AdminLayout>
+          <div>Vista Cocina</div>
+        </AdminLayout>
+      </RestaurantProvider>
+    )
+
+    // Allowed module
+    expect(screen.getByRole("button", { name: /Pedidos en Vivo/i })).toBeDefined()
+
+    // Gated modules must NOT be in the navigation
+    expect(screen.queryByRole("button", { name: /^Dashboard$/i })).toBeNull()
+    expect(screen.queryByRole("button", { name: /Reportes & Cierre/i })).toBeNull()
+    expect(screen.queryByRole("button", { name: /Mesas & QR/i })).toBeNull()
+    expect(screen.queryByRole("button", { name: /Menú & Carta/i })).toBeNull()
+    expect(screen.queryByRole("button", { name: /Stock & Insumos/i })).toBeNull()
+    expect(screen.queryByRole("button", { name: /^Clientes$/i })).toBeNull()
+    expect(screen.queryByRole("button", { name: /Personalizar/i })).toBeNull()
+    expect(screen.queryByRole("button", { name: /Ajustes de Negocio/i })).toBeNull()
+    expect(screen.queryByRole("button", { name: /^Equipo$/i })).toBeNull()
+    expect(screen.queryByRole("button", { name: /^Roles$/i })).toBeNull()
+  })
+
+  it("shows Equipo and Roles tabs for users with users.manage and roles.manage permissions", () => {
+    sessionStorage.setItem(
+      "burger_page_session_v2",
+      JSON.stringify({
+        role: "staff",
+        restaurantId: "burger-craft",
+        username: "admin_personal",
+        permissions: ["users.manage", "roles.manage"],
+        authenticatedAt: new Date().toISOString(),
+      })
+    )
+
+    render(
+      <RestaurantProvider>
+        <AdminLayout>
+          <div>Vista Gestión</div>
+        </AdminLayout>
+      </RestaurantProvider>
+    )
+
+    expect(screen.getByRole("button", { name: /^Equipo$/i })).toBeDefined()
+    expect(screen.getByRole("button", { name: /^Roles$/i })).toBeDefined()
+  })
+
 })
+

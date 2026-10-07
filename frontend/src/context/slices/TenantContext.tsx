@@ -257,9 +257,10 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
   // super admins keep the raw persisted activeRestaurantId (storefront switcher
   // and super-tenant navigation still work unchanged).
   const effectiveRestaurantId =
-    session.role === "restaurant" && session.restaurantId
+    (session.role === "restaurant" || session.role === "staff") && session.restaurantId
       ? session.restaurantId
       : activeRestaurantId
+
 
   // An admin's saved tenant that the directory does not list is dropped.
   const directoryLoaded = directoryQuery.data !== undefined
@@ -320,7 +321,7 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
       // The own tenant may not be known yet (first visit, list still in
       // flight): that is NOT a foreign request. It is fetched below and only a
       // record that resolves to ANOTHER tenant warns.
-      const ownId = session.role === "restaurant" ? session.restaurantId : undefined
+      const ownId = (session.role === "restaurant" || session.role === "staff") ? session.restaurantId : undefined
       if (ownId && target && target.id !== ownId) {
         toast.warning("Solo podés operar tu propio restaurante")
         return
@@ -361,13 +362,14 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
         const fetched = await fetchTenant(idOrSlug)
         if (!fetched || !fetched.id) return "not-found"
         // Same guard as switchRestaurant: a restaurant admin never live-switches.
-        if (session.role === "restaurant" && session.restaurantId !== fetched.id) {
+        if ((session.role === "restaurant" || session.role === "staff") && session.restaurantId !== fetched.id) {
           forgetRestaurant(queryClient, role, fetched, idOrSlug)
           toast.warning("Solo podés operar tu propio restaurante")
           return "ok"
         }
         setActiveRestaurantId(fetched.id)
         return "ok"
+
       } catch (err) {
         if (isNotFoundError(err)) return "not-found"
         if (import.meta.env?.MODE !== "test") {
