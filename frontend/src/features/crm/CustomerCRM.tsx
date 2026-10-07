@@ -22,6 +22,7 @@ const EMPTY_DRAFT = { nombre: "", telefono: "", direccion: "", barrio: "", email
 
 export const CustomerCRM: React.FC = () => {
   const { customers, orders, updateCustomer, deleteCustomer, storeConfig, adminTheme, isLoadingOrders, can } = useRestaurant()
+  const canManageCustomers = can ? can("customers.manage") : false
 
   const [searchTerm, setSearchTerm] = useState("")
   const [tierFilter, setTierFilter] = useState<string>("ALL")
@@ -345,24 +346,28 @@ export const CustomerCRM: React.FC = () => {
                       >
                         <FileText className="size-4" />
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => openCustomerModal(cust, true)}
-                        aria-label={`Editar ${cust.nombre}`}
-                        className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-                        title="Editar cliente"
-                      >
-                        <Pencil className="size-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setCustomerToDelete(cust)}
-                        aria-label={`Eliminar ${cust.nombre}`}
-                        className="rounded-lg p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
-                        title="Eliminar cliente"
-                      >
-                        <Trash2 className="size-4" />
-                      </button>
+                      {canManageCustomers && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => openCustomerModal(cust, true)}
+                            aria-label={`Editar ${cust.nombre}`}
+                            className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                            title="Editar cliente"
+                          >
+                            <Pencil className="size-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setCustomerToDelete(cust)}
+                            aria-label={`Eliminar ${cust.nombre}`}
+                            className="rounded-lg p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
+                            title="Eliminar cliente"
+                          >
+                            <Trash2 className="size-4" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -419,58 +424,60 @@ export const CustomerCRM: React.FC = () => {
               </button>
             </div>
 
-            {isEditing ? (
-              <div className="mt-4 grid grid-cols-1 gap-3 text-xs sm:grid-cols-2">
-                {(
-                  [
-                    ["nombre", "Nombre"],
-                    ["telefono", "Teléfono"],
-                    ["direccion", "Dirección"],
-                    ["barrio", "Barrio"],
-                    ["email", "Correo"],
-                  ] as const
-                ).map(([field, label]) => (
-                  <label key={field} className="flex flex-col gap-1 font-bold text-slate-800 dark:text-slate-200">
-                    <span>{label}</span>
-                    <input
-                      type="text"
-                      maxLength={120}
-                      value={detailsDraft[field]}
-                      onChange={(e) => setDetailsDraft((prev) => ({ ...prev, [field]: e.target.value }))}
-                      className="rounded-xl border p-2 font-normal text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                    />
-                  </label>
-                ))}
-                <div className="flex justify-end gap-2 sm:col-span-2">
-                  <Button size="sm" variant="outline" onClick={() => setIsEditing(false)} disabled={isSavingDetails}>
-                    Cancelar
+            {canManageCustomers && (
+              isEditing ? (
+                <div className="mt-4 grid grid-cols-1 gap-3 text-xs sm:grid-cols-2">
+                  {(
+                    [
+                      ["nombre", "Nombre"],
+                      ["telefono", "Teléfono"],
+                      ["direccion", "Dirección"],
+                      ["barrio", "Barrio"],
+                      ["email", "Correo"],
+                    ] as const
+                  ).map(([field, label]) => (
+                    <label key={field} className="flex flex-col gap-1 font-bold text-slate-800 dark:text-slate-200">
+                      <span>{label}</span>
+                      <input
+                        type="text"
+                        maxLength={120}
+                        value={detailsDraft[field]}
+                        onChange={(e) => setDetailsDraft((prev) => ({ ...prev, [field]: e.target.value }))}
+                        className="rounded-xl border p-2 font-normal text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                      />
+                    </label>
+                  ))}
+                  <div className="flex justify-end gap-2 sm:col-span-2">
+                    <Button size="sm" variant="outline" onClick={() => setIsEditing(false)} disabled={isSavingDetails}>
+                      Cancelar
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleSaveDetails}
+                      disabled={isSavingDetails}
+                      className="bg-indigo-600 text-white font-semibold"
+                    >
+                      {isSavingDetails ? "Guardando..." : "Guardar cambios"}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-3 flex justify-end gap-2 text-xs">
+                  <Button size="sm" variant="outline" onClick={() => setIsEditing(true)}>
+                    <Pencil className="size-3.5" />
+                    Editar datos
                   </Button>
                   <Button
                     size="sm"
-                    onClick={handleSaveDetails}
-                    disabled={isSavingDetails}
-                    className="bg-indigo-600 text-white font-semibold"
+                    variant="outline"
+                    onClick={() => setCustomerToDelete(selectedCustomer)}
+                    className="border-rose-300 text-rose-600 hover:bg-rose-50 dark:border-rose-500/40 dark:text-rose-400"
                   >
-                    {isSavingDetails ? "Guardando..." : "Guardar cambios"}
+                    <Trash2 className="size-3.5" />
+                    Eliminar cliente
                   </Button>
                 </div>
-              </div>
-            ) : (
-              <div className="mt-3 flex justify-end gap-2 text-xs">
-                <Button size="sm" variant="outline" onClick={() => setIsEditing(true)}>
-                  <Pencil className="size-3.5" />
-                  Editar datos
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setCustomerToDelete(selectedCustomer)}
-                  className="border-rose-300 text-rose-600 hover:bg-rose-50 dark:border-rose-500/40 dark:text-rose-400"
-                >
-                  <Trash2 className="size-3.5" />
-                  Eliminar cliente
-                </Button>
-              </div>
+              )
             )}
 
             {/* Spending stats */}
@@ -501,15 +508,25 @@ export const CustomerCRM: React.FC = () => {
                 rows={3}
                 maxLength={300}
                 value={notesEdit}
+                disabled={!canManageCustomers}
+                readOnly={!canManageCustomers}
                 onChange={(e) => setNotesEdit(e.target.value)}
-                placeholder="Ej. Prefiere la carne bien cocida. Dejar con portería si no contesta..."
-                className="w-full rounded-xl border p-2.5 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white"
+                placeholder={
+                  canManageCustomers
+                    ? "Ej. Prefiere la carne bien cocida. Dejar con portería si no contesta..."
+                    : "Sin notas registradas"
+                }
+                className={`w-full rounded-xl border p-2.5 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white ${
+                  !canManageCustomers ? "opacity-75 cursor-not-allowed bg-slate-50 dark:bg-slate-800/50" : ""
+                }`}
               />
-              <div className="flex justify-end">
-                <Button size="sm" onClick={handleSaveNotes} disabled={isSavingNotes} className="bg-indigo-600 text-white font-semibold">
-                  {isSavingNotes ? "Guardando..." : "Guardar Notas"}
-                </Button>
-              </div>
+              {canManageCustomers && (
+                <div className="flex justify-end">
+                  <Button size="sm" onClick={handleSaveNotes} disabled={isSavingNotes} className="bg-indigo-600 text-white font-semibold">
+                    {isSavingNotes ? "Guardando..." : "Guardar Notas"}
+                  </Button>
+                </div>
+              )}
 
             </div>
 

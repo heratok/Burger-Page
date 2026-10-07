@@ -146,5 +146,44 @@ describe("CustomerCRM edit and delete", () => {
       expect(screen.getAllByText("Total Pedidos").length).toBeGreaterThan(0)
     })
   })
+
+  describe("Customer mutation gating (customers.manage)", () => {
+    it("hides edit and delete row buttons when user lacks customers.manage permission", () => {
+      mockCan.mockImplementation((perm: string) => perm === "customers.view")
+      render(<CustomerCRM />)
+
+      // Row edit and delete buttons must be hidden
+      expect(screen.queryByTitle("Editar cliente")).toBeNull()
+      expect(screen.queryByLabelText("Editar Santiago Restrepo")).toBeNull()
+      expect(screen.queryByTitle("Eliminar cliente")).toBeNull()
+      expect(screen.queryByLabelText("Eliminar Santiago Restrepo")).toBeNull()
+
+      // Chat and profile buttons stay visible
+      expect(screen.getByTitle("Contactar por WhatsApp")).toBeDefined()
+      expect(screen.getByTitle("Ficha del cliente")).toBeDefined()
+    })
+
+    it("hides Editar datos, Eliminar cliente, Guardar Notas and disables notes in details modal for read-only users", () => {
+      mockCan.mockImplementation((perm: string) => perm === "customers.view")
+      render(<CustomerCRM />)
+
+      // Open customer modal
+      fireEvent.click(screen.getByTitle("Ficha del cliente"))
+
+      // Modal mutation buttons must be hidden
+      expect(screen.queryByRole("button", { name: "Editar datos" })).toBeNull()
+      expect(screen.queryByRole("button", { name: "Eliminar cliente" })).toBeNull()
+      expect(screen.queryByRole("button", { name: "Guardar Notas" })).toBeNull()
+
+      // Notes textarea must be read-only or disabled
+      const notesArea = screen.getByDisplayValue("Sin cebolla") as HTMLTextAreaElement
+      expect(notesArea.disabled || notesArea.readOnly).toBe(true)
+
+      // Customer details and order history remain visible
+      expect(screen.getByRole("heading", { name: "Santiago Restrepo" })).toBeDefined()
+      expect(screen.getByText(/Celular: 3109876543/)).toBeDefined()
+      expect(screen.getByText(/Historial de Pedidos Registrados/)).toBeDefined()
+    })
+  })
 })
 
