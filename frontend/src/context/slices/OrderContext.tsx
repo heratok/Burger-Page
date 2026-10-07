@@ -607,9 +607,10 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // first render (and every refreshed effect) fetches/streams THEIR tenant and
   // never the stale persisted one.
   const effectiveId =
-    session.role === "restaurant" && session.restaurantId
+    (session.role === "restaurant" || session.role === "staff") && session.restaurantId
       ? session.restaurantId
       : activeRestaurant?.id
+
 
   const queryClient = useQueryClient()
 

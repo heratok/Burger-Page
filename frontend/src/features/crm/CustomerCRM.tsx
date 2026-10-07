@@ -21,7 +21,7 @@ import { formatCurrency, cleanPhoneNumber, formatWhatsAppPhone } from "@/lib/uti
 const EMPTY_DRAFT = { nombre: "", telefono: "", direccion: "", barrio: "", email: "" }
 
 export const CustomerCRM: React.FC = () => {
-  const { customers, orders, updateCustomer, deleteCustomer, storeConfig, adminTheme, isLoadingOrders } = useRestaurant()
+  const { customers, orders, updateCustomer, deleteCustomer, storeConfig, adminTheme, isLoadingOrders, can } = useRestaurant()
 
   const [searchTerm, setSearchTerm] = useState("")
   const [tierFilter, setTierFilter] = useState<string>("ALL")
@@ -151,7 +151,7 @@ export const CustomerCRM: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Top Metrics Row */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className={`grid grid-cols-1 gap-4 sm:grid-cols-2 ${can?.("finance.view") ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}>
         <div
           className={`rounded-2xl border p-5 shadow-xs ${
             isDark ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-white"
@@ -182,20 +182,22 @@ export const CustomerCRM: React.FC = () => {
           </div>
         </div>
 
-        <div
-          className={`rounded-2xl border p-5 shadow-xs ${
-            isDark ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-white"
-          }`}
-        >
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            Gasto Acumulado
-          </span>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
-              {formatCurrency(stats.totalSpentAll)}
+        {can?.("finance.view") && (
+          <div
+            className={`rounded-2xl border p-5 shadow-xs ${
+              isDark ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-white"
+            }`}
+          >
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Gasto Acumulado
             </span>
+            <div className="mt-2 flex items-baseline gap-2">
+              <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
+                {formatCurrency(stats.totalSpentAll)}
+              </span>
+            </div>
           </div>
-        </div>
+        )}
 
         <div
           className={`rounded-2xl border p-5 shadow-xs ${
@@ -261,7 +263,7 @@ export const CustomerCRM: React.FC = () => {
 
       {/* Customers Table */}
       {isLoadingOrders && customers.length === 0 ? (
-        <TableSkeleton isDark={isDark} rows={5} columns={7} />
+        <TableSkeleton isDark={isDark} rows={5} columns={can?.("finance.view") ? 7 : 6} />
       ) : (
         <div
           className={`overflow-hidden rounded-2xl border shadow-xs ${
@@ -276,7 +278,9 @@ export const CustomerCRM: React.FC = () => {
                 <th className="py-3 px-4 font-semibold">Teléfono</th>
                 <th className="py-3 px-4 font-semibold">Ubicación</th>
                 <th className="py-3 px-4 font-semibold text-center">Total Pedidos</th>
-                <th className="py-3 px-4 font-semibold">Gasto Total</th>
+                {can?.("finance.view") && (
+                  <th className="py-3 px-4 font-semibold">Gasto Total</th>
+                )}
                 <th className="py-3 px-4 font-semibold">Nivel</th>
                 <th className="py-3 px-4 font-semibold text-right">Acciones</th>
               </tr>
@@ -314,9 +318,11 @@ export const CustomerCRM: React.FC = () => {
                   <td className="py-3 px-4 font-bold text-center text-slate-900 dark:text-slate-100">
                     {cust.totalOrders}
                   </td>
-                  <td className="py-3 px-4 font-bold text-emerald-600 dark:text-emerald-400">
-                    {formatCurrency(cust.totalSpent)}
-                  </td>
+                  {can?.("finance.view") && (
+                    <td className="py-3 px-4 font-bold text-emerald-600 dark:text-emerald-400">
+                      {formatCurrency(cust.totalSpent)}
+                    </td>
+                  )}
                   <td className="py-3 px-4">
                     <LoyaltyBadge tier={cust.loyaltyTier} />
                   </td>
@@ -468,19 +474,21 @@ export const CustomerCRM: React.FC = () => {
             )}
 
             {/* Spending stats */}
-            <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
+            <div className={`mt-4 grid gap-3 text-xs ${can?.("finance.view") ? "grid-cols-2" : "grid-cols-1"}`}>
               <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-800 border dark:border-slate-700">
                 <span className="text-slate-500 dark:text-slate-400 font-medium">Total Pedidos</span>
                 <p className="text-lg font-black text-slate-900 dark:text-white">
                   {selectedCustomer.totalOrders} compras
                 </p>
               </div>
-              <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-800 border dark:border-slate-700">
-                <span className="text-slate-500 dark:text-slate-400 font-medium">Inversión Total</span>
-                <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">
-                  {formatCurrency(selectedCustomer.totalSpent)}
-                </p>
-              </div>
+              {can?.("finance.view") && (
+                <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-800 border dark:border-slate-700">
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">Inversión Total</span>
+                  <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">
+                    {formatCurrency(selectedCustomer.totalSpent)}
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Notes input */}

@@ -1,6 +1,8 @@
-import { useState, useEffect, useCallback, useRef } from "react"
-import type { RestaurantRecord, AppView, AdminTab } from "@/types/restaurant"
+import { useState, useEffect, useCallback, useRef, useMemo } from "react"
+import type { RestaurantRecord, AppView, AdminTab, UserRole } from "@/types/restaurant"
+import type { Permission } from "@burger-page/contracts"
 import { useUi, useTenant } from "@/context/RestaurantContext"
+import { useAuth } from "@/context/slices/AuthContext"
 import { ADMIN_ROOT_PATHS } from "./adminRootPaths"
 
 export interface RouteResolution {
@@ -25,14 +27,81 @@ export const VALID_ADMIN_TABS: AdminTab[] = [
   "users",
   "metrics",
   "audit",
+  "equipo",
+  "roles",
 ]
+
+export const TAB_PERMISSION_REQUIREMENTS: Partial<Record<AdminTab, Permission | Permission[]>> = {
+  dashboard: "finance.view",
+  reports: "finance.view",
+  orders: ["orders.view", "orders.manage"],
+  customers: ["customers.view", "customers.manage"],
+  menu: "menu.manage",
+  inventory: "inventory.manage",
+  tables: "tables.manage",
+  customizer: "settings.manage",
+  settings: "settings.manage",
+  equipo: "users.manage",
+  roles: "roles.manage",
+}
+
+const SUPER_ONLY_ADMIN_TABS = new Set<AdminTab>(["restaurants", "users", "metrics", "audit"])
+
+export const RESTAURANT_TAB_ORDER: AdminTab[] = [
+  "dashboard",
+  "orders",
+  "tables",
+  "menu",
+  "inventory",
+  "customers",
+  "reports",
+  "equipo",
+  "roles",
+  "customizer",
+  "settings",
+]
+
+export function isTabAllowed(
+  tab: AdminTab,
+  can?: (permission: Permission) => boolean,
+  role?: UserRole
+): boolean {
+  if (role === "super") return true
+  if (SUPER_ONLY_ADMIN_TABS.has(tab)) return false
+  if (role === "restaurant") return true
+  if (!can) return true
+  const req = TAB_PERMISSION_REQUIREMENTS[tab]
+  if (!req) return true
+  if (Array.isArray(req)) {
+    return req.some((p) => can(p))
+  }
+  return can(req)
+}
+
+export function getFirstAllowedTab(
+  can?: (permission: Permission) => boolean,
+  role?: UserRole
+): AdminTab {
+  if (role === "super") return "restaurants"
+  if (role === "restaurant") return "dashboard"
+  for (const tab of RESTAURANT_TAB_ORDER) {
+    if (isTabAllowed(tab, can, role)) return tab
+  }
+  return "orders"
+}
+
+export interface RouteOptions {
+  can?: (permission: Permission) => boolean
+  role?: UserRole
+}
 
 /**
  * Pure route resolution function mapping a URL pathname to the appropriate view, sub-tab & tenant.
  */
 export function resolveRoute(
   pathname: string,
-  restaurants: RestaurantRecord[]
+  restaurants: RestaurantRecord[],
+  options?: RouteOptions
 ): RouteResolution {
   const cleanPath = pathname.replace(/^\/+|\/+$/g, "")
   const lowerPath = cleanPath.toLowerCase()
@@ -81,18 +150,35 @@ export function resolveRoute(
       }
     }
 
-    if (VALID_ADMIN_TABS.includes(subRoute as AdminTab)) {
+    if (subRoute === "team") {
+      let resolvedTab: AdminTab = "equipo"
+      if (options?.can && !isTabAllowed(resolvedTab, options.can, options.role)) {
+        resolvedTab = getFirstAllowedTab(options.can, options.role)
+      }
       return {
         view: "admin",
-        adminTab: subRoute as AdminTab,
+        adminTab: resolvedTab,
+        isNotFound: false,
+      }
+    }
+
+    if (VALID_ADMIN_TABS.includes(subRoute as AdminTab)) {
+      let resolvedTab = subRoute as AdminTab
+      if (options?.can && !isTabAllowed(resolvedTab, options.can, options.role)) {
+        resolvedTab = getFirstAllowedTab(options.can, options.role)
+      }
+      return {
+        view: "admin",
+        adminTab: resolvedTab,
         isNotFound: false,
       }
     }
 
     // Any other /admin/* sub-route belongs to admin backoffice rather than 404 store
+    const defaultTab = options?.can ? getFirstAllowedTab(options.can, options.role) : "dashboard"
     return {
       view: "admin",
-      adminTab: "dashboard",
+      adminTab: defaultTab,
       isNotFound: false,
     }
   }
@@ -116,12 +202,14 @@ export function resolveRoute(
   }
 }
 
+
 /**
  * Custom router hook managing browser history, path syncing, deep-linking, and tenant switching.
  */
 export function useAppRouter() {
   const { setActiveView, activeView, adminTab, setAdminTab } = useUi()
   const { restaurants, switchRestaurant, loadRestaurant } = useTenant()
+  const { can, session } = useAuth()
   const [attemptedSlug, setAttemptedSlug] = useState<string | null>(null)
   const [isNotFound, setIsNotFound] = useState(false)
   const [loadError, setLoadError] = useState(false)
@@ -131,8 +219,13 @@ export function useAppRouter() {
   const notFoundSlugRef = useRef<string | null>(null)
   const inFlightSlugRef = useRef<string | null>(null)
 
+  const routeOptions = useMemo<RouteOptions>(
+    () => ({ can, role: session.role }),
+    [can, session.role]
+  )
+
   const syncLocation = useCallback((force = false) => {
-    const resolution = resolveRoute(window.location.pathname, restaurants)
+    const resolution = resolveRoute(window.location.pathname, restaurants, routeOptions)
 
     if (resolution.isNotFound) {
       const slug = resolution.attemptedSlug
@@ -183,7 +276,8 @@ export function useAppRouter() {
       }
       setActiveView(resolution.view)
     }
-  }, [restaurants, switchRestaurant, loadRestaurant, setActiveView, setAdminTab])
+  }, [restaurants, switchRestaurant, loadRestaurant, setActiveView, setAdminTab, routeOptions])
+
 
   useEffect(() => {
     syncLocation()

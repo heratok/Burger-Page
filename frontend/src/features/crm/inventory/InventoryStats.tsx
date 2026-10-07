@@ -10,6 +10,7 @@ export interface InventoryStatsProps {
   isDark: boolean
   onSelectLowStock: () => void
   onSelectSuppliers: () => void
+  canViewFinance?: boolean
 }
 
 export const InventoryStats: React.FC<InventoryStatsProps> = ({
@@ -20,9 +21,10 @@ export const InventoryStats: React.FC<InventoryStatsProps> = ({
   isDark,
   onSelectLowStock,
   onSelectSuppliers,
+  canViewFinance = true,
 }) => {
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+    <div className={`grid grid-cols-2 ${canViewFinance ? "lg:grid-cols-4" : "lg:grid-cols-3"} gap-3.5`}>
       {/* Metric 1: Total Items */}
       <div
         className={`rounded-2xl border p-4 transition-all ${
@@ -78,24 +80,26 @@ export const InventoryStats: React.FC<InventoryStatsProps> = ({
       </div>
 
       {/* Metric 3: Total Inventory Value */}
-      <div
-        className={`rounded-2xl border p-4 transition-all ${
-          isDark ? "border-slate-800 bg-[#0E1322]" : "border-slate-200/80 bg-white"
-        }`}
-      >
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-            Valor del Inventario
-          </span>
-          <div className="flex size-8 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500">
-            <DollarSign className="size-4" />
+      {canViewFinance && (
+        <div
+          className={`rounded-2xl border p-4 transition-all ${
+            isDark ? "border-slate-800 bg-[#0E1322]" : "border-slate-200/80 bg-white"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+              Valor del Inventario
+            </span>
+            <div className="flex size-8 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500">
+              <DollarSign className="size-4" />
+            </div>
           </div>
+          <div className="mt-2 text-2xl font-black text-emerald-500">
+            {formatCurrency(totalInventoryValue)}
+          </div>
+          <span className="text-[11px] text-slate-400">Valorización total a costo actual</span>
         </div>
-        <div className="mt-2 text-2xl font-black text-emerald-500">
-          {formatCurrency(totalInventoryValue)}
-        </div>
-        <span className="text-[11px] text-slate-400">Valorización total a costo actual</span>
-      </div>
+      )}
 
       {/* Metric 4: Suppliers */}
       <div

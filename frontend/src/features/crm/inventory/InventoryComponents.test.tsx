@@ -78,6 +78,24 @@ describe("Inventory Subcomponents Unit Tests (TDD)", () => {
       fireEvent.click(screen.getByText("Proveedores Activos").closest("div")!)
       expect(handleSelectSuppliers).toHaveBeenCalled()
     })
+
+    it("hides Valor del Inventario metric card when canViewFinance is false", () => {
+      render(
+        <InventoryStats
+          totalItems={25}
+          lowStockCount={3}
+          totalInventoryValue={150000}
+          suppliersCount={4}
+          isDark={false}
+          onSelectLowStock={vi.fn()}
+          onSelectSuppliers={vi.fn()}
+          canViewFinance={false}
+        />
+      )
+
+      expect(screen.getByText("Insumos Registrados")).toBeDefined()
+      expect(screen.queryByText("Valor del Inventario")).toBeNull()
+    })
   })
 
   describe("InventoryTable", () => {
@@ -168,7 +186,37 @@ describe("Inventory Subcomponents Unit Tests (TDD)", () => {
 
       expect(screen.getByText(/No se encontraron insumos/i)).toBeDefined()
     })
+
+    it("hides cost and valuation column when canViewFinance is false", () => {
+      render(
+        <InventoryTable
+          items={mockInventory}
+          totalItems={2}
+          suppliers={mockSuppliers}
+          searchTerm=""
+          onSearchChange={vi.fn()}
+          selectedCategory="all"
+          onCategoryChange={vi.fn()}
+          onlyLowStock={false}
+          onToggleOnlyLowStock={vi.fn()}
+          currentPage={1}
+          pageSize={10}
+          onPageChange={vi.fn()}
+          onPageSizeChange={vi.fn()}
+          isDark={false}
+          onAdjustStock={vi.fn()}
+          onSendSupplierWhatsApp={vi.fn()}
+          onEditItem={vi.fn()}
+          onDeleteItem={vi.fn()}
+          canViewFinance={false}
+        />
+      )
+
+      expect(screen.queryByText(/Costo \/ Valuación/i)).toBeNull()
+      expect(screen.queryByText(/\$ 1\.200/)).toBeNull()
+    })
   })
+
 
   describe("SuppliersList", () => {
     it("renders supplier cards and handles edit, delete, and WhatsApp actions", () => {
@@ -259,6 +307,24 @@ describe("Inventory Subcomponents Unit Tests (TDD)", () => {
           minStockAlert: 5,
         })
       )
+    })
+
+    it("hides unit cost input when canViewFinance is false", () => {
+      render(
+        <InventoryItemModal
+          isOpen={true}
+          editingItem={null}
+          suppliers={mockSuppliers}
+          isDark={false}
+          onClose={vi.fn()}
+          onSave={vi.fn()}
+          canViewFinance={false}
+        />
+      )
+
+      expect(screen.getByText("Stock Actual")).toBeDefined()
+      expect(screen.getByText("Alerta Mínima")).toBeDefined()
+      expect(screen.queryByText(/Costo Unitario/i)).toBeNull()
     })
   })
 

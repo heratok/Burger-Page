@@ -90,9 +90,10 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // restaurant admin the session binds the fetch to THEIR restaurant even when
   // a stale persisted activeRestaurant is present in the envelope.
   const effectiveId =
-    session.role === "restaurant" && session.restaurantId
+    (session.role === "restaurant" || session.role === "staff") && session.restaurantId
       ? session.restaurantId
       : activeRestaurant?.id
+
   // The slug is only trustworthy when it belongs to the effective tenant record
   // (avoids sending another tenant's slug when the memo fell back to [0]).
   const effectiveSlug =
