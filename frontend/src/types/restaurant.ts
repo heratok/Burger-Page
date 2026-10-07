@@ -127,6 +127,7 @@ export interface Customer {
   lastOrderDate: string
   loyaltyTier: LoyaltyTier
   notes?: string
+  email?: string
 }
 
 // ==========================================

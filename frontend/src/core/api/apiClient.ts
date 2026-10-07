@@ -691,6 +691,11 @@ export class ApiClient {
     })
   }
 
+  async deleteCustomer(id: string, restaurantId?: string): Promise<void> {
+    const qs = restaurantId ? `?restaurantId=${encodeURIComponent(restaurantId)}` : ''
+    await this.request<void>(`/customers/${id}${qs}`, { method: 'DELETE' })
+  }
+
   async createCustomer(
     data: CreateCustomerInput,
     restaurantId?: string

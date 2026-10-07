@@ -45,6 +45,7 @@ export interface OrderContextType {
   deleteOrder: (orderId: string) => Promise<void> | void
   customers: Customer[]
   updateCustomer: (id: string, updates: Partial<Customer>) => Promise<void> | void
+  deleteCustomer: (id: string) => Promise<void> | void
   pendingOrdersCount: number
   isLoadingOrders: boolean
   refreshOrders: () => Promise<void>
@@ -1248,6 +1249,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (updates.direccion !== undefined) updateInput.address = updates.direccion
       if (updates.barrio !== undefined) updateInput.barrio = updates.barrio
       if (updates.notes !== undefined) updateInput.notes = updates.notes
+      if (updates.email !== undefined) updateInput.email = updates.email
 
       return dispatchEdit({
         apply: (board) => ({
@@ -1271,6 +1273,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                   direccion: updatedCustomer.address ?? c.direccion,
                   barrio: updatedCustomer.barrio ?? c.barrio,
                   notes: updatedCustomer.notes ?? c.notes,
+                  email: updatedCustomer.email ?? c.email,
                 }
               : c
           ),
@@ -1280,6 +1283,25 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           error: "No se pudo sincronizar el cliente con el servidor",
         },
         warnMessage: "Error al actualizar cliente en el servidor:",
+      }).then(
+        () => undefined,
+        () => undefined
+      )
+    },
+    [activeRestaurant?.id, dispatchEdit]
+  )
+
+  const deleteCustomer = useCallback(
+    (id: string) => {
+      const targetRestId = activeRestaurant?.id
+      return dispatchEdit({
+        apply: (board) => ({ ...board, customers: board.customers.filter((c) => c.id !== id) }),
+        rollback: (board, snapshot) => ({ ...board, customers: snapshot.customers }),
+        request:
+          apiClient.hasToken() && targetRestId ? () => apiClient.deleteCustomer(id, targetRestId) : undefined,
+        toast: { success: "Cliente eliminado", error: "No se pudo eliminar el cliente del servidor" },
+        skipRollbackIfError: isNotFoundError,
+        warnMessage: "Error al eliminar cliente del servidor:",
       }).then(
         () => undefined,
         () => undefined
@@ -1326,6 +1348,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       deleteOrder,
       customers,
       updateCustomer,
+      deleteCustomer,
       pendingOrdersCount,
       isLoadingOrders,
       refreshOrders,
@@ -1339,6 +1362,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       deleteOrder,
       customers,
       updateCustomer,
+      deleteCustomer,
       pendingOrdersCount,
       isLoadingOrders,
       refreshOrders,
