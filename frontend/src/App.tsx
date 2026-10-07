@@ -72,6 +72,11 @@ const StoreSettingsManager = lazy(() =>
     default: m.StoreSettingsManager,
   }))
 )
+const RolesManager = lazy(() =>
+  import("@/features/crm/RolesManager").then((m) => ({
+    default: m.RolesManager,
+  }))
+)
 const RestaurantNotFound = lazy(loadRestaurantNotFound)
 
 // A /:slug visit ends in either the storefront or the not-found screen, and
@@ -249,6 +254,7 @@ export function MainRouter() {
                 {adminTab === "reports" && <ReportsManager />}
                 {adminTab === "customizer" && <StorefrontCustomizer />}
                 {adminTab === "settings" && <StoreSettingsManager />}
+                {adminTab === "roles" && <RolesManager />}
               </>
             )}
           </AdminLayout>
