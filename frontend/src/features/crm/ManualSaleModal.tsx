@@ -38,6 +38,7 @@ import { useHorizontalScroll } from "@/hooks/useHorizontalScroll"
 import { useRestaurantTables } from "@/features/crm/tables/useRestaurantTables"
 import { TablePicker } from "@/features/crm/tables/TablePicker"
 import { getOrderTableLabel } from "@/features/crm/tables/orderTable"
+import { OrderTicketModal } from "./orders/OrderTicketModal"
 
 export interface ManualSaleModalProps {
   isOpen: boolean
@@ -486,6 +487,8 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
   const [receiptFile, setReceiptFile] = useState<File | null>(null)
   const [receiptPreview, setReceiptPreview] = useState<string | null>(null)
   const [isUploadingReceipt, setIsUploadingReceipt] = useState(false)
+  const [printTicketOnSave, setPrintTicketOnSave] = useState(true)
+  const [ticketOrderToPrint, setTicketOrderToPrint] = useState<Order | null>(null)
 
   // Cart & Catalog State
   const [selectedItems, setSelectedItems] = useState<CartItem[]>([])
@@ -874,7 +877,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
       return
     }
 
-    addOrder({
+    const createdOrder = addOrder({
       ...orderPayload,
       status: "pending" as const,
     })
@@ -884,18 +887,39 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
     // as "registrada".
 
     handleResetForm()
-    onClose()
+    if (printTicketOnSave && createdOrder) {
+      setTicketOrderToPrint(createdOrder)
+    } else {
+      onClose()
+    }
   }
 
   const handleOpenTableManager = () => {
+    setTicketOrderToPrint(null)
     handleResetForm()
     onClose()
     setAdminTab("customizer")
   }
 
   const handleClose = () => {
+    setTicketOrderToPrint(null)
     handleResetForm()
     onClose()
+  }
+
+  if (ticketOrderToPrint) {
+    return (
+      <OrderTicketModal
+        isOpen={true}
+        order={ticketOrderToPrint}
+        isDark={isDark}
+        initialMode="kitchen"
+        onClose={() => {
+          setTicketOrderToPrint(null)
+          onClose()
+        }}
+      />
+    )
   }
 
   if (!isOpen) return null
@@ -939,7 +963,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
 
             <div className="flex items-center gap-2">
               {totalItemsCount > 0 && (
-                <div className="lg:hidden flex items-center gap-1 rounded-lg bg-orange-500/10 px-2 py-1 text-xs font-bold text-orange-600 dark:text-orange-400">
+                <div className="md:hidden flex items-center gap-1 rounded-lg bg-orange-500/10 px-2 py-1 text-xs font-bold text-orange-600 dark:text-orange-400">
                   <span>{formatCOP(finalTotal)}</span>
                 </div>
               )}
@@ -958,8 +982,8 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
             </div>
           </div>
 
-          {/* Segmented Mobile Step Navigation (visible only on mobile screens < lg) */}
-          <div className="lg:hidden grid grid-cols-2 gap-2 p-2.5 border-t border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950">
+          {/* Segmented Mobile Step Navigation (visible only on mobile screens < md) */}
+          <div className="md:hidden grid grid-cols-2 gap-2 p-2.5 border-t border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950">
             <button
               type="button"
               onClick={() => setMobileTab("catalog")}
@@ -1000,11 +1024,11 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
         {/* ======================================================== */}
         {/* MAIN BODY: CATALOG (LEFT) & POS CART (RIGHT)             */}
         {/* ======================================================== */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 flex-1 overflow-hidden min-h-0">
+        <div className="grid grid-cols-1 md:grid-cols-12 flex-1 overflow-hidden min-h-0">
           {/* ================= LEFT COLUMN: CATALOG & SEARCH ================= */}
           <div
-            className={`lg:col-span-7 flex-col border-b lg:border-b-0 lg:border-r overflow-hidden min-h-0 ${
-              mobileTab === "catalog" ? "flex" : "hidden lg:flex"
+            className={`md:col-span-7 flex-col border-b md:border-b-0 md:border-r overflow-hidden min-h-0 ${
+              mobileTab === "catalog" ? "flex" : "hidden md:flex"
             } ${isDark ? "border-slate-800 bg-[#0B0F1C]" : "border-slate-200 bg-slate-50/50"}`}
           >
             {/* Search & Category Header */}
@@ -1169,7 +1193,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
 
             {/* Mobile Bottom Floating Action Bar (when in catalog and cart has items) */}
             {totalItemsCount > 0 && (
-              <div className="lg:hidden shrink-0 p-3 border-t border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-[#0E1322]/95 backdrop-blur-md flex items-center justify-between shadow-xl">
+              <div className="md:hidden shrink-0 p-3 border-t border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-[#0E1322]/95 backdrop-blur-md flex items-center justify-between shadow-xl">
                 <div className="flex items-center gap-2.5">
                   <div className="flex size-9 items-center justify-center rounded-xl bg-orange-500/10 text-orange-500 font-bold text-xs">
                     {totalItemsCount}
@@ -1195,12 +1219,12 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
 
           {/* ================= RIGHT COLUMN: ORDER SUMMARY & POS REGISTER ================= */}
           <div
-            className={`lg:col-span-5 flex-col h-full overflow-hidden min-h-0 ${
-              mobileTab === "cart" ? "flex" : "hidden lg:flex"
+            className={`md:col-span-5 flex-col h-full overflow-hidden min-h-0 ${
+              mobileTab === "cart" ? "flex" : "hidden md:flex"
             }`}
           >
             {/* Mobile Sub-header to go back to catalog */}
-            <div className="lg:hidden flex items-center justify-between px-3.5 py-2.5 bg-orange-500/10 border-b border-orange-500/20 text-xs shrink-0">
+            <div className="md:hidden flex items-center justify-between px-3.5 py-2.5 bg-orange-500/10 border-b border-orange-500/20 text-xs shrink-0">
               <button
                 type="button"
                 onClick={() => setMobileTab("catalog")}
@@ -1295,7 +1319,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                       <button
                         type="button"
                         onClick={() => setMobileTab("catalog")}
-                        className="lg:hidden mt-2.5 rounded-lg bg-orange-500 px-3 py-1.5 text-xs font-bold text-white shadow-xs"
+                        className="md:hidden mt-2.5 rounded-lg bg-orange-500 px-3 py-1.5 text-xs font-bold text-white shadow-xs"
                       >
                         Ir al Catálogo
                       </button>
@@ -1575,28 +1599,44 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
 
               {/* Action Buttons (Sticky at bottom) */}
               <div
-                className={`p-3 sm:p-3.5 border-t flex items-center justify-end gap-2.5 shrink-0 ${
+                className={`p-3 sm:p-3.5 border-t flex flex-wrap items-center justify-between gap-2.5 shrink-0 ${
                   isDark ? "border-slate-800 bg-slate-950" : "border-slate-200 bg-white"
                 }`}
               >
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleClose}
-                  className="rounded-xl text-xs cursor-pointer"
-                >
-                  Cancelar
-                </Button>
+                {!orderToEdit ? (
+                  <label className="flex items-center gap-2 cursor-pointer select-none text-xs text-slate-700 dark:text-slate-300 min-h-[44px] sm:min-h-0">
+                    <input
+                      type="checkbox"
+                      checked={printTicketOnSave}
+                      onChange={(e) => setPrintTicketOnSave(e.target.checked)}
+                      className="size-4 rounded border-slate-300 text-orange-600 focus:ring-orange-500 cursor-pointer"
+                    />
+                    <span className="font-semibold text-[11px] sm:text-xs">Imprimir comanda al guardar</span>
+                  </label>
+                ) : (
+                  <div />
+                )}
 
-                <button
-                  type="submit"
-                  disabled={selectedItems.length === 0 || isUploadingReceipt}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-5 py-2 text-xs font-bold text-white shadow-md shadow-orange-500/20 hover:from-orange-600 hover:to-amber-600 disabled:opacity-50 cursor-pointer"
-                >
-                  <Check className="size-4" />
-                  <span>{getSubmitButtonLabel()}</span>
-                </button>
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleClose}
+                    className="flex-1 sm:flex-none rounded-xl text-xs cursor-pointer min-h-[40px] sm:min-h-[36px]"
+                  >
+                    Cancelar
+                  </Button>
+
+                  <button
+                    type="submit"
+                    disabled={selectedItems.length === 0 || isUploadingReceipt}
+                    className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-5 py-2 text-xs font-bold text-white shadow-md shadow-orange-500/20 hover:from-orange-600 hover:to-amber-600 disabled:opacity-50 cursor-pointer min-h-[40px] sm:min-h-[36px]"
+                  >
+                    <Check className="size-4" />
+                    <span>{getSubmitButtonLabel()}</span>
+                  </button>
+                </div>
               </div>
             </form>
           </div>

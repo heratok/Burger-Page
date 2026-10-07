@@ -329,5 +329,92 @@ describe("OrderDetailModal", () => {
     expect(screen.getByText("Carlos Gómez")).toBeDefined()
     expect(screen.getByText("WhatsApp: 3001234567")).toBeDefined()
     expect(screen.getByText("$55.000")).toBeDefined()
+    expect(screen.getByRole("button", { name: /Imprimir.*ticket/i })).toBeDefined()
+  })
+
+  it("renders Imprimir ticket button and opens OrderTicketModal when clicked", () => {
+    render(
+      <OrderDetailModal
+        order={mockOrder}
+        isOpen={true}
+        onClose={vi.fn()}
+        onUpdateStatus={vi.fn()}
+        onDeleteOrder={vi.fn()}
+        onWhatsApp={vi.fn()}
+      />
+    )
+
+    const printBtn = screen.getByRole("button", { name: /Imprimir.*ticket/i })
+    expect(printBtn).toBeDefined()
+    fireEvent.click(printBtn)
+
+    // OrderTicketModal should now be visible with live preview
+    expect(screen.getByText("Imprimir Comanda / Ticket")).toBeDefined()
+    expect(screen.getByText(/TICKET DE VENTA \/ DESPACHO/i)).toBeDefined()
+  })
+
+  it("calls onPrintOrder callback when provided and clicking Imprimir ticket", () => {
+    const onPrintOrder = vi.fn()
+    render(
+      <OrderDetailModal
+        order={mockOrder}
+        isOpen={true}
+        onClose={vi.fn()}
+        onUpdateStatus={vi.fn()}
+        onDeleteOrder={vi.fn()}
+        onWhatsApp={vi.fn()}
+        onPrintOrder={onPrintOrder}
+      />
+    )
+
+    const printBtn = screen.getByRole("button", { name: /Imprimir.*ticket/i })
+    fireEvent.click(printBtn)
+    expect(onPrintOrder).toHaveBeenCalledWith(mockOrder)
+  })
+
+  it("allows read-only user with orders.view to open/print ticket while hiding mutation buttons", () => {
+    mockCan.mockImplementation((p) => p === "orders.view")
+    const onPrintOrder = vi.fn()
+    const onEditOrder = vi.fn()
+    const onDeleteOrder = vi.fn()
+    const onUpdateStatus = vi.fn()
+
+    render(
+      <OrderDetailModal
+        order={mockOrder}
+        isOpen={true}
+        onClose={vi.fn()}
+        onUpdateStatus={onUpdateStatus}
+        onDeleteOrder={onDeleteOrder}
+        onWhatsApp={vi.fn()}
+        onEditOrder={onEditOrder}
+        onPrintOrder={onPrintOrder}
+      />
+    )
+
+    const printBtn = screen.getByRole("button", { name: /Imprimir.*ticket/i })
+    expect(printBtn).toBeDefined()
+    fireEvent.click(printBtn)
+    expect(onPrintOrder).toHaveBeenCalledWith(mockOrder)
+
+    expect(screen.queryByRole("button", { name: /Editar venta/i })).toBeNull()
+    expect(screen.queryByRole("button", { name: /Eliminar Orden/i })).toBeNull()
+    expect(screen.queryByText(/Cambiar estado de orden:/i)).toBeNull()
+  })
+
+  it("hides ticket print button when user lacks orders.view and orders.manage", () => {
+    mockCan.mockImplementation((p) => p === "finance.view")
+    render(
+      <OrderDetailModal
+        order={mockOrder}
+        isOpen={true}
+        onClose={vi.fn()}
+        onUpdateStatus={vi.fn()}
+        onDeleteOrder={vi.fn()}
+        onWhatsApp={vi.fn()}
+        onPrintOrder={vi.fn()}
+      />
+    )
+    expect(screen.queryByRole("button", { name: /Imprimir.*ticket/i })).toBeNull()
   })
 })

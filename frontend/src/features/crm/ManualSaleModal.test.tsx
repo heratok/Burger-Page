@@ -640,4 +640,75 @@ describe("ManualSaleModal - Point of Sale (POS) Component", () => {
       expect(sent.customer.name).toBe("Mesa 8")
     })
   })
+
+  describe("Ticket printing on sale creation", () => {
+    it("renders 'Imprimir comanda al guardar' checkbox checked by default and opens OrderTicketModal when saving sale", async () => {
+      const { apiClient } = await import("@/core/api/apiClient")
+      vi.spyOn(apiClient, "createOrder").mockResolvedValue({
+        id: "server-pos-ticket",
+        orderNumber: 555,
+        status: "pending",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as any)
+
+      render(
+        <RestaurantProvider repository={createTestRepo()}>
+          <ManualSaleModal isOpen={true} onClose={() => {}} />
+        </RestaurantProvider>
+      )
+
+      // Verify checkbox is checked by default
+      const checkbox = screen.getByRole("checkbox", { name: /Imprimir comanda al guardar/i }) as HTMLInputElement
+      expect(checkbox).toBeDefined()
+      expect(checkbox.checked).toBe(true)
+
+      // Add a product to the cart
+      const addButtons = screen.getAllByRole("button", { name: /Agregar/i })
+      fireEvent.click(addButtons[0])
+
+      // Submit sale
+      const submitBtn = screen.getByRole("button", { name: /Registrar Venta/i })
+      fireEvent.click(submitBtn)
+
+      // OrderTicketModal should now be open in kitchen mode
+      expect(await screen.findByText(/Imprimir Comanda \/ Ticket/i)).toBeDefined()
+      expect(screen.getByText(/\*\*\* COMANDA COCINA \(KOT\) \*\*\*/i)).toBeDefined()
+    })
+
+    it("does not open OrderTicketModal when 'Imprimir comanda al guardar' is unchecked before saving", async () => {
+      const { apiClient } = await import("@/core/api/apiClient")
+      vi.spyOn(apiClient, "createOrder").mockResolvedValue({
+        id: "server-pos-no-ticket",
+        orderNumber: 556,
+        status: "pending",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as any)
+
+      const onClose = vi.fn()
+      render(
+        <RestaurantProvider repository={createTestRepo()}>
+          <ManualSaleModal isOpen={true} onClose={onClose} />
+        </RestaurantProvider>
+      )
+
+      // Uncheck the print checkbox
+      const checkbox = screen.getByRole("checkbox", { name: /Imprimir comanda al guardar/i }) as HTMLInputElement
+      fireEvent.click(checkbox)
+      expect(checkbox.checked).toBe(false)
+
+      // Add a product to the cart
+      const addButtons = screen.getAllByRole("button", { name: /Agregar/i })
+      fireEvent.click(addButtons[0])
+
+      // Submit sale
+      const submitBtn = screen.getByRole("button", { name: /Registrar Venta/i })
+      fireEvent.click(submitBtn)
+
+      // Should close without opening OrderTicketModal
+      expect(onClose).toHaveBeenCalled()
+      expect(screen.queryByText(/Imprimir Comanda \/ Ticket/i)).toBeNull()
+    })
+  })
 })

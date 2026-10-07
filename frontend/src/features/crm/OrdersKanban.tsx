@@ -26,7 +26,7 @@ import { ManualSaleModal } from "./ManualSaleModal"
 import { Select } from "@/components/ui/select"
 import { formatCurrency, formatWhatsAppPhone } from "@/lib/utils"
 import { resolveModalOrder } from "@/lib/orderMatching"
-import { KanbanOrderCard, LiveOrderCard, OrderDetailModal } from "./orders"
+import { KanbanOrderCard, LiveOrderCard, OrderDetailModal, OrderTicketModal } from "./orders"
 import { getOrderTableLabel } from "@/features/crm/tables/orderTable"
 
 export const OrdersKanban: React.FC = () => {
@@ -47,6 +47,7 @@ export const OrdersKanban: React.FC = () => {
   const [methodFilter, setMethodFilter] = useState<string>("ALL")
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null)
+  const [ticketOrder, setTicketOrder] = useState<Order | null>(null)
 
   const handleOpenNewSale = useCallback(() => {
     setEditingOrder(null)
@@ -486,6 +487,7 @@ export const OrdersKanban: React.FC = () => {
                         onUpdateStatus={updateOrderStatus}
                         onWhatsApp={openCustomerWhatsApp}
                         onEditOrder={handleEditOrder}
+                        onPrintOrder={setTicketOrder}
                       />
                     ))}
                   </div>
@@ -536,6 +538,7 @@ export const OrdersKanban: React.FC = () => {
                         onViewDetails={setSelectedOrder}
                         onUpdateStatus={updateOrderStatus}
                         onWhatsApp={openCustomerWhatsApp}
+                        onPrintOrder={setTicketOrder}
                       />
                     ))}
                   </div>
@@ -621,6 +624,7 @@ export const OrdersKanban: React.FC = () => {
                           onUpdateStatus={updateOrderStatus}
                           onWhatsApp={openCustomerWhatsApp}
                           onEditOrder={handleEditOrder}
+                          onPrintOrder={setTicketOrder}
                         />
                       ))}
                       {isTerminalCol && colOrders.length > maxVisible && (
@@ -647,6 +651,7 @@ export const OrdersKanban: React.FC = () => {
         onDeleteOrder={setOrderToDelete}
         onWhatsApp={openCustomerWhatsApp}
         onEditOrder={handleEditOrder}
+        onPrintOrder={setTicketOrder}
       />
 
       {/* Delete Order Confirmation Modal */}
@@ -676,6 +681,14 @@ export const OrdersKanban: React.FC = () => {
           setIsManualSaleOpen(false)
           setEditingOrder(null)
         }}
+      />
+
+      {/* Order Ticket / Kitchen Comanda Print Modal */}
+      <OrderTicketModal
+        isOpen={!!ticketOrder}
+        order={ticketOrder}
+        isDark={isDark}
+        onClose={() => setTicketOrder(null)}
       />
     </div>
   )

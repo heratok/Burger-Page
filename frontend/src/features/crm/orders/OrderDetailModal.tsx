@@ -1,13 +1,14 @@
 import React, { useState } from "react"
 import { useAuth } from "@/context/slices/AuthContext"
 import type { Order, OrderStatus } from "@/types/restaurant"
-import { MapPin, MessageCircle, X, Trash2, Eye, Upload, FileText, ExternalLink, Pencil } from "lucide-react"
+import { MapPin, MessageCircle, X, Trash2, Eye, Upload, FileText, ExternalLink, Pencil, Printer } from "lucide-react"
 import { OrderStatusBadge } from "@/components/ui/status-badge"
 import { formatCurrency } from "@/lib/utils"
 import { uploadImageToStorage } from "@/core/storage/supabaseStorage"
 import { toast } from "sonner"
 import { calculateLineItemTotal } from "@/features/cart/cartEngine"
 import { getOrderTableLabel } from "@/features/crm/tables/orderTable"
+import { OrderTicketModal } from "./OrderTicketModal"
 
 export interface OrderDetailModalProps {
   order: Order | null
@@ -19,6 +20,7 @@ export interface OrderDetailModalProps {
   onDeleteOrder: (order: Order) => void
   onWhatsApp: (order: Order) => void
   onEditOrder?: (order: Order) => void
+  onPrintOrder?: (order: Order) => void
 }
 
 export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
@@ -31,11 +33,14 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
   onDeleteOrder,
   onWhatsApp,
   onEditOrder,
+  onPrintOrder,
 }) => {
   const { can } = useAuth()
   const canManage = can("orders.manage")
   const canDelete = can("orders.delete")
+  const canPrint = can("orders.view") || can("orders.manage")
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false)
+  const [isTicketModalOpen, setIsTicketModalOpen] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
 
   const handleUploadReceipt = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -99,12 +104,12 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-2 sm:p-4 backdrop-blur-xs overflow-y-auto"
     >
       <div
-        className={`w-full max-w-lg rounded-2xl border p-4 sm:p-6 shadow-2xl transition-all my-auto max-h-[96vh] overflow-y-auto ${
+        className={`w-full max-w-lg md:max-w-xl lg:max-w-2xl rounded-2xl border p-4 sm:p-6 shadow-2xl transition-all my-auto max-h-[96vh] overflow-y-auto ${
           isDark ? "border-slate-800 bg-slate-900 text-slate-100" : "border-slate-200 bg-white text-slate-900"
         }`}
       >
         {/* Modal Header */}
-        <div className="flex items-start justify-between gap-2 border-b pb-3.5 border-slate-100 dark:border-slate-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3.5 border-slate-100 dark:border-slate-800">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
               <span className="text-base sm:text-lg font-black text-indigo-600 dark:text-indigo-400">
@@ -116,7 +121,26 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
               Registrada el {new Date(order.createdAt).toLocaleString("es-CO")}
             </span>
           </div>
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
+            {canPrint && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (onPrintOrder) {
+                    onPrintOrder(order)
+                  } else {
+                    setIsTicketModalOpen(true)
+                  }
+                }}
+                className="flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-2 sm:px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer transition-colors min-h-[36px]"
+                title="Imprimir comanda / ticket"
+                aria-label="Imprimir comanda / ticket"
+              >
+                <Printer className="size-3.5" />
+                <span className="hidden sm:inline">Imprimir ticket</span>
+                <span className="sm:hidden">Ticket</span>
+              </button>
+            )}
             {canManage && onEditOrder && order.status !== "delivered" && order.status !== "cancelled" && (
               <button
                 type="button"
@@ -124,7 +148,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                   onEditOrder(order)
                   onClose()
                 }}
-                className="flex items-center gap-1 rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/50 px-2 sm:px-2.5 py-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 cursor-pointer transition-colors"
+                className="flex items-center gap-1 rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/50 px-2 sm:px-2.5 py-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 cursor-pointer transition-colors min-h-[36px]"
                 title="Editar venta"
               >
                 <Pencil className="size-3.5" />
@@ -136,7 +160,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
               type="button"
               onClick={onClose}
               aria-label="Cerrar detalles"
-              className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200 cursor-pointer"
+              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200 cursor-pointer transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center"
             >
               <X className="size-5" />
             </button>
@@ -175,7 +199,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
         </div>
 
         {/* Items Breakdown */}
-        <div className="mt-4 space-y-2.5 max-h-56 overflow-y-auto pr-1">
+        <div className="mt-4 space-y-2.5 max-h-56 md:max-h-72 lg:max-h-80 overflow-y-auto pr-1">
           <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
             Detalle del Pedido
           </h4>
@@ -452,6 +476,14 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
           </div>
         </div>
       )}
+
+      {/* Thermal Ticket / Kitchen Comanda Modal */}
+      <OrderTicketModal
+        isOpen={isTicketModalOpen}
+        order={order}
+        isDark={isDark}
+        onClose={() => setIsTicketModalOpen(false)}
+      />
     </div>
   )
 }
