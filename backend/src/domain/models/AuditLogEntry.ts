@@ -1,7 +1,7 @@
 import type { AuditAction } from '@burger-page/contracts';
 
 export type { AuditAction };
-export type AuditTargetType = 'restaurant' | 'user';
+export type AuditTargetType = 'restaurant' | 'user' | 'role';
 
 /**
  * One immutable record of a super admin mutation. Actor and target are stored

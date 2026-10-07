@@ -112,6 +112,17 @@ export function createSqliteDatabase(dbPath = ':memory:'): Database {
       updated_at TEXT
     );
 
+    CREATE TABLE IF NOT EXISTS roles (
+      id TEXT PRIMARY KEY,
+      restaurant_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      description TEXT,
+      permissions TEXT NOT NULL DEFAULT '[]',
+      is_system INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT,
+      updated_at TEXT
+    );
+
     CREATE TABLE IF NOT EXISTS suppliers (
       id TEXT PRIMARY KEY,
       restaurant_id TEXT NOT NULL,
