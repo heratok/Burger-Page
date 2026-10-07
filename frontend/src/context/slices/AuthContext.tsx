@@ -73,7 +73,14 @@ export const AuthProvider: React.FC<{
    * previous session's values.
    */
   onLogin?: (role: "super" | "restaurant" | "staff") => void
-}> = ({ children, onLogout, onLogin }) => {
+  /**
+   * Invoked after a successful password change. Until then the server answers
+   * every tenant read with 403 `password-change-required`, so data fetched
+   * during the forced-change screen is empty and must be re-read with the
+   * fresh token.
+   */
+  onPasswordChanged?: () => void
+}> = ({ children, onLogout, onLogin, onPasswordChanged }) => {
   const [session, setSession] = useState<AdminSession>(() => {
     try {
       const saved =
@@ -248,6 +255,7 @@ export const AuthProvider: React.FC<{
         if (res.success) {
           setSession((prev) => ({ ...prev, mustChangePassword: false }))
           toast.success("Contraseña actualizada exitosamente")
+          onPasswordChanged?.()
           return { success: true }
         }
         return { success: false, error: "No se pudo actualizar la contraseña" }
@@ -267,10 +275,10 @@ export const AuthProvider: React.FC<{
         return { success: false, error: errorMsg }
       }
     },
-    []
+    [onPasswordChanged]
   )
 
-  const logout = useCallback(() => {
+  const logout =useCallback(() => {
     setSession({ role: "guest" })
     apiClient.setToken(null)
     // C3: purge whole-tenants envelope + persisted active restaurant exactly
