@@ -138,6 +138,7 @@ export interface RestaurantContextType {
 
   customers: Customer[]
   updateCustomer: (id: string, updates: Partial<Customer>) => Promise<void> | void
+  deleteCustomer: (id: string) => Promise<void> | void
 
   // Inventory & Suppliers
   inventory: InventoryItem[]
@@ -348,6 +349,7 @@ export const useRestaurant = (): RestaurantContextType => {
 
     customers: orders.customers,
     updateCustomer: orders.updateCustomer,
+    deleteCustomer: orders.deleteCustomer,
 
     activeView: ui.activeView,
     setActiveView: ui.setActiveView,

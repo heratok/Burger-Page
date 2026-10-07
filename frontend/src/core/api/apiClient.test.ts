@@ -388,6 +388,20 @@ describe('ApiClient', () => {
       body: JSON.stringify({ name: 'John Doe Editado', notes: 'Nota importante', restaurantId: 'rest-1' }),
     })
   })
+
+  it('deleteCustomer sends DELETE /customers/:id scoped to the restaurant', async () => {
+    (globalThis.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      status: 204,
+      statusText: 'No Content',
+      json: async () => undefined,
+    })
+
+    await client.deleteCustomer('c1', 'rest-1')
+    const [url, init] = (globalThis.fetch as any).mock.calls[0]
+    expect(url).toBe('http://localhost:3001/api/customers/c1?restaurantId=rest-1')
+    expect(init.method).toBe('DELETE')
+  })
 })
 
   describe('subscribeToOrderStream — token refresh & bounded reconnect (JD-CONF-03)', () => {

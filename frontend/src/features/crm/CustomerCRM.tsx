@@ -6,23 +6,32 @@ import {
   MessageCircle,
   X,
   FileText,
+  Pencil,
+  Trash2,
 } from "lucide-react"
 import { LoyaltyBadge } from "@/components/ui/status-badge"
 import { Button } from "@/components/ui/button"
+import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
 import { Pagination } from "@/components/ui/pagination"
 import { Select } from "@/components/ui/select"
 import { TableSkeleton } from "@/components/ui/Skeletons"
 import { buildWhatsAppUrl } from "@/features/cart"
 import { formatCurrency, cleanPhoneNumber, formatWhatsAppPhone } from "@/lib/utils"
 
+const EMPTY_DRAFT = { nombre: "", telefono: "", direccion: "", barrio: "", email: "" }
+
 export const CustomerCRM: React.FC = () => {
-  const { customers, orders, updateCustomer, storeConfig, adminTheme, isLoadingOrders } = useRestaurant()
+  const { customers, orders, updateCustomer, deleteCustomer, storeConfig, adminTheme, isLoadingOrders } = useRestaurant()
 
   const [searchTerm, setSearchTerm] = useState("")
   const [tierFilter, setTierFilter] = useState<string>("ALL")
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
   const [notesEdit, setNotesEdit] = useState("")
   const [isSavingNotes, setIsSavingNotes] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [isSavingDetails, setIsSavingDetails] = useState(false)
+  const [detailsDraft, setDetailsDraft] = useState(EMPTY_DRAFT)
+  const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
 
@@ -69,9 +78,53 @@ export const CustomerCRM: React.FC = () => {
     window.open(buildWhatsAppUrl(fullPhone, greeting), "_blank", "noreferrer")
   }
 
-  const openCustomerModal = (cust: Customer) => {
+  const openCustomerModal = (cust: Customer, startEditing = false) => {
     setSelectedCustomer(cust)
     setNotesEdit(cust.notes || "")
+    setIsEditing(startEditing)
+    setDetailsDraft({
+      nombre: cust.nombre,
+      telefono: cust.telefono,
+      direccion: cust.direccion,
+      barrio: cust.barrio,
+      email: cust.email || "",
+    })
+  }
+
+  const closeCustomerModal = () => {
+    setSelectedCustomer(null)
+    setIsEditing(false)
+  }
+
+  const handleSaveDetails = async () => {
+    if (!selectedCustomer) return
+    const nombre = detailsDraft.nombre.trim()
+    const telefono = detailsDraft.telefono.trim()
+    if (!nombre || !telefono) return
+    const updates = {
+      nombre,
+      telefono,
+      direccion: detailsDraft.direccion.trim(),
+      barrio: detailsDraft.barrio.trim(),
+      email: detailsDraft.email.trim(),
+      notes: notesEdit,
+    }
+    setIsSavingDetails(true)
+    try {
+      await updateCustomer(selectedCustomer.id, updates)
+      setSelectedCustomer((prev) => (prev ? { ...prev, ...updates } : null))
+      setIsEditing(false)
+    } finally {
+      setIsSavingDetails(false)
+    }
+  }
+
+  const handleConfirmDelete = () => {
+    if (!customerToDelete) return
+    const { id } = customerToDelete
+    void deleteCustomer(id)
+    setCustomerToDelete(null)
+    if (selectedCustomer?.id === id) closeCustomerModal()
   }
 
   const handleSaveNotes = async () => {
@@ -286,6 +339,24 @@ export const CustomerCRM: React.FC = () => {
                       >
                         <FileText className="size-4" />
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => openCustomerModal(cust, true)}
+                        aria-label={`Editar ${cust.nombre}`}
+                        className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                        title="Editar cliente"
+                      >
+                        <Pencil className="size-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCustomerToDelete(cust)}
+                        aria-label={`Eliminar ${cust.nombre}`}
+                        className="rounded-lg p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
+                        title="Eliminar cliente"
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -334,13 +405,67 @@ export const CustomerCRM: React.FC = () => {
               </div>
               <button
                 type="button"
-                onClick={() => setSelectedCustomer(null)}
+                onClick={closeCustomerModal}
                 aria-label="Cerrar modal"
                 className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 <X className="size-5" />
               </button>
             </div>
+
+            {isEditing ? (
+              <div className="mt-4 grid grid-cols-1 gap-3 text-xs sm:grid-cols-2">
+                {(
+                  [
+                    ["nombre", "Nombre"],
+                    ["telefono", "Teléfono"],
+                    ["direccion", "Dirección"],
+                    ["barrio", "Barrio"],
+                    ["email", "Correo"],
+                  ] as const
+                ).map(([field, label]) => (
+                  <label key={field} className="flex flex-col gap-1 font-bold text-slate-800 dark:text-slate-200">
+                    <span>{label}</span>
+                    <input
+                      type="text"
+                      maxLength={120}
+                      value={detailsDraft[field]}
+                      onChange={(e) => setDetailsDraft((prev) => ({ ...prev, [field]: e.target.value }))}
+                      className="rounded-xl border p-2 font-normal text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                    />
+                  </label>
+                ))}
+                <div className="flex justify-end gap-2 sm:col-span-2">
+                  <Button size="sm" variant="outline" onClick={() => setIsEditing(false)} disabled={isSavingDetails}>
+                    Cancelar
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleSaveDetails}
+                    disabled={isSavingDetails}
+                    className="bg-indigo-600 text-white font-semibold"
+                  >
+                    {isSavingDetails ? "Guardando..." : "Guardar cambios"}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-3 flex justify-end gap-2 text-xs">
+                <Button size="sm" variant="outline" onClick={() => setIsEditing(true)}>
+                  <Pencil className="size-3.5" />
+                  Editar datos
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setCustomerToDelete(selectedCustomer)}
+                  className="border-rose-300 text-rose-600 hover:bg-rose-50 dark:border-rose-500/40 dark:text-rose-400"
+                >
+                  <Trash2 className="size-3.5" />
+                  Eliminar cliente
+                </Button>
+              </div>
+            )}
 
             {/* Spending stats */}
             <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
@@ -409,6 +534,19 @@ export const CustomerCRM: React.FC = () => {
           </div>
         </div>
       )}
+
+      <ConfirmDeleteModal
+        isOpen={customerToDelete !== null}
+        onClose={() => setCustomerToDelete(null)}
+        onConfirm={handleConfirmDelete}
+        title="¿Eliminar cliente?"
+        targetName={customerToDelete?.nombre}
+        description={
+          customerToDelete
+            ? `¿Seguro que deseas eliminar a "${customerToDelete.nombre}"? Sus pedidos anteriores se conservan, pero la ficha del cliente se borrará. Esta acción no se puede deshacer.`
+            : undefined
+        }
+      />
     </div>
   )
 }
