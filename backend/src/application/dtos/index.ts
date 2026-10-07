@@ -1,4 +1,5 @@
 import { InventoryCategory, InventoryUnit } from '../../domain/models/Inventory.js';
+import type { UserRole } from '../../domain/models/User.js';
 
 export interface CreateProductDTO {
   restaurantId?: string;
@@ -127,7 +128,7 @@ export interface AuthResult {
   user?: {
     id: string;
     username: string;
-    role: 'super_admin' | 'restaurant_admin';
+    role: UserRole;
     restaurantId?: string;
     /** True while the account must change its temporary password before using the API. */
     mustChangePassword?: boolean;
