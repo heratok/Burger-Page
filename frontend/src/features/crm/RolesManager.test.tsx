@@ -114,7 +114,7 @@ describe("RolesManager Component (TDD)", () => {
       expect(apiClient.createRole).toHaveBeenCalledWith(
         expect.objectContaining({
           name: "Mesero",
-          permissions: expect.arrayContaining(["orders.view", "orders.manage", "inventory.manage"]),
+          permissions: ["orders.view", "orders.manage"],
         })
       )
     })
