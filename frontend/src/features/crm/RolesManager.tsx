@@ -150,8 +150,8 @@ const PERMISSION_GROUPS: PermissionCategory[] = [
 const ROLE_PRESETS = [
   {
     name: "Cocina / Pedidos",
-    description: "Flujo operativo de comandas e insumos",
-    permissions: ["orders.view", "orders.manage", "inventory.manage"] as Permission[],
+    description: "Flujo operativo de comandas",
+    permissions: ["orders.view", "orders.manage"] as Permission[],
   },
   {
     name: "Cajero",

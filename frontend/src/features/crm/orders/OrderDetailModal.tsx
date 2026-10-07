@@ -1,4 +1,5 @@
 import React, { useState } from "react"
+import { useAuth } from "@/context/slices/AuthContext"
 import type { Order, OrderStatus } from "@/types/restaurant"
 import { MapPin, MessageCircle, X, Trash2, Eye, Upload, FileText, ExternalLink, Pencil } from "lucide-react"
 import { OrderStatusBadge } from "@/components/ui/status-badge"
@@ -31,6 +32,9 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
   onWhatsApp,
   onEditOrder,
 }) => {
+  const { can } = useAuth()
+  const canManage = can("orders.manage")
+  const canDelete = can("orders.delete")
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
 
@@ -113,7 +117,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
             </span>
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
-            {onEditOrder && order.status !== "delivered" && order.status !== "cancelled" && (
+            {canManage && onEditOrder && order.status !== "delivered" && order.status !== "cancelled" && (
               <button
                 type="button"
                 onClick={() => {
@@ -332,73 +336,81 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
         </div>
 
         {/* Modal Status Advancer Controls */}
-        <div className="mt-5 flex flex-wrap gap-2 border-t pt-4 border-slate-100 dark:border-slate-800">
-          <div className="text-xs font-semibold w-full text-slate-500 dark:text-slate-400">
-            Cambiar estado de orden:
+        {(canManage || canDelete) && (
+          <div className="mt-5 flex flex-wrap gap-2 border-t pt-4 border-slate-100 dark:border-slate-800">
+            {canManage && (
+              <>
+                <div className="text-xs font-semibold w-full text-slate-500 dark:text-slate-400">
+                  Cambiar estado de orden:
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onUpdateStatus(order.id, "pending")
+                    onClose()
+                  }}
+                  className="rounded-lg border px-2.5 py-1 text-xs font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 cursor-pointer"
+                >
+                  🟡 Pendiente
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onUpdateStatus(order.id, "cooking")
+                    onClose()
+                  }}
+                  className="rounded-lg border px-2.5 py-1 text-xs font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 cursor-pointer"
+                >
+                  🟠 En Cocina
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onUpdateStatus(order.id, "delivering")
+                    onClose()
+                  }}
+                  className="rounded-lg border px-2.5 py-1 text-xs font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 cursor-pointer"
+                >
+                  🔵 En Reparto
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onUpdateStatus(order.id, "delivered")
+                    onClose()
+                  }}
+                  className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-600 hover:bg-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-300 cursor-pointer"
+                >
+                  🟢 Entregado
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onUpdateStatus(order.id, "cancelled")
+                    onClose()
+                  }}
+                  className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-2.5 py-1 text-xs font-bold text-rose-600 hover:bg-rose-500/20 dark:bg-rose-500/20 dark:text-rose-300 cursor-pointer"
+                >
+                  🔴 Cancelar
+                </button>
+              </>
+            )}
+            {canDelete && (
+              <button
+                type="button"
+                onClick={() => {
+                  onDeleteOrder(order)
+                  onClose()
+                }}
+                className="flex items-center gap-1 rounded-lg border border-rose-500/40 bg-rose-500/10 px-2.5 py-1 text-xs font-bold text-rose-500 hover:bg-rose-500/20 ml-auto cursor-pointer"
+                title="Eliminar orden definitivamente"
+              >
+                <Trash2 className="size-3" />
+                <span>Eliminar Orden</span>
+              </button>
+            )}
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              onUpdateStatus(order.id, "pending")
-              onClose()
-            }}
-            className="rounded-lg border px-2.5 py-1 text-xs font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 cursor-pointer"
-          >
-            🟡 Pendiente
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              onUpdateStatus(order.id, "cooking")
-              onClose()
-            }}
-            className="rounded-lg border px-2.5 py-1 text-xs font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 cursor-pointer"
-          >
-            🟠 En Cocina
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              onUpdateStatus(order.id, "delivering")
-              onClose()
-            }}
-            className="rounded-lg border px-2.5 py-1 text-xs font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 cursor-pointer"
-          >
-            🔵 En Reparto
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              onUpdateStatus(order.id, "delivered")
-              onClose()
-            }}
-            className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-600 hover:bg-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-300 cursor-pointer"
-          >
-            🟢 Entregado
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              onUpdateStatus(order.id, "cancelled")
-              onClose()
-            }}
-            className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-2.5 py-1 text-xs font-bold text-rose-600 hover:bg-rose-500/20 dark:bg-rose-500/20 dark:text-rose-300 cursor-pointer"
-          >
-            🔴 Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              onDeleteOrder(order)
-              onClose()
-            }}
-            className="flex items-center gap-1 rounded-lg border border-rose-500/40 bg-rose-500/10 px-2.5 py-1 text-xs font-bold text-rose-500 hover:bg-rose-500/20 ml-auto cursor-pointer"
-            title="Eliminar orden definitivamente"
-          >
-            <Trash2 className="size-3" />
-            <span>Eliminar Orden</span>
-          </button>
-        </div>
+        )}
       </div>
 
       {/* Lightbox Modal for Receipt Image */}
