@@ -42,7 +42,7 @@ export async function auditLogRoutes(app: FastifyInstance, opts: AuditLogRoutesO
                   actorUserId: { type: ['string', 'null'] },
                   actorUsername: { type: 'string' },
                   action: { type: 'string' },
-                  targetType: { type: 'string', enum: ['restaurant', 'user'] },
+                  targetType: { type: 'string', enum: ['restaurant', 'user', 'role'] },
                   targetId: { type: 'string' },
                   targetLabel: { type: 'string' },
                   restaurantId: { type: ['string', 'null'] },
