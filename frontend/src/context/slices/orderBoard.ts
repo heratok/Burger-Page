@@ -209,6 +209,7 @@ export function syncBackendCustomers(
       lastOrderDate,
       loyaltyTier,
       notes: bc.notes ?? existing?.notes ?? "",
+      email: bc.email ?? existing?.email ?? "",
     })
   })
 

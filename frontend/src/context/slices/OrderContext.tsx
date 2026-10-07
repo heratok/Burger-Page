@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useMemo, useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { hashKey, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type { Order, OrderStatus, Customer, RestaurantRecord, MenuItem, AdditionItem } from "@/types/restaurant"
-import type { CreateOrderInput, UpdateOrderInput, OrderEvent, UpdateCustomerInput } from "@burger-page/contracts"
+import type { CreateOrderInput, UpdateOrderInput, OrderEvent, CreateCustomerInput, UpdateCustomerInput } from "@burger-page/contracts"
 import { ORDER_CLOSED_ERROR_FRAGMENT, ORDER_PAUSED_ERROR_FRAGMENT } from "@burger-page/contracts"
 import { apiClient, isNotFoundError } from "@/core/api/apiClient"
 import { calculateLineItemTotal } from "@/features/cart/cartEngine"
@@ -44,7 +44,9 @@ export interface OrderContextType {
   updateOrderReceipt: (orderId: string, receiptUrl: string) => Promise<void>
   deleteOrder: (orderId: string) => Promise<void> | void
   customers: Customer[]
+  createCustomer: (data: CreateCustomerInput) => Promise<Customer | null>
   updateCustomer: (id: string, updates: Partial<Customer>) => Promise<void> | void
+  deleteCustomer: (id: string) => Promise<void> | void
   pendingOrdersCount: number
   isLoadingOrders: boolean
   refreshOrders: () => Promise<void>
@@ -589,7 +591,7 @@ interface OrderEdit {
     successTiming?: "optimistic" | "confirmed"
     /** toast.info right after apply (instead of success). */
     info?: string
-    error: string
+    error: string | ((err: unknown) => string)
   }
   /** A failure this returns true for is ignored: no rollback, no error toast. */
   skipRollbackIfError?: (err: unknown) => boolean
@@ -597,7 +599,7 @@ interface OrderEdit {
 }
 
 export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { activeRestaurant } = useTenant()
+  const { activeRestaurant, effectiveRestaurantId } = useTenant()
   const { session } = useAuth()
   const { soundEnabled } = useUi()
 
@@ -606,9 +608,10 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // first render (and every refreshed effect) fetches/streams THEIR tenant and
   // never the stale persisted one.
   const effectiveId =
-    session.role === "restaurant" && session.restaurantId
+    (session.role === "restaurant" || session.role === "staff") && session.restaurantId
       ? session.restaurantId
       : activeRestaurant?.id
+
 
   const queryClient = useQueryClient()
 
@@ -754,7 +757,9 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         updateBoard((board) => edit.rollback(board, context.snapshot))
         updateQueue((queued) => edit.rollback(queued, { orders: context.queueSnapshot, customers: [] }))
       }
-      toast.error(edit.toast.error)
+      const errorMessage =
+        typeof edit.toast.error === "function" ? edit.toast.error(err) : edit.toast.error
+      toast.error(errorMessage)
     },
     onSettled: (_result, err, edit) => revalidate({ revalidate: edit.pending !== undefined }, err !== null),
   })
@@ -1239,6 +1244,141 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     [activeRestaurant?.id, dispatchEdit]
   )
 
+  const createCustomer = useCallback(
+    async (data: CreateCustomerInput): Promise<Customer | null> => {
+      const targetRestId = effectiveRestaurantId || effectiveId
+      const tempId = nextTempId("cust")
+      const trimmedName = data.name.trim()
+      const trimmedPhone = data.phone.trim()
+      const cleanPhone = cleanPhoneNumber(trimmedPhone)
+
+      const initialExisting = readBoard().customers.find(
+        (c) => cleanPhoneNumber(c.telefono) === cleanPhone
+      )
+
+      const baseCustomer: Customer = initialExisting
+        ? {
+            ...initialExisting,
+            nombre: trimmedName,
+            telefono: trimmedPhone,
+            direccion: data.address !== undefined ? data.address.trim() : initialExisting.direccion,
+            barrio: data.barrio !== undefined ? data.barrio.trim() : initialExisting.barrio,
+            notes: data.notes !== undefined ? data.notes.trim() : initialExisting.notes,
+            email: data.email !== undefined ? data.email.trim() : initialExisting.email,
+          }
+        : {
+            id: tempId,
+            nombre: trimmedName,
+            telefono: trimmedPhone,
+            direccion: data.address?.trim() || "",
+            barrio: data.barrio?.trim() || "",
+            notes: data.notes?.trim() || "",
+            email: data.email?.trim() || "",
+            totalOrders: 0,
+            totalSpent: 0,
+            lastOrderDate: new Date().toISOString(),
+            loyaltyTier: "bronze",
+          }
+
+      try {
+        const serverResult = await dispatchEdit({
+          apply: (board) => {
+            const existingIdx = board.customers.findIndex(
+              (c) => cleanPhoneNumber(c.telefono) === cleanPhone
+            )
+            if (existingIdx >= 0) {
+              const existing = board.customers[existingIdx]
+              const updated: Customer = {
+                ...existing,
+                nombre: trimmedName,
+                telefono: trimmedPhone,
+                direccion: data.address !== undefined ? data.address.trim() : existing.direccion,
+                barrio: data.barrio !== undefined ? data.barrio.trim() : existing.barrio,
+                notes: data.notes !== undefined ? data.notes.trim() : existing.notes,
+                email: data.email !== undefined ? data.email.trim() : existing.email,
+              }
+              const next = [...board.customers]
+              next[existingIdx] = updated
+              return { ...board, customers: next }
+            }
+            return { ...board, customers: [baseCustomer, ...board.customers] }
+          },
+          rollback: (board, snapshot) => ({ ...board, customers: snapshot.customers }),
+          request:
+            apiClient.hasToken() && targetRestId
+              ? () => apiClient.createCustomer(data, targetRestId)
+              : undefined,
+          reconcile: (board, serverCustomer) => {
+            if (!serverCustomer) return board
+            const serverId = serverCustomer.id
+            const cleanServerPhone = cleanPhoneNumber(serverCustomer.phone || trimmedPhone)
+
+            const existingIdx = board.customers.findIndex(
+              (c) => c.id === tempId || c.id === serverId || cleanPhoneNumber(c.telefono) === cleanServerPhone
+            )
+
+            const toCustomer = (existing?: Customer): Customer => ({
+              id: serverId || existing?.id || tempId,
+              nombre: serverCustomer.name ?? existing?.nombre ?? trimmedName,
+              telefono: serverCustomer.phone ?? existing?.telefono ?? trimmedPhone,
+              direccion: serverCustomer.address ?? existing?.direccion ?? data.address ?? "",
+              barrio: serverCustomer.barrio ?? existing?.barrio ?? data.barrio ?? "",
+              totalOrders: existing?.totalOrders ?? 0,
+              totalSpent: existing?.totalSpent ?? 0,
+              lastOrderDate: existing?.lastOrderDate ?? new Date().toISOString(),
+              loyaltyTier: existing?.loyaltyTier ?? "bronze",
+              notes: serverCustomer.notes ?? existing?.notes ?? data.notes ?? "",
+              email: serverCustomer.email ?? existing?.email ?? data.email ?? "",
+            })
+
+            if (existingIdx >= 0) {
+              const nextCustomers = [...board.customers]
+              const filtered = nextCustomers.filter(
+                (c, idx) => idx === existingIdx || (c.id !== tempId && c.id !== serverId)
+              )
+              const targetIdx = filtered.findIndex(
+                (c) => c.id === tempId || c.id === serverId || cleanPhoneNumber(c.telefono) === cleanServerPhone
+              )
+              if (targetIdx >= 0) {
+                filtered[targetIdx] = toCustomer(filtered[targetIdx])
+              }
+              return { ...board, customers: filtered }
+            }
+
+            return { ...board, customers: [toCustomer(), ...board.customers] }
+          },
+          toast: {
+            success: "Cliente registrado exitosamente",
+            successTiming: "confirmed",
+            error: (err: any) =>
+              err?.status === 409 || err?.body?.status === 409
+                ? "Ya existe un cliente con ese número de teléfono"
+                : "No se pudo registrar el cliente en el servidor",
+          },
+          warnMessage: "Error al registrar cliente en el servidor:",
+        })
+
+        if (serverResult) {
+          return {
+            ...baseCustomer,
+            id: serverResult.id || baseCustomer.id,
+            nombre: serverResult.name ?? baseCustomer.nombre,
+            telefono: serverResult.phone ?? baseCustomer.telefono,
+            direccion: serverResult.address ?? baseCustomer.direccion,
+            barrio: serverResult.barrio ?? baseCustomer.barrio,
+            notes: serverResult.notes ?? baseCustomer.notes,
+            email: serverResult.email ?? baseCustomer.email,
+          }
+        }
+
+        return baseCustomer
+      } catch {
+        return null
+      }
+    },
+    [effectiveRestaurantId, effectiveId, readBoard, dispatchEdit]
+  )
+
   const updateCustomer = useCallback(
     (id: string, updates: Partial<Customer>) => {
       const targetRestId = activeRestaurant?.id
@@ -1248,6 +1388,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (updates.direccion !== undefined) updateInput.address = updates.direccion
       if (updates.barrio !== undefined) updateInput.barrio = updates.barrio
       if (updates.notes !== undefined) updateInput.notes = updates.notes
+      if (updates.email !== undefined) updateInput.email = updates.email
 
       return dispatchEdit({
         apply: (board) => ({
@@ -1271,6 +1412,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                   direccion: updatedCustomer.address ?? c.direccion,
                   barrio: updatedCustomer.barrio ?? c.barrio,
                   notes: updatedCustomer.notes ?? c.notes,
+                  email: updatedCustomer.email ?? c.email,
                 }
               : c
           ),
@@ -1280,6 +1422,25 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           error: "No se pudo sincronizar el cliente con el servidor",
         },
         warnMessage: "Error al actualizar cliente en el servidor:",
+      }).then(
+        () => undefined,
+        () => undefined
+      )
+    },
+    [activeRestaurant?.id, dispatchEdit]
+  )
+
+  const deleteCustomer = useCallback(
+    (id: string) => {
+      const targetRestId = activeRestaurant?.id
+      return dispatchEdit({
+        apply: (board) => ({ ...board, customers: board.customers.filter((c) => c.id !== id) }),
+        rollback: (board, snapshot) => ({ ...board, customers: snapshot.customers }),
+        request:
+          apiClient.hasToken() && targetRestId ? () => apiClient.deleteCustomer(id, targetRestId) : undefined,
+        toast: { success: "Cliente eliminado", error: "No se pudo eliminar el cliente del servidor" },
+        skipRollbackIfError: isNotFoundError,
+        warnMessage: "Error al eliminar cliente del servidor:",
       }).then(
         () => undefined,
         () => undefined
@@ -1325,7 +1486,9 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       updateOrderReceipt,
       deleteOrder,
       customers,
+      createCustomer,
       updateCustomer,
+      deleteCustomer,
       pendingOrdersCount,
       isLoadingOrders,
       refreshOrders,
@@ -1338,7 +1501,9 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       updateOrderReceipt,
       deleteOrder,
       customers,
+      createCustomer,
       updateCustomer,
+      deleteCustomer,
       pendingOrdersCount,
       isLoadingOrders,
       refreshOrders,

@@ -137,4 +137,35 @@ describe("Router Engine - resolveRoute", () => {
     expect(res.adminTab).toBe("dashboard")
     expect(res.isNotFound).toBe(false)
   })
+
+  it("resolves /admin/equipo and /admin/roles tabs", () => {
+    expect(resolveRoute("/admin/equipo", mockRestaurants).adminTab).toBe("equipo")
+    expect(resolveRoute("/admin/roles", mockRestaurants).adminTab).toBe("roles")
+    // Alias /admin/team maps to equipo
+    expect(resolveRoute("/admin/team", mockRestaurants).adminTab).toBe("equipo")
+  })
+
+  describe("Permission & role gating on route resolution", () => {
+    it("redirects deep link to dashboard to orders when lacking finance.view", () => {
+      const can = (permission: string) => permission === "orders.view" || permission === "orders.manage"
+      const res = resolveRoute("/admin/dashboard", mockRestaurants, { can, role: "staff" })
+      expect(res.view).toBe("admin")
+      expect(res.adminTab).toBe("orders")
+    })
+
+    it("redirects deep link to reports to orders when lacking finance.view", () => {
+      const can = (permission: string) => permission === "orders.view" || permission === "orders.manage"
+      const res = resolveRoute("/admin/reports", mockRestaurants, { can, role: "staff" })
+      expect(res.view).toBe("admin")
+      expect(res.adminTab).toBe("orders")
+    })
+
+    it("permits deep link to allowed tab", () => {
+      const can = (permission: string) => permission === "orders.view" || permission === "orders.manage"
+      const res = resolveRoute("/admin/orders", mockRestaurants, { can, role: "staff" })
+      expect(res.view).toBe("admin")
+      expect(res.adminTab).toBe("orders")
+    })
+  })
 })
+

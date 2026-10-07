@@ -1,4 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import type { UserRole } from '../../../domain/models/User.js';
 import { ListOrdersUseCase } from '../../../application/use-cases/ListOrdersUseCase.js';
 import { GetOrderByIdUseCase } from '../../../application/use-cases/GetOrderByIdUseCase.js';
 import { CreateOrderUseCase } from '../../../application/use-cases/CreateOrderUseCase.js';
@@ -55,7 +56,7 @@ export class OrderController {
       {
         id: user.userId,
         username: user.username,
-        role: user.role as 'super_admin' | 'restaurant_admin',
+        role: user.role as UserRole,
         restaurantId: user.restaurantId,
         scope: user.scope,
       },
@@ -101,7 +102,10 @@ export class OrderController {
     const bodyRestaurantId = (req.body as any)?.restaurantId;
     const ctx = req.authContext;
     const isStaffForTarget = Boolean(ctx) &&
-      Boolean(ctx!.role === 'super_admin' || (ctx!.restaurantId && ctx!.restaurantId === bodyRestaurantId));
+      Boolean(
+        ctx!.role === 'super_admin' ||
+          (ctx!.restaurantId && ctx!.restaurantId === bodyRestaurantId && ctx!.permissions.includes('orders.manage'))
+      );
     const order = await this.createOrderUseCase.execute(parsed.data as CreateOrderDTO, {
       authenticated: isStaffForTarget,
     });

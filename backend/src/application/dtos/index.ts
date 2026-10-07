@@ -1,4 +1,5 @@
 import { InventoryCategory, InventoryUnit } from '../../domain/models/Inventory.js';
+import type { UserRole } from '../../domain/models/User.js';
 
 export interface CreateProductDTO {
   restaurantId?: string;
@@ -117,8 +118,10 @@ export interface UpdateInventoryStockDTO {
 export interface CreateUserDTO {
   username: string;
   password: string;
-  role: 'super_admin' | 'restaurant_admin';
+  role: 'super_admin' | 'restaurant_admin' | 'restaurant_staff';
   restaurantId?: string;
+  /** Required for restaurant_staff: a role (roles.id) of the same restaurant. */
+  roleId?: string;
 }
 
 export interface AuthResult {
@@ -127,8 +130,12 @@ export interface AuthResult {
   user?: {
     id: string;
     username: string;
-    role: 'super_admin' | 'restaurant_admin';
+    role: UserRole;
     restaurantId?: string;
+    /** Custom role of a restaurant_staff user. */
+    roleId?: string;
+    /** Effective permissions (whole catalog for administrators; the stored role's for staff). */
+    permissions: string[];
     /** True while the account must change its temporary password before using the API. */
     mustChangePassword?: boolean;
   };

@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { RestaurantController } from '../controllers/RestaurantController.js';
-import { requireSuperAdmin, tryAuth, requireAnyAdmin } from '../middleware/auth.middleware.js';
+import { requireSuperAdmin, tryAuth, requireAnyAdmin, requireAuth, requirePermission } from '../middleware/auth.middleware.js';
 import { createRestaurantSchema, updateRestaurantSchema } from '@burger-page/contracts';
 import { jsonSchemaFromZod } from '../zodSchemas.js';
 
@@ -212,7 +212,7 @@ export async function restaurantsRoutes(fastify: FastifyInstance, opts: { contro
   }, opts.controller.get.bind(opts.controller));
 
   fastify.put('/:id', {
-    preHandler: [requireAnyAdmin],
+    preHandler: [requireAuth, requirePermission('settings.manage')],
     schema: {
       tags: ['Restaurant'],
       summary: 'Update restaurant tenant',

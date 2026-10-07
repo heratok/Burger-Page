@@ -21,29 +21,39 @@ import { CatalogProvider, useCatalog } from "./slices/CatalogContext"
 import { OrderProvider, useOrders, type PlacedOrder } from "./slices/OrderContext"
 import { InventoryProvider, useInventory } from "./slices/InventoryContext"
 import type { InventoryItem, Supplier } from "@/types/restaurant"
+import type { CreateCustomerInput } from "@burger-page/contracts"
 import type { TenantRepository } from "@/core/storage/TenantRepository"
 import { defaultTenantRepository } from "@/core/storage/TenantRepository"
-import { resolveRoute } from "@/core/router/useAppRouter"
 import { appQueryClient } from "@/core/query/queryClient"
+
 import { clearPersistedQueries, subscribePersistedQueries } from "@/core/query/persistence"
 
-// Tabs exclusive to the platform super admin (kept in sync with the
-// GlobalModuleAccessDenied gate in App.tsx and SupportModeBanner's guard).
-const SUPER_ONLY_ADMIN_TABS = new Set<AdminTab>(["restaurants", "users", "metrics", "audit"])
+import { resolveRoute, isTabAllowed, getFirstAllowedTab } from "@/core/router/useAppRouter"
+import type { Permission } from "@burger-page/contracts"
 
 /**
  * Where a freshly authenticated session lands. A deep /admin/* route is kept
  * only when the new role may open it; otherwise the role's home is used.
  */
-function resolveLandingPath(pathname: string, isSuper: boolean): string {
-  const home = isSuper ? "/admin/restaurants" : "/admin/dashboard"
+function resolveLandingPath(
+  pathname: string,
+  role: "super" | "restaurant" | "staff" | "guest",
+  can?: (permission: Permission) => boolean
+): string {
+  const home =
+    role === "super"
+      ? "/admin/restaurants"
+      : role === "restaurant"
+      ? "/admin/dashboard"
+      : `/admin/${getFirstAllowedTab(can, role)}`
   const lower = pathname.toLowerCase().replace(/\/+$/, "")
   if (!lower.startsWith("/admin/")) return home
-  const tab = resolveRoute(lower, []).adminTab
-  if (!tab) return home
-  if (!isSuper && SUPER_ONLY_ADMIN_TABS.has(tab)) return home
+  const rawTab = resolveRoute(lower, []).adminTab
+  if (!rawTab) return home
+  if (!isTabAllowed(rawTab, can, role)) return home
   return pathname
 }
+
 
 // Export individual slice hooks for fine-grained subscriptions
 export { useUi } from "./slices/UiContext"
@@ -90,18 +100,21 @@ export interface RestaurantContextType {
   // Auth & Session
   session: AdminSession
   setSession: React.Dispatch<React.SetStateAction<AdminSession>>
+  permissions: Permission[]
+  can: (permission: Permission) => boolean
   login: (
     username: string,
     password: string,
     targetRestaurantIdOrSlug?: string
   ) => Promise<{
     success: boolean
-    role: "super" | "restaurant" | null
+    role: "super" | "restaurant" | "staff" | null
     restaurantId?: string
     error?: string
     /** Set on success: the path the new session must navigate to. */
     landingPath?: string
   }>
+
   changePassword: (
     currentPassword: string,
     newPassword: string
@@ -137,7 +150,9 @@ export interface RestaurantContextType {
   deleteOrder: (orderId: string) => void
 
   customers: Customer[]
+  createCustomer: (data: CreateCustomerInput) => Promise<Customer | null>
   updateCustomer: (id: string, updates: Partial<Customer>) => Promise<void> | void
+  deleteCustomer: (id: string) => Promise<void> | void
 
   // Inventory & Suppliers
   inventory: InventoryItem[]
@@ -218,12 +233,13 @@ const SessionScopedAuthProvider: React.FC<{
   const queryClient = useQueryClient()
 
   const onLogin = useCallback(
-    (role: "super" | "restaurant") => {
-      const landingPath = resolveLandingPath(window.location.pathname, role === "super")
-      setAdminTab(resolveRoute(landingPath, []).adminTab ?? "dashboard")
+    (role: "super" | "restaurant" | "staff") => {
+      const landingPath = resolveLandingPath(window.location.pathname, role)
+      setAdminTab(resolveRoute(landingPath, []).adminTab ?? getFirstAllowedTab(undefined, role))
     },
     [setAdminTab]
   )
+
 
   const onLogout = useCallback(() => {
     // C3: purge the whole-tenant envelope + persisted active restaurant.
@@ -236,8 +252,14 @@ const SessionScopedAuthProvider: React.FC<{
     setAdminTab("dashboard")
   }, [repository, setAdminTab, queryClient])
 
+  // Reads made while the password change was pending were refused with 403:
+  // refetch the active queries now that the session token is fully privileged.
+  const onPasswordChanged = useCallback(() => {
+    void queryClient.invalidateQueries()
+  }, [queryClient])
+
   return (
-    <AuthProvider onLogin={onLogin} onLogout={onLogout}>
+    <AuthProvider onLogin={onLogin} onLogout={onLogout} onPasswordChanged={onPasswordChanged}>
       {children}
     </AuthProvider>
   )
@@ -266,7 +288,7 @@ export const useRestaurant = (): RestaurantContextType => {
         // activeRestaurantId lives in TenantProvider state, which survives
         // logout/login in the same tab.
         tenant.switchRestaurant("")
-      } else if (res.role === "restaurant" && res.restaurantId) {
+      } else if ((res.role === "restaurant" || res.role === "staff") && res.restaurantId) {
         tenant.switchRestaurant(res.restaurantId)
       }
 
@@ -276,7 +298,7 @@ export const useRestaurant = (): RestaurantContextType => {
       // (e.g. /admin/audit) and render a module this role cannot access.
       // The admin tab was already set for this landing path by
       // SessionScopedAuthProvider, in the same render as the session write.
-      const landingPath = resolveLandingPath(window.location.pathname, res.role === "super")
+      const landingPath = resolveLandingPath(window.location.pathname, res.role ?? "guest", auth.can)
       ui.setActiveView("admin")
       return { ...res, landingPath }
     },
@@ -303,9 +325,12 @@ export const useRestaurant = (): RestaurantContextType => {
 
     session: auth.session,
     setSession: auth.setSession,
+    permissions: auth.permissions,
+    can: auth.can,
     changePassword: auth.changePassword,
     login,
     logout: auth.logout,
+
 
     storeConfig: catalog.storeConfig,
     updateStoreConfig: catalog.updateStoreConfig,
@@ -347,7 +372,9 @@ export const useRestaurant = (): RestaurantContextType => {
     deleteOrder: orders.deleteOrder,
 
     customers: orders.customers,
+    createCustomer: orders.createCustomer,
     updateCustomer: orders.updateCustomer,
+    deleteCustomer: orders.deleteCustomer,
 
     activeView: ui.activeView,
     setActiveView: ui.setActiveView,

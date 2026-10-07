@@ -1,4 +1,5 @@
 import React from "react"
+import { useAuth } from "@/context/slices/AuthContext"
 import type { Order, OrderStatus } from "@/types/restaurant"
 import {
   Clock,
@@ -41,6 +42,8 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
   onWhatsApp,
   onEditOrder,
 }) => {
+  const { can } = useAuth()
+  const canManage = can("orders.manage")
   const elapsed = formatElapsed(order.createdAt)
   const isDelayed =
     elapsed.mins >= 25 &&
@@ -231,7 +234,7 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
           <Eye className="size-4" />
         </button>
 
-        {onEditOrder && order.status !== "delivered" && order.status !== "cancelled" && (
+        {canManage && onEditOrder && order.status !== "delivered" && order.status !== "cancelled" && (
           <button
             type="button"
             onClick={() => onEditOrder(order)}
@@ -242,52 +245,54 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
           </button>
         )}
 
-        {order.status !== "delivered" && order.status !== "cancelled" ? (
-          <>
-            {/* Primary Fast 1-Click Action */}
+        {canManage && (
+          order.status !== "delivered" && order.status !== "cancelled" ? (
+            <>
+              {/* Primary Fast 1-Click Action */}
+              <button
+                type="button"
+                onClick={() => onUpdateStatus(order.id, "delivered")}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 transition-colors cursor-pointer"
+              >
+                <Check className="size-4" />
+                <span>Completar (1 Clic)</span>
+              </button>
+
+              {/* Step-by-step secondary transition */}
+              {order.status === "pending" && (
+                <button
+                  type="button"
+                  onClick={() => onUpdateStatus(order.id, "cooking")}
+                  className="flex items-center gap-1 rounded-xl border border-orange-500/30 bg-orange-500/10 px-2.5 py-2 text-xs font-bold text-orange-600 hover:bg-orange-500/20 dark:text-orange-400 cursor-pointer"
+                  title="Mover a cocina"
+                >
+                  <ChefHat className="size-4" />
+                  <span className="hidden sm:inline">A Cocina</span>
+                </button>
+              )}
+
+              {order.status === "cooking" && (
+                <button
+                  type="button"
+                  onClick={() => onUpdateStatus(order.id, "delivering")}
+                  className="flex items-center gap-1 rounded-xl border border-blue-500/30 bg-blue-500/10 px-2.5 py-2 text-xs font-bold text-blue-600 hover:bg-blue-500/20 dark:text-blue-400 cursor-pointer"
+                  title="Despachar con repartidor"
+                >
+                  <Bike className="size-4" />
+                  <span className="hidden sm:inline">Despachar</span>
+                </button>
+              )}
+            </>
+          ) : (
             <button
               type="button"
-              onClick={() => onUpdateStatus(order.id, "delivered")}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 transition-colors cursor-pointer"
+              onClick={() => onUpdateStatus(order.id, "pending")}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer"
             >
-              <Check className="size-4" />
-              <span>Completar (1 Clic)</span>
+              <RotateCcw className="size-3.5" />
+              <span>Reabrir Orden</span>
             </button>
-
-            {/* Step-by-step secondary transition */}
-            {order.status === "pending" && (
-              <button
-                type="button"
-                onClick={() => onUpdateStatus(order.id, "cooking")}
-                className="flex items-center gap-1 rounded-xl border border-orange-500/30 bg-orange-500/10 px-2.5 py-2 text-xs font-bold text-orange-600 hover:bg-orange-500/20 dark:text-orange-400 cursor-pointer"
-                title="Mover a cocina"
-              >
-                <ChefHat className="size-4" />
-                <span className="hidden sm:inline">A Cocina</span>
-              </button>
-            )}
-
-            {order.status === "cooking" && (
-              <button
-                type="button"
-                onClick={() => onUpdateStatus(order.id, "delivering")}
-                className="flex items-center gap-1 rounded-xl border border-blue-500/30 bg-blue-500/10 px-2.5 py-2 text-xs font-bold text-blue-600 hover:bg-blue-500/20 dark:text-blue-400 cursor-pointer"
-                title="Despachar con repartidor"
-              >
-                <Bike className="size-4" />
-                <span className="hidden sm:inline">Despachar</span>
-              </button>
-            )}
-          </>
-        ) : (
-          <button
-            type="button"
-            onClick={() => onUpdateStatus(order.id, "pending")}
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer"
-          >
-            <RotateCcw className="size-3.5" />
-            <span>Reabrir Orden</span>
-          </button>
+          )
         )}
       </div>
     </div>

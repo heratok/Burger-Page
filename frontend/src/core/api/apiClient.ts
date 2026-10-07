@@ -24,6 +24,10 @@ import type {
   AuditLogItem,
   PlatformStats,
   PlatformStatsQuery,
+  Permission,
+  RoleDTO,
+  RoleCreateInput,
+  RoleUpdateInput,
 } from '@burger-page/contracts'
 
 export type {
@@ -33,7 +37,12 @@ export type {
   AuditLogItem,
   PlatformStats,
   PlatformStatsQuery,
+  Permission,
+  RoleDTO,
+  RoleCreateInput,
+  RoleUpdateInput,
 }
+
 
 export interface DeletedRestaurantRecord {
   id: string
@@ -110,9 +119,19 @@ export interface ApiUserRecord {
   username: string
   role: string
   restaurantId?: string
+  roleId?: string
   createdAt?: string
   isActive?: boolean
   mustChangePassword?: boolean
+}
+
+export interface CurrentUserDTO {
+  id: string
+  username: string
+  role: string
+  restaurantId?: string
+  roleId?: string
+  permissions: Permission[]
 }
 
 export class ApiClient {
@@ -691,6 +710,11 @@ export class ApiClient {
     })
   }
 
+  async deleteCustomer(id: string, restaurantId?: string): Promise<void> {
+    const qs = restaurantId ? `?restaurantId=${encodeURIComponent(restaurantId)}` : ''
+    await this.request<void>(`/customers/${id}${qs}`, { method: 'DELETE' })
+  }
+
   async createCustomer(
     data: CreateCustomerInput,
     restaurantId?: string
@@ -816,10 +840,22 @@ export class ApiClient {
     }
   }
 
+  async getMe(): Promise<CurrentUserDTO> {
+    return this.request<CurrentUserDTO>('/users/me')
+  }
+
   async login(username: string, password: string): Promise<{
     success: boolean
     token?: string
-    user?: { id: string; username: string; role: string; restaurantId?: string; mustChangePassword?: boolean }
+    user?: {
+      id: string
+      username: string
+      role: string
+      restaurantId?: string
+      roleId?: string
+      permissions?: Permission[]
+      mustChangePassword?: boolean
+    }
     error?: string
   }> {
     // A 401 here means bad credentials, not a network failure: surface it as a
@@ -827,7 +863,15 @@ export class ApiClient {
     const result = await this.request<{
       success: boolean
       token?: string
-      user?: { id: string; username: string; role: string; restaurantId?: string; mustChangePassword?: boolean }
+      user?: {
+        id: string
+        username: string
+        role: string
+        restaurantId?: string
+        roleId?: string
+        permissions?: Permission[]
+        mustChangePassword?: boolean
+      }
       error?: string
     }>('/users/login', {
       method: 'POST',
@@ -847,9 +891,10 @@ export class ApiClient {
   async createUser(data: {
     username: string
     password: string
-    role: 'super_admin' | 'restaurant_admin'
+    role: 'super_admin' | 'restaurant_admin' | 'restaurant_staff'
     restaurantId?: string
-  }): Promise<{ id: string; username: string; role: string; restaurantId?: string }> {
+    roleId?: string
+  }): Promise<{ id: string; username: string; role: string; restaurantId?: string; roleId?: string }> {
     return this.request('/users', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -872,8 +917,9 @@ export class ApiClient {
     id: string,
     data: {
       username?: string
-      role?: 'super_admin' | 'restaurant_admin'
+      role?: 'super_admin' | 'restaurant_admin' | 'restaurant_staff'
       restaurantId?: string | null
+      roleId?: string
       isActive?: boolean
     }
   ): Promise<ApiUserRecord> {
@@ -882,6 +928,34 @@ export class ApiClient {
       body: JSON.stringify(data),
     })
   }
+
+  async listRoles(restaurantId?: string): Promise<RoleDTO[]> {
+    const qs = restaurantId ? `?restaurantId=${encodeURIComponent(restaurantId)}` : ''
+    return this.request<RoleDTO[]>(`/roles${qs}`)
+  }
+
+  async createRole(data: RoleCreateInput): Promise<RoleDTO> {
+    return this.request<RoleDTO>('/roles', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async updateRole(id: string, data: RoleUpdateInput, restaurantId?: string): Promise<RoleDTO> {
+    const qs = restaurantId ? `?restaurantId=${encodeURIComponent(restaurantId)}` : ''
+    return this.request<RoleDTO>(`/roles/${id}${qs}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async deleteRole(id: string, restaurantId?: string): Promise<void> {
+    const qs = restaurantId ? `?restaurantId=${encodeURIComponent(restaurantId)}` : ''
+    await this.request<void>(`/roles/${id}${qs}`, {
+      method: 'DELETE',
+    })
+  }
+
 
   async deleteUser(id: string): Promise<void> {
     await this.request<void>(`/users/${id}`, {

@@ -1,4 +1,5 @@
 import React from "react"
+import { useAuth } from "@/context/slices/AuthContext"
 import type { Order, OrderStatus } from "@/types/restaurant"
 import {
   ChefHat,
@@ -37,6 +38,8 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
   onWhatsApp,
   onEditOrder,
 }) => {
+  const { can } = useAuth()
+  const canManage = can("orders.manage")
   return (
     <div
       className={`group relative rounded-xl border p-3.5 shadow-xs transition-all duration-150 hover:shadow-md ${
@@ -134,7 +137,7 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
           <Eye className="size-3.5" />
         </button>
 
-        {onEditOrder && (
+        {canManage && onEditOrder && (
           <button
             type="button"
             onClick={() => onEditOrder(order)}
@@ -145,7 +148,7 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
           </button>
         )}
 
-        {order.status === "pending" && (
+        {canManage && order.status === "pending" && (
           <button
             type="button"
             onClick={() => onUpdateStatus(order.id, "cooking")}
@@ -155,7 +158,7 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
             <span>A Cocina</span>
           </button>
         )}
-        {order.status === "cooking" && (
+        {canManage && order.status === "cooking" && (
           <button
             type="button"
             onClick={() => onUpdateStatus(order.id, "delivering")}
@@ -165,7 +168,7 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
             <span>Despachar</span>
           </button>
         )}
-        {order.status === "delivering" && (
+        {canManage && order.status === "delivering" && (
           <button
             type="button"
             onClick={() => onUpdateStatus(order.id, "delivered")}

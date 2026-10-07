@@ -10,3 +10,5 @@ export class ValidationError extends DomainError {}
 export class ConflictError extends DomainError {}
 export class InvalidOrderStateError extends DomainError {}
 export class UnauthorizedError extends DomainError {}
+/** The caller is authenticated but not allowed to perform this action (HTTP 403). */
+export class ForbiddenError extends DomainError {}

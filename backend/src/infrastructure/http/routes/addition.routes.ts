@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { ProductAdditionController } from '../controllers/ProductAdditionController.js';
-import { requireAuth, tryAuth } from '../middleware/auth.middleware.js';
+import { requireAuth, requirePermission, tryAuth } from '../middleware/auth.middleware.js';
 import { createProductAdditionSchema, updateProductAdditionSchema } from '@burger-page/contracts';
 import { jsonSchemaFromZod } from '../zodSchemas.js';
 
@@ -44,7 +44,7 @@ export async function additionRoutes(fastify: FastifyInstance, opts: { controlle
 
   // 3. Create Product Addition (Protected - Tenant Admin)
   fastify.post('/', {
-    preHandler: [requireAuth],
+    preHandler: [requireAuth, requirePermission('menu.manage')],
     schema: {
       tags: ['Additions'],
       summary: 'Create product addition',
@@ -61,7 +61,7 @@ export async function additionRoutes(fastify: FastifyInstance, opts: { controlle
 
   // 4. Update Product Addition (Protected - Tenant Admin)
   fastify.put('/:id', {
-    preHandler: [requireAuth],
+    preHandler: [requireAuth, requirePermission('menu.manage')],
     schema: {
       tags: ['Additions'],
       summary: 'Update product addition',
@@ -85,7 +85,7 @@ export async function additionRoutes(fastify: FastifyInstance, opts: { controlle
 
   // 5. Delete Product Addition (Protected - Tenant Admin)
   fastify.delete('/:id', {
-    preHandler: [requireAuth],
+    preHandler: [requireAuth, requirePermission('menu.manage')],
     schema: {
       tags: ['Additions'],
       summary: 'Delete product addition',

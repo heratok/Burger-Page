@@ -8,6 +8,13 @@ import { ResetUserPasswordUseCase } from '../../../application/use-cases/ResetUs
 import { ChangeOwnPasswordUseCase } from '../../../application/use-cases/ChangeOwnPasswordUseCase.js';
 import { CreateUserDTO } from '../../../application/dtos/index.js';
 import { auditActorOf } from '../auditActor.js';
+import type { UserManager } from '../../../application/use-cases/userGuards.js';
+
+/** The authenticated caller as a user-management actor (permissions come from storage, not the token). */
+function managerOf(request: FastifyRequest): UserManager | undefined {
+  const auth = request.authContext;
+  return auth ? { userId: auth.userId, role: auth.role, restaurantId: auth.restaurantId, permissions: auth.permissions } : undefined;
+}
 
 export class UserController {
   constructor(
@@ -24,7 +31,12 @@ export class UserController {
     request: FastifyRequest,
     reply: FastifyReply
   ) {
-    const user = await this.createUser.execute(request.body as CreateUserDTO, request.authContext?.role, auditActorOf(request));
+    const user = await this.createUser.execute(
+      request.body as CreateUserDTO,
+      request.authContext?.role,
+      auditActorOf(request),
+      managerOf(request)
+    );
     const { passwordHash: _, ...safe } = user;
     return reply.status(201).send(safe);
   }
@@ -43,6 +55,11 @@ export class UserController {
       request.log.warn(`[AUTH] Login fallido para usuario: "${username}" -> Razón: ${err.message}`);
       throw err;
     }
+  }
+
+  async me(request: FastifyRequest, reply: FastifyReply) {
+    const { userId, username, role, restaurantId, roleId, permissions } = request.authContext!;
+    return reply.send({ id: userId, username, role, restaurantId, roleId, permissions });
   }
 
   async list(
@@ -76,8 +93,9 @@ export class UserController {
     const { id } = request.params as { id: string };
     const body = request.body as {
       username?: string;
-      role?: 'super_admin' | 'restaurant_admin';
+      role?: 'super_admin' | 'restaurant_admin' | 'restaurant_staff';
       restaurantId?: string | null;
+      roleId?: string;
       isActive?: boolean;
     };
     const user = await this.updateUser.execute({
@@ -88,6 +106,8 @@ export class UserController {
       role: body.role,
       restaurantId: body.restaurantId,
       isActive: body.isActive,
+      roleId: body.roleId,
+      manager: managerOf(request),
     });
     const { passwordHash: _, ...safe } = user;
     return reply.send(safe);
@@ -95,13 +115,22 @@ export class UserController {
 
   async remove(request: FastifyRequest, reply: FastifyReply) {
     const { id } = request.params as { id: string };
-    await this.deleteUser.execute({ actorId: request.authContext!.userId, actor: auditActorOf(request), targetId: id });
+    await this.deleteUser.execute({
+      actorId: request.authContext!.userId,
+      actor: auditActorOf(request),
+      targetId: id,
+      manager: managerOf(request),
+    });
     return reply.status(204).send();
   }
 
   async resetPassword(request: FastifyRequest, reply: FastifyReply) {
     const { id } = request.params as { id: string };
-    const result = await this.resetUserPassword.execute({ targetId: id, actor: auditActorOf(request) });
+    const result = await this.resetUserPassword.execute({
+      targetId: id,
+      actor: auditActorOf(request),
+      manager: managerOf(request),
+    });
     return reply.send(result);
   }
 

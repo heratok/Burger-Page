@@ -1,6 +1,6 @@
 import { FastifyError, FastifyReply, FastifyRequest } from 'fastify';
 import { ZodError } from 'zod';
-import { ConflictError, DomainError, EntityNotFoundError, ValidationError, InvalidOrderStateError, UnauthorizedError } from '../../../domain/errors/DomainErrors.js';
+import { ConflictError, DomainError, EntityNotFoundError, ValidationError, InvalidOrderStateError, UnauthorizedError, ForbiddenError } from '../../../domain/errors/DomainErrors.js';
 
 export function errorHandler(error: FastifyError | Error, request: FastifyRequest, reply: FastifyReply) {
   // M5: internal messages are only exposed on an explicit opt-in
@@ -40,6 +40,14 @@ export function errorHandler(error: FastifyError | Error, request: FastifyReques
         type: 'https://example.com/probs/invalid-state',
         title: 'Invalid State',
         status: 400,
+        detail: error.message
+      });
+    }
+    if (error instanceof ForbiddenError) {
+      return reply.status(403).send({
+        type: 'https://example.com/probs/forbidden',
+        title: 'Forbidden',
+        status: 403,
         detail: error.message
       });
     }

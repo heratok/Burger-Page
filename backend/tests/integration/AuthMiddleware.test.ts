@@ -76,7 +76,7 @@ describe('Auth Middleware & JWT Suite', () => {
 
     expect(res.statusCode).toBe(200);
     const body = res.json();
-    expect(body.context).toEqual({
+    expect(body.context).toMatchObject({
       userId: 'usr-1',
       username: 'manager_craft',
       role: 'restaurant_admin',
@@ -183,7 +183,7 @@ describe('Auth Middleware & JWT Suite', () => {
     });
 
     expect(res.statusCode).toBe(200);
-    expect(res.json().context).toEqual({
+    expect(res.json().context).toMatchObject({
       userId: 'usr-1',
       username: 'manager_craft',
       role: 'restaurant_admin',

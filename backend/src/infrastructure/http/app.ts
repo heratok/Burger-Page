@@ -17,6 +17,7 @@ import { InMemoryInventoryRepository } from '../persistence/InMemoryInventoryRep
 import { InMemoryUserRepository } from '../persistence/InMemoryUserRepository.js';
 import { InMemorySupplierRepository } from '../persistence/InMemorySupplierRepository.js';
 import { InMemoryRestaurantTableRepository } from '../persistence/InMemoryRestaurantTableRepository.js';
+import { InMemoryRoleRepository } from '../persistence/InMemoryRoleRepository.js';
 import { createSqliteDatabase } from '../persistence/sqlite/SqliteDatabase.js';
 import { SqliteRestaurantRepository } from '../persistence/sqlite/SqliteRestaurantRepository.js';
 import { SqliteCategoryRepository } from '../persistence/sqlite/SqliteCategoryRepository.js';
@@ -27,6 +28,7 @@ import { SqliteInventoryRepository } from '../persistence/sqlite/SqliteInventory
 import { SqliteProductAdditionRepository } from '../persistence/sqlite/SqliteProductAdditionRepository.js';
 import { SqliteSupplierRepository } from '../persistence/sqlite/SqliteSupplierRepository.js';
 import { SqliteRestaurantTableRepository } from '../persistence/sqlite/SqliteRestaurantTableRepository.js';
+import { SqliteRoleRepository } from '../persistence/sqlite/SqliteRoleRepository.js';
 import { verifyPgConnection } from '../persistence/postgres/PgClient.js';
 import { resolveStorageDriver, dataRunsOnPostgres } from '../persistence/driverSelection.js';
 import type { StorageDriver } from '../persistence/driverSelection.js';
@@ -41,6 +43,7 @@ import { PgInventoryRepository } from '../persistence/postgres/PgInventoryReposi
 import { PgUserRepository } from '../persistence/postgres/PgUserRepository.js';
 import { PgSupplierRepository } from '../persistence/postgres/PgSupplierRepository.js';
 import { PgRestaurantTableRepository } from '../persistence/postgres/PgRestaurantTableRepository.js';
+import { PgRoleRepository } from '../persistence/postgres/PgRoleRepository.js';
 import { PgAuditLogRepository } from '../persistence/postgres/PgAuditLogRepository.js';
 import { InMemoryAuditLogRepository } from '../persistence/InMemoryAuditLogRepository.js';
 import { AuditLogRepository } from '../../domain/ports/out/AuditLogRepository.js';
@@ -64,6 +67,7 @@ import { InventoryRepository } from '../../domain/ports/out/InventoryRepository.
 import { UserRepository } from '../../domain/ports/out/UserRepository.js';
 import { SupplierRepository } from '../../domain/ports/out/SupplierRepository.js';
 import { RestaurantTableRepository } from '../../domain/ports/out/RestaurantTableRepository.js';
+import { RoleRepository } from '../../domain/ports/out/RoleRepository.js';
 import { PasswordHasher } from '../../domain/ports/out/PasswordHasher.js';
 import { CryptoPasswordHasher } from '../security/CryptoPasswordHasher.js';
 
@@ -123,6 +127,10 @@ import { CreateRestaurantTableUseCase } from '../../application/use-cases/Create
 import { UpdateRestaurantTableUseCase } from '../../application/use-cases/UpdateRestaurantTableUseCase.js';
 import { DeleteRestaurantTableUseCase } from '../../application/use-cases/DeleteRestaurantTableUseCase.js';
 import { ReorderRestaurantTablesUseCase } from '../../application/use-cases/ReorderRestaurantTablesUseCase.js';
+import { ListRolesUseCase } from '../../application/use-cases/ListRolesUseCase.js';
+import { CreateRoleUseCase } from '../../application/use-cases/CreateRoleUseCase.js';
+import { UpdateRoleUseCase } from '../../application/use-cases/UpdateRoleUseCase.js';
+import { DeleteRoleUseCase } from '../../application/use-cases/DeleteRoleUseCase.js';
 
 // Controllers
 import { RestaurantController } from './controllers/RestaurantController.js';
@@ -134,6 +142,7 @@ import { UserController } from './controllers/UserController.js';
 import { ProductAdditionController } from './controllers/ProductAdditionController.js';
 import { SupplierController } from './controllers/SupplierController.js';
 import { RestaurantTableController } from './controllers/RestaurantTableController.js';
+import { RoleController } from './controllers/RoleController.js';
 
 // Routes
 import { restaurantRoutes } from './routes/restaurant.routes.js';
@@ -147,6 +156,7 @@ import { additionRoutes } from './routes/addition.routes.js';
 import { storageRoutes } from './routes/storage.routes.js';
 import { supplierRoutes } from './routes/supplier.routes.js';
 import { restaurantTableRoutes } from './routes/restaurantTable.routes.js';
+import { roleRoutes } from './routes/role.routes.js';
 
 export interface AppDependencies {
   restaurantController: RestaurantController;
@@ -156,6 +166,7 @@ export interface AppDependencies {
   inventoryController: InventoryController;
   supplierController: SupplierController;
   restaurantTableController: RestaurantTableController;
+  roleController: RoleController;
   userController: UserController;
   auditLogController: AuditLogController;
   platformStatsController: PlatformStatsController;
@@ -164,6 +175,8 @@ export interface AppDependencies {
    *  middlewares by buildApp so sessions are re-checked against storage. */
   userRepo: UserRepository;
   restaurantRepo: RestaurantRepository;
+  /** Roles are re-read on every authenticated request to resolve staff permissions. */
+  roleRepo: RoleRepository;
   /** Exposed so wiring tests/observability can verify the repository the
    *  selected storage driver instantiates (S5: supabase == postgres == Pg). */
   orderRepo: OrderRepository;
@@ -201,6 +214,7 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
   let userRepo: UserRepository;
   let supplierRepo: SupplierRepository;
   let tableRepo: RestaurantTableRepository;
+  let roleRepo: RoleRepository;
   let auditRepo: AuditLogRepository;
   let platformStatsRepo: PlatformStatsRepository | undefined;
 
@@ -227,6 +241,7 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
     userRepo = new PgUserRepository();
     supplierRepo = new PgSupplierRepository();
     tableRepo = new PgRestaurantTableRepository();
+    roleRepo = new PgRoleRepository();
     auditRepo = new PgAuditLogRepository();
     platformStatsRepo = new PgPlatformStatsRepository();
   } else if (selectedDriver === 'sqlite') {
@@ -241,6 +256,7 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
     userRepo = new InMemoryUserRepository();
     supplierRepo = new SqliteSupplierRepository(db);
     tableRepo = new SqliteRestaurantTableRepository(db);
+    roleRepo = new SqliteRoleRepository(db);
     // sqlite/memory are local-dev drivers: the audit trail lives in process memory.
     auditRepo = new InMemoryAuditLogRepository();
   } else {
@@ -254,6 +270,7 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
     userRepo = new InMemoryUserRepository();
     supplierRepo = new InMemorySupplierRepository();
     tableRepo = new InMemoryRestaurantTableRepository();
+    roleRepo = new InMemoryRoleRepository();
     auditRepo = new InMemoryAuditLogRepository();
   }
   // The in-process drivers fold their own repositories; Postgres aggregates in SQL.
@@ -315,8 +332,13 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
   const deleteTable = new DeleteRestaurantTableUseCase(tableRepo);
   const reorderTables = new ReorderRestaurantTablesUseCase(tableRepo);
 
-  const createUser = new CreateUserUseCase(userRepo, hasher, restaurantRepo, audit);
-  const authenticateUser = new AuthenticateUserUseCase(userRepo, hasher, undefined, restaurantRepo);
+  const listRoles = new ListRolesUseCase(roleRepo);
+  const createRole = new CreateRoleUseCase(roleRepo, audit);
+  const updateRole = new UpdateRoleUseCase(roleRepo, audit);
+  const deleteRole = new DeleteRoleUseCase(roleRepo, userRepo, audit);
+
+  const createUser = new CreateUserUseCase(userRepo, hasher, restaurantRepo, audit, roleRepo);
+  const authenticateUser = new AuthenticateUserUseCase(userRepo, hasher, undefined, restaurantRepo, roleRepo);
   const listUsersUC = new ListUsersUseCase(userRepo);
 
   const listAdditions = new ListProductAdditionsUseCase(additionRepo);
@@ -388,13 +410,14 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
       reorderTables,
       restaurantRepo
     ),
+    roleController: new RoleController(listRoles, createRole, updateRole, deleteRole, restaurantRepo),
     userController: new UserController(
       createUser,
       authenticateUser,
       listUsersUC,
-      new UpdateUserUseCase(userRepo, restaurantRepo, audit),
-      new DeleteUserUseCase(userRepo, audit),
-      new ResetUserPasswordUseCase(userRepo, hasher, undefined, audit),
+      new UpdateUserUseCase(userRepo, restaurantRepo, audit, roleRepo),
+      new DeleteUserUseCase(userRepo, audit, roleRepo),
+      new ResetUserPasswordUseCase(userRepo, hasher, undefined, audit, roleRepo),
       new ChangeOwnPasswordUseCase(userRepo, hasher)
     ),
     auditLogController: new AuditLogController(new ListAuditLogUseCase(auditRepo)),
@@ -409,6 +432,7 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
     ),
     userRepo,
     restaurantRepo,
+    roleRepo,
     orderRepo,
   };
 }
@@ -515,7 +539,7 @@ export function buildApp(
   // reject; the revalidation contract itself is covered by
   // tests/integration/JwtRevalidation.test.ts against focused fakes.
   if (!isTest) {
-    configureAuthMiddlewares({ userRepo: deps.userRepo, restaurantRepo: deps.restaurantRepo });
+    configureAuthMiddlewares({ userRepo: deps.userRepo, restaurantRepo: deps.restaurantRepo, roleRepo: deps.roleRepo });
   }
 
   const allowedOrigins = getAllowedOrigins();
@@ -679,6 +703,7 @@ export function buildApp(
     api.register(inventoryRoutes, { prefix: '/inventory', controller: deps.inventoryController });
     api.register(supplierRoutes, { prefix: '/suppliers', controller: deps.supplierController });
     api.register(restaurantTableRoutes, { prefix: '/tables', controller: deps.restaurantTableController });
+    api.register(roleRoutes, { prefix: '/roles', controller: deps.roleController });
     api.register(userRoutes, { prefix: '/users', controller: deps.userController });
     api.register(auditLogRoutes, { prefix: '/audit-log', controller: deps.auditLogController });
     api.register(platformStatsRoutes, { prefix: '/platform-stats', controller: deps.platformStatsController });
