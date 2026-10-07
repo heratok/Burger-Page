@@ -1375,4 +1375,201 @@ describe("orders and restaurant tables", () => {
     expect(afterUpdate.orders[0].tableId).toBeUndefined()
     expect(afterUpdate.orders[0].tableLabel).toBeUndefined()
   })
+
+  describe("createCustomer — optimistic add, rollback, and duplicate handling", () => {
+    it("optimistically adds the customer, calls apiClient.createCustomer with effectiveRestaurantId, and reconciles on success", async () => {
+      const { apiClient } = await import("@/core/api/apiClient")
+      const { toast } = await import("sonner")
+      const successSpy = vi.spyOn(toast, "success")
+      let resolveCreate!: (val: any) => void
+      const createSpy = vi.spyOn(apiClient, "createCustomer").mockImplementation(
+        () =>
+          new Promise((res) => {
+            resolveCreate = res
+          })
+      )
+      vi.spyOn(apiClient, "subscribeToOrderStream").mockImplementation(() => () => {})
+      vi.spyOn(apiClient, "hasToken").mockReturnValue(true)
+      vi.spyOn(apiClient, "fetchOrders").mockResolvedValue([])
+      const fetchCustomersSpy = vi.spyOn(apiClient, "fetchCustomers").mockResolvedValue([])
+
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <TenantProvider>
+          <UiProvider>
+            <OrderProvider>{children}</OrderProvider>
+          </UiProvider>
+        </TenantProvider>
+      )
+
+      const { result } = renderHook(() => useOrders(), { wrapper })
+
+      await act(async () => {
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      let createPromise!: Promise<Customer | null>
+      act(() => {
+        createPromise = result.current.createCustomer({
+          name: "Pedro Perez",
+          phone: "3105556677",
+          address: "Calle 10 # 5-20",
+          barrio: "Laureles",
+          notes: "Cliente recurrente",
+          email: "pedro@mail.com",
+        })
+      })
+
+      // Optimistic check: immediately added to customers state
+      expect(result.current.customers.some((c) => c.nombre === "Pedro Perez" && c.telefono === "3105556677")).toBe(true)
+
+      const serverCustomer = {
+        id: "cust-server-123",
+        name: "Pedro Perez",
+        phone: "3105556677",
+        address: "Calle 10 # 5-20",
+        barrio: "Laureles",
+        notes: "Cliente recurrente",
+        email: "pedro@mail.com",
+      }
+      fetchCustomersSpy.mockResolvedValue([serverCustomer as any])
+
+      await act(async () => {
+        resolveCreate(serverCustomer)
+      })
+      const created = await createPromise
+
+      expect(createSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ name: "Pedro Perez", phone: "3105556677" }),
+        "rest-burger-craft"
+      )
+      expect(result.current.customers.some((c) => c.id === "cust-server-123" && c.nombre === "Pedro Perez")).toBe(true)
+      expect(created?.id).toBe("cust-server-123")
+      expect(successSpy).toHaveBeenCalledWith("Cliente registrado exitosamente")
+    })
+
+    it("rolls back optimistic customer and shows error toast when apiClient.createCustomer rejects", async () => {
+      const { apiClient } = await import("@/core/api/apiClient")
+      const { toast } = await import("sonner")
+      const successSpy = vi.spyOn(toast, "success")
+      const errorSpy = vi.spyOn(toast, "error")
+      let rejectCreate!: (err: any) => void
+      vi.spyOn(apiClient, "createCustomer").mockImplementation(
+        () =>
+          new Promise((_, rej) => {
+            rejectCreate = rej
+          })
+      )
+      vi.spyOn(apiClient, "subscribeToOrderStream").mockImplementation(() => () => {})
+      vi.spyOn(apiClient, "hasToken").mockReturnValue(true)
+      vi.spyOn(apiClient, "fetchOrders").mockResolvedValue([])
+      vi.spyOn(apiClient, "fetchCustomers").mockResolvedValue([])
+
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <TenantProvider>
+          <UiProvider>
+            <OrderProvider>{children}</OrderProvider>
+          </UiProvider>
+        </TenantProvider>
+      )
+
+      const { result } = renderHook(() => useOrders(), { wrapper })
+
+      await act(async () => {
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      let createPromise!: Promise<Customer | null>
+      act(() => {
+        createPromise = result.current.createCustomer({
+          name: "Carlos Fallido",
+          phone: "3119998877",
+        })
+      })
+
+      expect(result.current.customers.some((c) => c.telefono === "3119998877")).toBe(true)
+
+      await act(async () => {
+        rejectCreate(new Error("Server error"))
+      })
+      const created = await createPromise
+
+      expect(created).toBeNull()
+      expect(result.current.customers.some((c) => c.telefono === "3119998877")).toBe(false)
+      expect(successSpy).not.toHaveBeenCalled()
+      expect(errorSpy).toHaveBeenCalledWith("No se pudo registrar el cliente en el servidor")
+    })
+
+    it("updates existing customer when creating with a duplicate phone (upsert behavior)", async () => {
+      const { apiClient } = await import("@/core/api/apiClient")
+      let resolveCreate!: (val: any) => void
+      const createSpy = vi.spyOn(apiClient, "createCustomer").mockImplementation(
+        () =>
+          new Promise((res) => {
+            resolveCreate = res
+          })
+      )
+      vi.spyOn(apiClient, "subscribeToOrderStream").mockImplementation(() => () => {})
+      vi.spyOn(apiClient, "hasToken").mockReturnValue(true)
+      vi.spyOn(apiClient, "fetchOrders").mockResolvedValue([])
+      const fetchCustomersSpy = vi.spyOn(apiClient, "fetchCustomers").mockResolvedValue([
+        { id: "cust-existing-1", name: "Juan Original", phone: "3001112233", address: "Vieja Direccion", barrio: "Viejo" }
+      ] as any)
+
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <TenantProvider>
+          <UiProvider>
+            <OrderProvider>{children}</OrderProvider>
+          </UiProvider>
+        </TenantProvider>
+      )
+
+      const { result } = renderHook(() => useOrders(), { wrapper })
+
+      await act(async () => {
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      expect(result.current.customers).toHaveLength(1)
+      expect(result.current.customers[0].nombre).toBe("Juan Original")
+
+      act(() => {
+        void result.current.createCustomer({
+          name: "Juan Actualizado",
+          phone: "3001112233",
+          address: "Nueva Direccion",
+          barrio: "Nuevo Barrio",
+          notes: "Nota agregada",
+          email: "juan@nuevo.com",
+        })
+      })
+
+      // In flight: existing customer updated in place without creating a duplicate
+      expect(result.current.customers).toHaveLength(1)
+      expect(result.current.customers[0].nombre).toBe("Juan Actualizado")
+      expect(result.current.customers[0].direccion).toBe("Nueva Direccion")
+
+      const serverUpdated = {
+        id: "cust-existing-1",
+        name: "Juan Actualizado",
+        phone: "3001112233",
+        address: "Nueva Direccion",
+        barrio: "Nuevo Barrio",
+        notes: "Nota agregada",
+        email: "juan@nuevo.com",
+      }
+      fetchCustomersSpy.mockResolvedValue([serverUpdated as any])
+
+      await act(async () => {
+        resolveCreate(serverUpdated)
+      })
+
+      expect(result.current.customers).toHaveLength(1)
+      expect(result.current.customers[0].nombre).toBe("Juan Actualizado")
+      expect(createSpy).toHaveBeenCalled()
+    })
+  })
 })
+
