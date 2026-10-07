@@ -3,12 +3,22 @@ import { JwtService } from '../../security/JwtService.js';
 import { UserRole } from '../../../domain/models/User.js';
 import { UserRepository } from '../../../domain/ports/out/UserRepository.js';
 import { RestaurantRepository } from '../../../domain/ports/out/RestaurantRepository.js';
+import { RoleRepository } from '../../../domain/ports/out/RoleRepository.js';
+import { resolvePermissions, type Permission } from '@burger-page/contracts';
 
 export interface AuthContext {
   userId: string;
   username: string;
   role: UserRole;
   restaurantId?: string;
+  /** Custom role (roles.id) of a restaurant_staff user. */
+  roleId?: string;
+  /**
+   * Effective permissions of the session. Admins hold the whole catalog; staff
+   * hold exactly what their stored role grants (re-read on every request when
+   * revalidation is on; empty, i.e. fail closed, when it cannot be resolved).
+   */
+  permissions: Permission[];
 }
 
 declare module 'fastify' {
@@ -28,6 +38,8 @@ declare module 'fastify' {
 export interface AuthMiddlewareDeps {
   userRepo?: UserRepository;
   restaurantRepo?: RestaurantRepository;
+  /** Resolves a staff user's role permissions; without it staff hold none. */
+  roleRepo?: RoleRepository;
 }
 
 export interface AuthMiddlewares {
@@ -60,6 +72,7 @@ export function createAuthMiddlewares(
       username: payload.username,
       role: payload.role,
       restaurantId: payload.restaurantId,
+      permissions: resolvePermissions({ role: payload.role }),
     };
     // Test runs skip revalidation, so the signed claim is the fallback; when
     // the stored row is available it overrides the claim (below).
@@ -98,6 +111,8 @@ export function createAuthMiddlewares(
       authContext.username = user.username;
       authContext.role = user.role;
       authContext.restaurantId = user.restaurantId;
+      authContext.roleId = user.roleId;
+      authContext.permissions = await resolveStoredPermissions(user.role, user.roleId, user.restaurantId);
       mustChangePassword = user.mustChangePassword === true;
     }
 
@@ -111,6 +126,22 @@ export function createAuthMiddlewares(
     }
 
     return { ok: true, authContext, mustChangePassword };
+  }
+
+  /**
+   * Staff permissions come from the stored role, scoped to the user's own
+   * restaurant. A missing/foreign/deleted role, or no role repository, yields
+   * no permissions: access is never inferred from the signed claims.
+   */
+  async function resolveStoredPermissions(
+    role: UserRole,
+    roleId: string | undefined,
+    restaurantId: string | undefined
+  ): Promise<Permission[]> {
+    if (role !== 'restaurant_staff') return resolvePermissions({ role });
+    if (!deps?.roleRepo || !roleId || !restaurantId) return [];
+    const stored = await deps.roleRepo.findById(roleId, restaurantId);
+    return resolvePermissions({ role, rolePermissions: stored?.permissions ?? [] });
   }
 
   async function authenticate(req: FastifyRequest, reply: FastifyReply, allowPendingPasswordChange: boolean) {
@@ -311,4 +342,37 @@ export function configureAuthMiddlewares(deps: AuthMiddlewareDeps): void {
   requireAnyAdmin = defaultMiddlewares.requireAnyAdmin;
   tryAuth = defaultMiddlewares.tryAuth;
   requireStreamToken = defaultMiddlewares.requireStreamToken;
+}
+
+function deny(reply: FastifyReply, status: 401 | 403, detail: string) {
+  return reply.status(status).send({
+    type: status === 401 ? 'https://example.com/probs/unauthorized' : 'https://example.com/probs/forbidden',
+    title: status === 401 ? 'Unauthorized' : 'Forbidden',
+    status,
+    detail,
+  });
+}
+
+/**
+ * RBAC gate: the session must hold EVERY listed permission. Runs after an
+ * authentication preHandler (requireAuth / requireStreamToken), which sets
+ * req.authContext with permissions resolved from storage; super_admin and
+ * restaurant_admin hold the whole catalog, so their access is unchanged.
+ */
+export function requirePermission(...perms: Permission[]) {
+  return async function permissionGuard(req: FastifyRequest, reply: FastifyReply) {
+    const ctx = req.authContext;
+    if (!ctx) return deny(reply, 401, 'Authentication required.');
+    const missing = perms.filter((p) => !ctx.permissions.includes(p));
+    if (missing.length > 0) return deny(reply, 403, `Missing permission: ${missing.join(', ')}.`);
+  };
+}
+
+/** Like requirePermission, but holding AT LEAST ONE of the listed permissions is enough (read routes shared by several roles). */
+export function requireAnyPermission(...perms: Permission[]) {
+  return async function anyPermissionGuard(req: FastifyRequest, reply: FastifyReply) {
+    const ctx = req.authContext;
+    if (!ctx) return deny(reply, 401, 'Authentication required.');
+    if (!perms.some((p) => ctx.permissions.includes(p))) return deny(reply, 403, `Requires one of: ${perms.join(', ')}.`);
+  };
 }

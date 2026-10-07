@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { UserController } from '../controllers/UserController.js';
-import { requireAuth, requireAuthAllowingPasswordChange, requireSuperAdmin } from '../middleware/auth.middleware.js';
+import { requireAuth, requireAuthAllowingPasswordChange, requirePermission, requireSuperAdmin } from '../middleware/auth.middleware.js';
 
 interface UserRoutesOptions {
   prefix: string;
@@ -71,6 +71,8 @@ export async function userRoutes(
                 username: { type: 'string' },
                 role: { type: 'string' },
                 restaurantId: { type: 'string' },
+                roleId: { type: 'string' },
+                permissions: { type: 'array', items: { type: 'string' } },
                 mustChangePassword: { type: 'boolean' },
               },
             },
@@ -80,8 +82,30 @@ export async function userRoutes(
     },
   }, ctrl.login.bind(ctrl));
 
-  app.get('/', {
+  app.get('/me', {
     preHandler: [requireAuth],
+    schema: {
+      tags: ['Users'],
+      summary: 'Current session',
+      description: 'The authenticated user with the permissions resolved from storage on this request (administrators hold the whole catalog; staff hold what their role grants). The frontend uses it to gate the UI; the server enforces the same permissions on every route.',
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' },
+            username: { type: 'string' },
+            role: { type: 'string' },
+            restaurantId: { type: 'string' },
+            roleId: { type: 'string' },
+            permissions: { type: 'array', items: { type: 'string' } },
+          },
+        },
+      },
+    },
+  }, ctrl.me.bind(ctrl));
+
+  app.get('/', {
+    preHandler: [requireAuth, requirePermission('users.manage')],
     schema: {
       tags: ['Users'],
       summary: 'List users',
