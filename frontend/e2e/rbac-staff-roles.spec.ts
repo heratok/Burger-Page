@@ -217,13 +217,9 @@ test.describe('RBAC: customer CRUD, custom roles, staff team and permission gati
     await page.getByRole('button', { name: 'Cocina / Pedidos' }).click();
     await expect(page.locator('#perm-orders\\.view')).toBeChecked();
     await expect(page.locator('#perm-orders\\.manage')).toBeChecked();
-    // The preset also ticks inventory.manage; this role must be orders-only.
-    const presetIncludesInventory = await page.locator('#perm-inventory\\.manage').isChecked();
-    test.info().annotations.push({
-      type: 'finding',
-      description: `preset "Cocina / Pedidos" includes inventory.manage: ${presetIncludesInventory}`,
-    });
-    if (presetIncludesInventory) await page.locator('#perm-inventory\\.manage').uncheck();
+    // The preset is exactly orders.view + orders.manage (no inventory).
+    await expect(page.locator('#perm-inventory\\.manage')).not.toBeChecked();
+    await expect(page.getByText('2 de 12').first()).toBeVisible();
     await shot(page, '07-role-create-preset');
     const [createRes] = await Promise.all([
       page.waitForResponse((r) => r.url().endsWith('/api/roles') && r.request().method() === 'POST'),
@@ -402,12 +398,8 @@ test.describe('RBAC: customer CRUD, custom roles, staff team and permission gati
     await expect(page.getByText(/Detalle del Pedido/i)).toBeVisible();
     await expect(page.getByText('Total a Pagar')).toBeVisible();
     await shot(page, '16-staff-order-detail-amounts');
-    test.info().annotations.push({
-      type: 'finding',
-      description: `order detail shows "Eliminar Orden" to a staff role without orders.delete: ${await page
-        .getByRole('button', { name: /Eliminar Orden/i })
-        .isVisible()}`,
-    });
+    // Without orders.delete the order detail must not offer deletion.
+    await expect(page.getByRole('button', { name: /Eliminar Orden/i })).toHaveCount(0);
     await page.getByRole('button', { name: 'Cerrar detalles' }).click();
 
     // Kanban: move a pending order to the kitchen (real PATCH)
@@ -478,13 +470,8 @@ test.describe('RBAC: customer CRUD, custom roles, staff team and permission gati
     const historyBox = history.locator('xpath=..');
     await expect(historyBox).toContainText(/\$\s?\d[\d.,]*/);
     await shot(staffPage, '22-staff-customer-history-amounts');
-    test.info().annotations.push({
-      type: 'finding',
-      description: `customers.view-only staff sees edit/delete controls in the customer modal: ${await staffPage
-        .getByRole('button', { name: /Editar datos|Eliminar cliente/ })
-        .first()
-        .isVisible()}`,
-    });
+    // Without customers.manage the modal offers no edit/delete/notes controls.
+    await expect(staffPage.getByRole('button', { name: /Editar datos|Eliminar cliente|Guardar Notas/ })).toHaveCount(0);
 
     // Server-side: the customers API redacts spend totals for this staff user
     const { token } = await apiLogin(staffPage.request, USER_CUSTOM, MID_STAFF_PASSWORD);
