@@ -1,15 +1,19 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { OrderController } from '../controllers/OrderController.js';
 import { globalOrderEventBus, registerStream, unregisterStream } from '../../events/OrderEventBus.js';
-import { requireAuth, requireStreamToken, tryAuth } from '../middleware/auth.middleware.js';
+import { requireAuth, requireAnyPermission, requirePermission, requireStreamToken, tryAuth } from '../middleware/auth.middleware.js';
 import { isOriginAllowed } from '../middleware/cors.js';
 import { updateOrderReceiptSchema, updateOrderStatusSchema } from '@burger-page/contracts';
 import { jsonSchemaFromZod, ORDER_STATUS_JSON } from '../zodSchemas.js';
 
+// Reading orders (list, detail, SSE) is granted by orders.view or orders.manage; every mutation needs orders.manage (delete: orders.delete).
+const readOrders = requireAnyPermission('orders.view', 'orders.manage');
+const manageOrders = requirePermission('orders.manage');
+
 export async function orderRoutes(fastify: FastifyInstance, opts: { controller: OrderController }) {
   // 1. List Orders (Protected - Tenant Scoped)
   fastify.get('/', {
-    preHandler: [requireAuth],
+    preHandler: [requireAuth, readOrders],
     schema: {
       tags: ['Orders'],
       summary: 'List restaurant orders',
@@ -55,7 +59,7 @@ export async function orderRoutes(fastify: FastifyInstance, opts: { controller: 
 
   // 1b. Issue a short-lived SSE-scoped token (Bearer only, never in URLs)
   fastify.post('/stream-token', {
-    preHandler: [requireAuth],
+    preHandler: [requireAuth, readOrders],
     schema: {
       tags: ['Orders'],
       summary: 'Issue short-lived token for the SSE stream',
@@ -82,7 +86,7 @@ export async function orderRoutes(fastify: FastifyInstance, opts: { controller: 
 
   // 2. Real-time SSE stream (Protected - Strictly Tenant Filtered)
   fastify.get('/stream', {
-    preHandler: [requireStreamToken],
+    preHandler: [requireStreamToken, readOrders],
     schema: {
       tags: ['Orders'],
       summary: 'Real-time SSE stream for tenant orders',
@@ -187,7 +191,7 @@ export async function orderRoutes(fastify: FastifyInstance, opts: { controller: 
 
   // 3. Get Order by ID (Protected - Tenant Scoped)
   fastify.get('/:id', {
-    preHandler: [requireAuth],
+    preHandler: [requireAuth, readOrders],
     schema: {
       tags: ['Orders'],
       summary: 'Get order details by ID',
@@ -296,7 +300,7 @@ export async function orderRoutes(fastify: FastifyInstance, opts: { controller: 
 
   // 5. Update Order Status (Protected - Tenant Scoped)
   fastify.patch('/:id/status', {
-    preHandler: [requireAuth],
+    preHandler: [requireAuth, manageOrders],
     schema: {
       tags: ['Orders'],
       summary: 'Update order status',
@@ -339,7 +343,7 @@ export async function orderRoutes(fastify: FastifyInstance, opts: { controller: 
 
   // 6. Update Order Receipt (Protected - Tenant Scoped)
   fastify.patch('/:id/receipt', {
-    preHandler: [requireAuth],
+    preHandler: [requireAuth, manageOrders],
     schema: {
       tags: ['Orders'],
       summary: 'Update order transfer receipt',
@@ -383,7 +387,7 @@ export async function orderRoutes(fastify: FastifyInstance, opts: { controller: 
 
   // 7. Delete Order (Protected - Tenant Scoped)
   fastify.delete('/:id', {
-    preHandler: [requireAuth],
+    preHandler: [requireAuth, requirePermission('orders.delete')],
     schema: {
       tags: ['Orders'],
       summary: 'Delete order permanently',
@@ -424,7 +428,7 @@ export async function orderRoutes(fastify: FastifyInstance, opts: { controller: 
 
   // 8. Update Order (Protected - Tenant Scoped)
   fastify.put('/:id', {
-    preHandler: [requireAuth],
+    preHandler: [requireAuth, manageOrders],
     schema: {
       tags: ['Orders'],
       summary: 'Update order details',

@@ -102,7 +102,10 @@ export class OrderController {
     const bodyRestaurantId = (req.body as any)?.restaurantId;
     const ctx = req.authContext;
     const isStaffForTarget = Boolean(ctx) &&
-      Boolean(ctx!.role === 'super_admin' || (ctx!.restaurantId && ctx!.restaurantId === bodyRestaurantId));
+      Boolean(
+        ctx!.role === 'super_admin' ||
+          (ctx!.restaurantId && ctx!.restaurantId === bodyRestaurantId && ctx!.permissions.includes('orders.manage'))
+      );
     const order = await this.createOrderUseCase.execute(parsed.data as CreateOrderDTO, {
       authenticated: isStaffForTarget,
     });

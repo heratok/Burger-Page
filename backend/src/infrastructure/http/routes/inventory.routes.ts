@@ -1,11 +1,11 @@
 import { FastifyInstance } from 'fastify';
 import { InventoryController } from '../controllers/InventoryController.js';
-import { requireAuth } from '../middleware/auth.middleware.js';
+import { requireAuth, requirePermission } from '../middleware/auth.middleware.js';
 
 export async function inventoryRoutes(fastify: FastifyInstance, opts: { controller: InventoryController }) {
   // 1. List Inventory (Protected - Restaurant Scoped)
   fastify.get('/', {
-    preHandler: [requireAuth],
+    preHandler: [requireAuth, requirePermission('inventory.manage')],
     schema: {
       tags: ['Inventory'],
       summary: 'List all inventory items',
@@ -45,7 +45,7 @@ export async function inventoryRoutes(fastify: FastifyInstance, opts: { controll
 
   // 2. Get Inventory Item by ID (Protected - Restaurant Scoped)
   fastify.get('/:id', {
-    preHandler: [requireAuth],
+    preHandler: [requireAuth, requirePermission('inventory.manage')],
     schema: {
       tags: ['Inventory'],
       summary: 'Get inventory item by ID',
@@ -68,7 +68,7 @@ export async function inventoryRoutes(fastify: FastifyInstance, opts: { controll
 
   // 3. Create Inventory Item (Protected - Restaurant Scoped)
   fastify.post('/', {
-    preHandler: [requireAuth],
+    preHandler: [requireAuth, requirePermission('inventory.manage')],
     schema: {
       tags: ['Inventory'],
       summary: 'Create inventory item',
@@ -92,7 +92,7 @@ export async function inventoryRoutes(fastify: FastifyInstance, opts: { controll
 
   // 4. Update Inventory Item (Protected - Restaurant Scoped)
   fastify.put('/:id', {
-    preHandler: [requireAuth],
+    preHandler: [requireAuth, requirePermission('inventory.manage')],
     schema: {
       tags: ['Inventory'],
       summary: 'Update inventory item',
@@ -115,7 +115,7 @@ export async function inventoryRoutes(fastify: FastifyInstance, opts: { controll
 
   // 5. Adjust Stock Quantity (Protected - Restaurant Scoped)
   fastify.patch('/:id/stock', {
-    preHandler: [requireAuth],
+    preHandler: [requireAuth, requirePermission('inventory.manage')],
     schema: {
       tags: ['Inventory'],
       summary: 'Update inventory stock quantity',
@@ -157,7 +157,7 @@ export async function inventoryRoutes(fastify: FastifyInstance, opts: { controll
 
   // 6. Delete Inventory Item (Protected - Restaurant Scoped)
   fastify.delete('/:id', {
-    preHandler: [requireAuth],
+    preHandler: [requireAuth, requirePermission('inventory.manage')],
     schema: {
       tags: ['Inventory'],
       summary: 'Delete inventory item',

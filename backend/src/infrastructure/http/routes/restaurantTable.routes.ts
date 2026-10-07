@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { RestaurantTableController } from '../controllers/RestaurantTableController.js';
-import { requireAuth } from '../middleware/auth.middleware.js';
+import { requireAuth, requireAnyPermission, requirePermission } from '../middleware/auth.middleware.js';
 
 const restaurantIdQuery = {
   type: 'object',
@@ -13,7 +13,7 @@ export async function restaurantTableRoutes(fastify: FastifyInstance, opts: { co
   const c = opts.controller;
 
   fastify.get('/', {
-    preHandler: [requireAuth],
+    preHandler: [requireAuth, requireAnyPermission('tables.manage', 'orders.view', 'orders.manage')],
     schema: {
       tags: ['Tables'],
       summary: 'List the restaurant tables',
@@ -23,7 +23,7 @@ export async function restaurantTableRoutes(fastify: FastifyInstance, opts: { co
   }, c.list.bind(c));
 
   fastify.post('/', {
-    preHandler: [requireAuth],
+    preHandler: [requireAuth, requirePermission('tables.manage')],
     schema: {
       tags: ['Tables'],
       summary: 'Create a table',
@@ -42,7 +42,7 @@ export async function restaurantTableRoutes(fastify: FastifyInstance, opts: { co
 
   // Registered before '/:id' so "order" is never read as a table id.
   fastify.put('/order', {
-    preHandler: [requireAuth],
+    preHandler: [requireAuth, requirePermission('tables.manage')],
     schema: {
       tags: ['Tables'],
       summary: 'Reorder tables',
@@ -59,7 +59,7 @@ export async function restaurantTableRoutes(fastify: FastifyInstance, opts: { co
   }, c.reorder.bind(c));
 
   fastify.put('/:id', {
-    preHandler: [requireAuth],
+    preHandler: [requireAuth, requirePermission('tables.manage')],
     schema: {
       tags: ['Tables'],
       summary: 'Update a table',
@@ -77,7 +77,7 @@ export async function restaurantTableRoutes(fastify: FastifyInstance, opts: { co
   }, c.update.bind(c));
 
   fastify.delete('/:id', {
-    preHandler: [requireAuth],
+    preHandler: [requireAuth, requirePermission('tables.manage')],
     schema: {
       tags: ['Tables'],
       summary: 'Delete a table',

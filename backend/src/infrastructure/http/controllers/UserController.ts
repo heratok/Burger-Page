@@ -45,6 +45,11 @@ export class UserController {
     }
   }
 
+  async me(request: FastifyRequest, reply: FastifyReply) {
+    const { userId, username, role, restaurantId, roleId, permissions } = request.authContext!;
+    return reply.send({ id: userId, username, role, restaurantId, roleId, permissions });
+  }
+
   async list(
     request: FastifyRequest,
     reply: FastifyReply

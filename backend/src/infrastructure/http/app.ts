@@ -175,6 +175,8 @@ export interface AppDependencies {
    *  middlewares by buildApp so sessions are re-checked against storage. */
   userRepo: UserRepository;
   restaurantRepo: RestaurantRepository;
+  /** Roles are re-read on every authenticated request to resolve staff permissions. */
+  roleRepo: RoleRepository;
   /** Exposed so wiring tests/observability can verify the repository the
    *  selected storage driver instantiates (S5: supabase == postgres == Pg). */
   orderRepo: OrderRepository;
@@ -336,7 +338,7 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
   const deleteRole = new DeleteRoleUseCase(roleRepo, userRepo, audit);
 
   const createUser = new CreateUserUseCase(userRepo, hasher, restaurantRepo, audit);
-  const authenticateUser = new AuthenticateUserUseCase(userRepo, hasher, undefined, restaurantRepo);
+  const authenticateUser = new AuthenticateUserUseCase(userRepo, hasher, undefined, restaurantRepo, roleRepo);
   const listUsersUC = new ListUsersUseCase(userRepo);
 
   const listAdditions = new ListProductAdditionsUseCase(additionRepo);
@@ -430,6 +432,7 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
     ),
     userRepo,
     restaurantRepo,
+    roleRepo,
     orderRepo,
   };
 }
@@ -536,7 +539,7 @@ export function buildApp(
   // reject; the revalidation contract itself is covered by
   // tests/integration/JwtRevalidation.test.ts against focused fakes.
   if (!isTest) {
-    configureAuthMiddlewares({ userRepo: deps.userRepo, restaurantRepo: deps.restaurantRepo });
+    configureAuthMiddlewares({ userRepo: deps.userRepo, restaurantRepo: deps.restaurantRepo, roleRepo: deps.roleRepo });
   }
 
   const allowedOrigins = getAllowedOrigins();

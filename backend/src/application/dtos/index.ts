@@ -130,6 +130,10 @@ export interface AuthResult {
     username: string;
     role: UserRole;
     restaurantId?: string;
+    /** Custom role of a restaurant_staff user. */
+    roleId?: string;
+    /** Effective permissions (whole catalog for administrators; the stored role's for staff). */
+    permissions: string[];
     /** True while the account must change its temporary password before using the API. */
     mustChangePassword?: boolean;
   };
