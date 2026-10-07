@@ -200,6 +200,7 @@ export class PgUserRepository implements UserRepository {
         if (changes.username !== undefined) set('username', changes.username);
         if (changes.role !== undefined) set('role', changes.role);
         if (changes.restaurantId !== undefined) set('restaurant_id', changes.restaurantId);
+        if (changes.roleId !== undefined) set('role_id', changes.roleId);
         if (changes.isActive !== undefined) set('is_active', changes.isActive);
         if (sets.length > 0) {
           await client.query(`UPDATE public.users SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $1`, values);

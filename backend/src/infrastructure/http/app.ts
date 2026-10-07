@@ -337,7 +337,7 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
   const updateRole = new UpdateRoleUseCase(roleRepo, audit);
   const deleteRole = new DeleteRoleUseCase(roleRepo, userRepo, audit);
 
-  const createUser = new CreateUserUseCase(userRepo, hasher, restaurantRepo, audit);
+  const createUser = new CreateUserUseCase(userRepo, hasher, restaurantRepo, audit, roleRepo);
   const authenticateUser = new AuthenticateUserUseCase(userRepo, hasher, undefined, restaurantRepo, roleRepo);
   const listUsersUC = new ListUsersUseCase(userRepo);
 
@@ -415,9 +415,9 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
       createUser,
       authenticateUser,
       listUsersUC,
-      new UpdateUserUseCase(userRepo, restaurantRepo, audit),
-      new DeleteUserUseCase(userRepo, audit),
-      new ResetUserPasswordUseCase(userRepo, hasher, undefined, audit),
+      new UpdateUserUseCase(userRepo, restaurantRepo, audit, roleRepo),
+      new DeleteUserUseCase(userRepo, audit, roleRepo),
+      new ResetUserPasswordUseCase(userRepo, hasher, undefined, audit, roleRepo),
       new ChangeOwnPasswordUseCase(userRepo, hasher)
     ),
     auditLogController: new AuditLogController(new ListAuditLogUseCase(auditRepo)),

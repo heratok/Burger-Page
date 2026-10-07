@@ -118,8 +118,10 @@ export interface UpdateInventoryStockDTO {
 export interface CreateUserDTO {
   username: string;
   password: string;
-  role: 'super_admin' | 'restaurant_admin';
+  role: 'super_admin' | 'restaurant_admin' | 'restaurant_staff';
   restaurantId?: string;
+  /** Required for restaurant_staff: a role (roles.id) of the same restaurant. */
+  roleId?: string;
 }
 
 export interface AuthResult {

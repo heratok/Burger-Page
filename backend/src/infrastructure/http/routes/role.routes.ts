@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { RoleController } from '../controllers/RoleController.js';
-import { requireAnyAdmin } from '../middleware/auth.middleware.js';
+import { requireAuth, requirePermission } from '../middleware/auth.middleware.js';
 
 const restaurantIdQuery = {
   type: 'object',
@@ -15,13 +15,15 @@ const permissionsSchema = {
   description: 'Permissions from the catalog in @burger-page/contracts (e.g. orders.view).',
 };
 
-// Administrators only (restaurant_admin of the tenant, or super_admin with a
-// restaurantId override). Staff users are rejected by requireAnyAdmin.
+// Requires roles.manage: restaurant_admin of the tenant and super_admin (with a
+// restaurantId override) always hold it; staff only when their role grants it,
+// and then they can never grant more than they hold nor edit their own role
+// (checked in RoleController).
 export async function roleRoutes(fastify: FastifyInstance, opts: { controller: RoleController }) {
   const c = opts.controller;
 
   fastify.get('/', {
-    preHandler: [requireAnyAdmin],
+    preHandler: [requireAuth, requirePermission('roles.manage')],
     schema: {
       tags: ['Roles'],
       summary: 'List the restaurant roles',
@@ -31,7 +33,7 @@ export async function roleRoutes(fastify: FastifyInstance, opts: { controller: R
   }, c.list.bind(c));
 
   fastify.post('/', {
-    preHandler: [requireAnyAdmin],
+    preHandler: [requireAuth, requirePermission('roles.manage')],
     schema: {
       tags: ['Roles'],
       summary: 'Create a role',
@@ -50,7 +52,7 @@ export async function roleRoutes(fastify: FastifyInstance, opts: { controller: R
   }, c.create.bind(c));
 
   fastify.put('/:id', {
-    preHandler: [requireAnyAdmin],
+    preHandler: [requireAuth, requirePermission('roles.manage')],
     schema: {
       tags: ['Roles'],
       summary: 'Update a role',
@@ -70,7 +72,7 @@ export async function roleRoutes(fastify: FastifyInstance, opts: { controller: R
   }, c.update.bind(c));
 
   fastify.delete('/:id', {
-    preHandler: [requireAnyAdmin],
+    preHandler: [requireAuth, requirePermission('roles.manage')],
     schema: {
       tags: ['Roles'],
       summary: 'Delete a role',
