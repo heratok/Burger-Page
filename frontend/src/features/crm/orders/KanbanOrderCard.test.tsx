@@ -254,4 +254,18 @@ describe("KanbanOrderCard", () => {
     expect(screen.queryByRole("button", { name: /A Cocina/i })).toBeNull()
     expect(screen.queryByTitle("Editar venta")).toBeNull()
   })
+
+  it("hides ticket print button when user lacks orders.view and orders.manage", () => {
+    mockCan.mockImplementation((p) => p === "finance.view")
+    render(
+      <KanbanOrderCard
+        order={mockOrder}
+        onViewDetails={vi.fn()}
+        onUpdateStatus={vi.fn()}
+        onWhatsApp={vi.fn()}
+        onPrintOrder={vi.fn()}
+      />
+    )
+    expect(screen.queryByRole("button", { name: /Imprimir ticket \/ comanda/i })).toBeNull()
+  })
 })

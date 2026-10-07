@@ -264,4 +264,63 @@ describe("LiveOrderCard", () => {
     )
     expect(screen.queryByRole("button", { name: /Reabrir Orden/i })).toBeNull()
   })
+
+  it("renders quick printer button and calls onPrintOrder when clicked", () => {
+    const onPrintOrder = vi.fn()
+    render(
+      <LiveOrderCard
+        order={mockOrder}
+        onViewDetails={vi.fn()}
+        onUpdateStatus={vi.fn()}
+        onWhatsApp={vi.fn()}
+        onPrintOrder={onPrintOrder}
+      />
+    )
+
+    const printBtn = screen.getByRole("button", { name: /Imprimir ticket \/ comanda/i })
+    expect(printBtn).toBeDefined()
+    fireEvent.click(printBtn)
+    expect(onPrintOrder).toHaveBeenCalledWith(mockOrder)
+  })
+
+  it("allows read-only user with orders.view to see and click print button while hiding mutation buttons", () => {
+    mockCan.mockImplementation((p) => p === "orders.view")
+    const onPrintOrder = vi.fn()
+    const onEditOrder = vi.fn()
+    const onUpdateStatus = vi.fn()
+
+    render(
+      <LiveOrderCard
+        order={mockOrder}
+        onViewDetails={vi.fn()}
+        onUpdateStatus={onUpdateStatus}
+        onWhatsApp={vi.fn()}
+        onEditOrder={onEditOrder}
+        onPrintOrder={onPrintOrder}
+      />
+    )
+
+    const printBtn = screen.getByRole("button", { name: /Imprimir ticket \/ comanda/i })
+    expect(printBtn).toBeDefined()
+    fireEvent.click(printBtn)
+    expect(onPrintOrder).toHaveBeenCalledWith(mockOrder)
+
+    expect(screen.queryByRole("button", { name: /Completar \(1 Clic\)/i })).toBeNull()
+    expect(screen.queryByTitle("Mover a cocina")).toBeNull()
+    expect(screen.queryByTitle("Editar venta")).toBeNull()
+  })
+
+  it("hides ticket print button when user lacks orders.view and orders.manage", () => {
+    mockCan.mockImplementation((p) => p === "finance.view")
+    render(
+      <LiveOrderCard
+        order={mockOrder}
+        onViewDetails={vi.fn()}
+        onUpdateStatus={vi.fn()}
+        onWhatsApp={vi.fn()}
+        onPrintOrder={vi.fn()}
+      />
+    )
+    expect(screen.queryByRole("button", { name: /Imprimir ticket \/ comanda/i })).toBeNull()
+  })
 })

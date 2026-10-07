@@ -401,4 +401,20 @@ describe("OrderDetailModal", () => {
     expect(screen.queryByRole("button", { name: /Eliminar Orden/i })).toBeNull()
     expect(screen.queryByText(/Cambiar estado de orden:/i)).toBeNull()
   })
+
+  it("hides ticket print button when user lacks orders.view and orders.manage", () => {
+    mockCan.mockImplementation((p) => p === "finance.view")
+    render(
+      <OrderDetailModal
+        order={mockOrder}
+        isOpen={true}
+        onClose={vi.fn()}
+        onUpdateStatus={vi.fn()}
+        onDeleteOrder={vi.fn()}
+        onWhatsApp={vi.fn()}
+        onPrintOrder={vi.fn()}
+      />
+    )
+    expect(screen.queryByRole("button", { name: /Imprimir.*ticket/i })).toBeNull()
+  })
 })
