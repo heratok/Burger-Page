@@ -1,4 +1,5 @@
 import pg from 'pg';
+import type { UserRole } from '../../../domain/models/User.js';
 
 const { Pool } = pg;
 
@@ -99,7 +100,7 @@ export interface TenantContext {
    * policies expose just the active restaurant with this slug.
    */
   restaurantSlug?: string;
-  actorRole?: 'super_admin' | 'restaurant_admin';
+  actorRole?: UserRole;
   actor?: string;
 }
 

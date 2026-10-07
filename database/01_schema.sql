@@ -226,27 +226,67 @@ COMMENT ON COLUMN public.restaurant_tables.name IS 'Nombre visible (p. ej. "Mesa
 COMMENT ON COLUMN public.restaurant_tables.sort_order IS 'Posición en la lista y en el selector de venta (menor primero).';
 COMMENT ON COLUMN public.restaurant_tables.is_active IS 'false oculta la mesa del selector de venta sin borrar su historial.';
 
+-- 2.1b ROLES (custom per-restaurant roles for staff users) ---------------------
+-- A role is a named set of permissions chosen by the restaurant admin. The
+-- permission catalog lives in code (packages/contracts); the application
+-- validates every entry, so extending the catalog needs no migration.
+CREATE TABLE IF NOT EXISTS public.roles (
+    id            TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    restaurant_id TEXT NOT NULL REFERENCES public.restaurants(id) ON DELETE CASCADE,
+    name          TEXT NOT NULL,
+    description   TEXT,
+    permissions   TEXT[] NOT NULL DEFAULT '{}',
+    is_system     BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT chk_roles_id_format
+        CHECK (id ~ '^[A-Za-z0-9_-]{1,64}$'),
+    CONSTRAINT chk_roles_name
+        CHECK (char_length(btrim(name)) BETWEEN 1 AND 40),
+    CONSTRAINT chk_roles_permissions_no_nulls
+        CHECK (array_position(permissions, NULL) IS NULL),
+    CONSTRAINT uq_roles_id_restaurant
+        UNIQUE (id, restaurant_id)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_roles_name
+    ON public.roles (restaurant_id, lower(btrim(name)));
+
+COMMENT ON TABLE public.roles IS 'Roles personalizados de un restaurante: conjunto de permisos (catálogo en código) que el admin asigna a usuarios restaurant_staff. Se borra en cascada con el restaurante; un rol en uso no se puede borrar.';
+COMMENT ON COLUMN public.roles.name IS 'Nombre visible; único por restaurante sin distinguir mayúsculas.';
+COMMENT ON COLUMN public.roles.permissions IS 'Permisos concedidos (p. ej. orders.view). El catálogo se valida en la aplicación.';
+COMMENT ON COLUMN public.roles.is_system IS 'true = rol creado por el sistema; no editable ni borrable desde el panel.';
+
 -- 2.2 USERS (Authentication & Role-Based Access Control) -----------------------
 CREATE TABLE IF NOT EXISTS public.users (
     id            TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
     username      TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
-    role          TEXT NOT NULL
-                    CHECK (role IN ('super_admin', 'restaurant_admin')),
+    role          TEXT NOT NULL,
     restaurant_id TEXT REFERENCES public.restaurants(id) ON DELETE CASCADE,
     is_active     BOOLEAN NOT NULL DEFAULT TRUE,
     must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
     password_changed_at TIMESTAMPTZ,
     retired_was_active BOOLEAN,
+    role_id       TEXT,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT chk_users_role
+        CHECK (role IN ('super_admin', 'restaurant_admin', 'restaurant_staff')),
     CONSTRAINT chk_restaurant_admin_has_restaurant
-        CHECK (role != 'restaurant_admin' OR restaurant_id IS NOT NULL),
+        CHECK (role NOT IN ('restaurant_admin', 'restaurant_staff') OR restaurant_id IS NOT NULL),
+    CONSTRAINT chk_users_role_id_matches_role
+        CHECK ((role = 'restaurant_staff') = (role_id IS NOT NULL)),
     CONSTRAINT chk_users_id_format
-        CHECK (id ~ '^[A-Za-z0-9_-]{1,64}$')
+        CHECK (id ~ '^[A-Za-z0-9_-]{1,64}$'),
+    CONSTRAINT fk_users_role_tenant
+        FOREIGN KEY (role_id, restaurant_id)
+        REFERENCES public.roles(id, restaurant_id)
+        ON DELETE NO ACTION
 );
 
-COMMENT ON TABLE public.users IS 'Empleados/administradores. rol super_admin es de plataforma (restaurant_id NULL).';
+COMMENT ON TABLE public.users IS 'Empleados/administradores. rol super_admin es de plataforma (restaurant_id NULL); restaurant_staff exige role_id.';
+COMMENT ON COLUMN public.users.role_id IS 'Rol personalizado (roles) de un usuario restaurant_staff; NULL para super_admin y restaurant_admin. El rol debe ser del mismo restaurante y no se puede borrar mientras haya usuarios que lo usen.';
 COMMENT ON COLUMN public.users.password_hash IS 'Hash con salt del credencial de acceso. Nunca se devuelve al frontend.';
 COMMENT ON COLUMN public.users.must_change_password IS 'true tras un reseteo de contraseña por el super admin: el usuario solo puede cambiar su propia contraseña hasta hacerlo.';
 COMMENT ON COLUMN public.users.password_changed_at IS 'Instante del último cambio/reseteo de contraseña. Los tokens emitidos antes (iat) se rechazan. NULL = nunca cambiada.';
@@ -593,7 +633,7 @@ CREATE TABLE IF NOT EXISTS public.admin_audit_log (
     CONSTRAINT chk_admin_audit_log_action
         CHECK (char_length(action) BETWEEN 1 AND 64),
     CONSTRAINT chk_admin_audit_log_target_type
-        CHECK (target_type IN ('restaurant', 'user')),
+        CHECK (target_type IN ('restaurant', 'user', 'role')),
     CONSTRAINT chk_admin_audit_log_details_object
         CHECK (jsonb_typeof(details) = 'object')
 );
@@ -649,6 +689,11 @@ CREATE TRIGGER trg_product_additions_updated_at
 DROP TRIGGER IF EXISTS trg_customers_updated_at ON public.customers;
 CREATE TRIGGER trg_customers_updated_at
     BEFORE UPDATE ON public.customers
+    FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+DROP TRIGGER IF EXISTS trg_roles_updated_at ON public.roles;
+CREATE TRIGGER trg_roles_updated_at
+    BEFORE UPDATE ON public.roles
     FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
 DROP TRIGGER IF EXISTS trg_restaurant_tables_updated_at ON public.restaurant_tables;
@@ -1252,6 +1297,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.restaurant_settings TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.restaurant_branding TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.restaurant_opening_hours TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.restaurant_tables TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.roles TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.categories TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.products TO app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.product_additions TO app_user;
@@ -1349,6 +1395,8 @@ ALTER TABLE public.restaurant_opening_hours  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.restaurant_opening_hours  FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.restaurant_tables         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.restaurant_tables         FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.roles                     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.roles                     FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.categories                ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.categories                FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.products                  ENABLE ROW LEVEL SECURITY;
@@ -1621,6 +1669,13 @@ DROP POLICY IF EXISTS "public_read_available_additions" ON public.product_additi
                         MESSAGE = 'Only super_admin may change a user''s role or restaurant';
                 END IF;
             END IF;
+            -- Staff may never reassign roles (their own included): only an
+            -- admin session may change which custom role a user holds.
+            IF NEW.role_id IS DISTINCT FROM OLD.role_id
+               AND (SELECT NULLIF(current_setting('app.actor_role'::text, true), '')) = 'restaurant_staff'::text THEN
+                RAISE EXCEPTION USING ERRCODE = '42501',
+                    MESSAGE = 'Staff users may not change a user''s custom role';
+            END IF;
             RETURN NEW;
         END;
         $$;
@@ -1669,6 +1724,13 @@ CREATE POLICY "tenant_isolation_restaurant_opening_hours" ON public.restaurant_o
 -- Restaurant Tables isolation (staff only: no public read)
 DROP POLICY IF EXISTS "tenant_isolation_restaurant_tables" ON public.restaurant_tables;
 CREATE POLICY "tenant_isolation_restaurant_tables" ON public.restaurant_tables
+    FOR ALL
+    USING ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()))
+    WITH CHECK ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()));
+
+-- Roles isolation
+DROP POLICY IF EXISTS "tenant_isolation_roles" ON public.roles;
+CREATE POLICY "tenant_isolation_roles" ON public.roles
     FOR ALL
     USING ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()))
     WITH CHECK ((restaurant_id = (SELECT public.app_current_restaurant_id())) OR (SELECT public.app_is_super_admin()));
