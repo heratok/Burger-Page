@@ -8,6 +8,7 @@ import {
   FileText,
   Pencil,
   Trash2,
+  UserPlus,
 } from "lucide-react"
 import { LoyaltyBadge } from "@/components/ui/status-badge"
 import { Button } from "@/components/ui/button"
@@ -19,9 +20,10 @@ import { buildWhatsAppUrl } from "@/features/cart"
 import { formatCurrency, cleanPhoneNumber, formatWhatsAppPhone } from "@/lib/utils"
 
 const EMPTY_DRAFT = { nombre: "", telefono: "", direccion: "", barrio: "", email: "" }
+const EMPTY_CREATE_DRAFT = { nombre: "", telefono: "", direccion: "", barrio: "", email: "", notes: "" }
 
 export const CustomerCRM: React.FC = () => {
-  const { customers, orders, updateCustomer, deleteCustomer, storeConfig, adminTheme, isLoadingOrders, can } = useRestaurant()
+  const { customers, orders, createCustomer, updateCustomer, deleteCustomer, storeConfig, adminTheme, isLoadingOrders, can } = useRestaurant()
   const canManageCustomers = can ? can("customers.manage") : false
 
   const [searchTerm, setSearchTerm] = useState("")
@@ -35,6 +37,11 @@ export const CustomerCRM: React.FC = () => {
   const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
+
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [createDraft, setCreateDraft] = useState(EMPTY_CREATE_DRAFT)
+  const [createErrors, setCreateErrors] = useState<{ nombre?: string; telefono?: string }>({})
+  const [isSubmittingCreate, setIsSubmittingCreate] = useState(false)
 
   const isDark = adminTheme === "dark"
 
@@ -95,6 +102,56 @@ export const CustomerCRM: React.FC = () => {
   const closeCustomerModal = () => {
     setSelectedCustomer(null)
     setIsEditing(false)
+  }
+
+  const existingCustomerWithPhone = useMemo(() => {
+    const cleanDraftPhone = cleanPhoneNumber(createDraft.telefono)
+    if (!cleanDraftPhone) return null
+    return customers.find((c) => cleanPhoneNumber(c.telefono) === cleanDraftPhone) ?? null
+  }, [customers, createDraft.telefono])
+
+  const closeCreateModal = () => {
+    setIsCreateModalOpen(false)
+    setCreateDraft(EMPTY_CREATE_DRAFT)
+    setCreateErrors({})
+    setIsSubmittingCreate(false)
+  }
+
+  const handleCreateCustomer = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    const trimmedName = createDraft.nombre.trim()
+    const trimmedPhone = createDraft.telefono.trim()
+
+    const errors: { nombre?: string; telefono?: string } = {}
+    if (!trimmedName) {
+      errors.nombre = "El nombre es obligatorio"
+    }
+    if (!trimmedPhone) {
+      errors.telefono = "El teléfono es obligatorio"
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setCreateErrors(errors)
+      return
+    }
+
+    setIsSubmittingCreate(true)
+    try {
+      const res = await createCustomer({
+        name: trimmedName,
+        phone: trimmedPhone,
+        address: createDraft.direccion.trim() || undefined,
+        barrio: createDraft.barrio.trim() || undefined,
+        email: createDraft.email.trim() || undefined,
+        notes: createDraft.notes.trim() || undefined,
+      })
+
+      if (res) {
+        closeCreateModal()
+      }
+    } finally {
+      setIsSubmittingCreate(false)
+    }
   }
 
   const handleSaveDetails = async () => {
@@ -242,23 +299,36 @@ export const CustomerCRM: React.FC = () => {
           />
         </div>
 
-        <div className="w-full sm:w-48">
-          <Select
-            size="md"
-            value={tierFilter}
-            onChange={(e) => {
-              setTierFilter(e.target.value)
-              setCurrentPage(1)
-            }}
-            aria-label="Filtrar por nivel de fidelidad"
-            options={[
-              { value: "ALL", label: "Todos los niveles" },
-              { value: "vip", label: "👑 VIP" },
-              { value: "gold", label: "🥇 Oro" },
-              { value: "silver", label: "🥈 Plata" },
-              { value: "bronze", label: "🥉 Bronce" },
-            ]}
-          />
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+          <div className="w-full sm:w-48">
+            <Select
+              size="md"
+              value={tierFilter}
+              onChange={(e) => {
+                setTierFilter(e.target.value)
+                setCurrentPage(1)
+              }}
+              aria-label="Filtrar por nivel de fidelidad"
+              options={[
+                { value: "ALL", label: "Todos los niveles" },
+                { value: "vip", label: "👑 VIP" },
+                { value: "gold", label: "🥇 Oro" },
+                { value: "silver", label: "🥈 Plata" },
+                { value: "bronze", label: "🥉 Bronce" },
+              ]}
+            />
+          </div>
+
+          {canManageCustomers && (
+            <Button
+              size="default"
+              onClick={() => setIsCreateModalOpen(true)}
+              className="w-full sm:w-auto flex items-center justify-center gap-1.5 bg-indigo-600 text-white font-semibold hover:bg-indigo-700"
+            >
+              <UserPlus className="size-4" />
+              <span>+ Nuevo cliente</span>
+            </Button>
+          )}
         </div>
       </div>
 
@@ -556,6 +626,160 @@ export const CustomerCRM: React.FC = () => {
                 ))}
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Customer Modal */}
+      {isCreateModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 backdrop-blur-xs">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="create-customer-title"
+            className={`w-full max-w-lg rounded-2xl border p-6 shadow-2xl transition-all ${
+              isDark ? "border-slate-800 bg-slate-900 text-slate-100" : "border-slate-200 bg-white text-slate-900"
+            }`}
+          >
+            <div className="flex items-start justify-between border-b pb-4 border-slate-100 dark:border-slate-800">
+              <div>
+                <h3 id="create-customer-title" className="text-base font-black text-slate-900 dark:text-white">
+                  Nuevo Cliente
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Registra los datos del cliente para su historial y fidelización
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeCreateModal}
+                aria-label="Cerrar modal"
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateCustomer} className="mt-4 space-y-3 text-xs">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <label className="flex flex-col gap-1 font-bold text-slate-800 dark:text-slate-200">
+                  <span>Nombre *</span>
+                  <input
+                    type="text"
+                    maxLength={120}
+                    value={createDraft.nombre}
+                    onChange={(e) => {
+                      setCreateDraft((prev) => ({ ...prev, nombre: e.target.value }))
+                      if (createErrors.nombre) setCreateErrors((prev) => ({ ...prev, nombre: undefined }))
+                    }}
+                    placeholder="Ej. Juan Pérez"
+                    className={`rounded-xl border p-2 font-normal text-slate-900 dark:bg-slate-800 dark:text-white ${
+                      createErrors.nombre
+                        ? "border-rose-500 focus:ring-rose-500"
+                        : "border-slate-200 dark:border-slate-700"
+                    }`}
+                  />
+                  {createErrors.nombre && (
+                    <span className="text-[11px] font-medium text-rose-500">{createErrors.nombre}</span>
+                  )}
+                </label>
+
+                <label className="flex flex-col gap-1 font-bold text-slate-800 dark:text-slate-200">
+                  <span>Teléfono *</span>
+                  <input
+                    type="text"
+                    maxLength={20}
+                    value={createDraft.telefono}
+                    onChange={(e) => {
+                      setCreateDraft((prev) => ({ ...prev, telefono: e.target.value }))
+                      if (createErrors.telefono) setCreateErrors((prev) => ({ ...prev, telefono: undefined }))
+                    }}
+                    placeholder="Ej. 3001234567"
+                    className={`rounded-xl border p-2 font-normal text-slate-900 dark:bg-slate-800 dark:text-white ${
+                      createErrors.telefono
+                        ? "border-rose-500 focus:ring-rose-500"
+                        : "border-slate-200 dark:border-slate-700"
+                    }`}
+                  />
+                  {createErrors.telefono && (
+                    <span className="text-[11px] font-medium text-rose-500">{createErrors.telefono}</span>
+                  )}
+                  {existingCustomerWithPhone && (
+                    <span className="text-[11px] font-medium text-amber-500">
+                      Este teléfono ya está registrado ({existingCustomerWithPhone.nombre}; se actualizarán sus datos)
+                    </span>
+                  )}
+                </label>
+
+                <label className="flex flex-col gap-1 font-bold text-slate-800 dark:text-slate-200">
+                  <span>Dirección</span>
+                  <input
+                    type="text"
+                    maxLength={120}
+                    value={createDraft.direccion}
+                    onChange={(e) => setCreateDraft((prev) => ({ ...prev, direccion: e.target.value }))}
+                    placeholder="Ej. Carrera 10 # 20-30"
+                    className="rounded-xl border border-slate-200 p-2 font-normal text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  />
+                </label>
+
+                <label className="flex flex-col gap-1 font-bold text-slate-800 dark:text-slate-200">
+                  <span>Barrio</span>
+                  <input
+                    type="text"
+                    maxLength={80}
+                    value={createDraft.barrio}
+                    onChange={(e) => setCreateDraft((prev) => ({ ...prev, barrio: e.target.value }))}
+                    placeholder="Ej. Poblado"
+                    className="rounded-xl border border-slate-200 p-2 font-normal text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  />
+                </label>
+
+                <label className="flex flex-col gap-1 font-bold text-slate-800 dark:text-slate-200 sm:col-span-2">
+                  <span>Correo / Email</span>
+                  <input
+                    type="email"
+                    maxLength={120}
+                    value={createDraft.email}
+                    onChange={(e) => setCreateDraft((prev) => ({ ...prev, email: e.target.value }))}
+                    placeholder="Ej. cliente@ejemplo.com"
+                    className="rounded-xl border border-slate-200 p-2 font-normal text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  />
+                </label>
+
+                <label className="flex flex-col gap-1 font-bold text-slate-800 dark:text-slate-200 sm:col-span-2">
+                  <span>Notas</span>
+                  <textarea
+                    rows={2}
+                    maxLength={300}
+                    value={createDraft.notes}
+                    onChange={(e) => setCreateDraft((prev) => ({ ...prev, notes: e.target.value }))}
+                    placeholder="Preferencias, alergias, o instrucciones especiales..."
+                    className="rounded-xl border border-slate-200 p-2 font-normal text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  />
+                </label>
+              </div>
+
+              <div className="flex justify-end gap-2 border-t pt-4 border-slate-100 dark:border-slate-800">
+                <Button
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                  onClick={closeCreateModal}
+                  disabled={isSubmittingCreate}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  size="sm"
+                  type="submit"
+                  disabled={isSubmittingCreate}
+                  className="bg-indigo-600 text-white font-semibold hover:bg-indigo-700"
+                >
+                  {isSubmittingCreate ? "Guardando..." : "Registrar cliente"}
+                </Button>
+              </div>
+            </form>
           </div>
         </div>
       )}

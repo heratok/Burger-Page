@@ -22,6 +22,7 @@ const ROLE_TEMP = `Temporal QA ${RUN}`;
 const USER_KITCHEN = `cocina_qa_${RUN}`;
 const USER_CUSTOM = `atencion_qa_${RUN}`;
 
+const CUSTOMER_CREATE = `Cliente Crear ${RUN}`;
 const CUSTOMER_EDIT = `Cliente Editar ${RUN}`;
 const CUSTOMER_EDITED = `Cliente Editado ${RUN}`;
 const CUSTOMER_DELETE = `Cliente Borrar ${RUN}`;
@@ -144,16 +145,40 @@ test.describe('RBAC: customer CRUD, custom roles, staff team and permission gati
     }
   });
 
-  test('1. admin edits and deletes a customer; changes persist after reload', async ({ page }) => {
+  test('1. admin creates, edits and deletes a customer; changes persist after reload', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await uiLogin(page, TEST_RESTAURANT.username, TEST_RESTAURANT.password);
     await gotoTab(page, NAV_LABELS.customers);
 
     const search = page.getByPlaceholder(/Buscar por nombre, teléfono o barrio/i);
     await expect(search).toBeVisible({ timeout: 15000 });
+
+    // Create a new customer
+    await page.getByRole('button', { name: /Nuevo cliente/i }).click();
+    const createPhone = phone(5);
+    await page.getByLabel(/Nombre \*/i).fill(CUSTOMER_CREATE);
+    await page.getByLabel(/Teléfono \*/i).fill(createPhone);
+    await page.getByLabel('Dirección', { exact: true }).fill('Calle Creada # 10-20');
+    await page.getByLabel('Barrio', { exact: true }).fill('Centro');
+    await page.getByLabel(/Correo|Email/i).fill('creado@test.com');
+    await page.getByLabel(/Notas/i).fill('Cliente creado en e2e');
+    await shot(page, '01-customer-create-modal');
+
+    const [postRes] = await Promise.all([
+      page.waitForResponse((r) => r.url().includes('/api/customers') && r.request().method() === 'POST'),
+      page.getByRole('button', { name: /Registrar cliente/i }).click(),
+    ]);
+    expect(postRes.status()).toBe(201);
+
+    await search.fill(CUSTOMER_CREATE);
+    const createdRow = page.locator('tbody tr').filter({ hasText: CUSTOMER_CREATE });
+    await expect(createdRow).toBeVisible();
+    await expect(createdRow).toContainText(createPhone);
+    await shot(page, '02-customer-created-in-list');
+
     await search.fill(`Cliente Editar ${RUN}`);
     await expect(page.locator('tbody tr').filter({ hasText: CUSTOMER_EDIT })).toBeVisible();
-    await shot(page, '01-customers-before-edit');
+    await shot(page, '03-customers-before-edit');
 
     // Edit name / phone / address
     await page.getByRole('button', { name: `Editar ${CUSTOMER_EDIT}` }).click();
@@ -161,7 +186,7 @@ test.describe('RBAC: customer CRUD, custom roles, staff team and permission gati
     await page.getByLabel('Nombre', { exact: true }).fill(CUSTOMER_EDITED);
     await page.getByLabel('Teléfono', { exact: true }).fill(newPhone);
     await page.getByLabel('Dirección', { exact: true }).fill('Avenida Nueva # 99-11');
-    await shot(page, '02-customer-edit-modal');
+    await shot(page, '04-customer-edit-modal');
     const [putRes] = await Promise.all([
       page.waitForResponse((r) => r.url().includes('/api/customers/') && r.request().method() === 'PUT'),
       page.getByRole('button', { name: 'Guardar cambios' }).click(),
@@ -174,7 +199,7 @@ test.describe('RBAC: customer CRUD, custom roles, staff team and permission gati
     await expect(editedRow).toBeVisible();
     await expect(editedRow).toContainText(newPhone);
     await expect(editedRow).toContainText('Avenida Nueva # 99-11');
-    await shot(page, '03-customer-edited-in-list');
+    await shot(page, '05-customer-edited-in-list');
 
     // Delete the other customer through the confirm dialog
     await search.fill(`Cliente Borrar ${RUN}`);
@@ -182,7 +207,7 @@ test.describe('RBAC: customer CRUD, custom roles, staff team and permission gati
     await page.getByRole('button', { name: `Eliminar ${CUSTOMER_DELETE}` }).click();
     const dialog = page.getByRole('dialog').filter({ hasText: /¿Eliminar cliente\?/i });
     await expect(dialog).toBeVisible();
-    await shot(page, '04-customer-delete-confirm');
+    await shot(page, '06-customer-delete-confirm');
     const [delRes] = await Promise.all([
       page.waitForResponse((r) => r.url().includes('/api/customers/') && r.request().method() === 'DELETE'),
       dialog.getByRole('button', { name: 'Eliminar definitivamente' }).click(),
@@ -194,6 +219,10 @@ test.describe('RBAC: customer CRUD, custom roles, staff team and permission gati
     await page.reload();
     await gotoTab(page, NAV_LABELS.customers);
     await expect(search).toBeVisible({ timeout: 15000 });
+    await search.fill(CUSTOMER_CREATE);
+    const reloadedCreatedRow = page.locator('tbody tr').filter({ hasText: CUSTOMER_CREATE });
+    await expect(reloadedCreatedRow).toBeVisible();
+    await expect(reloadedCreatedRow).toContainText(createPhone);
     await search.fill(`Cliente Editado ${RUN}`);
     const reloadedRow = page.locator('tbody tr').filter({ hasText: CUSTOMER_EDITED });
     await expect(reloadedRow).toBeVisible();
@@ -201,7 +230,7 @@ test.describe('RBAC: customer CRUD, custom roles, staff team and permission gati
     await expect(reloadedRow).toContainText('Avenida Nueva # 99-11');
     await search.fill(`Cliente Borrar ${RUN}`);
     await expect(page.locator('tbody tr').filter({ hasText: CUSTOMER_DELETE })).toHaveCount(0);
-    await shot(page, '05-customers-persisted-after-reload');
+    await shot(page, '07-customers-persisted-after-reload');
   });
 
   test('2. admin creates roles (preset + custom), edits one and deletes an unused one', async ({ page }) => {

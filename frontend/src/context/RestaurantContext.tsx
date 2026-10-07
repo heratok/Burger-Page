@@ -21,6 +21,7 @@ import { CatalogProvider, useCatalog } from "./slices/CatalogContext"
 import { OrderProvider, useOrders, type PlacedOrder } from "./slices/OrderContext"
 import { InventoryProvider, useInventory } from "./slices/InventoryContext"
 import type { InventoryItem, Supplier } from "@/types/restaurant"
+import type { CreateCustomerInput } from "@burger-page/contracts"
 import type { TenantRepository } from "@/core/storage/TenantRepository"
 import { defaultTenantRepository } from "@/core/storage/TenantRepository"
 import { appQueryClient } from "@/core/query/queryClient"
@@ -149,6 +150,7 @@ export interface RestaurantContextType {
   deleteOrder: (orderId: string) => void
 
   customers: Customer[]
+  createCustomer: (data: CreateCustomerInput) => Promise<Customer | null>
   updateCustomer: (id: string, updates: Partial<Customer>) => Promise<void> | void
   deleteCustomer: (id: string) => Promise<void> | void
 
@@ -370,6 +372,7 @@ export const useRestaurant = (): RestaurantContextType => {
     deleteOrder: orders.deleteOrder,
 
     customers: orders.customers,
+    createCustomer: orders.createCustomer,
     updateCustomer: orders.updateCustomer,
     deleteCustomer: orders.deleteCustomer,
 

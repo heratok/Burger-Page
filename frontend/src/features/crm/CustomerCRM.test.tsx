@@ -5,6 +5,7 @@ import { CustomerCRM } from "./CustomerCRM"
 
 const updateCustomer = vi.fn()
 const deleteCustomer = vi.fn()
+const createCustomer = vi.fn()
 
 const customers: Customer[] = [
   {
@@ -27,6 +28,7 @@ vi.mock("@/context/RestaurantContext", () => ({
   useRestaurant: () => ({
     customers,
     orders: [],
+    createCustomer,
     updateCustomer,
     deleteCustomer,
     storeConfig: { name: "Burger" },
@@ -42,6 +44,17 @@ vi.mock("@/context/RestaurantContext", () => ({
 describe("CustomerCRM edit and delete", () => {
   beforeEach(() => {
     mockCan.mockReturnValue(true)
+    createCustomer.mockReset().mockResolvedValue({
+      id: "cust-new",
+      nombre: "Nuevo Cliente",
+      telefono: "3001234567",
+      direccion: "",
+      barrio: "",
+      totalOrders: 0,
+      totalSpent: 0,
+      lastOrderDate: new Date().toISOString(),
+      loyaltyTier: "bronze",
+    })
     updateCustomer.mockReset().mockResolvedValue(undefined)
     deleteCustomer.mockReset().mockResolvedValue(undefined)
   })
@@ -183,6 +196,85 @@ describe("CustomerCRM edit and delete", () => {
       expect(screen.getByRole("heading", { name: "Santiago Restrepo" })).toBeDefined()
       expect(screen.getByText(/Celular: 3109876543/)).toBeDefined()
       expect(screen.getByText(/Historial de Pedidos Registrados/)).toBeDefined()
+    })
+  })
+
+  describe("Customer creation (customers.manage)", () => {
+    it("shows '+ Nuevo cliente' button only when user has customers.manage permission", () => {
+      mockCan.mockImplementation((perm: string) => perm === "customers.manage")
+      render(<CustomerCRM />)
+      expect(screen.getByRole("button", { name: /Nuevo cliente/i })).toBeDefined()
+    })
+
+    it("hides '+ Nuevo cliente' button when user lacks customers.manage permission", () => {
+      mockCan.mockImplementation((perm: string) => perm === "customers.view")
+      render(<CustomerCRM />)
+      expect(screen.queryByRole("button", { name: /Nuevo cliente/i })).toBeNull()
+    })
+
+    it("opens create modal and requires name and phone fields with clean error states", async () => {
+      render(<CustomerCRM />)
+      fireEvent.click(screen.getByRole("button", { name: /Nuevo cliente/i }))
+
+      expect(screen.getByText("Nuevo Cliente")).toBeDefined()
+
+      // Attempt submit without filling required fields
+      fireEvent.click(screen.getByRole("button", { name: /Registrar cliente/i }))
+
+      expect(createCustomer).not.toHaveBeenCalled()
+      expect(screen.getByText(/El nombre es obligatorio/i)).toBeDefined()
+      expect(screen.getByText(/El teléfono es obligatorio/i)).toBeDefined()
+    })
+
+    it("submits valid customer data, calls createCustomer, and closes modal", async () => {
+      render(<CustomerCRM />)
+      fireEvent.click(screen.getByRole("button", { name: /Nuevo cliente/i }))
+
+      fireEvent.change(screen.getByLabelText(/Nombre \*/i), { target: { value: "Mariana Rios" } })
+      fireEvent.change(screen.getByLabelText(/Teléfono \*/i), { target: { value: "3209871234" } })
+      fireEvent.change(screen.getByLabelText("Dirección"), { target: { value: "Calle 45 # 12-34" } })
+      fireEvent.change(screen.getByLabelText("Barrio"), { target: { value: "Poblado" } })
+      fireEvent.change(screen.getByLabelText(/Correo|Email/i), { target: { value: "mariana@example.com" } })
+      fireEvent.change(screen.getByLabelText(/Notas/i), { target: { value: "Prefiere hamburguesas sin salsa" } })
+
+      fireEvent.click(screen.getByRole("button", { name: /Registrar cliente/i }))
+
+      await waitFor(() => expect(createCustomer).toHaveBeenCalledTimes(1))
+      expect(createCustomer).toHaveBeenCalledWith({
+        name: "Mariana Rios",
+        phone: "3209871234",
+        address: "Calle 45 # 12-34",
+        barrio: "Poblado",
+        email: "mariana@example.com",
+        notes: "Prefiere hamburguesas sin salsa",
+      })
+
+      // Modal closes after creation
+      await waitFor(() => {
+        expect(screen.queryByRole("button", { name: /Registrar cliente/i })).toBeNull()
+      })
+    })
+
+    it("handles duplicate phone gracefully with feedback indicating existing customer upsert/merge", async () => {
+      render(<CustomerCRM />)
+      fireEvent.click(screen.getByRole("button", { name: /Nuevo cliente/i }))
+
+      // Phone belongs to Santiago Restrepo (3109876543)
+      fireEvent.change(screen.getByLabelText(/Nombre \*/i), { target: { value: "Santiago Restrepo Actualizado" } })
+      fireEvent.change(screen.getByLabelText(/Teléfono \*/i), { target: { value: "3109876543" } })
+
+      // Inline feedback indicating duplicate phone will update
+      expect(screen.getByText(/Este teléfono ya está registrado/i)).toBeDefined()
+
+      fireEvent.click(screen.getByRole("button", { name: /Registrar cliente/i }))
+
+      await waitFor(() => expect(createCustomer).toHaveBeenCalledTimes(1))
+      expect(createCustomer).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "Santiago Restrepo Actualizado",
+          phone: "3109876543",
+        })
+      )
     })
   })
 })
