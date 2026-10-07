@@ -9,6 +9,7 @@ import {
   Eye,
   MessageCircle,
   Pencil,
+  Printer,
 } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
 import { getOrderLocationText } from "@/features/crm/tables/orderTable"
@@ -20,6 +21,8 @@ export interface KanbanOrderCardProps {
   onUpdateStatus: (orderId: string, status: OrderStatus) => void
   onWhatsApp: (order: Order) => void
   onEditOrder?: (order: Order) => void
+  onPrintOrder?: (order: Order) => void
+  onPrintTicket?: (order: Order) => void
 }
 
 const formatElapsed = (isoString: string) => {
@@ -37,9 +40,12 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
   onUpdateStatus,
   onWhatsApp,
   onEditOrder,
+  onPrintOrder,
+  onPrintTicket,
 }) => {
   const { can } = useAuth()
   const canManage = can("orders.manage")
+  const canPrint = can("orders.view") || can("orders.manage")
   return (
     <div
       className={`group relative rounded-xl border p-3.5 shadow-xs transition-all duration-150 hover:shadow-md ${
@@ -127,24 +133,37 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
       </div>
 
       {/* Action Buttons */}
-      <div className="mt-3 flex items-center gap-1.5">
+      <div className="mt-3 flex items-center gap-1.5 flex-wrap">
         <button
           type="button"
           onClick={() => onViewDetails(order)}
-          className="rounded-lg border border-slate-200 dark:border-slate-700 p-1.5 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer"
+          className="min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer transition-colors"
           title="Ver detalles completos del pedido"
+          aria-label="Ver detalles completos del pedido"
         >
-          <Eye className="size-3.5" />
+          <Eye className="size-4" />
         </button>
+
+        {canPrint && (onPrintOrder || onPrintTicket) && (
+          <button
+            type="button"
+            onClick={() => (onPrintOrder ?? onPrintTicket)?.(order)}
+            className="min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer transition-colors"
+            title="Imprimir ticket / comanda"
+            aria-label="Imprimir ticket / comanda"
+          >
+            <Printer className="size-4" />
+          </button>
+        )}
 
         {canManage && onEditOrder && (
           <button
             type="button"
             onClick={() => onEditOrder(order)}
-            className="rounded-lg border border-indigo-200 dark:border-indigo-800 p-1.5 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700 dark:text-indigo-400 dark:hover:bg-indigo-950/50 cursor-pointer transition-colors"
+            className="min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg border border-indigo-200 dark:border-indigo-800 p-2 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700 dark:text-indigo-400 dark:hover:bg-indigo-950/50 cursor-pointer transition-colors"
             title="Editar venta"
           >
-            <Pencil className="size-3.5" />
+            <Pencil className="size-4" />
           </button>
         )}
 

@@ -210,4 +210,48 @@ describe("KanbanOrderCard", () => {
     )
     expect(screen.queryByRole("button", { name: /Entregado/i })).toBeNull()
   })
+
+  it("renders quick printer button and calls onPrintOrder when clicked", () => {
+    const onPrintOrder = vi.fn()
+    render(
+      <KanbanOrderCard
+        order={mockOrder}
+        onViewDetails={vi.fn()}
+        onUpdateStatus={vi.fn()}
+        onWhatsApp={vi.fn()}
+        onPrintOrder={onPrintOrder}
+      />
+    )
+
+    const printBtn = screen.getByRole("button", { name: /Imprimir ticket \/ comanda/i })
+    expect(printBtn).toBeDefined()
+    fireEvent.click(printBtn)
+    expect(onPrintOrder).toHaveBeenCalledWith(mockOrder)
+  })
+
+  it("allows read-only user with orders.view to see and click print button while hiding mutation buttons", () => {
+    mockCan.mockImplementation((p) => p === "orders.view")
+    const onPrintOrder = vi.fn()
+    const onEditOrder = vi.fn()
+    const onUpdateStatus = vi.fn()
+
+    render(
+      <KanbanOrderCard
+        order={mockOrder}
+        onViewDetails={vi.fn()}
+        onUpdateStatus={onUpdateStatus}
+        onWhatsApp={vi.fn()}
+        onEditOrder={onEditOrder}
+        onPrintOrder={onPrintOrder}
+      />
+    )
+
+    const printBtn = screen.getByRole("button", { name: /Imprimir ticket \/ comanda/i })
+    expect(printBtn).toBeDefined()
+    fireEvent.click(printBtn)
+    expect(onPrintOrder).toHaveBeenCalledWith(mockOrder)
+
+    expect(screen.queryByRole("button", { name: /A Cocina/i })).toBeNull()
+    expect(screen.queryByTitle("Editar venta")).toBeNull()
+  })
 })
