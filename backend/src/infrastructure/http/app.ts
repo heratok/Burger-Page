@@ -134,7 +134,8 @@ import { DeleteRoleUseCase } from '../../application/use-cases/DeleteRoleUseCase
 
 // Controllers
 import { RestaurantController } from './controllers/RestaurantController.js';
-import { ProductController } from './controllers/ProductController.js';
+import { ProductController, type CachedMenu } from './controllers/ProductController.js';
+import { MenuCache } from '../cache/MenuCache.js';
 import { OrderController } from './controllers/OrderController.js';
 import { CustomerController } from './controllers/CustomerController.js';
 import { InventoryController } from './controllers/InventoryController.js';
@@ -347,6 +348,10 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
   const updateAddition = new UpdateProductAdditionUseCase(additionRepo, productRepo);
   const deleteAddition = new DeleteProductAdditionUseCase(additionRepo);
 
+  // One per-process public menu cache shared by every controller that writes menu data.
+  // Valid only for a single backend instance (invalidation does not cross processes).
+  const menuCache = new MenuCache<CachedMenu>();
+
   // Controllers
   return {
     restaurantController: new RestaurantController(
@@ -358,7 +363,8 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
       updateRestaurant,
       new ListDeletedRestaurantsUseCase(restaurantRepo),
       new RestoreRestaurantUseCase(restaurantRepo, userRepo, audit),
-      new ListRestaurantTemplatesUseCase()
+      new ListRestaurantTemplatesUseCase(),
+      menuCache
     ),
     productController: new ProductController(
       listProducts,
@@ -366,7 +372,9 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
       createProduct,
       updateProduct,
       deleteProduct,
-      restaurantRepo
+      restaurantRepo,
+      undefined,
+      menuCache
     ),
     orderController: new OrderController(
       listOrders,
@@ -428,7 +436,8 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
       createAddition,
       updateAddition,
       deleteAddition,
-      restaurantRepo
+      restaurantRepo,
+      menuCache
     ),
     userRepo,
     restaurantRepo,
