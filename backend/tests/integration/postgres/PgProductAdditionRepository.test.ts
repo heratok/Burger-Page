@@ -194,4 +194,16 @@ describe('PgProductAdditionRepository (real Postgres, app_user role)', () => {
     await repo.delete(id, RESTAURANT_A);
     expect(await repo.findById(id, RESTAURANT_A)).toBeNull();
   });
+
+  it('findByIds returns only existing ids of the tenant in one call', async () => {
+    if (!isDbConnected) return;
+    const a = `add-${randomUUID().slice(0, 8)}`;
+    const b = `add-${randomUUID().slice(0, 8)}`;
+    await repo.save(new ProductAddition(a, RESTAURANT_A, 'One', 1000));
+    await repo.save(new ProductAddition(b, RESTAURANT_B, 'Foreign', 1000));
+
+    const found = await repo.findByIds([a, b, 'add-missing'], RESTAURANT_A);
+    expect(found.map((x) => x.id)).toEqual([a]);
+    expect(await repo.findByIds([], RESTAURANT_A)).toEqual([]);
+  });
 });
