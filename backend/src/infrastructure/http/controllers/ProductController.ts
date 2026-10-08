@@ -12,6 +12,8 @@ import { CreateProductDTO, UpdateProductDTO } from '../../../application/dtos/in
 import { StorageUrlResolver, defaultStorageUrlResolver } from '../../storage/StorageUrlResolver.js';
 import { ListOptions } from '../../../domain/ports/out/ListOptions.js';
 import { MenuCache } from '../../cache/MenuCache.js';
+import { RestaurantIdCache } from '../../cache/RestaurantIdCache.js';
+import { resolvePublicRestaurantId } from '../PublicRestaurantResolver.js';
 
 /** Cached public menu response: formatted body plus the X-Total-Count header, when paginated. */
 export interface CachedMenu {
@@ -45,7 +47,9 @@ export class ProductController {
     private restaurantRepo?: RestaurantRepository,
     storageResolver?: StorageUrlResolver,
     // Per-process public menu cache (single backend instance only); omitted = no caching.
-    private menuCache?: MenuCache<CachedMenu>
+    private menuCache?: MenuCache<CachedMenu>,
+    // Per-process identifier -> restaurant id memo for public requests (same single-instance caveat).
+    private restaurantIdCache?: RestaurantIdCache
   ) {
     this.storageResolver = storageResolver || defaultStorageUrlResolver;
   }
@@ -58,40 +62,13 @@ export class ProductController {
     };
   }
 
-  private async resolveRestaurantId(query: { restaurantId?: string; slug?: string } = {}): Promise<string> {
-    if (query.restaurantId) {
-      if (this.restaurantRepo) {
-        const rest =
-          (await this.restaurantRepo.findById(query.restaurantId)) ||
-          (await this.restaurantRepo.findBySlug(query.restaurantId)) ||
-          (await this.restaurantRepo.findBySlug(query.restaurantId.replace(/^rest-/, ''))) ||
-          (await this.restaurantRepo.findById(query.restaurantId.replace(/^rest-/, '')));
-        if (!rest) {
-          throw new EntityNotFoundError(`Restaurant '${query.restaurantId}' not found.`);
-        }
-        if (!rest.isActive) {
-          throw new ValidationError(`Restaurant '${rest.name}' is currently inactive.`);
-        }
-        return rest.id;
-      }
-      return query.restaurantId;
-    }
-
-    if (query.slug && this.restaurantRepo) {
-      const rest =
-        (await this.restaurantRepo.findBySlug(query.slug)) ||
-        (await this.restaurantRepo.findById(query.slug)) ||
-        (await this.restaurantRepo.findBySlug(query.slug.replace(/^rest-/, '')));
-      if (!rest) {
-        throw new EntityNotFoundError(`Restaurant with slug '${query.slug}' not found.`);
-      }
-      if (!rest.isActive) {
-        throw new ValidationError(`Restaurant '${rest.name}' is currently inactive.`);
-      }
-      return rest.id;
-    }
-
-    throw new ValidationError('Restaurant ID or slug is required to view menu products.');
+  private resolveRestaurantId(query: { restaurantId?: string; slug?: string } = {}): Promise<string> {
+    return resolvePublicRestaurantId(
+      this.restaurantRepo,
+      this.restaurantIdCache,
+      query,
+      'Restaurant ID or slug is required to view menu products.'
+    );
   }
 
   async list(req: FastifyRequest, reply: FastifyReply) {

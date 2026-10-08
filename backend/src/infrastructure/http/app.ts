@@ -135,7 +135,8 @@ import { DeleteRoleUseCase } from '../../application/use-cases/DeleteRoleUseCase
 // Controllers
 import { RestaurantController } from './controllers/RestaurantController.js';
 import { ProductController, type CachedMenu } from './controllers/ProductController.js';
-import { MenuCache } from '../cache/MenuCache.js';
+import { MenuCache, parseMenuCacheTtlMs } from '../cache/MenuCache.js';
+import { RestaurantIdCache } from '../cache/RestaurantIdCache.js';
 import { OrderController } from './controllers/OrderController.js';
 import { CustomerController } from './controllers/CustomerController.js';
 import { InventoryController } from './controllers/InventoryController.js';
@@ -350,7 +351,11 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
 
   // One per-process public menu cache shared by every controller that writes menu data.
   // Valid only for a single backend instance (invalidation does not cross processes).
-  const menuCache = new MenuCache<CachedMenu>();
+  // MENU_CACHE_TTL_MS tunes the TTL (default 30000); 0 disables caching.
+  const menuCacheTtlMs = parseMenuCacheTtlMs(process.env.MENU_CACHE_TTL_MS);
+  const menuCache = new MenuCache<CachedMenu>({ ttlMs: menuCacheTtlMs });
+  // Public id/slug -> restaurant id memo: same TTL and single-instance caveat, invalidated by restaurant writes.
+  const restaurantIdCache = new RestaurantIdCache({ ttlMs: menuCacheTtlMs });
 
   // Controllers
   return {
@@ -364,7 +369,8 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
       new ListDeletedRestaurantsUseCase(restaurantRepo),
       new RestoreRestaurantUseCase(restaurantRepo, userRepo, audit),
       new ListRestaurantTemplatesUseCase(),
-      menuCache
+      menuCache,
+      restaurantIdCache
     ),
     productController: new ProductController(
       listProducts,
@@ -374,7 +380,8 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
       deleteProduct,
       restaurantRepo,
       undefined,
-      menuCache
+      menuCache,
+      restaurantIdCache
     ),
     orderController: new OrderController(
       listOrders,
@@ -437,7 +444,8 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
       updateAddition,
       deleteAddition,
       restaurantRepo,
-      menuCache
+      menuCache,
+      restaurantIdCache
     ),
     userRepo,
     restaurantRepo,
