@@ -36,6 +36,20 @@ export class PgProductRepository implements ProductRepository {
     });
   }
 
+  async findByIds(ids: string[], restaurantId: string): Promise<Product[]> {
+    if (ids.length === 0) return [];
+    return withTenantContext({ restaurantId }, async (client) => {
+      const { rows } = await client.query(
+        `SELECT p.*, c.name AS category_name
+         FROM public.products p
+         LEFT JOIN public.categories c ON c.id = p.category_id AND c.is_active = true
+         WHERE p.id = ANY($1) AND p.restaurant_id = $2`,
+        [ids, restaurantId]
+      );
+      return rows.map(mapRow);
+    });
+  }
+
   async findByRestaurantId(restaurantId: string, options?: ListOptions): Promise<Product[]> {
     return withTenantContext({ restaurantId }, async (client) => {
       const limit = options?.limit;

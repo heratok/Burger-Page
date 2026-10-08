@@ -37,6 +37,15 @@ export class SqliteProductRepository implements ProductRepository {
     return this.mapRow(row);
   }
 
+  async findByIds(ids: string[], restaurantId: string): Promise<Product[]> {
+    const found: Product[] = [];
+    for (const id of new Set(ids)) {
+      const product = await this.findById(id, restaurantId);
+      if (product) found.push(product);
+    }
+    return found;
+  }
+
   async findByRestaurantId(restaurantId: string, options?: ListOptions): Promise<Product[]> {
     const limit = options?.limit;
     let rows: any[];
