@@ -120,6 +120,9 @@ test.describe('Restaurant tables: Personalizar → Mesas and Mesa / Salón sales
     // The table no longer leaks into the customer fields.
     expect(JSON.stringify(order.customer ?? {})).not.toContain(tableA);
 
+    // Saving a sale opens the kitchen ticket preview; close it before continuing.
+    await page.getByRole('button', { name: 'Cerrar vista previa' }).click();
+
     // The Kanban shows the table label.
     await expect(page.getByText(`Salón · ${tableA}`).first()).toBeVisible({ timeout: 10000 });
 
