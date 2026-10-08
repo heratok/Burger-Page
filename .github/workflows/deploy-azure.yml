@@ -24,9 +24,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up QEMU (multi-arch)
-        uses: docker/setup-qemu-action@v3
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -42,6 +39,10 @@ jobs:
         with:
           context: .
           file: backend/Dockerfile
-          platforms: linux/amd64,linux/arm64
+          # La VM es x64 (Standard_B2ats_v2). Si pasa a ARM (B2pts_v2), agregar
+          # linux/arm64 y volver a habilitar docker/setup-qemu-action.
+          platforms: linux/amd64
           push: true
           tags: ghcr.io/${{ github.repository_owner }}/burger-page-backend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
