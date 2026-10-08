@@ -13,6 +13,8 @@ import { ValidationError } from '../../../domain/errors/DomainErrors.js';
 import { omitAdminPassword } from '../../../domain/models/Restaurant.js';
 import { auditActorOf } from '../auditActor.js';
 import { assertOwnsRestaurant } from '../RestaurantOwnershipGuard.js';
+import { MenuCache } from '../../cache/MenuCache.js';
+import type { CachedMenu } from './ProductController.js';
 
 /**
  * A9: storefront-only projection of a tenant for the public landing.
@@ -62,7 +64,9 @@ export class RestaurantController {
     private readonly updateRestaurantUseCase?: UpdateRestaurantUseCase,
     private readonly listDeletedUseCase?: ListDeletedRestaurantsUseCase,
     private readonly restoreRestaurantUseCase?: RestoreRestaurantUseCase,
-    private readonly listTemplatesUseCase?: ListRestaurantTemplatesUseCase
+    private readonly listTemplatesUseCase?: ListRestaurantTemplatesUseCase,
+    // Category names, activation and removal of a tenant change the public menu: drop its cache.
+    private readonly menuCache?: MenuCache<CachedMenu>
   ) {}
 
   async list(req: FastifyRequest, reply: FastifyReply) {
@@ -115,7 +119,12 @@ export class RestaurantController {
 
   async delete(req: FastifyRequest, reply: FastifyReply) {
     const params = (req.params || {}) as { id: string };
-    await this.deleteRestaurantUseCase.execute(params.id, auditActorOf(req));
+    try {
+      await this.deleteRestaurantUseCase.execute(params.id, auditActorOf(req));
+    } finally {
+      // Best effort when `id` is a slug: deleted tenants are rejected before any cache lookup, and restore invalidates by canonical id.
+      this.menuCache?.invalidate(params.id);
+    }
     return reply.status(200).send({ message: 'Restaurant deleted successfully' });
   }
 
@@ -143,6 +152,7 @@ export class RestaurantController {
       throw new ValidationError(body.error.message);
     }
     const result = await this.restoreRestaurantUseCase.execute({ id, slug: body.data.slug, actor: auditActorOf(req) });
+    this.menuCache?.invalidate(id);
     return reply.status(200).send(result);
   }
 
@@ -165,6 +175,7 @@ export class RestaurantController {
 
     const { categories, renames } = parsed.data;
     const updated = await this.updateCategoriesUseCase.execute(identifier, categories, renames);
+    this.menuCache?.invalidate(updated.id);
     return reply.status(200).send({
       message: 'Restaurant categories updated successfully',
       categories: updated.categories || [],
@@ -186,6 +197,7 @@ export class RestaurantController {
       throw new ValidationError(parsed.error.message);
     }
     const updated = await this.updateRestaurantUseCase.execute(params.id, parsed.data, auth?.role, auditActorOf(req));
+    this.menuCache?.invalidate(updated.id);
     return reply.status(200).send(updated);
   }
 }

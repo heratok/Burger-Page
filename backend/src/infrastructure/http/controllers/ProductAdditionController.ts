@@ -10,6 +10,8 @@ import { ValidationError, UnauthorizedError, EntityNotFoundError } from '../../.
 import { resolveTenantForRequest } from '../TenantResolver.js';
 import { CreateProductAdditionDTO, UpdateProductAdditionDTO } from '../../../application/dtos/index.js';
 import { ListOptions } from '../../../domain/ports/out/ListOptions.js';
+import { MenuCache } from '../../cache/MenuCache.js';
+import type { CachedMenu } from './ProductController.js';
 
 /**
  * Lenient pagination parsing: honored only when BOTH page and limit are
@@ -32,8 +34,18 @@ export class ProductAdditionController {
     private createAdditionUseCase: CreateProductAdditionUseCase,
     private updateAdditionUseCase: UpdateProductAdditionUseCase,
     private deleteAdditionUseCase: DeleteProductAdditionUseCase,
-    private restaurantRepo?: RestaurantRepository
+    private restaurantRepo?: RestaurantRepository,
+    // Additions are part of the public menu payload: writes drop the tenant's cached menu.
+    private menuCache?: MenuCache<CachedMenu>
   ) {}
+
+  private async invalidatingMenu<T>(restaurantId: string, write: () => Promise<T>): Promise<T> {
+    try {
+      return await write();
+    } finally {
+      this.menuCache?.invalidate(restaurantId);
+    }
+  }
 
   private async resolveRestaurantId(query: { restaurantId?: string; slug?: string } = {}): Promise<string> {
     if (query.restaurantId) {
@@ -117,7 +129,9 @@ export class ProductAdditionController {
       throw new ValidationError(parsed.error.message);
     }
 
-    const addition = await this.createAdditionUseCase.execute(parsed.data as CreateProductAdditionDTO, restaurantId);
+    const addition = await this.invalidatingMenu(restaurantId, () =>
+      this.createAdditionUseCase.execute(parsed.data as CreateProductAdditionDTO, restaurantId)
+    );
     return reply.status(201).send(addition);
   }
 
@@ -134,7 +148,9 @@ export class ProductAdditionController {
       throw new ValidationError(parsed.error.message);
     }
 
-    const updated = await this.updateAdditionUseCase.execute(params.id, parsed.data as UpdateProductAdditionDTO, restaurantId);
+    const updated = await this.invalidatingMenu(restaurantId, () =>
+      this.updateAdditionUseCase.execute(params.id, parsed.data as UpdateProductAdditionDTO, restaurantId)
+    );
     return reply.status(200).send(updated);
   }
 
@@ -146,7 +162,7 @@ export class ProductAdditionController {
       throw new UnauthorizedError('Restaurant context is required to delete a product addition.');
     }
 
-    await this.deleteAdditionUseCase.execute(params.id, restaurantId);
+    await this.invalidatingMenu(restaurantId, () => this.deleteAdditionUseCase.execute(params.id, restaurantId));
     return reply.status(204).send();
   }
 }
