@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { MenuCache } from '../../../src/infrastructure/cache/MenuCache.js';
+import { MenuCache, parseMenuCacheTtlMs } from '../../../src/infrastructure/cache/MenuCache.js';
 
 function makeCache(opts: { ttlMs?: number; maxEntries?: number } = {}) {
   let now = 1_000;
@@ -80,5 +80,31 @@ describe('MenuCache', () => {
     expect(cache.get('r1', 'all')).toBeUndefined();
     cache.set('r1', 'all', { items: [2] }, cache.versionOf('r1'));
     expect(cache.get('r1', 'all')).toEqual({ items: [2] });
+  });
+
+  it('never stores nor serves entries when the TTL is 0 (cache disabled)', () => {
+    const { cache } = makeCache({ ttlMs: 0 });
+    cache.set('r1', 'all', { items: [1] });
+    expect(cache.size).toBe(0);
+    expect(cache.get('r1', 'all')).toBeUndefined();
+  });
+});
+
+describe('parseMenuCacheTtlMs', () => {
+  it('falls back to 30000 when unset or empty', () => {
+    expect(parseMenuCacheTtlMs(undefined)).toBe(30_000);
+    expect(parseMenuCacheTtlMs('')).toBe(30_000);
+  });
+
+  it('accepts a non-negative integer, including 0 to disable the cache', () => {
+    expect(parseMenuCacheTtlMs('5000')).toBe(5_000);
+    expect(parseMenuCacheTtlMs('0')).toBe(0);
+  });
+
+  it('falls back to 30000 for negative, fractional or non-numeric values', () => {
+    expect(parseMenuCacheTtlMs('-1')).toBe(30_000);
+    expect(parseMenuCacheTtlMs('abc')).toBe(30_000);
+    expect(parseMenuCacheTtlMs('1.5')).toBe(30_000);
+    expect(parseMenuCacheTtlMs('Infinity')).toBe(30_000);
   });
 });

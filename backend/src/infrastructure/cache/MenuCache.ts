@@ -1,3 +1,16 @@
+const DEFAULT_TTL_MS = 30_000;
+
+/**
+ * Parses MENU_CACHE_TTL_MS. A non-negative integer is used as is (0 disables the
+ * cache); unset, negative, fractional or non-numeric values fall back to 30s.
+ */
+export function parseMenuCacheTtlMs(raw: string | undefined): number {
+  const value = raw?.trim();
+  if (!value || !/^\d+$/.test(value)) return DEFAULT_TTL_MS;
+  const ttl = Number(value);
+  return Number.isSafeInteger(ttl) ? ttl : DEFAULT_TTL_MS;
+}
+
 export interface MenuCacheOptions {
   /** Time to live per entry in milliseconds (default 30s, a safety net on top of invalidation). */
   ttlMs?: number;
@@ -28,7 +41,7 @@ export class MenuCache<T> {
   private readonly versions = new Map<string, number>();
 
   constructor(options: MenuCacheOptions = {}) {
-    this.ttlMs = options.ttlMs ?? 30_000;
+    this.ttlMs = options.ttlMs ?? DEFAULT_TTL_MS;
     this.maxEntries = options.maxEntries ?? 500;
     this.now = options.now ?? Date.now;
   }
@@ -61,6 +74,7 @@ export class MenuCache<T> {
    */
   set(restaurantId: string, queryKey: string, value: T, observedVersion?: number): void {
     if (observedVersion !== undefined && observedVersion !== this.versionOf(restaurantId)) return;
+    if (this.ttlMs <= 0) return; // caching disabled
     const key = this.keyOf(restaurantId, queryKey);
     this.entries.delete(key); // re-insert so Map order tracks age
     this.entries.set(key, { restaurantId, value: structuredClone(value), expiresAt: this.now() + this.ttlMs });

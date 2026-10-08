@@ -14,6 +14,7 @@ import { omitAdminPassword } from '../../../domain/models/Restaurant.js';
 import { auditActorOf } from '../auditActor.js';
 import { assertOwnsRestaurant } from '../RestaurantOwnershipGuard.js';
 import { MenuCache } from '../../cache/MenuCache.js';
+import { RestaurantIdCache } from '../../cache/RestaurantIdCache.js';
 import type { CachedMenu } from './ProductController.js';
 
 /**
@@ -66,7 +67,9 @@ export class RestaurantController {
     private readonly restoreRestaurantUseCase?: RestoreRestaurantUseCase,
     private readonly listTemplatesUseCase?: ListRestaurantTemplatesUseCase,
     // Category names, activation and removal of a tenant change the public menu: drop its cache.
-    private readonly menuCache?: MenuCache<CachedMenu>
+    private readonly menuCache?: MenuCache<CachedMenu>,
+    // Identifier resolution memo: dropped on any write that can change what an id/slug resolves to.
+    private readonly restaurantIdCache?: RestaurantIdCache
   ) {}
 
   async list(req: FastifyRequest, reply: FastifyReply) {
@@ -92,6 +95,7 @@ export class RestaurantController {
       throw new ValidationError(parsed.error.message);
     }
     const created = await this.createRestaurantUseCase.execute(parsed.data, req.authContext?.role, auditActorOf(req));
+    this.restaurantIdCache?.invalidate(created.id);
     return reply.status(201).send(created);
   }
 
@@ -124,6 +128,8 @@ export class RestaurantController {
     } finally {
       // Best effort when `id` is a slug: deleted tenants are rejected before any cache lookup, and restore invalidates by canonical id.
       this.menuCache?.invalidate(params.id);
+      // `id` may be a slug, so the canonical id is unknown here: drop every resolution.
+      this.restaurantIdCache?.clear();
     }
     return reply.status(200).send({ message: 'Restaurant deleted successfully' });
   }
@@ -153,6 +159,7 @@ export class RestaurantController {
     }
     const result = await this.restoreRestaurantUseCase.execute({ id, slug: body.data.slug, actor: auditActorOf(req) });
     this.menuCache?.invalidate(id);
+    this.restaurantIdCache?.clear(); // a restore may assign a new slug
     return reply.status(200).send(result);
   }
 
@@ -198,6 +205,7 @@ export class RestaurantController {
     }
     const updated = await this.updateRestaurantUseCase.execute(params.id, parsed.data, auth?.role, auditActorOf(req));
     this.menuCache?.invalidate(updated.id);
+    this.restaurantIdCache?.invalidate(updated.id, `id:${params.id}`, `slug:${params.id}`);
     return reply.status(200).send(updated);
   }
 }
