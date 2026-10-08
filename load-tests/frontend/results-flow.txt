@@ -1,0 +1,16 @@
+initial loads:
+ js files 28 bytes(wire) 213120 loader-circle-BtH20ykx.js:0K shield-check-7NIsoDYK.js:0K jsx-runtime-VHVm0wLV.js:4K index-1p5Cd1U8.js:9K sparkles-C6pIsA3K.js:0K skeleton-Bn8-NokC.js:0K button-KBafA8EY.js:114K Home-BFcuioRZ.js:8K chevron-down-Cyqfu8mm.js:0K chevron-right-DusEaOGX.js:0K flame-CNnwcCMS.js:0K credit-card-C3KU3c2X.js:0K whatsapp-iIVKUD4y.js:1K cart-ZrqVbG7c.js:48K pencil-4F5IsadN.js:0K phone-D3bi8LBu.js:0K plus-DUWXMDcI.js:0K trash-2-OeFYw2aV.js:0K user-AVsXeZs8.js:0K x-DKBXBOtM.js:0K search-wnoatgsX.js:0K shopping-cart-5sMHmfl7.js:0K useHorizontalScroll-Bz-MZDgf.js:1K supabaseStorage-JsUKtPAN.js:1K LazyImage-CgyxDM-R.js:1K dialog-DGBSuJOX.js:17K image-C0zj_3yD.js:0K RestaurantNotFound-_Qd8kaOg.js:1K
+ api [
+  'http://localhost:3001/api/restaurants/load-07',
+  'http://localhost:3001/api/products?restaurantId=rest-load-07&slug=load-07',
+  'http://localhost:3001/api/additions?restaurantId=rest-load-07&slug=load-07'
+]
+{
+ "load_to_menu_ms": 235,
+ "add_to_cart_modal_ms": 155,
+ "add_items_total_ms": 598,
+ "items": 1,
+ "open_checkout_ms": 63,
+ "submit_to_order_response_ms": 94,
+ "order_status": 201
+}

@@ -12,6 +12,15 @@ export class InMemoryProductAdditionRepository implements ProductAdditionReposit
     return item;
   }
 
+  async findByIds(ids: string[], restaurantId: string): Promise<ProductAddition[]> {
+    const found: ProductAddition[] = [];
+    for (const id of new Set(ids)) {
+      const addition = await this.findById(id, restaurantId);
+      if (addition) found.push(addition);
+    }
+    return found;
+  }
+
   async findByRestaurantId(restaurantId: string, options?: ListOptions): Promise<ProductAddition[]> {
     const filtered = Array.from(this.additions.values()).filter((a) => a.restaurantId === restaurantId);
     const limit = options?.limit;

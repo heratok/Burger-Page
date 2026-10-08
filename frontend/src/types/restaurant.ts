@@ -1,6 +1,4 @@
-// Restaurant & CRM Domain Types
-
-import type { WeeklySchedule } from "@burger-page/contracts"
+import type { WeeklySchedule, Permission } from "@burger-page/contracts"
 
 export type CardStyle = "elevated" | "bordered" | "glass" | "minimal"
 export type CardRadius = "sm" | "md" | "lg" | "full"
@@ -127,6 +125,7 @@ export interface Customer {
   lastOrderDate: string
   loyaltyTier: LoyaltyTier
   notes?: string
+  email?: string
 }
 
 // ==========================================
@@ -190,13 +189,15 @@ export interface RestaurantRecord {
   createdAt: string
 }
 
-export type UserRole = "super" | "restaurant" | "guest"
+export type UserRole = "super" | "restaurant" | "staff" | "guest"
 
 export interface AdminSession {
   role: UserRole
   restaurantId?: string
   userId?: string
   username?: string
+  roleId?: string
+  permissions?: Permission[]
   mustChangePassword?: boolean
   authenticatedAt?: string
 }
@@ -226,5 +227,8 @@ export type AdminTab =
   | "users"
   | "metrics"
   | "audit"
+  | "equipo"
+  | "roles"
 export type AdminTheme = "light" | "dark"
 export type AppView = "landing" | "store" | "admin" | "not-found"
+

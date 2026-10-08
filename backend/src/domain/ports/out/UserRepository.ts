@@ -12,6 +12,8 @@ export interface UserChanges {
   role?: UserRole;
   /** null clears it (super_admin). The use case validates the combination. */
   restaurantId?: string | null;
+  /** Custom role of a restaurant_staff user; null clears it (any other role). Must be set together with role = restaurant_staff. */
+  roleId?: string | null;
   isActive?: boolean;
 }
 

@@ -6,25 +6,42 @@ import {
   MessageCircle,
   X,
   FileText,
+  Pencil,
+  Trash2,
+  UserPlus,
 } from "lucide-react"
 import { LoyaltyBadge } from "@/components/ui/status-badge"
 import { Button } from "@/components/ui/button"
+import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
 import { Pagination } from "@/components/ui/pagination"
 import { Select } from "@/components/ui/select"
 import { TableSkeleton } from "@/components/ui/Skeletons"
 import { buildWhatsAppUrl } from "@/features/cart"
 import { formatCurrency, cleanPhoneNumber, formatWhatsAppPhone } from "@/lib/utils"
 
+const EMPTY_DRAFT = { nombre: "", telefono: "", direccion: "", barrio: "", email: "" }
+const EMPTY_CREATE_DRAFT = { nombre: "", telefono: "", direccion: "", barrio: "", email: "", notes: "" }
+
 export const CustomerCRM: React.FC = () => {
-  const { customers, orders, updateCustomer, storeConfig, adminTheme, isLoadingOrders } = useRestaurant()
+  const { customers, orders, createCustomer, updateCustomer, deleteCustomer, storeConfig, adminTheme, isLoadingOrders, can } = useRestaurant()
+  const canManageCustomers = can ? can("customers.manage") : false
 
   const [searchTerm, setSearchTerm] = useState("")
   const [tierFilter, setTierFilter] = useState<string>("ALL")
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
   const [notesEdit, setNotesEdit] = useState("")
   const [isSavingNotes, setIsSavingNotes] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [isSavingDetails, setIsSavingDetails] = useState(false)
+  const [detailsDraft, setDetailsDraft] = useState(EMPTY_DRAFT)
+  const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
+
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [createDraft, setCreateDraft] = useState(EMPTY_CREATE_DRAFT)
+  const [createErrors, setCreateErrors] = useState<{ nombre?: string; telefono?: string }>({})
+  const [isSubmittingCreate, setIsSubmittingCreate] = useState(false)
 
   const isDark = adminTheme === "dark"
 
@@ -69,9 +86,103 @@ export const CustomerCRM: React.FC = () => {
     window.open(buildWhatsAppUrl(fullPhone, greeting), "_blank", "noreferrer")
   }
 
-  const openCustomerModal = (cust: Customer) => {
+  const openCustomerModal = (cust: Customer, startEditing = false) => {
     setSelectedCustomer(cust)
     setNotesEdit(cust.notes || "")
+    setIsEditing(startEditing)
+    setDetailsDraft({
+      nombre: cust.nombre,
+      telefono: cust.telefono,
+      direccion: cust.direccion,
+      barrio: cust.barrio,
+      email: cust.email || "",
+    })
+  }
+
+  const closeCustomerModal = () => {
+    setSelectedCustomer(null)
+    setIsEditing(false)
+  }
+
+  const existingCustomerWithPhone = useMemo(() => {
+    const cleanDraftPhone = cleanPhoneNumber(createDraft.telefono)
+    if (!cleanDraftPhone) return null
+    return customers.find((c) => cleanPhoneNumber(c.telefono) === cleanDraftPhone) ?? null
+  }, [customers, createDraft.telefono])
+
+  const closeCreateModal = () => {
+    setIsCreateModalOpen(false)
+    setCreateDraft(EMPTY_CREATE_DRAFT)
+    setCreateErrors({})
+    setIsSubmittingCreate(false)
+  }
+
+  const handleCreateCustomer = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    const trimmedName = createDraft.nombre.trim()
+    const trimmedPhone = createDraft.telefono.trim()
+
+    const errors: { nombre?: string; telefono?: string } = {}
+    if (!trimmedName) {
+      errors.nombre = "El nombre es obligatorio"
+    }
+    if (!trimmedPhone) {
+      errors.telefono = "El teléfono es obligatorio"
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setCreateErrors(errors)
+      return
+    }
+
+    setIsSubmittingCreate(true)
+    try {
+      const res = await createCustomer({
+        name: trimmedName,
+        phone: trimmedPhone,
+        address: createDraft.direccion.trim() || undefined,
+        barrio: createDraft.barrio.trim() || undefined,
+        email: createDraft.email.trim() || undefined,
+        notes: createDraft.notes.trim() || undefined,
+      })
+
+      if (res) {
+        closeCreateModal()
+      }
+    } finally {
+      setIsSubmittingCreate(false)
+    }
+  }
+
+  const handleSaveDetails = async () => {
+    if (!selectedCustomer) return
+    const nombre = detailsDraft.nombre.trim()
+    const telefono = detailsDraft.telefono.trim()
+    if (!nombre || !telefono) return
+    const updates = {
+      nombre,
+      telefono,
+      direccion: detailsDraft.direccion.trim(),
+      barrio: detailsDraft.barrio.trim(),
+      email: detailsDraft.email.trim(),
+      notes: notesEdit,
+    }
+    setIsSavingDetails(true)
+    try {
+      await updateCustomer(selectedCustomer.id, updates)
+      setSelectedCustomer((prev) => (prev ? { ...prev, ...updates } : null))
+      setIsEditing(false)
+    } finally {
+      setIsSavingDetails(false)
+    }
+  }
+
+  const handleConfirmDelete = () => {
+    if (!customerToDelete) return
+    const { id } = customerToDelete
+    void deleteCustomer(id)
+    setCustomerToDelete(null)
+    if (selectedCustomer?.id === id) closeCustomerModal()
   }
 
   const handleSaveNotes = async () => {
@@ -98,7 +209,7 @@ export const CustomerCRM: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Top Metrics Row */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className={`grid grid-cols-1 gap-4 sm:grid-cols-2 ${can?.("finance.view") ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}>
         <div
           className={`rounded-2xl border p-5 shadow-xs ${
             isDark ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-white"
@@ -129,20 +240,22 @@ export const CustomerCRM: React.FC = () => {
           </div>
         </div>
 
-        <div
-          className={`rounded-2xl border p-5 shadow-xs ${
-            isDark ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-white"
-          }`}
-        >
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            Gasto Acumulado
-          </span>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
-              {formatCurrency(stats.totalSpentAll)}
+        {can?.("finance.view") && (
+          <div
+            className={`rounded-2xl border p-5 shadow-xs ${
+              isDark ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-white"
+            }`}
+          >
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Gasto Acumulado
             </span>
+            <div className="mt-2 flex items-baseline gap-2">
+              <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
+                {formatCurrency(stats.totalSpentAll)}
+              </span>
+            </div>
           </div>
-        </div>
+        )}
 
         <div
           className={`rounded-2xl border p-5 shadow-xs ${
@@ -186,29 +299,42 @@ export const CustomerCRM: React.FC = () => {
           />
         </div>
 
-        <div className="w-full sm:w-48">
-          <Select
-            size="md"
-            value={tierFilter}
-            onChange={(e) => {
-              setTierFilter(e.target.value)
-              setCurrentPage(1)
-            }}
-            aria-label="Filtrar por nivel de fidelidad"
-            options={[
-              { value: "ALL", label: "Todos los niveles" },
-              { value: "vip", label: "👑 VIP" },
-              { value: "gold", label: "🥇 Oro" },
-              { value: "silver", label: "🥈 Plata" },
-              { value: "bronze", label: "🥉 Bronce" },
-            ]}
-          />
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+          <div className="w-full sm:w-48">
+            <Select
+              size="md"
+              value={tierFilter}
+              onChange={(e) => {
+                setTierFilter(e.target.value)
+                setCurrentPage(1)
+              }}
+              aria-label="Filtrar por nivel de fidelidad"
+              options={[
+                { value: "ALL", label: "Todos los niveles" },
+                { value: "vip", label: "👑 VIP" },
+                { value: "gold", label: "🥇 Oro" },
+                { value: "silver", label: "🥈 Plata" },
+                { value: "bronze", label: "🥉 Bronce" },
+              ]}
+            />
+          </div>
+
+          {canManageCustomers && (
+            <Button
+              size="default"
+              onClick={() => setIsCreateModalOpen(true)}
+              className="w-full sm:w-auto flex items-center justify-center gap-1.5 bg-indigo-600 text-white font-semibold hover:bg-indigo-700"
+            >
+              <UserPlus className="size-4" />
+              <span>+ Nuevo cliente</span>
+            </Button>
+          )}
         </div>
       </div>
 
       {/* Customers Table */}
       {isLoadingOrders && customers.length === 0 ? (
-        <TableSkeleton isDark={isDark} rows={5} columns={7} />
+        <TableSkeleton isDark={isDark} rows={5} columns={can?.("finance.view") ? 7 : 6} />
       ) : (
         <div
           className={`overflow-hidden rounded-2xl border shadow-xs ${
@@ -223,7 +349,9 @@ export const CustomerCRM: React.FC = () => {
                 <th className="py-3 px-4 font-semibold">Teléfono</th>
                 <th className="py-3 px-4 font-semibold">Ubicación</th>
                 <th className="py-3 px-4 font-semibold text-center">Total Pedidos</th>
-                <th className="py-3 px-4 font-semibold">Gasto Total</th>
+                {can?.("finance.view") && (
+                  <th className="py-3 px-4 font-semibold">Gasto Total</th>
+                )}
                 <th className="py-3 px-4 font-semibold">Nivel</th>
                 <th className="py-3 px-4 font-semibold text-right">Acciones</th>
               </tr>
@@ -261,9 +389,11 @@ export const CustomerCRM: React.FC = () => {
                   <td className="py-3 px-4 font-bold text-center text-slate-900 dark:text-slate-100">
                     {cust.totalOrders}
                   </td>
-                  <td className="py-3 px-4 font-bold text-emerald-600 dark:text-emerald-400">
-                    {formatCurrency(cust.totalSpent)}
-                  </td>
+                  {can?.("finance.view") && (
+                    <td className="py-3 px-4 font-bold text-emerald-600 dark:text-emerald-400">
+                      {formatCurrency(cust.totalSpent)}
+                    </td>
+                  )}
                   <td className="py-3 px-4">
                     <LoyaltyBadge tier={cust.loyaltyTier} />
                   </td>
@@ -286,6 +416,28 @@ export const CustomerCRM: React.FC = () => {
                       >
                         <FileText className="size-4" />
                       </button>
+                      {canManageCustomers && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => openCustomerModal(cust, true)}
+                            aria-label={`Editar ${cust.nombre}`}
+                            className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                            title="Editar cliente"
+                          >
+                            <Pencil className="size-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setCustomerToDelete(cust)}
+                            aria-label={`Eliminar ${cust.nombre}`}
+                            className="rounded-lg p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
+                            title="Eliminar cliente"
+                          >
+                            <Trash2 className="size-4" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -334,7 +486,7 @@ export const CustomerCRM: React.FC = () => {
               </div>
               <button
                 type="button"
-                onClick={() => setSelectedCustomer(null)}
+                onClick={closeCustomerModal}
                 aria-label="Cerrar modal"
                 className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
@@ -342,20 +494,78 @@ export const CustomerCRM: React.FC = () => {
               </button>
             </div>
 
+            {canManageCustomers && (
+              isEditing ? (
+                <div className="mt-4 grid grid-cols-1 gap-3 text-xs sm:grid-cols-2">
+                  {(
+                    [
+                      ["nombre", "Nombre"],
+                      ["telefono", "Teléfono"],
+                      ["direccion", "Dirección"],
+                      ["barrio", "Barrio"],
+                      ["email", "Correo"],
+                    ] as const
+                  ).map(([field, label]) => (
+                    <label key={field} className="flex flex-col gap-1 font-bold text-slate-800 dark:text-slate-200">
+                      <span>{label}</span>
+                      <input
+                        type="text"
+                        maxLength={120}
+                        value={detailsDraft[field]}
+                        onChange={(e) => setDetailsDraft((prev) => ({ ...prev, [field]: e.target.value }))}
+                        className="rounded-xl border p-2 font-normal text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                      />
+                    </label>
+                  ))}
+                  <div className="flex justify-end gap-2 sm:col-span-2">
+                    <Button size="sm" variant="outline" onClick={() => setIsEditing(false)} disabled={isSavingDetails}>
+                      Cancelar
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleSaveDetails}
+                      disabled={isSavingDetails}
+                      className="bg-indigo-600 text-white font-semibold"
+                    >
+                      {isSavingDetails ? "Guardando..." : "Guardar cambios"}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-3 flex justify-end gap-2 text-xs">
+                  <Button size="sm" variant="outline" onClick={() => setIsEditing(true)}>
+                    <Pencil className="size-3.5" />
+                    Editar datos
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setCustomerToDelete(selectedCustomer)}
+                    className="border-rose-300 text-rose-600 hover:bg-rose-50 dark:border-rose-500/40 dark:text-rose-400"
+                  >
+                    <Trash2 className="size-3.5" />
+                    Eliminar cliente
+                  </Button>
+                </div>
+              )
+            )}
+
             {/* Spending stats */}
-            <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
+            <div className={`mt-4 grid gap-3 text-xs ${can?.("finance.view") ? "grid-cols-2" : "grid-cols-1"}`}>
               <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-800 border dark:border-slate-700">
                 <span className="text-slate-500 dark:text-slate-400 font-medium">Total Pedidos</span>
                 <p className="text-lg font-black text-slate-900 dark:text-white">
                   {selectedCustomer.totalOrders} compras
                 </p>
               </div>
-              <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-800 border dark:border-slate-700">
-                <span className="text-slate-500 dark:text-slate-400 font-medium">Inversión Total</span>
-                <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">
-                  {formatCurrency(selectedCustomer.totalSpent)}
-                </p>
-              </div>
+              {can?.("finance.view") && (
+                <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-800 border dark:border-slate-700">
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">Inversión Total</span>
+                  <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">
+                    {formatCurrency(selectedCustomer.totalSpent)}
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Notes input */}
@@ -368,15 +578,25 @@ export const CustomerCRM: React.FC = () => {
                 rows={3}
                 maxLength={300}
                 value={notesEdit}
+                disabled={!canManageCustomers}
+                readOnly={!canManageCustomers}
                 onChange={(e) => setNotesEdit(e.target.value)}
-                placeholder="Ej. Prefiere la carne bien cocida. Dejar con portería si no contesta..."
-                className="w-full rounded-xl border p-2.5 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white"
+                placeholder={
+                  canManageCustomers
+                    ? "Ej. Prefiere la carne bien cocida. Dejar con portería si no contesta..."
+                    : "Sin notas registradas"
+                }
+                className={`w-full rounded-xl border p-2.5 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white ${
+                  !canManageCustomers ? "opacity-75 cursor-not-allowed bg-slate-50 dark:bg-slate-800/50" : ""
+                }`}
               />
-              <div className="flex justify-end">
-                <Button size="sm" onClick={handleSaveNotes} disabled={isSavingNotes} className="bg-indigo-600 text-white font-semibold">
-                  {isSavingNotes ? "Guardando..." : "Guardar Notas"}
-                </Button>
-              </div>
+              {canManageCustomers && (
+                <div className="flex justify-end">
+                  <Button size="sm" onClick={handleSaveNotes} disabled={isSavingNotes} className="bg-indigo-600 text-white font-semibold">
+                    {isSavingNotes ? "Guardando..." : "Guardar Notas"}
+                  </Button>
+                </div>
+              )}
 
             </div>
 
@@ -409,6 +629,173 @@ export const CustomerCRM: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Create Customer Modal */}
+      {isCreateModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 backdrop-blur-xs">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="create-customer-title"
+            className={`w-full max-w-lg rounded-2xl border p-6 shadow-2xl transition-all ${
+              isDark ? "border-slate-800 bg-slate-900 text-slate-100" : "border-slate-200 bg-white text-slate-900"
+            }`}
+          >
+            <div className="flex items-start justify-between border-b pb-4 border-slate-100 dark:border-slate-800">
+              <div>
+                <h3 id="create-customer-title" className="text-base font-black text-slate-900 dark:text-white">
+                  Nuevo Cliente
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Registra los datos del cliente para su historial y fidelización
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeCreateModal}
+                aria-label="Cerrar modal"
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateCustomer} className="mt-4 space-y-3 text-xs">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <label className="flex flex-col gap-1 font-bold text-slate-800 dark:text-slate-200">
+                  <span>Nombre *</span>
+                  <input
+                    type="text"
+                    maxLength={120}
+                    value={createDraft.nombre}
+                    onChange={(e) => {
+                      setCreateDraft((prev) => ({ ...prev, nombre: e.target.value }))
+                      if (createErrors.nombre) setCreateErrors((prev) => ({ ...prev, nombre: undefined }))
+                    }}
+                    placeholder="Ej. Juan Pérez"
+                    className={`rounded-xl border p-2 font-normal text-slate-900 dark:bg-slate-800 dark:text-white ${
+                      createErrors.nombre
+                        ? "border-rose-500 focus:ring-rose-500"
+                        : "border-slate-200 dark:border-slate-700"
+                    }`}
+                  />
+                  {createErrors.nombre && (
+                    <span className="text-[11px] font-medium text-rose-500">{createErrors.nombre}</span>
+                  )}
+                </label>
+
+                <label className="flex flex-col gap-1 font-bold text-slate-800 dark:text-slate-200">
+                  <span>Teléfono *</span>
+                  <input
+                    type="text"
+                    maxLength={20}
+                    value={createDraft.telefono}
+                    onChange={(e) => {
+                      setCreateDraft((prev) => ({ ...prev, telefono: e.target.value }))
+                      if (createErrors.telefono) setCreateErrors((prev) => ({ ...prev, telefono: undefined }))
+                    }}
+                    placeholder="Ej. 3001234567"
+                    className={`rounded-xl border p-2 font-normal text-slate-900 dark:bg-slate-800 dark:text-white ${
+                      createErrors.telefono
+                        ? "border-rose-500 focus:ring-rose-500"
+                        : "border-slate-200 dark:border-slate-700"
+                    }`}
+                  />
+                  {createErrors.telefono && (
+                    <span className="text-[11px] font-medium text-rose-500">{createErrors.telefono}</span>
+                  )}
+                  {existingCustomerWithPhone && (
+                    <span className="text-[11px] font-medium text-amber-500">
+                      Este teléfono ya está registrado ({existingCustomerWithPhone.nombre}; se actualizarán sus datos)
+                    </span>
+                  )}
+                </label>
+
+                <label className="flex flex-col gap-1 font-bold text-slate-800 dark:text-slate-200">
+                  <span>Dirección</span>
+                  <input
+                    type="text"
+                    maxLength={120}
+                    value={createDraft.direccion}
+                    onChange={(e) => setCreateDraft((prev) => ({ ...prev, direccion: e.target.value }))}
+                    placeholder="Ej. Carrera 10 # 20-30"
+                    className="rounded-xl border border-slate-200 p-2 font-normal text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  />
+                </label>
+
+                <label className="flex flex-col gap-1 font-bold text-slate-800 dark:text-slate-200">
+                  <span>Barrio</span>
+                  <input
+                    type="text"
+                    maxLength={80}
+                    value={createDraft.barrio}
+                    onChange={(e) => setCreateDraft((prev) => ({ ...prev, barrio: e.target.value }))}
+                    placeholder="Ej. Poblado"
+                    className="rounded-xl border border-slate-200 p-2 font-normal text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  />
+                </label>
+
+                <label className="flex flex-col gap-1 font-bold text-slate-800 dark:text-slate-200 sm:col-span-2">
+                  <span>Correo / Email</span>
+                  <input
+                    type="email"
+                    maxLength={120}
+                    value={createDraft.email}
+                    onChange={(e) => setCreateDraft((prev) => ({ ...prev, email: e.target.value }))}
+                    placeholder="Ej. cliente@ejemplo.com"
+                    className="rounded-xl border border-slate-200 p-2 font-normal text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  />
+                </label>
+
+                <label className="flex flex-col gap-1 font-bold text-slate-800 dark:text-slate-200 sm:col-span-2">
+                  <span>Notas</span>
+                  <textarea
+                    rows={2}
+                    maxLength={300}
+                    value={createDraft.notes}
+                    onChange={(e) => setCreateDraft((prev) => ({ ...prev, notes: e.target.value }))}
+                    placeholder="Preferencias, alergias, o instrucciones especiales..."
+                    className="rounded-xl border border-slate-200 p-2 font-normal text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  />
+                </label>
+              </div>
+
+              <div className="flex justify-end gap-2 border-t pt-4 border-slate-100 dark:border-slate-800">
+                <Button
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                  onClick={closeCreateModal}
+                  disabled={isSubmittingCreate}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  size="sm"
+                  type="submit"
+                  disabled={isSubmittingCreate}
+                  className="bg-indigo-600 text-white font-semibold hover:bg-indigo-700"
+                >
+                  {isSubmittingCreate ? "Guardando..." : "Registrar cliente"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      <ConfirmDeleteModal
+        isOpen={customerToDelete !== null}
+        onClose={() => setCustomerToDelete(null)}
+        onConfirm={handleConfirmDelete}
+        title="¿Eliminar cliente?"
+        targetName={customerToDelete?.nombre}
+        description={
+          customerToDelete
+            ? `¿Seguro que deseas eliminar a "${customerToDelete.nombre}"? Sus pedidos anteriores se conservan, pero la ficha del cliente se borrará. Esta acción no se puede deshacer.`
+            : undefined
+        }
+      />
     </div>
   )
 }

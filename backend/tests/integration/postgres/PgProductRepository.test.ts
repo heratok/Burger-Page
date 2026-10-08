@@ -224,4 +224,25 @@ describe('PgProductRepository (real Postgres, app_user role)', () => {
     expect(raw.rows[0].description).toBeNull();
     expect((await repo.findById(id, RESTAURANT_A))?.description).toBe('');
   });
+
+  it('findByIds returns only existing ids of the tenant in one call', async () => {
+    if (!isDbConnected) return;
+    const mk = (restaurantId: string, name: string): Product => ({
+      id: `prod-${randomUUID().slice(0, 8)}`,
+      restaurantId,
+      name,
+      description: '',
+      price: 1000,
+      category: 'Burgers',
+      isAvailable: true,
+    });
+    const own = mk(RESTAURANT_A, 'Own');
+    const foreign = mk(RESTAURANT_B, 'Foreign');
+    await repo.save(own);
+    await repo.save(foreign);
+
+    const found = await repo.findByIds([own.id, foreign.id, 'prod-missing'], RESTAURANT_A);
+    expect(found.map((p) => p.id)).toEqual([own.id]);
+    expect(await repo.findByIds([], RESTAURANT_A)).toEqual([]);
+  });
 });

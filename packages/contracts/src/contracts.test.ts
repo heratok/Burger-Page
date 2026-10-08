@@ -155,6 +155,7 @@ describe('restaurant schedule contracts', () => {
         'restaurant.create', 'restaurant.update', 'restaurant.pause', 'restaurant.activate',
         'restaurant.delete', 'restaurant.restore',
         'user.create', 'user.update', 'user.activate', 'user.deactivate', 'user.delete', 'user.reset_password',
+        'role.create', 'role.update', 'role.delete',
       ]);
     });
 

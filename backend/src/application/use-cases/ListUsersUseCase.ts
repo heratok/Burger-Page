@@ -4,8 +4,9 @@ import { UserRole } from '../../domain/models/User.js';
 export interface SafeUser {
   id: string;
   username: string;
-  role: 'super_admin' | 'restaurant_admin';
+  role: UserRole;
   restaurantId?: string;
+  roleId?: string;
   createdAt: string;
 }
 

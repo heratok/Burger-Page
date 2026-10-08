@@ -1,4 +1,7 @@
-export type UserRole = 'super_admin' | 'restaurant_admin';
+export type UserRole = 'super_admin' | 'restaurant_admin' | 'restaurant_staff';
+
+/** Roles that belong to exactly one restaurant (users.restaurant_id is required). */
+export const TENANT_ROLES: readonly UserRole[] = ['restaurant_admin', 'restaurant_staff'];
 
 /** Minimum length for any password a user sets or is created with. */
 export const MIN_PASSWORD_LENGTH = 8;
@@ -9,6 +12,8 @@ export const MIN_PASSWORD_LENGTH = 8;
       passwordHash: string;
       role: UserRole;
       restaurantId?: string;
+      /** Custom role (roles.id) of a restaurant_staff user; absent for admins (users.role_id). */
+      roleId?: string;
       createdAt: string;
       /** Soft-disable flag backed by users.is_active (Postgres). Absent on
        *  providers/in-memory seeds that do not model it: treat as active. */

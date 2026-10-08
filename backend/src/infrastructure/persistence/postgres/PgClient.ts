@@ -1,4 +1,7 @@
 import pg from 'pg';
+import type { UserRole } from '../../../domain/models/User.js';
+
+import { parsePoolMax } from './poolConfig.js';
 
 const { Pool } = pg;
 
@@ -8,7 +11,8 @@ const { Pool } = pg;
 // bring bounded concurrency, fail-fast pool acquisition, idle reaping and
 // connection rotation. Values are exported so tests/observability can refer
 // to the same numbers.
-export const PG_POOL_MAX = 10;
+// Configurable through PG_POOL_MAX (1..100, default 10); read once at load.
+export const PG_POOL_MAX = parsePoolMax(process.env.PG_POOL_MAX);
 export const PG_CONNECTION_TIMEOUT_MS = 5000;
 export const PG_IDLE_TIMEOUT_MS = 30000;
 export const PG_MAX_USES = 7500;
@@ -99,7 +103,7 @@ export interface TenantContext {
    * policies expose just the active restaurant with this slug.
    */
   restaurantSlug?: string;
-  actorRole?: 'super_admin' | 'restaurant_admin';
+  actorRole?: UserRole;
   actor?: string;
 }
 

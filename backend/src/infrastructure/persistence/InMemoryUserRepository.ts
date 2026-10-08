@@ -114,6 +114,7 @@ export class InMemoryUserRepository implements UserRepository {
     if (changes.username !== undefined) next.username = changes.username;
     if (changes.role !== undefined) next.role = changes.role;
     if (changes.restaurantId !== undefined) next.restaurantId = changes.restaurantId ?? undefined;
+    if (changes.roleId !== undefined) next.roleId = changes.roleId ?? undefined;
     if (changes.isActive !== undefined) next.isActive = changes.isActive;
     const removesAccess = computeRemovesSuperAdminAccess(next.role, next.isActive !== false);
     if (

@@ -16,6 +16,7 @@ function mapRow(row: any): User {
     passwordHash: row.password_hash,
     role: row.role as UserRole,
     restaurantId: row.restaurant_id || undefined,
+    roleId: row.role_id || undefined,
     createdAt: row.created_at || new Date().toISOString(),
         isActive: row.is_active === undefined ? undefined : Boolean(row.is_active),
     mustChangePassword: row.must_change_password === undefined ? undefined : Boolean(row.must_change_password),
@@ -81,15 +82,16 @@ export class PgUserRepository implements UserRepository {
                is_active = COALESCE($5::boolean, is_active),
                must_change_password = COALESCE($6::boolean, must_change_password),
                password_changed_at = COALESCE($8::timestamptz, password_changed_at),
+               role_id = $9,
                updated_at = NOW()
              WHERE id = $7`,
-            [user.username, user.passwordHash, user.role, user.restaurantId || null, user.isActive ?? null, user.mustChangePassword ?? null, existing.rows[0].id, user.passwordChangedAt ?? null]
+            [user.username, user.passwordHash, user.role, user.restaurantId || null, user.isActive ?? null, user.mustChangePassword ?? null, existing.rows[0].id, user.passwordChangedAt ?? null, user.roleId ?? null]
           );
         } else {
           await client.query(
-            `INSERT INTO public.users (id, username, password_hash, role, restaurant_id, is_active, must_change_password, created_at, password_changed_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-            [user.id, user.username, user.passwordHash, user.role, user.restaurantId || null, user.isActive ?? true, user.mustChangePassword ?? false, user.createdAt || new Date().toISOString(), user.passwordChangedAt ?? null]
+            `INSERT INTO public.users (id, username, password_hash, role, restaurant_id, is_active, must_change_password, created_at, password_changed_at, role_id)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+            [user.id, user.username, user.passwordHash, user.role, user.restaurantId || null, user.isActive ?? true, user.mustChangePassword ?? false, user.createdAt || new Date().toISOString(), user.passwordChangedAt ?? null, user.roleId ?? null]
           );
         }
       }
@@ -198,6 +200,7 @@ export class PgUserRepository implements UserRepository {
         if (changes.username !== undefined) set('username', changes.username);
         if (changes.role !== undefined) set('role', changes.role);
         if (changes.restaurantId !== undefined) set('restaurant_id', changes.restaurantId);
+        if (changes.roleId !== undefined) set('role_id', changes.roleId);
         if (changes.isActive !== undefined) set('is_active', changes.isActive);
         if (sets.length > 0) {
           await client.query(`UPDATE public.users SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $1`, values);

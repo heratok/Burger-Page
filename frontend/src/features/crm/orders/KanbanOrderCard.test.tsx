@@ -1,7 +1,15 @@
-import { describe, it, expect, vi, afterEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { render, screen, fireEvent, cleanup } from "@testing-library/react"
 import { KanbanOrderCard } from "./KanbanOrderCard"
 import type { Order } from "@/types/restaurant"
+
+const mockCan = vi.fn().mockImplementation((_p: string) => true)
+
+vi.mock("@/context/slices/AuthContext", () => ({
+  useAuth: () => ({
+    can: mockCan,
+  }),
+}))
 
 const mockOrder: Order = {
   id: "ord-1",
@@ -48,6 +56,10 @@ const legacyTableOrder: Order = {
 }
 
 describe("KanbanOrderCard", () => {
+  beforeEach(() => {
+    mockCan.mockImplementation(() => true)
+  })
+
   afterEach(() => {
     cleanup()
   })
@@ -140,5 +152,120 @@ describe("KanbanOrderCard", () => {
     render(<KanbanOrderCard order={legacyTableOrder} onViewDetails={vi.fn()} onUpdateStatus={vi.fn()} onWhatsApp={vi.fn()} />)
 
     expect(screen.getByText("Salón · Mesa 8")).toBeDefined()
+  })
+
+  it("hides status action button and edit button when user lacks orders.manage permission", () => {
+    mockCan.mockImplementation((p) => p !== "orders.manage")
+    const onViewDetails = vi.fn()
+    const onWhatsApp = vi.fn()
+    const onEditOrder = vi.fn()
+
+    const { rerender } = render(
+      <KanbanOrderCard
+        order={mockOrder}
+        onViewDetails={onViewDetails}
+        onUpdateStatus={vi.fn()}
+        onWhatsApp={onWhatsApp}
+        onEditOrder={onEditOrder}
+      />
+    )
+
+    // Pending: A Cocina and edit should be hidden
+    expect(screen.queryByRole("button", { name: /A Cocina/i })).toBeNull()
+    expect(screen.queryByTitle("Editar venta")).toBeNull()
+
+    // View details and WhatsApp remain accessible
+    const viewBtn = screen.getByTitle("Ver detalles completos del pedido")
+    fireEvent.click(viewBtn)
+    expect(onViewDetails).toHaveBeenCalledWith(mockOrder)
+
+    const whatsappBtn = screen.getByTitle("Chat WhatsApp con cliente")
+    fireEvent.click(whatsappBtn)
+    expect(onWhatsApp).toHaveBeenCalledWith(mockOrder)
+
+    // Total remains visible
+    expect(screen.getByText("$55.000")).toBeDefined()
+
+    // Cooking: Despachar is hidden
+    rerender(
+      <KanbanOrderCard
+        order={{ ...mockOrder, status: "cooking" }}
+        onViewDetails={onViewDetails}
+        onUpdateStatus={vi.fn()}
+        onWhatsApp={onWhatsApp}
+        onEditOrder={onEditOrder}
+      />
+    )
+    expect(screen.queryByRole("button", { name: /Despachar/i })).toBeNull()
+
+    // Delivering: Entregado is hidden
+    rerender(
+      <KanbanOrderCard
+        order={{ ...mockOrder, status: "delivering" }}
+        onViewDetails={onViewDetails}
+        onUpdateStatus={vi.fn()}
+        onWhatsApp={onWhatsApp}
+        onEditOrder={onEditOrder}
+      />
+    )
+    expect(screen.queryByRole("button", { name: /Entregado/i })).toBeNull()
+  })
+
+  it("renders quick printer button and calls onPrintOrder when clicked", () => {
+    const onPrintOrder = vi.fn()
+    render(
+      <KanbanOrderCard
+        order={mockOrder}
+        onViewDetails={vi.fn()}
+        onUpdateStatus={vi.fn()}
+        onWhatsApp={vi.fn()}
+        onPrintOrder={onPrintOrder}
+      />
+    )
+
+    const printBtn = screen.getByRole("button", { name: /Imprimir ticket \/ comanda/i })
+    expect(printBtn).toBeDefined()
+    fireEvent.click(printBtn)
+    expect(onPrintOrder).toHaveBeenCalledWith(mockOrder)
+  })
+
+  it("allows read-only user with orders.view to see and click print button while hiding mutation buttons", () => {
+    mockCan.mockImplementation((p) => p === "orders.view")
+    const onPrintOrder = vi.fn()
+    const onEditOrder = vi.fn()
+    const onUpdateStatus = vi.fn()
+
+    render(
+      <KanbanOrderCard
+        order={mockOrder}
+        onViewDetails={vi.fn()}
+        onUpdateStatus={onUpdateStatus}
+        onWhatsApp={vi.fn()}
+        onEditOrder={onEditOrder}
+        onPrintOrder={onPrintOrder}
+      />
+    )
+
+    const printBtn = screen.getByRole("button", { name: /Imprimir ticket \/ comanda/i })
+    expect(printBtn).toBeDefined()
+    fireEvent.click(printBtn)
+    expect(onPrintOrder).toHaveBeenCalledWith(mockOrder)
+
+    expect(screen.queryByRole("button", { name: /A Cocina/i })).toBeNull()
+    expect(screen.queryByTitle("Editar venta")).toBeNull()
+  })
+
+  it("hides ticket print button when user lacks orders.view and orders.manage", () => {
+    mockCan.mockImplementation((p) => p === "finance.view")
+    render(
+      <KanbanOrderCard
+        order={mockOrder}
+        onViewDetails={vi.fn()}
+        onUpdateStatus={vi.fn()}
+        onWhatsApp={vi.fn()}
+        onPrintOrder={vi.fn()}
+      />
+    )
+    expect(screen.queryByRole("button", { name: /Imprimir ticket \/ comanda/i })).toBeNull()
   })
 })

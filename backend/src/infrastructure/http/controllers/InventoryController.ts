@@ -11,6 +11,7 @@ import { UnauthorizedError, ValidationError } from '../../../domain/errors/Domai
 import { resolveTenantForRequest } from '../TenantResolver.js';
 import { CreateInventoryItemDTO, UpdateInventoryItemDTO } from '../../../application/dtos/index.js';
 import { ListOptions } from '../../../domain/ports/out/ListOptions.js';
+import { canViewFinance, omitCostForNonFinance, redactInventoryItem } from '../financeRedaction.js';
 
 /**
  * Lenient pagination parsing: honored only when BOTH page and limit are
@@ -25,6 +26,25 @@ function parsePagination(query: unknown): ListOptions | undefined {
   if (!Number.isInteger(limitRaw) || limitRaw < 1) return undefined;
   return { page, limit: Math.min(limitRaw, 100) };
 }
+
+const toResponse = (item: any, finance: boolean) =>
+  redactInventoryItem(
+    {
+      id: item.id,
+      restaurantId: item.restaurantId,
+      name: item.name,
+      category: item.category || 'ingredients',
+      currentStock: item.quantity,
+      quantity: item.quantity,
+      minStockAlert: item.minStockAlert,
+      alertThreshold: item.alertThreshold,
+      unit: item.unit,
+      costPerUnit: item.costPerUnit || 0,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
+    },
+    finance
+  );
 
 export class InventoryController {
   constructor(
@@ -43,20 +63,8 @@ export class InventoryController {
       throw new UnauthorizedError('Restaurant context is required to list inventory.');
     }
     const options = parsePagination(req.query);
-    const mapItem = (item: any) => ({
-      id: item.id,
-      restaurantId: item.restaurantId,
-      name: item.name,
-      category: item.category || 'ingredients',
-      currentStock: item.quantity,
-      quantity: item.quantity,
-      minStockAlert: item.minStockAlert,
-      alertThreshold: item.alertThreshold,
-      unit: item.unit,
-      costPerUnit: item.costPerUnit || 0,
-      createdAt: item.createdAt,
-      updatedAt: item.updatedAt,
-    });
+    const finance = canViewFinance(req);
+    const mapItem = (item: any) => toResponse(item, finance);
     if (options) {
       const { items, total } = await this.listInventoryUseCase.execute(restaurantId, options);
       reply.header('X-Total-Count', String(total));
@@ -77,20 +85,7 @@ export class InventoryController {
       throw new ValidationError('GetInventoryItemByIdUseCase not configured.');
     }
     const item = await this.getInventoryItemByIdUseCase.execute(params.id, restaurantId);
-    return reply.status(200).send({
-      id: item.id,
-      restaurantId: item.restaurantId,
-      name: item.name,
-      category: item.category || 'ingredients',
-      currentStock: item.quantity,
-      quantity: item.quantity,
-      minStockAlert: item.minStockAlert,
-      alertThreshold: item.alertThreshold,
-      unit: item.unit,
-      costPerUnit: item.costPerUnit || 0,
-      createdAt: item.createdAt,
-      updatedAt: item.updatedAt,
-    });
+    return reply.status(200).send(toResponse(item, canViewFinance(req)));
   }
 
   async create(req: FastifyRequest, reply: FastifyReply) {
@@ -102,21 +97,9 @@ export class InventoryController {
     if (!this.createInventoryItemUseCase) {
       throw new ValidationError('CreateInventoryItemUseCase not configured.');
     }
-    const item = await this.createInventoryItemUseCase.execute(body, restaurantId);
-    return reply.status(201).send({
-      id: item.id,
-      restaurantId: item.restaurantId,
-      name: item.name,
-      category: item.category,
-      currentStock: item.quantity,
-      quantity: item.quantity,
-      minStockAlert: item.minStockAlert,
-      alertThreshold: item.alertThreshold,
-      unit: item.unit,
-      costPerUnit: item.costPerUnit,
-      createdAt: item.createdAt,
-      updatedAt: item.updatedAt,
-    });
+    const finance = canViewFinance(req);
+    const item = await this.createInventoryItemUseCase.execute(omitCostForNonFinance(body, finance) as CreateInventoryItemDTO, restaurantId);
+    return reply.status(201).send(toResponse(item, finance));
   }
 
   async update(req: FastifyRequest, reply: FastifyReply) {
@@ -129,21 +112,9 @@ export class InventoryController {
     if (!this.updateInventoryItemUseCase) {
       throw new ValidationError('UpdateInventoryItemUseCase not configured.');
     }
-    const item = await this.updateInventoryItemUseCase.execute(params.id, body, restaurantId);
-    return reply.status(200).send({
-      id: item.id,
-      restaurantId: item.restaurantId,
-      name: item.name,
-      category: item.category,
-      currentStock: item.quantity,
-      quantity: item.quantity,
-      minStockAlert: item.minStockAlert,
-      alertThreshold: item.alertThreshold,
-      unit: item.unit,
-      costPerUnit: item.costPerUnit,
-      createdAt: item.createdAt,
-      updatedAt: item.updatedAt,
-    });
+    const finance = canViewFinance(req);
+    const item = await this.updateInventoryItemUseCase.execute(params.id, omitCostForNonFinance(body, finance) as UpdateInventoryItemDTO, restaurantId);
+    return reply.status(200).send(toResponse(item, finance));
   }
 
   async updateStock(req: FastifyRequest, reply: FastifyReply) {

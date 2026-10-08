@@ -3,6 +3,8 @@ import { ListOptions } from './ListOptions.js';
 
 export interface ProductAdditionRepository {
   findById(id: string, restaurantId: string): Promise<ProductAddition | null>;
+  /** Batched tenant-scoped lookup; missing ids are simply absent (optional so test fakes may omit it). */
+  findByIds?(ids: string[], restaurantId: string): Promise<ProductAddition[]>;
   findByRestaurantId(restaurantId: string, options?: ListOptions): Promise<ProductAddition[]>;
   /** Tenant-scoped total count for pagination (optional so test fakes may omit it). */
   countByRestaurantId?(restaurantId: string): Promise<number>;

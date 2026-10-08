@@ -26,6 +26,17 @@ export class PgProductAdditionRepository implements ProductAdditionRepository {
     });
   }
 
+  async findByIds(ids: string[], restaurantId: string): Promise<ProductAddition[]> {
+    if (ids.length === 0) return [];
+    return withTenantContext({ restaurantId }, async (client) => {
+      const { rows } = await client.query(
+        `SELECT * FROM public.product_additions WHERE id = ANY($1) AND restaurant_id = $2`,
+        [ids, restaurantId]
+      );
+      return rows.map(mapRow);
+    });
+  }
+
   async findByRestaurantId(restaurantId: string, options?: ListOptions): Promise<ProductAddition[]> {
     return withTenantContext({ restaurantId }, async (client) => {
       const limit = options?.limit;

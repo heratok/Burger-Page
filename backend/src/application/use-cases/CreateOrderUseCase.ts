@@ -1,5 +1,6 @@
 import { ID_PREFIX, newId } from '../../domain/shared/newId.js';
 import { Order, OrderItem, OrderItemAddition, PaymentMethod } from '../../domain/models/Order.js';
+import { ProductAddition } from '../../domain/models/ProductAddition.js';
 import { Customer } from '../../domain/models/Customer.js';
 import { Restaurant } from '../../domain/models/Restaurant.js';
 import { OrderRepository } from '../../domain/ports/out/OrderRepository.js';
@@ -12,6 +13,11 @@ import { resolveOrderTable } from './resolveOrderTable.js';
 import { CreateOrderDTO } from '../dtos/index.js';
 import { EntityNotFoundError, ValidationError } from '../../domain/errors/DomainErrors.js';
 import { ORDER_CLOSED_ERROR_FRAGMENT, ORDER_PAUSED_ERROR_FRAGMENT, isOpenAt } from '@burger-page/contracts';
+
+interface Prefetched {
+  products: Map<string, any>;
+  additions: Map<string, ProductAddition>;
+}
 
 export class CreateOrderUseCase {
   constructor(
@@ -222,9 +228,10 @@ export class CreateOrderUseCase {
 
     let calculatedSubtotal = 0;
     const validatedItems: OrderItem[] = [];
+    const prefetched = await this.prefetchCatalog(items, restaurant);
 
     for (const itemDto of items) {
-      const { item, lineItemTotal } = await this.validateAndBuildItem(itemDto, restaurant);
+      const { item, lineItemTotal } = await this.validateAndBuildItem(itemDto, restaurant, prefetched);
       calculatedSubtotal += lineItemTotal;
       validatedItems.push(item);
     }
@@ -232,9 +239,40 @@ export class CreateOrderUseCase {
     return { validatedItems, calculatedSubtotal };
   }
 
+  /**
+   * Loads every distinct product and addition id of the order with one batched
+   * query each (instead of one pool checkout per id). Ids absent from the
+   * result, or repositories without findByIds, use the original per-id path,
+   * so validation order and error messages are unchanged.
+   */
+  private async prefetchCatalog(
+    items: NonNullable<CreateOrderDTO['items']>,
+    restaurant: Restaurant
+  ): Promise<Prefetched> {
+    const productIds = new Set<string>();
+    const additionIds = new Set<string>();
+    for (const itemDto of items) {
+      if (typeof itemDto?.productId === 'string') productIds.add(itemDto.productId);
+      for (const rawAdd of (itemDto?.additions ?? []) as any[]) {
+        const id = typeof rawAdd === 'string' ? rawAdd : rawAdd?.additionId;
+        if (typeof id === 'string') additionIds.add(id);
+      }
+    }
+    const products = new Map<string, any>();
+    const additions = new Map<string, ProductAddition>();
+    if (productIds.size > 0 && typeof this.productRepo.findByIds === 'function') {
+      for (const p of await this.productRepo.findByIds([...productIds], restaurant.id)) products.set(p.id, p);
+    }
+    if (additionIds.size > 0 && typeof this.additionRepo.findByIds === 'function') {
+      for (const a of await this.additionRepo.findByIds([...additionIds], restaurant.id)) additions.set(a.id, a);
+    }
+    return { products, additions };
+  }
+
   private async validateAndBuildItem(
     itemDto: NonNullable<CreateOrderDTO['items']>[number],
-    restaurant: Restaurant
+    restaurant: Restaurant,
+    prefetched: Prefetched
   ): Promise<{ item: OrderItem; lineItemTotal: number }> {
     if (!itemDto.quantity || itemDto.quantity <= 0) {
       throw new ValidationError(`Invalid quantity for product ${itemDto.productId}`);
@@ -243,13 +281,14 @@ export class CreateOrderUseCase {
       throw new ValidationError(`Quantity exceeds maximum limit of 100 for product ${itemDto.productId}`);
     }
 
-    const product = await this.fetchAndValidateProduct(itemDto.productId, restaurant);
+    const product = await this.fetchAndValidateProduct(itemDto.productId, restaurant, prefetched);
     const verifiedProductPrice = Number(product.price);
 
     const { additions, additionsTotal } = await this.validateAndBuildAdditions(
       itemDto.additions,
       product,
-      restaurant
+      restaurant,
+      prefetched
     );
 
     const lineItemTotal = (verifiedProductPrice + additionsTotal) * itemDto.quantity;
@@ -267,8 +306,8 @@ export class CreateOrderUseCase {
     return { item, lineItemTotal };
   }
 
-  private async fetchAndValidateProduct(productId: string, restaurant: Restaurant): Promise<any> {
-    let product = await this.productRepo.findById(productId, restaurant.id);
+  private async fetchAndValidateProduct(productId: string, restaurant: Restaurant, prefetched: Prefetched): Promise<any> {
+    let product = prefetched.products.get(productId) ?? (await this.productRepo.findById(productId, restaurant.id));
     if (!product && typeof this.productRepo.findByRestaurantId === 'function') {
       const allProducts = await this.productRepo.findByRestaurantId(restaurant.id);
       product = allProducts.find(p => p.name.toLowerCase() === productId.toLowerCase() || p.id === productId) || null;
@@ -290,7 +329,8 @@ export class CreateOrderUseCase {
   private async validateAndBuildAdditions(
     rawAdditions: any[] | undefined,
     product: any,
-    restaurant: Restaurant
+    restaurant: Restaurant,
+    prefetched: Prefetched
   ): Promise<{ additions: OrderItemAddition[]; additionsTotal: number }> {
     if (!rawAdditions || rawAdditions.length === 0) {
       return { additions: [], additionsTotal: 0 };
@@ -300,7 +340,7 @@ export class CreateOrderUseCase {
     const additions: OrderItemAddition[] = [];
 
     for (const rawAdd of rawAdditions) {
-      const { addition, additionTotal } = await this.validateSingleAddition(rawAdd, product, restaurant);
+      const { addition, additionTotal } = await this.validateSingleAddition(rawAdd, product, restaurant, prefetched);
       additionsTotal += additionTotal;
       additions.push(addition);
     }
@@ -311,7 +351,8 @@ export class CreateOrderUseCase {
   private async validateSingleAddition(
     rawAdd: any,
     product: any,
-    restaurant: Restaurant
+    restaurant: Restaurant,
+    prefetched: Prefetched
   ): Promise<{ addition: OrderItemAddition; additionTotal: number }> {
     const additionId = typeof rawAdd === 'string' ? rawAdd : rawAdd.additionId;
     const addQuantity = typeof rawAdd === 'string' ? 1 : (rawAdd.quantity || 1);
@@ -320,7 +361,7 @@ export class CreateOrderUseCase {
       throw new ValidationError(`Cantidad inválida para la adición '${additionId}'.`);
     }
 
-    let addition = await this.additionRepo.findById(additionId, restaurant.id);
+    let addition = prefetched.additions.get(additionId) ?? (await this.additionRepo.findById(additionId, restaurant.id));
     if (!addition && typeof this.additionRepo.findByRestaurantId === 'function') {
       const allAdditions = await this.additionRepo.findByRestaurantId(restaurant.id);
       addition = allAdditions.find(a => a.name.toLowerCase() === additionId.toLowerCase() || a.id === additionId) || null;

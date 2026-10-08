@@ -12,9 +12,10 @@ export const InventoryManager: React.FC = () => {
   const {
     inventory, suppliers, addInventoryItem, updateInventoryItem, deleteInventoryItem,
     adjustStock, addSupplier, updateSupplier, deleteSupplier, lowStockCount,
-    totalInventoryValue, adminTheme, storeConfig, isLoadingInventory,
+    totalInventoryValue, adminTheme, storeConfig, isLoadingInventory, can,
   } = useRestaurant()
 
+  const canViewFinance = can ? can("finance.view") : true
   const isDark = adminTheme === "dark"
   const [activeTab, setActiveTab] = useState<"inventory" | "suppliers">("inventory")
   const [searchTerm, setSearchTerm] = useState(""), [selectedCategory, setSelectedCategory] = useState<string>("all")
@@ -75,6 +76,7 @@ export const InventoryManager: React.FC = () => {
         totalInventoryValue={totalInventoryValue} suppliersCount={suppliers.length}
         isDark={isDark} onSelectSuppliers={() => setActiveTab("suppliers")}
         onSelectLowStock={() => { setActiveTab("inventory"); setOnlyLowStock(true) }}
+        canViewFinance={canViewFinance}
       />
 
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -118,7 +120,7 @@ export const InventoryManager: React.FC = () => {
 
       {activeTab === "inventory" ? (
         isLoadingInventory && inventory.length === 0 ? (
-          <TableSkeleton isDark={isDark} rows={5} columns={6} />
+          <TableSkeleton isDark={isDark} rows={5} columns={canViewFinance ? 6 : 5} />
         ) : (
           <InventoryTable
             items={paginatedInventory} totalItems={filteredInventory.length} suppliers={suppliers}
@@ -129,6 +131,7 @@ export const InventoryManager: React.FC = () => {
             onPageChange={setCurrentPage} onPageSizeChange={(s) => { setPageSize(s); setCurrentPage(1) }}
             isDark={isDark} onAdjustStock={adjustStock} onSendSupplierWhatsApp={handleSendSupplierWhatsApp}
             onEditItem={(item) => { setEditingItem(item); setIsItemModalOpen(true) }} onDeleteItem={setItemToDelete}
+            canViewFinance={canViewFinance}
           />
         )
       ) : (
@@ -143,6 +146,7 @@ export const InventoryManager: React.FC = () => {
       <InventoryItemModal
         isOpen={isItemModalOpen} editingItem={editingItem} suppliers={suppliers} isDark={isDark}
         onClose={() => setIsItemModalOpen(false)} onSave={handleSaveItem}
+        canViewFinance={canViewFinance}
       />
       <SupplierModal
         isOpen={isSupplierModalOpen} editingSupplier={editingSupplier} isDark={isDark}

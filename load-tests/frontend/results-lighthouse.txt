@@ -1,0 +1,38 @@
+mobile perf [ 82, 82, 80 ] median 82
+  FCP [ 2558.468, 2735.131, 2558.407 ] median 2558.468
+  LCP [ 4287.15, 4113.35, 4515.997 ] median 4287.15
+  TBT [ 21, 16.5, 24 ] median 21
+  CLS [ 0.001, 0.005, 0.005 ] median 0.005
+  SI [ 2558.468, 2735.131, 2558.407 ] median 2558.468
+  transferB [ 385352, 385352, 385352 ] median 385352
+  TTI [ 4309.68, 4113.35, 4515.997 ] median 4309.68
+ top audits (run2):
+  - unused-javascript Est savings of 88 KiB save 500ms bytes 88KB
+  - uses-responsive-images Est savings of 38 KiB save 190ms bytes 38KB
+  - first-contentful-paint 2.7 s  
+  - largest-contentful-paint 4.1 s  
+  - interactive 4.1 s  
+  - largest-contentful-paint-element 4,110 ms  
+  - lcp-lazy-loaded   
+  - color-contrast   
+ LCP el: "<img src=\"https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800&amp;auto=fo…\" alt=\"Clasica\" loading=\"lazy\" decoding=\"async\" class=\"opacit
+ runWarnings []
+desktop perf [ 99, 99, 99 ] median 99
+  FCP [ 575.728, 578.007, 549.088 ] median 575.728
+  LCP [ 884.821, 907.833, 931.443 ] median 907.833
+  TBT [ 0, 0, 0 ] median 0
+  CLS [ 0.001, 0.004, 0.004 ] median 0.004
+  SI [ 575.728, 578.007, 549.088 ] median 575.728
+  transferB [ 385352, 385352, 385352 ] median 385352
+  TTI [ 886.832, 907.833, 931.443 ] median 907.833
+ top audits (run2):
+  - unused-javascript Est savings of 89 KiB save 130ms bytes 89KB
+  - uses-text-compression Est savings of 36 KiB save 40ms bytes 36KB
+  - uses-responsive-images Est savings of 40 KiB save 40ms bytes 40KB
+  - lcp-lazy-loaded   
+  - color-contrast   
+  - label-content-name-mismatch   
+  - render-blocking-resources Est savings of 0 ms  
+  - robots-txt 29 errors found  
+ LCP el: "<img src=\"https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800&amp;auto=fo…\" alt=\"Clasica\" loading=\"lazy\" decoding=\"async\" class=\"opacit
+ runWarnings []

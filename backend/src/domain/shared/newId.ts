@@ -32,6 +32,7 @@ export const ID_PREFIX = {
   inventory: 'inv',
   openingHours: 'oh',
   table: 'tbl',
+  role: 'role',
   audit: 'aud',
 } as const;
 

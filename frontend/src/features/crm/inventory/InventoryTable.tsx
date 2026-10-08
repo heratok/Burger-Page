@@ -36,6 +36,7 @@ export interface InventoryTableProps {
   onSendSupplierWhatsApp: (supplier: Supplier) => void
   onEditItem: (item: InventoryItem) => void
   onDeleteItem: (item: InventoryItem) => void
+  canViewFinance?: boolean
 }
 
 export const InventoryTable: React.FC<InventoryTableProps> = ({
@@ -57,6 +58,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
   onSendSupplierWhatsApp,
   onEditItem,
   onDeleteItem,
+  canViewFinance = true,
 }) => {
   return (
     <div className="space-y-4">
@@ -145,7 +147,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
                   <th className="px-4 py-3">Categoría</th>
                   <th className="px-4 py-3">Stock Actual</th>
                   <th className="px-4 py-3">Ajuste Rápido</th>
-                  <th className="px-4 py-3">Costo / Valuación</th>
+                  {canViewFinance && <th className="px-4 py-3">Costo / Valuación</th>}
                   <th className="px-4 py-3">Proveedor</th>
                   <th className="px-4 py-3 text-right">Acciones</th>
                 </tr>
@@ -253,14 +255,16 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
                       </td>
 
                       {/* Cost / Value */}
-                      <td className="px-4 py-3 font-mono">
-                        <div className="text-slate-900 dark:text-slate-200">
-                          {formatCurrency(item.costPerUnit)} /{item.unit.slice(0, 3)}
-                        </div>
-                        <div className="text-[10px] text-slate-400">
-                          Total: {formatCurrency(itemValuation)}
-                        </div>
-                      </td>
+                      {canViewFinance && (
+                        <td className="px-4 py-3 font-mono">
+                          <div className="text-slate-900 dark:text-slate-200">
+                            {formatCurrency(item.costPerUnit)} /{item.unit.slice(0, 3)}
+                          </div>
+                          <div className="text-[10px] text-slate-400">
+                            Total: {formatCurrency(itemValuation)}
+                          </div>
+                        </td>
+                      )}
 
                       {/* Supplier */}
                       <td className="px-4 py-3">

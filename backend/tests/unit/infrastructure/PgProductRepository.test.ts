@@ -53,3 +53,24 @@ describe('PgProductRepository preparation time (5.7)', () => {
     expect((await new PgProductRepository().findById('p1', 'r'))?.preparationTimeMinutes).toBe(15);
   });
 });
+
+describe('PgProductRepository.findByIds', () => {
+  beforeEach(() => {
+    h.calls.length = 0;
+  });
+
+  it('uses one ANY($1) query scoped to the tenant and maps rows like findById', async () => {
+    h.state.rows = [{ id: 'p1', restaurant_id: 'rest-1', name: 'a', price: '3', is_available: true }];
+    const found = await new PgProductRepository().findByIds(['p1', 'p2'], 'rest-1');
+    expect(h.calls).toHaveLength(1);
+    expect(h.calls[0].sql).toContain('p.id = ANY($1)');
+    expect(h.calls[0].sql).toContain('p.restaurant_id = $2');
+    expect(h.calls[0].params).toEqual([['p1', 'p2'], 'rest-1']);
+    expect(found.map((p) => [p.id, p.price])).toEqual([['p1', 3]]);
+  });
+
+  it('skips the database for an empty id list', async () => {
+    expect(await new PgProductRepository().findByIds([], 'rest-1')).toEqual([]);
+    expect(h.calls).toHaveLength(0);
+  });
+});

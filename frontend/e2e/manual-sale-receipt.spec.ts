@@ -251,7 +251,8 @@ test.describe('Manual Sale Transfer Receipt - POS & Order History', () => {
     await expect(submitBtn).toBeVisible();
     await submitBtn.click();
 
-    // Modal closes
+    // Saving a sale opens the kitchen ticket preview; close it.
+    await page.getByRole('button', { name: 'Cerrar vista previa' }).click();
     await expect(page.getByText(/Punto de Venta/i)).not.toBeVisible();
 
     // Verify Kanban card has "✓ Soporte" badge
@@ -315,6 +316,8 @@ test.describe('Manual Sale Transfer Receipt - POS & Order History', () => {
 
     // Submit sale directly
     await page.getByRole('button', { name: /Registrar Venta/i }).click();
+    // Saving a sale opens the kitchen ticket preview; close it.
+    await page.getByRole('button', { name: 'Cerrar vista previa' }).click();
     await expect(page.getByText(/Punto de Venta/i)).not.toBeVisible();
 
     // In Kanban card, verify "! Sin soporte" badge is shown

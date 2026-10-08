@@ -374,6 +374,9 @@ export const AUDIT_ACTIONS = [
   'user.deactivate',
   'user.delete',
   'user.reset_password',
+  'role.create',
+  'role.update',
+  'role.delete',
 ] as const;
 export const auditActionEnum = z.enum(AUDIT_ACTIONS);
 export type AuditAction = z.infer<typeof auditActionEnum>;
@@ -463,3 +466,4 @@ export const platformStatsSchema = z.object({
 export type PlatformStats = z.infer<typeof platformStatsSchema>;
 
 export * from './schedule.js';
+export * from './roles.js';

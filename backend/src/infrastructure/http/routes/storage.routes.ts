@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { requireAuth } from '../middleware/auth.middleware.js';
+import { requireAuth, requireAnyPermission } from '../middleware/auth.middleware.js';
 import { getSupabaseClient } from '../../persistence/supabase/SupabaseClient.js';
 import { defaultStorageUrlResolver } from '../../storage/StorageUrlResolver.js';
 
@@ -19,7 +19,7 @@ export function sanitizeStorageObjectName(filename: string): string {
 
 export async function storageRoutes(fastify: FastifyInstance) {
   fastify.post('/upload-url', {
-    preHandler: [requireAuth],
+    preHandler: [requireAuth, requireAnyPermission('menu.manage', 'settings.manage')],
     schema: {
       tags: ['Storage'],
       summary: 'Generate a presigned upload URL for Direct-to-Storage upload',

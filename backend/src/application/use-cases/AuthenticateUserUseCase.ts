@@ -1,6 +1,8 @@
 import { RestaurantRepository } from '../../domain/ports/out/RestaurantRepository.js';
 import { UserRepository } from '../../domain/ports/out/UserRepository.js';
 import { PasswordHasher } from '../../domain/ports/out/PasswordHasher.js';
+import { RoleRepository } from '../../domain/ports/out/RoleRepository.js';
+import { resolvePermissions } from '@burger-page/contracts';
 import { UnauthorizedError } from '../../domain/errors/DomainErrors.js';
 import { AuthResult } from '../dtos/index.js';
 import { JwtService } from '../../infrastructure/security/JwtService.js';
@@ -10,7 +12,8 @@ export class AuthenticateUserUseCase {
     private userRepo: UserRepository,
     private hasher: PasswordHasher,
     private jwtService: JwtService = new JwtService(),
-    private restaurantRepo?: RestaurantRepository
+    private restaurantRepo?: RestaurantRepository,
+    private roleRepo?: RoleRepository
   ) {}
 
   async execute(username: string, password: string): Promise<AuthResult> {
@@ -69,6 +72,14 @@ export class AuthenticateUserUseCase {
       mustChangePassword: user.mustChangePassword === true,
     });
 
+    // Staff permissions come from the stored role of their own restaurant;
+    // an unresolvable role means no permissions (fail closed).
+    const storedRole =
+      user.role === 'restaurant_staff' && this.roleRepo && user.roleId && user.restaurantId
+        ? await this.roleRepo.findById(user.roleId, user.restaurantId)
+        : null;
+    const permissions = resolvePermissions({ role: user.role, rolePermissions: storedRole?.permissions });
+
     return {
       success: true,
       token,
@@ -77,6 +88,8 @@ export class AuthenticateUserUseCase {
         username: user.username,
         role: user.role,
         restaurantId: user.restaurantId,
+        roleId: user.roleId,
+        permissions,
         mustChangePassword: user.mustChangePassword === true,
       },
     };

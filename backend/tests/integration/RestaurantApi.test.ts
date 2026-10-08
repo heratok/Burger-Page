@@ -495,7 +495,7 @@ describe('Restaurant API & Multi-Tenant Security (Integration)', () => {
       });
 
       expect(res.statusCode).toBe(403);
-      expect(res.json().detail).toBe('Administrator privileges required to access this resource.');
+      expect(res.json().detail).toMatch(/Missing permission: menu\.manage/);
     });
   });
 

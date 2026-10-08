@@ -92,9 +92,10 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // A1/A2: the inventory fetch keys on the session-aware effective tenant so a
   // restaurant admin's first render never pulls another tenant's stock.
   const effectiveId =
-    session.role === "restaurant" && session.restaurantId
+    (session.role === "restaurant" || session.role === "staff") && session.restaurantId
       ? session.restaurantId
       : activeRestaurant?.id
+
 
   // No tenant or no token, no fetch. The role is part of the key so a cache
   // entry can never be served across roles.

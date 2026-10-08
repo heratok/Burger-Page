@@ -129,7 +129,7 @@ describe('JWT revalidation against users.is_active / role / restaurant (SUS-14)'
     });
 
     expect(res.statusCode).toBe(200);
-    expect(res.json().context).toEqual({
+    expect(res.json().context).toMatchObject({
       userId: 'user-100',
       username: 'stored-username',
       role: 'restaurant_admin',

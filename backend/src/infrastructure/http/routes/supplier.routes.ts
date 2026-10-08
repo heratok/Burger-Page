@@ -1,11 +1,11 @@
 import { FastifyInstance } from 'fastify';
 import { SupplierController } from '../controllers/SupplierController.js';
-import { requireAuth } from '../middleware/auth.middleware.js';
+import { requireAuth, requirePermission } from '../middleware/auth.middleware.js';
 
 export async function supplierRoutes(fastify: FastifyInstance, opts: { controller: SupplierController }) {
   // 1. List Suppliers (Protected - Restaurant Scoped)
   fastify.get('/', {
-    preHandler: [requireAuth],
+    preHandler: [requireAuth, requirePermission('menu.manage')],
     schema: {
       tags: ['Suppliers'],
       summary: 'List all restaurant suppliers',
@@ -21,7 +21,7 @@ export async function supplierRoutes(fastify: FastifyInstance, opts: { controlle
 
   // 2. Create Supplier (Protected - Restaurant Scoped)
   fastify.post('/', {
-    preHandler: [requireAuth],
+    preHandler: [requireAuth, requirePermission('menu.manage')],
     schema: {
       tags: ['Suppliers'],
       summary: 'Create a supplier',
@@ -44,7 +44,7 @@ export async function supplierRoutes(fastify: FastifyInstance, opts: { controlle
 
   // 3. Update Supplier (Protected - Restaurant Scoped)
   fastify.put('/:id', {
-    preHandler: [requireAuth],
+    preHandler: [requireAuth, requirePermission('menu.manage')],
     schema: {
       tags: ['Suppliers'],
       summary: 'Update a supplier',
@@ -78,7 +78,7 @@ export async function supplierRoutes(fastify: FastifyInstance, opts: { controlle
 
   // 4. Delete Supplier (Protected - Restaurant Scoped)
   fastify.delete('/:id', {
-    preHandler: [requireAuth],
+    preHandler: [requireAuth, requirePermission('menu.manage')],
     schema: {
       tags: ['Suppliers'],
       summary: 'Delete a supplier',

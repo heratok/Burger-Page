@@ -26,6 +26,15 @@ export class SqliteProductAdditionRepository implements ProductAdditionRepositor
     return this.mapRow(row);
   }
 
+  async findByIds(ids: string[], restaurantId: string): Promise<ProductAddition[]> {
+    const found: ProductAddition[] = [];
+    for (const id of new Set(ids)) {
+      const addition = await this.findById(id, restaurantId);
+      if (addition) found.push(addition);
+    }
+    return found;
+  }
+
   async findByRestaurantId(restaurantId: string, options?: ListOptions): Promise<ProductAddition[]> {
     const limit = options?.limit;
     let rows: any[];

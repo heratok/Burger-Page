@@ -162,12 +162,13 @@ describe('migration 0000000000008 (db hardening) parity with the baseline schema
 
     it('up recreates every rewritten tenant policy exactly as the baseline declares it', () => {
       const upPolicies = new Map(policyStatements(up).map((p) => [p.name, p.sql]));
-      // restaurant_opening_hours / restaurant_tables only exist from migrations 0009 / 0010.
+      // restaurant_opening_hours / restaurant_tables / roles only exist from migrations 0009 / 0010 / 0017.
       const tenant = policyStatements(baseline).filter(
         (p) =>
           (p.name.startsWith('tenant_isolation_') || p.name === 'users_select_for_auth') &&
           p.table !== 'restaurant_opening_hours' &&
-          p.table !== 'restaurant_tables'
+          p.table !== 'restaurant_tables' &&
+          p.table !== 'roles'
       );
       for (const p of tenant) {
         expect(norm(upPolicies.get(p.name)), p.name).toBe(norm(p.sql));
@@ -671,7 +672,8 @@ describe('migration 0000000000015 (admin_audit_log) parity with the baseline sch
   };
 
   it('declares the same table, with no foreign keys, in baseline and migration', () => {
-    expect(tableDef(baseline)).toBe(tableDef(up));
+    // Migration 0017 later widened target_type with 'role' (baseline only).
+    expect(tableDef(baseline).replace(", 'role'", '')).toBe(tableDef(up));
     expect(tableDef(up)).not.toMatch(/REFERENCES/i);
     expect(tableDef(up)).toMatch(/actor_user_id TEXT,/);
     expect(tableDef(up)).toMatch(/details JSONB NOT NULL DEFAULT '\{\}'::jsonb/);

@@ -1,7 +1,15 @@
-import { describe, it, expect, vi, afterEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { render, screen, fireEvent, cleanup } from "@testing-library/react"
 import { OrderDetailModal } from "./OrderDetailModal"
 import type { Order } from "@/types/restaurant"
+
+const mockCan = vi.fn().mockImplementation((_p: string) => true)
+
+vi.mock("@/context/slices/AuthContext", () => ({
+  useAuth: () => ({
+    can: mockCan,
+  }),
+}))
 
 const mockOrder: Order = {
   id: "ord-1",
@@ -47,6 +55,10 @@ const legacyTableOrder: Order = {
 }
 
 describe("OrderDetailModal", () => {
+  beforeEach(() => {
+    mockCan.mockImplementation(() => true)
+  })
+
   afterEach(() => {
     cleanup()
   })
@@ -245,5 +257,164 @@ describe("OrderDetailModal", () => {
     )
 
     expect(screen.getByText("Salón · Mesa 8")).toBeDefined()
+  })
+
+  it("hides Eliminar Orden button when user lacks orders.delete permission", () => {
+    mockCan.mockImplementation((p) => p !== "orders.delete")
+
+    render(
+      <OrderDetailModal
+        order={mockOrder}
+        isOpen={true}
+        onClose={vi.fn()}
+        onUpdateStatus={vi.fn()}
+        onDeleteOrder={vi.fn()}
+        onWhatsApp={vi.fn()}
+      />
+    )
+
+    expect(screen.queryByRole("button", { name: /Eliminar Orden/i })).toBeNull()
+    // Other manage buttons are still available
+    expect(screen.getByRole("button", { name: /🟠 En Cocina/i })).toBeDefined()
+  })
+
+  it("hides Editar venta and status transition buttons when user lacks orders.manage permission", () => {
+    mockCan.mockImplementation((p) => p !== "orders.manage")
+
+    render(
+      <OrderDetailModal
+        order={mockOrder}
+        isOpen={true}
+        onClose={vi.fn()}
+        onUpdateStatus={vi.fn()}
+        onDeleteOrder={vi.fn()}
+        onWhatsApp={vi.fn()}
+        onEditOrder={vi.fn()}
+      />
+    )
+
+    expect(screen.queryByRole("button", { name: /Editar venta/i })).toBeNull()
+    expect(screen.queryByRole("button", { name: /🟡 Pendiente/i })).toBeNull()
+    expect(screen.queryByRole("button", { name: /🟠 En Cocina/i })).toBeNull()
+    expect(screen.queryByRole("button", { name: /🔵 En Reparto/i })).toBeNull()
+    expect(screen.queryByRole("button", { name: /🟢 Entregado/i })).toBeNull()
+    expect(screen.queryByRole("button", { name: /🔴 Cancelar/i })).toBeNull()
+    expect(screen.queryByText(/Cambiar estado de orden:/i)).toBeNull()
+    // Delete button is still available since orders.delete is granted
+    expect(screen.getByRole("button", { name: /Eliminar Orden/i })).toBeDefined()
+  })
+
+  it("hides both status advancers and delete button when user only has orders.view", () => {
+    mockCan.mockImplementation((p) => p === "orders.view")
+
+    render(
+      <OrderDetailModal
+        order={mockOrder}
+        isOpen={true}
+        onClose={vi.fn()}
+        onUpdateStatus={vi.fn()}
+        onDeleteOrder={vi.fn()}
+        onWhatsApp={vi.fn()}
+        onEditOrder={vi.fn()}
+      />
+    )
+
+    expect(screen.queryByRole("button", { name: /Editar venta/i })).toBeNull()
+    expect(screen.queryByRole("button", { name: /Eliminar Orden/i })).toBeNull()
+    expect(screen.queryByText(/Cambiar estado de orden:/i)).toBeNull()
+    expect(screen.queryByRole("button", { name: /🟠 En Cocina/i })).toBeNull()
+
+    // Read-only customer and order information stays visible
+    expect(screen.getByText("Orden #101")).toBeDefined()
+    expect(screen.getByText("Carlos Gómez")).toBeDefined()
+    expect(screen.getByText("WhatsApp: 3001234567")).toBeDefined()
+    expect(screen.getByText("$55.000")).toBeDefined()
+    expect(screen.getByRole("button", { name: /Imprimir.*ticket/i })).toBeDefined()
+  })
+
+  it("renders Imprimir ticket button and opens OrderTicketModal when clicked", () => {
+    render(
+      <OrderDetailModal
+        order={mockOrder}
+        isOpen={true}
+        onClose={vi.fn()}
+        onUpdateStatus={vi.fn()}
+        onDeleteOrder={vi.fn()}
+        onWhatsApp={vi.fn()}
+      />
+    )
+
+    const printBtn = screen.getByRole("button", { name: /Imprimir.*ticket/i })
+    expect(printBtn).toBeDefined()
+    fireEvent.click(printBtn)
+
+    // OrderTicketModal should now be visible with live preview
+    expect(screen.getByText("Imprimir Comanda / Ticket")).toBeDefined()
+    expect(screen.getByText(/TICKET DE VENTA \/ DESPACHO/i)).toBeDefined()
+  })
+
+  it("calls onPrintOrder callback when provided and clicking Imprimir ticket", () => {
+    const onPrintOrder = vi.fn()
+    render(
+      <OrderDetailModal
+        order={mockOrder}
+        isOpen={true}
+        onClose={vi.fn()}
+        onUpdateStatus={vi.fn()}
+        onDeleteOrder={vi.fn()}
+        onWhatsApp={vi.fn()}
+        onPrintOrder={onPrintOrder}
+      />
+    )
+
+    const printBtn = screen.getByRole("button", { name: /Imprimir.*ticket/i })
+    fireEvent.click(printBtn)
+    expect(onPrintOrder).toHaveBeenCalledWith(mockOrder)
+  })
+
+  it("allows read-only user with orders.view to open/print ticket while hiding mutation buttons", () => {
+    mockCan.mockImplementation((p) => p === "orders.view")
+    const onPrintOrder = vi.fn()
+    const onEditOrder = vi.fn()
+    const onDeleteOrder = vi.fn()
+    const onUpdateStatus = vi.fn()
+
+    render(
+      <OrderDetailModal
+        order={mockOrder}
+        isOpen={true}
+        onClose={vi.fn()}
+        onUpdateStatus={onUpdateStatus}
+        onDeleteOrder={onDeleteOrder}
+        onWhatsApp={vi.fn()}
+        onEditOrder={onEditOrder}
+        onPrintOrder={onPrintOrder}
+      />
+    )
+
+    const printBtn = screen.getByRole("button", { name: /Imprimir.*ticket/i })
+    expect(printBtn).toBeDefined()
+    fireEvent.click(printBtn)
+    expect(onPrintOrder).toHaveBeenCalledWith(mockOrder)
+
+    expect(screen.queryByRole("button", { name: /Editar venta/i })).toBeNull()
+    expect(screen.queryByRole("button", { name: /Eliminar Orden/i })).toBeNull()
+    expect(screen.queryByText(/Cambiar estado de orden:/i)).toBeNull()
+  })
+
+  it("hides ticket print button when user lacks orders.view and orders.manage", () => {
+    mockCan.mockImplementation((p) => p === "finance.view")
+    render(
+      <OrderDetailModal
+        order={mockOrder}
+        isOpen={true}
+        onClose={vi.fn()}
+        onUpdateStatus={vi.fn()}
+        onDeleteOrder={vi.fn()}
+        onWhatsApp={vi.fn()}
+        onPrintOrder={vi.fn()}
+      />
+    )
+    expect(screen.queryByRole("button", { name: /Imprimir.*ticket/i })).toBeNull()
   })
 })

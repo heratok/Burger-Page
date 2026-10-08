@@ -11,6 +11,15 @@ import { resolveTenantForRequest } from '../TenantResolver.js';
 import { CreateProductDTO, UpdateProductDTO } from '../../../application/dtos/index.js';
 import { StorageUrlResolver, defaultStorageUrlResolver } from '../../storage/StorageUrlResolver.js';
 import { ListOptions } from '../../../domain/ports/out/ListOptions.js';
+import { MenuCache } from '../../cache/MenuCache.js';
+import { RestaurantIdCache } from '../../cache/RestaurantIdCache.js';
+import { resolvePublicRestaurantId } from '../PublicRestaurantResolver.js';
+
+/** Cached public menu response: formatted body plus the X-Total-Count header, when paginated. */
+export interface CachedMenu {
+  body: unknown[];
+  totalCount?: string;
+}
 
 /**
  * Lenient pagination parsing: honored only when BOTH page and limit are
@@ -36,7 +45,11 @@ export class ProductController {
     private updateProductUseCase: UpdateProductUseCase,
     private deleteProductUseCase: DeleteProductUseCase,
     private restaurantRepo?: RestaurantRepository,
-    storageResolver?: StorageUrlResolver
+    storageResolver?: StorageUrlResolver,
+    // Per-process public menu cache (single backend instance only); omitted = no caching.
+    private menuCache?: MenuCache<CachedMenu>,
+    // Per-process identifier -> restaurant id memo for public requests (same single-instance caveat).
+    private restaurantIdCache?: RestaurantIdCache
   ) {
     this.storageResolver = storageResolver || defaultStorageUrlResolver;
   }
@@ -49,40 +62,13 @@ export class ProductController {
     };
   }
 
-  private async resolveRestaurantId(query: { restaurantId?: string; slug?: string } = {}): Promise<string> {
-    if (query.restaurantId) {
-      if (this.restaurantRepo) {
-        const rest =
-          (await this.restaurantRepo.findById(query.restaurantId)) ||
-          (await this.restaurantRepo.findBySlug(query.restaurantId)) ||
-          (await this.restaurantRepo.findBySlug(query.restaurantId.replace(/^rest-/, ''))) ||
-          (await this.restaurantRepo.findById(query.restaurantId.replace(/^rest-/, '')));
-        if (!rest) {
-          throw new EntityNotFoundError(`Restaurant '${query.restaurantId}' not found.`);
-        }
-        if (!rest.isActive) {
-          throw new ValidationError(`Restaurant '${rest.name}' is currently inactive.`);
-        }
-        return rest.id;
-      }
-      return query.restaurantId;
-    }
-
-    if (query.slug && this.restaurantRepo) {
-      const rest =
-        (await this.restaurantRepo.findBySlug(query.slug)) ||
-        (await this.restaurantRepo.findById(query.slug)) ||
-        (await this.restaurantRepo.findBySlug(query.slug.replace(/^rest-/, '')));
-      if (!rest) {
-        throw new EntityNotFoundError(`Restaurant with slug '${query.slug}' not found.`);
-      }
-      if (!rest.isActive) {
-        throw new ValidationError(`Restaurant '${rest.name}' is currently inactive.`);
-      }
-      return rest.id;
-    }
-
-    throw new ValidationError('Restaurant ID or slug is required to view menu products.');
+  private resolveRestaurantId(query: { restaurantId?: string; slug?: string } = {}): Promise<string> {
+    return resolvePublicRestaurantId(
+      this.restaurantRepo,
+      this.restaurantIdCache,
+      query,
+      'Restaurant ID or slug is required to view menu products.'
+    );
   }
 
   async list(req: FastifyRequest, reply: FastifyReply) {
@@ -107,13 +93,45 @@ export class ProductController {
       restaurantId = await this.resolveRestaurantId(query);
     }
     const isAvailableOnly = req.authContext?.role === 'super_admin' ? false : true;
+
+    // Only anonymous storefront reads are cached; any token (even without a
+    // tenant) may see a different view and always goes to the repository.
+    const cache = req.authContext ? undefined : this.menuCache;
+    // Keyed by the resolved restaurant id (never the raw id/slug) plus the
+    // normalized pagination, so id and slug requests share one tenant entry.
+    const queryKey = options ? `p=${options.page}&l=${options.limit}` : 'all';
+    if (cache) {
+      const hit = cache.get(restaurantId, queryKey);
+      if (hit) {
+        if (hit.totalCount !== undefined) reply.header('X-Total-Count', hit.totalCount);
+        return reply.status(200).send(hit.body);
+      }
+    }
+    const version = cache?.versionOf(restaurantId);
+
+    let body: unknown[];
+    let totalCount: string | undefined;
     if (options) {
       const { items, total } = await this.listProducts.execute(restaurantId, isAvailableOnly, options);
-      reply.header('X-Total-Count', String(total));
-      return reply.status(200).send(items.map((p) => this.formatProduct(p)));
+      totalCount = String(total);
+      body = items.map((p) => this.formatProduct(p));
+    } else {
+      const products = await this.listProducts.execute(restaurantId, isAvailableOnly);
+      body = products.map((p) => this.formatProduct(p));
     }
-    const products = await this.listProducts.execute(restaurantId, isAvailableOnly);
-    return reply.status(200).send(products.map((p) => this.formatProduct(p)));
+    // Reached only after a successful read, so errors are never cached.
+    cache?.set(restaurantId, queryKey, { body, totalCount }, version);
+    if (totalCount !== undefined) reply.header('X-Total-Count', totalCount);
+    return reply.status(200).send(body);
+  }
+
+  /** Runs a menu write and always drops the restaurant's cached menu afterwards, even on partial failure. */
+  private async invalidatingMenu<T>(restaurantId: string, write: () => Promise<T>): Promise<T> {
+    try {
+      return await write();
+    } finally {
+      this.menuCache?.invalidate(restaurantId);
+    }
   }
 
   async getById(req: FastifyRequest, reply: FastifyReply) {
@@ -148,7 +166,7 @@ export class ProductController {
       dto.imageUrl = this.storageResolver.toRelativeStoragePath(dto.imageUrl);
     }
 
-    const product = await this.createProductUseCase.execute(dto, restaurantId);
+    const product = await this.invalidatingMenu(restaurantId, () => this.createProductUseCase.execute(dto, restaurantId));
     return reply.status(201).send(this.formatProduct(product));
   }
 
@@ -169,7 +187,9 @@ export class ProductController {
       dto.imageUrl = dto.imageUrl ? this.storageResolver.toRelativeStoragePath(dto.imageUrl) : dto.imageUrl;
     }
 
-    const updated = await this.updateProductUseCase.execute(params.id, dto, restaurantId);
+    const updated = await this.invalidatingMenu(restaurantId, () =>
+      this.updateProductUseCase.execute(params.id, dto, restaurantId)
+    );
     return reply.status(200).send(this.formatProduct(updated));
   }
 
@@ -180,7 +200,7 @@ export class ProductController {
       throw new UnauthorizedError('Restaurant context is required to delete a product.');
     }
 
-    await this.deleteProductUseCase.execute(params.id, restaurantId);
+    await this.invalidatingMenu(restaurantId, () => this.deleteProductUseCase.execute(params.id, restaurantId));
     return reply.status(204).send();
   }
 }

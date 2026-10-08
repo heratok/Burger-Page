@@ -1,4 +1,5 @@
 import React from "react"
+import { useAuth } from "@/context/slices/AuthContext"
 import type { Order, OrderStatus } from "@/types/restaurant"
 import {
   Clock,
@@ -12,6 +13,7 @@ import {
   Check,
   RotateCcw,
   Pencil,
+  Printer,
 } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
 import { getOrderLocationText } from "@/features/crm/tables/orderTable"
@@ -23,6 +25,8 @@ export interface LiveOrderCardProps {
   onUpdateStatus: (orderId: string, status: OrderStatus) => void
   onWhatsApp: (order: Order) => void
   onEditOrder?: (order: Order) => void
+  onPrintOrder?: (order: Order) => void
+  onPrintTicket?: (order: Order) => void
 }
 
 const formatElapsed = (isoString: string) => {
@@ -40,7 +44,12 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
   onUpdateStatus,
   onWhatsApp,
   onEditOrder,
+  onPrintOrder,
+  onPrintTicket,
 }) => {
+  const { can } = useAuth()
+  const canManage = can("orders.manage")
+  const canPrint = can("orders.view") || can("orders.manage")
   const elapsed = formatElapsed(order.createdAt)
   const isDelayed =
     elapsed.mins >= 25 &&
@@ -221,73 +230,88 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
       </div>
 
       {/* Action Footer */}
-      <div className="mt-4 flex items-center gap-2 border-t border-slate-100 dark:border-slate-800/80 pt-3">
+      <div className="mt-4 flex items-center gap-2 border-t border-slate-100 dark:border-slate-800/80 pt-3 flex-wrap">
         <button
           type="button"
           onClick={() => onViewDetails(order)}
-          className="rounded-xl border border-slate-200 dark:border-slate-700 p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer"
+          className="min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer"
           title="Ver detalles completos de la orden"
+          aria-label="Ver detalles completos de la orden"
         >
           <Eye className="size-4" />
         </button>
 
-        {onEditOrder && order.status !== "delivered" && order.status !== "cancelled" && (
+        {canPrint && (onPrintOrder || onPrintTicket) && (
+          <button
+            type="button"
+            onClick={() => (onPrintOrder ?? onPrintTicket)?.(order)}
+            className="min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer transition-colors"
+            title="Imprimir ticket / comanda"
+            aria-label="Imprimir ticket / comanda"
+          >
+            <Printer className="size-4" />
+          </button>
+        )}
+
+        {canManage && onEditOrder && order.status !== "delivered" && order.status !== "cancelled" && (
           <button
             type="button"
             onClick={() => onEditOrder(order)}
-            className="rounded-xl border border-indigo-200 dark:border-indigo-800 p-2 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700 dark:text-indigo-400 dark:hover:bg-indigo-950/50 cursor-pointer transition-colors"
+            className="min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl border border-indigo-200 dark:border-indigo-800 p-2 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700 dark:text-indigo-400 dark:hover:bg-indigo-950/50 cursor-pointer transition-colors"
             title="Editar venta"
           >
             <Pencil className="size-4" />
           </button>
         )}
 
-        {order.status !== "delivered" && order.status !== "cancelled" ? (
-          <>
-            {/* Primary Fast 1-Click Action */}
+        {canManage && (
+          order.status !== "delivered" && order.status !== "cancelled" ? (
+            <>
+              {/* Primary Fast 1-Click Action */}
+              <button
+                type="button"
+                onClick={() => onUpdateStatus(order.id, "delivered")}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 transition-colors cursor-pointer"
+              >
+                <Check className="size-4" />
+                <span>Completar (1 Clic)</span>
+              </button>
+
+              {/* Step-by-step secondary transition */}
+              {order.status === "pending" && (
+                <button
+                  type="button"
+                  onClick={() => onUpdateStatus(order.id, "cooking")}
+                  className="flex items-center gap-1 rounded-xl border border-orange-500/30 bg-orange-500/10 px-2.5 py-2 text-xs font-bold text-orange-600 hover:bg-orange-500/20 dark:text-orange-400 cursor-pointer"
+                  title="Mover a cocina"
+                >
+                  <ChefHat className="size-4" />
+                  <span className="hidden sm:inline">A Cocina</span>
+                </button>
+              )}
+
+              {order.status === "cooking" && (
+                <button
+                  type="button"
+                  onClick={() => onUpdateStatus(order.id, "delivering")}
+                  className="flex items-center gap-1 rounded-xl border border-blue-500/30 bg-blue-500/10 px-2.5 py-2 text-xs font-bold text-blue-600 hover:bg-blue-500/20 dark:text-blue-400 cursor-pointer"
+                  title="Despachar con repartidor"
+                >
+                  <Bike className="size-4" />
+                  <span className="hidden sm:inline">Despachar</span>
+                </button>
+              )}
+            </>
+          ) : (
             <button
               type="button"
-              onClick={() => onUpdateStatus(order.id, "delivered")}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 transition-colors cursor-pointer"
+              onClick={() => onUpdateStatus(order.id, "pending")}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer"
             >
-              <Check className="size-4" />
-              <span>Completar (1 Clic)</span>
+              <RotateCcw className="size-3.5" />
+              <span>Reabrir Orden</span>
             </button>
-
-            {/* Step-by-step secondary transition */}
-            {order.status === "pending" && (
-              <button
-                type="button"
-                onClick={() => onUpdateStatus(order.id, "cooking")}
-                className="flex items-center gap-1 rounded-xl border border-orange-500/30 bg-orange-500/10 px-2.5 py-2 text-xs font-bold text-orange-600 hover:bg-orange-500/20 dark:text-orange-400 cursor-pointer"
-                title="Mover a cocina"
-              >
-                <ChefHat className="size-4" />
-                <span className="hidden sm:inline">A Cocina</span>
-              </button>
-            )}
-
-            {order.status === "cooking" && (
-              <button
-                type="button"
-                onClick={() => onUpdateStatus(order.id, "delivering")}
-                className="flex items-center gap-1 rounded-xl border border-blue-500/30 bg-blue-500/10 px-2.5 py-2 text-xs font-bold text-blue-600 hover:bg-blue-500/20 dark:text-blue-400 cursor-pointer"
-                title="Despachar con repartidor"
-              >
-                <Bike className="size-4" />
-                <span className="hidden sm:inline">Despachar</span>
-              </button>
-            )}
-          </>
-        ) : (
-          <button
-            type="button"
-            onClick={() => onUpdateStatus(order.id, "pending")}
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer"
-          >
-            <RotateCcw className="size-3.5" />
-            <span>Reabrir Orden</span>
-          </button>
+          )
         )}
       </div>
     </div>

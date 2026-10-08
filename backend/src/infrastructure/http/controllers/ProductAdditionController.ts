@@ -10,6 +10,10 @@ import { ValidationError, UnauthorizedError, EntityNotFoundError } from '../../.
 import { resolveTenantForRequest } from '../TenantResolver.js';
 import { CreateProductAdditionDTO, UpdateProductAdditionDTO } from '../../../application/dtos/index.js';
 import { ListOptions } from '../../../domain/ports/out/ListOptions.js';
+import { MenuCache } from '../../cache/MenuCache.js';
+import { RestaurantIdCache } from '../../cache/RestaurantIdCache.js';
+import { resolvePublicRestaurantId } from '../PublicRestaurantResolver.js';
+import type { CachedMenu } from './ProductController.js';
 
 /**
  * Lenient pagination parsing: honored only when BOTH page and limit are
@@ -32,35 +36,27 @@ export class ProductAdditionController {
     private createAdditionUseCase: CreateProductAdditionUseCase,
     private updateAdditionUseCase: UpdateProductAdditionUseCase,
     private deleteAdditionUseCase: DeleteProductAdditionUseCase,
-    private restaurantRepo?: RestaurantRepository
+    private restaurantRepo?: RestaurantRepository,
+    // Additions are part of the public menu payload: writes drop the tenant's cached menu.
+    private menuCache?: MenuCache<CachedMenu>,
+    private restaurantIdCache?: RestaurantIdCache
   ) {}
 
-  private async resolveRestaurantId(query: { restaurantId?: string; slug?: string } = {}): Promise<string> {
-    if (query.restaurantId) {
-      if (this.restaurantRepo) {
-        const rest = await this.restaurantRepo.findById(query.restaurantId);
-        if (!rest) {
-          throw new EntityNotFoundError(`Restaurant '${query.restaurantId}' not found.`);
-        }
-        if (!rest.isActive) {
-          throw new ValidationError(`Restaurant '${rest.name}' is currently inactive.`);
-        }
-      }
-      return query.restaurantId;
+  private async invalidatingMenu<T>(restaurantId: string, write: () => Promise<T>): Promise<T> {
+    try {
+      return await write();
+    } finally {
+      this.menuCache?.invalidate(restaurantId);
     }
+  }
 
-    if (query.slug && this.restaurantRepo) {
-      const rest = await this.restaurantRepo.findBySlug(query.slug);
-      if (!rest) {
-        throw new EntityNotFoundError(`Restaurant with slug '${query.slug}' not found.`);
-      }
-      if (!rest.isActive) {
-        throw new ValidationError(`Restaurant '${rest.name}' is currently inactive.`);
-      }
-      return rest.id;
-    }
-
-    throw new ValidationError('Restaurant ID or slug is required to view product additions.');
+  private resolveRestaurantId(query: { restaurantId?: string; slug?: string } = {}): Promise<string> {
+    return resolvePublicRestaurantId(
+      this.restaurantRepo,
+      this.restaurantIdCache,
+      query,
+      'Restaurant ID or slug is required to view product additions.'
+    );
   }
 
   async list(req: FastifyRequest, reply: FastifyReply) {
@@ -78,13 +74,31 @@ export class ProductAdditionController {
     }
 
     const options = parsePagination(req.query);
+    // Only anonymous storefront reads are cached; any token always goes to the repository.
+    const cache = req.authContext ? undefined : this.menuCache;
+    const queryKey = `additions:${query.productId ?? ''}:${options ? `p=${options.page}&l=${options.limit}` : 'all'}`;
+    if (cache) {
+      const hit = cache.get(restaurantId, queryKey);
+      if (hit) {
+        if (hit.totalCount !== undefined) reply.header('X-Total-Count', hit.totalCount);
+        return reply.status(200).send(hit.body);
+      }
+    }
+    const version = cache?.versionOf(restaurantId);
+
+    let body: unknown[];
+    let totalCount: string | undefined;
     if (options) {
       const { items, total } = await this.listAdditionsUseCase.execute(restaurantId, query.productId, options);
-      reply.header('X-Total-Count', String(total));
-      return reply.status(200).send(items);
+      totalCount = String(total);
+      body = items;
+    } else {
+      body = await this.listAdditionsUseCase.execute(restaurantId, query.productId);
     }
-    const additions = await this.listAdditionsUseCase.execute(restaurantId, query.productId);
-    return reply.status(200).send(additions);
+    // Reached only after a successful read, so errors are never cached.
+    cache?.set(restaurantId, queryKey, { body, totalCount }, version);
+    if (totalCount !== undefined) reply.header('X-Total-Count', totalCount);
+    return reply.status(200).send(body);
   }
 
   async getById(req: FastifyRequest, reply: FastifyReply) {
@@ -117,7 +131,9 @@ export class ProductAdditionController {
       throw new ValidationError(parsed.error.message);
     }
 
-    const addition = await this.createAdditionUseCase.execute(parsed.data as CreateProductAdditionDTO, restaurantId);
+    const addition = await this.invalidatingMenu(restaurantId, () =>
+      this.createAdditionUseCase.execute(parsed.data as CreateProductAdditionDTO, restaurantId)
+    );
     return reply.status(201).send(addition);
   }
 
@@ -134,7 +150,9 @@ export class ProductAdditionController {
       throw new ValidationError(parsed.error.message);
     }
 
-    const updated = await this.updateAdditionUseCase.execute(params.id, parsed.data as UpdateProductAdditionDTO, restaurantId);
+    const updated = await this.invalidatingMenu(restaurantId, () =>
+      this.updateAdditionUseCase.execute(params.id, parsed.data as UpdateProductAdditionDTO, restaurantId)
+    );
     return reply.status(200).send(updated);
   }
 
@@ -146,7 +164,7 @@ export class ProductAdditionController {
       throw new UnauthorizedError('Restaurant context is required to delete a product addition.');
     }
 
-    await this.deleteAdditionUseCase.execute(params.id, restaurantId);
+    await this.invalidatingMenu(restaurantId, () => this.deleteAdditionUseCase.execute(params.id, restaurantId));
     return reply.status(204).send();
   }
 }

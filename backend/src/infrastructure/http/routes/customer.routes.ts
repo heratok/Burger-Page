@@ -1,11 +1,14 @@
 import { FastifyInstance } from 'fastify';
 import { CustomerController } from '../controllers/CustomerController.js';
-import { requireAuth } from '../middleware/auth.middleware.js';
+import { requireAuth, requireAnyPermission, requirePermission } from '../middleware/auth.middleware.js';
+
+const readCustomers = requireAnyPermission('customers.view', 'customers.manage');
+const manageCustomers = requirePermission('customers.manage');
 
 export async function customerRoutes(fastify: FastifyInstance, opts: { controller: CustomerController }) {
   // 1. List Customers (Protected - Restaurant Scoped)
   fastify.get('/', {
-    preHandler: [requireAuth],
+    preHandler: [requireAuth, readCustomers],
     schema: {
       tags: ['Customers'],
       summary: 'List all restaurant customers',
@@ -43,7 +46,7 @@ export async function customerRoutes(fastify: FastifyInstance, opts: { controlle
 
   // 2. Get Customer by ID (Protected - Restaurant Scoped)
   fastify.get('/:id', {
-    preHandler: [requireAuth],
+    preHandler: [requireAuth, readCustomers],
     schema: {
       tags: ['Customers'],
       summary: 'Get customer by ID',
@@ -66,7 +69,7 @@ export async function customerRoutes(fastify: FastifyInstance, opts: { controlle
 
   // 3. Create Customer (Protected - Restaurant Scoped)
   fastify.post('/', {
-    preHandler: [requireAuth],
+    preHandler: [requireAuth, manageCustomers],
     schema: {
       tags: ['Customers'],
       summary: 'Create or register a restaurant customer',
@@ -89,7 +92,7 @@ export async function customerRoutes(fastify: FastifyInstance, opts: { controlle
 
   // 4. Update Customer (Protected - Restaurant Scoped)
   fastify.put('/:id', {
-    preHandler: [requireAuth],
+    preHandler: [requireAuth, manageCustomers],
     schema: {
       tags: ['Customers'],
       summary: 'Update customer details',
@@ -112,7 +115,7 @@ export async function customerRoutes(fastify: FastifyInstance, opts: { controlle
 
   // 5. Delete Customer (Protected - Restaurant Scoped)
   fastify.delete('/:id', {
-    preHandler: [requireAuth],
+    preHandler: [requireAuth, manageCustomers],
     schema: {
       tags: ['Customers'],
       summary: 'Delete customer',
