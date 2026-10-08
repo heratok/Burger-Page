@@ -1,0 +1,48 @@
+.js 93 files raw 1261KB gz 356KB
+.css 1 files raw 185KB gz 27KB
+.html 1 files raw 1KB gz 1KB
+TOTAL 1448 KB gz 383
+>100KB gz:
+  assets/button-KBafA8EY.js 393.7 114.3
+top css/other:
+  assets/index-B6ZQ7PFJ.css 185.2 26.6
+  index.html 1.3 0.6
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" href="/logo.jpg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0F1112" />
+    <meta name="description" content="Haz tu pedido en línea y recíbelo en la puerta de tu casa." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+      crossorigin="anonymous"
+    />
+    <title>FoodOS</title>
+    <script type="module" crossorigin src="/assets/index-1p5Cd1U8.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/jsx-runtime-VHVm0wLV.js">
+    <link rel="modulepreload" crossorigin href="/assets/button-KBafA8EY.js">
+    <link rel="modulepreload" crossorigin href="/assets/loader-circle-BtH20ykx.js">
+    <link rel="modulepreload" crossorigin href="/assets/shield-check-7NIsoDYK.js">
+    <link rel="modulepreload" crossorigin href="/assets/sparkles-C6pIsA3K.js">
+    <link rel="modulepreload" crossorigin href="/assets/skeleton-Bn8-NokC.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-B6ZQ7PFJ.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
+initial html refs gz KB [
+  'assets/index-1p5Cd1U8.js 9.0',
+  'assets/jsx-runtime-VHVm0wLV.js 3.5',
+  'assets/button-KBafA8EY.js 114.3',
+  'assets/loader-circle-BtH20ykx.js 0.1',
+  'assets/shield-check-7NIsoDYK.js 0.2',
+  'assets/sparkles-C6pIsA3K.js 0.3',
+  'assets/skeleton-Bn8-NokC.js 0.2',
+  'assets/index-B6ZQ7PFJ.css 26.6'
+]

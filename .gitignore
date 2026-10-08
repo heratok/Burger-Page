@@ -93,3 +93,7 @@ odd/
 *.tfvars
 *.tfplan
 tfplan.out
+load-tests/data/
+
+# k6 load-test scripts live under load-tests/; keep ESM helper scripts tracked there
+!load-tests/**/*.mjs
