@@ -18,6 +18,7 @@ import {
   UserX,
   AlertCircle,
   Sparkles,
+  ArrowRight,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
@@ -33,7 +34,7 @@ function generateRandomPassword(): string {
 }
 
 export const TeamManager: React.FC = () => {
-  const { adminTheme, effectiveRestaurantId, session } = useRestaurant()
+  const { adminTheme, effectiveRestaurantId, session, setAdminTab } = useRestaurant()
   const isDark = adminTheme === "dark"
 
   const [users, setUsers] = useState<ApiUserRecord[]>([])
@@ -564,26 +565,52 @@ export const TeamManager: React.FC = () => {
                 >
                   Rol Asignado *
                 </label>
-                <select
-                  id="create-role-select"
-                  required
-                  value={createRoleId}
-                  onChange={(e) => setCreateRoleId(e.target.value)}
-                  className={`w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                    isDark
-                      ? "border-slate-700 bg-slate-800 text-white"
-                      : "border-slate-300 bg-white text-slate-900"
-                  }`}
-                >
-                  <option value="" disabled>
-                    Selecciona un rol...
-                  </option>
-                  {roles.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.name} ({r.permissions.length} permisos)
-                    </option>
-                  ))}
-                </select>
+                {roles.length === 0 ? (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
+                    <p className="font-medium">
+                      No hay roles creados todavía. Para asignar permisos a tu personal, primero crea los roles recomendados.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCreateOpen(false)
+                        setAdminTab("roles")
+                      }}
+                      className="mt-2 inline-flex items-center gap-1 font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 underline"
+                    >
+                      <span>Ir a configurar roles</span>
+                      <ArrowRight className="size-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <select
+                      id="create-role-select"
+                      required
+                      value={createRoleId}
+                      onChange={(e) => setCreateRoleId(e.target.value)}
+                      className={`w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                        isDark
+                          ? "border-slate-700 bg-slate-800 text-white"
+                          : "border-slate-300 bg-white text-slate-900"
+                      }`}
+                    >
+                      <option value="" disabled>
+                        Selecciona un rol...
+                      </option>
+                      {roles.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.name}{r.description ? ` — ${r.description}` : ` (${r.permissions.length} permisos)`}
+                        </option>
+                      ))}
+                    </select>
+                    {rolesMap.get(createRoleId)?.description && (
+                      <p className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                        {rolesMap.get(createRoleId)?.description}
+                      </p>
+                    )}
+                  </>
+                )}
               </div>
 
               <div className="rounded-xl border border-indigo-100 bg-indigo-50/60 p-3 text-[11px] text-indigo-900 dark:border-indigo-900/40 dark:bg-indigo-950/20 dark:text-indigo-300">
@@ -601,7 +628,7 @@ export const TeamManager: React.FC = () => {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={isSubmittingCreate}
+                  disabled={isSubmittingCreate || roles.length === 0}
                   className="bg-indigo-600 text-white font-semibold shadow-sm hover:bg-indigo-700"
                 >
                   {isSubmittingCreate ? "Creando..." : "Crear Usuario"}
@@ -665,26 +692,52 @@ export const TeamManager: React.FC = () => {
                   >
                     Rol Asignado *
                   </label>
-                  <select
-                    id="edit-role-select"
-                    required
-                    value={editRoleId}
-                    onChange={(e) => setEditRoleId(e.target.value)}
-                    className={`w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                      isDark
-                        ? "border-slate-700 bg-slate-800 text-white"
-                        : "border-slate-300 bg-white text-slate-900"
-                    }`}
-                  >
-                    <option value="" disabled>
-                      Selecciona un rol...
-                    </option>
-                    {roles.map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.name}
-                      </option>
-                    ))}
-                  </select>
+                  {roles.length === 0 ? (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
+                      <p className="font-medium">
+                        No hay roles creados todavía. Para asignar permisos a tu personal, primero crea los roles recomendados.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingUser(null)
+                          setAdminTab("roles")
+                        }}
+                        className="mt-2 inline-flex items-center gap-1 font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 underline"
+                      >
+                        <span>Ir a configurar roles</span>
+                        <ArrowRight className="size-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <select
+                        id="edit-role-select"
+                        required
+                        value={editRoleId}
+                        onChange={(e) => setEditRoleId(e.target.value)}
+                        className={`w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                          isDark
+                            ? "border-slate-700 bg-slate-800 text-white"
+                            : "border-slate-300 bg-white text-slate-900"
+                        }`}
+                      >
+                        <option value="" disabled>
+                          Selecciona un rol...
+                        </option>
+                        {roles.map((r) => (
+                          <option key={r.id} value={r.id}>
+                            {r.name}{r.description ? ` — ${r.description}` : ` (${r.permissions.length} permisos)`}
+                          </option>
+                        ))}
+                      </select>
+                      {rolesMap.get(editRoleId)?.description && (
+                        <p className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                          {rolesMap.get(editRoleId)?.description}
+                        </p>
+                      )}
+                    </>
+                  )}
                 </div>
               )}
 
@@ -715,7 +768,10 @@ export const TeamManager: React.FC = () => {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={isSubmittingEdit}
+                  disabled={
+                    isSubmittingEdit ||
+                    (editingUser.role !== "restaurant_admin" && roles.length === 0)
+                  }
                   className="bg-indigo-600 text-white font-semibold shadow-sm hover:bg-indigo-700"
                 >
                   {isSubmittingEdit ? "Guardando..." : "Guardar Cambios"}
