@@ -10,7 +10,8 @@ import { UserRepository } from '../../domain/ports/out/UserRepository.js';
 import { PasswordHasher } from '../../domain/ports/out/PasswordHasher.js';
 import { Restaurant } from '../../domain/models/Restaurant.js';
 import { MIN_PASSWORD_LENGTH, User, UserRole } from '../../domain/models/User.js';
-import { CreateRestaurantInput } from '@burger-page/contracts';
+import { CreateRestaurantInput, DEFAULT_ROLE_TEMPLATES } from '@burger-page/contracts';
+import { RoleRepository } from '../../domain/ports/out/RoleRepository.js';
 import { ConflictError, ValidationError } from '../../domain/errors/DomainErrors.js';
 import { normalizeSlug } from '../../domain/shared/slug.js';
 import { DEFAULT_CURRENCY_SYMBOL, defaultSymbolFor, normalizeCurrency } from '../../domain/shared/currency.js';
@@ -41,7 +42,9 @@ export class CreateRestaurantUseCase {
     // only picks the theme (script/test callers that wire a bare use case).
     private readonly productRepo?: ProductRepository,
     private readonly additionRepo?: ProductAdditionRepository,
-    private readonly audit?: AdminAuditRecorder
+    private readonly audit?: AdminAuditRecorder,
+    // Seeds the default staff roles (Cajero, Mesero, ...) of the new tenant.
+    private readonly roleRepo?: RoleRepository
   ) {
     this.provisioning = new RestaurantProvisioning(restaurantRepo, categoryRepo, productRepo, additionRepo);
   }
@@ -172,6 +175,33 @@ export class CreateRestaurantUseCase {
       }
     }
 
+    // Default staff roles, so the owner can create staff without first building
+    // roles from raw permissions. Plain editable data (isSystem: false). Like the
+    // sample dishes, a failure removes what was written and the tenant.
+    const seededRoleIds: string[] = [];
+    if (this.roleRepo) {
+      try {
+        for (const template of DEFAULT_ROLE_TEMPLATES) {
+          const now = new Date().toISOString();
+          const id = newId(ID_PREFIX.role);
+          await this.roleRepo.save({
+            id,
+            restaurantId,
+            name: template.name,
+            description: template.description,
+            permissions: [...template.permissions],
+            isSystem: false,
+            createdAt: now,
+            updatedAt: now,
+          });
+          seededRoleIds.push(id);
+        }
+      } catch (err) {
+        await this.rollback(restaurantId, seeded, seededRoleIds);
+        throw err;
+      }
+    }
+
     // Provision the restaurant_admin row from the one-time credentials we are
     // about to return. The actor role comes from the authenticated caller (the
     // create route is super-admin-gated) and defaults to super_admin for
@@ -191,7 +221,7 @@ export class CreateRestaurantUseCase {
         };
         await this.userRepo.save(adminUser, callerRole ?? 'super_admin');
       } catch (err) {
-        await this.provisioning.rollbackTenant(restaurantId, seeded);
+        await this.rollback(restaurantId, seeded, seededRoleIds);
         throw err;
       }
     }
@@ -214,6 +244,14 @@ export class CreateRestaurantUseCase {
     });
 
     return { ...newRestaurant, adminPassword, adminUsername } as Restaurant;
+  }
+
+  /** Postgres cascades roles with the tenant; the other adapters need an explicit delete. */
+  private async rollback(restaurantId: string, seeded: SeededIds, roleIds: string[]): Promise<void> {
+    for (const id of roleIds) {
+      await this.roleRepo?.delete(id, restaurantId).catch((e) => console.error(`Could not remove seeded role ${id}:`, e));
+    }
+    await this.provisioning.rollbackTenant(restaurantId, seeded);
   }
 }
 

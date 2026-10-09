@@ -290,7 +290,8 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
     hasher,
     productRepo,
     additionRepo,
-    audit
+    audit,
+    roleRepo
   );
   const deleteRestaurant = new DeleteRestaurantUseCase(restaurantRepo, userRepo, audit);
   const updateRestaurantCategories = new UpdateRestaurantCategoriesUseCase(restaurantRepo, categoryRepo, productRepo);

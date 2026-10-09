@@ -50,12 +50,15 @@ const mockUsers: ApiUserRecord[] = [
   },
 ]
 
+const mockSetAdminTab = vi.fn()
+
 vi.mock("@/context/RestaurantContext", () => ({
   useRestaurant: () => ({
     adminTheme: "light",
     activeRestaurant: { id: "rest-1", name: "Burger Craft" },
     effectiveRestaurantId: "rest-1",
     session: { role: "restaurant", username: "admin_burger" },
+    setAdminTab: mockSetAdminTab,
   }),
 }))
 
@@ -221,5 +224,48 @@ describe("TeamManager Component (TDD)", () => {
     await waitFor(() => {
       expect(apiClient.deleteUser).toHaveBeenCalledWith("user-2")
     })
+  })
+
+  it("shows each role's description in the role select and shows the selected role's description", async () => {
+    render(<TeamManager />)
+
+    await waitFor(() => expect(screen.getByText("carlos_caja")).toBeDefined())
+
+    const newMemberBtn = screen.getByRole("button", { name: /Nuevo Miembro/i })
+    fireEvent.click(newMemberBtn)
+
+    const roleSelect = screen.getByLabelText(/Rol Asignado/i)
+    // Options should contain role name and description
+    expect(roleSelect.textContent).toContain("Cajero — Caja y cobros")
+    expect(roleSelect.textContent).toContain("Cocinero — Cocina y despacho")
+
+    // The selected role description is shown in business language below the select
+    expect(screen.getByText("Caja y cobros")).toBeDefined()
+
+    // Changing selection updates the description
+    fireEvent.change(roleSelect, { target: { value: "role-cook" } })
+    expect(screen.getByText("Cocina y despacho")).toBeDefined()
+  })
+
+  it("shows a hint with navigation button to Roles screen when zero roles exist", async () => {
+    vi.spyOn(apiClient, "listRoles").mockResolvedValue([])
+
+    render(<TeamManager />)
+
+    await waitFor(() => expect(screen.getByText("carlos_caja")).toBeDefined())
+
+    const newMemberBtn = screen.getByRole("button", { name: /Nuevo Miembro/i })
+    fireEvent.click(newMemberBtn)
+
+    // Select should NOT be rendered; hint should be rendered instead
+    expect(screen.queryByRole("combobox", { name: /Rol Asignado/i })).toBeNull()
+    expect(screen.getByText(/No hay roles creados todavía/i)).toBeDefined()
+
+    // Link/button to Roles screen
+    const goToRolesBtn = screen.getByRole("button", { name: /Ir a configurar roles/i })
+    expect(goToRolesBtn).toBeDefined()
+
+    fireEvent.click(goToRolesBtn)
+    expect(mockSetAdminTab).toHaveBeenCalledWith("roles")
   })
 })

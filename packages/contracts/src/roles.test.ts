@@ -9,6 +9,7 @@ import {
   resolvePermissions,
   hasPermission,
   AUDIT_ACTIONS,
+  DEFAULT_ROLE_TEMPLATES,
 } from './index.js';
 
 describe('permission catalog', () => {
@@ -78,6 +79,54 @@ describe('resolvePermissions', () => {
   it('hasPermission checks the resolved set', () => {
     expect(hasPermission({ role: 'restaurant_admin' }, 'roles.manage')).toBe(true);
     expect(hasPermission({ role: 'restaurant_staff', rolePermissions: ['orders.view'] }, 'finance.view')).toBe(false);
+  });
+});
+
+describe('DEFAULT_ROLE_TEMPLATES', () => {
+  const byName = (name: string) => DEFAULT_ROLE_TEMPLATES.find((t) => t.name === name)!;
+
+  it('ships Cajero, Mesero, Cocina and Gerente', () => {
+    expect(DEFAULT_ROLE_TEMPLATES.map((t) => t.name)).toEqual(['Cajero', 'Mesero', 'Cocina', 'Gerente']);
+  });
+
+  it('uses unique names and only valid, non-repeated permissions', () => {
+    const names = DEFAULT_ROLE_TEMPLATES.map((t) => t.name);
+    expect(new Set(names).size).toBe(names.length);
+    for (const t of DEFAULT_ROLE_TEMPLATES) {
+      expect(t.name.length).toBeLessThanOrEqual(MAX_ROLE_NAME_LENGTH);
+      expect(t.description.length).toBeGreaterThan(0);
+      expect(new Set(t.permissions).size).toBe(t.permissions.length);
+      for (const p of t.permissions) expect(isPermission(p)).toBe(true);
+    }
+  });
+
+  it('never gives the cashier finance.view', () => {
+    expect(byName('Cajero').permissions).not.toContain('finance.view');
+    expect(byName('Cajero').permissions).toEqual(
+      expect.arrayContaining(['orders.view', 'orders.manage', 'customers.view', 'customers.manage', 'tables.manage'])
+    );
+  });
+
+  it('gives the manager everything except users.manage and roles.manage', () => {
+    const perms = byName('Gerente').permissions;
+    expect(perms).not.toContain('users.manage');
+    expect(perms).not.toContain('roles.manage');
+    expect([...perms].sort()).toEqual(
+      PERMISSIONS.filter((p) => p !== 'users.manage' && p !== 'roles.manage').sort()
+    );
+  });
+
+  it('keeps waiter and kitchen narrow', () => {
+    expect([...byName('Mesero').permissions].sort()).toEqual(
+      ['customers.view', 'orders.manage', 'orders.view', 'tables.manage']
+    );
+    expect([...byName('Cocina').permissions].sort()).toEqual(['orders.manage', 'orders.view']);
+  });
+
+  it('every template passes roleCreateSchema', () => {
+    for (const t of DEFAULT_ROLE_TEMPLATES) {
+      expect(roleCreateSchema.safeParse({ name: t.name, description: t.description, permissions: t.permissions }).success).toBe(true);
+    }
   });
 });
 

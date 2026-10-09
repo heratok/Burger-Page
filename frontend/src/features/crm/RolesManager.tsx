@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from "react"
 import { useRestaurant } from "@/context/RestaurantContext"
 import { apiClient } from "@/core/api/apiClient"
 import type { RoleDTO, Permission, RoleCreateInput } from "@burger-page/contracts"
-import { PERMISSIONS } from "@burger-page/contracts"
+import { PERMISSIONS, DEFAULT_ROLE_TEMPLATES } from "@burger-page/contracts"
 import {
   ShieldCheck,
   Plus,
@@ -147,29 +147,19 @@ const PERMISSION_GROUPS: PermissionCategory[] = [
   },
 ]
 
-const ROLE_PRESETS = [
-  {
-    name: "Cocina / Pedidos",
-    description: "Flujo operativo de comandas",
-    permissions: ["orders.view", "orders.manage"] as Permission[],
-  },
-  {
-    name: "Cajero",
-    description: "Atención en caja, cobros y clientes",
-    permissions: [
-      "orders.view",
-      "orders.manage",
-      "customers.view",
-      "customers.manage",
-      "tables.manage",
-      "finance.view",
-    ] as Permission[],
-  },
-  {
-    name: "Administrador General",
-    description: "Acceso total a todos los módulos",
-    permissions: [...PERMISSIONS] as Permission[],
-  },
+const ADMIN_ROLE_PRESET = {
+  name: "Administrador General",
+  description: "Acceso total a todos los módulos",
+  permissions: [...PERMISSIONS] as Permission[],
+}
+
+const PRESET_TEMPLATES = [
+  ...DEFAULT_ROLE_TEMPLATES.map((t) => ({
+    name: t.name,
+    description: t.description,
+    permissions: [...t.permissions] as Permission[],
+  })),
+  ADMIN_ROLE_PRESET,
 ]
 
 export const RolesManager: React.FC = () => {
@@ -179,6 +169,7 @@ export const RolesManager: React.FC = () => {
   const [roles, setRoles] = useState<RoleDTO[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
+  const [isCreatingRecommended, setIsCreatingRecommended] = useState(false)
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -217,6 +208,62 @@ export const RolesManager: React.FC = () => {
         (r.description && r.description.toLowerCase().includes(term))
     )
   }, [roles, searchTerm])
+
+  const missingTemplates = useMemo(() => {
+    const existingNames = new Set(roles.map((r) => r.name.toLowerCase().trim()))
+    return DEFAULT_ROLE_TEMPLATES.filter((t) => !existingNames.has(t.name.toLowerCase().trim()))
+  }, [roles])
+
+  const handleCreateRecommended = async () => {
+    setIsCreatingRecommended(true)
+    let createdCount = 0
+    let skippedCount = 0
+    const errorMessages: string[] = []
+
+    const templatesToCreate = roles.length === 0 ? DEFAULT_ROLE_TEMPLATES : missingTemplates
+
+    for (const template of templatesToCreate) {
+      try {
+        await apiClient.createRole({
+          name: template.name,
+          description: template.description,
+          permissions: [...template.permissions],
+        })
+        createdCount++
+      } catch (err: any) {
+        const status = err.status || err.statusCode
+        const isConflict =
+          status === 409 ||
+          err.message?.toLowerCase().includes("conflict") ||
+          err.message?.toLowerCase().includes("ya existe")
+        if (isConflict) {
+          skippedCount++
+        } else {
+          errorMessages.push(err.message || `Error al crear rol ${template.name}`)
+        }
+      }
+    }
+
+    if (createdCount > 0) {
+      toast.success(
+        createdCount === 1
+          ? "Rol recomendado creado exitosamente"
+          : `Se crearon ${createdCount} roles recomendados exitosamente`
+      )
+    } else if (skippedCount > 0 && errorMessages.length === 0) {
+      toast.info("Los roles recomendados ya existen")
+    }
+
+    if (errorMessages.length > 0) {
+      toast.error(`Error al crear algunos roles: ${errorMessages.join(", ")}`)
+    }
+
+    try {
+      await fetchRoles()
+    } finally {
+      setIsCreatingRecommended(false)
+    }
+  }
 
   const openCreateModal = () => {
     setEditingRole(null)
@@ -330,14 +377,35 @@ export const RolesManager: React.FC = () => {
           </p>
         </div>
 
-        <Button
-          type="button"
-          onClick={openCreateModal}
-          className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-md hover:bg-indigo-700"
-        >
-          <Plus className="size-4" />
-          <span>Nuevo Rol</span>
-        </Button>
+        <div className="flex items-center gap-2">
+          {missingTemplates.length > 0 && roles.length > 0 && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleCreateRecommended}
+              disabled={isCreatingRecommended}
+              className={`flex items-center gap-1.5 rounded-xl border px-3.5 py-2.5 text-xs font-semibold shadow-xs ${
+                isDark
+                  ? "border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700"
+                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+              }`}
+              title="Crea los roles estándar que faltan en tu restaurante"
+            >
+              <Sparkles className="size-3.5 text-amber-500" />
+              <span>
+                {isCreatingRecommended ? "Creando..." : `Crear roles faltantes (${missingTemplates.length})`}
+              </span>
+            </Button>
+          )}
+          <Button
+            type="button"
+            onClick={openCreateModal}
+            className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-md hover:bg-indigo-700"
+          >
+            <Plus className="size-4" />
+            <span>Nuevo Rol</span>
+          </Button>
+        </div>
       </div>
 
       {/* Conflict banner if deletion failed */}
@@ -402,17 +470,30 @@ export const RolesManager: React.FC = () => {
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
             {searchTerm
               ? "Prueba buscando con otro término."
-              : "Comienza creando tu primer rol (ej. Cocinero, Cajero, Mozo) para delegar funciones a tu personal."}
+              : "Comienza creando los roles estándar recomendados (Cajero, Mesero, Cocina y Gerente) o personaliza uno desde cero."}
           </p>
           {!searchTerm && (
-            <Button
-              type="button"
-              onClick={openCreateModal}
-              className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white shadow-sm hover:bg-indigo-700"
-            >
-              <Plus className="size-4" />
-              <span>Crear Rol</span>
-            </Button>
+            <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+              <Button
+                type="button"
+                onClick={handleCreateRecommended}
+                disabled={isCreatingRecommended}
+                className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-md hover:bg-indigo-700 disabled:opacity-50"
+              >
+                <Sparkles className="size-4" />
+                <span>{isCreatingRecommended ? "Creando roles..." : "Crear roles recomendados"}</span>
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={openCreateModal}
+                disabled={isCreatingRecommended}
+                className="inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-2.5 text-xs font-bold shadow-xs"
+              >
+                <Plus className="size-4" />
+                <span>Crear Rol</span>
+              </Button>
+            </div>
           )}
         </div>
       ) : (
@@ -589,7 +670,7 @@ export const RolesManager: React.FC = () => {
                   <span>Plantillas Rápidas (Presets)</span>
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  {ROLE_PRESETS.map((preset) => (
+                  {PRESET_TEMPLATES.map((preset) => (
                     <button
                       key={preset.name}
                       type="button"

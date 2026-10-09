@@ -58,6 +58,41 @@ export const roleUpdateSchema = z.object({
 });
 export type RoleUpdateInput = z.infer<typeof roleUpdateSchema>;
 
+export interface DefaultRoleTemplate {
+  name: string;
+  description: string;
+  permissions: Permission[];
+}
+
+/**
+ * Ready-to-use staff roles every new restaurant starts with (and existing ones
+ * can add in one click). Single source of truth for backend seeding and the
+ * frontend presets. They are plain editable data once created (isSystem: false).
+ * Names/descriptions are UI copy, hence Spanish.
+ */
+export const DEFAULT_ROLE_TEMPLATES: readonly DefaultRoleTemplate[] = [
+  {
+    name: 'Cajero',
+    description: 'Toma pedidos, cobra y atiende clientes. No ve ventas ni configuración.',
+    permissions: ['orders.view', 'orders.manage', 'customers.view', 'customers.manage', 'tables.manage'],
+  },
+  {
+    name: 'Mesero',
+    description: 'Toma pedidos y atiende las mesas. Puede consultar clientes.',
+    permissions: ['orders.view', 'orders.manage', 'tables.manage', 'customers.view'],
+  },
+  {
+    name: 'Cocina',
+    description: 'Ve los pedidos y actualiza su preparación.',
+    permissions: ['orders.view', 'orders.manage'],
+  },
+  {
+    name: 'Gerente',
+    description: 'Administra el negocio día a día. No gestiona usuarios ni roles.',
+    permissions: PERMISSIONS.filter((p) => p !== 'users.manage' && p !== 'roles.manage'),
+  },
+];
+
 /** Wire shape of a role returned by the API. */
 export interface RoleDTO {
   id: string;
