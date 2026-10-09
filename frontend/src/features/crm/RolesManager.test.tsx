@@ -186,4 +186,123 @@ describe("RolesManager Component (TDD)", () => {
       expect(screen.getByText(/No se puede eliminar el rol porque tiene usuarios asignados/i)).toBeDefined()
     })
   })
+
+  it("renders empty state with call to action 'Crear roles recomendados' when zero roles exist", async () => {
+    vi.spyOn(apiClient, "listRoles").mockResolvedValue([])
+
+    render(<RolesManager />)
+
+    await waitFor(() => {
+      expect(screen.getByText("No hay roles configurados")).toBeDefined()
+    })
+
+    const seedBtn = screen.getByRole("button", { name: /Crear roles recomendados/i })
+    expect(seedBtn).toBeDefined()
+  })
+
+  it("seeds all DEFAULT_ROLE_TEMPLATES when clicking 'Crear roles recomendados'", async () => {
+    vi.spyOn(apiClient, "listRoles")
+      .mockResolvedValueOnce([])
+      .mockResolvedValue([
+        {
+          id: "seeded-1",
+          restaurantId: "rest-1",
+          name: "Cajero",
+          permissions: ["orders.view", "orders.manage", "customers.view", "customers.manage", "tables.manage"],
+          isSystem: false,
+          createdAt: "2026-01-01T00:00:00Z",
+          updatedAt: "2026-01-01T00:00:00Z",
+        },
+      ])
+
+    render(<RolesManager />)
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Crear roles recomendados/i })).toBeDefined()
+    })
+
+    const seedBtn = screen.getByRole("button", { name: /Crear roles recomendados/i })
+    fireEvent.click(seedBtn)
+
+    await waitFor(() => {
+      // 4 templates: Cajero, Mesero, Cocina, Gerente
+      expect(apiClient.createRole).toHaveBeenCalledTimes(4)
+    })
+
+    expect(apiClient.createRole).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "Cajero",
+        permissions: expect.not.arrayContaining(["finance.view"]),
+      })
+    )
+    expect(apiClient.createRole).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "Gerente",
+      })
+    )
+    // Refetched roles after seeding
+    expect(apiClient.listRoles).toHaveBeenCalledTimes(2)
+  })
+
+  it("handles 409 conflict per-role without aborting remaining templates during seeding", async () => {
+    vi.spyOn(apiClient, "listRoles").mockResolvedValue([])
+    vi.spyOn(apiClient, "createRole").mockImplementation(async (input) => {
+      if (input.name === "Cajero") {
+        const conflictErr = new Error("Role already exists")
+        ;(conflictErr as any).status = 409
+        throw conflictErr
+      }
+      return {
+        id: `seeded-${input.name}`,
+        restaurantId: "rest-1",
+        name: input.name,
+        permissions: input.permissions,
+        isSystem: false,
+        createdAt: "2026-01-01T00:00:00Z",
+        updatedAt: "2026-01-01T00:00:00Z",
+      }
+    })
+
+    render(<RolesManager />)
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Crear roles recomendados/i })).toBeDefined()
+    })
+
+    const seedBtn = screen.getByRole("button", { name: /Crear roles recomendados/i })
+    fireEvent.click(seedBtn)
+
+    await waitFor(() => {
+      // Still attempted all 4 templates despite Cajero failing with 409
+      expect(apiClient.createRole).toHaveBeenCalledTimes(4)
+    })
+  })
+
+  it("presets in create modal are driven by DEFAULT_ROLE_TEMPLATES and Cajero preset does not include finance.view", async () => {
+    render(<RolesManager />)
+
+    await waitFor(() => expect(screen.getByText("Cajero")).toBeDefined())
+
+    const newRoleBtn = screen.getByRole("button", { name: /Nuevo Rol/i })
+    fireEvent.click(newRoleBtn)
+
+    // Presets should include Cajero, Mesero, Cocina, Gerente, Administrador General
+    expect(screen.getByRole("button", { name: /^Cajero$/i })).toBeDefined()
+    expect(screen.getByRole("button", { name: /^Mesero$/i })).toBeDefined()
+    expect(screen.getByRole("button", { name: /^Cocina$/i })).toBeDefined()
+    expect(screen.getByRole("button", { name: /^Gerente$/i })).toBeDefined()
+    expect(screen.getByRole("button", { name: /^Administrador General$/i })).toBeDefined()
+
+    // Click Cajero preset
+    const cajeroPresetBtn = screen.getByRole("button", { name: /^Cajero$/i })
+    fireEvent.click(cajeroPresetBtn)
+
+    // finance.view checkbox must NOT be checked
+    const financeCheckbox = screen.getByLabelText(/Ver finanzas y reportes/i) as HTMLInputElement
+    expect(financeCheckbox.checked).toBe(false)
+
+    // orders.view and customers.view should be checked
+    const ordersCheckbox = screen.getByLabelText(/Ver pedidos/i) as HTMLInputElement
+    expect(ordersCheckbox.checked).toBe(true)
+  })
 })
