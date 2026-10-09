@@ -67,6 +67,25 @@ describe('Restaurant templates API (super-admin-panel B2)', () => {
     expect(additions.statusCode).toBe(200);
     expect(additions.json().length).toBeGreaterThan(0);
   });
+
+  it('POST /api/restaurants seeds the default staff roles of the new restaurant', async () => {
+    const create = await app.inject({
+      method: 'POST',
+      url: '/api/restaurants',
+      headers: auth(superToken),
+      payload: { name: 'Con Roles', slug: 'con-roles' },
+    });
+    expect(create.statusCode).toBe(201);
+
+    const roles = await app.inject({
+      method: 'GET',
+      url: `/api/roles?restaurantId=${create.json().id}`,
+      headers: auth(superToken),
+    });
+    expect(roles.statusCode).toBe(200);
+    expect(roles.json().map((r: any) => r.name)).toEqual(['Cajero', 'Cocina', 'Gerente', 'Mesero']);
+    expect(roles.json().every((r: any) => r.isSystem === false)).toBe(true);
+  });
 });
 
 describe('Restaurant templates API - supported currencies (review B4)', () => {
