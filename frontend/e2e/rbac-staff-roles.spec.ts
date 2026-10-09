@@ -240,10 +240,10 @@ test.describe('RBAC: customer CRUD, custom roles, staff team and permission gati
     await expect(page.getByRole('heading', { name: /Roles y Permisos/i })).toBeVisible();
     await shot(page, '06-roles-empty-or-list');
 
-    // Role 1: "Cocina / Pedidos" preset
+    // Role 1: "Cocina" preset
     await page.getByRole('button', { name: /Nuevo Rol/i }).first().click();
     await page.locator('#role-name-input').fill(ROLE_KITCHEN);
-    await page.getByRole('button', { name: 'Cocina / Pedidos' }).click();
+    await page.getByRole('button', { name: 'Cocina', exact: true }).click();
     await expect(page.locator('#perm-orders\\.view')).toBeChecked();
     await expect(page.locator('#perm-orders\\.manage')).toBeChecked();
     // The preset is exactly orders.view + orders.manage (no inventory).
@@ -310,12 +310,19 @@ test.describe('RBAC: customer CRUD, custom roles, staff team and permission gati
     await gotoTab(page, NAV_LABELS.team);
     await expect(page.getByRole('heading', { name: /Gestión de Equipo/i })).toBeVisible();
 
-    async function createStaff(username: string, roleName: string, permissionCount: number) {
+    // Option labels carry the role description (or the permission count), so
+    // pick the option by the role name it contains instead of its full label.
+    async function selectRole(selector: string, roleName: string) {
+      const value = await page.locator(`${selector} option`, { hasText: roleName }).first().getAttribute('value');
+      await page.locator(selector).selectOption(value!);
+    }
+
+    async function createStaff(username: string, roleName: string) {
       await page.getByRole('button', { name: /Nuevo Miembro/i }).first().click();
       await page.locator('#create-username-input').fill(username);
       const generated = await page.locator('#create-password-input').inputValue();
       expect(generated).toMatch(/^Staff!/);
-      await page.locator('#create-role-select').selectOption({ label: `${roleName} (${permissionCount} permisos)` });
+      await selectRole('#create-role-select', roleName);
       await Promise.all([
         page.waitForResponse((r) => r.url().endsWith('/api/users') && r.request().method() === 'POST' && r.status() === 201),
         page.getByRole('button', { name: 'Crear Usuario' }).click(),
@@ -328,12 +335,12 @@ test.describe('RBAC: customer CRUD, custom roles, staff team and permission gati
       return { reveal, generated };
     }
 
-    const kitchen = await createStaff(USER_KITCHEN, ROLE_KITCHEN, 2);
+    const kitchen = await createStaff(USER_KITCHEN, ROLE_KITCHEN);
     kitchenTempPassword = kitchen.generated;
     await shot(page, '09-team-credentials-reveal');
     await kitchen.reveal.getByRole('button', { name: 'Cerrar' }).click();
 
-    const custom = await createStaff(USER_CUSTOM, ROLE_CUSTOM, 3);
+    const custom = await createStaff(USER_CUSTOM, ROLE_CUSTOM);
     customTempPassword = custom.generated;
     await custom.reveal.getByRole('button', { name: 'Cerrar' }).click();
 
@@ -344,7 +351,7 @@ test.describe('RBAC: customer CRUD, custom roles, staff team and permission gati
 
     // Edit: move the kitchen user to the custom role and back
     await page.getByRole('button', { name: `Editar usuario ${USER_KITCHEN}` }).click();
-    await page.locator('#edit-role-select').selectOption({ label: ROLE_CUSTOM });
+    await selectRole('#edit-role-select', ROLE_CUSTOM);
     const [editRes] = await Promise.all([
       page.waitForResponse((r) => r.url().includes('/api/users/') && r.request().method() === 'PATCH'),
       page.getByRole('button', { name: 'Guardar Cambios' }).click(),
@@ -352,7 +359,7 @@ test.describe('RBAC: customer CRUD, custom roles, staff team and permission gati
     expect(editRes.status()).toBe(200);
     await expect(kitchenRow).toContainText(ROLE_CUSTOM);
     await page.getByRole('button', { name: `Editar usuario ${USER_KITCHEN}` }).click();
-    await page.locator('#edit-role-select').selectOption({ label: ROLE_KITCHEN });
+    await selectRole('#edit-role-select', ROLE_KITCHEN);
     await page.getByRole('button', { name: 'Guardar Cambios' }).click();
     await expect(kitchenRow).toContainText(ROLE_KITCHEN);
 
