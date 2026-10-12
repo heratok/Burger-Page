@@ -34,6 +34,15 @@ describe("TablePicker", () => {
     expect(screen.queryByRole("button", { name: /Barra/ })).toBeNull()
   })
 
+  it("lets a long table name wrap onto two lines instead of cutting it to one", () => {
+    const longName = "Salón 20 · Ventana grande"
+    setup({ tables: [{ ...t("a", "Salón 20"), alias: "Ventana grande", name: longName }] })
+
+    const label = screen.getByText(longName)
+    expect(label.className).toContain("line-clamp-2")
+    expect(label.className).not.toContain("line-clamp-1")
+  })
+
   it("selects a table and marks the selected one as pressed", () => {
     const props = setup({ selectedTableId: "b" })
 

@@ -336,7 +336,7 @@ export const CustomizerTablesSection: React.FC<CustomizerTablesSectionProps> = (
                         onKeyDown={(e) => {
                           if (e.key === "Escape") setEditingId(null)
                         }}
-                        className={`min-w-0 flex-1 basis-24 ${inputClass}`}
+                        className={`min-w-0 flex-1 basis-full sm:basis-28 ${inputClass}`}
                       />
                       <input
                         {...numberProps}
@@ -380,7 +380,7 @@ export const CustomizerTablesSection: React.FC<CustomizerTablesSectionProps> = (
                       </button>
                     </div>
                   ) : (
-                    <span className="block truncate text-sm font-semibold text-slate-900 dark:text-white">
+                    <span className="block break-words text-sm font-semibold text-slate-900 dark:text-white">
                       {table.name}
                       {!table.isActive && (
                         <span className="ml-2 text-[10px] font-bold uppercase text-slate-400">Inactiva</span>

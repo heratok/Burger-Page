@@ -179,6 +179,27 @@ describe("CustomizerTablesSection", () => {
     expect(await screen.findByText("Barra 4")).toBeDefined()
   })
 
+  it("keeps a long table name readable on narrow screens instead of truncating it", async () => {
+    const longName = "Zona de eventos privados 12 · Reservado familia Rodríguez"
+    vi.spyOn(apiClient, "fetchTables").mockResolvedValue([
+      { ...t("a", "Zona de eventos privados 12"), alias: "Reservado familia Rodríguez", name: longName },
+    ])
+    renderSection()
+
+    const name = await screen.findByText(longName)
+    expect(name.className).not.toContain("truncate")
+  })
+
+  it("gives the zone its own full-width row while editing so it is not squeezed on phones", async () => {
+    vi.spyOn(apiClient, "fetchTables").mockResolvedValue([t("a", "Mesa 1")])
+    renderSection()
+    await screen.findByText("Mesa 1")
+
+    fireEvent.click(screen.getByRole("button", { name: /Editar Mesa 1/i }))
+
+    expect(screen.getByLabelText(/^Zona de Mesa 1/i).className).toContain("basis-full")
+  })
+
   it("closes the editor without calling the API when nothing changed", async () => {
     vi.spyOn(apiClient, "fetchTables").mockResolvedValue([t("a", "Mesa 1")])
     const update = vi.spyOn(apiClient, "updateTable")

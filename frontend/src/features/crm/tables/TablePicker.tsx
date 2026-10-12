@@ -156,7 +156,7 @@ export function TablePicker({
                         selected
                       )}`}
                     >
-                      <span className="line-clamp-1 break-all">{table.name}</span>
+                      <span className="line-clamp-2 [overflow-wrap:anywhere]">{table.name}</span>
                       {occupied && (
                         <span
                           className={`mt-0.5 rounded-full px-1.5 text-[9px] font-black uppercase ${
