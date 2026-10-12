@@ -3,7 +3,10 @@ import React from "react"
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import { TablePicker, type TablePickerProps } from "./TablePicker"
 
-const t = (id: string, name: string, sortOrder = 0, isActive = true) => ({ id, name, sortOrder, isActive })
+const t = (id: string, name: string, sortOrder = 0, isActive = true) => {
+  const match = /^(.*?)\s*(\d+)$/.exec(name)
+  return { id, zone: match ? match[1] : name, number: match ? Number(match[2]) : 1, alias: null, name, sortOrder, isActive }
+}
 
 const setup = (over: Partial<TablePickerProps> = {}) => {
   const props: TablePickerProps = {
@@ -49,16 +52,55 @@ describe("TablePicker", () => {
     expect(props.onSelect).toHaveBeenCalledWith("a")
   })
 
+  it("groups the active tables under a header per zone", () => {
+    setup({ tables: [t("a", "Salón 1"), t("b", "Terraza 1", 1), t("c", "Salón 2", 2)] })
+
+    const headers = screen.getAllByRole("heading", { level: 4 }).map((h) => h.textContent)
+    expect(headers).toEqual(["Salón", "Terraza"])
+    expect(screen.getByRole("button", { name: /Salón 2/ })).toBeDefined()
+  })
+
+  it("prefills the inline form with the most used zone and its next free number", () => {
+    setup({ tables: [t("a", "Salón 1"), t("b", "Terraza 1", 1), t("c", "Terraza 2", 2)] })
+
+    fireEvent.click(screen.getByRole("button", { name: /\+ Nueva mesa/i }))
+
+    expect((screen.getByLabelText(/Zona de la nueva mesa/i) as HTMLInputElement).value).toBe("Terraza")
+    expect((screen.getByLabelText(/Número de la nueva mesa/i) as HTMLInputElement).value).toBe("3")
+  })
+
+  it("recomputes the suggested number when the zone changes", () => {
+    setup({ tables: [t("a", "Salón 1"), t("b", "Terraza 1", 1), t("c", "Terraza 2", 2)] })
+
+    fireEvent.click(screen.getByRole("button", { name: /\+ Nueva mesa/i }))
+    fireEvent.change(screen.getByLabelText(/Zona de la nueva mesa/i), { target: { value: "Salón" } })
+
+    expect((screen.getByLabelText(/Número de la nueva mesa/i) as HTMLInputElement).value).toBe("2")
+  })
+
   it("lets the user create a table inline and selects it", async () => {
     const onCreateTable = vi.fn().mockResolvedValue(t("n", "Mesa 9", 3))
     const props = setup({ onCreateTable })
 
     fireEvent.click(screen.getByRole("button", { name: /\+ Nueva mesa/i }))
-    fireEvent.change(screen.getByLabelText(/Nombre de la nueva mesa/i), { target: { value: " Mesa 9 " } })
+    fireEvent.change(screen.getByLabelText(/Zona de la nueva mesa/i), { target: { value: " Barra " } })
+    fireEvent.change(screen.getByLabelText(/Número de la nueva mesa/i), { target: { value: "9" } })
+    expect(screen.getByText("Se creará: Barra 9")).toBeDefined()
     fireEvent.click(screen.getByRole("button", { name: /^Crear$/i }))
 
-    await waitFor(() => expect(onCreateTable).toHaveBeenCalledWith("Mesa 9"))
+    await waitFor(() => expect(onCreateTable).toHaveBeenCalledWith({ zone: "Barra", number: 9 }))
     await waitFor(() => expect(props.onSelect).toHaveBeenCalledWith("n"))
+  })
+
+  it("does not create with an invalid number", () => {
+    const onCreateTable = vi.fn()
+    setup({ onCreateTable })
+
+    fireEvent.click(screen.getByRole("button", { name: /\+ Nueva mesa/i }))
+    fireEvent.change(screen.getByLabelText(/Número de la nueva mesa/i), { target: { value: "0" } })
+
+    expect((screen.getByRole("button", { name: /^Crear$/i }) as HTMLButtonElement).disabled).toBe(true)
+    expect(onCreateTable).not.toHaveBeenCalled()
   })
 
   it("keeps the inline form open when the creation is rejected", async () => {
@@ -66,12 +108,12 @@ describe("TablePicker", () => {
     const props = setup({ onCreateTable })
 
     fireEvent.click(screen.getByRole("button", { name: /\+ Nueva mesa/i }))
-    fireEvent.change(screen.getByLabelText(/Nombre de la nueva mesa/i), { target: { value: "Mesa 1" } })
+    fireEvent.change(screen.getByLabelText(/Número de la nueva mesa/i), { target: { value: "1" } })
     fireEvent.click(screen.getByRole("button", { name: /^Crear$/i }))
 
     await waitFor(() => expect(onCreateTable).toHaveBeenCalled())
     expect(props.onSelect).not.toHaveBeenCalled()
-    expect(screen.getByLabelText(/Nombre de la nueva mesa/i)).toBeDefined()
+    expect(screen.getByLabelText(/Zona de la nueva mesa/i)).toBeDefined()
   })
 
   it("shows an empty state with the way to the manager when there are no active tables", () => {
@@ -130,7 +172,8 @@ describe("TablePicker inside a parent form", () => {
       </form>
     )
     fireEvent.click(screen.getByRole("button", { name: /\+ Nueva mesa/i }))
-    fireEvent.change(screen.getByLabelText(/Nombre de la nueva mesa/i), { target: { value: "Barra 1" } })
+    fireEvent.change(screen.getByLabelText(/Zona de la nueva mesa/i), { target: { value: "Barra" } })
+    fireEvent.change(screen.getByLabelText(/Número de la nueva mesa/i), { target: { value: "1" } })
     return { container, onSubmit, onSelect, onCreateTable }
   }
 
@@ -145,7 +188,7 @@ describe("TablePicker inside a parent form", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /^Crear$/i }))
 
-    await waitFor(() => expect(onCreateTable).toHaveBeenCalledWith("Barra 1"))
+    await waitFor(() => expect(onCreateTable).toHaveBeenCalledWith({ zone: "Barra", number: 1 }))
     await waitFor(() => expect(onSelect).toHaveBeenCalledWith("n"))
     expect(onSubmit).not.toHaveBeenCalled()
   })
@@ -153,10 +196,10 @@ describe("TablePicker inside a parent form", () => {
   it("creates with Enter without submitting the parent form", async () => {
     const { onSubmit, onSelect, onCreateTable } = renderInForm()
 
-    const input = screen.getByLabelText(/Nombre de la nueva mesa/i)
+    const input = screen.getByLabelText(/Número de la nueva mesa/i)
     const notPrevented = fireEvent.keyDown(input, { key: "Enter" })
 
-    await waitFor(() => expect(onCreateTable).toHaveBeenCalledWith("Barra 1"))
+    await waitFor(() => expect(onCreateTable).toHaveBeenCalledWith({ zone: "Barra", number: 1 }))
     await waitFor(() => expect(onSelect).toHaveBeenCalledWith("n"))
     expect(notPrevented).toBe(false)
     expect(onSubmit).not.toHaveBeenCalled()
@@ -164,14 +207,14 @@ describe("TablePicker inside a parent form", () => {
 
   it("cancels with Escape without closing anything else and returns focus to the add button", async () => {
     renderInForm()
-    const input = screen.getByLabelText(/Nombre de la nueva mesa/i)
+    const input = screen.getByLabelText(/Zona de la nueva mesa/i)
     const stop = vi.fn()
     document.addEventListener("keydown", stop)
 
     fireEvent.keyDown(input, { key: "Escape" })
     document.removeEventListener("keydown", stop)
 
-    expect(screen.queryByLabelText(/Nombre de la nueva mesa/i)).toBeNull()
+    expect(screen.queryByLabelText(/Zona de la nueva mesa/i)).toBeNull()
     expect(stop).not.toHaveBeenCalled()
     await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: /\+ Nueva mesa/i })))
   })

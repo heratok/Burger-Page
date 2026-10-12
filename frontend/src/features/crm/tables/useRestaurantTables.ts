@@ -5,6 +5,29 @@ import { apiClient } from "@/core/api/apiClient"
 import { useAuth } from "@/context/slices/AuthContext"
 import { keys } from "@/core/query/keys"
 import type { RestaurantTable } from "@/types/restaurant"
+import { sameZone } from "./tableZones"
+
+export interface NewTableInput {
+  zone: string
+  number: number
+  alias?: string
+}
+export interface TableChanges {
+  zone?: string
+  number?: number
+  /** A string sets the alias, null clears it. */
+  alias?: string | null
+  isActive?: boolean
+}
+export interface BulkTablesInput {
+  zone: string
+  from: number
+  to: number
+}
+export interface BulkTablesResult {
+  created: RestaurantTable[]
+  skipped: number[]
+}
 
 const errorMessage = (err: unknown, fallback: string): string =>
   err instanceof Error && err.message ? err.message : fallback
@@ -15,8 +38,10 @@ export interface UseRestaurantTables {
   loadError: string | null
   reload: () => Promise<void>
   /** Resolves the created table, or null (after an error toast) when rejected. */
-  createTable: (name: string) => Promise<RestaurantTable | null>
-  updateTable: (id: string, data: { name?: string; isActive?: boolean }) => Promise<boolean>
+  createTable: (data: NewTableInput) => Promise<RestaurantTable | null>
+  /** Creates zone numbers from..to. Resolves null (after an error toast) when rejected. */
+  createTablesBulk: (data: BulkTablesInput) => Promise<BulkTablesResult | null>
+  updateTable: (id: string, data: TableChanges) => Promise<boolean>
   moveTable: (id: string, direction: "up" | "down") => Promise<void>
   deleteTable: (id: string) => Promise<boolean>
 }
@@ -66,11 +91,15 @@ export function useRestaurantTables(restaurantId: string | undefined): UseRestau
   )
 
   const { mutateAsync: create } = useMutation({
-    mutationFn: (name: string) => apiClient.createTable(name, restaurantId),
+    mutationFn: (data: NewTableInput) => apiClient.createTable(data, restaurantId),
     onSuccess: (created) => commit((list) => [...list, created]),
   })
+  const { mutateAsync: createBulk } = useMutation({
+    mutationFn: (data: BulkTablesInput) => apiClient.createTablesBulk(data, restaurantId),
+    onSuccess: ({ created }) => commit((list) => [...list, ...created]),
+  })
   const { mutateAsync: update } = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: { name?: string; isActive?: boolean } }) =>
+    mutationFn: ({ id, data }: { id: string; data: TableChanges }) =>
       apiClient.updateTable(id, data, restaurantId),
     onSuccess: (updated, { id }) => commit((list) => list.map((t) => (t.id === id ? updated : t))),
   })
@@ -94,9 +123,9 @@ export function useRestaurantTables(restaurantId: string | undefined): UseRestau
   })
 
   const createTable = useCallback(
-    async (name: string) => {
+    async (data: NewTableInput) => {
       try {
-        return await create(name)
+        return await create(data)
       } catch (err) {
         toast.error(errorMessage(err, "No se pudo crear la mesa"))
         return null
@@ -105,8 +134,26 @@ export function useRestaurantTables(restaurantId: string | undefined): UseRestau
     [create]
   )
 
+  const createTablesBulk = useCallback(
+    async (data: BulkTablesInput) => {
+      try {
+        const result = await createBulk(data)
+        if (result.skipped.length > 0) {
+          toast.info(
+            `Se crearon ${result.created.length} mesas. Se omitieron ${result.skipped.length} que ya existían: ${result.skipped.join(", ")}.`
+          )
+        }
+        return result
+      } catch (err) {
+        toast.error(errorMessage(err, "No se pudieron crear las mesas"))
+        return null
+      }
+    },
+    [createBulk]
+  )
+
   const updateTable = useCallback(
-    async (id: string, data: { name?: string; isActive?: boolean }) => {
+    async (id: string, data: TableChanges) => {
       try {
         await update({ id, data })
         return true
@@ -121,8 +168,14 @@ export function useRestaurantTables(restaurantId: string | undefined): UseRestau
   const moveTable = useCallback(
     async (id: string, direction: "up" | "down") => {
       const index = tables.findIndex((t) => t.id === id)
-      const target = direction === "up" ? index - 1 : index + 1
-      if (index < 0 || target < 0 || target >= tables.length) return
+      if (index < 0) return
+      // The list is shown grouped by zone: swap with the neighbor of the same zone.
+      const step = direction === "up" ? -1 : 1
+      let target = index + step
+      while (target >= 0 && target < tables.length && !sameZone(tables[target].zone, tables[index].zone)) {
+        target += step
+      }
+      if (target < 0 || target >= tables.length) return
 
       const next = [...tables]
       ;[next[index], next[target]] = [next[target], next[index]]
@@ -145,5 +198,5 @@ export function useRestaurantTables(restaurantId: string | undefined): UseRestau
     [remove]
   )
 
-  return { tables, isLoading, loadError, reload, createTable, updateTable, moveTable, deleteTable }
+  return { tables, isLoading, loadError, reload, createTable, createTablesBulk, updateTable, moveTable, deleteTable }
 }

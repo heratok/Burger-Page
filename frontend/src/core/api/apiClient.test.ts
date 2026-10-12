@@ -59,8 +59,8 @@ describe('ApiClient', () => {
   })
 
   describe('restaurant tables', () => {
-    const raw = { id: 'tbl_1', restaurantId: 'r1', name: 'Mesa 1', sortOrder: 2, isActive: true, createdAt: 'x', updatedAt: 'y' }
-    const mapped = { id: 'tbl_1', name: 'Mesa 1', sortOrder: 2, isActive: true }
+    const raw = { id: 'tbl_1', restaurantId: 'r1', zone: 'Terraza', number: 1, alias: null, name: 'Terraza 1', sortOrder: 2, isActive: true, createdAt: 'x', updatedAt: 'y' }
+    const mapped = { id: 'tbl_1', zone: 'Terraza', number: 1, alias: null, name: 'Terraza 1', sortOrder: 2, isActive: true }
 
     it('lists tables scoped to the restaurant', async () => {
       mockResponse([raw])
@@ -71,22 +71,44 @@ describe('ApiClient', () => {
 
     it('creates a table sending the restaurant id in the body', async () => {
       mockResponse(raw)
-      const table = await client.createTable('Mesa 1', 'r1')
+      const table = await client.createTable({ zone: 'Terraza', number: 1 }, 'r1')
       expect(table).toEqual(mapped)
       const [url, init] = (globalThis.fetch as any).mock.calls[0]
       expect(url).toBe('http://localhost:3001/api/tables?restaurantId=r1')
       expect(init.method).toBe('POST')
-      expect(JSON.parse(init.body)).toEqual({ name: 'Mesa 1', restaurantId: 'r1' })
+      expect(JSON.parse(init.body)).toEqual({ zone: 'Terraza', number: 1, restaurantId: 'r1' })
+    })
+
+    it('creates a table with an alias', async () => {
+      mockResponse({ ...raw, alias: 'VIP', name: 'Terraza 1 · VIP' })
+      const table = await client.createTable({ zone: 'Terraza', number: 1, alias: 'VIP' }, 'r1')
+      expect(table).toMatchObject({ alias: 'VIP', name: 'Terraza 1 · VIP' })
+      expect(JSON.parse((globalThis.fetch as any).mock.calls[0][1].body)).toEqual({
+        zone: 'Terraza',
+        number: 1,
+        alias: 'VIP',
+        restaurantId: 'r1',
+      })
+    })
+
+    it('creates a range of tables and returns the created and skipped numbers', async () => {
+      mockResponse({ created: [raw], skipped: [2, 3] })
+      const result = await client.createTablesBulk({ zone: 'Terraza', from: 1, to: 3 }, 'r1')
+      expect(result).toEqual({ created: [mapped], skipped: [2, 3] })
+      const [url, init] = (globalThis.fetch as any).mock.calls[0]
+      expect(url).toBe('http://localhost:3001/api/tables/bulk?restaurantId=r1')
+      expect(init.method).toBe('POST')
+      expect(JSON.parse(init.body)).toEqual({ zone: 'Terraza', from: 1, to: 3, restaurantId: 'r1' })
     })
 
     it('updates, reorders and deletes a table', async () => {
-      mockResponse({ ...raw, name: 'Terraza', isActive: false })
-      const updated = await client.updateTable('tbl_1', { name: 'Terraza', isActive: false }, 'r1')
-      expect(updated).toMatchObject({ name: 'Terraza', isActive: false })
+      mockResponse({ ...raw, zone: 'Barra', isActive: false })
+      const updated = await client.updateTable('tbl_1', { zone: 'Barra', alias: null, isActive: false }, 'r1')
+      expect(updated).toMatchObject({ zone: 'Barra', isActive: false })
       let [url, init] = (globalThis.fetch as any).mock.calls[0]
       expect(url).toBe('http://localhost:3001/api/tables/tbl_1?restaurantId=r1')
       expect(init.method).toBe('PUT')
-      expect(JSON.parse(init.body)).toEqual({ name: 'Terraza', isActive: false, restaurantId: 'r1' })
+      expect(JSON.parse(init.body)).toEqual({ zone: 'Barra', alias: null, isActive: false, restaurantId: 'r1' })
 
       mockResponse([raw])
       const ordered = await client.reorderTables(['tbl_1'], 'r1')

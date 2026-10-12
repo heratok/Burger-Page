@@ -7,7 +7,10 @@ import { apiClient } from "@/core/api/apiClient"
 import { createTestQueryClient } from "@/test/testQueryClient"
 import { useRestaurantTables } from "./useRestaurantTables"
 
-const t = (id: string, name: string, sortOrder = 0, isActive = true) => ({ id, name, sortOrder, isActive })
+const t = (id: string, name: string, sortOrder = 0, isActive = true) => {
+  const match = /^(.*?)\s*(\d+)$/.exec(name)
+  return { id, zone: match ? match[1] : name, number: match ? Number(match[2]) : 1, alias: null, name, sortOrder, isActive }
+}
 
 const wrapperFor = (client: QueryClient) => {
   const Wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -68,7 +71,7 @@ describe("useRestaurantTables server state (tables query)", () => {
     await waitFor(() => expect(editor.result.current.tables).toHaveLength(1))
 
     await act(async () => {
-      await editor.result.current.createTable("Mesa 2")
+      await editor.result.current.createTable({ zone: "Mesa", number: 2 })
     })
 
     // Every consumer of the tenant's tables sees the confirmed row at once.
@@ -78,7 +81,7 @@ describe("useRestaurantTables server state (tables query)", () => {
   })
 
   it("shows the new order while the reorder is in flight and rolls back on rejection", async () => {
-    vi.spyOn(apiClient, "fetchTables").mockResolvedValue([t("a", "A"), t("b", "B", 1)])
+    vi.spyOn(apiClient, "fetchTables").mockResolvedValue([t("a", "Mesa 1"), t("b", "Mesa 2", 1)])
     let reject!: (err: Error) => void
     vi.spyOn(apiClient, "reorderTables").mockReturnValue(
       new Promise((_resolve, rej) => {
