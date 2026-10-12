@@ -442,20 +442,25 @@ describe('migration 0000000000010 (restaurant tables) parity with the baseline s
     sql.match(/CREATE TABLE IF NOT EXISTS public\.restaurant_tables \(([\s\S]*?)\n\);/)![1];
 
   describe('T1 restaurant_tables table', () => {
-    it('baseline and up declare the same table definition', () => {
-      expect(flat(tableBody(up))).toBe(flat(tableBody(baseline)));
+    it('baseline declares the 0010 table definition plus the 0018 structured columns', () => {
+      // 0018 (structured tables) legitimately extends the baseline; its own parity block covers the delta.
+      const withoutStructured = flat(tableBody(baseline))
+        .replace(' zone TEXT NOT NULL, number INTEGER NOT NULL, alias TEXT,', '')
+        .replace(/ CONSTRAINT chk_restaurant_tables_(zone|number|alias) CHECK \(.*?\),(?= CONSTRAINT)/g, '')
+        .replace('AND 68)', 'AND 40)');
+      expect(withoutStructured).toBe(flat(tableBody(up)));
     });
 
     it('cascades with the restaurant and constrains id format, name length and tenant-scoped uniqueness', () => {
       const body = flat(tableBody(baseline));
       expect(body).toContain('restaurant_id TEXT NOT NULL REFERENCES public.restaurants(id) ON DELETE CASCADE');
       expect(body).toContain("CONSTRAINT chk_restaurant_tables_id_format CHECK (id ~ '^[A-Za-z0-9_-]{1,64}$')");
-      expect(body).toContain('CHECK (char_length(btrim(name)) BETWEEN 1 AND 40)');
+      expect(flat(tableBody(up))).toContain('CHECK (char_length(btrim(name)) BETWEEN 1 AND 40)');
       expect(body).toContain('CONSTRAINT uq_restaurant_tables_id_restaurant UNIQUE (id, restaurant_id)');
-      for (const sql of [baseline, up]) {
-        expect(flat(sql)).toContain('uq_restaurant_tables_name');
-        expect(flat(sql)).toContain('(restaurant_id, lower(btrim(name)))');
-      }
+      // The unique index on name is replaced by (zone, number) in 0018.
+      expect(flat(up)).toContain('uq_restaurant_tables_name');
+      expect(flat(up)).toContain('(restaurant_id, lower(btrim(name)))');
+      expect(flat(baseline)).toContain('uq_restaurant_tables_zone_number');
     });
 
     it('enables and forces RLS with tenant isolation only (no public read) and grants app_user', () => {
@@ -719,5 +724,60 @@ describe('migration 0000000000016 (users.retired_was_active) parity with the bas
 
   it('is reversible', () => {
     expect(down).toContain('DROP COLUMN IF EXISTS retired_was_active');
+  });
+});
+
+describe('migration 0000000000018 (structured restaurant tables) parity with the baseline schema', () => {
+  const baseline = read('01_schema.sql');
+  const up = read('migrations/0000000000018_structured_restaurant_tables.up.sql');
+  const down = read('migrations/0000000000018_structured_restaurant_tables.down.sql');
+  const tableBody = baseline.slice(
+    baseline.indexOf('CREATE TABLE IF NOT EXISTS public.restaurant_tables ('),
+    baseline.indexOf(');', baseline.indexOf('CREATE TABLE IF NOT EXISTS public.restaurant_tables ('))
+  );
+  const flat = (s: string) => s.replace(/\s+/g, ' ');
+
+  it('declares zone, number and alias in the baseline and adds them in the migration', () => {
+    expect(tableBody).toMatch(/\bzone\s+TEXT NOT NULL,/);
+    expect(tableBody).toMatch(/\bnumber\s+INTEGER NOT NULL,/);
+    expect(tableBody).toMatch(/\balias\s+TEXT,/);
+    for (const col of ['zone TEXT', 'number INTEGER', 'alias TEXT']) {
+      expect(flat(up)).toContain(`ADD COLUMN IF NOT EXISTS ${col}`);
+    }
+  });
+
+  it.each([
+    ['chk_restaurant_tables_zone', 'CHECK (char_length(btrim(zone)) BETWEEN 1 AND 30)'],
+    ['chk_restaurant_tables_number', 'CHECK (number BETWEEN 1 AND 9999)'],
+    ['chk_restaurant_tables_alias', 'CHECK (alias IS NULL OR char_length(btrim(alias)) BETWEEN 1 AND 30)'],
+    ['chk_restaurant_tables_name', 'CHECK (char_length(btrim(name)) BETWEEN 1 AND 68)'],
+  ])('declares %s identically in baseline and migration', (name, def) => {
+    expect(flat(tableBody)).toContain(`CONSTRAINT ${name} ${def}`);
+    expect(flat(up)).toContain(`ADD CONSTRAINT ${name} ${def}`);
+  });
+
+  it('swaps the unique index on name for (restaurant_id, lower(btrim(zone)), number)', () => {
+    const idx = 'uq_restaurant_tables_zone_number ON public.restaurant_tables';
+    expect(flat(baseline)).toContain(`CREATE UNIQUE INDEX IF NOT EXISTS ${idx}(restaurant_id, lower(btrim(zone)), number);`);
+    expect(flat(up)).toContain(`CREATE UNIQUE INDEX IF NOT EXISTS ${idx} (restaurant_id, lower(btrim(zone)), number);`);
+    expect(baseline).not.toMatch(/CREATE UNIQUE INDEX IF NOT EXISTS uq_restaurant_tables_name/);
+    expect(up).toContain('DROP INDEX IF EXISTS public.uq_restaurant_tables_name');
+  });
+
+  it('marks the data and constraint sections and never opens a transaction', () => {
+    for (const id of ['T1', 'T2', 'T3']) {
+      expect(up).toContain(`-- ── ${id}.`);
+      expect(down).toContain(`-- ── ${id}.`);
+    }
+    for (const sql of [up, down]) {
+      expect(sql).toContain("SET LOCAL lock_timeout = '15s';");
+      expect(sql).not.toMatch(/^\s*(BEGIN|COMMIT);/im);
+    }
+  });
+
+  it('is reversible: down restores the 0010 index and name check', () => {
+    expect(down).toContain('uq_restaurant_tables_name');
+    expect(flat(down)).toContain('CHECK (char_length(btrim(name)) BETWEEN 1 AND 40)');
+    expect(down).toContain('DROP COLUMN IF EXISTS');
   });
 });

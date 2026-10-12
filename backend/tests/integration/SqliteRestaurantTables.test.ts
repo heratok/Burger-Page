@@ -77,3 +77,47 @@ describe.skipIf(!hasSqliteBinding)('SQLite restaurant tables', () => {
     expect(after?.tableLabel).toBeUndefined();
   });
 });
+
+describe.skipIf(!hasSqliteBinding)('SQLite restaurant tables schema upgrade (0018 twin)', () => {
+  const columns = (db: Database) => (db.prepare('PRAGMA table_info(restaurant_tables)').all() as Array<{ name: string }>).map((c) => c.name);
+
+  it('creates zone, number and alias on a fresh database', () => {
+    const db = createSqliteDatabase(':memory:');
+    expect(columns(db)).toEqual(expect.arrayContaining(['zone', 'number', 'alias']));
+    db.close();
+  });
+
+  it('adds the columns to a legacy file and backfills them from the old names, deriving name', async () => {
+    const { mkdtempSync, rmSync } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+    const BetterSqlite = (await import('better-sqlite3')).default;
+    const dir = mkdtempSync(join(tmpdir(), 'tables-upgrade-'));
+    const file = join(dir, 'legacy.db');
+    try {
+      const legacy = new BetterSqlite(file);
+      legacy.exec(`CREATE TABLE restaurant_tables (
+        id TEXT PRIMARY KEY, restaurant_id TEXT NOT NULL, name TEXT NOT NULL,
+        sort_order INTEGER NOT NULL DEFAULT 0, is_active INTEGER NOT NULL DEFAULT 1, created_at TEXT, updated_at TEXT)`);
+      const ins = legacy.prepare('INSERT INTO restaurant_tables (id, restaurant_id, name, sort_order) VALUES (?, ?, ?, ?)');
+      ['VIP', 'Mesa 1', 'terraza 2'].forEach((n, i) => ins.run(`t${i}`, 'rest-a', n, i));
+      legacy.close();
+
+      const db = createSqliteDatabase(file);
+      const rows = db.prepare('SELECT zone, number, alias, name FROM restaurant_tables ORDER BY sort_order').all();
+      expect(rows).toEqual([
+        { zone: 'Mesa', number: 2, alias: 'VIP', name: 'Mesa 2 · VIP' },
+        { zone: 'Mesa', number: 1, alias: null, name: 'Mesa 1' },
+        { zone: 'Terraza', number: 2, alias: null, name: 'Terraza 2' },
+      ]);
+      db.close();
+
+      // Re-opening an already upgraded file changes nothing.
+      const again = createSqliteDatabase(file);
+      expect(again.prepare('SELECT zone, number FROM restaurant_tables ORDER BY sort_order').all()).toHaveLength(3);
+      again.close();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
