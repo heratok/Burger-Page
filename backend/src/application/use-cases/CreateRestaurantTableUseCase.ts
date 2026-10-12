@@ -1,31 +1,22 @@
 import { ID_PREFIX, isValidId, newId } from '../../domain/shared/newId.js';
 import { RestaurantTableRepository } from '../../domain/ports/out/RestaurantTableRepository.js';
-import { MAX_TABLE_NAME_LENGTH, RestaurantTable } from '../../domain/models/RestaurantTable.js';
+import { RestaurantTable } from '../../domain/models/RestaurantTable.js';
 import { ValidationError } from '../../domain/errors/DomainErrors.js';
+import { buildTableIdentity } from './tableIdentity.js';
 
 export interface CreateRestaurantTableInput {
   id?: string;
-  name: string;
+  zone: string;
+  number: number;
+  alias?: string | null;
   isActive?: boolean;
-}
-
-/** Trims, collapses inner whitespace and validates a table name; shared by create and update. */
-export function validateTableName(raw: string | undefined): string {
-  const name = raw?.replace(/\s+/g, ' ').trim();
-  if (!name) {
-    throw new ValidationError('El nombre de la mesa es obligatorio');
-  }
-  if (name.length > MAX_TABLE_NAME_LENGTH) {
-    throw new ValidationError(`El nombre de la mesa no puede superar ${MAX_TABLE_NAME_LENGTH} caracteres`);
-  }
-  return name;
 }
 
 export class CreateRestaurantTableUseCase {
   constructor(private tableRepo: RestaurantTableRepository) {}
 
   async execute(restaurantId: string, input: CreateRestaurantTableInput): Promise<RestaurantTable> {
-    const name = validateTableName(input.name);
+    const identity = buildTableIdentity(input);
     if (input.id !== undefined && !isValidId(input.id)) {
       throw new ValidationError('El id de la mesa debe tener de 1 a 64 caracteres: letras, dígitos, "_" o "-"');
     }
@@ -38,7 +29,7 @@ export class CreateRestaurantTableUseCase {
     const table: RestaurantTable = {
       id: input.id ?? newId(ID_PREFIX.table),
       restaurantId,
-      name,
+      ...identity,
       sortOrder,
       isActive: input.isActive ?? true,
       createdAt: now,

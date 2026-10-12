@@ -6,6 +6,7 @@ import { PgOrderRepository } from '../../../src/infrastructure/persistence/postg
 import { ConflictError } from '../../../src/domain/errors/DomainErrors.js';
 import { Order } from '../../../src/domain/models/Order.js';
 import { RestaurantTable } from '../../../src/domain/models/RestaurantTable.js';
+import { formatTableName } from '@burger-page/contracts';
 
 const { Pool } = pg;
 
@@ -24,16 +25,22 @@ describe('PgRestaurantTableRepository (real Postgres, app_user role)', () => {
   const REST_B = `pgtbl-b-${suffix}`;
   const PRODUCT_ID = `pgtbl-prod-${suffix}`;
 
-  const table = (restaurantId: string, name: string, over: Partial<RestaurantTable> = {}): RestaurantTable => ({
-    id: `tbl_${randomUUID()}`,
-    restaurantId,
-    name,
-    sortOrder: 0,
-    isActive: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    ...over,
-  });
+  const table = (restaurantId: string, zone: string, number: number, over: Partial<RestaurantTable> = {}): RestaurantTable => {
+    const alias = over.alias ?? null;
+    return {
+      id: `tbl_${randomUUID()}`,
+      restaurantId,
+      zone,
+      number,
+      alias,
+      name: formatTableName({ zone, number, alias }),
+      sortOrder: 0,
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      ...over,
+    };
+  };
 
   const newOrder = (restaurantId: string) =>
     new Order(
@@ -80,31 +87,65 @@ describe('PgRestaurantTableRepository (real Postgres, app_user role)', () => {
 
   it('saves, reads back in sort order, updates and deletes a table', async () => {
     if (!isDbConnected) return;
-    const second = table(REST_A, 'Mesa 2', { sortOrder: 1 });
-    const first = table(REST_A, 'Mesa 1', { sortOrder: 0 });
+    const second = table(REST_A, 'Mesa', 2, { sortOrder: 1 });
+    const first = table(REST_A, 'Mesa', 1, { sortOrder: 0 });
     await repo.save(second);
     await repo.save(first);
 
     expect((await repo.findByRestaurantId(REST_A)).map((t) => t.name)).toEqual(['Mesa 1', 'Mesa 2']);
 
-    await repo.save({ ...first, name: 'Terraza 1', isActive: false, sortOrder: 5 });
-    expect(await repo.findById(first.id, REST_A)).toMatchObject({ name: 'Terraza 1', isActive: false, sortOrder: 5 });
+    await repo.save({ ...first, zone: 'Terraza', number: 3, alias: 'Barra', name: 'Terraza 3 · Barra', isActive: false, sortOrder: 5 });
+    expect(await repo.findById(first.id, REST_A)).toMatchObject({
+      zone: 'Terraza',
+      number: 3,
+      alias: 'Barra',
+      name: 'Terraza 3 · Barra',
+      isActive: false,
+      sortOrder: 5,
+    });
 
     await repo.delete(first.id, REST_A);
     expect(await repo.findById(first.id, REST_A)).toBeNull();
   });
 
-  it('enforces unique names per restaurant ignoring case and surrounding spaces, but not across restaurants', async () => {
+  it('orders ties on sort order by lower(zone) then number', async () => {
     if (!isDbConnected) return;
-    await repo.save(table(REST_A, 'Barra'));
+    const REST = `pgtbl-order-${suffix}`;
+    await adminPool.query(`INSERT INTO public.restaurants (id, slug, name, is_active) VALUES ($1,$1,'O',true)`, [REST]);
+    try {
+      await repo.saveMany([table(REST, 'Terraza', 10), table(REST, 'Terraza', 2), table(REST, 'mesa', 9)]);
+      expect((await repo.findByRestaurantId(REST)).map((t) => t.name)).toEqual(['Mesa 9', 'Terraza 2', 'Terraza 10']);
+    } finally {
+      await adminPool.query(`DELETE FROM public.restaurants WHERE id = $1`, [REST]);
+    }
+  });
 
-    await expect(repo.save(table(REST_A, ' BARRA '))).rejects.toBeInstanceOf(ConflictError);
-    await expect(repo.save(table(REST_B, 'Barra'))).resolves.toBeUndefined();
+  it('enforces unique (zone, number) per restaurant ignoring case and surrounding spaces, but not across restaurants', async () => {
+    if (!isDbConnected) return;
+    await repo.save(table(REST_A, 'Barra', 1));
+
+    await expect(repo.save(table(REST_A, ' BARRA ', 1))).rejects.toBeInstanceOf(ConflictError);
+    await expect(repo.save(table(REST_A, 'barra', 1, { alias: 'otro' }))).rejects.toThrow("Ya existe la mesa 'Barra 1'");
+    await expect(repo.save(table(REST_A, 'Barra', 2))).resolves.toBeUndefined();
+    await expect(repo.save(table(REST_B, 'Barra', 1))).resolves.toBeUndefined();
+  });
+
+  it('saveMany inserts every table or none in one transaction', async () => {
+    if (!isDbConnected) return;
+    await repo.save(table(REST_A, 'Lote', 2));
+
+    await expect(repo.saveMany([table(REST_A, 'Lote', 1), table(REST_A, 'Lote', 2), table(REST_A, 'Lote', 3)])).rejects.toBeInstanceOf(
+      ConflictError
+    );
+    expect((await repo.findByRestaurantId(REST_A)).filter((t) => t.zone === 'Lote').map((t) => t.number)).toEqual([2]);
+
+    await repo.saveMany([table(REST_A, 'Lote', 1), table(REST_A, 'Lote', 3)]);
+    expect((await repo.findByRestaurantId(REST_A)).filter((t) => t.zone === 'Lote').map((t) => t.number).sort()).toEqual([1, 2, 3]);
   });
 
   it('isolates tenants through RLS: another tenant context cannot read or delete the table', async () => {
     if (!isDbConnected) return;
-    const t = table(REST_A, 'Privada');
+    const t = table(REST_A, 'Privada', 1);
     await repo.save(t);
 
     expect(await repo.findById(t.id, REST_B)).toBeNull();
@@ -113,15 +154,18 @@ describe('PgRestaurantTableRepository (real Postgres, app_user role)', () => {
     expect(await repo.findById(t.id, REST_A)).not.toBeNull();
   });
 
-  it('rejects a table that does not satisfy the db checks (blank name, bad id)', async () => {
+  it('rejects a table that does not satisfy the db checks (blank zone, bad number, long alias, bad id)', async () => {
     if (!isDbConnected) return;
-    await expect(repo.save(table(REST_A, '   '))).rejects.toThrow();
-    await expect(repo.save(table(REST_A, 'Ok', { id: 'bad id!' }))).rejects.toThrow();
+    await expect(repo.save(table(REST_A, '   ', 1))).rejects.toThrow();
+    await expect(repo.save(table(REST_A, 'Ok', 0))).rejects.toThrow();
+    await expect(repo.save(table(REST_A, 'Ok', 10000))).rejects.toThrow();
+    await expect(repo.save(table(REST_A, 'Ok', 1, { alias: 'x'.repeat(31) }))).rejects.toThrow();
+    await expect(repo.save(table(REST_A, 'Ok', 1, { id: 'bad id!' }))).rejects.toThrow();
   });
 
   it('stores the table on an order, reads it back, and keeps the label when the table is deleted', async () => {
     if (!isDbConnected) return;
-    const t = table(REST_A, 'Mesa Pedido');
+    const t = table(REST_A, 'Pedido', 1);
     await repo.save(t);
     const order = newOrder(REST_A);
     order.tableId = t.id;
@@ -129,21 +173,21 @@ describe('PgRestaurantTableRepository (real Postgres, app_user role)', () => {
     await orderRepo.save(order);
 
     const found = await orderRepo.findById(order.id, REST_A);
-    expect(found).toMatchObject({ tableId: t.id, tableLabel: 'Mesa Pedido' });
+    expect(found).toMatchObject({ tableId: t.id, tableLabel: 'Pedido 1' });
 
     await repo.delete(t.id, REST_A);
 
     const after = await orderRepo.findById(order.id, REST_A);
     expect(after?.tableId).toBeUndefined();
-    expect(after?.tableLabel).toBe('Mesa Pedido');
+    expect(after?.tableLabel).toBe('Pedido 1');
     const raw = await adminPool.query(`SELECT table_id, table_label FROM public.orders WHERE id = $1`, [order.id]);
-    expect(raw.rows[0]).toEqual({ table_id: null, table_label: 'Mesa Pedido' });
+    expect(raw.rows[0]).toEqual({ table_id: null, table_label: 'Pedido 1' });
   });
 
   it('updates, moves and detaches the table of an existing order', async () => {
     if (!isDbConnected) return;
-    const t1 = table(REST_A, 'Mesa U1');
-    const t2 = table(REST_A, 'Mesa U2');
+    const t1 = table(REST_A, 'MesaU', 1);
+    const t2 = table(REST_A, 'MesaU', 2);
     await repo.save(t1);
     await repo.save(t2);
     const order = newOrder(REST_A);
@@ -153,13 +197,13 @@ describe('PgRestaurantTableRepository (real Postgres, app_user role)', () => {
     loaded.tableId = t1.id;
     loaded.tableLabel = t1.name;
     await orderRepo.update(loaded, REST_A);
-    expect(await orderRepo.findById(order.id, REST_A)).toMatchObject({ tableId: t1.id, tableLabel: 'Mesa U1' });
+    expect(await orderRepo.findById(order.id, REST_A)).toMatchObject({ tableId: t1.id, tableLabel: 'MesaU 1' });
 
     const moved = (await orderRepo.findById(order.id, REST_A))!;
     moved.tableId = t2.id;
     moved.tableLabel = t2.name;
     await orderRepo.update(moved, REST_A);
-    expect(await orderRepo.findById(order.id, REST_A)).toMatchObject({ tableId: t2.id, tableLabel: 'Mesa U2' });
+    expect(await orderRepo.findById(order.id, REST_A)).toMatchObject({ tableId: t2.id, tableLabel: 'MesaU 2' });
 
     const detached = (await orderRepo.findById(order.id, REST_A))!;
     detached.tableId = undefined;
@@ -172,7 +216,7 @@ describe('PgRestaurantTableRepository (real Postgres, app_user role)', () => {
 
   it('the composite FK refuses an order that points at a table of another restaurant', async () => {
     if (!isDbConnected) return;
-    const foreign = table(REST_B, 'Mesa Ajena');
+    const foreign = table(REST_B, 'Ajena', 1);
     await repo.save(foreign);
     const order = newOrder(REST_A);
     order.tableId = foreign.id;
