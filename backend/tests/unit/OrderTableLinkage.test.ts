@@ -21,6 +21,9 @@ const restaurant: any = {
 const makeTable = (over: Partial<RestaurantTable> = {}): RestaurantTable => ({
   id: 'tbl_1',
   restaurantId: 'rest-a',
+  zone: 'Mesa',
+  number: 1,
+  alias: null,
   name: 'Mesa 1',
   sortOrder: 0,
   isActive: true,
@@ -36,8 +39,8 @@ describe('order table linkage', () => {
   beforeEach(async () => {
     tableRepo = new InMemoryRestaurantTableRepository();
     await tableRepo.save(makeTable());
-    await tableRepo.save(makeTable({ id: 'tbl_off', name: 'Mesa off', sortOrder: 1, isActive: false }));
-    await tableRepo.save(makeTable({ id: 'tbl_other', restaurantId: 'rest-b', name: 'Mesa 1' }));
+    await tableRepo.save(makeTable({ id: 'tbl_off', zone: 'Mesa', number: 9, name: 'Mesa 9', sortOrder: 1, isActive: false }));
+    await tableRepo.save(makeTable({ id: 'tbl_other', restaurantId: 'rest-b' }));
     orderRepo = {
       findById: vi.fn(),
       findByRestaurantId: vi.fn(),
@@ -129,7 +132,7 @@ describe('order table linkage', () => {
     });
 
     it('moves an order to another active table and refreshes the label', async () => {
-      await tableRepo.save(makeTable({ id: 'tbl_2', name: 'Mesa 2', sortOrder: 2 }));
+      await tableRepo.save(makeTable({ id: 'tbl_2', number: 2, name: 'Mesa 2', sortOrder: 2 }));
       orderRepo.findById.mockResolvedValue(baseOrder({ id: 'tbl_1', label: 'Mesa 1' }));
 
       const updated = await build().execute('ord-1', { tableId: 'tbl_2' }, 'rest-a');

@@ -1,6 +1,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { ListRestaurantTablesUseCase } from '../../../application/use-cases/ListRestaurantTablesUseCase.js';
 import { CreateRestaurantTableUseCase } from '../../../application/use-cases/CreateRestaurantTableUseCase.js';
+import { BulkCreateRestaurantTablesUseCase } from '../../../application/use-cases/BulkCreateRestaurantTablesUseCase.js';
 import { UpdateRestaurantTableUseCase } from '../../../application/use-cases/UpdateRestaurantTableUseCase.js';
 import { DeleteRestaurantTableUseCase } from '../../../application/use-cases/DeleteRestaurantTableUseCase.js';
 import { ReorderRestaurantTablesUseCase } from '../../../application/use-cases/ReorderRestaurantTablesUseCase.js';
@@ -9,6 +10,7 @@ import { UnauthorizedError, ValidationError } from '../../../domain/errors/Domai
 import { resolveTenantForRequest } from '../TenantResolver.js';
 import {
   createRestaurantTableSchema,
+  bulkCreateRestaurantTablesSchema,
   updateRestaurantTableSchema,
   reorderRestaurantTablesSchema,
 } from '@burger-page/contracts';
@@ -17,6 +19,7 @@ export class RestaurantTableController {
   constructor(
     private listTablesUseCase: ListRestaurantTablesUseCase,
     private createTableUseCase: CreateRestaurantTableUseCase,
+    private bulkCreateTablesUseCase: BulkCreateRestaurantTablesUseCase,
     private updateTableUseCase: UpdateRestaurantTableUseCase,
     private deleteTableUseCase: DeleteRestaurantTableUseCase,
     private reorderTablesUseCase: ReorderRestaurantTablesUseCase,
@@ -48,6 +51,16 @@ export class RestaurantTableController {
     }
     const table = await this.createTableUseCase.execute(restaurantId, parsed.data);
     return reply.status(201).send(table);
+  }
+
+  async bulkCreate(req: FastifyRequest, reply: FastifyReply) {
+    const restaurantId = await this.tenantFor(req, 'create tables', true);
+    const parsed = bulkCreateRestaurantTablesSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw new ValidationError(parsed.error.errors.map((e) => e.message).join(', '));
+    }
+    const result = await this.bulkCreateTablesUseCase.execute(restaurantId, parsed.data);
+    return reply.status(201).send(result);
   }
 
   async update(req: FastifyRequest, reply: FastifyReply) {

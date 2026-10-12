@@ -123,9 +123,10 @@ describe('Permission guards on tenant routes', () => {
     { name: 'delete inventory', method: 'DELETE', url: '/api/inventory/inv_missing', allowed: ['inventory'] },
 
     { name: 'list tables', method: 'GET', url: '/api/tables', allowed: ['tables', 'ordersView', 'ordersManage'] },
-    { name: 'create table', method: 'POST', url: '/api/tables', payload: { name: 'Mesa 99' }, allowed: ['tables'] },
+    { name: 'create table', method: 'POST', url: '/api/tables', payload: { zone: 'Mesa', number: 99 }, allowed: ['tables'] },
+    { name: 'bulk create tables', method: 'POST', url: '/api/tables/bulk', payload: { zone: 'Mesa', from: 90, to: 91 }, allowed: ['tables'] },
     { name: 'reorder tables', method: 'PUT', url: '/api/tables/order', payload: { ids: [] }, allowed: ['tables'] },
-    { name: 'update table', method: 'PUT', url: '/api/tables/tbl_missing', payload: { name: 'M' }, allowed: ['tables'] },
+    { name: 'update table', method: 'PUT', url: '/api/tables/tbl_missing', payload: { number: 3 }, allowed: ['tables'] },
     { name: 'delete table', method: 'DELETE', url: '/api/tables/tbl_missing', allowed: ['tables'] },
 
     { name: 'update restaurant settings', method: 'PUT', url: `/api/restaurants/${TENANT}`, payload: { tagline: 'hi' }, allowed: ['settings'] },

@@ -395,9 +395,9 @@ describe("ManualSaleModal - Point of Sale (POS) Component", () => {
 
   describe("Mesa / Salón with restaurant tables", () => {
     const tableList = [
-      { id: "tbl_1", name: "Mesa 1", sortOrder: 0, isActive: true },
-      { id: "tbl_2", name: "Mesa 2", sortOrder: 1, isActive: true },
-      { id: "tbl_off", name: "Mesa apagada", sortOrder: 2, isActive: false },
+      { id: "tbl_1", zone: "Mesa", number: 1, alias: null, name: "Mesa 1", sortOrder: 0, isActive: true },
+      { id: "tbl_2", zone: "Mesa", number: 2, alias: null, name: "Mesa 2", sortOrder: 1, isActive: true },
+      { id: "tbl_off", zone: "Mesa", number: 3, alias: "apagada", name: "Mesa 3 · apagada", sortOrder: 2, isActive: false },
     ]
 
     const mockBackend = async (tables = tableList) => {
@@ -443,7 +443,7 @@ describe("ManualSaleModal - Point of Sale (POS) Component", () => {
 
       expect(await screen.findByRole("button", { name: /^Mesa 1/ })).toBeDefined()
       expect(screen.getByRole("button", { name: /^Mesa 2/ })).toBeDefined()
-      expect(screen.queryByRole("button", { name: /Mesa apagada/ })).toBeNull()
+      expect(screen.queryByRole("button", { name: /apagada/ })).toBeNull()
     })
 
     it("requires picking a table before registering a salon sale", async () => {
@@ -538,7 +538,7 @@ describe("ManualSaleModal - Point of Sale (POS) Component", () => {
       const { apiClient, createOrder } = await mockBackend()
       const createTable = vi
         .spyOn(apiClient, "createTable")
-        .mockResolvedValue({ id: "tbl_new", name: "Mesa 30", sortOrder: 9, isActive: true })
+        .mockResolvedValue({ id: "tbl_new", zone: "Mesa", number: 30, alias: null, name: "Mesa 30", sortOrder: 9, isActive: true })
       render(
         <RestaurantProvider repository={createTestRepo()}>
           <ManualSaleModal isOpen={true} onClose={() => {}} />
@@ -547,10 +547,11 @@ describe("ManualSaleModal - Point of Sale (POS) Component", () => {
       await openMesaSale()
 
       fireEvent.click(screen.getByRole("button", { name: /\+ Nueva mesa/i }))
-      fireEvent.change(screen.getByLabelText(/Nombre de la nueva mesa/i), { target: { value: "Mesa 30" } })
+      fireEvent.change(screen.getByLabelText(/Zona de la nueva mesa/i), { target: { value: "Mesa" } })
+      fireEvent.change(screen.getByLabelText(/Número de la nueva mesa/i), { target: { value: "30" } })
       fireEvent.click(screen.getByRole("button", { name: /^Crear$/i }))
 
-      await waitFor(() => expect(createTable).toHaveBeenCalledWith("Mesa 30", expect.any(String)))
+      await waitFor(() => expect(createTable).toHaveBeenCalledWith({ zone: "Mesa", number: 30 }, expect.any(String)))
       const created = await screen.findByRole("button", { name: /^Mesa 30/ })
       expect(created.getAttribute("aria-pressed")).toBe("true")
       fireEvent.click(screen.getByRole("button", { name: /Registrar Venta/i }))

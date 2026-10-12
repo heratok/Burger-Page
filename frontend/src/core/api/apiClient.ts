@@ -63,6 +63,9 @@ export interface ApiClientConfig {
 function mapTableResponse(raw: any): RestaurantTable {
   return {
     id: raw.id,
+    zone: raw.zone,
+    number: Number(raw.number),
+    alias: raw.alias ?? null,
     name: raw.name,
     sortOrder: Number(raw.sortOrder ?? 0),
     isActive: raw.isActive !== undefined ? Boolean(raw.isActive) : true,
@@ -587,18 +590,37 @@ export class ApiClient {
     return Array.isArray(raw) ? raw.map(mapTableResponse) : []
   }
 
-  async createTable(name: string, restaurantId?: string): Promise<RestaurantTable> {
+  async createTable(
+    data: { zone: string; number: number; alias?: string },
+    restaurantId?: string
+  ): Promise<RestaurantTable> {
     const qs = restaurantId ? `?restaurantId=${encodeURIComponent(restaurantId)}` : ''
     const raw = await this.request<any>(`/tables${qs}`, {
       method: 'POST',
-      body: JSON.stringify(restaurantId ? { name, restaurantId } : { name }),
+      body: JSON.stringify(restaurantId ? { ...data, restaurantId } : data),
     })
     return mapTableResponse(raw)
   }
 
+  /** Creates zone numbers from..to; numbers that already exist come back in `skipped`. */
+  async createTablesBulk(
+    data: { zone: string; from: number; to: number },
+    restaurantId?: string
+  ): Promise<{ created: RestaurantTable[]; skipped: number[] }> {
+    const qs = restaurantId ? `?restaurantId=${encodeURIComponent(restaurantId)}` : ''
+    const raw = await this.request<any>(`/tables/bulk${qs}`, {
+      method: 'POST',
+      body: JSON.stringify(restaurantId ? { ...data, restaurantId } : data),
+    })
+    return {
+      created: Array.isArray(raw?.created) ? raw.created.map(mapTableResponse) : [],
+      skipped: Array.isArray(raw?.skipped) ? raw.skipped.map(Number) : [],
+    }
+  }
+
   async updateTable(
     id: string,
-    data: { name?: string; isActive?: boolean },
+    data: { zone?: string; number?: number; alias?: string | null; isActive?: boolean },
     restaurantId?: string
   ): Promise<RestaurantTable> {
     const qs = restaurantId ? `?restaurantId=${encodeURIComponent(restaurantId)}` : ''

@@ -1,6 +1,8 @@
 import DatabaseConstructor, { Database } from 'better-sqlite3';
 import { existsSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { formatTableName } from '@burger-page/contracts';
+import { structureLegacyTables } from './legacyTableBackfill.js';
 
 export function createSqliteDatabase(dbPath = ':memory:'): Database {
   if (dbPath !== ':memory:') {
@@ -109,7 +111,10 @@ export function createSqliteDatabase(dbPath = ':memory:'): Database {
       sort_order INTEGER NOT NULL DEFAULT 0,
       is_active INTEGER NOT NULL DEFAULT 1,
       created_at TEXT,
-      updated_at TEXT
+      updated_at TEXT,
+      zone TEXT NOT NULL DEFAULT 'Mesa',
+      number INTEGER NOT NULL DEFAULT 0,
+      alias TEXT
     );
 
     CREATE TABLE IF NOT EXISTS roles (
@@ -145,6 +150,23 @@ export function createSqliteDatabase(dbPath = ':memory:'): Database {
   const hasInvRestaurant = inventoryColumns.some(c => c.name === 'restaurant_id');
   if (!hasInvRestaurant) {
     db.exec("ALTER TABLE inventory_items ADD COLUMN restaurant_id TEXT NOT NULL DEFAULT 'burger-craft'");
+  }
+
+  // Structured tables (mirrors PostgreSQL migration 0018): add zone/number/alias
+  // to a pre-existing file and derive them from the old free-text names.
+  const tableColumns = db.prepare("PRAGMA table_info(restaurant_tables)").all() as Array<{ name: string }>;
+  if (!tableColumns.some(c => c.name === 'zone')) {
+    db.exec("ALTER TABLE restaurant_tables ADD COLUMN zone TEXT NOT NULL DEFAULT 'Mesa'");
+    db.exec("ALTER TABLE restaurant_tables ADD COLUMN number INTEGER NOT NULL DEFAULT 0");
+    db.exec("ALTER TABLE restaurant_tables ADD COLUMN alias TEXT");
+    const legacyRows = db
+      .prepare('SELECT id, restaurant_id, name FROM restaurant_tables ORDER BY restaurant_id, sort_order, created_at, id')
+      .all() as Array<{ id: string; restaurant_id: string; name: string }>;
+    const structured = structureLegacyTables(legacyRows.map(r => ({ id: r.id, restaurantId: r.restaurant_id, name: r.name })));
+    const update = db.prepare('UPDATE restaurant_tables SET zone = ?, number = ?, alias = ?, name = ? WHERE id = ?');
+    db.transaction(() => {
+      for (const [id, t] of structured) update.run(t.zone, t.number, t.alias, formatTableName(t), id);
+    })();
   }
 
   const customerColumns = db.prepare("PRAGMA table_info(customers)").all() as Array<{ name: string }>;

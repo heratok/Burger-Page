@@ -40,7 +40,7 @@ test.describe('Manual Sale POS Modal - Mobile & Desktop Responsiveness with Addi
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify([
-          { id: 'tbl_mock_4', restaurantId: 'rest-burger-craft', name: 'Mesa 4', sortOrder: 0, isActive: true },
+          { id: 'tbl_mock_4', restaurantId: 'rest-burger-craft', zone: 'Mesa', number: 4, alias: null, name: 'Mesa 4', sortOrder: 0, isActive: true },
         ]),
       });
     });

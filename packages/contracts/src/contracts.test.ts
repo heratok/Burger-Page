@@ -16,6 +16,16 @@ import {
   auditLogPageSchema,
   platformStatsQuerySchema,
   platformStatsSchema,
+  createRestaurantTableSchema,
+  updateRestaurantTableSchema,
+  bulkCreateRestaurantTablesSchema,
+  normalizeTableZone,
+  formatTableName,
+  MAX_TABLE_NAME_LENGTH,
+  MAX_TABLE_ZONE_LENGTH,
+  MAX_TABLE_ALIAS_LENGTH,
+  MAX_TABLE_NUMBER,
+  MAX_BULK_TABLES,
 } from './index.js';
 
 describe('@burger-page/contracts', () => {
@@ -215,6 +225,102 @@ describe('restaurant schedule contracts', () => {
       expect(platformStatsSchema.safeParse(withoutCancelled).success).toBe(false);
       const { totalCustomers: _omit, ...missing } = stats;
       expect(platformStatsSchema.safeParse(missing).success).toBe(false);
+    });
+  });
+});
+
+describe('structured restaurant table contracts', () => {
+  describe('normalizeTableZone', () => {
+    it('collapses whitespace, trims and capitalizes the first letter', () => {
+      expect(normalizeTableZone('  terraza   alta ')).toBe('Terraza alta');
+      expect(normalizeTableZone('mesa')).toBe('Mesa');
+      expect(normalizeTableZone('VIP')).toBe('VIP');
+      expect(normalizeTableZone('   ')).toBe('');
+    });
+  });
+
+  describe('formatTableName', () => {
+    it('formats zone and number', () => {
+      expect(formatTableName({ zone: 'Terraza', number: 5 })).toBe('Terraza 5');
+    });
+    it('appends the alias when present', () => {
+      expect(formatTableName({ zone: 'Mesa', number: 4, alias: 'VIP' })).toBe('Mesa 4 · VIP');
+    });
+    it('ignores empty or null aliases', () => {
+      expect(formatTableName({ zone: 'Mesa', number: 4, alias: null })).toBe('Mesa 4');
+      expect(formatTableName({ zone: 'Mesa', number: 4, alias: '   ' })).toBe('Mesa 4');
+    });
+    it('normalizes the zone', () => {
+      expect(formatTableName({ zone: ' terraza  ', number: 2 })).toBe('Terraza 2');
+    });
+    it('fits the widest possible values within MAX_TABLE_NAME_LENGTH', () => {
+      const name = formatTableName({
+        zone: 'Z'.repeat(MAX_TABLE_ZONE_LENGTH),
+        number: MAX_TABLE_NUMBER,
+        alias: 'a'.repeat(MAX_TABLE_ALIAS_LENGTH),
+      });
+      expect(name.length).toBe(MAX_TABLE_NAME_LENGTH);
+    });
+  });
+
+  describe('createRestaurantTableSchema', () => {
+    it('accepts zone and number and normalizes the zone', () => {
+      const r = createRestaurantTableSchema.parse({ zone: '  terraza ', number: 5 });
+      expect(r.zone).toBe('Terraza');
+      expect(r.number).toBe(5);
+    });
+    it('accepts an optional alias and isActive', () => {
+      const r = createRestaurantTableSchema.parse({ zone: 'Mesa', number: 1, alias: ' Ventana ', isActive: false });
+      expect(r.alias).toBe('Ventana');
+      expect(r.isActive).toBe(false);
+    });
+    it('does not expose a client-provided name', () => {
+      const r = createRestaurantTableSchema.parse({ zone: 'Mesa', number: 1, name: 'Hack' });
+      expect('name' in r).toBe(false);
+    });
+    it('rejects missing, empty or too long zones', () => {
+      expect(createRestaurantTableSchema.safeParse({ number: 1 }).success).toBe(false);
+      expect(createRestaurantTableSchema.safeParse({ zone: '   ', number: 1 }).success).toBe(false);
+      expect(createRestaurantTableSchema.safeParse({ zone: 'x'.repeat(MAX_TABLE_ZONE_LENGTH + 1), number: 1 }).success).toBe(false);
+    });
+    it('rejects numbers out of 1..9999 or non-integer', () => {
+      for (const number of [0, -1, 1.5, MAX_TABLE_NUMBER + 1, '3']) {
+        expect(createRestaurantTableSchema.safeParse({ zone: 'Mesa', number }).success).toBe(false);
+      }
+      expect(createRestaurantTableSchema.safeParse({ zone: 'Mesa', number: MAX_TABLE_NUMBER }).success).toBe(true);
+    });
+    it('rejects aliases longer than the limit and treats blank alias as absent', () => {
+      expect(createRestaurantTableSchema.safeParse({ zone: 'Mesa', number: 1, alias: 'x'.repeat(MAX_TABLE_ALIAS_LENGTH + 1) }).success).toBe(false);
+      expect(createRestaurantTableSchema.parse({ zone: 'Mesa', number: 1, alias: '   ' }).alias).toBeNull();
+    });
+  });
+
+  describe('updateRestaurantTableSchema', () => {
+    it('accepts partial payloads and a null alias to clear it', () => {
+      expect(updateRestaurantTableSchema.parse({ alias: null }).alias).toBeNull();
+      expect(updateRestaurantTableSchema.parse({ isActive: false })).toEqual({ isActive: false });
+      expect(updateRestaurantTableSchema.parse({ zone: 'salon' }).zone).toBe('Salon');
+    });
+    it('still validates provided fields', () => {
+      expect(updateRestaurantTableSchema.safeParse({ number: 0 }).success).toBe(false);
+      expect(updateRestaurantTableSchema.safeParse({ zone: '' }).success).toBe(false);
+    });
+  });
+
+  describe('bulkCreateRestaurantTablesSchema', () => {
+    it('accepts a valid range', () => {
+      const r = bulkCreateRestaurantTablesSchema.parse({ zone: 'terraza', from: 1, to: 10 });
+      expect(r).toMatchObject({ zone: 'Terraza', from: 1, to: 10 });
+    });
+    it('accepts from === to and a range of exactly MAX_BULK_TABLES', () => {
+      expect(bulkCreateRestaurantTablesSchema.safeParse({ zone: 'Mesa', from: 3, to: 3 }).success).toBe(true);
+      expect(bulkCreateRestaurantTablesSchema.safeParse({ zone: 'Mesa', from: 1, to: MAX_BULK_TABLES }).success).toBe(true);
+    });
+    it('rejects from > to, ranges over the limit and out-of-range numbers', () => {
+      expect(bulkCreateRestaurantTablesSchema.safeParse({ zone: 'Mesa', from: 5, to: 4 }).success).toBe(false);
+      expect(bulkCreateRestaurantTablesSchema.safeParse({ zone: 'Mesa', from: 1, to: MAX_BULK_TABLES + 1 }).success).toBe(false);
+      expect(bulkCreateRestaurantTablesSchema.safeParse({ zone: 'Mesa', from: 0, to: 3 }).success).toBe(false);
+      expect(bulkCreateRestaurantTablesSchema.safeParse({ zone: 'Mesa', from: 1, to: MAX_TABLE_NUMBER + 1 }).success).toBe(false);
     });
   });
 });
