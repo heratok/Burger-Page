@@ -30,8 +30,14 @@ test.describe.configure({ mode: 'serial' });
 test.describe('Restaurant tables: Personalizar → Mesas and Mesa / Salón sales', () => {
   // Unique per run so the spec is repeatable inside one run and across runs.
   const suffix = Date.now().toString(36).slice(-6).toUpperCase();
-  const tableA = `E2E ${suffix} A`;
-  const tableB = `E2E ${suffix} B`;
+  // Tables are structured (zone + number [+ alias]); the stored name is derived as "<zone> <number>".
+  // Every zone starts with `E2E <suffix>` so afterAll can find and delete what this run created.
+  const zone = `E2E ${suffix}`;
+  const tableA = `${zone} 1`;
+  const tableB = `${zone} 2`;
+  const tableBEdited = `${zone} 7 · Ventana`;
+  const rangeZone = `${zone} R`;
+  const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const createdOrderIds: string[] = [];
   let token = '';
   let restaurantId = '';
@@ -62,26 +68,96 @@ test.describe('Restaurant tables: Personalizar → Mesas and Mesa / Salón sales
     await page.locator('aside button, nav button').filter({ hasText: /Mesas & QR/i }).first().click();
     await expect(page.getByText('Mesas del salón')).toBeVisible();
 
-    for (const name of [tableA, tableB]) {
+    for (const [number, name] of [
+      ['1', tableA],
+      ['2', tableB],
+    ]) {
       const created = page.waitForResponse(
         (res) => res.url().includes('/api/tables') && res.request().method() === 'POST' && res.status() === 201
       );
-      await page.getByLabel('Nombre de la nueva mesa').fill(name);
+      // Changing the zone resets the suggested number, so the number is filled last.
+      await page.getByLabel('Zona de la nueva mesa').fill(zone);
+      await page.getByLabel('Número de la nueva mesa').fill(number);
+      await expect(page.getByText(`Se creará: ${name}`)).toBeVisible();
       await page.getByRole('button', { name: 'Agregar mesa' }).click();
       await created;
       await expect(page.getByText(name, { exact: true })).toBeVisible();
     }
 
-    // Rename the second table inline and keep it for the rest of the spec.
-    await page.getByRole('button', { name: `Renombrar ${tableB}` }).click();
-    await page.getByLabel(`Nuevo nombre de ${tableB}`).fill(`${tableB} renombrada`);
-    await page.getByRole('button', { name: 'Guardar nombre' }).click();
-    await expect(page.getByText(`${tableB} renombrada`, { exact: true })).toBeVisible();
+    // Edit the second table inline (number + alias) and keep it for the rest of the spec.
+    await page.getByRole('button', { name: `Editar ${tableB}` }).click();
+    await page.getByLabel(`Número de ${tableB}`).fill('7');
+    await page.getByLabel(`Alias de ${tableB}`).fill('Ventana');
+    await page.getByRole('button', { name: 'Guardar cambios' }).click();
+    await expect(page.getByText(tableBEdited, { exact: true })).toBeVisible();
 
     // The tables survive a reload (server-side data).
     await page.reload();
     await page.locator('aside button, nav button').filter({ hasText: /Mesas & QR/i }).first().click();
     await expect(page.getByText(tableA, { exact: true })).toBeVisible({ timeout: 10000 });
+  });
+
+  test('"Crear varias" creates a range grouped under its zone and skips numbers that already exist', async ({
+    page,
+  }) => {
+    test.setTimeout(60000);
+    await loginAsAdmin(page);
+    await page.locator('aside button, nav button').filter({ hasText: /Mesas & QR/i }).first().click();
+    await expect(page.getByText('Mesas del salón')).toBeVisible();
+
+    const zoneSection = page
+      .locator('section')
+      .filter({ has: page.getByRole('heading', { level: 4, name: rangeZone }) });
+    const createRange = async (from: string, to: string) => {
+      const created = page.waitForResponse(
+        (res) => new URL(res.url()).pathname === '/api/tables/bulk' && res.request().method() === 'POST' && res.status() === 201
+      );
+      await page.getByLabel('Zona de las nuevas mesas').fill(rangeZone);
+      await page.getByLabel('Desde el número').fill(from);
+      await page.getByLabel('Hasta el número').fill(to);
+      await page.getByRole('button', { name: 'Crear mesas' }).click();
+      await created;
+    };
+
+    await page.getByRole('button', { name: 'Crear varias' }).click();
+    await createRange('1', '3');
+    await expect(page.getByRole('status')).toHaveText('Se crearon 3 mesas.');
+    // One group for the zone holding exactly the three created tables.
+    await expect(page.getByRole('heading', { level: 4, name: rangeZone })).toHaveCount(1);
+    await expect(zoneSection.getByRole('listitem')).toHaveCount(3);
+    for (const n of [1, 2, 3]) {
+      await expect(zoneSection.getByText(`${rangeZone} ${n}`, { exact: true })).toBeVisible();
+    }
+
+    // Overlapping range: 2 and 3 already exist, only 4 is created.
+    await createRange('2', '4');
+    await expect(page.getByRole('status')).toHaveText('Se crearon 1 mesa. Se omitieron 2 que ya existían: 2, 3.');
+    await expect(zoneSection.getByRole('listitem')).toHaveCount(4);
+    await expect(zoneSection.getByText(`${rangeZone} 4`, { exact: true })).toBeVisible();
+  });
+
+  test('creating a duplicate (same zone and number) shows the conflict and creates nothing', async ({ page }) => {
+    test.setTimeout(60000);
+    await loginAsAdmin(page);
+    await page.locator('aside button, nav button').filter({ hasText: /Mesas & QR/i }).first().click();
+    await expect(page.getByText('Mesas del salón')).toBeVisible();
+
+    const zoneSection = page
+      .locator('section')
+      .filter({ has: page.getByRole('heading', { level: 4, name: rangeZone }) });
+    await expect(zoneSection.getByRole('listitem')).toHaveCount(4);
+
+    const conflict = page.waitForResponse(
+      (res) => new URL(res.url()).pathname === '/api/tables' && res.request().method() === 'POST' && res.status() === 409
+    );
+    // Same table with different casing/spacing: the zone is normalized before comparing.
+    await page.getByLabel('Zona de la nueva mesa').fill(`  ${rangeZone.toLowerCase()} `);
+    await page.getByLabel('Número de la nueva mesa').fill('1');
+    await page.getByRole('button', { name: 'Agregar mesa' }).click();
+    await conflict;
+
+    await expect(page.getByText(`Ya existe la mesa '${rangeZone} 1'`)).toBeVisible();
+    await expect(zoneSection.getByRole('listitem')).toHaveCount(4);
   });
 
   test('a Mesa / Salón sale selects the table, shows it on the Kanban and marks it occupied', async ({ page }) => {
@@ -101,7 +177,7 @@ test.describe('Restaurant tables: Personalizar → Mesas and Mesa / Salón sales
 
     // No free-text table input any more: tables are picked from the grid.
     await expect(modal.getByText(/Número de Mesa/i)).toHaveCount(0);
-    const tableButton = modal.getByRole('button', { name: new RegExp(`^${tableA}`) });
+    const tableButton = modal.getByRole('button', { name: new RegExp(`^${escapeRegExp(tableA)}(?!\\d)`) });
     await expect(tableButton).toBeVisible({ timeout: 10000 });
     await expect(tableButton).not.toContainText('Ocupada');
     await tableButton.click();
@@ -130,13 +206,13 @@ test.describe('Restaurant tables: Personalizar → Mesas and Mesa / Salón sales
     await page.getByRole('button', { name: /Nueva Venta/i }).first().click();
     const second = page.locator('div.fixed.inset-0').filter({ hasText: /Punto de Venta/i }).first();
     await second.getByRole('button', { name: /Mesa \/ Salón/i }).click();
-    await expect(second.getByRole('button', { name: new RegExp(`^${tableA}.*Ocupada`) })).toBeVisible({
+    await expect(second.getByRole('button', { name: new RegExp(`^${escapeRegExp(tableA)}(?!\\d).*Ocupada`) })).toBeVisible({
       timeout: 10000,
     });
-    await expect(second.getByRole('button', { name: new RegExp(`^${tableB}`) })).not.toContainText('Ocupada');
+    await expect(second.getByRole('button', { name: new RegExp(`^${escapeRegExp(tableBEdited)}`) })).not.toContainText('Ocupada');
   });
 
-  test('"+ Nueva mesa" in the sale modal creates the table inline (click and Enter) without leaving the modal', async ({
+  test('"+ Nueva mesa" in the sale modal creates the table inline (click and Enter in either field) without leaving the modal', async ({
     page,
   }) => {
     test.setTimeout(90000);
@@ -159,23 +235,31 @@ test.describe('Restaurant tables: Personalizar → Mesas and Mesa / Salón sales
     expect(await modal.locator('form form').count()).toBe(0);
 
     const created: string[] = [];
-    for (const variant of ['click', 'enter'] as const) {
-      const name = `E2E ${suffix} inline ${variant}`;
+    for (const [variant, number] of [
+      ['click', '31'],
+      ['enter-number', '32'],
+      ['enter-zone', '33'],
+    ] as const) {
+      const name = `${zone} ${number}`;
       await modal.getByRole('button', { name: '+ Nueva mesa' }).click();
-      const input = modal.getByLabel('Nombre de la nueva mesa');
-      await input.fill(name);
+      const zoneInput = modal.getByLabel('Zona de la nueva mesa');
+      const input = modal.getByLabel('Número de la nueva mesa');
+      // Changing the zone resets the suggested number, so the number is filled last.
+      await zoneInput.fill(zone);
+      await input.fill(number);
       const response = postTable();
       if (variant === 'click') {
         await modal.getByRole('button', { name: 'Crear', exact: true }).click();
       } else {
-        await input.press('Enter');
+        // Enter submits from either field.
+        await (variant === 'enter-zone' ? zoneInput : input).press('Enter');
       }
       expect((await response).status()).toBe(201);
       created.push(name);
 
       expect(page.url()).toBe(urlBefore);
       await expect(modal).toBeVisible();
-      await expect(modal.getByRole('button', { name: new RegExp(`^${name}`) })).toHaveAttribute('aria-pressed', 'true');
+      await expect(modal.getByRole('button', { name: new RegExp(`^${escapeRegExp(name)}`) })).toHaveAttribute('aria-pressed', 'true');
     }
 
     // Complete the sale with the last created table.
@@ -187,7 +271,7 @@ test.describe('Restaurant tables: Personalizar → Mesas and Mesa / Salón sales
     expect(res.status()).toBe(201);
     const order = await res.json();
     createdOrderIds.push(order.id);
-    expect(order.tableLabel).toBe(created[1]);
+    expect(order.tableLabel).toBe(created[2]);
     expect(order.tableId).toMatch(/^tbl_/);
   });
 
@@ -198,7 +282,7 @@ test.describe('Restaurant tables: Personalizar → Mesas and Mesa / Salón sales
 
     const foreign = await request.post(`${API_BASE}/tables`, {
       headers: otherHeaders,
-      data: { name: `E2E ${suffix} foreign` },
+      data: { zone: `E2E ${suffix} foreign`, number: 1 },
     });
     expect(foreign.status()).toBe(201);
     const foreignTable = await foreign.json();
@@ -231,8 +315,8 @@ test.describe('Restaurant tables: Personalizar → Mesas and Mesa / Salón sales
       });
       expect(guest.status()).toBe(400);
 
-      // The other tenant can neither rename nor delete this restaurant's table.
-      const rename = await request.put(`${API_BASE}/tables/${ownA.id}`, { headers: otherHeaders, data: { name: 'hacked' } });
+      // The other tenant can neither edit nor delete this restaurant's table.
+      const rename = await request.put(`${API_BASE}/tables/${ownA.id}`, { headers: otherHeaders, data: { zone: 'X' } });
       expect(rename.status()).toBe(404);
       const del = await request.delete(`${API_BASE}/tables/${ownA.id}`, { headers: otherHeaders });
       expect(del.status()).toBe(404);
