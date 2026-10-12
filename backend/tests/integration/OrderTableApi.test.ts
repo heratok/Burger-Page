@@ -19,8 +19,10 @@ describe('Order <-> table API', () => {
     ...extra,
   });
 
-  const makeTable = async (token: string, name: string, isActive = true) =>
-    (await app.inject({ method: 'POST', url: '/api/tables', headers: auth(token), payload: { name, isActive } })).json();
+  const makeTable = async (token: string, name: string, isActive = true) => {
+    const [zone, number] = name.split(' ');
+    return (await app.inject({ method: 'POST', url: '/api/tables', headers: auth(token), payload: { zone, number: Number(number), isActive } })).json();
+  };
 
   beforeAll(async () => {
     app = buildApp();
@@ -28,8 +30,8 @@ describe('Order <-> table API', () => {
     staff = jwt.generateToken({ id: 'u1', username: 'craft', role: 'restaurant_admin', restaurantId: 'burger-craft' });
     otherStaff = jwt.generateToken({ id: 'u2', username: 'ta', role: 'restaurant_admin', restaurantId: 'tenant-a' });
     tableId = (await makeTable(staff, 'Mesa 5')).id;
-    inactiveTableId = (await makeTable(staff, 'Mesa apagada', false)).id;
-    foreignTableId = (await makeTable(otherStaff, 'Mesa ajena')).id;
+    inactiveTableId = (await makeTable(staff, 'Mesa 7', false)).id;
+    foreignTableId = (await makeTable(otherStaff, 'Mesa 8')).id;
   });
 
   afterAll(async () => {

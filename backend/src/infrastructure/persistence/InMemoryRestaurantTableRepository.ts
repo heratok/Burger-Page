@@ -1,8 +1,6 @@
 import { RestaurantTableRepository } from '../../domain/ports/out/RestaurantTableRepository.js';
-import { RestaurantTable } from '../../domain/models/RestaurantTable.js';
+import { RestaurantTable, duplicateTableMessage, tableIdentityKey } from '../../domain/models/RestaurantTable.js';
 import { ConflictError } from '../../domain/errors/DomainErrors.js';
-
-export const normalizeTableName = (name: string): string => name.replace(/\s+/g, ' ').trim().toLowerCase();
 
 export class InMemoryRestaurantTableRepository implements RestaurantTableRepository {
   private tables: Map<string, RestaurantTable> = new Map();
@@ -14,7 +12,12 @@ export class InMemoryRestaurantTableRepository implements RestaurantTableReposit
   async findByRestaurantId(restaurantId: string): Promise<RestaurantTable[]> {
     return Array.from(this.tables.values())
       .filter((t) => t.restaurantId === restaurantId)
-      .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name))
+      .sort(
+        (a, b) =>
+          a.sortOrder - b.sortOrder ||
+          a.zone.toLowerCase().localeCompare(b.zone.toLowerCase()) ||
+          a.number - b.number
+      )
       .map((t) => ({ ...t }));
   }
 
@@ -24,15 +27,24 @@ export class InMemoryRestaurantTableRepository implements RestaurantTableReposit
     return { ...t };
   }
 
-  async save(table: RestaurantTable): Promise<void> {
-    const wanted = normalizeTableName(table.name);
-    const duplicate = Array.from(this.tables.values()).some(
-      (t) => t.restaurantId === table.restaurantId && t.id !== table.id && normalizeTableName(t.name) === wanted
+  private assertFree(table: RestaurantTable, extra: RestaurantTable[] = []): void {
+    const wanted = tableIdentityKey(table.zone, table.number);
+    const taken = [...this.tables.values(), ...extra].some(
+      (t) => t.restaurantId === table.restaurantId && t.id !== table.id && tableIdentityKey(t.zone, t.number) === wanted
     );
-    if (duplicate) {
-      throw new ConflictError(`Ya existe una mesa llamada '${table.name}'.`);
+    if (taken) {
+      throw new ConflictError(duplicateTableMessage(table));
     }
+  }
+
+  async save(table: RestaurantTable): Promise<void> {
+    this.assertFree(table);
     this.tables.set(table.id, { ...table });
+  }
+
+  async saveMany(tables: RestaurantTable[]): Promise<void> {
+    tables.forEach((table, index) => this.assertFree(table, tables.slice(0, index)));
+    for (const table of tables) this.tables.set(table.id, { ...table });
   }
 
   async delete(id: string, restaurantId: string): Promise<void> {

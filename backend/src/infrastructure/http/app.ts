@@ -124,6 +124,7 @@ import { UpdateSupplierUseCase } from '../../application/use-cases/UpdateSupplie
 import { DeleteSupplierUseCase } from '../../application/use-cases/DeleteSupplierUseCase.js';
 import { ListRestaurantTablesUseCase } from '../../application/use-cases/ListRestaurantTablesUseCase.js';
 import { CreateRestaurantTableUseCase } from '../../application/use-cases/CreateRestaurantTableUseCase.js';
+import { BulkCreateRestaurantTablesUseCase } from '../../application/use-cases/BulkCreateRestaurantTablesUseCase.js';
 import { UpdateRestaurantTableUseCase } from '../../application/use-cases/UpdateRestaurantTableUseCase.js';
 import { DeleteRestaurantTableUseCase } from '../../application/use-cases/DeleteRestaurantTableUseCase.js';
 import { ReorderRestaurantTablesUseCase } from '../../application/use-cases/ReorderRestaurantTablesUseCase.js';
@@ -331,6 +332,7 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
 
   const listTables = new ListRestaurantTablesUseCase(tableRepo);
   const createTable = new CreateRestaurantTableUseCase(tableRepo);
+  const bulkCreateTables = new BulkCreateRestaurantTablesUseCase(tableRepo);
   const updateTable = new UpdateRestaurantTableUseCase(tableRepo);
   const deleteTable = new DeleteRestaurantTableUseCase(tableRepo);
   const reorderTables = new ReorderRestaurantTablesUseCase(tableRepo);
@@ -421,6 +423,7 @@ export function buildDependencies(dbPath?: string, driver?: StorageDriver): AppD
     restaurantTableController: new RestaurantTableController(
       listTables,
       createTable,
+      bulkCreateTables,
       updateTable,
       deleteTable,
       reorderTables,

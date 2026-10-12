@@ -295,18 +295,84 @@ export type UpdateSupplierInput = z.infer<typeof updateSupplierSchema>;
 // RESTAURANT TABLES (Mesa / Salón)
 // ==========================================
 
-export const MAX_TABLE_NAME_LENGTH = 40;
+export const MAX_TABLE_ZONE_LENGTH = 30;
+export const MAX_TABLE_ALIAS_LENGTH = 30;
+export const MIN_TABLE_NUMBER = 1;
+export const MAX_TABLE_NUMBER = 9999;
+export const MAX_BULK_TABLES = 100;
+/** zone(30) + ' ' + number(4) + ' · ' + alias(30) */
+export const MAX_TABLE_NAME_LENGTH = MAX_TABLE_ZONE_LENGTH + 1 + String(MAX_TABLE_NUMBER).length + 3 + MAX_TABLE_ALIAS_LENGTH;
+
+/** Collapses whitespace, trims and capitalizes the first letter. No singular/plural guessing. */
+export function normalizeTableZone(zone: string): string {
+  const clean = zone.replace(/\s+/g, ' ').trim();
+  return clean.charAt(0).toUpperCase() + clean.slice(1);
+}
+
+/** Collapses whitespace and trims; returns null when empty. */
+export function normalizeTableAlias(alias: string | null | undefined): string | null {
+  if (alias == null) return null;
+  const clean = alias.replace(/\s+/g, ' ').trim();
+  return clean === '' ? null : clean;
+}
+
+/** Derived display name: "<zone> <number>" or "<zone> <number> · <alias>". */
+export function formatTableName(parts: { zone: string; number: number; alias?: string | null }): string {
+  const base = `${normalizeTableZone(parts.zone)} ${parts.number}`;
+  const alias = normalizeTableAlias(parts.alias);
+  return alias ? `${base} · ${alias}` : base;
+}
+
+const tableZoneSchema = z
+  .string({ required_error: 'La zona de la mesa es obligatoria' })
+  .transform(normalizeTableZone)
+  .pipe(
+    z
+      .string()
+      .min(1, 'La zona de la mesa es obligatoria')
+      .max(MAX_TABLE_ZONE_LENGTH, `La zona no puede superar ${MAX_TABLE_ZONE_LENGTH} caracteres`),
+  );
+
+const tableNumberSchema = (label: string) =>
+  z
+    .number({ required_error: `${label} es obligatorio`, invalid_type_error: `${label} debe ser un número` })
+    .int(`${label} debe ser un número entero`)
+    .min(MIN_TABLE_NUMBER, `${label} debe ser al menos ${MIN_TABLE_NUMBER}`)
+    .max(MAX_TABLE_NUMBER, `${label} no puede superar ${MAX_TABLE_NUMBER}`);
+
+const tableAliasSchema = z
+  .string()
+  .nullable()
+  .transform(normalizeTableAlias)
+  .pipe(z.string().max(MAX_TABLE_ALIAS_LENGTH, `El alias no puede superar ${MAX_TABLE_ALIAS_LENGTH} caracteres`).nullable());
 
 export const createRestaurantTableSchema = z.object({
   id: z.string().optional(),
   restaurantId: z.string().optional(),
-  name: z.string().trim().min(1, 'El nombre de la mesa es obligatorio').max(MAX_TABLE_NAME_LENGTH, `El nombre de la mesa no puede superar ${MAX_TABLE_NAME_LENGTH} caracteres`),
+  zone: tableZoneSchema,
+  number: tableNumberSchema('El número de mesa'),
+  alias: tableAliasSchema.optional(),
   isActive: z.boolean().optional(),
 });
 export type CreateRestaurantTableInput = z.infer<typeof createRestaurantTableSchema>;
 
 export const updateRestaurantTableSchema = createRestaurantTableSchema.omit({ id: true }).partial();
 export type UpdateRestaurantTableInput = z.infer<typeof updateRestaurantTableSchema>;
+
+export const bulkCreateRestaurantTablesSchema = z
+  .object({
+    restaurantId: z.string().optional(),
+    zone: tableZoneSchema,
+    from: tableNumberSchema('El número inicial'),
+    to: tableNumberSchema('El número final'),
+    isActive: z.boolean().optional(),
+  })
+  .refine((v) => v.from <= v.to, { message: 'El número inicial no puede ser mayor que el final', path: ['to'] })
+  .refine((v) => v.to - v.from + 1 <= MAX_BULK_TABLES, {
+    message: `No se pueden crear más de ${MAX_BULK_TABLES} mesas a la vez`,
+    path: ['to'],
+  });
+export type BulkCreateRestaurantTablesInput = z.infer<typeof bulkCreateRestaurantTablesSchema>;
 
 export const reorderRestaurantTablesSchema = z.object({
   restaurantId: z.string().optional(),

@@ -107,6 +107,12 @@ export interface Order {
 
 export interface RestaurantTable {
   id: string
+  /** Zone the table belongs to ("Salón", "Terraza"...). */
+  zone: string
+  /** Number inside the zone; (zone, number) is unique per restaurant. */
+  number: number
+  alias: string | null
+  /** Derived by the server: "<zone> <number>" or "<zone> <number> · <alias>". */
   name: string
   sortOrder: number
   isActive: boolean

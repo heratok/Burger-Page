@@ -23,3 +23,7 @@ export const downSection = (id: string) => migrationSection('0000000000008_db_ha
 /** Sections of migration 0009 (store opening hours). */
 export const up0009Section = (id: string) => migrationSection('0000000000009_store_opening_hours.up.sql', id);
 export const down0009Section = (id: string) => migrationSection('0000000000009_store_opening_hours.down.sql', id);
+
+/** Sections of migration 0018 (structured restaurant tables). */
+export const up0018Section = (id: string) => migrationSection('0000000000018_structured_restaurant_tables.up.sql', id);
+export const down0018Section = (id: string) => migrationSection('0000000000018_structured_restaurant_tables.down.sql', id);
