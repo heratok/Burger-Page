@@ -224,11 +224,11 @@ test.describe.serial('Super Admin F2 Capabilities E2E Suite', () => {
     await expect(editModal).toBeVisible();
 
     // Change role to Super Admin (which should disable/clear restaurant selection)
-    const roleSelect = editModal.getByLabel(/Rol en la plataforma/i);
+    const roleSelect = editModal.getByLabel('Rol en la plataforma', { exact: true });
     await roleSelect.selectOption('super_admin');
 
     // Verify restaurant select is disabled
-    const restSelectInEdit = editModal.getByLabel(/Restaurante asignado/i);
+    const restSelectInEdit = editModal.getByLabel('Restaurante Asignado', { exact: true });
     await expect(restSelectInEdit).toBeDisabled();
 
     // Save changes
@@ -274,7 +274,7 @@ test.describe.serial('Super Admin F2 Capabilities E2E Suite', () => {
     expect(tableText).not.toContain('"changedFields"');
 
     // 5. Test Filter: Action filter
-    const actionSelect = page.getByLabel(/Filtrar por acción/i);
+    const actionSelect = page.getByLabel('Filtrar por acción', { exact: true });
     await expect(actionSelect).toBeVisible();
     await actionSelect.selectOption('user.update');
 
