@@ -117,7 +117,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
               </span>
               <OrderStatusBadge status={order.status} />
             </div>
-            <span className="text-xs text-slate-500 dark:text-slate-400 block truncate">
+            <span className="text-xs text-slate-500 dark:text-slate-400 block break-words">
               Registrada el {new Date(order.createdAt).toLocaleString("es-CO")}
             </span>
           </div>

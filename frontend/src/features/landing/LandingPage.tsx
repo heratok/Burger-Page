@@ -245,7 +245,7 @@ export default function LandingPage() {
                   <div className="size-3 rounded-full bg-rose-400" />
                   <div className="size-3 rounded-full bg-amber-400" />
                   <div className="size-3 rounded-full bg-emerald-400" />
-                  <span className="ml-2 text-xs font-mono font-medium text-slate-500 dark:text-slate-400 truncate max-w-[130px] sm:max-w-none">
+                  <span className="ml-2 text-xs font-mono font-medium text-slate-500 dark:text-slate-400 min-w-0 break-all">
                     https://foodos.app/craft-burger
                   </span>
                 </div>

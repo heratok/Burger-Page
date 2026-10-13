@@ -397,7 +397,7 @@ export const AuditLogScreen: React.FC = () => {
                       </td>
 
                       {/* Detalles */}
-                      <td className="px-4 py-3 text-slate-500 dark:text-slate-400 max-w-xs truncate">
+                      <td className="px-4 py-3 text-slate-500 dark:text-slate-400 max-w-xs break-words">
                         {detailsText}
                       </td>
                     </tr>
@@ -440,7 +440,7 @@ export const AuditLogScreen: React.FC = () => {
                 </div>
 
                 <div className="border-t border-slate-100 dark:border-slate-800 pt-2 flex items-center justify-between text-xs">
-                  <span className="font-bold text-slate-800 dark:text-slate-200 truncate">
+                  <span className="font-bold text-slate-800 dark:text-slate-200 min-w-0 break-words">
                     {targetLabel}
                   </span>
                 </div>

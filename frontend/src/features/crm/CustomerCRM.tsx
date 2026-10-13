@@ -381,7 +381,7 @@ export const CustomerCRM: React.FC = () => {
                     {cust.telefono}
                   </td>
                   <td className="py-3 px-4">
-                    <div className="font-medium truncate max-w-[180px] text-slate-900 dark:text-slate-200">
+                    <div className="font-medium max-w-[14rem] break-words text-slate-900 dark:text-slate-200">
                       {cust.direccion}
                     </div>
                     <div className="text-xs text-slate-500 dark:text-slate-400">{cust.barrio}</div>

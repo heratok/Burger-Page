@@ -98,7 +98,7 @@ function ShoppingCart({
                 <div className="min-w-0">
                   <h2
                     style={{ color: "var(--color-text-primary)" }}
-                    className="truncate text-base font-bold"
+                    className="break-words text-base font-bold"
                   >
                     {cartItem.name}
                   </h2>

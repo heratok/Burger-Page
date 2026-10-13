@@ -115,7 +115,7 @@ export const GlobalPlatformSummary: React.FC<GlobalPlatformSummaryProps> = ({ on
               {c.value}
             </div>
             <div className="mt-2.5 flex items-center justify-between border-t border-slate-100 dark:border-slate-800/80 pt-2 text-xs">
-              <span className="text-slate-500 dark:text-slate-400 truncate max-w-[150px]">{c.sub}</span>
+              <span className="text-slate-500 dark:text-slate-400 min-w-0 break-words">{c.sub}</span>
               <span className={`rounded-full px-2 py-0.5 font-bold ${c.badgeColor}`}>
                 {c.badge}
               </span>

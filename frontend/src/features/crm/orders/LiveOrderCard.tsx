@@ -135,12 +135,12 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
         {/* Customer & Address Information */}
         <div className="mt-3 flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate">
+            <h4 className="text-sm font-bold text-slate-900 dark:text-white break-words">
               {order.customer.nombre}
             </h4>
-            <div className="mt-1 flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 truncate">
+            <div className="mt-1 flex items-start gap-1 text-xs text-slate-500 dark:text-slate-400">
               <MapPin className="size-3.5 shrink-0 text-slate-500 dark:text-slate-400" />
-              <span className="truncate">
+              <span className="min-w-0 break-words">
                 {getOrderLocationText(order, " — ")}
               </span>
             </div>
@@ -166,7 +166,7 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
           <div className="space-y-1.5 font-medium">
             {order.items.map((item, idx) => (
               <div key={idx} className="flex items-baseline justify-between gap-2">
-                <span className="font-semibold text-slate-900 dark:text-white truncate">
+                <span className="min-w-0 font-semibold text-slate-900 dark:text-white break-words">
                   {item.cantidad || (item as any).quantity || 1}× {item.name || (item as any).productName || "Producto"}
                 </span>
                 {item.adiciones && item.adiciones.length > 0 && (

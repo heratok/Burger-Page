@@ -238,7 +238,7 @@ export default function AdditionsModal({
                     className="flex items-center gap-3 rounded-lg border border-border-subtle bg-bg-elevated p-3"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-text-primary">
+                      <p className="break-words text-sm font-medium text-text-primary">
                         {adicion.name}
                       </p>
                       <p className="text-xs text-text-muted">

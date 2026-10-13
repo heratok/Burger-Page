@@ -503,7 +503,7 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
                           </div>
                           <div className="min-w-0">
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="font-bold text-xs truncate text-slate-900 dark:text-white">
+                              <span className="font-bold text-xs break-all text-slate-900 dark:text-white">
                                 {admin.username}
                               </span>
                               {isOwnAccount && (

@@ -57,6 +57,14 @@ async function openSection(page: Page, label: string) {
   await page.waitForLoadState('networkidle').catch(() => undefined);
 }
 
+/** Reaches an element through real key presses (Shift+Tab then Tab) so the focus counts as keyboard modality. */
+async function keyboardFocus(page: Page, locator: ReturnType<Page["locator"]>) {
+  await locator.focus();
+  await page.keyboard.press("Shift+Tab");
+  await page.keyboard.press("Tab");
+  await expect(locator).toBeFocused();
+}
+
 /** Computed background-image strings of every element whose gradient uses an off-brand hue. */
 async function offBrandGradients(page: Page): Promise<string[]> {
   return page.evaluate(() => {
@@ -154,3 +162,133 @@ for (const vp of VIEWPORTS) {
     });
   }
 }
+
+// ---------------------------------------------------------------------------------------------
+// (a) Tooltips: keyboard focus reveals content, Escape dismisses, content reachable without hover.
+// ---------------------------------------------------------------------------------------------
+test.describe("polish: accessible tooltips", () => {
+  test("desktop: collapsed sidebar item shows its label on keyboard focus and Escape dismisses it", async ({ page }) => {
+    test.setTimeout(90000);
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await login(page, TEST_RESTAURANT.username, TEST_RESTAURANT.password);
+    await page.getByRole("button", { name: "Contraer menú" }).click();
+    const nav = page.getByRole("navigation", { name: "Menú Lateral" });
+    const item = nav.getByRole("button", { name: "Dashboard", exact: true });
+    await expect(page.getByRole("tooltip")).toHaveCount(0);
+    await keyboardFocus(page, item);
+    const tip = page.getByRole("tooltip");
+    await expect(tip).toBeVisible({ timeout: 5000 });
+    await expect(tip).toHaveText("Dashboard");
+    await expect(item).toHaveAttribute("aria-describedby", /.+/);
+    fs.mkdirSync(SHOTS_DIR, { recursive: true });
+    await page.screenshot({ path: SHOTS_DIR + "/polish-tooltip-desktop.png" });
+    await page.keyboard.press("Escape");
+    await expect(tip).toHaveCount(0);
+    // Focus stays on the control after dismissal.
+    await expect(item).toBeFocused();
+  });
+
+  for (const vp of VIEWPORTS) {
+    test("superadmin " + vp.name + ": disabled-action reason is focusable, announced and reachable without hover", async ({ page }) => {
+      test.setTimeout(90000);
+      await page.setViewportSize({ width: vp.width, height: vp.height });
+      await login(page, "admin", "admin");
+      await openSection(page, "Usuarios & Accesos");
+      await expect(page).toHaveURL(/\/admin\/users/);
+      // Reason is in the accessibility tree (no hover needed), as a named, focusable group.
+      const reason = page.getByRole("group", { name: /Usa .Cambiar clave. para tu propia cuenta/ }).first();
+      await expect(reason).toBeAttached({ timeout: 15000 });
+      await reason.scrollIntoViewIfNeeded();
+      await keyboardFocus(page, reason);
+      const tip = page.getByRole("tooltip");
+      await expect(tip).toBeVisible({ timeout: 5000 });
+      await expect(tip).toContainText("Cambiar clave");
+      await page.screenshot({ path: SHOTS_DIR + "/polish-disabled-reason-" + vp.name + ".png" });
+      await page.keyboard.press("Escape");
+      await expect(tip).toHaveCount(0);
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------------------------
+// (d) Long values: no overflow, not clipped by ellipsis, full text in the accessibility tree.
+// ---------------------------------------------------------------------------------------------
+const STAMP = Date.now().toString().slice(-6);
+const LONG_NAME = "Maria Fernanda de los Angeles Rodriguez-Castellanos Villamizar " + STAMP;
+const LONG_ADDRESS = "Carrera 123 Bis # 45-67 Sur Torre Dos Apartamento 1204 Conjunto Residencial Los Almendros del Norte " + STAMP;
+
+test.describe("polish: long values stay readable", () => {
+  test.beforeAll(async ({ request }) => {
+    const API = "http://localhost:3001/api";
+    const loginRes = await request.post(API + "/users/login", {
+      data: { username: TEST_RESTAURANT.username, password: TEST_RESTAURANT.password },
+    });
+    expect(loginRes.status()).toBe(200);
+    const { token } = await loginRes.json();
+    const headers = { Authorization: "Bearer " + token };
+    const custRes = await request.post(API + "/customers", {
+      headers,
+      data: { name: LONG_NAME, phone: "300" + STAMP + "1", address: LONG_ADDRESS, barrio: "Barrio Los Almendros del Norte", notes: "polish" },
+    });
+    expect(custRes.status()).toBe(201);
+    const cust = await custRes.json();
+    const customerId = cust.id ?? cust.data?.id;
+    const orderRes = await request.post(API + "/orders", {
+      headers,
+      data: {
+        restaurantId: TEST_RESTAURANT.id,
+        customerId,
+        paymentMethod: "Efectivo",
+        items: [{ productId: TEST_RESTAURANT.products.clasica, quantity: 2, observation: "sin cebolla " + STAMP }],
+      },
+    });
+    expect([200, 201]).toContain(orderRes.status());
+  });
+
+  for (const vp of VIEWPORTS) {
+    test(vp.name + ": CRM, dashboard and live orders do not overflow and show the full value", async ({ page }) => {
+      test.setTimeout(120000);
+      await page.setViewportSize({ width: vp.width, height: vp.height });
+      await login(page, TEST_RESTAURANT.username, TEST_RESTAURANT.password);
+
+      const screens: Array<[string, string]> = [
+        ["Clientes", "customers"],
+        ["Dashboard", "dashboard"],
+        ["Pedidos en Vivo", "orders"],
+      ];
+      for (const [label, id] of screens) {
+        await openSection(page, label);
+        await expect(page).toHaveURL(new RegExp("/admin/" + id));
+        await expect(page.getByText(LONG_NAME).first()).toBeAttached({ timeout: 15000 });
+        await page.waitForTimeout(500);
+        await page.screenshot({ path: SHOTS_DIR + "/polish-long-" + id + "-" + vp.name + ".png" });
+        expect(await hasHorizontalOverflow(page), id + " horizontal overflow at " + vp.width).toBe(false);
+
+        // Any element showing the long values must not clip them with an ellipsis or hidden overflow.
+        const clipped = await page.evaluate(
+          ([name, addr]) => {
+            const out: string[] = [];
+            for (const el of Array.from(document.querySelectorAll<HTMLElement>("body *"))) {
+              if (el.children.length > 0) continue;
+              const t = el.textContent ?? "";
+              if (!t.includes(name) && !t.includes(addr)) continue;
+              const cs = getComputedStyle(el);
+              if (cs.display === "none" || el.getBoundingClientRect().width === 0) continue;
+              const ellipsis = cs.textOverflow === "ellipsis";
+              const hiddenX = el.scrollWidth > el.clientWidth + 1 && cs.overflowX !== "visible";
+              const clamped = cs.webkitLineClamp !== "none" && el.scrollHeight > el.clientHeight + 1;
+              if (ellipsis || hiddenX || clamped) out.push(el.tagName + "." + String(el.className).slice(0, 60));
+            }
+            return out;
+          },
+          [LONG_NAME, LONG_ADDRESS],
+        );
+        expect(clipped, id + ": clipped long values").toEqual([]);
+
+        // Full text reachable by assistive tech.
+        const snapshot = await page.locator("body").ariaSnapshot();
+        expect(snapshot, id + ": long name missing from the accessibility tree").toContain(LONG_NAME);
+      }
+    });
+  }
+});

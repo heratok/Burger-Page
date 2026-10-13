@@ -751,7 +751,7 @@ export const ReportsManager: React.FC = () => {
                             minute: "2-digit",
                           })}
                         </td>
-                        <td className="py-2.5 px-3 font-medium text-slate-900 dark:text-slate-200 truncate max-w-[140px]">
+                        <td className="py-2.5 px-3 font-medium text-slate-900 dark:text-slate-200 max-w-[12rem] break-words">
                           {ord.customer.nombre}
                         </td>
                         <td className="py-2.5 px-3 font-bold text-slate-900 dark:text-white">

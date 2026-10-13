@@ -271,7 +271,7 @@ export const OrderTicketModal: React.FC<OrderTicketModalProps> = ({
                 <span className="font-black text-sm text-slate-900 dark:text-white">
                   Orden #{order.orderNumber}
                 </span>
-                <span className="rounded-md px-2 py-0.5 text-xs font-black uppercase tracking-wide bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200/50 dark:border-indigo-800/50 truncate max-w-[150px]">
+                <span className="rounded-md px-2 py-0.5 text-xs font-black uppercase tracking-wide bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200/50 dark:border-indigo-800/50 break-words max-w-[12rem] text-right">
                   {service.isTable ? `Mesa: ${getOrderTableLabel(order) || "Salón"}` : service.label}
                 </span>
               </div>

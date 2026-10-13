@@ -278,7 +278,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
                               onClick={() => onSendSupplierWhatsApp(supplier)}
                               className="inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-400 hover:underline"
                             >
-                              <span className="truncate max-w-[120px]">{supplier.name}</span>
+                              <span className="min-w-0 break-words text-left">{supplier.name}</span>
                               <MessageSquare className="size-3 text-emerald-700 dark:text-emerald-400" />
                             </button>
                           </Tooltip>

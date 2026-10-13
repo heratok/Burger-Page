@@ -183,7 +183,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
         }`}
       >
         <div className="flex items-center justify-between border-b pb-3.5 sm:pb-4 border-slate-100 dark:border-slate-800">
-          <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate pr-2">
+          <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white min-w-0 break-words pr-2">
             {editingProduct ? `Editar "${editingProduct.name}"` : "Nuevo Producto"}
           </h3>
           <button

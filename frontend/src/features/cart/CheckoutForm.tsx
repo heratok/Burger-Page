@@ -370,7 +370,7 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
                     >
                       <Icon className="size-4" />
                     </span>
-                    <span className="text-sm font-semibold text-text-primary truncate">{value}</span>
+                    <span className="text-sm font-semibold text-text-primary min-w-0 break-words">{value}</span>
                   </Label>
                 )
               })}
@@ -535,7 +535,7 @@ function FormSummary({ cartItems, subtotal, deliveryFee, total }: FormSummaryPro
               style={{ color: "var(--color-text-secondary)" }}
               className="flex items-center justify-between text-sm"
             >
-              <span className="truncate">
+              <span className="min-w-0 break-words">
                 {item.cantidad}× {item.name}
               </span>
               <span

@@ -1344,21 +1344,21 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                             <span className="text-xs font-black text-orange-700 dark:text-orange-400">
                               {item.cantidad}x
                             </span>
-                            <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                            <h4 className="text-xs font-bold text-slate-900 dark:text-white min-w-0 break-words">
                               {item.name}
                             </h4>
                           </div>
 
                           {/* Additions list */}
                           {item.adiciones && item.adiciones.length > 0 && (
-                            <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 truncate">
+                            <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 break-words">
                               + {item.adiciones.map((a) => `${a.name} (${a.cantidad})`).join(", ")}
                             </div>
                           )}
 
                           {/* Observacion */}
                           {item.observacion && (
-                            <div className="mt-0.5 text-xs italic text-amber-700 dark:text-amber-400 truncate">
+                            <div className="mt-0.5 text-xs italic text-amber-700 dark:text-amber-400 break-words">
                               &ldquo;{item.observacion}&rdquo;
                             </div>
                           )}
@@ -1545,7 +1545,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                               className="size-12 rounded-md object-cover border border-slate-200 dark:border-slate-700"
                             />
                             <div className="min-w-0 flex-1">
-                              <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                              <p className="text-xs font-bold text-slate-800 dark:text-slate-200 break-all">
                                 {receiptFile?.name ?? "Comprobante cargado"}
                               </p>
                               <span className="text-xs text-emerald-700 dark:text-emerald-400 font-semibold">

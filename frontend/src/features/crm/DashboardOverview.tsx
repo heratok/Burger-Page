@@ -363,11 +363,11 @@ export const DashboardOverview: React.FC = () => {
                 return (
                   <div key={idx} className="space-y-1.5">
                     <div className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2 truncate">
+                      <div className="flex min-w-0 items-center gap-2">
                         <span className="flex size-5 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
                           {idx + 1}
                         </span>
-                        <span className="font-semibold truncate text-slate-900 dark:text-slate-200">
+                        <span className="min-w-0 break-words font-semibold text-slate-900 dark:text-slate-200">
                           {prod.name}
                         </span>
                       </div>
@@ -461,7 +461,7 @@ export const DashboardOverview: React.FC = () => {
                       <div className="font-semibold text-slate-900 dark:text-slate-100">{ord.customer.nombre}</div>
                       <div className="text-xs text-slate-500 dark:text-slate-400">{ord.customer.barrio}</div>
                     </td>
-                    <td className="py-3 px-3 max-w-[200px] truncate text-slate-700 dark:text-slate-300">
+                    <td className="py-3 px-3 max-w-[16rem] break-words text-slate-700 dark:text-slate-300">
                       {ord.items.map((i) => `${i.cantidad}× ${i.name}`).join(", ")}
                     </td>
                     <td className="py-3 px-3 font-bold text-slate-900 dark:text-slate-100">

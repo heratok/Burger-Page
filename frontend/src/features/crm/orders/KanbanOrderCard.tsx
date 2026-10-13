@@ -64,7 +64,7 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
           <span className="text-xs font-black text-indigo-600 dark:text-indigo-400">
             #{order.orderNumber}
           </span>
-          <h4 className="mt-0.5 text-xs font-bold leading-tight line-clamp-1 text-slate-900 dark:text-white">
+          <h4 className="mt-0.5 text-xs font-bold leading-tight break-words text-slate-900 dark:text-white">
             {order.customer.nombre}
           </h4>
         </div>
@@ -74,9 +74,9 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
       </div>
 
       {/* Address preview */}
-      <div className="mt-2 flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 line-clamp-1">
+      <div className="mt-2 flex items-start gap-1 text-xs text-slate-500 dark:text-slate-400">
         <MapPin className="size-3 shrink-0 text-slate-500 dark:text-slate-400" />
-        <span className="truncate">
+        <span className="min-w-0 break-words">
           {getOrderLocationText(order)}
         </span>
       </div>
@@ -89,15 +89,15 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
       >
         <div className="space-y-1 font-medium">
           {order.items.map((item, idx) => (
-            <div key={idx} className="flex justify-between truncate">
-              <span className="truncate">
+            <div key={idx} className="flex justify-between">
+              <span className="min-w-0 break-words">
                 {item.cantidad || (item as any).quantity || 1}× {item.name || (item as any).productName || "Producto"}
               </span>
             </div>
           ))}
         </div>
         {order.comentario && (
-          <p className="mt-1.5 border-t border-slate-200/40 dark:border-slate-700/60 pt-1 text-xs italic text-amber-700 dark:text-amber-300 line-clamp-2 break-words [overflow-wrap:anywhere]">
+          <p className="mt-1.5 border-t border-slate-200/40 dark:border-slate-700/60 pt-1 text-xs italic text-amber-700 dark:text-amber-300 break-words [overflow-wrap:anywhere]">
             &quot;{order.comentario}&quot;
           </p>
         )}
