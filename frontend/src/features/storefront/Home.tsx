@@ -22,6 +22,7 @@ import { useTenant, useCatalog } from "@/context/RestaurantContext"
 import { getFontFamilyClass, getStoreThemeStyles } from "@/features/crm/utils/customizerStyles"
 import { getContrastForeground } from "@/lib/utils"
 import { useHorizontalScroll } from "@/hooks/useHorizontalScroll"
+import { scrollBehavior } from "@/lib/motion"
 
 export default function Home() {
   const { activeRestaurant, refreshStoreStatus } = useTenant()
@@ -95,14 +96,14 @@ export default function Home() {
     }
     const activeBtn = pillRefs.current.get(cat)
     if (activeBtn && typeof activeBtn.scrollIntoView === "function") {
-      activeBtn.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" })
+      activeBtn.scrollIntoView({ behavior: scrollBehavior(), inline: "center", block: "nearest" })
     }
     const targetSection =
       cat === "ALL"
         ? document.getElementById("storefront-catalog")
         : document.getElementById(`category-section-${encodeURIComponent(cat)}`)
     if (targetSection && typeof targetSection.scrollIntoView === "function") {
-      targetSection.scrollIntoView({ behavior: "smooth", block: "start" })
+      targetSection.scrollIntoView({ behavior: scrollBehavior(), block: "start" })
     }
   }
 

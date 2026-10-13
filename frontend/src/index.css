@@ -892,14 +892,89 @@ textarea::placeholder {
   }
 }
 
+/*
+ * Reduced motion: an intentional alternative, not a blanket kill.
+ * - Decorative / looping / spatial motion (zoom, slide, scale, parallax, pulse, ping, bounce, shimmer) is removed.
+ * - Enter/exit state changes (dialogs, popovers, toasts, drawers) become a short opacity crossfade so the change stays perceivable.
+ * - Short colour/opacity transitions (hover, focus, state feedback) are kept, capped at 150ms.
+ * - Progress spinners stop rotating and breathe with a slow opacity pulse (0.5Hz, non-flashing).
+ * - Nothing may depend on animationend/transitionend; fades are 120ms and never block interaction.
+ */
+@keyframes rm-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes rm-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes rm-breathe {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  html,
+  .scroll-smooth {
+    scroll-behavior: auto;
+  }
+
+  /* Enter / exit: opacity-only crossfade (tw-animate-css + custom slide keyframes). */
+  /* Class-substring selectors also catch variant forms such as data-open:animate-in. */
+  [class*='animate-in']:not([data-closed]),
+  .animate-slide-up,
+  .animate-slide-in-right {
+    animation-name: rm-fade-in;
+    animation-duration: 120ms;
+    animation-timing-function: ease-out;
+    animation-iteration-count: 1;
+    animation-fill-mode: both;
+  }
+
+  [class*='animate-out']:where([data-closed], :not([class*='animate-in'])) {
+    animation-name: rm-fade-out;
+    animation-duration: 120ms;
+    animation-timing-function: ease-out;
+    animation-iteration-count: 1;
+    animation-fill-mode: forwards;
+  }
+
+  /* Decorative loops: static. Skeletons keep their muted fill without pulsing. */
+  .animate-pulse,
+  .animate-ping,
+  .animate-bounce,
+  .skeleton {
+    animation: none;
+  }
+
+  /* Progress spinner: no rotation, slow opacity pulse instead (still signals activity). */
+  .animate-spin {
+    animation: rm-breathe 2s ease-in-out infinite;
+  }
+
+  /* Spatial transitions and hover/active scale are dropped; colour/opacity feedback stays. */
+  .transition-transform,
+  .transition-all {
+    transition-property: color, background-color, border-color, opacity, box-shadow;
+  }
+
+  [class*='hover:scale-']:hover,
+  [class*='active:scale-']:active,
+  [class*='group-hover:scale-'] {
+    scale: none !important;
+  }
+
+  [class*='hover:-translate-']:hover,
+  [class*='group-hover:-translate-'] {
+    translate: none !important;
+  }
+
   *,
   *::before,
   *::after {
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
-    scroll-behavior: auto !important;
+    transition-duration: min(var(--tw-duration, 150ms), 150ms);
   }
 }
 
