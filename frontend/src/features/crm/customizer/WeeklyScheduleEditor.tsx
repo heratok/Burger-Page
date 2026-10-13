@@ -118,11 +118,10 @@ export const WeeklyScheduleEditor: React.FC<WeeklyScheduleEditorProps> = ({ sche
             />
             {isOvernightRange(bulkOpen, bulkClose) && (
               <span
-                title="Cierra al día siguiente (cruza la medianoche)"
                 className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 shrink-0 select-none whitespace-nowrap"
               >
                 <Moon className="size-3 text-amber-700 dark:text-amber-400 shrink-0" aria-hidden="true" />
-                <span>+1 día</span>
+                <span>+1 día<span className="sr-only"> (termina pasada la medianoche)</span></span>
               </span>
             )}
           </div>
@@ -276,11 +275,10 @@ export const WeeklyScheduleEditor: React.FC<WeeklyScheduleEditorProps> = ({ sche
                         />
                         {overnight && (
                           <span
-                            title="Cierra al día siguiente (cruza la medianoche)"
                             className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 shrink-0 select-none whitespace-nowrap"
                           >
                             <Moon className="size-3 text-amber-700 dark:text-amber-400 shrink-0" aria-hidden="true" />
-                            <span>+1 día</span>
+                            <span>+1 día<span className="sr-only"> (termina pasada la medianoche)</span></span>
                           </span>
                         )}
                       </div>
@@ -311,7 +309,7 @@ export const WeeklyScheduleEditor: React.FC<WeeklyScheduleEditorProps> = ({ sche
           Si el cierre es menor que la apertura, el horario cruza la medianoche (por ejemplo 20:00 - 02:00, indicado con{" "}
           <span className="inline-flex items-center gap-0.5 font-medium text-slate-700 dark:text-slate-300">
             <Moon className="size-3 text-amber-700 dark:text-amber-400 inline" aria-hidden="true" />
-            <span>+1 día</span>
+            <span>+1 día<span className="sr-only"> (termina pasada la medianoche)</span></span>
           </span>
           ). Cuando apertura y cierre son iguales, el local opera 24 horas.
         </p>

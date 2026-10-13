@@ -14,6 +14,7 @@ import {
   Pencil,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { DisabledReason } from "@/components/ui/tooltip"
 import { Select } from "@/components/ui/select"
 import { Pagination } from "@/components/ui/pagination"
 import { TableSkeleton } from "@/components/ui/Skeletons"
@@ -440,58 +441,58 @@ export const UsersDirectory: React.FC = () => {
                             </Button>
 
                             {/* Toggle active / inactive */}
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              disabled={isSelf || isBusy}
-                              onClick={() => handleToggleActive(u)}
-                              title={
-                                isSelf
-                                  ? "No puedes desactivar tu propia cuenta"
-                                  : isActive
-                                  ? "Desactivar usuario"
-                                  : "Activar usuario"
-                              }
-                              aria-label={isActive ? "Desactivar" : "Activar"}
-                              className={`h-7 px-2.5 text-xs font-semibold rounded-lg ${
-                                isActive
-                                  ? "text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
-                                  : "border-emerald-500/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/10"
-                              }`}
-                            >
-                              <Power className="size-3 mr-1" />
-                              <span>{isActive ? "Desactivar" : "Activar"}</span>
-                            </Button>
+                            <DisabledReason reason={isSelf ? "No puedes desactivar tu propia cuenta" : null}>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                disabled={isSelf || isBusy}
+                                onClick={() => handleToggleActive(u)}
+                                title={isActive ? "Desactivar usuario" : "Activar usuario"}
+                                aria-label={isActive ? "Desactivar" : "Activar"}
+                                className={`h-7 px-2.5 text-xs font-semibold rounded-lg ${
+                                  isActive
+                                    ? "text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
+                                    : "border-emerald-500/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/10"
+                                }`}
+                              >
+                                <Power className="size-3 mr-1" />
+                                <span>{isActive ? "Desactivar" : "Activar"}</span>
+                              </Button>
+                            </DisabledReason>
 
                             {/* Reset password */}
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              disabled={isSelf || isBusy}
-                              onClick={() => handleResetPassword(u)}
-                              title={isSelf ? "Usa 'Cambiar clave' para tu propia cuenta" : "Restablecer contraseña"}
-                              aria-label="Restablecer clave"
-                              className="h-7 px-2.5 text-xs font-semibold rounded-lg text-indigo-600 dark:text-indigo-400 border-indigo-500/30 hover:bg-indigo-500/10 disabled:opacity-40 disabled:pointer-events-none"
-                            >
-                              <KeyRound className="size-3 mr-1" />
-                              <span>Restablecer clave</span>
-                            </Button>
+                            <DisabledReason reason={isSelf ? "Usa 'Cambiar clave' para tu propia cuenta" : null}>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                disabled={isSelf || isBusy}
+                                onClick={() => handleResetPassword(u)}
+                                title="Restablecer contraseña"
+                                aria-label="Restablecer clave"
+                                className="h-7 px-2.5 text-xs font-semibold rounded-lg text-indigo-600 dark:text-indigo-400 border-indigo-500/30 hover:bg-indigo-500/10 disabled:opacity-40 disabled:pointer-events-none"
+                              >
+                                <KeyRound className="size-3 mr-1" />
+                                <span>Restablecer clave</span>
+                              </Button>
+                            </DisabledReason>
 
                             {/* Delete user */}
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              disabled={isSelf || isBusy}
-                              onClick={() => setUserToDelete(u)}
-                              title={isSelf ? "No puedes eliminar tu propia cuenta" : "Eliminar usuario"}
-                              aria-label="Eliminar usuario"
-                              className="h-7 size-7 p-0 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-rose-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-rose-400 cursor-pointer disabled:opacity-30 disabled:pointer-events-none"
-                            >
-                              <Trash2 className="size-3.5" />
-                            </Button>
+                            <DisabledReason reason={isSelf ? "No puedes eliminar tu propia cuenta" : null}>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                disabled={isSelf || isBusy}
+                                onClick={() => setUserToDelete(u)}
+                                title="Eliminar usuario"
+                                aria-label="Eliminar usuario"
+                                className="h-7 size-7 p-0 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-rose-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-rose-400 cursor-pointer disabled:opacity-30 disabled:pointer-events-none"
+                              >
+                                <Trash2 className="size-3.5" />
+                              </Button>
+                            </DisabledReason>
                           </div>
                         </td>
                       </tr>

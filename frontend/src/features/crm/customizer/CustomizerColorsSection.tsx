@@ -92,6 +92,7 @@ export const CustomizerColorsSection: React.FC<CustomizerColorsSectionProps> = (
                   }))
                 }
                 className="absolute inset-0 size-full opacity-0 cursor-pointer"
+                aria-label="Elegir color visualmente"
                 title="Elegir color visualmente"
               />
               <Pipette className="size-4 text-white drop-shadow-md pointer-events-none" />

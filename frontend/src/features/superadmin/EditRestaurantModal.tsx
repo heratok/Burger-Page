@@ -24,6 +24,7 @@ import {
   Pencil,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { DisabledReason } from "@/components/ui/tooltip"
 import { Select } from "@/components/ui/select"
 import { ResetPasswordModal } from "./ResetPasswordModal"
 import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
@@ -539,62 +540,54 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
                           </button>
 
                           {/* Toggle Active */}
-                          <button
-                            type="button"
-                            disabled={isActionLoading || isOwnAccount}
-                            onClick={() => handleToggleAdminActive(admin)}
-                            title={
-                              isOwnAccount
-                                ? "No podés modificar tu propia cuenta"
-                                : admin.isActive !== false
-                                ? "Desactivar usuario"
-                                : "Activar usuario"
-                            }
-                            aria-label={
-                              admin.isActive !== false
-                                ? `Desactivar usuario ${admin.username}`
-                                : `Activar usuario ${admin.username}`
-                            }
-                            className={`rounded-lg p-1.5 transition-colors cursor-pointer ${
-                              admin.isActive !== false
-                                ? "text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
-                                : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
-                            } disabled:opacity-50 disabled:cursor-not-allowed`}
-                          >
-                            <Power className="size-3.5" />
-                          </button>
+                          <DisabledReason reason={isOwnAccount ? "No podés modificar tu propia cuenta" : null}>
+                            <button
+                              type="button"
+                              disabled={isActionLoading || isOwnAccount}
+                              onClick={() => handleToggleAdminActive(admin)}
+                              title={admin.isActive !== false ? "Desactivar usuario" : "Activar usuario"}
+                              aria-label={
+                                admin.isActive !== false
+                                  ? `Desactivar usuario ${admin.username}`
+                                  : `Activar usuario ${admin.username}`
+                              }
+                              className={`rounded-lg p-1.5 transition-colors cursor-pointer ${
+                                admin.isActive !== false
+                                  ? "text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+                                  : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+                              } disabled:opacity-50 disabled:cursor-not-allowed`}
+                            >
+                              <Power className="size-3.5" />
+                            </button>
+                          </DisabledReason>
 
                           {/* Reset Password */}
-                          <button
-                            type="button"
-                            disabled={isActionLoading || isOwnAccount}
-                            onClick={() => handleResetAdminPassword(admin)}
-                            title={
-                              isOwnAccount
-                                ? "No podés restablecer tu propia contraseña desde aquí"
-                                : "Restablecer contraseña"
-                            }
-                            aria-label={`Restablecer contraseña de ${admin.username}`}
-                            className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-amber-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-amber-400 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            <KeyRound className="size-3.5" />
-                          </button>
+                          <DisabledReason reason={isOwnAccount ? "No podés restablecer tu propia contraseña desde aquí" : null}>
+                            <button
+                              type="button"
+                              disabled={isActionLoading || isOwnAccount}
+                              onClick={() => handleResetAdminPassword(admin)}
+                              title="Restablecer contraseña"
+                              aria-label={`Restablecer contraseña de ${admin.username}`}
+                              className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-amber-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-amber-400 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <KeyRound className="size-3.5" />
+                            </button>
+                          </DisabledReason>
 
                           {/* Delete */}
-                          <button
-                            type="button"
-                            disabled={isActionLoading || isOwnAccount}
-                            onClick={() => setUserToDelete(admin)}
-                            title={
-                              isOwnAccount
-                                ? "No podés eliminar tu propia cuenta"
-                                : "Eliminar usuario"
-                            }
-                            aria-label={`Eliminar usuario ${admin.username}`}
-                            className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-rose-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-rose-400 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            <Trash2 className="size-3.5" />
-                          </button>
+                          <DisabledReason reason={isOwnAccount ? "No podés eliminar tu propia cuenta" : null}>
+                            <button
+                              type="button"
+                              disabled={isActionLoading || isOwnAccount}
+                              onClick={() => setUserToDelete(admin)}
+                              title="Eliminar usuario"
+                              aria-label={`Eliminar usuario ${admin.username}`}
+                              className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-rose-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-rose-400 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <Trash2 className="size-3.5" />
+                            </button>
+                          </DisabledReason>
                         </div>
                       </div>
                     )

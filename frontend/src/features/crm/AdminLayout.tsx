@@ -35,6 +35,7 @@ import { AdminSwitcher, CreateRestaurantModal, CreateUserModal, ChangePasswordSc
 import { useAppRouter, isTabAllowed } from "@/core/router/useAppRouter"
 import { AdminContentFallback } from "@/components/ui/LoadingFallbacks"
 import { ManualSaleModal } from "./ManualSaleModal"
+import { Tooltip } from "@/components/ui/tooltip"
 
 
 interface AdminLayoutProps {
@@ -272,12 +273,11 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
             {isSuperGlobalMode ? (
               <div className={`flex items-center gap-2.5 min-w-0 ${isSidebarCollapsed ? "lg:justify-center" : ""}`}>
                 <div
-                  title={isSidebarCollapsed ? "SaaS Platform (Super Admin)" : undefined}
                   className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-tr from-amber-500 to-indigo-600 text-white font-bold text-xs shrink-0 shadow-md ring-1 ring-amber-500/20"
                 >
                   <Crown className="size-4.5" />
                 </div>
-                <div className={`flex flex-col min-w-0 leading-tight ${isSidebarCollapsed ? "lg:hidden" : ""}`}>
+                <div className={`flex flex-col min-w-0 leading-tight ${isSidebarCollapsed ? "lg:sr-only" : ""}`}>
                   <span className="font-bold tracking-tight text-xs truncate text-slate-900 dark:text-white">
                     SaaS Platform
                   </span>
@@ -292,18 +292,16 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                   <img
                     src={storeConfig.logoUrl}
                     alt=""
-                    title={isSidebarCollapsed ? `${storeConfig.name} (Super Admin)` : undefined}
                     className="size-9 rounded-xl object-cover border border-amber-500/40 shrink-0 shadow-xs"
                   />
                 ) : (
                   <div
-                    title={isSidebarCollapsed ? `${storeConfig.name} (Super Admin)` : undefined}
                     className="flex size-9 items-center justify-center rounded-lg bg-gradient-to-tr from-amber-500 to-indigo-600 text-white font-bold text-xs shrink-0"
                   >
                     <Crown className="size-4.5" />
                   </div>
                 )}
-                <div className={`flex flex-col min-w-0 leading-tight ${isSidebarCollapsed ? "lg:hidden" : ""}`}>
+                <div className={`flex flex-col min-w-0 leading-tight ${isSidebarCollapsed ? "lg:sr-only" : ""}`}>
                   <span className="font-bold tracking-tight text-xs truncate text-slate-900 dark:text-white">
                     {storeConfig.name}
                   </span>
@@ -318,18 +316,16 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                   <img
                     src={storeConfig.logoUrl}
                     alt=""
-                    title={isSidebarCollapsed ? `${storeConfig.name} (Panel de Control)` : undefined}
                     className="size-9 rounded-xl object-cover border border-indigo-500/30 shrink-0 shadow-xs"
                   />
                 ) : (
                   <div
-                    title={isSidebarCollapsed ? `${storeConfig.name} (Panel de Control)` : undefined}
                     className="flex size-9 items-center justify-center rounded-xl bg-orange-700 text-white font-bold text-xs shrink-0 shadow-xs"
                   >
                     <Store className="size-4.5" />
                   </div>
                 )}
-                <div className={`flex flex-col min-w-0 leading-tight ${isSidebarCollapsed ? "lg:hidden" : ""}`}>
+                <div className={`flex flex-col min-w-0 leading-tight ${isSidebarCollapsed ? "lg:sr-only" : ""}`}>
                   <span className="font-bold tracking-tight text-xs truncate text-slate-900 dark:text-white">
                     {storeConfig.name}
                   </span>
@@ -372,10 +368,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
               const isActive = adminTab === item.id
 
               return (
+                <Tooltip key={item.id} content={item.label} side="right" disabled={!isSidebarCollapsed}>
                 <button
-                  key={item.id}
                   type="button"
-                  title={item.label}
                   aria-label={item.label}
                   onClick={() => {
                     navigateTo(`/admin/${item.id}`)
@@ -422,6 +417,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                     </span>
                   )}
                 </button>
+                </Tooltip>
               )
             })}
           </nav>

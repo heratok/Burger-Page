@@ -28,6 +28,7 @@ import { formatCurrency, formatWhatsAppPhone } from "@/lib/utils"
 import { resolveModalOrder } from "@/lib/orderMatching"
 import { KanbanOrderCard, LiveOrderCard, OrderDetailModal, OrderTicketModal } from "./orders"
 import { getOrderTableLabel } from "@/features/crm/tables/orderTable"
+import { Tooltip } from "@/components/ui/tooltip"
 
 export const OrdersKanban: React.FC = () => {
   const {
@@ -295,43 +296,46 @@ export const OrdersKanban: React.FC = () => {
               isDark ? "border-slate-800 bg-slate-800/80" : "border-slate-200 bg-slate-100"
             }`}
           >
-            <button
-              type="button"
-              onClick={() => handleViewModeChange("feed")}
-              className={`flex items-center gap-1.5 rounded-lg px-2 sm:px-2.5 py-1.5 text-xs font-bold transition-all cursor-pointer ${getViewModeBtnClass("feed")}`}
-              title="Feed directo de comandas"
-            >
-              <LayoutGrid className="size-3.5 shrink-0" />
-              <span>Comandas</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleViewModeChange("kanban")}
-              className={`flex items-center gap-1.5 rounded-lg px-2 sm:px-2.5 py-1.5 text-xs font-bold transition-all cursor-pointer ${getViewModeBtnClass("kanban")}`}
-              title="Tablero Kanban de 5 columnas"
-            >
-              <Columns3 className="size-3.5 shrink-0" />
-              <span>Kanban</span>
-            </button>
+            <Tooltip content={"Feed directo de comandas"}>
+              <button
+                type="button"
+                onClick={() => handleViewModeChange("feed")}
+                className={`flex items-center gap-1.5 rounded-lg px-2 sm:px-2.5 py-1.5 text-xs font-bold transition-all cursor-pointer ${getViewModeBtnClass("feed")}`}
+              >
+                <LayoutGrid className="size-3.5 shrink-0" />
+                <span>Comandas</span>
+              </button>
+            </Tooltip>
+            <Tooltip content={"Tablero Kanban de 5 columnas"}>
+              <button
+                type="button"
+                onClick={() => handleViewModeChange("kanban")}
+                className={`flex items-center gap-1.5 rounded-lg px-2 sm:px-2.5 py-1.5 text-xs font-bold transition-all cursor-pointer ${getViewModeBtnClass("kanban")}`}
+              >
+                <Columns3 className="size-3.5 shrink-0" />
+                <span>Kanban</span>
+              </button>
+            </Tooltip>
           </div>
 
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            aria-label="Sincronizar pedidos"
-            onClick={() => refreshOrders()}
-            disabled={isLoadingOrders}
-            className={`gap-1.5 rounded-xl border text-xs font-bold shrink-0 cursor-pointer ${
-              isDark
-                ? "border-slate-700 bg-slate-850 hover:bg-slate-800 text-slate-200"
-                : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
-            }`}
-            title="Sincronizar pedidos directamente con el servidor"
-          >
-            <RefreshCw className={`size-3.5 shrink-0 ${isLoadingOrders ? "animate-spin text-orange-700 dark:text-orange-400" : ""}`} />
-            <span className="hidden sm:inline">Sincronizar</span>
-          </Button>
+          <Tooltip content={"Sincronizar pedidos directamente con el servidor"}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              aria-label="Sincronizar pedidos"
+              onClick={() => refreshOrders()}
+              disabled={isLoadingOrders}
+              className={`gap-1.5 rounded-xl border text-xs font-bold shrink-0 cursor-pointer ${
+                isDark
+                  ? "border-slate-700 bg-slate-850 hover:bg-slate-800 text-slate-200"
+                  : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
+              }`}
+            >
+              <RefreshCw className={`size-3.5 shrink-0 ${isLoadingOrders ? "animate-spin text-orange-700 dark:text-orange-400" : ""}`} />
+              <span className="hidden sm:inline">Sincronizar</span>
+            </Button>
+          </Tooltip>
 
           <Button
             type="button"

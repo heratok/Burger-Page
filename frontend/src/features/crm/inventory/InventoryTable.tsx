@@ -13,6 +13,7 @@ import {
 } from "lucide-react"
 import { Pagination } from "@/components/ui/pagination"
 import { Select } from "@/components/ui/select"
+import { Tooltip } from "@/components/ui/tooltip"
 import { formatCurrency } from "@/lib/utils"
 
 import { CATEGORY_LABELS } from "./constants"
@@ -171,9 +172,11 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
                       <td className="px-4 py-3 font-semibold text-slate-900 dark:text-white">
                         <div className="flex items-center gap-2">
                           {isLow && (
-                            <span title="Stock por debajo del mínimo">
-                              <AlertTriangle className="size-3.5 text-amber-700 dark:text-amber-400 shrink-0" />
-                            </span>
+                            <Tooltip content="Stock por debajo del mínimo">
+                              <span role="img" tabIndex={0} aria-label="Stock por debajo del mínimo" className="shrink-0">
+                                <AlertTriangle className="size-3.5 text-amber-700 dark:text-amber-400" aria-hidden="true" />
+                              </span>
+                            </Tooltip>
                           )}
                           <span>{item.name}</span>
                         </div>
@@ -269,15 +272,16 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
                       {/* Supplier */}
                       <td className="px-4 py-3">
                         {supplier ? (
-                          <button
-                            type="button"
-                            onClick={() => onSendSupplierWhatsApp(supplier)}
-                            className="inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-400 hover:underline"
-                            title="Pedir reposición por WhatsApp"
-                          >
-                            <span className="truncate max-w-[120px]">{supplier.name}</span>
-                            <MessageSquare className="size-3 text-emerald-700 dark:text-emerald-400" />
-                          </button>
+                          <Tooltip content={"Pedir reposición por WhatsApp"}>
+                            <button
+                              type="button"
+                              onClick={() => onSendSupplierWhatsApp(supplier)}
+                              className="inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-400 hover:underline"
+                            >
+                              <span className="truncate max-w-[120px]">{supplier.name}</span>
+                              <MessageSquare className="size-3 text-emerald-700 dark:text-emerald-400" />
+                            </button>
+                          </Tooltip>
                         ) : (
                           <span className="text-slate-500 italic text-xs">Sin asignar</span>
                         )}

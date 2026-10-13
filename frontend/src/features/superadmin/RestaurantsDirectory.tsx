@@ -4,6 +4,7 @@ import type { RestaurantRecord } from "@/types/restaurant"
 import type { DeletedRestaurantRecord } from "@/core/api/apiClient"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
+import { Tooltip } from "@/components/ui/tooltip"
 import {
   Sliders,
   Trash2,
@@ -379,23 +380,24 @@ export const RestaurantsDirectory: React.FC = () => {
 
                         {/* Status switch (Pause vs Delete distinction) */}
                         <td className="px-4 py-4">
-                          <button
-                            type="button"
-                            onClick={() => updateRestaurant(r.id, { isActive: !r.isActive })}
-                            title={r.isActive ? "Pausar restaurante temporalmente (conserva visibilidad en SaaS)" : "Reactivar restaurante"}
-                            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold transition-all cursor-pointer ${
-                              r.isActive
-                                ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/25"
-                                : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 hover:bg-slate-200"
-                            }`}
-                          >
-                            <span
-                              className={`size-1.5 rounded-full ${
-                                r.isActive ? "bg-emerald-500 animate-pulse" : "bg-slate-400"
+                          <Tooltip content={r.isActive ? "Pausar restaurante temporalmente (conserva visibilidad en SaaS)" : "Reactivar restaurante"}>
+                            <button
+                              type="button"
+                              onClick={() => updateRestaurant(r.id, { isActive: !r.isActive })}
+                              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold transition-all cursor-pointer ${
+                                r.isActive
+                                  ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/25"
+                                  : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 hover:bg-slate-200"
                               }`}
-                            />
-                            <span>{r.isActive ? "Operando" : "Pausado"}</span>
-                          </button>
+                            >
+                              <span
+                                className={`size-1.5 rounded-full ${
+                                  r.isActive ? "bg-emerald-500 animate-pulse" : "bg-slate-400"
+                                }`}
+                              />
+                              <span>{r.isActive ? "Operando" : "Pausado"}</span>
+                            </button>
+                          </Tooltip>
                         </td>
 
                         {/* Products Count */}

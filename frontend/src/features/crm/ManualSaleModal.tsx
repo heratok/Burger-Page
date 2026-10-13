@@ -39,6 +39,7 @@ import { useRestaurantTables } from "@/features/crm/tables/useRestaurantTables"
 import { TablePicker } from "@/features/crm/tables/TablePicker"
 import { getOrderTableLabel } from "@/features/crm/tables/orderTable"
 import { OrderTicketModal } from "./orders/OrderTicketModal"
+import { Tooltip } from "@/components/ui/tooltip"
 
 export interface ManualSaleModalProps {
   isOpen: boolean
@@ -1162,27 +1163,29 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
 
                           <div className="flex items-center gap-1.5">
                             {hasAdditions && (
-                              <button
-                                type="button"
-                                onClick={() => handleOpenCustomize(product)}
-                                title="Personalizar adiciones y notas de cocina"
-                                className="inline-flex items-center gap-1 rounded-lg border border-orange-500/30 bg-orange-500/10 hover:bg-orange-500/20 text-orange-700 dark:text-orange-400 font-bold px-2 py-1 text-xs transition-all cursor-pointer shadow-2xs active:scale-95"
-                              >
-                                <PlusCircle className="size-3.5 text-orange-700 dark:text-orange-400" />
-                                <span>+ Extras</span>
-                              </button>
+                              <Tooltip content={"Personalizar adiciones y notas de cocina"}>
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenCustomize(product)}
+                                  className="inline-flex items-center gap-1 rounded-lg border border-orange-500/30 bg-orange-500/10 hover:bg-orange-500/20 text-orange-700 dark:text-orange-400 font-bold px-2 py-1 text-xs transition-all cursor-pointer shadow-2xs active:scale-95"
+                                >
+                                  <PlusCircle className="size-3.5 text-orange-700 dark:text-orange-400" />
+                                  <span>+ Extras</span>
+                                </button>
+                              </Tooltip>
                             )}
 
-                            <Button
-                              type="button"
-                              size="xs"
-                              onClick={() => handleQuickAddProduct(product)}
-                              className="rounded-lg bg-orange-700 px-2.5 py-1 text-xs font-bold text-white shadow-xs hover:bg-orange-800 active:scale-95 transition-all cursor-pointer"
-                              title="Agregar 1 unidad rápida sin modificadores"
-                            >
-                              <Plus className="size-3 mr-0.5" />
-                              <span>Agregar</span>
-                            </Button>
+                            <Tooltip content={"Agregar 1 unidad rápida sin modificadores"}>
+                              <Button
+                                type="button"
+                                size="xs"
+                                onClick={() => handleQuickAddProduct(product)}
+                                className="rounded-lg bg-orange-700 px-2.5 py-1 text-xs font-bold text-white shadow-xs hover:bg-orange-800 active:scale-95 transition-all cursor-pointer"
+                              >
+                                <Plus className="size-3 mr-0.5" />
+                                <span>Agregar</span>
+                              </Button>
+                            </Tooltip>
                           </div>
                         </div>
                       </div>

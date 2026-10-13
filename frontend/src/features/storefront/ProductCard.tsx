@@ -130,7 +130,6 @@ const ProductCard = memo(function ProductCard({ product, onSelectProduct, closed
             </h2>
             {product.description && (
               <p
-                title={product.description}
                 style={{ color: "var(--color-text-secondary)" }}
                 className="text-xs sm:text-sm leading-relaxed font-normal text-pretty"
               >

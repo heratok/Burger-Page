@@ -185,6 +185,7 @@ export const CustomizerBrandingSection: React.FC<CustomizerBrandingSectionProps>
                     disabled={uploadingField !== null}
                     onClick={() => setConfirmDeleteMedia("logo")}
                     className="px-2.5 text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 hover:text-rose-600 border-rose-500/30 cursor-pointer"
+                    aria-label="Eliminar logo"
                     title="Eliminar logo"
                   >
                     <Trash2 className="size-3.5" />

@@ -39,10 +39,11 @@ export const AdminSwitcher: React.FC<AdminSwitcherProps> = ({ collapsed = false,
 
   if (collapsed) {
     return (
-      <div className="flex justify-center" title="Cambiar restaurante / Directorio SaaS">
+      <div className="flex justify-center">
         <div className="relative group size-10">
           <select
             aria-label="Selector de restaurante"
+            title="Cambiar restaurante / Directorio SaaS"
             value={adminTab === "restaurants" ? "DIRECTORY" : activeRestaurant.id}
             onChange={(e) => {
               const val = e.target.value

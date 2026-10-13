@@ -453,6 +453,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                   target="_blank"
                   rel="noopener noreferrer"
                   className="rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+                  aria-label="Abrir imagen en nueva pestaña"
                   title="Abrir imagen en nueva pestaña"
                 >
                   <ExternalLink className="size-4" />

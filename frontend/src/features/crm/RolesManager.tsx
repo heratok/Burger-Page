@@ -18,6 +18,7 @@ import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
 import { toast } from "sonner"
 import { PERMISSION_GROUPS, type PermissionMeta } from "./roles/permissionCatalog"
 import { summarizePermissions } from "./roles/permissionSummary"
+import { Tooltip } from "@/components/ui/tooltip"
 
 const ADMIN_ROLE_PRESET = {
   name: "Administrador General",
@@ -251,23 +252,24 @@ export const RolesManager: React.FC = () => {
 
         <div className="flex items-center gap-2">
           {missingTemplates.length > 0 && roles.length > 0 && (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleCreateRecommended}
-              disabled={isCreatingRecommended}
-              className={`flex items-center gap-1.5 rounded-xl border px-3.5 py-2.5 text-xs font-semibold shadow-xs ${
-                isDark
-                  ? "border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700"
-                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-              }`}
-              title="Crea los roles estándar que faltan en tu restaurante"
-            >
-              <Sparkles className="size-3.5 text-amber-700 dark:text-amber-400" />
-              <span>
-                {isCreatingRecommended ? "Creando..." : `Crear roles faltantes (${missingTemplates.length})`}
-              </span>
-            </Button>
+            <Tooltip content={"Crea los roles estándar que faltan en tu restaurante"}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleCreateRecommended}
+                disabled={isCreatingRecommended}
+                className={`flex items-center gap-1.5 rounded-xl border px-3.5 py-2.5 text-xs font-semibold shadow-xs ${
+                  isDark
+                    ? "border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700"
+                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                <Sparkles className="size-3.5 text-amber-700 dark:text-amber-400" />
+                <span>
+                  {isCreatingRecommended ? "Creando..." : `Crear roles faltantes (${missingTemplates.length})`}
+                </span>
+              </Button>
+            </Tooltip>
           )}
           <Button
             type="button"
@@ -450,14 +452,16 @@ export const RolesManager: React.FC = () => {
                                 <span>{line.actions}</span>
                               </span>
                               {line.sensitive && (
-                                <span
-                                  role="img"
-                                  aria-label="Permiso sensible"
-                                  title="Permiso sensible"
-                                  className="mt-0.5 shrink-0 text-amber-700 dark:text-amber-400"
-                                >
-                                  <AlertTriangle className="size-3.5" aria-hidden="true" />
-                                </span>
+                                <Tooltip content="Permiso sensible">
+                                  <span
+                                    role="img"
+                                    tabIndex={0}
+                                    aria-label="Permiso sensible"
+                                    className="mt-0.5 shrink-0 text-amber-700 dark:text-amber-400"
+                                  >
+                                    <AlertTriangle className="size-3.5" aria-hidden="true" />
+                                  </span>
+                                </Tooltip>
                               )}
                             </li>
                           ))}
@@ -558,19 +562,19 @@ export const RolesManager: React.FC = () => {
                 </span>
                 <div role="group" aria-labelledby="roles-presets-label" className="flex flex-wrap gap-2">
                   {PRESET_TEMPLATES.map((preset) => (
-                    <button
-                      key={preset.name}
-                      type="button"
-                      onClick={() => handleApplyPreset(preset.permissions)}
-                      className={`flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all ${
-                        isDark
-                          ? "border-slate-700 bg-slate-800/80 text-slate-200 hover:border-indigo-500/50 hover:bg-slate-700"
-                          : "border-slate-200 bg-slate-100 text-slate-700 hover:border-indigo-300 hover:bg-slate-200"
-                      }`}
-                      title={preset.description}
-                    >
-                      <span>{preset.name}</span>
-                    </button>
+                    <Tooltip key={preset.name} content={preset.description}>
+                      <button
+                        type="button"
+                        onClick={() => handleApplyPreset(preset.permissions)}
+                        className={`flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all ${
+                          isDark
+                            ? "border-slate-700 bg-slate-800/80 text-slate-200 hover:border-indigo-500/50 hover:bg-slate-700"
+                            : "border-slate-200 bg-slate-100 text-slate-700 hover:border-indigo-300 hover:bg-slate-200"
+                        }`}
+                      >
+                        <span>{preset.name}</span>
+                      </button>
+                    </Tooltip>
                   ))}
                   <button
                     type="button"

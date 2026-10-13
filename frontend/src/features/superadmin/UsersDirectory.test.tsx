@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react"
+import { render, screen, fireEvent, waitFor, cleanup, within } from "@testing-library/react"
 import { UsersDirectory } from "./UsersDirectory"
 import { RestaurantProvider } from "@/context/RestaurantContext"
 import { apiClient } from "@/core/api/apiClient"
@@ -347,7 +347,8 @@ describe("UsersDirectory - Super Admin User Management (TDD)", () => {
 
     expect(ownReset).toBeDefined()
     expect(ownReset.disabled).toBe(true)
-    expect(ownReset.getAttribute("title")).toContain("Cambiar clave")
+    // The reason is exposed through a focusable group (not a hover-only title).
+    expect(within(ownRow).getByRole("group", { name: /Cambiar clave/ })).toBeDefined()
 
     expect(otherReset).toBeDefined()
     expect(otherReset.disabled).toBe(false)

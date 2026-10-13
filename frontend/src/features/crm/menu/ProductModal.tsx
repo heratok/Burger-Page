@@ -8,6 +8,7 @@ import { toast } from "sonner"
 import { optimizeImageToWebP } from "@/lib/imageOptimizer"
 import { uploadImageToStorage } from "@/core/storage/supabaseStorage"
 import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
+import { Tooltip } from "@/components/ui/tooltip"
 
 export interface ProductModalProps {
   isOpen: boolean
@@ -315,30 +316,32 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                     <span className="truncate">Previsualización del Plato</span>
                   </div>
                   <div className="grid grid-cols-2 sm:flex items-center rounded-lg bg-slate-200/80 p-0.5 dark:bg-slate-900/90 border border-slate-200/50 dark:border-slate-700/60 text-xs font-semibold w-full sm:w-auto shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => setPreviewFitMode("cover")}
-                      className={`px-2.5 py-1 text-center rounded-md transition-all cursor-pointer whitespace-nowrap ${
-                        previewFitMode === "cover"
-                          ? "bg-white text-indigo-600 shadow-xs dark:bg-slate-800 dark:text-white"
-                          : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
-                      }`}
-                      title="Ver cómo se recortará en la tarjeta del menú"
-                    >
-                      Encuadre Tarjeta
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPreviewFitMode("contain")}
-                      className={`px-2.5 py-1 text-center rounded-md transition-all cursor-pointer whitespace-nowrap ${
-                        previewFitMode === "contain"
-                          ? "bg-white text-indigo-600 shadow-xs dark:bg-slate-800 dark:text-white"
-                          : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
-                      }`}
-                      title="Ver la imagen completa sin recortes"
-                    >
-                      Foto Completa
-                    </button>
+                    <Tooltip content={"Ver cómo se recortará en la tarjeta del menú"}>
+                      <button
+                        type="button"
+                        onClick={() => setPreviewFitMode("cover")}
+                        className={`px-2.5 py-1 text-center rounded-md transition-all cursor-pointer whitespace-nowrap ${
+                          previewFitMode === "cover"
+                            ? "bg-white text-indigo-600 shadow-xs dark:bg-slate-800 dark:text-white"
+                            : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                        }`}
+                      >
+                        Encuadre Tarjeta
+                      </button>
+                    </Tooltip>
+                    <Tooltip content={"Ver la imagen completa sin recortes"}>
+                      <button
+                        type="button"
+                        onClick={() => setPreviewFitMode("contain")}
+                        className={`px-2.5 py-1 text-center rounded-md transition-all cursor-pointer whitespace-nowrap ${
+                          previewFitMode === "contain"
+                            ? "bg-white text-indigo-600 shadow-xs dark:bg-slate-800 dark:text-white"
+                            : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                        }`}
+                      >
+                        Foto Completa
+                      </button>
+                    </Tooltip>
                   </div>
                 </div>
 
