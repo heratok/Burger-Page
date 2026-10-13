@@ -316,7 +316,7 @@ export default function AdditionsModal({
         </div>
       </div>
 
-      <div
+      <footer
           style={{ backgroundColor: (themeStyles as any)["--color-bg-surface"] || "var(--color-bg-surface, #F4ECE1)" }}
           className="border-t border-border-subtle p-3.5 sm:p-5"
         >
@@ -379,7 +379,7 @@ export default function AdditionsModal({
               )}
             </Button>
           </div>
-        </div>
+        </footer>
       </DialogContent>
 
       {/* Fullscreen Lightbox / Expanded Image */}
