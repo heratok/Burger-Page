@@ -23,6 +23,8 @@ import {
 import { Button } from "@/components/ui/button"
 import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
 import { toast } from "sonner"
+import { ModernSelect, type ModernSelectOption } from "@/components/ui/ModernSelect"
+import { describeRoleAreas } from "./roles/permissionSummary"
 
 function generateRandomPassword(): string {
   const chars = "abcdefghjkmnpqrstuvwxyz23456789"
@@ -101,6 +103,25 @@ export const TeamManager: React.FC = () => {
     roles.forEach((r) => map.set(r.id, r))
     return map
   }, [roles])
+
+  const roleOptions = useMemo<ModernSelectOption[]>(
+    () =>
+      roles.map((r) => ({
+        value: r.id,
+        label: r.name,
+        sublabel: r.description || describeRoleAreas(r.permissions, 3) || undefined,
+      })),
+    [roles]
+  )
+
+  const roleFilterOptions = useMemo<ModernSelectOption[]>(
+    () => [
+      { value: "all", label: "Todos los roles" },
+      { value: "admin", label: "Administrador General" },
+      ...roles.map((r) => ({ value: r.id, label: r.name })),
+    ],
+    [roles]
+  )
 
   const filteredUsers = useMemo(() => {
     const term = searchTerm.toLowerCase().trim()
@@ -276,23 +297,16 @@ export const TeamManager: React.FC = () => {
         </div>
 
         <div className="w-full sm:w-56">
-          <select
+          <ModernSelect
+            id="team-role-filter"
+            ariaLabel="Filtrar por rol"
             value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
-            className={`w-full rounded-xl border px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-              isDark
-                ? "border-slate-700 bg-slate-800 text-white"
-                : "border-slate-200 bg-slate-50 text-slate-900"
-            }`}
-          >
-            <option value="all">Todos los roles</option>
-            <option value="admin">Administrador General</option>
-            {roles.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.name}
-              </option>
-            ))}
-          </select>
+            onChange={setRoleFilter}
+            options={roleFilterOptions}
+            size="sm"
+            variant="filled"
+            searchable={false}
+          />
         </div>
       </div>
 
@@ -584,26 +598,16 @@ export const TeamManager: React.FC = () => {
                   </div>
                 ) : (
                   <>
-                    <select
+                    <ModernSelect
                       id="create-role-select"
                       required
+                      ariaLabel="Rol Asignado"
                       value={createRoleId}
-                      onChange={(e) => setCreateRoleId(e.target.value)}
-                      className={`w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                        isDark
-                          ? "border-slate-700 bg-slate-800 text-white"
-                          : "border-slate-300 bg-white text-slate-900"
-                      }`}
-                    >
-                      <option value="" disabled>
-                        Selecciona un rol...
-                      </option>
-                      {roles.map((r) => (
-                        <option key={r.id} value={r.id}>
-                          {r.name}{r.description ? ` — ${r.description}` : ` (${r.permissions.length} permisos)`}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={setCreateRoleId}
+                      options={roleOptions}
+                      placeholder="Selecciona un rol..."
+                      searchable={false}
+                    />
                     {rolesMap.get(createRoleId)?.description && (
                       <p className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
                         {rolesMap.get(createRoleId)?.description}
@@ -711,26 +715,16 @@ export const TeamManager: React.FC = () => {
                     </div>
                   ) : (
                     <>
-                      <select
+                      <ModernSelect
                         id="edit-role-select"
                         required
+                        ariaLabel="Rol Asignado"
                         value={editRoleId}
-                        onChange={(e) => setEditRoleId(e.target.value)}
-                        className={`w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                          isDark
-                            ? "border-slate-700 bg-slate-800 text-white"
-                            : "border-slate-300 bg-white text-slate-900"
-                        }`}
-                      >
-                        <option value="" disabled>
-                          Selecciona un rol...
-                        </option>
-                        {roles.map((r) => (
-                          <option key={r.id} value={r.id}>
-                            {r.name}{r.description ? ` — ${r.description}` : ` (${r.permissions.length} permisos)`}
-                          </option>
-                        ))}
-                      </select>
+                        onChange={setEditRoleId}
+                        options={roleOptions}
+                        placeholder="Selecciona un rol..."
+                        searchable={false}
+                      />
                       {rolesMap.get(editRoleId)?.description && (
                         <p className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
                           {rolesMap.get(editRoleId)?.description}

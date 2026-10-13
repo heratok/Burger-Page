@@ -204,13 +204,19 @@ test.describe('E2E: Default Staff Roles & Empty State Flow', () => {
     const createMemberModal = page.locator('div.fixed').filter({ hasText: /Registrar Nuevo Miembro/i });
     await expect(createMemberModal).toBeVisible();
 
-    const roleSelect = createMemberModal.locator('select#create-role-select');
-    await expect(roleSelect).toBeVisible();
-    const selectContent = await roleSelect.textContent();
-    expect(selectContent).toContain('Cajero — Toma pedidos, cobra y atiende clientes. No ve ventas ni configuración.');
-    expect(selectContent).toContain('Mesero — Toma pedidos y atiende las mesas. Puede consultar clientes.');
-    expect(selectContent).toContain('Cocina — Ve los pedidos y actualiza su preparación.');
-    expect(selectContent).toContain('Gerente — Administra el negocio día a día. No gestiona usuarios ni roles.');
+    const roleTrigger = createMemberModal.getByTestId('create-role-select-trigger');
+    await expect(roleTrigger).toBeVisible();
+    await roleTrigger.click();
+    const roleMenu = createMemberModal.getByTestId('create-role-select-menu');
+    await expect(roleMenu).toContainText('Cajero');
+    await expect(roleMenu).toContainText('Toma pedidos, cobra y atiende clientes. No ve ventas ni configuración.');
+    await expect(roleMenu).toContainText('Mesero');
+    await expect(roleMenu).toContainText('Toma pedidos y atiende las mesas. Puede consultar clientes.');
+    await expect(roleMenu).toContainText('Cocina');
+    await expect(roleMenu).toContainText('Ve los pedidos y actualiza su preparación.');
+    await expect(roleMenu).toContainText('Gerente');
+    await expect(roleMenu).toContainText('Administra el negocio día a día. No gestiona usuarios ni roles.');
+    await roleMenu.getByRole('option', { name: /Cajero/ }).click();
 
     // Default or selected description visible in caption below select
     await expect(
@@ -344,7 +350,7 @@ test.describe('E2E: Default Staff Roles & Empty State Flow', () => {
     await newMemberBtn.click();
     await expect(teamModal).toBeVisible();
     await expect(teamModal.getByText(/No hay roles creados todavía/i)).not.toBeVisible();
-    await expect(teamModal.locator('select#create-role-select')).toBeVisible();
+    await expect(teamModal.getByTestId('create-role-select-trigger')).toBeVisible();
 
     await teamModal.getByRole('button', { name: /Cancelar/i }).click();
   });

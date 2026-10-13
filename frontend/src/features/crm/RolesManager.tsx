@@ -10,142 +10,14 @@ import {
   Pencil,
   Trash2,
   X,
-  ShoppingBag,
-  Users,
-  UtensilsCrossed,
-  Boxes,
-  Layers,
-  DollarSign,
-  Settings,
-  Shield,
+  AlertTriangle,
   Sparkles,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
 import { toast } from "sonner"
-
-interface PermissionMeta {
-  id: Permission
-  label: string
-  description: string
-}
-
-interface PermissionCategory {
-  category: string
-  icon: React.ComponentType<{ className?: string }>
-  permissions: PermissionMeta[]
-}
-
-const PERMISSION_GROUPS: PermissionCategory[] = [
-  {
-    category: "Pedidos & Cocina",
-    icon: ShoppingBag,
-    permissions: [
-      {
-        id: "orders.view",
-        label: "Ver pedidos",
-        description: "Acceso al tablero Kanban y comandas de cocina",
-      },
-      {
-        id: "orders.manage",
-        label: "Gestionar pedidos",
-        description: "Aceptar, preparar, cambiar estados y cobrar pedidos",
-      },
-      {
-        id: "orders.delete",
-        label: "Eliminar pedidos",
-        description: "Anular o eliminar órdenes registradas",
-      },
-    ],
-  },
-  {
-    category: "Clientes (CRM)",
-    icon: Users,
-    permissions: [
-      {
-        id: "customers.view",
-        label: "Ver clientes",
-        description: "Consultar lista de clientes registrados e historial",
-      },
-      {
-        id: "customers.manage",
-        label: "Gestionar clientes",
-        description: "Editar datos de contacto, direcciones y notas de clientes",
-      },
-    ],
-  },
-  {
-    category: "Menú & Catálogo",
-    icon: UtensilsCrossed,
-    permissions: [
-      {
-        id: "menu.manage",
-        label: "Gestionar menú",
-        description: "Crear y editar productos, categorías y modificadores",
-      },
-    ],
-  },
-  {
-    category: "Inventario",
-    icon: Boxes,
-    permissions: [
-      {
-        id: "inventory.manage",
-        label: "Gestionar inventario",
-        description: "Control de stock, alertas de reposición y proveedores",
-      },
-    ],
-  },
-  {
-    category: "Mesas & Salón",
-    icon: Layers,
-    permissions: [
-      {
-        id: "tables.manage",
-        label: "Gestionar mesas",
-        description: "Configurar distribución de salón y vincular pedidos a mesas",
-      },
-    ],
-  },
-  {
-    category: "Finanzas & Reportes",
-    icon: DollarSign,
-    permissions: [
-      {
-        id: "finance.view",
-        label: "Ver finanzas y reportes",
-        description: "Visualizar ingresos, totales de ventas y cierre de caja",
-      },
-    ],
-  },
-  {
-    category: "Equipo & Accesos",
-    icon: Shield,
-    permissions: [
-      {
-        id: "users.manage",
-        label: "Gestionar equipo",
-        description: "Crear usuarios de personal y restablecer contraseñas",
-      },
-      {
-        id: "roles.manage",
-        label: "Gestionar roles",
-        description: "Crear y configurar roles y permisos de acceso",
-      },
-    ],
-  },
-  {
-    category: "Configuración",
-    icon: Settings,
-    permissions: [
-      {
-        id: "settings.manage",
-        label: "Gestionar configuración",
-        description: "Ajustes del local, horarios, WhatsApp y personalizador",
-      },
-    ],
-  },
-]
+import { PERMISSION_GROUPS, type PermissionMeta } from "./roles/permissionCatalog"
+import { summarizePermissions } from "./roles/permissionSummary"
 
 const ADMIN_ROLE_PRESET = {
   name: "Administrador General",
@@ -499,7 +371,7 @@ export const RolesManager: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredRoles.map((role) => {
-            const permCount = role.permissions.length
+            const permissionLines = summarizePermissions(role.permissions)
             return (
               <div
                 key={role.id}
@@ -552,32 +424,45 @@ export const RolesManager: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Permissions count badge & preview */}
+                  {/* Plain-language summary of what the role can do */}
                   <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800/80">
-                    <div className="flex items-center justify-between text-xs mb-2">
-                      <span className="font-semibold text-slate-600 dark:text-slate-300">
-                        Permisos asignados
-                      </span>
-                      <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 font-bold text-[11px] text-slate-700 dark:text-slate-300">
-                        {permCount} de {PERMISSIONS.length}
-                      </span>
-                    </div>
-
-                    <div className="flex flex-wrap gap-1.5">
-                      {role.permissions.slice(0, 4).map((p) => (
-                        <span
-                          key={p}
-                          className="rounded-md border border-slate-200 dark:border-slate-700/60 bg-slate-50 dark:bg-slate-800/40 px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:text-slate-300"
-                        >
-                          {p}
-                        </span>
-                      ))}
-                      {permCount > 4 && (
-                        <span className="rounded-md border border-transparent px-1.5 py-0.5 text-[10px] font-bold text-slate-400">
-                          +{permCount - 4} más
-                        </span>
-                      )}
-                    </div>
+                    {permissionLines.length === 0 ? (
+                      <p className="text-xs italic text-slate-500 dark:text-slate-400">
+                        Sin permisos asignados
+                      </p>
+                    ) : (
+                      <>
+                        <p className="mb-2 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                          Puede:
+                        </p>
+                        <ul className="space-y-1.5">
+                          {permissionLines.map((line) => (
+                            <li
+                              key={line.area}
+                              className="flex items-start gap-1.5 text-xs text-slate-600 dark:text-slate-300"
+                            >
+                              <span className="min-w-0">
+                                <span className="font-semibold text-slate-900 dark:text-white">
+                                  {line.area}
+                                </span>
+                                <span className="text-slate-400 dark:text-slate-500">: </span>
+                                <span>{line.actions}</span>
+                              </span>
+                              {line.sensitive && (
+                                <span
+                                  role="img"
+                                  aria-label="Permiso sensible"
+                                  title="Permiso sensible"
+                                  className="mt-0.5 shrink-0 text-amber-500"
+                                >
+                                  <AlertTriangle className="size-3.5" aria-hidden="true" />
+                                </span>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
                   </div>
                 </div>
 
