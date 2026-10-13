@@ -920,3 +920,10 @@ textarea::placeholder {
     font-family: var(--font-sans);
   }
 }
+/* Sonner's default light "rich" toast text colors sit under 4.5:1 on their tinted backgrounds. */
+[data-sonner-toaster][data-sonner-theme="light"] [data-sonner-toast][data-rich-colors="true"] {
+  --success-text: hsl(140, 100%, 17%);
+  --info-text: hsl(210, 92%, 34%);
+  --warning-text: hsl(31, 92%, 28%);
+  --error-text: hsl(360, 100%, 33%);
+}
