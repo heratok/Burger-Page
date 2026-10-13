@@ -429,7 +429,7 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
             role="alert"
             className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-sm font-medium text-amber-700 dark:text-amber-300"
           >
-            <CircleAlert className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+            <CircleAlert className="size-4 shrink-0 text-amber-700 dark:text-amber-400" />
             <span>{closedMessage(closedReason)}</span>
           </div>
         )}
@@ -439,7 +439,7 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
             role="alert"
             className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-sm font-medium text-amber-700 dark:text-amber-300"
           >
-            <CircleAlert className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+            <CircleAlert className="size-4 shrink-0 text-amber-700 dark:text-amber-400" />
             <span>
               El pedido mínimo es de {formatCurrency(minOrderAmount)} (faltan {formatCurrency(amountNeeded)}).
             </span>

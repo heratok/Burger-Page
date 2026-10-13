@@ -183,7 +183,7 @@ export const RestaurantsDirectory: React.FC = () => {
                   className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
                     activeTab === "active"
                       ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs"
-                      : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                   }`}
                 >
                   Activos ({restaurants.length})
@@ -198,7 +198,7 @@ export const RestaurantsDirectory: React.FC = () => {
                   className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
                     activeTab === "deleted"
                       ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs"
-                      : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                   }`}
                 >
                   Eliminados {deletedRestaurants.length > 0 ? `(${deletedRestaurants.length})` : ""}
@@ -207,7 +207,7 @@ export const RestaurantsDirectory: React.FC = () => {
 
               {/* Search */}
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" />
+                <Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-slate-500 dark:text-slate-400" />
                 <input
                   type="text"
                   maxLength={50}
@@ -256,16 +256,16 @@ export const RestaurantsDirectory: React.FC = () => {
                 <tbody className="divide-y divide-slate-100 dark:border-slate-800">
                   {isLoadingDeleted ? (
                     <tr>
-                      <td colSpan={4} className="p-8 text-center text-xs text-slate-400">
+                      <td colSpan={4} className="p-8 text-center text-xs text-slate-500 dark:text-slate-400">
                         <div className="flex items-center justify-center gap-2">
-                          <Loader2 className="size-4 animate-spin text-indigo-500" />
+                          <Loader2 className="size-4 animate-spin text-indigo-600 dark:text-indigo-400" />
                           <span>Cargando restaurantes eliminados...</span>
                         </div>
                       </td>
                     </tr>
                   ) : paginatedDeletedRestaurants.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="p-8 text-center text-xs text-slate-400">
+                      <td colSpan={4} className="p-8 text-center text-xs text-slate-500 dark:text-slate-400">
                         {searchTerm
                           ? "No se encontraron restaurantes eliminados con ese criterio."
                           : "No hay restaurantes eliminados en este momento."}
@@ -282,7 +282,7 @@ export const RestaurantsDirectory: React.FC = () => {
                             <span className="font-bold text-slate-900 dark:text-white text-sm">
                               {dr.name}
                             </span>
-                            <div className="mt-0.5 font-mono text-xs text-slate-400">
+                            <div className="mt-0.5 font-mono text-xs text-slate-500 dark:text-slate-400">
                               /{dr.slug}
                             </div>
                           </div>
@@ -298,14 +298,14 @@ export const RestaurantsDirectory: React.FC = () => {
                               })
                             : "Fecha desconocida"}
                         </td>
-                        <td className="px-4 py-4 font-mono text-xs text-slate-400">
+                        <td className="px-4 py-4 font-mono text-xs text-slate-500 dark:text-slate-400">
                           {dr.id}
                         </td>
                         <td className="px-4 py-4 text-right">
                           <button
                             type="button"
                             onClick={() => handleOpenRestore(dr)}
-                            className="rounded-lg bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 text-xs font-bold text-white shadow-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                            className="rounded-lg bg-emerald-700 hover:bg-emerald-800 px-3 py-1.5 text-xs font-bold text-white shadow-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer"
                             title={`Restaurar restaurante ${dr.name}`}
                             aria-label={`Restaurar restaurante ${dr.name}`}
                           >
@@ -385,8 +385,8 @@ export const RestaurantsDirectory: React.FC = () => {
                             title={r.isActive ? "Pausar restaurante temporalmente (conserva visibilidad en SaaS)" : "Reactivar restaurante"}
                             className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold transition-all cursor-pointer ${
                               r.isActive
-                                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/25"
-                                : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 hover:bg-slate-200"
+                                ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/25"
+                                : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 hover:bg-slate-200"
                             }`}
                           >
                             <span
@@ -403,7 +403,7 @@ export const RestaurantsDirectory: React.FC = () => {
                           <span className="font-semibold text-slate-700 dark:text-slate-200">
                             {catalogSize.products} productos
                           </span>
-                          <span className="text-xs text-slate-400 ml-1">
+                          <span className="text-xs text-slate-500 dark:text-slate-400 ml-1">
                             ({catalogSize.additions} adiciones)
                           </span>
                         </td>
@@ -429,7 +429,7 @@ export const RestaurantsDirectory: React.FC = () => {
                               className="rounded-lg border border-slate-200 dark:border-slate-700 px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center gap-1"
                               title="Ver Tienda Pública de este local"
                             >
-                              <Eye className="size-3.5 text-slate-400" />
+                              <Eye className="size-3.5 text-slate-500 dark:text-slate-400" />
                               <span>Tienda</span>
                             </button>
 
@@ -440,7 +440,7 @@ export const RestaurantsDirectory: React.FC = () => {
                               title="Editar datos y administradores del restaurante"
                               aria-label={`Editar restaurante ${r.config.name}`}
                             >
-                              <Pencil className="size-3.5 text-slate-400" />
+                              <Pencil className="size-3.5 text-slate-500 dark:text-slate-400" />
                               <span>Editar</span>
                             </button>
 
@@ -566,7 +566,7 @@ export const RestaurantsDirectory: React.FC = () => {
             >
             <div className="flex items-center justify-between border-b pb-4 border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2.5">
-                <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-md shadow-emerald-600/30">
+                <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-700 text-white shadow-md shadow-emerald-600/30">
                   <RotateCcw className="size-5" />
                 </div>
                 <div>
@@ -582,7 +582,7 @@ export const RestaurantsDirectory: React.FC = () => {
                 type="button"
                 onClick={() => setRestaurantToRestore(null)}
                 disabled={isRestoring}
-                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                className="rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
                 aria-label="Cerrar modal"
               >
                 <X className="size-5" />
@@ -597,7 +597,7 @@ export const RestaurantsDirectory: React.FC = () => {
               {isSlugConflict && (
                 <div className="space-y-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3">
                   <div className="flex items-start gap-2 text-amber-700 dark:text-amber-300">
-                    <AlertTriangle className="size-4 shrink-0 mt-0.5 text-amber-500" />
+                    <AlertTriangle className="size-4 shrink-0 mt-0.5 text-amber-700 dark:text-amber-400" />
                     <span>{slugConflictError}</span>
                   </div>
                   <div>
@@ -640,7 +640,7 @@ export const RestaurantsDirectory: React.FC = () => {
                 type="button"
                 onClick={handleConfirmRestore}
                 disabled={isRestoring || (isSlugConflict && !restoreSlug.trim())}
-                className="rounded-xl bg-emerald-600 text-xs font-bold text-white hover:bg-emerald-700 shadow-sm"
+                className="rounded-xl bg-emerald-700 text-xs font-bold text-white hover:bg-emerald-800 shadow-sm"
               >
                 {isRestoring ? (
                   <div className="flex items-center gap-1.5">

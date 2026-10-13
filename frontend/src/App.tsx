@@ -141,7 +141,7 @@ function GlobalModuleAccessDenied({ onBackToDashboard }: GlobalModuleAccessDenie
   return (
     <div className="flex min-h-[60vh] items-center justify-center p-4">
       <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-slate-800 dark:bg-[#0E1322]">
-        <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-500 ring-1 ring-rose-500/25">
+        <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-400 ring-1 ring-rose-500/25">
           <ShieldAlert className="size-7" />
         </div>
         <h2 className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">

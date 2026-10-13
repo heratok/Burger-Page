@@ -68,14 +68,14 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
             {order.customer.nombre}
           </h4>
         </div>
-        <span className="text-xs font-medium text-slate-400 dark:text-slate-400 whitespace-nowrap">
+        <span className="text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap">
           {formatElapsed(order.createdAt)}
         </span>
       </div>
 
       {/* Address preview */}
       <div className="mt-2 flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 line-clamp-1">
-        <MapPin className="size-3 shrink-0 text-slate-400" />
+        <MapPin className="size-3 shrink-0 text-slate-500 dark:text-slate-400" />
         <span className="truncate">
           {getOrderLocationText(order)}
         </span>
@@ -97,7 +97,7 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
           ))}
         </div>
         {order.comentario && (
-          <p className="mt-1.5 border-t border-slate-200/40 dark:border-slate-700/60 pt-1 text-xs italic text-amber-600 dark:text-amber-300 line-clamp-2 break-words [overflow-wrap:anywhere]">
+          <p className="mt-1.5 border-t border-slate-200/40 dark:border-slate-700/60 pt-1 text-xs italic text-amber-700 dark:text-amber-300 line-clamp-2 break-words [overflow-wrap:anywhere]">
             &quot;{order.comentario}&quot;
           </p>
         )}
@@ -112,7 +112,7 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
           <span
             className={`rounded-md px-2 py-0.5 text-xs font-bold ${
               order.metodo === "Efectivo"
-                ? "bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400"
+                ? "bg-amber-500/10 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400"
                 : "bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400"
             }`}
           >
@@ -122,8 +122,8 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
             <span
               className={`rounded-md px-1.5 py-0.5 text-xs font-bold ${
                 order.receiptUrl
-                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                  : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                  ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                  : "bg-amber-500/10 text-amber-700 dark:text-amber-400"
               }`}
             >
               {order.receiptUrl ? "✓ Soporte" : "! Sin soporte"}
@@ -171,7 +171,7 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
           <button
             type="button"
             onClick={() => onUpdateStatus(order.id, "cooking")}
-            className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-orange-500 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-orange-600 cursor-pointer"
+            className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-orange-700 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-orange-800 cursor-pointer"
           >
             <ChefHat className="size-3.5" />
             <span>A Cocina</span>
@@ -191,7 +191,7 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
           <button
             type="button"
             onClick={() => onUpdateStatus(order.id, "delivered")}
-            className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-emerald-600 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 cursor-pointer"
+            className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-emerald-700 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-emerald-800 cursor-pointer"
           >
             <CheckCircle2 className="size-3.5" />
             <span>Entregado</span>
@@ -201,7 +201,7 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
           <button
             type="button"
             onClick={() => onWhatsApp(order)}
-            className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-1.5 text-emerald-600 hover:bg-emerald-500/20 dark:text-emerald-400 cursor-pointer"
+            className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-1.5 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400 cursor-pointer"
             title="Chat WhatsApp con cliente"
           >
             <MessageCircle className="size-3.5" />

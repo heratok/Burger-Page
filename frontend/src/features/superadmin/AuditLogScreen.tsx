@@ -48,13 +48,13 @@ const FIELD_TRANSLATIONS: Record<string, string> = {
 
 function getActionColorBadge(action: string): string {
   if (action.includes("create") || action.includes("activate") || action.includes("restore")) {
-    return "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+    return "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30"
   }
   if (action.includes("delete") || action.includes("deactivate")) {
     return "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30"
   }
   if (action.includes("pause") || action.includes("reset_password")) {
-    return "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30"
+    return "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30"
   }
   return "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/30"
 }
@@ -199,7 +199,7 @@ export const AuditLogScreen: React.FC = () => {
         }`}
       >
         <div className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-300">
-          <Filter className="size-3.5 text-indigo-500" />
+          <Filter className="size-3.5 text-indigo-600 dark:text-indigo-400" />
           <span>Filtros de búsqueda</span>
         </div>
 
@@ -299,11 +299,11 @@ export const AuditLogScreen: React.FC = () => {
       {/* Main Content: Error / Loading / Empty / Tables */}
       {error ? (
         <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-6 text-center space-y-3">
-          <AlertTriangle className="size-8 mx-auto text-rose-500" />
+          <AlertTriangle className="size-8 mx-auto text-rose-600 dark:text-rose-400" />
           <div className="text-sm font-bold text-rose-600 dark:text-rose-400">
             Ocurrió un error al cargar el registro de auditoría.
           </div>
-          <p className="text-xs text-rose-500/80">{error}</p>
+          <p className="text-xs text-rose-600 dark:text-rose-400">{error}</p>
           <Button
             type="button"
             variant="outline"
@@ -314,8 +314,8 @@ export const AuditLogScreen: React.FC = () => {
           </Button>
         </div>
       ) : isLoading && items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center p-12 text-slate-400 gap-2">
-          <Loader2 className="size-6 animate-spin text-indigo-500" />
+        <div className="flex flex-col items-center justify-center p-12 text-slate-500 dark:text-slate-400 gap-2">
+          <Loader2 className="size-6 animate-spin text-indigo-600 dark:text-indigo-400" />
           <span className="text-xs font-medium">Cargando registros de auditoría...</span>
         </div>
       ) : items.length === 0 ? (
@@ -324,7 +324,7 @@ export const AuditLogScreen: React.FC = () => {
             isDark ? "border-slate-800 bg-[#0E1322]" : "border-slate-200 bg-white"
           }`}
         >
-          <ClipboardList className="size-10 mx-auto text-slate-400/40 mb-3" />
+          <ClipboardList className="size-10 mx-auto text-slate-500 dark:text-slate-400 mb-3" />
           <h3 className="text-sm font-bold text-slate-900 dark:text-white">
             No se encontraron registros de auditoría
           </h3>
@@ -361,7 +361,7 @@ export const AuditLogScreen: React.FC = () => {
                       {/* Fecha */}
                       <td className="px-4 py-3 text-slate-600 dark:text-slate-300 whitespace-nowrap">
                         <div className="flex items-center gap-1.5 font-mono text-xs">
-                          <Clock className="size-3 text-slate-400" />
+                          <Clock className="size-3 text-slate-500 dark:text-slate-400" />
                           <span>{dateFormatted}</span>
                         </div>
                       </td>
@@ -369,7 +369,7 @@ export const AuditLogScreen: React.FC = () => {
                       {/* Actor */}
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5 font-semibold text-slate-900 dark:text-white">
-                          <User className="size-3 text-indigo-500" />
+                          <User className="size-3 text-indigo-600 dark:text-indigo-400" />
                           <span>{item.actorUsername || item.actorUserId || "Sistema"}</span>
                         </div>
                       </td>
@@ -391,7 +391,7 @@ export const AuditLogScreen: React.FC = () => {
                       {/* Restaurante */}
                       <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
                         <div className="flex items-center gap-1">
-                          <Store className="size-3 text-slate-400" />
+                          <Store className="size-3 text-slate-500 dark:text-slate-400" />
                           <span>{restName}</span>
                         </div>
                       </td>
@@ -422,7 +422,7 @@ export const AuditLogScreen: React.FC = () => {
                   >
                     {humanAction}
                   </span>
-                  <span className="font-mono text-xs text-slate-400 flex items-center gap-1">
+                  <span className="font-mono text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
                     <Clock className="size-3" />
                     {dateFormatted}
                   </span>
@@ -430,11 +430,11 @@ export const AuditLogScreen: React.FC = () => {
 
                 <div className="flex items-center justify-between text-xs">
                   <div className="flex items-center gap-1 font-semibold text-slate-900 dark:text-white">
-                    <User className="size-3 text-indigo-500" />
+                    <User className="size-3 text-indigo-600 dark:text-indigo-400" />
                     <span>{item.actorUsername || item.actorUserId || "Sistema"}</span>
                   </div>
                   <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400 text-xs">
-                    <Store className="size-3 text-slate-400" />
+                    <Store className="size-3 text-slate-500 dark:text-slate-400" />
                     <span>{restName}</span>
                   </div>
                 </div>

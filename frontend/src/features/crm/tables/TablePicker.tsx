@@ -89,7 +89,7 @@ export function TablePicker({
   }
 
   const tableButtonClass = (selected: boolean) => {
-    if (selected) return "border-orange-500 bg-orange-500 text-white shadow-md shadow-orange-500/25"
+    if (selected) return "border-orange-500 bg-orange-700 text-white shadow-md shadow-orange-500/25"
     return isDark
       ? "border-slate-700 bg-slate-900 text-slate-200 hover:border-orange-500/60"
       : "border-slate-300 bg-white text-slate-800 hover:border-orange-500/60"
@@ -108,7 +108,7 @@ export function TablePicker({
             ref={addButtonRef}
             type="button"
             onClick={openCreate}
-            className="rounded-lg px-1.5 py-0.5 text-xs font-bold text-orange-600 hover:bg-orange-500/10 dark:text-orange-400 cursor-pointer"
+            className="rounded-lg px-1.5 py-0.5 text-xs font-bold text-orange-700 hover:bg-orange-500/10 dark:text-orange-400 cursor-pointer"
           >
             + Nueva mesa
           </button>
@@ -130,7 +130,7 @@ export function TablePicker({
           <button
             type="button"
             onClick={onOpenManager}
-            className="mt-1 font-bold text-orange-600 underline dark:text-orange-400 cursor-pointer"
+            className="mt-1 font-bold text-orange-700 underline dark:text-orange-400 cursor-pointer"
           >
             Personalizar → Mesas
           </button>
@@ -141,7 +141,7 @@ export function TablePicker({
         <div className="max-h-44 space-y-2 overflow-y-auto pr-0.5">
           {groups.map((group) => (
             <div key={group.zone} className="space-y-1">
-              <h4 className="text-xs font-bold uppercase tracking-wide text-slate-400">{group.zone}</h4>
+              <h4 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">{group.zone}</h4>
               <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4">
                 {group.tables.map((table) => {
                   const selected = table.id === selectedTableId
@@ -210,7 +210,7 @@ export function TablePicker({
               type="button"
               onClick={() => void handleCreate()}
               disabled={isSaving || !preview}
-              className="shrink-0 rounded-lg bg-orange-500 px-2.5 py-1.5 text-xs font-bold text-white disabled:opacity-50 cursor-pointer"
+              className="shrink-0 rounded-lg bg-orange-700 px-2.5 py-1.5 text-xs font-bold text-white disabled:opacity-50 cursor-pointer"
             >
               Crear
             </button>

@@ -88,7 +88,7 @@ export const InventoryManager: React.FC = () => {
           >
             <Boxes className="size-3.5" />
             <span>Control de Stock</span>
-            {lowStockCount > 0 && <span className="rounded-full bg-amber-500 px-1.5 py-0.2 text-xs text-white">{lowStockCount}</span>}
+            {lowStockCount > 0 && <span className="rounded-full bg-amber-700 px-1.5 py-0.2 text-xs text-white">{lowStockCount}</span>}
           </button>
           <button
             type="button"

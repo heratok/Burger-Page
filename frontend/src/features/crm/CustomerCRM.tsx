@@ -233,7 +233,7 @@ export const CustomerCRM: React.FC = () => {
             Clientes VIP & Oro
           </span>
           <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-black text-amber-600 dark:text-amber-400">
+            <span className="text-2xl font-black text-amber-700 dark:text-amber-400">
               {stats.vipCount + stats.goldCount}
             </span>
             <span className="text-xs text-slate-500 dark:text-slate-400">alta frecuencia</span>
@@ -250,7 +250,7 @@ export const CustomerCRM: React.FC = () => {
               Gasto Acumulado
             </span>
             <div className="mt-2 flex items-baseline gap-2">
-              <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
+              <span className="text-2xl font-black text-emerald-700 dark:text-emerald-400">
                 {formatCurrency(stats.totalSpentAll)}
               </span>
             </div>
@@ -281,7 +281,7 @@ export const CustomerCRM: React.FC = () => {
         }`}
       >
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500 dark:text-slate-400" />
           <input
             type="text"
             maxLength={60}
@@ -390,7 +390,7 @@ export const CustomerCRM: React.FC = () => {
                     {cust.totalOrders}
                   </td>
                   {can?.("finance.view") && (
-                    <td className="py-3 px-4 font-bold text-emerald-600 dark:text-emerald-400">
+                    <td className="py-3 px-4 font-bold text-emerald-700 dark:text-emerald-400">
                       {formatCurrency(cust.totalSpent)}
                     </td>
                   )}
@@ -402,7 +402,7 @@ export const CustomerCRM: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => openWhatsAppMarketing(cust)}
-                        className="flex items-center gap-1 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs font-bold text-emerald-600 hover:bg-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-300"
+                        className="flex items-center gap-1 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs font-bold text-emerald-700 hover:bg-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-300"
                         title="Contactar por WhatsApp"
                       >
                         <MessageCircle className="size-3.5" />
@@ -411,7 +411,7 @@ export const CustomerCRM: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => openCustomerModal(cust)}
-                        className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                        className="rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
                         title="Ficha del cliente"
                       >
                         <FileText className="size-4" />
@@ -422,7 +422,7 @@ export const CustomerCRM: React.FC = () => {
                             type="button"
                             onClick={() => openCustomerModal(cust, true)}
                             aria-label={`Editar ${cust.nombre}`}
-                            className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                            className="rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
                             title="Editar cliente"
                           >
                             <Pencil className="size-4" />
@@ -431,7 +431,7 @@ export const CustomerCRM: React.FC = () => {
                             type="button"
                             onClick={() => setCustomerToDelete(cust)}
                             aria-label={`Eliminar ${cust.nombre}`}
-                            className="rounded-lg p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
+                            className="rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
                             title="Eliminar cliente"
                           >
                             <Trash2 className="size-4" />
@@ -488,7 +488,7 @@ export const CustomerCRM: React.FC = () => {
                 type="button"
                 onClick={closeCustomerModal}
                 aria-label="Cerrar modal"
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 <X className="size-5" />
               </button>
@@ -561,7 +561,7 @@ export const CustomerCRM: React.FC = () => {
               {can?.("finance.view") && (
                 <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-800 border dark:border-slate-700">
                   <span className="text-slate-500 dark:text-slate-400 font-medium">Inversión Total</span>
-                  <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">
+                  <p className="text-lg font-black text-emerald-700 dark:text-emerald-400">
                     {formatCurrency(selectedCustomer.totalSpent)}
                   </p>
                 </div>
@@ -571,7 +571,7 @@ export const CustomerCRM: React.FC = () => {
             {/* Notes input */}
             <div className="mt-4 space-y-2 text-xs">
               <label className="font-bold flex items-center gap-1.5 text-slate-800 dark:text-slate-200">
-                <FileText className="size-3.5 text-indigo-500" />
+                <FileText className="size-3.5 text-indigo-600 dark:text-indigo-400" />
                 <span>Notas Internas del Cliente (Preferencias, Alergias, etc.)</span>
               </label>
               <textarea
@@ -654,7 +654,7 @@ export const CustomerCRM: React.FC = () => {
                 type="button"
                 onClick={closeCreateModal}
                 aria-label="Cerrar modal"
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 <X className="size-5" />
               </button>
@@ -680,7 +680,7 @@ export const CustomerCRM: React.FC = () => {
                     }`}
                   />
                   {createErrors.nombre && (
-                    <span className="text-xs font-medium text-rose-500">{createErrors.nombre}</span>
+                    <span className="text-xs font-medium text-rose-600 dark:text-rose-400">{createErrors.nombre}</span>
                   )}
                 </label>
 
@@ -702,10 +702,10 @@ export const CustomerCRM: React.FC = () => {
                     }`}
                   />
                   {createErrors.telefono && (
-                    <span className="text-xs font-medium text-rose-500">{createErrors.telefono}</span>
+                    <span className="text-xs font-medium text-rose-600 dark:text-rose-400">{createErrors.telefono}</span>
                   )}
                   {existingCustomerWithPhone && (
-                    <span className="text-xs font-medium text-amber-500">
+                    <span className="text-xs font-medium text-amber-700 dark:text-amber-400">
                       Este teléfono ya está registrado ({existingCustomerWithPhone.nombre}; se actualizarán sus datos)
                     </span>
                   )}

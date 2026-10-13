@@ -119,7 +119,7 @@ export const MenuFilterBar: React.FC<MenuFilterBarProps> = ({
 
       <div className="flex items-center gap-2 shrink-0">
         <div className="relative w-full sm:w-56">
-          <Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-slate-500 dark:text-slate-400" />
           <input
             type="text"
             value={searchTerm}
@@ -139,7 +139,7 @@ export const MenuFilterBar: React.FC<MenuFilterBarProps> = ({
             className={`rounded-lg p-1.5 text-xs ${
               viewMode === "grid"
                 ? "bg-white shadow-xs text-slate-900 dark:bg-slate-700 dark:text-white"
-                : "text-slate-400"
+                : "text-slate-500 dark:text-slate-400"
             }`}
             title="Cuadrícula"
           >
@@ -151,7 +151,7 @@ export const MenuFilterBar: React.FC<MenuFilterBarProps> = ({
             className={`rounded-lg p-1.5 text-xs ${
               viewMode === "table"
                 ? "bg-white shadow-xs text-slate-900 dark:bg-slate-700 dark:text-white"
-                : "text-slate-400"
+                : "text-slate-500 dark:text-slate-400"
             }`}
             title="Lista"
           >

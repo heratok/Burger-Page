@@ -108,7 +108,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+            className="rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
           >
             <X className="size-5" />
           </button>
@@ -175,11 +175,11 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
                   }`}
                 >
                   <r.icon className={`size-4 mt-0.5 ${
-                    role === r.id ? "text-indigo-500" : "text-slate-400"
+                    role === r.id ? "text-indigo-600 dark:text-indigo-400" : "text-slate-500 dark:text-slate-400"
                   }`} />
                   <div>
                     <div className="text-xs font-bold">{r.name}</div>
-                    <div className="mt-0.5 text-xs text-slate-400">{r.desc}</div>
+                    <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{r.desc}</div>
                   </div>
                 </button>
               ))}
@@ -191,7 +191,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
             <Select
               label="Restaurante Asignado *"
               required
-              leftIcon={<Store className="size-4 text-indigo-500" />}
+              leftIcon={<Store className="size-4 text-indigo-600 dark:text-indigo-400" />}
               value={restaurantId}
               onChange={(e) => setRestaurantId(e.target.value)}
               options={restaurantOptions}

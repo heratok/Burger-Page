@@ -50,13 +50,13 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
                 {product.category}
               </span>
               {product.isPopular && (
-                <span className="flex items-center gap-1 rounded-md bg-amber-500/95 px-2 py-0.5 text-xs font-bold text-white shadow-xs">
+                <span className="flex items-center gap-1 rounded-md bg-amber-700/95 px-2 py-0.5 text-xs font-bold text-white shadow-xs">
                   <Flame className="size-3" />
                   Popular
                 </span>
               )}
               {product.isNew && (
-                <span className="flex items-center gap-1 rounded-md bg-emerald-500/95 px-2 py-0.5 text-xs font-bold text-white shadow-xs">
+                <span className="flex items-center gap-1 rounded-md bg-emerald-700/95 px-2 py-0.5 text-xs font-bold text-white shadow-xs">
                   <Sparkles className="size-3" />
                   Nuevo
                 </span>

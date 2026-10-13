@@ -23,7 +23,7 @@ export const CustomizerLayoutSection: React.FC<CustomizerLayoutSectionProps> = (
       {/* Typography Selector */}
       <div>
         <div className="flex items-center gap-1.5 mb-1">
-          <Type className="size-4 text-indigo-500" />
+          <Type className="size-4 text-indigo-600 dark:text-indigo-400" />
           <h3 className="font-bold text-sm text-slate-900 dark:text-white">
             Tipografía de la Carta
           </h3>

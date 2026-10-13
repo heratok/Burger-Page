@@ -160,7 +160,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
               type="button"
               onClick={onClose}
               aria-label="Cerrar detalles"
-              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200 cursor-pointer transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center"
+              className="rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200 cursor-pointer transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center"
             >
               <X className="size-5" />
             </button>
@@ -176,14 +176,14 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
             <button
               type="button"
               onClick={() => onWhatsApp(order)}
-              className="flex items-center gap-1 font-semibold text-emerald-600 hover:underline dark:text-emerald-400 cursor-pointer"
+              className="flex items-center gap-1 font-semibold text-emerald-700 hover:underline dark:text-emerald-400 cursor-pointer"
             >
               <MessageCircle className="size-3.5" />
               <span>WhatsApp: {order.customer.telefono}</span>
             </button>
           </div>
           <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
-            <MapPin className="size-3.5 text-slate-400" />
+            <MapPin className="size-3.5 text-slate-500 dark:text-slate-400" />
             <span>
               {getOrderTableLabel(order)
                 ? `Salón · ${getOrderTableLabel(order)}`
@@ -233,7 +233,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                 </div>
               )}
               {item.observacion && (
-                <p className="text-xs text-amber-600 dark:text-amber-300 italic pt-0.5 break-words [overflow-wrap:anywhere]">
+                <p className="text-xs text-amber-700 dark:text-amber-300 italic pt-0.5 break-words [overflow-wrap:anywhere]">
                   Nota: {item.observacion}
                 </p>
               )}
@@ -276,15 +276,15 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
             <div className="mt-2.5 rounded-xl border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/50 dark:bg-indigo-950/30 p-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5">
-                  <FileText className="size-3.5 text-indigo-500" />
+                  <FileText className="size-3.5 text-indigo-600 dark:text-indigo-400" />
                   Soporte de Transferencia
                 </span>
                 {order.receiptUrl ? (
-                  <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                  <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-700 dark:text-emerald-400">
                     ✓ Comprobante cargado
                   </span>
                 ) : (
-                  <span className="inline-flex items-center rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-bold text-amber-600 dark:text-amber-400">
+                  <span className="inline-flex items-center rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-bold text-amber-700 dark:text-amber-400">
                     ! Sin soporte adjunto
                   </span>
                 )}
@@ -350,7 +350,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                       className="hidden"
                     />
                   </label>
-                  <p className="mt-1 text-xs text-slate-400 text-center">
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 text-center">
                     Carga el comprobante post-venta para el registro contable
                   </p>
                 </div>
@@ -403,7 +403,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                     onUpdateStatus(order.id, "delivered")
                     onClose()
                   }}
-                  className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-600 hover:bg-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-300 cursor-pointer"
+                  className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-700 hover:bg-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-300 cursor-pointer"
                 >
                   🟢 Entregado
                 </button>
@@ -426,7 +426,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                   onDeleteOrder(order)
                   onClose()
                 }}
-                className="flex items-center gap-1 rounded-lg border border-rose-500/40 bg-rose-500/10 px-2.5 py-1 text-xs font-bold text-rose-500 hover:bg-rose-500/20 ml-auto cursor-pointer"
+                className="flex items-center gap-1 rounded-lg border border-rose-500/40 bg-rose-500/10 px-2.5 py-1 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 ml-auto cursor-pointer"
                 title="Eliminar orden definitivamente"
               >
                 <Trash2 className="size-3" />
@@ -444,14 +444,14 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
             <div className="flex items-center justify-between pb-3 border-b border-slate-800 text-white">
               <div>
                 <h3 className="font-bold text-sm">Comprobante de Transferencia</h3>
-                <p className="text-xs text-slate-400">Orden #{order.orderNumber} • {order.customer.nombre}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Orden #{order.orderNumber} • {order.customer.nombre}</p>
               </div>
               <div className="flex items-center gap-2">
                 <a
                   href={order.receiptUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+                  className="rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
                   title="Abrir imagen en nueva pestaña"
                 >
                   <ExternalLink className="size-4" />
@@ -460,7 +460,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                   type="button"
                   onClick={() => setIsReceiptModalOpen(false)}
                   aria-label="Cerrar comprobante"
-                  className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer"
+                  className="rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer"
                 >
                   <X className="size-5" />
                 </button>

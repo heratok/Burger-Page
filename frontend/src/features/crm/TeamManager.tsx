@@ -256,7 +256,7 @@ export const TeamManager: React.FC = () => {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-            <Users className="size-6 text-indigo-500" />
+            <Users className="size-6 text-indigo-600 dark:text-indigo-400" />
             <span>Gestión de Equipo</span>
           </h2>
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
@@ -281,7 +281,7 @@ export const TeamManager: React.FC = () => {
         }`}
       >
         <div className="relative flex-1 w-full max-w-md">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500 dark:text-slate-400" />
           <input
             type="text"
             maxLength={60}
@@ -323,7 +323,7 @@ export const TeamManager: React.FC = () => {
             isDark ? "border-slate-800 bg-[#0E1322]" : "border-slate-200 bg-white"
           }`}
         >
-          <Users className="size-12 mx-auto mb-3 text-slate-400 opacity-50" />
+          <Users className="size-12 mx-auto mb-3 text-slate-500 dark:text-slate-400 opacity-50" />
           <h3 className="text-sm font-bold text-slate-900 dark:text-white">
             {searchTerm ? "No se encontraron miembros coincidentes" : "No hay miembros registrados"}
           </h3>
@@ -405,11 +405,11 @@ export const TeamManager: React.FC = () => {
                       {/* Role */}
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">
-                          <Shield className="size-3.5 text-indigo-500" />
+                          <Shield className="size-3.5 text-indigo-600 dark:text-indigo-400" />
                           <span
                             className={`rounded-md px-2 py-0.5 text-xs font-semibold ${
                               isAdmin
-                                ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                                ? "bg-amber-500/10 text-amber-700 dark:text-amber-400"
                                 : "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
                             }`}
                           >
@@ -421,7 +421,7 @@ export const TeamManager: React.FC = () => {
                       {/* Status */}
                       <td className="px-4 py-3">
                         {isActive ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-700 dark:text-emerald-400">
                             <UserCheck className="size-3" />
                             <span>Activo</span>
                           </span>
@@ -436,12 +436,12 @@ export const TeamManager: React.FC = () => {
                       {/* Security */}
                       <td className="px-4 py-3">
                         {user.mustChangePassword ? (
-                          <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
                             <AlertCircle className="size-3" />
                             <span>Requiere cambio</span>
                           </span>
                         ) : (
-                          <span className="text-xs text-slate-400">Clave configurada</span>
+                          <span className="text-xs text-slate-500 dark:text-slate-400">Clave configurada</span>
                         )}
                       </td>
 
@@ -459,7 +459,7 @@ export const TeamManager: React.FC = () => {
                             type="button"
                             onClick={() => setResetTargetUser(user)}
                             aria-label={`Restablecer clave ${user.username}`}
-                            className="rounded-lg p-1.5 text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-950/40 dark:hover:text-indigo-300 transition-colors"
+                            className="rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-950/40 dark:hover:text-indigo-300 transition-colors"
                             title="Restablecer contraseña"
                           >
                             <KeyRound className="size-4" />
@@ -468,7 +468,7 @@ export const TeamManager: React.FC = () => {
                             type="button"
                             onClick={() => openEditModal(user)}
                             aria-label={`Editar usuario ${user.username}`}
-                            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors"
+                            className="rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors"
                             title="Editar usuario"
                           >
                             <Pencil className="size-4" />
@@ -478,7 +478,7 @@ export const TeamManager: React.FC = () => {
                               type="button"
                               onClick={() => setUserToDelete(user)}
                               aria-label={`Eliminar usuario ${user.username}`}
-                              className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400 transition-colors"
+                              className="rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400 transition-colors"
                               title="Eliminar usuario"
                             >
                               <Trash2 className="size-4" />
@@ -505,13 +505,13 @@ export const TeamManager: React.FC = () => {
           >
             <div className="flex items-center justify-between border-b pb-3 mb-4 border-slate-100 dark:border-slate-800">
               <h3 className="text-base font-bold flex items-center gap-2">
-                <Users className="size-4 text-indigo-500" />
+                <Users className="size-4 text-indigo-600 dark:text-indigo-400" />
                 <span>Registrar Nuevo Miembro</span>
               </h3>
               <button
                 type="button"
                 onClick={() => setIsCreateOpen(false)}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 <X className="size-4" />
               </button>
@@ -552,7 +552,7 @@ export const TeamManager: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setCreatePassword(generateRandomPassword())}
-                    className="text-xs font-semibold text-indigo-500 hover:underline flex items-center gap-1"
+                    className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
                   >
                     <Sparkles className="size-3" />
                     <span>Regenerar</span>
@@ -653,13 +653,13 @@ export const TeamManager: React.FC = () => {
           >
             <div className="flex items-center justify-between border-b pb-3 mb-4 border-slate-100 dark:border-slate-800">
               <h3 className="text-base font-bold flex items-center gap-2">
-                <Pencil className="size-4 text-indigo-500" />
+                <Pencil className="size-4 text-indigo-600 dark:text-indigo-400" />
                 <span>Editar Miembro del Equipo</span>
               </h3>
               <button
                 type="button"
                 onClick={() => setEditingUser(null)}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 <X className="size-4" />
               </button>
@@ -785,14 +785,14 @@ export const TeamManager: React.FC = () => {
             }`}
           >
             <div className="flex items-center justify-between border-b pb-3 mb-4 border-slate-100 dark:border-slate-800">
-              <h3 className="text-base font-bold flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+              <h3 className="text-base font-bold flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
                 <Check className="size-5" />
                 <span>Credenciales de Acceso</span>
               </h3>
               <button
                 type="button"
                 onClick={() => setCredentialsReveal(null)}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 <X className="size-4" />
               </button>
@@ -808,14 +808,14 @@ export const TeamManager: React.FC = () => {
               }`}
             >
               <div>
-                <span className="text-xs uppercase font-bold text-slate-400">Usuario</span>
+                <span className="text-xs uppercase font-bold text-slate-500 dark:text-slate-400">Usuario</span>
                 <div className="font-bold text-slate-900 dark:text-white select-all">
                   {credentialsReveal.username}
                 </div>
               </div>
               <div>
-                <span className="text-xs uppercase font-bold text-slate-400">Clave Temporal</span>
-                <div className="font-bold text-emerald-600 dark:text-emerald-400 select-all">
+                <span className="text-xs uppercase font-bold text-slate-500 dark:text-slate-400">Clave Temporal</span>
+                <div className="font-bold text-emerald-700 dark:text-emerald-400 select-all">
                   {credentialsReveal.password}
                 </div>
               </div>
@@ -855,14 +855,14 @@ export const TeamManager: React.FC = () => {
             }`}
           >
             <div className="flex items-center justify-between border-b pb-3 mb-4 border-slate-100 dark:border-slate-800">
-              <h3 className="text-base font-bold flex items-center gap-2 text-indigo-500">
+              <h3 className="text-base font-bold flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
                 <KeyRound className="size-5" />
                 <span>Nueva Clave Temporal</span>
               </h3>
               <button
                 type="button"
                 onClick={() => setNewTempPasswordModal(null)}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 <X className="size-4" />
               </button>
@@ -877,7 +877,7 @@ export const TeamManager: React.FC = () => {
               className={`rounded-xl border p-4 text-center font-mono text-sm font-bold select-all ${
                 isDark
                   ? "border-slate-800 bg-slate-900 text-emerald-400"
-                  : "border-slate-200 bg-slate-50 text-emerald-600"
+                  : "border-slate-200 bg-slate-50 text-emerald-700 dark:text-emerald-400"
               }`}
             >
               {newTempPasswordModal.temporaryPassword}

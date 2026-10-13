@@ -274,7 +274,7 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200 cursor-pointer"
+              className="rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200 cursor-pointer"
               aria-label="Cerrar modal"
             >
               <X className="size-5" />
@@ -342,7 +342,7 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
                   Slug / URL Pública *
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-500 dark:text-slate-400">
                     /
                   </span>
                   <input
@@ -359,13 +359,13 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
                   />
                 </div>
                 {slugError && (
-                  <p className="text-xs font-semibold text-rose-500 mt-1">{slugError}</p>
+                  <p className="text-xs font-semibold text-rose-600 dark:text-rose-400 mt-1">{slugError}</p>
                 )}
 
                 {/* Slug change warning */}
                 {isSlugChanged && (
                   <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300 mt-2">
-                    <AlertTriangle className="size-4 shrink-0 mt-0.5 text-amber-500" />
+                    <AlertTriangle className="size-4 shrink-0 mt-0.5 text-amber-700 dark:text-amber-400" />
                     <span>
                       ⚠️ <strong>Atención:</strong> Al cambiar el slug se actualizará la URL de la tienda pública. Los enlaces anteriores y códigos QR dejarán de funcionar.
                     </span>
@@ -457,7 +457,7 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
             <div className="border-t pt-5 border-slate-100 dark:border-slate-800 space-y-3">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2">
-                  <Users className="size-4 text-indigo-500" />
+                  <Users className="size-4 text-indigo-600 dark:text-indigo-400" />
                   <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
                     Administradores de este restaurante
                   </h4>
@@ -477,7 +477,7 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
               </div>
 
               {isLoadingAdmins ? (
-                <div className="flex items-center justify-center p-6 text-xs text-slate-400 gap-2">
+                <div className="flex items-center justify-center p-6 text-xs text-slate-500 dark:text-slate-400 gap-2">
                   <Loader2 className="size-4 animate-spin" />
                   <span>Cargando administradores...</span>
                 </div>
@@ -497,7 +497,7 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
                         className="flex items-center justify-between p-3 gap-3 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors"
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="flex size-7 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-500 shrink-0">
+                          <div className="flex size-7 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 shrink-0">
                             <Shield className="size-3.5" />
                           </div>
                           <div className="min-w-0">
@@ -519,8 +519,8 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
                           <span
                             className={`rounded-full px-2 py-0.5 text-xs font-bold ${
                               admin.isActive !== false
-                                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                                : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+                                ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
+                                : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
                             }`}
                           >
                             {admin.isActive !== false ? "Activo" : "Inactivo"}
@@ -557,7 +557,7 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
                             }
                             className={`rounded-lg p-1.5 transition-colors cursor-pointer ${
                               admin.isActive !== false
-                                ? "text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+                                ? "text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
                                 : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
                             } disabled:opacity-50 disabled:cursor-not-allowed`}
                           >

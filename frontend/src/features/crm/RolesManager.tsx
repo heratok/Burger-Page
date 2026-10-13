@@ -241,7 +241,7 @@ export const RolesManager: React.FC = () => {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-            <ShieldCheck className="size-6 text-indigo-500" />
+            <ShieldCheck className="size-6 text-indigo-600 dark:text-indigo-400" />
             <span>Roles y Permisos</span>
           </h2>
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
@@ -263,7 +263,7 @@ export const RolesManager: React.FC = () => {
               }`}
               title="Crea los roles estándar que faltan en tu restaurante"
             >
-              <Sparkles className="size-3.5 text-amber-500" />
+              <Sparkles className="size-3.5 text-amber-700 dark:text-amber-400" />
               <span>
                 {isCreatingRecommended ? "Creando..." : `Crear roles faltantes (${missingTemplates.length})`}
               </span>
@@ -301,7 +301,7 @@ export const RolesManager: React.FC = () => {
         }`}
       >
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500 dark:text-slate-400" />
           <input
             type="text"
             maxLength={60}
@@ -335,7 +335,7 @@ export const RolesManager: React.FC = () => {
             isDark ? "border-slate-800 bg-[#0E1322]" : "border-slate-200 bg-white"
           }`}
         >
-          <ShieldCheck className="size-12 mx-auto mb-3 text-slate-400 opacity-50" />
+          <ShieldCheck className="size-12 mx-auto mb-3 text-slate-500 dark:text-slate-400 opacity-50" />
           <h3 className="text-sm font-bold text-slate-900 dark:text-white">
             {searchTerm ? "No se encontraron roles coincidentes" : "No hay roles configurados"}
           </h3>
@@ -387,7 +387,7 @@ export const RolesManager: React.FC = () => {
                           {role.name}
                         </h3>
                         {role.isSystem && (
-                          <span className="rounded-md bg-indigo-500/10 px-2 py-0.5 text-xs font-bold text-indigo-500">
+                          <span className="rounded-md bg-indigo-500/10 px-2 py-0.5 text-xs font-bold text-indigo-600 dark:text-indigo-400">
                             Sistema
                           </span>
                         )}
@@ -402,7 +402,7 @@ export const RolesManager: React.FC = () => {
                         type="button"
                         onClick={() => openEditModal(role)}
                         aria-label={`Editar rol ${role.name}`}
-                        className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors"
+                        className="rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors"
                         title="Editar rol"
                       >
                         <Pencil className="size-4" />
@@ -415,7 +415,7 @@ export const RolesManager: React.FC = () => {
                             setRoleToDelete(role)
                           }}
                           aria-label={`Eliminar rol ${role.name}`}
-                          className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400 transition-colors"
+                          className="rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400 transition-colors"
                           title="Eliminar rol"
                         >
                           <Trash2 className="size-4" />
@@ -445,7 +445,7 @@ export const RolesManager: React.FC = () => {
                                 <span className="font-semibold text-slate-900 dark:text-white">
                                   {line.area}
                                 </span>
-                                <span className="text-slate-400 dark:text-slate-500">: </span>
+                                <span className="text-slate-500 dark:text-slate-400">: </span>
                                 <span>{line.actions}</span>
                               </span>
                               {line.sensitive && (
@@ -453,7 +453,7 @@ export const RolesManager: React.FC = () => {
                                   role="img"
                                   aria-label="Permiso sensible"
                                   title="Permiso sensible"
-                                  className="mt-0.5 shrink-0 text-amber-500"
+                                  className="mt-0.5 shrink-0 text-amber-700 dark:text-amber-400"
                                 >
                                   <AlertTriangle className="size-3.5" aria-hidden="true" />
                                 </span>
@@ -466,7 +466,7 @@ export const RolesManager: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-400">
+                <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
                   Actualizado: {new Date(role.updatedAt).toLocaleDateString("es-CO")}
                 </div>
               </div>
@@ -486,13 +486,13 @@ export const RolesManager: React.FC = () => {
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b pb-4 border-slate-100 dark:border-slate-800 shrink-0">
               <h3 className="text-base font-black flex items-center gap-2 text-slate-900 dark:text-white">
-                <ShieldCheck className="size-5 text-indigo-500" />
+                <ShieldCheck className="size-5 text-indigo-600 dark:text-indigo-400" />
                 <span>{editingRole ? "Editar Rol" : "Crear Nuevo Rol"}</span>
               </h3>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                className="rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
                 <X className="size-5" />
               </button>
@@ -551,7 +551,7 @@ export const RolesManager: React.FC = () => {
               {/* Presets Toolbar */}
               <div>
                 <label className="block font-bold mb-1.5 text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                  <Sparkles className="size-3.5 text-amber-500" />
+                  <Sparkles className="size-3.5 text-amber-700 dark:text-amber-400" />
                   <span>Plantillas Rápidas (Presets)</span>
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -625,7 +625,7 @@ export const RolesManager: React.FC = () => {
                       >
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-2 font-bold text-slate-900 dark:text-slate-100">
-                            <GroupIcon className="size-4 text-indigo-500" />
+                            <GroupIcon className="size-4 text-indigo-600 dark:text-indigo-400" />
                             <span>{group.category}</span>
                           </div>
                           <button
@@ -650,7 +650,7 @@ export const RolesManager: React.FC = () => {
                                       ? "bg-indigo-500/10 text-white"
                                       : "bg-indigo-50 text-slate-900"
                                     : isDark
-                                    ? "hover:bg-slate-800/50 text-slate-300"
+                                    ? "hover:bg-slate-800/50 text-slate-500 dark:text-slate-400"
                                     : "hover:bg-slate-100 text-slate-700"
                                 }`}
                               >

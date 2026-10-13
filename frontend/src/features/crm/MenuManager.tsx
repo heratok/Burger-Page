@@ -95,10 +95,10 @@ export const MenuManager: React.FC = () => {
       <div className={`flex flex-col gap-4 rounded-2xl border p-4 shadow-xs sm:flex-row sm:items-center sm:justify-between ${isDark ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-white"}`}>
         <div className="flex items-center gap-2">
           <div className="flex rounded-xl bg-slate-100 p-1 dark:bg-slate-800 border dark:border-slate-700">
-            <button type="button" onClick={() => setActiveSubTab("dishes")} className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${activeSubTab === "dishes" ? "bg-white text-indigo-700 shadow-xs dark:bg-slate-700 dark:text-white" : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"}`}>
+            <button type="button" onClick={() => setActiveSubTab("dishes")} className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${activeSubTab === "dishes" ? "bg-white text-indigo-700 shadow-xs dark:bg-slate-700 dark:text-white" : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"}`}>
               Platos & Productos ({products.length})
             </button>
-            <button type="button" onClick={() => setActiveSubTab("additions")} className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${activeSubTab === "additions" ? "bg-white text-indigo-700 shadow-xs dark:bg-slate-700 dark:text-white" : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"}`}>
+            <button type="button" onClick={() => setActiveSubTab("additions")} className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${activeSubTab === "additions" ? "bg-white text-indigo-700 shadow-xs dark:bg-slate-700 dark:text-white" : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"}`}>
               Adicionales & Extras ({additions.length})
             </button>
           </div>

@@ -192,7 +192,7 @@ export const OrderTicketModal: React.FC<OrderTicketModalProps> = ({
             type="button"
             onClick={onClose}
             aria-label="Cerrar vista previa"
-            className="min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200 cursor-pointer transition-colors"
+            className="min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200 cursor-pointer transition-colors"
           >
             <X className="size-5" />
           </button>
@@ -243,14 +243,14 @@ export const OrderTicketModal: React.FC<OrderTicketModalProps> = ({
                 onClick={() => setMode("kitchen")}
                 className={`flex items-center gap-2.5 rounded-lg p-2 md:p-2.5 text-left transition-all cursor-pointer min-h-[44px] ${
                   mode === "kitchen"
-                    ? "bg-white text-orange-600 shadow-xs dark:bg-slate-900 dark:text-orange-400 ring-1 ring-black/5 dark:ring-white/10"
+                    ? "bg-white text-orange-700 shadow-xs dark:bg-slate-900 dark:text-orange-400 ring-1 ring-black/5 dark:ring-white/10"
                     : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-slate-800"
                 }`}
               >
                 <div
                   className={`p-1.5 rounded-lg shrink-0 ${
                     mode === "kitchen"
-                      ? "bg-orange-50 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400"
+                      ? "bg-orange-50 dark:bg-orange-950/60 text-orange-700 dark:text-orange-400"
                       : "bg-slate-200/60 dark:bg-slate-700/60 text-slate-500"
                   }`}
                 >
@@ -493,7 +493,7 @@ export const OrderTicketModal: React.FC<OrderTicketModalProps> = ({
                 <div className="text-center space-y-0.5 pt-1 text-slate-500 text-xs">
                   <div className="font-bold text-slate-800">¡GRACIAS POR SU COMPRA!</div>
                   <div>Burger-Page CRM &middot; Facturación</div>
-                  <div className="text-xs pt-1 text-slate-400 tracking-wider">
+                  <div className="text-xs pt-1 text-slate-500 dark:text-slate-400 tracking-wider">
                     - - - - - - CORTE DE TICKET - - - - - -
                   </div>
                 </div>
@@ -584,7 +584,7 @@ export const OrderTicketModal: React.FC<OrderTicketModalProps> = ({
                   <div className="text-center font-black text-xs uppercase tracking-widest pt-2">
                     --- ENVIADO A COCINA ---
                   </div>
-                  <div className="text-center text-xs pt-1 text-slate-400 tracking-wider">
+                  <div className="text-center text-xs pt-1 text-slate-500 dark:text-slate-400 tracking-wider">
                     - - - - - - CORTE DE TICKET - - - - - -
                   </div>
                 </div>

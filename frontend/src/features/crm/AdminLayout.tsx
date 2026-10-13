@@ -274,7 +274,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                   <span className="font-bold tracking-tight text-xs truncate text-slate-900 dark:text-white">
                     SaaS Platform
                   </span>
-                  <span className="text-xs font-bold tracking-wider uppercase text-amber-500">
+                  <span className="text-xs font-bold tracking-wider uppercase text-amber-700 dark:text-amber-400">
                     Super Admin
                   </span>
                 </div>
@@ -300,7 +300,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                   <span className="font-bold tracking-tight text-xs truncate text-slate-900 dark:text-white">
                     {storeConfig.name}
                   </span>
-                  <span className="text-xs font-bold tracking-wider uppercase text-amber-500">
+                  <span className="text-xs font-bold tracking-wider uppercase text-amber-700 dark:text-amber-400">
                     👑 Super Admin
                   </span>
                 </div>
@@ -317,7 +317,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 ) : (
                   <div
                     title={isSidebarCollapsed ? `${storeConfig.name} (Panel de Control)` : undefined}
-                    className="flex size-9 items-center justify-center rounded-xl bg-orange-500 text-white font-bold text-xs shrink-0 shadow-xs"
+                    className="flex size-9 items-center justify-center rounded-xl bg-orange-700 text-white font-bold text-xs shrink-0 shadow-xs"
                   >
                     <Store className="size-4.5" />
                   </div>
@@ -326,7 +326,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                   <span className="font-bold tracking-tight text-xs truncate text-slate-900 dark:text-white">
                     {storeConfig.name}
                   </span>
-                  <span className="text-xs font-semibold tracking-wider uppercase text-orange-600 dark:text-orange-400">
+                  <span className="text-xs font-semibold tracking-wider uppercase text-orange-700 dark:text-orange-400">
                     Panel de Control
                   </span>
                 </div>
@@ -338,7 +338,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
               type="button"
               aria-label="Cerrar menú"
               onClick={() => setIsMobileSidebarOpen(false)}
-              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 lg:hidden cursor-pointer"
+              className="rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 lg:hidden cursor-pointer"
             >
               <X className="size-5" />
             </button>
@@ -356,7 +356,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
           {/* Navigation Links */}
           <nav className="flex-1 min-h-0 space-y-1 p-2 overflow-y-auto overscroll-contain" aria-label="Menú Lateral">
-            <div className={`px-2 pb-1 text-xs font-bold uppercase tracking-wider text-slate-400 ${isSidebarCollapsed ? "lg:hidden" : ""}`}>
+            <div className={`px-2 pb-1 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 ${isSidebarCollapsed ? "lg:hidden" : ""}`}>
               {isSuperGlobalMode ? "Módulos SaaS Global" : "Módulos del Restaurante"}
             </div>
 
@@ -407,8 +407,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                           : ""
                       } ${
                         isActive
-                          ? "bg-white/20 text-white"
-                          : "bg-indigo-500/15 text-indigo-500 dark:bg-indigo-500/20 dark:text-indigo-300"
+                          ? "bg-white/10 text-white"
+                          : "bg-indigo-500/15 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300"
                       }`}
                     >
                       {item.badge}
@@ -470,7 +470,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 title="Cambiar Contraseña"
                 aria-label="Cambiar Contraseña"
                 onClick={() => setIsChangePasswordOpen(true)}
-                className={`flex items-center justify-center rounded-xl text-slate-400 hover:bg-indigo-500/10 hover:text-indigo-500 dark:hover:text-indigo-400 active:scale-95 transition-all cursor-pointer ${
+                className={`flex items-center justify-center rounded-xl text-slate-500 dark:text-slate-400 hover:bg-indigo-500/10 hover:text-indigo-500 dark:hover:text-indigo-400 active:scale-95 transition-all cursor-pointer ${
                   isSidebarCollapsed
                     ? "lg:size-10 lg:mx-auto w-full gap-1.5 py-1.5 text-xs font-semibold"
                     : "w-full gap-1.5 py-1.5 text-xs font-semibold"
@@ -491,7 +491,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                   logout()
                   navigateTo("/")
                 }}
-                className={`flex items-center justify-center rounded-xl text-slate-400 hover:bg-rose-500/10 hover:text-rose-500 active:scale-95 transition-all cursor-pointer ${
+                className={`flex items-center justify-center rounded-xl text-slate-500 dark:text-slate-400 hover:bg-rose-500/10 hover:text-rose-500 active:scale-95 transition-all cursor-pointer ${
                   isSidebarCollapsed
                     ? "lg:size-10 lg:mx-auto w-full gap-1.5 py-1.5 text-xs font-semibold"
                     : "w-full gap-1.5 py-1.5 text-xs font-semibold"
@@ -551,7 +551,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 <span className="font-semibold text-slate-500 dark:text-slate-400 hidden sm:inline truncate">
                   {isSuperGlobalMode ? "SaaS Platform" : storeConfig.name}
                 </span>
-                <ChevronRight className="size-3.5 text-slate-400 hidden sm:inline shrink-0" />
+                <ChevronRight className="size-3.5 text-slate-500 dark:text-slate-400 hidden sm:inline shrink-0" />
                 <span className="font-bold text-slate-900 dark:text-white truncate">
                   {activeItem.label}
                 </span>
@@ -564,7 +564,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
               {isSuperTenantMode && (
                 <div className="flex items-center gap-2">
                   <div className="hidden xl:flex items-center gap-2 rounded-xl bg-amber-500/10 border border-amber-500/30 px-3 py-1.5 text-xs text-amber-700 dark:text-amber-300 font-semibold shadow-xs">
-                    <Crown className="size-3.5 text-amber-500 shrink-0" />
+                    <Crown className="size-3.5 text-amber-700 dark:text-amber-400 shrink-0" />
                     <span>Modo Super Admin: <strong>{activeRestaurant.config.name}</strong></span>
                   </div>
 
@@ -598,9 +598,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                   }`}
                 >
                   {soundEnabled ? (
-                    <Volume2 className="size-4 text-emerald-500" />
+                    <Volume2 className="size-4 text-emerald-700 dark:text-emerald-400" />
                   ) : (
-                    <VolumeX className="size-4 text-slate-400" />
+                    <VolumeX className="size-4 text-slate-500 dark:text-slate-400" />
                   )}
                 </button>
               )}

@@ -152,7 +152,7 @@ export const DashboardOverview: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <span className="inline-flex size-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-xs font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+              <span className="text-xs font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
                 Sistema en Línea &middot; Recibiendo Pedidos
               </span>
             </div>
@@ -225,7 +225,7 @@ export const DashboardOverview: React.FC = () => {
           isDark={isDark}
           badge={
             metrics.activeOrdersCount > 0 ? (
-              <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-bold text-amber-600 dark:text-amber-400">
+              <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-bold text-amber-700 dark:text-amber-400">
                 {metrics.activeOrdersCount} activos
               </span>
             ) : undefined
@@ -299,10 +299,10 @@ export const DashboardOverview: React.FC = () => {
           {/* Bar Chart Visualizer */}
           {!chartDays.hasData ? (
             <div className="mt-6 flex h-48 flex-col items-center justify-center gap-2 pt-4 text-center">
-              <div className="flex size-10 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400">
+              <div className="flex size-10 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
                 <TrendingUp className="size-5" />
               </div>
-              <p className="text-xs font-medium text-slate-400">
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
                 No hay ventas registradas en los últimos 7 días.
               </p>
             </div>
@@ -349,12 +349,12 @@ export const DashboardOverview: React.FC = () => {
                 Ranking por volumen de pedidos
               </p>
             </div>
-            <Flame className="size-4 text-orange-500" />
+            <Flame className="size-4 text-orange-700 dark:text-orange-400" />
           </div>
 
           <div className="mt-4 space-y-4">
             {topProducts.length === 0 ? (
-              <p className="text-xs text-slate-400 text-center py-6">
+              <p className="text-xs text-slate-500 dark:text-slate-400 text-center py-6">
                 No hay ventas registradas aún.
               </p>
             ) : (
@@ -442,7 +442,7 @@ export const DashboardOverview: React.FC = () => {
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {orders.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-8 text-center text-slate-400">
+                  <td colSpan={7} className="py-8 text-center text-slate-500 dark:text-slate-400">
                     No hay pedidos registrados en el sistema.
                   </td>
                 </tr>
@@ -480,7 +480,7 @@ export const DashboardOverview: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => updateOrderStatus(ord.id, "cooking")}
-                          className="rounded-lg bg-orange-500/10 px-2.5 py-1 text-xs font-semibold text-orange-600 hover:bg-orange-500/20 dark:bg-orange-500/20 dark:text-orange-300"
+                          className="rounded-lg bg-orange-500/10 px-2.5 py-1 text-xs font-semibold text-orange-700 hover:bg-orange-500/20 dark:bg-orange-500/20 dark:text-orange-300"
                         >
                           Pasar a Cocina
                         </button>
@@ -498,7 +498,7 @@ export const DashboardOverview: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => updateOrderStatus(ord.id, "delivered")}
-                          className="rounded-lg bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-600 hover:bg-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-300"
+                          className="rounded-lg bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-300"
                         >
                           Completar Entrega
                         </button>

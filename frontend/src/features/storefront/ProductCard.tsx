@@ -102,7 +102,7 @@ const ProductCard = memo(function ProductCard({ product, onSelectProduct, closed
                 </span>
               )}
               {product.isNew && (
-                <span className="flex items-center gap-0.5 rounded bg-emerald-500 px-1.5 py-0.5 text-xs font-bold text-white shadow-xs">
+                <span className="flex items-center gap-0.5 rounded bg-emerald-700 px-1.5 py-0.5 text-xs font-bold text-white shadow-xs">
                   <Sparkles className="size-2.5" />
                   Nuevo
                 </span>

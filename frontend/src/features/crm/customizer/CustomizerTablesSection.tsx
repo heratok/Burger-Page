@@ -168,7 +168,7 @@ export const CustomizerTablesSection: React.FC<CustomizerTablesSectionProps> = (
       }`}
     >
       <div className="flex items-center gap-2">
-        <LayoutGrid className="size-4 text-sky-500" />
+        <LayoutGrid className="size-4 text-sky-700 dark:text-sky-400" />
         <h3 className="font-bold text-sm text-slate-900 dark:text-white">Mesas del salón</h3>
       </div>
       <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -292,7 +292,7 @@ export const CustomizerTablesSection: React.FC<CustomizerTablesSectionProps> = (
 
       {groups.map((group) => (
         <section key={group.zone} className="space-y-1.5">
-          <h4 className="text-xs font-bold uppercase tracking-wide text-slate-400">{group.zone}</h4>
+          <h4 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">{group.zone}</h4>
           <ul className="space-y-1.5">
             {group.tables.map((table, index) => (
               <li
@@ -368,7 +368,7 @@ export const CustomizerTablesSection: React.FC<CustomizerTablesSectionProps> = (
                         onClick={() => void commitEdit(table)}
                         className={iconButtonClass}
                       >
-                        <Check className="size-3.5 text-emerald-600" />
+                        <Check className="size-3.5 text-emerald-700 dark:text-emerald-400" />
                       </button>
                       <button
                         type="button"
@@ -383,7 +383,7 @@ export const CustomizerTablesSection: React.FC<CustomizerTablesSectionProps> = (
                     <span className="block break-words text-sm font-semibold text-slate-900 dark:text-white">
                       {table.name}
                       {!table.isActive && (
-                        <span className="ml-2 text-xs font-bold uppercase text-slate-400">Inactiva</span>
+                        <span className="ml-2 text-xs font-bold uppercase text-slate-500 dark:text-slate-400">Inactiva</span>
                       )}
                     </span>
                   )}

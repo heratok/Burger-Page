@@ -67,7 +67,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             <Lock className="size-7 text-white" />
           </div>
           <h2 className="text-lg font-bold text-white">Panel de Administración</h2>
-          <p className="mt-1 text-xs text-slate-400">
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
             Ingresa tus credenciales para acceder
           </p>
         </div>
@@ -106,14 +106,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 hover:text-slate-200"
             >
               {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
             </button>
           </div>
 
           {error && (
-            <div className="rounded-lg border border-red-800/50 bg-red-500/10 px-3 py-2 text-xs text-red-400">
+            <div className="rounded-lg border border-red-800/50 bg-red-500/10 px-3 py-2 text-xs text-red-600 dark:text-red-400">
               {error}
             </div>
           )}
@@ -121,7 +121,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           <button
             type="submit"
             disabled={isLoading || !username.trim() || !password.trim()}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-orange-500 hover:bg-orange-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-orange-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-orange-700 hover:bg-orange-800 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-orange-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? (
               <>
@@ -136,7 +136,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="w-full rounded-xl px-4 py-2 text-xs font-medium text-slate-400 transition-colors hover:text-slate-200"
+            className="w-full rounded-xl px-4 py-2 text-xs font-medium text-slate-500 dark:text-slate-400 transition-colors hover:text-slate-200"
           >
             Cancelar
           </button>

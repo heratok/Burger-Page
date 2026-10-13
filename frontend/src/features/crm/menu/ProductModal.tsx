@@ -189,7 +189,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
             type="button"
             onClick={onClose}
             aria-label="Cerrar modal"
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 cursor-pointer shrink-0 transition-colors"
+            className="rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 cursor-pointer shrink-0 transition-colors"
           >
             <X className="size-5" />
           </button>
@@ -309,7 +309,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                 {/* Viewport Header with Fit Controls */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                   <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 min-w-0">
-                    <Sparkles className="size-3.5 text-emerald-500 shrink-0" />
+                    <Sparkles className="size-3.5 text-emerald-700 dark:text-emerald-400 shrink-0" />
                     <span className="truncate">Previsualización del Plato</span>
                   </div>
                   <div className="grid grid-cols-2 sm:flex items-center rounded-lg bg-slate-200/80 p-0.5 dark:bg-slate-900/90 border border-slate-200/50 dark:border-slate-700/60 text-xs font-semibold w-full sm:w-auto shrink-0">
@@ -354,12 +354,12 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                     <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-slate-950/80 backdrop-blur-md p-6 text-center transition-all animate-in fade-in duration-200">
                       <div className="relative flex items-center justify-center">
                         {imageUploadStatus === "success" ? (
-                          <div className="flex size-14 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-400 ring-2 ring-emerald-500/40 shadow-lg shadow-emerald-500/20 animate-in zoom-in-75 duration-200">
+                          <div className="flex size-14 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 ring-2 ring-emerald-500/40 shadow-lg shadow-emerald-500/20 animate-in zoom-in-75 duration-200">
                             <CheckCircle2 className="size-7" />
                           </div>
                         ) : (
                           <div className="relative flex size-14 items-center justify-center rounded-2xl bg-slate-900 border border-slate-700 text-orange-400 shadow-xl">
-                            <Loader2 className="size-7 animate-spin text-orange-400" />
+                            <Loader2 className="size-7 animate-spin text-orange-700 dark:text-orange-400" />
                           </div>
                         )}
                       </div>
@@ -372,7 +372,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                             ? "Optimizando foto..."
                             : "Guardando foto..."}
                         </span>
-                        <p className="text-xs text-slate-300">
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
                           {imageUploadStatus === "success"
                             ? "Formato WebP de alta calidad aplicado"
                             : imageUploadStatus === "optimizing"
@@ -391,7 +391,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                   <div className="absolute bottom-2.5 left-2.5 max-w-[calc(100%-1.25rem)] flex items-center gap-1.5 rounded-lg bg-black/80 px-2.5 py-1 text-xs font-bold text-white backdrop-blur-md border border-white/10 truncate">
                     {imageUploadStatus === "success" ? (
                       <>
-                        <CheckCircle2 className="size-3 text-emerald-400 shrink-0" />
+                        <CheckCircle2 className="size-3 text-emerald-700 dark:text-emerald-400 shrink-0" />
                         <span className="truncate">Foto guardada</span>
                       </>
                     ) : isImageBusy ? (
@@ -419,9 +419,9 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                     className="gap-1.5 text-xs font-semibold cursor-pointer dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                   >
                     {isImageBusy ? (
-                      <Loader2 className="size-3.5 text-indigo-500 animate-spin" />
+                      <Loader2 className="size-3.5 text-indigo-600 dark:text-indigo-400 animate-spin" />
                     ) : (
-                      <Upload className="size-3.5 text-indigo-500 dark:text-indigo-400" />
+                      <Upload className="size-3.5 text-indigo-600 dark:text-indigo-400" />
                     )}
                     <span>{isImageBusy ? "Procesando..." : "Cambiar Foto"}</span>
                   </Button>
@@ -429,7 +429,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                     type="button"
                     disabled={isImageBusy}
                     onClick={() => setIsConfirmingRemovePhoto(true)}
-                    className="text-xs text-rose-500 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300 font-semibold px-2 py-1 cursor-pointer disabled:opacity-40 transition-colors"
+                    className="text-xs text-rose-600 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300 font-semibold px-2 py-1 cursor-pointer disabled:opacity-40 transition-colors"
                   >
                     Quitar Foto
                   </button>
@@ -441,12 +441,12 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                   <div className="relative h-48 sm:h-52 w-full overflow-hidden rounded-xl bg-slate-950 border border-slate-700/80 flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-200">
                     <div className="relative mb-3 flex items-center justify-center">
                       {imageUploadStatus === "success" ? (
-                        <div className="flex size-14 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-400 ring-2 ring-emerald-500/40 shadow-lg shadow-emerald-500/20 animate-in zoom-in-75 duration-200">
+                        <div className="flex size-14 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 ring-2 ring-emerald-500/40 shadow-lg shadow-emerald-500/20 animate-in zoom-in-75 duration-200">
                           <CheckCircle2 className="size-7" />
                         </div>
                       ) : (
                         <div className="relative flex size-14 items-center justify-center rounded-2xl bg-slate-900 border border-slate-700 text-orange-400 shadow-xl">
-                          <Loader2 className="size-7 animate-spin text-orange-400" />
+                          <Loader2 className="size-7 animate-spin text-orange-700 dark:text-orange-400" />
                         </div>
                       )}
                     </div>
@@ -459,7 +459,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                           ? "Optimizando foto..."
                           : "Guardando foto..."}
                       </span>
-                      <p className="text-xs text-slate-300">
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
                         {imageUploadStatus === "success"
                           ? "Formato WebP de alta calidad aplicado"
                           : imageUploadStatus === "optimizing"
@@ -488,7 +488,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                         <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
                           Subir foto desde tu teléfono o PC
                         </span>
-                        <p className="text-xs text-slate-400 dark:text-slate-400 mt-0.5">
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                           Se comprime automáticamente a formato WebP ultraliviano
                         </p>
                       </div>
@@ -496,7 +496,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
 
                     <div className="flex items-center gap-2 pt-1">
                       <div className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
-                      <span className="text-xs uppercase font-bold text-slate-400">o ingresa una URL</span>
+                      <span className="text-xs uppercase font-bold text-slate-500 dark:text-slate-400">o ingresa una URL</span>
                       <div className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
                     </div>
 

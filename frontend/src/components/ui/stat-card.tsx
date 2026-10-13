@@ -24,19 +24,19 @@ const variantStyles: Record<StatCardVariant, { iconBg: string; text: string }> =
     text: "text-slate-600 dark:text-slate-400",
   },
   warning: {
-    iconBg: "bg-amber-500/10 text-amber-500 dark:bg-amber-500/20 dark:text-amber-400",
-    text: "text-amber-600 dark:text-amber-400",
+    iconBg: "bg-amber-500/10 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400",
+    text: "text-amber-700 dark:text-amber-400",
   },
   success: {
-    iconBg: "bg-emerald-500/10 text-emerald-500 dark:bg-emerald-500/20 dark:text-emerald-400",
-    text: "text-emerald-600 dark:text-emerald-400",
+    iconBg: "bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400",
+    text: "text-emerald-700 dark:text-emerald-400",
   },
   info: {
-    iconBg: "bg-violet-500/10 text-violet-500 dark:bg-violet-500/20 dark:text-violet-400",
+    iconBg: "bg-violet-500/10 text-violet-600 dark:bg-violet-500/20 dark:text-violet-400",
     text: "text-violet-600 dark:text-violet-400",
   },
   indigo: {
-    iconBg: "bg-indigo-500/10 text-indigo-500 dark:bg-indigo-500/20 dark:text-indigo-400",
+    iconBg: "bg-indigo-500/10 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400",
     text: "text-indigo-600 dark:text-indigo-400",
   },
 }

@@ -109,7 +109,7 @@ export const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({
           <div
             className={`flex size-12 items-center justify-center rounded-2xl ${
               activeForced
-                ? "bg-amber-500/10 text-amber-500 border border-amber-500/25"
+                ? "bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/25"
                 : "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/25"
             }`}
           >
@@ -132,7 +132,7 @@ export const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({
             type="button"
             onClick={handleClose}
             aria-label="Cerrar"
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+            className="rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
           >
             <X className="size-5" />
           </button>
@@ -178,7 +178,7 @@ export const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({
               onClick={() => setShowCurrent(!showCurrent)}
               tabIndex={-1}
               aria-label={showCurrent ? "Ocultar contraseña actual" : "Mostrar contraseña actual"}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
             >
               {showCurrent ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
             </button>
@@ -215,19 +215,19 @@ export const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({
               onClick={() => setShowNew(!showNew)}
               tabIndex={-1}
               aria-label={showNew ? "Ocultar nueva contraseña" : "Mostrar nueva contraseña"}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
             >
               {showNew ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
             </button>
           </div>
           {isTooShort && (
-            <p className="mt-1 text-xs font-semibold text-rose-500 flex items-center gap-1">
+            <p className="mt-1 text-xs font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-1">
               <AlertCircle className="size-3" />
               <span>La nueva contraseña debe tener al menos 8 caracteres.</span>
             </p>
           )}
           {isSameAsCurrent && (
-            <p className="mt-1 text-xs font-semibold text-rose-500 flex items-center gap-1">
+            <p className="mt-1 text-xs font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-1">
               <AlertCircle className="size-3" />
               <span>La nueva contraseña debe ser diferente a la actual.</span>
             </p>
@@ -264,13 +264,13 @@ export const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({
               onClick={() => setShowConfirm(!showConfirm)}
               tabIndex={-1}
               aria-label={showConfirm ? "Ocultar confirmación" : "Mostrar confirmación"}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
             >
               {showConfirm ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
             </button>
           </div>
           {isMismatch && (
-            <p className="mt-1 text-xs font-semibold text-rose-500 flex items-center gap-1">
+            <p className="mt-1 text-xs font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-1">
               <AlertCircle className="size-3" />
               <span>Las contraseñas no coinciden.</span>
             </p>

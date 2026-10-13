@@ -74,9 +74,9 @@ export const WeeklyScheduleEditor: React.FC<WeeklyScheduleEditorProps> = ({ sche
       <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 p-3 text-xs space-y-2.5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-200 font-semibold">
-            <Sparkles className="size-3.5 text-amber-500 shrink-0" aria-hidden="true" />
+            <Sparkles className="size-3.5 text-amber-700 dark:text-amber-400 shrink-0" aria-hidden="true" />
             <span>Configuración masiva / Horario general</span>
-            <span className="text-xs font-normal text-slate-400 dark:text-slate-500">
+            <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
               ({openDaysCount}/7 abiertos)
             </span>
           </div>
@@ -86,7 +86,7 @@ export const WeeklyScheduleEditor: React.FC<WeeklyScheduleEditorProps> = ({ sche
               aria-live="polite"
               className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20"
             >
-              <Check className="size-3 text-emerald-500 shrink-0" aria-hidden="true" />
+              <Check className="size-3 text-emerald-700 dark:text-emerald-400 shrink-0" aria-hidden="true" />
               <span>{feedback}</span>
             </div>
           )}
@@ -105,7 +105,7 @@ export const WeeklyScheduleEditor: React.FC<WeeklyScheduleEditorProps> = ({ sche
             />
             <span
               aria-hidden="true"
-              className="text-slate-400 dark:text-slate-500 text-xs font-semibold select-none"
+              className="text-slate-500 dark:text-slate-400 text-xs font-semibold select-none"
             >
               -
             </span>
@@ -121,7 +121,7 @@ export const WeeklyScheduleEditor: React.FC<WeeklyScheduleEditorProps> = ({ sche
                 title="Cierra al día siguiente (cruza la medianoche)"
                 className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 shrink-0 select-none whitespace-nowrap"
               >
-                <Moon className="size-3 text-amber-500 shrink-0" aria-hidden="true" />
+                <Moon className="size-3 text-amber-700 dark:text-amber-400 shrink-0" aria-hidden="true" />
                 <span>+1 día</span>
               </span>
             )}
@@ -129,7 +129,7 @@ export const WeeklyScheduleEditor: React.FC<WeeklyScheduleEditorProps> = ({ sche
 
           {/* Action buttons */}
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-xs text-slate-400 dark:text-slate-500 mr-0.5 hidden sm:inline">Aplicar a:</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400 mr-0.5 hidden sm:inline">Aplicar a:</span>
             <button
               type="button"
               onClick={() => {
@@ -204,7 +204,7 @@ export const WeeklyScheduleEditor: React.FC<WeeklyScheduleEditorProps> = ({ sche
                   <div className="flex items-center gap-2.5">
                     <span
                       className={`font-semibold text-xs w-[62px] truncate ${
-                        isOpen ? "text-slate-800 dark:text-slate-100" : "text-slate-400 dark:text-slate-500"
+                        isOpen ? "text-slate-800 dark:text-slate-100" : "text-slate-500 dark:text-slate-400"
                       }`}
                     >
                       {name}
@@ -248,7 +248,7 @@ export const WeeklyScheduleEditor: React.FC<WeeklyScheduleEditorProps> = ({ sche
                     is24h ? (
                       <div className="flex items-center h-7">
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 select-none">
-                          <Sparkles className="size-3 text-emerald-500 shrink-0" aria-hidden="true" />
+                          <Sparkles className="size-3 text-emerald-700 dark:text-emerald-400 shrink-0" aria-hidden="true" />
                           <span>Abierto 24 horas</span>
                         </span>
                       </div>
@@ -263,7 +263,7 @@ export const WeeklyScheduleEditor: React.FC<WeeklyScheduleEditorProps> = ({ sche
                         />
                         <span
                           aria-hidden="true"
-                          className="text-slate-400 dark:text-slate-500 text-xs font-semibold select-none"
+                          className="text-slate-500 dark:text-slate-400 text-xs font-semibold select-none"
                         >
                           -
                         </span>
@@ -279,14 +279,14 @@ export const WeeklyScheduleEditor: React.FC<WeeklyScheduleEditorProps> = ({ sche
                             title="Cierra al día siguiente (cruza la medianoche)"
                             className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 shrink-0 select-none whitespace-nowrap"
                           >
-                            <Moon className="size-3 text-amber-500 shrink-0" aria-hidden="true" />
+                            <Moon className="size-3 text-amber-700 dark:text-amber-400 shrink-0" aria-hidden="true" />
                             <span>+1 día</span>
                           </span>
                         )}
                       </div>
                     )
                   ) : (
-                    <div className="flex items-center h-7 text-xs text-slate-400 dark:text-slate-500 italic select-none">
+                    <div className="flex items-center h-7 text-xs text-slate-500 dark:text-slate-400 italic select-none">
                       Cerrado
                     </div>
                   )}
@@ -306,11 +306,11 @@ export const WeeklyScheduleEditor: React.FC<WeeklyScheduleEditorProps> = ({ sche
 
       {/* Helper Note */}
       <div className="flex items-start gap-1.5 text-xs text-slate-500 dark:text-slate-400 px-1 pt-1">
-        <Clock className="size-3.5 text-slate-400 shrink-0 mt-0.5" aria-hidden="true" />
+        <Clock className="size-3.5 text-slate-500 dark:text-slate-400 shrink-0 mt-0.5" aria-hidden="true" />
         <p>
           Si el cierre es menor que la apertura, el horario cruza la medianoche (por ejemplo 20:00 - 02:00, indicado con{" "}
           <span className="inline-flex items-center gap-0.5 font-medium text-slate-700 dark:text-slate-300">
-            <Moon className="size-3 text-amber-500 inline" aria-hidden="true" />
+            <Moon className="size-3 text-amber-700 dark:text-amber-400 inline" aria-hidden="true" />
             <span>+1 día</span>
           </span>
           ). Cuando apertura y cierre son iguales, el local opera 24 horas.

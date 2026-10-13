@@ -205,45 +205,45 @@ export const UsersDirectory: React.FC = () => {
         <div className={`rounded-2xl border p-4 shadow-xs ${isDark ? "border-slate-800 bg-[#0E1322]" : "border-slate-200 bg-white"}`}>
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Total Usuarios</span>
-            <div className="flex size-8 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-500">
+            <div className="flex size-8 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
               <Users className="size-4" />
             </div>
           </div>
           <div className="mt-2 text-2xl font-black text-slate-900 dark:text-white">{users.length}</div>
-          <span className="text-xs text-slate-400">Credenciales registradas</span>
+          <span className="text-xs text-slate-500 dark:text-slate-400">Credenciales registradas</span>
         </div>
 
         <div className={`rounded-2xl border p-4 shadow-xs ${isDark ? "border-slate-800 bg-[#0E1322]" : "border-slate-200 bg-white"}`}>
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Super Admins</span>
-            <div className="flex size-8 items-center justify-center rounded-lg bg-amber-500/10 text-amber-500">
+            <div className="flex size-8 items-center justify-center rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-400">
               <Shield className="size-4" />
             </div>
           </div>
-          <div className="mt-2 text-2xl font-black text-amber-500">
+          <div className="mt-2 text-2xl font-black text-amber-700 dark:text-amber-400">
             {users.filter((u) => u.role === "super_admin" || u.role === "super").length}
           </div>
-          <span className="text-xs text-slate-400">Acceso total a la plataforma</span>
+          <span className="text-xs text-slate-500 dark:text-slate-400">Acceso total a la plataforma</span>
         </div>
 
         <div className={`rounded-2xl border p-4 shadow-xs ${isDark ? "border-slate-800 bg-[#0E1322]" : "border-slate-200 bg-white"}`}>
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Admins Locales</span>
-            <div className="flex size-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500">
+            <div className="flex size-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
               <Store className="size-4" />
             </div>
           </div>
-          <div className="mt-2 text-2xl font-black text-emerald-500">
+          <div className="mt-2 text-2xl font-black text-emerald-700 dark:text-emerald-400">
             {users.filter((u) => u.role === "restaurant_admin" || u.role === "restaurant").length}
           </div>
-          <span className="text-xs text-slate-400">Encargados de locales</span>
+          <span className="text-xs text-slate-500 dark:text-slate-400">Encargados de locales</span>
         </div>
       </div>
 
       {/* Filter Toolbar */}
       <div className={`flex flex-col gap-3 rounded-2xl border p-3.5 sm:flex-row sm:items-center sm:justify-between ${isDark ? "border-slate-800 bg-[#0E1322]" : "border-slate-200 bg-white"}`}>
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500 dark:text-slate-400" />
           <input
             type="text"
             maxLength={50}
@@ -265,7 +265,7 @@ export const UsersDirectory: React.FC = () => {
           <div className="w-full sm:w-48">
             <Select
               size="md"
-              leftIcon={<Filter className="size-3.5 text-slate-400" />}
+              leftIcon={<Filter className="size-3.5 text-slate-500 dark:text-slate-400" />}
               value={roleFilter}
               onChange={(e) => {
                 setRoleFilter(e.target.value)
@@ -282,7 +282,7 @@ export const UsersDirectory: React.FC = () => {
           <div className="w-full sm:w-60">
             <Select
               size="md"
-              leftIcon={<Store className="size-3.5 text-slate-400" />}
+              leftIcon={<Store className="size-3.5 text-slate-500 dark:text-slate-400" />}
               value={restaurantFilter}
               onChange={(e) => {
                 setRestaurantFilter(e.target.value)
@@ -320,7 +320,7 @@ export const UsersDirectory: React.FC = () => {
               <tbody className={`divide-y ${isDark ? "divide-slate-800/60 text-slate-200" : "divide-slate-100 text-slate-700"}`}>
                 {paginatedUsers.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-12 text-center text-slate-400">
+                    <td colSpan={6} className="py-12 text-center text-slate-500 dark:text-slate-400">
                       <Users className="size-8 mx-auto mb-2 opacity-30" />
                       <p className="font-semibold">No se encontraron usuarios coincidentes</p>
                     </td>
@@ -353,8 +353,8 @@ export const UsersDirectory: React.FC = () => {
                           <div className="flex items-center gap-2.5">
                             <div className={`flex size-8 items-center justify-center rounded-xl font-bold text-xs ${
                               isSuperAdmin
-                                ? "bg-amber-500/15 text-amber-500 border border-amber-500/30"
-                                : "bg-indigo-500/15 text-indigo-500 border border-indigo-500/30"
+                                ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30"
+                                : "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30"
                             }`}>
                               {u.username.charAt(0).toUpperCase()}
                             </div>
@@ -362,19 +362,19 @@ export const UsersDirectory: React.FC = () => {
                               <div className="flex items-center gap-1.5">
                                 <span className="font-bold text-slate-900 dark:text-white">{u.username}</span>
                                 {isSelf && (
-                                  <span className="rounded-md bg-indigo-500/10 px-1.5 py-0.5 text-xs font-bold text-indigo-500 border border-indigo-500/20">
+                                  <span className="rounded-md bg-indigo-500/10 px-1.5 py-0.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
                                     Tú
                                   </span>
                                 )}
                               </div>
-                              <div className="text-xs text-slate-400 font-mono">ID: {u.id}</div>
+                              <div className="text-xs text-slate-500 dark:text-slate-400 font-mono">ID: {u.id}</div>
                             </div>
                           </div>
                         </td>
 
                         <td className="px-4 py-3">
                           {isSuperAdmin ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2.5 py-0.5 text-xs font-bold text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2.5 py-0.5 text-xs font-bold text-amber-800 dark:text-amber-400 border border-amber-500/30">
                               <Shield className="size-3" />
                               <span>Super Admin</span>
                             </span>
@@ -388,32 +388,32 @@ export const UsersDirectory: React.FC = () => {
 
                         <td className="px-4 py-3">
                           {isSuperAdmin ? (
-                            <span className="text-slate-400 italic">Acceso Global (Todos los locales)</span>
+                            <span className="text-slate-500 dark:text-slate-400 italic">Acceso Global (Todos los locales)</span>
                           ) : assignedName ? (
                             <div className="flex items-center gap-1.5 font-semibold text-slate-900 dark:text-slate-100">
-                              <Store className="size-3.5 text-indigo-500" />
+                              <Store className="size-3.5 text-indigo-600 dark:text-indigo-400" />
                               <span>{assignedName}</span>
                             </div>
                           ) : (
-                            <span className="text-rose-400 font-semibold">Sin local vinculado</span>
+                            <span className="text-rose-600 dark:text-rose-400 font-semibold">Sin local vinculado</span>
                           )}
                         </td>
 
-                        <td className="px-4 py-3 text-slate-400">
+                        <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
                           <div className="flex items-center gap-1.5">
-                            <Calendar className="size-3 text-slate-400" />
+                            <Calendar className="size-3 text-slate-500 dark:text-slate-400" />
                             <span>{formatDate(u.createdAt)}</span>
                           </div>
                         </td>
 
                         <td className="px-4 py-3">
                           {isActive ? (
-                            <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-500">
+                            <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 dark:text-emerald-400">
                               <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
                               <span>Activo</span>
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-400 dark:text-slate-500">
+                            <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-500 dark:text-slate-400">
                               <span className="size-1.5 rounded-full bg-slate-400" />
                               <span>Inactivo</span>
                             </span>
@@ -455,7 +455,7 @@ export const UsersDirectory: React.FC = () => {
                               className={`h-7 px-2.5 text-xs font-semibold rounded-lg ${
                                 isActive
                                   ? "text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
-                                  : "border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10"
+                                  : "border-emerald-500/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/10"
                               }`}
                             >
                               <Power className="size-3 mr-1" />

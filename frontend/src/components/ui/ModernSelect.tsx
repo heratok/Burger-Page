@@ -48,7 +48,7 @@ export const FlagThumbnail: React.FC<{ code: string; alt?: string }> = ({ code, 
     return (
       <span
         aria-hidden="true"
-        className="w-5 h-3.5 rounded-xs bg-slate-100 dark:bg-slate-800 text-xs font-mono font-bold flex items-center justify-center shrink-0 text-slate-500 border border-slate-200 dark:border-slate-700 select-none"
+        className="w-5 h-3.5 rounded-xs bg-slate-100 dark:bg-slate-800 text-xs font-mono font-bold flex items-center justify-center shrink-0 text-slate-600 border border-slate-200 dark:border-slate-700 select-none"
       >
         {code ? code.toUpperCase().slice(0, 2) : "??"}
       </span>
@@ -350,7 +350,7 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
           {leftIcon && (
             <span
               data-testid={id ? `${id}-left-icon` : undefined}
-              className="shrink-0 text-slate-400 dark:text-slate-500 flex items-center justify-center pointer-events-none"
+              className="shrink-0 text-slate-500 dark:text-slate-400 flex items-center justify-center pointer-events-none"
             >
               {leftIcon}
             </span>
@@ -373,20 +373,20 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
           ) : value ? (
             <span className="truncate font-medium text-slate-900 dark:text-white">{value}</span>
           ) : (
-            <span className="text-slate-400 dark:text-slate-500 truncate">{placeholder}</span>
+            <span className="text-slate-500 dark:text-slate-400 truncate">{placeholder}</span>
           )}
         </div>
 
         <ChevronDown
           className={cn(
-            "size-4 shrink-0 text-slate-400 transition-transform duration-200",
+            "size-4 shrink-0 text-slate-500 dark:text-slate-400 transition-transform duration-200",
             isOpen && "rotate-180"
           )}
         />
       </button>
 
       {error && (
-        <span className="text-xs font-medium text-rose-500 dark:text-rose-400 block mt-1">
+        <span className="text-xs font-medium text-rose-600 dark:text-rose-400 block mt-1">
           {error}
         </span>
       )}
@@ -405,7 +405,7 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
           {/* Search Filter Input */}
           {isSearchable && (
             <div className="relative px-1 pt-0.5 pb-1">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-3.5 text-slate-400 dark:text-slate-500 pointer-events-none" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-3.5 text-slate-500 dark:text-slate-400 pointer-events-none" />
               <input
                 ref={searchInputRef}
                 type="text"
@@ -416,7 +416,7 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
                 }}
                 placeholder={searchPlaceholder}
                 aria-label={searchPlaceholder}
-                className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-xs text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
               />
             </div>
           )}
@@ -424,7 +424,7 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
           {/* Options List */}
           <div className="max-h-60 overflow-y-auto p-0.5 space-y-0.5 overscroll-contain">
             {filteredOptions.length === 0 ? (
-              <div className="py-4 text-center text-xs text-slate-400 dark:text-slate-500">
+              <div className="py-4 text-center text-xs text-slate-500 dark:text-slate-400">
                 No se encontraron opciones
               </div>
             ) : (
@@ -438,7 +438,7 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
                 return (
                   <React.Fragment key={opt.value}>
                     {showGroupHeader && (
-                      <div className="px-2.5 pt-2 pb-1 text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 select-none">
+                      <div className="px-2.5 pt-2 pb-1 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 select-none">
                         {opt.group}
                       </div>
                     )}
@@ -468,7 +468,7 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
                         <div className="min-w-0 truncate">
                           <span className="truncate block font-medium">{opt.label}</span>
                           {opt.sublabel && (
-                            <span className="text-xs text-slate-400 dark:text-slate-500 block truncate">
+                            <span className="text-xs text-slate-500 dark:text-slate-400 block truncate">
                               {opt.sublabel}
                             </span>
                           )}

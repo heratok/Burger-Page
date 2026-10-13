@@ -235,7 +235,7 @@ export const ReportsManager: React.FC = () => {
         <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
           <div>
             <div className="flex items-center gap-2">
-              <span className="flex size-7 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-500 dark:bg-indigo-500/20 dark:text-indigo-400">
+              <span className="flex size-7 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400">
                 <FileSpreadsheet className="size-4" />
               </span>
               <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-2xl">
@@ -325,7 +325,7 @@ export const ReportsManager: React.FC = () => {
             </div>
 
             {datePreset === "custom" && (
-              <span className="rounded-lg bg-amber-500/15 px-2 py-1 text-xs font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
+              <span className="rounded-lg bg-amber-500/15 px-2 py-1 text-xs font-bold text-amber-700 dark:text-amber-400 flex items-center gap-1">
                 <Calendar className="size-3" />
                 Rango libre
               </span>
@@ -349,7 +349,7 @@ export const ReportsManager: React.FC = () => {
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Ventas Totales
             </span>
-            <span className="flex size-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400">
+            <span className="flex size-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400">
               <DollarSign className="size-4" />
             </span>
           </div>
@@ -359,7 +359,7 @@ export const ReportsManager: React.FC = () => {
             </span>
           </div>
           <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-            <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+            <span className="font-semibold text-emerald-700 dark:text-emerald-400">
               {closeout.deliveredOrdersCount} entregados
             </span>
             <span>&middot; {closeout.totalOrdersCount} pedidos tot.</span>
@@ -376,12 +376,12 @@ export const ReportsManager: React.FC = () => {
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Efectivo en Caja
             </span>
-            <span className="flex size-8 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400">
+            <span className="flex size-8 items-center justify-center rounded-lg bg-amber-500/10 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400">
               <Banknote className="size-4" />
             </span>
           </div>
           <div className="mt-3">
-            <span className="text-2xl font-black tracking-tight text-amber-600 dark:text-amber-400">
+            <span className="text-2xl font-black tracking-tight text-amber-700 dark:text-amber-400">
               {formatCurrency(closeout.cashTotal)}
             </span>
           </div>
@@ -434,7 +434,7 @@ export const ReportsManager: React.FC = () => {
             </span>
           </div>
           <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-            <Truck className="size-3 text-slate-400" />
+            <Truck className="size-3 text-slate-500 dark:text-slate-400" />
             <span>Domicilios: {formatCurrency(closeout.deliveryFeesTotal)}</span>
           </div>
         </div>
@@ -452,7 +452,7 @@ export const ReportsManager: React.FC = () => {
         >
           <div className="flex items-center justify-between border-b pb-4 border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-2">
-              <Receipt className="size-4 text-indigo-500" />
+              <Receipt className="size-4 text-indigo-600 dark:text-indigo-400" />
               <h2 className="text-sm font-bold text-slate-900 dark:text-white">
                 Cuadre de Caja (Z-Report)
               </h2>
@@ -478,7 +478,7 @@ export const ReportsManager: React.FC = () => {
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 {presetLabel}
               </p>
-              <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                 Generado: {new Date().toLocaleString("es-CO")}
               </p>
             </div>
@@ -493,15 +493,15 @@ export const ReportsManager: React.FC = () => {
               </div>
               <div className="flex items-center justify-between pt-2">
                 <span className="flex items-center gap-1">
-                  <Banknote className="size-3 text-amber-500" /> Efectivo Recibido
+                  <Banknote className="size-3 text-amber-700 dark:text-amber-400" /> Efectivo Recibido
                 </span>
-                <span className="font-bold text-amber-600 dark:text-amber-400">
+                <span className="font-bold text-amber-700 dark:text-amber-400">
                   {formatCurrency(closeout.cashTotal)}
                 </span>
               </div>
               <div className="flex items-center justify-between pt-2">
                 <span className="flex items-center gap-1">
-                  <CreditCard className="size-3 text-blue-500" /> Transferencias
+                  <CreditCard className="size-3 text-blue-600 dark:text-blue-400" /> Transferencias
                 </span>
                 <span className="font-bold text-blue-600 dark:text-blue-400">
                   {formatCurrency(closeout.transferTotal)}
@@ -515,12 +515,12 @@ export const ReportsManager: React.FC = () => {
               </div>
               <div className="flex items-center justify-between pt-2">
                 <span>Órdenes Entregadas</span>
-                <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                <span className="font-bold text-emerald-700 dark:text-emerald-400">
                   {closeout.deliveredOrdersCount}
                 </span>
               </div>
               {closeout.cancelledOrdersCount > 0 && (
-                <div className="flex items-center justify-between pt-2 text-rose-500">
+                <div className="flex items-center justify-between pt-2 text-rose-600 dark:text-rose-400">
                   <span>Órdenes Canceladas</span>
                   <span className="font-bold">{closeout.cancelledOrdersCount}</span>
                 </div>
@@ -529,7 +529,7 @@ export const ReportsManager: React.FC = () => {
 
             {/* Signatures for physical cashier closing */}
             <div className="mt-6 pt-4 border-t border-dashed border-slate-200 dark:border-slate-700 space-y-4">
-              <div className="flex justify-between gap-4 text-xs text-slate-400">
+              <div className="flex justify-between gap-4 text-xs text-slate-500 dark:text-slate-400">
                 <div className="w-1/2 border-t border-slate-300 pt-1 text-center dark:border-slate-700">
                   Firma Cajero
                 </div>
@@ -545,7 +545,7 @@ export const ReportsManager: React.FC = () => {
               variant="outline"
               className="w-full gap-1.5 text-xs font-semibold cursor-pointer mt-2"
             >
-              <Download className="size-3.5 text-indigo-500" />
+              <Download className="size-3.5 text-indigo-600 dark:text-indigo-400" />
               <span>Exportar Resumen Z a CSV</span>
             </Button>
           </div>
@@ -572,7 +572,7 @@ export const ReportsManager: React.FC = () => {
               <div className="flex flex-col justify-between rounded-xl border p-4 transition-all hover:border-indigo-500/40 border-slate-200 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-800/40">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="flex size-7 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500">
+                    <span className="flex size-7 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
                       <DollarSign className="size-4" />
                     </span>
                     <h3 className="text-xs font-bold text-slate-900 dark:text-white">
@@ -602,7 +602,7 @@ export const ReportsManager: React.FC = () => {
               <div className="flex flex-col justify-between rounded-xl border p-4 transition-all hover:border-indigo-500/40 border-slate-200 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-800/40">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="flex size-7 items-center justify-center rounded-lg bg-purple-500/10 text-purple-500">
+                    <span className="flex size-7 items-center justify-center rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400">
                       <Users className="size-4" />
                     </span>
                     <h3 className="text-xs font-bold text-slate-900 dark:text-white">
@@ -632,7 +632,7 @@ export const ReportsManager: React.FC = () => {
               <div className="flex flex-col justify-between rounded-xl border p-4 transition-all hover:border-indigo-500/40 border-slate-200 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-800/40">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="flex size-7 items-center justify-center rounded-lg bg-amber-500/10 text-amber-500">
+                    <span className="flex size-7 items-center justify-center rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-400">
                       <Boxes className="size-4" />
                     </span>
                     <h3 className="text-xs font-bold text-slate-900 dark:text-white">
@@ -642,7 +642,7 @@ export const ReportsManager: React.FC = () => {
                   <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
                     Stock actual, alertas de nivel mínimo, costos unitarios, valuación y proveedores.
                   </p>
-                  <div className="mt-2 text-xs font-bold text-amber-600 dark:text-amber-400">
+                  <div className="mt-2 text-xs font-bold text-amber-700 dark:text-amber-400">
                     {inventory.length} insumos catalogados
                   </div>
                 </div>
@@ -651,7 +651,7 @@ export const ReportsManager: React.FC = () => {
                   type="button"
                   size="sm"
                   onClick={handleExportInventory}
-                  className="mt-4 w-full gap-1.5 rounded-lg bg-amber-600 font-semibold text-white hover:bg-amber-700 cursor-pointer"
+                  className="mt-4 w-full gap-1.5 rounded-lg bg-amber-700 font-semibold text-white hover:bg-amber-800 cursor-pointer"
                 >
                   <Download className="size-3.5" />
                   <span>Descargar Inventario CSV</span>
@@ -662,7 +662,7 @@ export const ReportsManager: React.FC = () => {
               <div className="flex flex-col justify-between rounded-xl border p-4 transition-all hover:border-indigo-500/40 border-slate-200 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-800/40">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="flex size-7 items-center justify-center rounded-lg bg-blue-500/10 text-blue-500">
+                    <span className="flex size-7 items-center justify-center rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
                       <Receipt className="size-4" />
                     </span>
                     <h3 className="text-xs font-bold text-slate-900 dark:text-white">
@@ -712,7 +712,7 @@ export const ReportsManager: React.FC = () => {
                 <TableSkeleton isDark={isDark} rows={5} columns={6} />
               </div>
             ) : filteredOrders.length === 0 ? (
-              <div className="py-8 text-center text-xs text-slate-400">
+              <div className="py-8 text-center text-xs text-slate-500 dark:text-slate-400">
                 No hay transacciones registradas en este rango de fechas.
               </div>
             ) : (
@@ -759,7 +759,7 @@ export const ReportsManager: React.FC = () => {
                           <span
                             className={`rounded-md px-2 py-0.5 text-xs font-bold ${
                               ord.metodo === "Efectivo"
-                                ? "bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400"
+                                ? "bg-amber-500/10 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400"
                                 : "bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400"
                             }`}
                           >

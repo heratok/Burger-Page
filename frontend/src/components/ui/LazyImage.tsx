@@ -54,7 +54,7 @@ export const LazyImage: React.FC<LazyImageProps> = ({
       <div
         data-testid="lazy-image-fallback"
         className={cn(
-          "flex size-full items-center justify-center bg-slate-100 text-slate-400 dark:bg-slate-800/80 dark:text-slate-500",
+          "flex size-full items-center justify-center bg-slate-100 text-slate-600 dark:bg-slate-800/80 dark:text-slate-400",
           containerClassName,
           fallbackClassName
         )}

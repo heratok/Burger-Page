@@ -167,12 +167,12 @@ export const CustomizerBrandingSection: React.FC<CustomizerBrandingSectionProps>
                 >
                   {uploadingField === "logoUrl" ? (
                     <>
-                      <Loader2 className="size-3.5 animate-spin text-indigo-500" />
+                      <Loader2 className="size-3.5 animate-spin text-indigo-600 dark:text-indigo-400" />
                       <span>Subiendo logo...</span>
                     </>
                   ) : (
                     <>
-                      <Upload className="size-3.5 text-indigo-500" />
+                      <Upload className="size-3.5 text-indigo-600 dark:text-indigo-400" />
                       <span>Subir Logo</span>
                     </>
                   )}
@@ -184,14 +184,14 @@ export const CustomizerBrandingSection: React.FC<CustomizerBrandingSectionProps>
                     size="sm"
                     disabled={uploadingField !== null}
                     onClick={() => setConfirmDeleteMedia("logo")}
-                    className="px-2.5 text-rose-500 hover:bg-rose-500/10 hover:text-rose-600 border-rose-500/30 cursor-pointer"
+                    className="px-2.5 text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 hover:text-rose-600 border-rose-500/30 cursor-pointer"
                     title="Eliminar logo"
                   >
                     <Trash2 className="size-3.5" />
                   </Button>
                 )}
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Subí tu logo en formato PNG, JPG o WebP desde tu teléfono o PC.
               </p>
             </div>
@@ -248,17 +248,17 @@ export const CustomizerBrandingSection: React.FC<CustomizerBrandingSectionProps>
           >
             {uploadingField === "bannerUrl" ? (
               <>
-                <Loader2 className="size-3.5 animate-spin text-indigo-500" />
+                <Loader2 className="size-3.5 animate-spin text-indigo-600 dark:text-indigo-400" />
                 <span>Subiendo portada...</span>
               </>
             ) : (
               <>
-                <Upload className="size-3.5 text-indigo-500" />
+                <Upload className="size-3.5 text-indigo-600 dark:text-indigo-400" />
                 <span>Subir Foto de Portada</span>
               </>
             )}
           </Button>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             Imagen panorámica que aparece en la parte superior de la carta digital.
           </p>
 

@@ -95,14 +95,14 @@ export const LoyaltyBadge: React.FC<LoyaltyBadgeProps> = ({ tier, className }) =
       bg: "bg-gradient-to-r from-purple-500/20 to-pink-500/20",
       text: "text-purple-700 dark:text-purple-300 font-bold",
       border: "border-purple-500/40 shadow-xs",
-      icon: <Crown className="size-3.5 text-amber-500" />,
+      icon: <Crown className="size-3.5 text-amber-700 dark:text-amber-400" />,
     },
     gold: {
       label: "Oro",
       bg: "bg-amber-500/15",
       text: "text-amber-700 dark:text-amber-300",
       border: "border-amber-500/30",
-      icon: <Award className="size-3.5 text-amber-600 dark:text-amber-400" />,
+      icon: <Award className="size-3.5 text-amber-700 dark:text-amber-400" />,
     },
     silver: {
       label: "Plata",

@@ -130,7 +130,7 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
       {/* Main Section Header */}
       <div className="flex items-center justify-between border-b pb-3 border-slate-100 dark:border-slate-800">
         <div className="flex items-center gap-2">
-          <DollarSign className="size-4 text-amber-500" />
+          <DollarSign className="size-4 text-amber-700 dark:text-amber-400" />
           <div>
             <h3 className="font-bold text-sm text-slate-900 dark:text-white">
               Información Comercial, Pedidos & Domicilios
@@ -164,7 +164,7 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
           className="w-full flex items-center justify-between p-3 sm:p-3.5 text-left transition-colors hover:bg-slate-100/60 dark:hover:bg-slate-800/40 rounded-xl cursor-pointer"
         >
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="flex items-center justify-center size-7 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0">
+            <div className="flex items-center justify-center size-7 rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-400 shrink-0">
               <ShoppingBag className="size-3.5" />
             </div>
             <div className="min-w-0">
@@ -181,7 +181,7 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
               {draft.whatsappNumber ? `+${draft.whatsappNumber}` : "Sin WhatsApp"}
             </span>
             <ChevronDown
-              className={`size-4 text-slate-400 transition-transform duration-200 ${
+              className={`size-4 text-slate-500 dark:text-slate-400 transition-transform duration-200 ${
                 openSections.channels ? "rotate-180" : ""
               }`}
             />
@@ -200,11 +200,11 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
                   Número de WhatsApp para Pedidos
                 </label>
                 {draft.whatsappNumber ? (
-                  <span className="font-mono text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                  <span className="font-mono text-xs font-semibold text-emerald-700 dark:text-emerald-400">
                     +{draft.whatsappNumber}
                   </span>
                 ) : (
-                  <span className="text-xs text-slate-400 dark:text-slate-500">
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
                     Sin WhatsApp configurado
                   </span>
                 )}
@@ -253,7 +253,7 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
                   Costo Domicilio Base
                 </label>
                 <div className="flex rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800 focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500 overflow-hidden bg-white">
-                  <span className="inline-flex items-center px-3 text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 border-r border-slate-200 dark:border-slate-700 font-mono font-semibold text-xs select-none">
+                  <span className="inline-flex items-center px-3 text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 border-r border-slate-200 dark:border-slate-700 font-mono font-semibold text-xs select-none">
                     {draft.currencySymbol || "$"}
                   </span>
                   <input
@@ -275,7 +275,7 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
                   Pedido Mínimo de Compra
                 </label>
                 <div className="flex rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800 focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500 overflow-hidden bg-white">
-                  <span className="inline-flex items-center px-3 text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 border-r border-slate-200 dark:border-slate-700 font-mono font-semibold text-xs select-none">
+                  <span className="inline-flex items-center px-3 text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 border-r border-slate-200 dark:border-slate-700 font-mono font-semibold text-xs select-none">
                     {draft.currencySymbol || "$"}
                   </span>
                   <input
@@ -410,7 +410,7 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
               {openDaysCount}/7 abiertos
             </span>
             <ChevronDown
-              className={`size-4 text-slate-400 transition-transform duration-200 ${
+              className={`size-4 text-slate-500 dark:text-slate-400 transition-transform duration-200 ${
                 openSections.schedule ? "rotate-180" : ""
               }`}
             />
@@ -436,7 +436,7 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
             {/* Zona Horaria Oficial */}
             <div className="rounded-xl border border-slate-200/90 dark:border-slate-800 bg-white/70 dark:bg-slate-900/60 p-3.5 space-y-2">
               <div className="flex items-center gap-2">
-                <Globe className="size-4 text-emerald-500 shrink-0" />
+                <Globe className="size-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
                 <label
                   htmlFor="business-timezone"
                   className="font-bold text-sm text-slate-900 dark:text-white cursor-pointer"
@@ -474,7 +474,7 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
           className="w-full flex items-center justify-between p-3 sm:p-3.5 text-left transition-colors hover:bg-slate-100/60 dark:hover:bg-slate-800/40 rounded-xl cursor-pointer"
         >
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="flex items-center justify-center size-7 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">
+            <div className="flex items-center justify-center size-7 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 shrink-0">
               <Store className="size-3.5" />
             </div>
             <div className="min-w-0">
@@ -492,12 +492,12 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
                 Pausado
               </span>
             ) : (
-              <span className="rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+              <span className="rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
                 Operando
               </span>
             )}
             <ChevronDown
-              className={`size-4 text-slate-400 transition-transform duration-200 ${
+              className={`size-4 text-slate-500 dark:text-slate-400 transition-transform duration-200 ${
                 openSections.operation ? "rotate-180" : ""
               }`}
             />
@@ -521,7 +521,7 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <PauseCircle
-                      className={`size-4 shrink-0 ${draft.ordersPaused ? "text-amber-500" : "text-slate-400"}`}
+                      className={`size-4 shrink-0 ${draft.ordersPaused ? "text-amber-700 dark:text-amber-400" : "text-slate-500 dark:text-slate-400"}`}
                     />
                     <span className="font-bold text-sm text-slate-900 dark:text-white">Pausar Pedidos</span>
                     {draft.ordersPaused ? (
@@ -529,7 +529,7 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
                         Pausado
                       </span>
                     ) : (
-                      <span className="rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                      <span className="rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
                         Normal
                       </span>
                     )}

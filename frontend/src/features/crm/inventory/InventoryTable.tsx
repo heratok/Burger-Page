@@ -66,7 +66,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
       <div className="flex flex-wrap items-center gap-2.5">
         {/* Search Input */}
         <div className="relative flex-1 min-w-[220px]">
-          <Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-slate-500 dark:text-slate-400" />
           <input
             type="text"
             maxLength={60}
@@ -105,7 +105,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
           onClick={onToggleOnlyLowStock}
           className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition-all ${
             onlyLowStock
-              ? "border-amber-500 bg-amber-500/20 text-amber-400 font-bold"
+              ? "border-amber-500 bg-amber-500/20 text-amber-700 dark:text-amber-400 font-bold"
               : isDark
               ? "border-slate-800 bg-[#0E1322] text-slate-400 hover:text-white"
               : "border-slate-200 bg-white text-slate-600 hover:text-slate-900"
@@ -123,10 +123,10 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
         }`}
       >
         {totalItems === 0 ? (
-          <div className="p-12 text-center text-slate-400">
+          <div className="p-12 text-center text-slate-500 dark:text-slate-400">
             <Boxes className="size-10 mx-auto mb-2 text-slate-500 opacity-50" />
             <p className="text-sm font-semibold">No se encontraron insumos</p>
-            <p className="text-xs mt-1 text-slate-500">
+            <p className="text-xs mt-1 text-slate-500 dark:text-slate-400">
               {searchTerm || onlyLowStock
                 ? "Probá cambiando los filtros de búsqueda"
                 : "Empezá agregando materias primas para controlar tu stock"}
@@ -172,7 +172,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
                         <div className="flex items-center gap-2">
                           {isLow && (
                             <span title="Stock por debajo del mínimo">
-                              <AlertTriangle className="size-3.5 text-amber-500 shrink-0" />
+                              <AlertTriangle className="size-3.5 text-amber-700 dark:text-amber-400 shrink-0" />
                             </span>
                           )}
                           <span>{item.name}</span>
@@ -193,13 +193,13 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
                             <span
                               className={`font-mono font-bold ${
                                 isLow
-                                  ? "text-amber-500 font-extrabold"
+                                  ? "text-amber-700 dark:text-amber-400 font-extrabold"
                                   : "text-slate-900 dark:text-slate-200"
                               }`}
                             >
                               {item.currentStock} {item.unit}
                             </span>
-                            <span className="text-xs text-slate-400 font-mono">
+                            <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">
                               (Mín: {item.minStockAlert})
                             </span>
                           </div>
@@ -238,7 +238,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
                           <button
                             type="button"
                             onClick={() => onAdjustStock(item.id, 1)}
-                            className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-2 py-1 text-xs font-bold text-indigo-400 hover:bg-indigo-500/20"
+                            className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-2 py-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20"
                             title="Sumar 1"
                           >
                             +1
@@ -246,7 +246,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
                           <button
                             type="button"
                             onClick={() => onAdjustStock(item.id, 5)}
-                            className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-2 py-1 text-xs font-bold text-indigo-400 hover:bg-indigo-500/20"
+                            className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-2 py-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20"
                             title="Sumar 5"
                           >
                             +5
@@ -260,7 +260,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
                           <div className="text-slate-900 dark:text-slate-200">
                             {formatCurrency(item.costPerUnit)} /{item.unit.slice(0, 3)}
                           </div>
-                          <div className="text-xs text-slate-400">
+                          <div className="text-xs text-slate-500 dark:text-slate-400">
                             Total: {formatCurrency(itemValuation)}
                           </div>
                         </td>
@@ -272,11 +272,11 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
                           <button
                             type="button"
                             onClick={() => onSendSupplierWhatsApp(supplier)}
-                            className="inline-flex items-center gap-1 text-indigo-400 hover:underline"
+                            className="inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-400 hover:underline"
                             title="Pedir reposición por WhatsApp"
                           >
                             <span className="truncate max-w-[120px]">{supplier.name}</span>
-                            <MessageSquare className="size-3 text-emerald-400" />
+                            <MessageSquare className="size-3 text-emerald-700 dark:text-emerald-400" />
                           </button>
                         ) : (
                           <span className="text-slate-500 italic text-xs">Sin asignar</span>
@@ -289,7 +289,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
                           <button
                             type="button"
                             onClick={() => onEditItem(item)}
-                            className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white"
+                            className="rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white"
                             title="Editar insumo"
                           >
                             <Edit2 className="size-3.5" />
@@ -297,7 +297,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
                           <button
                             type="button"
                             onClick={() => onDeleteItem(item)}
-                            className="rounded-lg p-1 text-slate-400 hover:bg-rose-500/10 hover:text-rose-500 cursor-pointer"
+                            className="rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-rose-500/10 hover:text-rose-500 cursor-pointer"
                             title="Eliminar insumo"
                           >
                             <Trash2 className="size-3.5" />

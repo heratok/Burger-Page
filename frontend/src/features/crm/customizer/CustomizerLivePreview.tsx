@@ -52,7 +52,7 @@ export const CustomizerLivePreview: React.FC<CustomizerLivePreviewProps> = ({
               className={`rounded-md p-1.5 text-xs cursor-pointer ${
                 previewDevice === "desktop"
                   ? "bg-white shadow-xs text-indigo-700 dark:bg-slate-700 dark:text-white"
-                  : "text-slate-400"
+                  : "text-slate-500 dark:text-slate-400"
               }`}
               title="Vista Escritorio"
             >
@@ -64,7 +64,7 @@ export const CustomizerLivePreview: React.FC<CustomizerLivePreviewProps> = ({
               className={`rounded-md p-1.5 text-xs cursor-pointer ${
                 previewDevice === "mobile"
                   ? "bg-white shadow-xs text-indigo-700 dark:bg-slate-700 dark:text-white"
-                  : "text-slate-400"
+                  : "text-slate-500 dark:text-slate-400"
               }`}
               title="Vista Móvil"
             >

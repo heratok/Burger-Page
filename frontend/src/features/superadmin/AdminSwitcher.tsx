@@ -90,7 +90,7 @@ export const AdminSwitcher: React.FC<AdminSwitcherProps> = ({ collapsed = false,
       <Select
         aria-label="Selector de restaurante"
         size="sm"
-        leftIcon={<Store className="size-3.5 text-indigo-500" />}
+        leftIcon={<Store className="size-3.5 text-indigo-600 dark:text-indigo-400" />}
         value={adminTab === "restaurants" ? "DIRECTORY" : activeRestaurant.id}
         onChange={(e) => {
           const val = e.target.value

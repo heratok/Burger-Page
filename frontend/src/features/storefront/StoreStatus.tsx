@@ -23,7 +23,7 @@ export const StoreStatus: React.FC<StoreStatusProps> = ({ config, status }) => {
         <span
           className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-bold ${
             isOpen
-              ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+              ? "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300"
               : "bg-red-500/15 text-red-700 dark:text-red-300"
           }`}
         >

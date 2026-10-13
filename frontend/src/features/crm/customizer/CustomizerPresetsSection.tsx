@@ -40,7 +40,7 @@ export const CustomizerPresetsSection: React.FC<CustomizerPresetsSectionProps> =
     >
       <div>
         <div className="flex items-center gap-2">
-          <Sparkles className="size-4 text-amber-500" />
+          <Sparkles className="size-4 text-amber-700 dark:text-amber-400" />
           <h3 className="font-bold text-sm text-slate-900 dark:text-white">
             Estilos Listos en 1 Clic
           </h3>
@@ -87,18 +87,18 @@ export const CustomizerPresetsSection: React.FC<CustomizerPresetsSectionProps> =
                       {tpl.name}
                     </span>
                     {isMatching && (
-                      <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                      <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-bold text-emerald-700 dark:text-emerald-400">
                         Activo
                       </span>
                     )}
                   </div>
-                  <span className="text-xs text-slate-500 dark:text-slate-400 block truncate">
+                  <span className="text-xs text-slate-600 dark:text-slate-400 block truncate">
                     {tpl.tagline}
                   </span>
                 </div>
               </div>
 
-              <div className="flex items-center gap-1 text-xs font-semibold text-slate-400 shrink-0">
+              <div className="flex items-center gap-1 text-xs font-semibold text-slate-600 dark:text-slate-400 shrink-0">
                 <span className="uppercase tracking-wider font-mono">{tpl.fontFamily}</span>
               </div>
             </button>
