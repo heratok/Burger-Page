@@ -94,7 +94,7 @@ export default function LandingPage() {
       {/* ======================================================== */}
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] rounded-md bg-orange-700 px-4 py-2 text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-white"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-24 focus:left-1/2 focus:-translate-x-1/2 focus:z-[100] whitespace-nowrap rounded-md focus:px-4 focus:py-2 bg-orange-700 px-4 py-2 text-sm font-semibold text-white focus:shadow-xl focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-orange-700"
       >
         Saltar al contenido
       </a>

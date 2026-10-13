@@ -62,7 +62,7 @@ export const MenuFilterBar: React.FC<MenuFilterBarProps> = ({
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
           onWheel={handleWheel}
-          className="flex flex-1 items-center gap-2 min-w-0 overflow-x-auto no-scrollbar py-0.5 select-none cursor-grab active:cursor-grabbing scroll-smooth"
+          className="flex flex-1 items-center gap-2 min-w-0 overflow-x-auto scroll-px-10 no-scrollbar py-0.5 select-none cursor-grab active:cursor-grabbing scroll-smooth"
         >
           <button
             type="button"

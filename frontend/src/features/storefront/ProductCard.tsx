@@ -75,7 +75,7 @@ const ProductCard = memo(function ProductCard({ product, onSelectProduct, closed
           backgroundColor: "var(--color-bg-elevated)",
           borderColor: "var(--color-border-subtle)",
         }}
-        className={`group relative flex h-full w-full flex-row items-stretch cursor-pointer gap-0 overflow-hidden p-3 sm:p-4 transition duration-200 ease-out hover:-translate-y-0.5 focus:outline-none focus-visible:focus-ring active:translate-y-0 ${radiusClass} ${styleClass}`}
+        className={`group relative flex h-full w-full flex-row items-stretch cursor-pointer gap-0 overflow-hidden p-3 sm:p-4 transition duration-200 ease-out hover:-translate-y-0.5 focus-ring active:translate-y-0 ${radiusClass} ${styleClass}`}
       >
         {/* Left Side: Square Thumbnail centered vertically */}
         <div className="relative size-24 min-[400px]:size-28 sm:size-32 aspect-square shrink-0 overflow-hidden rounded-xl bg-bg-elevated-2 self-center">

@@ -39,7 +39,7 @@ export default function Navbar({ cantidad, total, onOpenCart, onGoToMenu }: Navb
       <div className="mx-auto flex h-16 max-w-(--container) items-center justify-between px-4 md:px-6 lg:px-8">
         <a
           href="#main-content"
-          className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 rounded-md px-4 py-2 font-medium focus:outline-none focus:ring-2"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-28 focus:left-1/2 focus:-translate-x-1/2 focus:z-[100] whitespace-nowrap rounded-md focus:px-4 focus:py-2 px-4 py-2 font-medium focus:shadow-xl focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black"
           style={{
             backgroundColor: storeConfig.primaryColor,
             color: primaryForeground,
@@ -105,7 +105,7 @@ export default function Navbar({ cantidad, total, onOpenCart, onGoToMenu }: Navb
               borderColor: "var(--color-border-strong)",
               color: "var(--color-text-secondary)",
             }}
-            className="relative inline-flex size-10 items-center justify-center rounded-full border transition duration-150 ease-out focus:outline-none focus-visible:focus-ring cursor-pointer hover:opacity-80"
+            className="relative inline-flex size-10 items-center justify-center rounded-full border transition duration-150 ease-out focus-ring cursor-pointer hover:opacity-80"
           >
             <ShoppingCart className="size-5" aria-hidden="true" />
             {cantidad > 0 && (
@@ -133,7 +133,7 @@ export default function Navbar({ cantidad, total, onOpenCart, onGoToMenu }: Navb
                 borderColor: "var(--color-border-strong)",
                 color: "var(--color-text-secondary)",
               }}
-              className="inline-flex size-10 items-center justify-center rounded-full border transition duration-150 ease-out hover:text-emerald-500 focus:outline-none focus-visible:focus-ring"
+              className="inline-flex size-10 items-center justify-center rounded-full border transition duration-150 ease-out hover:text-emerald-500 focus-ring"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"

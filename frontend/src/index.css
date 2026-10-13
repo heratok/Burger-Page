@@ -784,7 +784,7 @@ body::-webkit-scrollbar-thumb {
 }
 
 .focus-ring:focus-visible {
-  outline: 2px solid var(--color-accent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -982,7 +982,28 @@ textarea::placeholder {
   color-scheme: dark;
 }
 
+/*
+ * Keyboard focus baseline (WCAG 2.4.7 / 2.4.11). --focus-ring keeps >=3:1 against light and dark surfaces and is deliberately independent of the merchant brand colour (which may be pale).
+ * The 2px offset leaves a surface-coloured gap so the ring also separates from accent-filled controls.
+ * Components that paint their own ring/border keep working: utilities sit in a higher layer.
+ */
+:root {
+  /* Luminance ~0.25: >=3:1 on white and on near-black surfaces, so one value serves both themes
+     (portaled dialogs render outside the .dark wrapper and cannot rely on a theme-scoped token). */
+  --focus-ring: #ea580c;
+}
+
+html {
+  scroll-padding-top: 8rem;
+  scroll-padding-bottom: 6rem;
+}
+
 @layer base {
+  :focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
+
   * {
     border-color: var(--color-border-subtle);
     outline-color: color-mix(in oklch, var(--color-ring), transparent 50%);

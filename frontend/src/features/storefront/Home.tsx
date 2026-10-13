@@ -368,7 +368,7 @@ export default function Home() {
                     onMouseUp={handleMouseUp}
                     onMouseLeave={handleMouseUp}
                     onWheel={handleWheel}
-                    className="flex flex-1 items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth select-none cursor-grab active:cursor-grabbing py-0.5"
+                    className="flex flex-1 items-center gap-1.5 overflow-x-auto scroll-px-10 no-scrollbar scroll-smooth select-none cursor-grab active:cursor-grabbing py-0.5"
                     aria-label="Categorías del menú"
                   >
                     <button
@@ -451,7 +451,7 @@ export default function Home() {
                     <section
                       key={category}
                       id={`category-section-${encodeURIComponent(category)}`}
-                      className="scroll-mt-32 sm:scroll-mt-36 space-y-3 sm:space-y-4"
+                      className="space-y-3 sm:space-y-4"
                     >
                       <button
                         type="button"

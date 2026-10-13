@@ -504,7 +504,7 @@ function FormSummary({ cartItems, subtotal, deliveryFee, total }: FormSummaryPro
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-controls="order-summary"
-        className="flex w-full items-center justify-between px-4 py-3 text-left transition duration-150 ease-out focus:outline-none focus-visible:focus-ring cursor-pointer"
+        className="flex w-full items-center justify-between px-4 py-3 text-left transition duration-150 ease-out focus-ring cursor-pointer"
       >
         <span
           style={{ color: "var(--color-text-primary)" }}

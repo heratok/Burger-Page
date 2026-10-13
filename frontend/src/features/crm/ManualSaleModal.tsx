@@ -1084,7 +1084,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                   onMouseUp={handleCategoryMouseUp}
                   onMouseLeave={handleCategoryMouseUp}
                   onWheel={handleCategoryWheel}
-                  className="flex flex-1 items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar select-none cursor-grab active:cursor-grabbing scroll-smooth"
+                  className="flex flex-1 items-center gap-1.5 overflow-x-auto scroll-px-10 pb-1 no-scrollbar select-none cursor-grab active:cursor-grabbing scroll-smooth"
                 >
                   {categories.map((cat) => {
                     const isSelected = selectedCategory === cat
