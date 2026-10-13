@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense } from "react"
+import React, { useState, useEffect, useRef, Suspense } from "react"
 import { useRestaurant } from "@/context/RestaurantContext"
 import {
   LayoutDashboard,
@@ -36,6 +36,8 @@ import { useAppRouter, isTabAllowed } from "@/core/router/useAppRouter"
 import { AdminContentFallback } from "@/components/ui/LoadingFallbacks"
 import { ManualSaleModal } from "./ManualSaleModal"
 import { Tooltip } from "@/components/ui/tooltip"
+import { useModalBehavior } from "@/components/ui/modal-shell"
+import { useMediaQuery } from "@/lib/useMediaQuery"
 
 
 interface AdminLayoutProps {
@@ -63,6 +65,15 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const { navigateTo } = useAppRouter()
 
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
+  // Tailwind `lg`: below it the sidebar is an off-canvas drawer. jsdom has no matchMedia: assume desktop.
+  const isDesktop = useMediaQuery("(min-width: 1024px)", true)
+  const isDrawerClosed = !isDesktop && !isMobileSidebarOpen
+  const sidebarRef = useRef<HTMLElement>(null)
+  const trapDrawerTab = useModalBehavior(sidebarRef, {
+    active: !isDesktop && isMobileSidebarOpen,
+    onClose: () => setIsMobileSidebarOpen(false),
+    captureOnActivate: true,
+  })
   const [isManualSaleOpen, setIsManualSaleOpen] = useState(false)
   const [isCreateRestaurantOpen, setIsCreateRestaurantOpen] = useState(false)
   const [isCreateUserOpen, setIsCreateUserOpen] = useState(false)
@@ -242,6 +253,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         <button
           type="button"
           aria-label="Cerrar barra lateral"
+          aria-hidden="true"
+          tabIndex={-1}
+          data-modal-keep
           className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs lg:hidden border-none p-0 cursor-default"
           onClick={() => setIsMobileSidebarOpen(false)}
         />
@@ -252,8 +266,12 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         {/* DESKTOP & MOBILE SIDEBAR                                  */}
         {/* ======================================================== */}
         <aside
+          ref={sidebarRef}
+          id="admin-sidebar"
           role="complementary"
           aria-label="Sidebar de navegación"
+          onKeyDown={trapDrawerTab}
+          {...(isDrawerClosed ? ({ inert: "", "aria-hidden": true } as React.HTMLAttributes<HTMLElement>) : {})}
           className={`fixed inset-y-0 left-0 z-50 flex h-dvh max-h-dvh flex-col border-r transition-all duration-300 ease-in-out lg:sticky lg:top-0 lg:h-screen lg:max-h-screen lg:translate-x-0 ${
             isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
           } ${
@@ -528,6 +546,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
               <button
                 type="button"
                 onClick={() => setIsMobileSidebarOpen(true)}
+                aria-expanded={isMobileSidebarOpen}
+                aria-controls="admin-sidebar"
                 className="rounded-xl border p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 lg:hidden cursor-pointer"
                 aria-label="Abrir menú"
               >

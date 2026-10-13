@@ -71,7 +71,8 @@ function getTabbables(root: HTMLElement): HTMLElement[] {
   })
 }
 
-const KEEP_LIVE = "[data-sonner-toaster],[aria-live],[role='status'],[role='alert']"
+// Live regions (toasts) must keep announcing; [data-modal-keep] marks scrims the user can still click.
+const KEEP_LIVE = "[data-sonner-toaster],[aria-live],[role='status'],[role='alert'],[data-modal-keep]"
 
 /** Marks siblings along the ancestor chain as inert. Returns the elements it marked. */
 function inertBackground(shell: HTMLElement): HTMLElement[] {
@@ -98,17 +99,28 @@ export interface ModalShellProps extends Omit<React.HTMLAttributes<HTMLDivElemen
   role?: "dialog" | "alertdialog"
 }
 
-export function ModalShell({
-  onClose,
-  role = "dialog",
-  className,
-  onKeyDown,
-  children,
-  ...rest
-}: ModalShellProps) {
-  const ref = React.useRef<HTMLDivElement>(null)
+export interface ModalBehaviorOptions {
+  /** Behaviour is only applied while active. Default true. */
+  active?: boolean
+  /** Called on Escape (topmost modal only). Omit for modals that must not be dismissed. */
+  onClose?: () => void
+  /**
+   * Remember the focused element when `active` flips to true instead of at first render.
+   * Use for panels that stay mounted (drawers); ModalShell mounts on open and captures at render.
+   */
+  captureOnActivate?: boolean
+}
+
+/**
+ * The behaviour behind ModalShell, reusable for always-mounted panels (mobile drawers).
+ * Returns a keydown handler implementing the Tab trap; attach it to the panel element.
+ */
+export function useModalBehavior<T extends HTMLElement>(
+  ref: React.RefObject<T | null>,
+  { active = true, onClose, captureOnActivate = false }: ModalBehaviorOptions = {}
+) {
   // Captured during the first render, before autoFocus fields steal focus.
-  const previouslyFocused = React.useRef<Element | null>(
+  const renderFocused = React.useRef<Element | null>(
     typeof document === "undefined" ? null : document.activeElement
   )
   const onCloseRef = React.useRef(onClose)
@@ -118,13 +130,14 @@ export function ModalShell({
 
   React.useEffect(() => {
     const shell = ref.current
-    if (!shell) return
+    if (!active || !shell) return
+    const previous = captureOnActivate ? document.activeElement : renderFocused.current
     openShells.push(shell)
     lockScroll()
     const inerted = inertBackground(shell)
 
-    const active = document.activeElement
-    if (!active || !shell.contains(active) || active === shell) {
+    const focused = document.activeElement
+    if (!focused || !shell.contains(focused) || focused === shell) {
       const preferred = shell.querySelector<HTMLElement>("[data-modal-initial-focus]")
       const target = preferred ?? getTabbables(shell)[0] ?? shell
       target.focus({ preventScroll: true })
@@ -133,9 +146,9 @@ export function ModalShell({
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key !== "Escape" || e.defaultPrevented || e.isComposing) return
       if (getTopmost() !== shell) return
-      const focused = document.activeElement
+      const current = document.activeElement
       // Focus lives in a portal (select listbox, nested base-ui dialog...): it owns Escape.
-      if (focused && focused !== document.body && !shell.contains(focused)) return
+      if (current && current !== document.body && !shell.contains(current)) return
       const close = onCloseRef.current
       if (!close) return
       e.preventDefault()
@@ -149,16 +162,14 @@ export function ModalShell({
       if (index >= 0) openShells.splice(index, 1)
       for (const el of inerted) el.removeAttribute("inert")
       unlockScroll()
-      const previous = previouslyFocused.current
       if (previous instanceof HTMLElement && previous.isConnected) {
         previous.focus({ preventScroll: true })
       }
     }
-  }, [])
+  }, [active, captureOnActivate, ref])
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    onKeyDown?.(e)
-    if (e.key !== "Tab" || e.defaultPrevented) return
+  return (e: React.KeyboardEvent<HTMLElement>) => {
+    if (!active || e.key !== "Tab" || e.defaultPrevented) return
     const shell = ref.current
     if (!shell || getTopmost() !== shell) return
     const focused = document.activeElement
@@ -182,6 +193,18 @@ export function ModalShell({
       first.focus()
     }
   }
+}
+
+export function ModalShell({
+  onClose,
+  role = "dialog",
+  className,
+  onKeyDown,
+  children,
+  ...rest
+}: ModalShellProps) {
+  const ref = React.useRef<HTMLDivElement>(null)
+  const trapTab = useModalBehavior(ref, { onClose })
 
   return (
     <div
@@ -190,7 +213,10 @@ export function ModalShell({
       role={role}
       aria-modal="true"
       tabIndex={-1}
-      onKeyDown={handleKeyDown}
+      onKeyDown={(e) => {
+        onKeyDown?.(e)
+        trapTab(e)
+      }}
       className={className ? `${className} outline-none` : "outline-none"}
     >
       {children}

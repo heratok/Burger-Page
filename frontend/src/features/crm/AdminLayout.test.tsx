@@ -305,3 +305,61 @@ describe("AdminLayout - Super Admin Navigation & Global Modules (TDD)", () => {
     expect(focusables[0]).toBe(skip)
   })
 })
+
+describe("AdminLayout - mobile drawer accessibility", () => {
+  const originalMatchMedia = window.matchMedia
+
+  beforeEach(() => {
+    localStorage.clear()
+    sessionStorage.clear()
+    sessionStorage.setItem(
+      "burger_page_session_v2",
+      JSON.stringify({ role: "restaurant", restaurantId: "burger-craft", authenticatedAt: new Date().toISOString() })
+    )
+    // Below the lg breakpoint: the sidebar is an off-canvas drawer.
+    window.matchMedia = ((query: string) => ({
+      matches: false,
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    })) as unknown as typeof window.matchMedia
+  })
+
+  afterEach(() => {
+    cleanup()
+    window.matchMedia = originalMatchMedia
+  })
+
+  const renderLayout = () =>
+    render(
+      <RestaurantProvider>
+        <AdminLayout>
+          <div>Dashboard</div>
+        </AdminLayout>
+      </RestaurantProvider>
+    )
+
+  it("keeps the closed drawer inert and hidden, exposing aria-expanded on the toggle", () => {
+    const { container } = renderLayout()
+    const aside = container.querySelector("aside") as HTMLElement
+    expect(aside.hasAttribute("inert")).toBe(true)
+    expect(aside.getAttribute("aria-hidden")).toBe("true")
+    const toggle = screen.getByRole("button", { name: "Abrir menú" })
+    expect(toggle.getAttribute("aria-expanded")).toBe("false")
+    expect(toggle.getAttribute("aria-controls")).toBe(aside.id)
+  })
+
+  it("opens with focus inside, closes on Escape and returns focus to the toggle", () => {
+    const { container } = renderLayout()
+    const aside = container.querySelector("aside") as HTMLElement
+    const toggle = screen.getByRole("button", { name: "Abrir menú" })
+    toggle.focus()
+    fireEvent.click(toggle)
+    expect(aside.hasAttribute("inert")).toBe(false)
+    expect(toggle.getAttribute("aria-expanded")).toBe("true")
+    expect(aside.contains(document.activeElement)).toBe(true)
+    fireEvent.keyDown(document.activeElement as Element, { key: "Escape" })
+    expect(aside.hasAttribute("inert")).toBe(true)
+    expect(document.activeElement).toBe(toggle)
+  })
+})
