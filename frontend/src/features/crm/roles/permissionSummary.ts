@@ -71,3 +71,11 @@ export function summarizePermissions(permissions: readonly Permission[]): Permis
 
   return lines
 }
+
+/** Short hint such as "Pedidos, Clientes, Menú y más"; empty when there are no permissions. */
+export function describeRoleAreas(permissions: readonly Permission[], max: number): string {
+  const areas = summarizePermissions(permissions).map((line) => line.area)
+  if (areas.length === 0) return ""
+  if (areas.length <= max) return areas.join(", ")
+  return `${areas.slice(0, max).join(", ")} y más`
+}

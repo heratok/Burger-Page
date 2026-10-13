@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { PERMISSIONS } from "@burger-page/contracts"
-import { summarizePermissions } from "./permissionSummary"
+import { summarizePermissions, describeRoleAreas } from "./permissionSummary"
 
 describe("summarizePermissions", () => {
   it("returns no lines for an empty permission list", () => {
@@ -48,5 +48,21 @@ describe("summarizePermissions", () => {
     const all = summarizePermissions([...PERMISSIONS])
     expect(all.length).toBeGreaterThanOrEqual(9)
     expect(all.every((l) => l.actions.length > 0)).toBe(true)
+  })
+})
+
+describe("describeRoleAreas", () => {
+  it("lists the first areas of a role as a short comma separated hint", () => {
+    expect(
+      describeRoleAreas(["orders.view", "customers.view", "tables.manage", "menu.manage"], 3)
+    ).toBe("Pedidos, Clientes, Menú y más")
+  })
+
+  it("does not add 'y más' when everything fits", () => {
+    expect(describeRoleAreas(["orders.view", "tables.manage"], 3)).toBe("Pedidos, Mesas")
+  })
+
+  it("returns an empty string for a role without permissions", () => {
+    expect(describeRoleAreas([], 3)).toBe("")
   })
 })
