@@ -69,6 +69,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
               </h3>
             </div>
             <button
+              aria-label="Cerrar"
               type="button"
               onClick={handleCloseModal}
               className="rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
@@ -163,6 +164,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
 
                       <div className="flex items-center gap-1">
                         <button
+                          aria-label={`Renombrar categoría ${cat}`}
                           type="button"
                           onClick={() => {
                             setEditingCategoryName(cat)
@@ -174,6 +176,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
                           <Edit2 className="size-3.5" />
                         </button>
                         <button
+                          aria-label={`Eliminar categoría ${cat}`}
                           type="button"
                           onClick={() => setCategoryToDelete(cat)}
                           className="rounded-lg p-1 text-slate-500 hover:bg-slate-100 hover:text-rose-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-rose-400 cursor-pointer"

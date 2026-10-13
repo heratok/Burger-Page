@@ -119,6 +119,7 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({
             <span>{editingItem ? "Editar Insumo" : "Nuevo Insumo en Inventario"}</span>
           </h3>
           <button
+            aria-label="Cerrar"
             type="button"
             onClick={onClose}
             className={`rounded-lg p-1 transition-colors ${
@@ -131,10 +132,10 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({
 
         <form onSubmit={handleSubmit} className="space-y-3.5 text-xs">
           <div>
-            <label className={`block font-semibold mb-1 ${isDark ? "text-slate-200" : "text-slate-700"}`}>
+            <label htmlFor="inventory-item-modal-nombre-del-insumo" className={`block font-semibold mb-1 ${isDark ? "text-slate-200" : "text-slate-700"}`}>
               Nombre del Insumo *
             </label>
-            <input
+            <input id="inventory-item-modal-nombre-del-insumo"
               type="text"
               required
               maxLength={80}
@@ -188,10 +189,10 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({
 
           <div className={`grid ${canViewFinance ? "grid-cols-3" : "grid-cols-2"} gap-3`}>
             <div>
-              <label className={`block font-semibold mb-1 ${isDark ? "text-slate-200" : "text-slate-700"}`}>
+              <label htmlFor="inventory-item-modal-stock-actual" className={`block font-semibold mb-1 ${isDark ? "text-slate-200" : "text-slate-700"}`}>
                 Stock Actual
               </label>
-              <input
+              <input id="inventory-item-modal-stock-actual"
                 type="number"
                 min="0"
                 max={1000000}
@@ -210,10 +211,10 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({
             </div>
 
             <div>
-              <label className="block font-semibold mb-1 text-amber-700 dark:text-amber-400">
+              <label htmlFor="inventory-item-modal-alerta-minima" className="block font-semibold mb-1 text-amber-700 dark:text-amber-400">
                 Alerta Mínima
               </label>
-              <input
+              <input id="inventory-item-modal-alerta-minima"
                 type="number"
                 min="0"
                 max={100000}
@@ -232,10 +233,10 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({
 
             {canViewFinance && (
               <div>
-                <label className={`block font-semibold mb-1 ${isDark ? "text-slate-200" : "text-slate-700"}`}>
+                <label htmlFor="inventory-item-modal-costo-unitario" className={`block font-semibold mb-1 ${isDark ? "text-slate-200" : "text-slate-700"}`}>
                   Costo Unitario ($)
                 </label>
-                <input
+                <input id="inventory-item-modal-costo-unitario"
                   type="number"
                   min="0"
                   max={50000000}

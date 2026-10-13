@@ -72,6 +72,7 @@ export const AdditionModal: React.FC<AdditionModalProps> = ({
             {editingAddition ? "Editar Adicional" : "Nuevo Adicional / Extra"}
           </h3>
           <button
+            aria-label="Cerrar"
             type="button"
             onClick={onClose}
             className="rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
@@ -82,10 +83,10 @@ export const AdditionModal: React.FC<AdditionModalProps> = ({
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-3 text-xs">
           <div>
-            <label className="font-semibold block mb-1 text-slate-800 dark:text-slate-200">
+            <label htmlFor="addition-modal-nombre-de-la-adicion" className="font-semibold block mb-1 text-slate-800 dark:text-slate-200">
               Nombre de la Adición
             </label>
-            <input
+            <input id="addition-modal-nombre-de-la-adicion"
               type="text"
               required
               maxLength={60}
@@ -96,10 +97,10 @@ export const AdditionModal: React.FC<AdditionModalProps> = ({
             />
           </div>
           <div>
-            <label className="font-semibold block mb-1 text-slate-800 dark:text-slate-200">
+            <label htmlFor="addition-modal-precio-extra-cop" className="font-semibold block mb-1 text-slate-800 dark:text-slate-200">
               Precio Extra ($ COP)
             </label>
-            <input
+            <input id="addition-modal-precio-extra-cop"
               type="number"
               required
               min={0}

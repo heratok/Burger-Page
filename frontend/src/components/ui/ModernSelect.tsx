@@ -95,6 +95,9 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
     ref
   ) => {
     const effectiveAriaLabel = ariaLabel || ariaLabelAttr || label
+    const autoId = React.useId()
+    const fieldId = id ?? autoId
+    const errorId = `${fieldId}-error`
     const [isOpen, setIsOpen] = useState(false)
     const [searchQuery, setSearchQuery] = useState("")
     const [focusedIndex, setFocusedIndex] = useState(-1)
@@ -258,7 +261,7 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
     >
       {label && (
         <label
-          htmlFor={id}
+          htmlFor={fieldId}
           onClick={() => triggerRef.current?.focus()}
           className="font-semibold block mb-1 text-slate-800 dark:text-slate-200 text-xs cursor-pointer"
         >
@@ -269,11 +272,13 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
       {/* Accessible hidden native select for testing-library and form synchronization */}
       <select
         ref={ref}
-        id={id}
+        id={fieldId}
         name={name}
         required={required}
         disabled={disabled}
         aria-label={effectiveAriaLabel}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? errorId : undefined}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         tabIndex={-1}
@@ -330,6 +335,13 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
         onClick={() => !disabled && setIsOpen((prev) => !prev)}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
+        aria-label={
+          effectiveAriaLabel
+            ? `${effectiveAriaLabel}: ${selectedOption?.label ?? (value || placeholder)}`
+            : undefined
+        }
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? errorId : undefined}
         aria-controls={id ? `${id}-menu` : undefined}
         className={cn(
           "w-full flex items-center justify-between gap-2 rounded-xl border transition-all text-left cursor-pointer",
@@ -386,7 +398,7 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
       </button>
 
       {error && (
-        <span className="text-xs font-medium text-rose-600 dark:text-rose-400 block mt-1">
+        <span id={errorId} role="alert" className="text-xs font-medium text-rose-600 dark:text-rose-400 block mt-1">
           {error}
         </span>
       )}
@@ -396,7 +408,6 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
         <div
           id={id ? `${id}-menu` : undefined}
           data-testid={id ? `${id}-menu` : "modern-select-menu"}
-          role="listbox"
           className={cn(
             "rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-2xl p-1.5 space-y-1 z-50 absolute mt-1.5 left-0 right-0",
             menuClassName
@@ -422,9 +433,13 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
           )}
 
           {/* Options List */}
-          <div className="max-h-60 overflow-y-auto p-0.5 space-y-0.5 overscroll-contain">
+          <div
+            role="listbox"
+            aria-label={effectiveAriaLabel ?? placeholder}
+            className="max-h-60 overflow-y-auto p-0.5 space-y-0.5 overscroll-contain"
+          >
             {filteredOptions.length === 0 ? (
-              <div className="py-4 text-center text-xs text-slate-500 dark:text-slate-400">
+              <div role="presentation" className="py-4 text-center text-xs text-slate-500 dark:text-slate-400">
                 No se encontraron opciones
               </div>
             ) : (
@@ -438,7 +453,7 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
                 return (
                   <React.Fragment key={opt.value}>
                     {showGroupHeader && (
-                      <div className="px-2.5 pt-2 pb-1 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 select-none">
+                      <div role="presentation" className="px-2.5 pt-2 pb-1 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 select-none">
                         {opt.group}
                       </div>
                     )}

@@ -284,7 +284,7 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
           {/* Form */}
           <form onSubmit={handleSubmit} className="mt-5 space-y-6">
             {errorMessage && (
-              <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-600 dark:text-rose-400 font-medium">
+              <div role="alert" className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-600 dark:text-rose-400 font-medium">
                 {errorMessage}
               </div>
             )}
@@ -359,7 +359,7 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
                   />
                 </div>
                 {slugError && (
-                  <p className="text-xs font-semibold text-rose-600 dark:text-rose-400 mt-1">{slugError}</p>
+                  <p role="alert" className="text-xs font-semibold text-rose-600 dark:text-rose-400 mt-1">{slugError}</p>
                 )}
 
                 {/* Slug change warning */}

@@ -190,12 +190,12 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
             {/* Login Form */}
             <form onSubmit={handleSubmit} className="mt-6 space-y-4">
               <div>
-                <label className="block text-xs font-bold mb-1.5 text-slate-300">
+                <label htmlFor="admin-auth-modal-usuario" className="block text-xs font-bold mb-1.5 text-slate-300">
                   Usuario
                 </label>
                 <div className="relative">
                   <User className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-                  <input
+                  <input id="admin-auth-modal-usuario"
                     type="text"
                     required
                     autoFocus
@@ -211,12 +211,12 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-bold mb-1.5 text-slate-300">
+                <label htmlFor="admin-auth-modal-contrasena-de-acceso" className="block text-xs font-bold mb-1.5 text-slate-300">
                   Contraseña de Acceso
                 </label>
                 <div className="relative">
                   <Lock className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-                  <input
+                  <input id="admin-auth-modal-contrasena-de-acceso"
                     type={showPassword ? "text" : "password"}
                     required
                     maxLength={100}

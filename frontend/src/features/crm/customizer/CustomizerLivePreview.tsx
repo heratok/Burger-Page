@@ -47,7 +47,9 @@ export const CustomizerLivePreview: React.FC<CustomizerLivePreviewProps> = ({
         <div className="flex items-center gap-2">
           <div className="flex rounded-lg bg-slate-100 p-0.5 dark:bg-slate-800 border dark:border-slate-700">
             <button
+              aria-label="Vista Escritorio"
               type="button"
+              aria-pressed={previewDevice === "desktop"}
               onClick={() => setPreviewDevice("desktop")}
               className={`rounded-md p-1.5 text-xs cursor-pointer ${
                 previewDevice === "desktop"
@@ -59,7 +61,9 @@ export const CustomizerLivePreview: React.FC<CustomizerLivePreviewProps> = ({
               <Monitor className="size-3.5" />
             </button>
             <button
+              aria-label="Vista Móvil"
               type="button"
+              aria-pressed={previewDevice === "mobile"}
               onClick={() => setPreviewDevice("mobile")}
               className={`rounded-md p-1.5 text-xs cursor-pointer ${
                 previewDevice === "mobile"

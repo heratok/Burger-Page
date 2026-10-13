@@ -196,7 +196,7 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
             {/* WhatsApp for Orders */}
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="font-semibold block text-slate-800 dark:text-slate-200">
+                <label htmlFor="business-whatsapp-local" className="font-semibold block text-slate-800 dark:text-slate-200">
                   Número de WhatsApp para Pedidos
                 </label>
                 {draft.whatsappNumber ? (
@@ -223,6 +223,7 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
                 </div>
                 <div className="sm:col-span-7">
                   <input
+                    id="business-whatsapp-local"
                     type="tel"
                     aria-label="Número de WhatsApp local"
                     maxLength={20}
@@ -548,10 +549,10 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
 
             {/* Store Address */}
             <div>
-              <label className="font-semibold block mb-1 text-slate-800 dark:text-slate-200">
+              <label htmlFor="customizer-business-section-direccion-fisica-del-local" className="font-semibold block mb-1 text-slate-800 dark:text-slate-200">
                 Dirección Física del Local
               </label>
-              <input
+              <input id="customizer-business-section-direccion-fisica-del-local"
                 type="text"
                 maxLength={150}
                 value={draft.address}

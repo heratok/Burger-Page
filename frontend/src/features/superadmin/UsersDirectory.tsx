@@ -265,6 +265,7 @@ export const UsersDirectory: React.FC = () => {
           <div className="w-full sm:w-48">
             <Select
               size="md"
+              aria-label="Filtrar por rol"
               leftIcon={<Filter className="size-3.5 text-slate-500 dark:text-slate-400" />}
               value={roleFilter}
               onChange={(e) => {
@@ -282,6 +283,7 @@ export const UsersDirectory: React.FC = () => {
           <div className="w-full sm:w-60">
             <Select
               size="md"
+              aria-label="Filtrar por restaurante"
               leftIcon={<Store className="size-3.5 text-slate-500 dark:text-slate-400" />}
               value={restaurantFilter}
               onChange={(e) => {

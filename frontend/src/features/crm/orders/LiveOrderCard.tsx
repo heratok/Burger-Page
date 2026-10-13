@@ -255,6 +255,7 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
 
         {canManage && onEditOrder && order.status !== "delivered" && order.status !== "cancelled" && (
           <button
+            aria-label={`Editar venta #${order.orderNumber}`}
             type="button"
             onClick={() => onEditOrder(order)}
             className="min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl border border-indigo-200 dark:border-indigo-800 p-2 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700 dark:text-indigo-400 dark:hover:bg-indigo-950/50 cursor-pointer transition-colors"

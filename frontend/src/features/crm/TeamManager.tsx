@@ -509,6 +509,7 @@ export const TeamManager: React.FC = () => {
                 <span>Registrar Nuevo Miembro</span>
               </h3>
               <button
+                aria-label="Cerrar"
                 type="button"
                 onClick={() => setIsCreateOpen(false)}
                 className="rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -657,6 +658,7 @@ export const TeamManager: React.FC = () => {
                 <span>Editar Miembro del Equipo</span>
               </h3>
               <button
+                aria-label="Cerrar"
                 type="button"
                 onClick={() => setEditingUser(null)}
                 className="rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -736,7 +738,7 @@ export const TeamManager: React.FC = () => {
               )}
 
               <div className="flex items-center gap-2 pt-1">
-                <input
+                <input aria-required="true"
                   id="edit-active-toggle"
                   type="checkbox"
                   checked={editIsActive}
@@ -790,6 +792,7 @@ export const TeamManager: React.FC = () => {
                 <span>Credenciales de Acceso</span>
               </h3>
               <button
+                aria-label="Cerrar"
                 type="button"
                 onClick={() => setCredentialsReveal(null)}
                 className="rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -860,6 +863,7 @@ export const TeamManager: React.FC = () => {
                 <span>Nueva Clave Temporal</span>
               </h3>
               <button
+                aria-label="Cerrar"
                 type="button"
                 onClick={() => setNewTempPasswordModal(null)}
                 className="rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"

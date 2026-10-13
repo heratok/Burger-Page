@@ -158,6 +158,7 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
 
         {canManage && onEditOrder && (
           <button
+            aria-label={`Editar venta #${order.orderNumber}`}
             type="button"
             onClick={() => onEditOrder(order)}
             className="min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg border border-indigo-200 dark:border-indigo-800 p-2 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700 dark:text-indigo-400 dark:hover:bg-indigo-950/50 cursor-pointer transition-colors"
@@ -199,6 +200,7 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
         )}
         {order.status !== "cancelled" && order.status !== "delivered" && (
           <button
+            aria-label={`Chat de WhatsApp con el cliente del pedido #${order.orderNumber}`}
             type="button"
             onClick={() => onWhatsApp(order)}
             className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-1.5 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400 cursor-pointer"

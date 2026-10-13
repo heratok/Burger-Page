@@ -87,6 +87,7 @@ export const SupplierModal: React.FC<SupplierModalProps> = ({
             <span>{editingSupplier ? "Editar Proveedor" : "Registrar Nuevo Proveedor"}</span>
           </h3>
           <button
+            aria-label="Cerrar"
             type="button"
             onClick={onClose}
             className={`rounded-lg p-1 transition-colors ${
@@ -99,10 +100,10 @@ export const SupplierModal: React.FC<SupplierModalProps> = ({
 
         <form onSubmit={handleSubmit} className="space-y-3.5 text-xs">
           <div>
-            <label className={`block font-semibold mb-1 ${isDark ? "text-slate-200" : "text-slate-700"}`}>
+            <label htmlFor="supplier-modal-nombre-de-la-empresa-proveed" className={`block font-semibold mb-1 ${isDark ? "text-slate-200" : "text-slate-700"}`}>
               Nombre de la Empresa / Proveedor *
             </label>
-            <input
+            <input id="supplier-modal-nombre-de-la-empresa-proveed"
               type="text"
               required
               maxLength={80}
@@ -119,10 +120,10 @@ export const SupplierModal: React.FC<SupplierModalProps> = ({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={`block font-semibold mb-1 ${isDark ? "text-slate-200" : "text-slate-700"}`}>
+              <label htmlFor="supplier-modal-rubro-categoria" className={`block font-semibold mb-1 ${isDark ? "text-slate-200" : "text-slate-700"}`}>
                 Rubro / Categoría
               </label>
-              <input
+              <input id="supplier-modal-rubro-categoria"
                 type="text"
                 required
                 maxLength={50}
@@ -140,10 +141,10 @@ export const SupplierModal: React.FC<SupplierModalProps> = ({
             </div>
 
             <div>
-              <label className={`block font-semibold mb-1 ${isDark ? "text-slate-200" : "text-slate-700"}`}>
+              <label htmlFor="supplier-modal-persona-de-contacto" className={`block font-semibold mb-1 ${isDark ? "text-slate-200" : "text-slate-700"}`}>
                 Persona de Contacto
               </label>
-              <input
+              <input id="supplier-modal-persona-de-contacto"
                 type="text"
                 maxLength={80}
                 placeholder="Ej: Carlos Gómez"
@@ -161,10 +162,10 @@ export const SupplierModal: React.FC<SupplierModalProps> = ({
           </div>
 
           <div>
-            <label className={`block font-semibold mb-1 ${isDark ? "text-slate-200" : "text-slate-700"}`}>
+            <label htmlFor="supplier-modal-telefono-whatsapp-para-pedid" className={`block font-semibold mb-1 ${isDark ? "text-slate-200" : "text-slate-700"}`}>
               Teléfono / WhatsApp para Pedidos *
             </label>
-            <input
+            <input id="supplier-modal-telefono-whatsapp-para-pedid"
               type="text"
               required
               maxLength={20}
@@ -180,10 +181,10 @@ export const SupplierModal: React.FC<SupplierModalProps> = ({
           </div>
 
           <div>
-            <label className={`block font-semibold mb-1 ${isDark ? "text-slate-200" : "text-slate-700"}`}>
+            <label htmlFor="supplier-modal-notas-dias-de-entrega-minimo" className={`block font-semibold mb-1 ${isDark ? "text-slate-200" : "text-slate-700"}`}>
               Notas / Días de Entrega / Mínimos
             </label>
-            <textarea
+            <textarea id="supplier-modal-notas-dias-de-entrega-minimo"
               rows={2}
               maxLength={300}
               placeholder="Ej: Entregan martes y viernes. Pedido mínimo $150.000."

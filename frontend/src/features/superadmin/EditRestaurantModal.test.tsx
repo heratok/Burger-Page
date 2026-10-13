@@ -94,8 +94,8 @@ describe("EditRestaurantModal (TDD)", () => {
     expect((screen.getByLabelText(/Eslogan/i) as HTMLInputElement).value).toBe("Hamburguesas artesanales premium")
     expect((screen.getByLabelText(/WhatsApp/i) as HTMLInputElement).value).toBe("573001234567")
     expect((screen.getByLabelText(/Slug \/ URL Pública/i) as HTMLInputElement).value).toBe("burger-craft")
-    expect((screen.getByLabelText(/Zona Horaria/i) as HTMLSelectElement).value).toBe("America/Bogota")
-    expect((screen.getByLabelText(/^Moneda/i) as HTMLSelectElement).value).toBe("COP")
+    expect((screen.getByLabelText(/Zona Horaria/i, { selector: "select" }) as HTMLSelectElement).value).toBe("America/Bogota")
+    expect((screen.getByLabelText(/^Moneda/i, { selector: "select" }) as HTMLSelectElement).value).toBe("COP")
     expect((screen.getByLabelText(/Símbolo/i) as HTMLInputElement).value).toBe("$")
   })
 
@@ -409,11 +409,11 @@ describe("EditRestaurantModal (TDD)", () => {
       </RestaurantProvider>
     )
 
-    const tzSelect = screen.getByLabelText(/Zona Horaria/i) as HTMLSelectElement
+    const tzSelect = screen.getByLabelText(/Zona Horaria/i, { selector: "select" }) as HTMLSelectElement
     expect(tzSelect.value).toBe("Asia/Tokyo")
     expect(screen.getAllByText(/Asia\/Tokyo \(actual\)/i).length).toBeGreaterThan(0)
 
-    const currSelect = screen.getByLabelText(/^Moneda/i) as HTMLSelectElement
+    const currSelect = screen.getByLabelText(/^Moneda/i, { selector: "select" }) as HTMLSelectElement
     expect(currSelect.value).toBe("JPY")
     expect(screen.getAllByText(/JPY \(actual\)/i).length).toBeGreaterThan(0)
   })

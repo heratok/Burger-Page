@@ -198,10 +198,10 @@ export const ProductModal: React.FC<ProductModalProps> = ({
         <form onSubmit={handleSubmit} className="mt-4 space-y-4 text-xs">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className="font-semibold block mb-1 text-slate-800 dark:text-slate-200">
+              <label htmlFor="product-modal-nombre-del-producto" className="font-semibold block mb-1 text-slate-800 dark:text-slate-200">
                 Nombre del Producto *
               </label>
-              <input
+              <input id="product-modal-nombre-del-producto"
                 type="text"
                 required
                 maxLength={80}
@@ -212,10 +212,10 @@ export const ProductModal: React.FC<ProductModalProps> = ({
               />
             </div>
             <div>
-              <label className="font-semibold block mb-1 text-slate-800 dark:text-slate-200">
+              <label htmlFor="product-modal-precio-cop" className="font-semibold block mb-1 text-slate-800 dark:text-slate-200">
                 Precio ($ COP) *
               </label>
-              <input
+              <input id="product-modal-precio-cop"
                 type="number"
                 required
                 min={0}
@@ -232,7 +232,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="font-semibold text-slate-800 dark:text-slate-200">
+                <label htmlFor="product-modal-category" className="font-semibold text-slate-800 dark:text-slate-200">
                   Categoría
                 </label>
                 <button
@@ -246,6 +246,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
 
               {isCustomCategoryInput ? (
                 <input
+                  id="product-modal-category"
                   type="text"
                   required
                   maxLength={50}
@@ -256,6 +257,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                 />
               ) : (
                 <Select
+                  id="product-modal-category"
                   value={productForm.category}
                   onChange={(e) => {
                     const val = e.target.value
@@ -274,10 +276,10 @@ export const ProductModal: React.FC<ProductModalProps> = ({
               )}
             </div>
             <div>
-              <label className="font-semibold block mb-1 text-slate-800 dark:text-slate-200">
+              <label htmlFor="product-modal-tiempo-estimado-minutos" className="font-semibold block mb-1 text-slate-800 dark:text-slate-200">
                 Tiempo Estimado (Minutos)
               </label>
-              <input
+              <input id="product-modal-tiempo-estimado-minutos"
                 type="number"
                 min={0}
                 max={300}
@@ -290,10 +292,10 @@ export const ProductModal: React.FC<ProductModalProps> = ({
             </div>
           </div>
 
-          <div>
-            <label className="font-semibold block mb-1.5 text-slate-800 dark:text-slate-200">
+          <div role="group" aria-labelledby="product-modal-photo-label">
+            <span id="product-modal-photo-label" className="font-semibold block mb-1.5 text-slate-800 dark:text-slate-200">
               Foto del Producto
-            </label>
+            </span>
 
             <input
               ref={productFileInputRef}
@@ -514,10 +516,10 @@ export const ProductModal: React.FC<ProductModalProps> = ({
           </div>
 
           <div>
-            <label className="font-semibold block mb-1 text-slate-800 dark:text-slate-200">
+            <label htmlFor="product-modal-descripcion-e-ingredientes" className="font-semibold block mb-1 text-slate-800 dark:text-slate-200">
               Descripción e Ingredientes
             </label>
-            <textarea
+            <textarea id="product-modal-descripcion-e-ingredientes"
               rows={3}
               maxLength={350}
               value={productForm.description}

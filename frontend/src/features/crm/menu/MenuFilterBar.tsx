@@ -134,7 +134,9 @@ export const MenuFilterBar: React.FC<MenuFilterBarProps> = ({
         </div>
         <div className="flex rounded-xl border p-0.5 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
           <button
+            aria-label="Vista de cuadrícula"
             type="button"
+            aria-pressed={viewMode === "grid"}
             onClick={() => onViewModeChange("grid")}
             className={`rounded-lg p-1.5 text-xs ${
               viewMode === "grid"
@@ -146,7 +148,9 @@ export const MenuFilterBar: React.FC<MenuFilterBarProps> = ({
             <LayoutGrid className="size-4" />
           </button>
           <button
+            aria-label="Vista de lista"
             type="button"
+            aria-pressed={viewMode === "table"}
             onClick={() => onViewModeChange("table")}
             className={`rounded-lg p-1.5 text-xs ${
               viewMode === "table"

@@ -85,10 +85,10 @@ export const CustomizerBrandingSection: React.FC<CustomizerBrandingSectionProps>
         <h3 className="font-bold text-sm text-slate-900 dark:text-white">Identidad Visual & Fotos</h3>
 
         <div>
-          <label className="font-semibold block mb-1 text-slate-800 dark:text-slate-200">
+          <label htmlFor="customizer-branding-section-nombre-del-restaurante" className="font-semibold block mb-1 text-slate-800 dark:text-slate-200">
             Nombre del Restaurante
           </label>
-          <input
+          <input id="customizer-branding-section-nombre-del-restaurante"
             type="text"
             maxLength={80}
             value={draft.name}
@@ -99,10 +99,10 @@ export const CustomizerBrandingSection: React.FC<CustomizerBrandingSectionProps>
         </div>
 
         <div>
-          <label className="font-semibold block mb-1 text-slate-800 dark:text-slate-200">
+          <label htmlFor="customizer-branding-section-slogan-tagline" className="font-semibold block mb-1 text-slate-800 dark:text-slate-200">
             Slogan / Tagline
           </label>
-          <input
+          <input id="customizer-branding-section-slogan-tagline"
             type="text"
             maxLength={120}
             value={draft.tagline}
@@ -113,10 +113,10 @@ export const CustomizerBrandingSection: React.FC<CustomizerBrandingSectionProps>
         </div>
 
         {/* Logo Upload */}
-        <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
-          <label className="font-semibold block text-slate-800 dark:text-slate-200">
+        <div role="group" aria-labelledby="branding-logo-label" className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
+          <span id="branding-logo-label" className="font-semibold block text-slate-800 dark:text-slate-200">
             Logo del Restaurante
-          </label>
+          </span>
 
           <div className="flex items-center gap-3">
             {draft.logoUrl ? (
@@ -199,10 +199,10 @@ export const CustomizerBrandingSection: React.FC<CustomizerBrandingSectionProps>
         </div>
 
         {/* Banner Upload */}
-        <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
-          <label className="font-semibold block text-slate-800 dark:text-slate-200">
+        <div role="group" aria-labelledby="branding-banner-label" className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
+          <span id="branding-banner-label" className="font-semibold block text-slate-800 dark:text-slate-200">
             Foto de Portada / Banner Superior
-          </label>
+          </span>
 
           {draft.bannerUrl && (
             <div className="relative h-24 w-full overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs">
@@ -218,6 +218,7 @@ export const CustomizerBrandingSection: React.FC<CustomizerBrandingSectionProps>
                 </div>
               )}
               <button
+                aria-label="Eliminar foto de portada"
                 type="button"
                 disabled={uploadingField !== null}
                 onClick={() => setConfirmDeleteMedia("banner")}
@@ -279,10 +280,10 @@ export const CustomizerBrandingSection: React.FC<CustomizerBrandingSectionProps>
 
             {draft.showAnnouncement && (
               <div>
-                <label className="font-semibold block mb-1 text-slate-800 dark:text-slate-200">
+                <label htmlFor="customizer-branding-section-texto-del-anuncio" className="font-semibold block mb-1 text-slate-800 dark:text-slate-200">
                   Texto del Anuncio
                 </label>
-                <input
+                <input id="customizer-branding-section-texto-del-anuncio"
                   type="text"
                   value={draft.announcementText}
                   onChange={(e) => setDraft((prev) => ({ ...prev, announcementText: e.target.value }))}

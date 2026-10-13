@@ -282,9 +282,10 @@ export const RolesManager: React.FC = () => {
 
       {/* Conflict banner if deletion failed */}
       {conflictError && (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs font-medium text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300 flex items-center justify-between">
+        <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs font-medium text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300 flex items-center justify-between">
           <span>{conflictError}</span>
           <button
+            aria-label="Cerrar aviso"
             type="button"
             onClick={() => setConflictError(null)}
             className="text-rose-600 hover:text-rose-900 dark:text-rose-400"
@@ -490,6 +491,7 @@ export const RolesManager: React.FC = () => {
                 <span>{editingRole ? "Editar Rol" : "Crear Nuevo Rol"}</span>
               </h3>
               <button
+                aria-label="Cerrar"
                 type="button"
                 onClick={() => setIsModalOpen(false)}
                 className="rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
@@ -550,11 +552,11 @@ export const RolesManager: React.FC = () => {
 
               {/* Presets Toolbar */}
               <div>
-                <label className="block font-bold mb-1.5 text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                <span id="roles-presets-label" className="block font-bold mb-1.5 text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                   <Sparkles className="size-3.5 text-amber-700 dark:text-amber-400" />
                   <span>Plantillas Rápidas (Presets)</span>
-                </label>
-                <div className="flex flex-wrap gap-2">
+                </span>
+                <div role="group" aria-labelledby="roles-presets-label" className="flex flex-wrap gap-2">
                   {PRESET_TEMPLATES.map((preset) => (
                     <button
                       key={preset.name}

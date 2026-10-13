@@ -261,10 +261,10 @@ function MesaInputs({
     <div className="space-y-2">
       {tableSelector}
       <div>
-        <label className="text-xs font-bold text-slate-500 dark:text-slate-400">
+        <label htmlFor="manual-sale-modal-nombre-cliente-opcional" className="text-xs font-bold text-slate-500 dark:text-slate-400">
           Nombre Cliente (Opcional)
         </label>
-        <input
+        <input id="manual-sale-modal-nombre-cliente-opcional"
           type="text"
           maxLength={80}
           placeholder="Nombre o apodo"
@@ -305,10 +305,10 @@ function DomicilioInputs({
     <div className="space-y-2">
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="text-xs font-bold text-slate-500 dark:text-slate-400">
+          <label htmlFor="manual-sale-modal-nombre-cliente" className="text-xs font-bold text-slate-500 dark:text-slate-400">
             Nombre Cliente *
           </label>
-          <input
+          <input aria-required="true" id="manual-sale-modal-nombre-cliente"
             type="text"
             maxLength={80}
             placeholder="Nombre completo"
@@ -318,10 +318,10 @@ function DomicilioInputs({
           />
         </div>
         <div>
-          <label className="text-xs font-bold text-slate-500 dark:text-slate-400">
+          <label htmlFor="manual-sale-modal-telefono" className="text-xs font-bold text-slate-500 dark:text-slate-400">
             Teléfono
           </label>
-          <input
+          <input id="manual-sale-modal-telefono"
             type="text"
             maxLength={20}
             placeholder="300 123 4567"
@@ -333,10 +333,10 @@ function DomicilioInputs({
       </div>
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="text-xs font-bold text-slate-500 dark:text-slate-400">
+          <label htmlFor="manual-sale-modal-direccion-de-entrega" className="text-xs font-bold text-slate-500 dark:text-slate-400">
             Dirección de Entrega *
           </label>
-          <input
+          <input aria-required="true" id="manual-sale-modal-direccion-de-entrega"
             type="text"
             maxLength={150}
             placeholder="Calle 10 # 4-20"
@@ -346,10 +346,10 @@ function DomicilioInputs({
           />
         </div>
         <div>
-          <label className="text-xs font-bold text-slate-500 dark:text-slate-400">
+          <label htmlFor="manual-sale-modal-barrio" className="text-xs font-bold text-slate-500 dark:text-slate-400">
             Barrio *
           </label>
-          <input
+          <input aria-required="true" id="manual-sale-modal-barrio"
             type="text"
             maxLength={80}
             placeholder="Barrio o sector"
@@ -382,10 +382,10 @@ function MostradorInputs({
   return (
     <div className="grid grid-cols-2 gap-2">
       <div>
-        <label className="text-xs font-bold text-slate-500 dark:text-slate-400">
+        <label htmlFor="manual-sale-modal-nombre-cliente-opcional-385" className="text-xs font-bold text-slate-500 dark:text-slate-400">
           Nombre Cliente (Opcional)
         </label>
-        <input
+        <input id="manual-sale-modal-nombre-cliente-opcional-385"
           type="text"
           maxLength={80}
           placeholder="Cliente Mostrador"
@@ -395,10 +395,10 @@ function MostradorInputs({
         />
       </div>
       <div>
-        <label className="text-xs font-bold text-slate-500 dark:text-slate-400">
+        <label htmlFor="manual-sale-modal-telefono-opcional" className="text-xs font-bold text-slate-500 dark:text-slate-400">
           Teléfono (Opcional)
         </label>
-        <input
+        <input id="manual-sale-modal-telefono-opcional"
           type="text"
           maxLength={20}
           placeholder="Para fidelización"
@@ -925,7 +925,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-0 sm:p-4 backdrop-blur-md">
+    <div role="dialog" aria-modal="true" aria-labelledby="manual-sale-title" className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-0 sm:p-4 backdrop-blur-md">
       <div
         className={`flex flex-col w-full h-full sm:h-[92vh] sm:max-h-[920px] max-w-6xl rounded-none sm:rounded-2xl border-0 sm:border shadow-2xl overflow-hidden transition-all ${
           isDark ? "border-slate-800 bg-[#0E1322] text-slate-100" : "border-slate-200 bg-white text-slate-900"
@@ -934,7 +934,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
         {/* ======================================================== */}
         {/* TOP BAR HEADER & MOBILE TAB CONTROLS                     */}
         {/* ======================================================== */}
-        <header
+        <div
           className={`flex flex-col border-b ${
             isDark ? "border-slate-800 bg-slate-900/60" : "border-slate-200 bg-slate-50"
           }`}
@@ -946,7 +946,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
               </div>
               <div>
                 <div className="flex items-center gap-1.5 sm:gap-2">
-                  <h2 className="text-sm sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white">
+                  <h2 id="manual-sale-title" className="text-sm sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white">
                     {orderToEdit ? `Editar Venta #${orderToEdit.orderNumber}` : "Punto de Venta — Nueva Venta"}
                   </h2>
                   <span className="hidden sm:inline-flex items-center rounded-full bg-orange-500/10 px-2.5 py-0.5 text-xs font-semibold text-orange-800 dark:text-orange-400">
@@ -1019,7 +1019,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
               )}
             </button>
           </div>
-        </header>
+        </div>
 
         {/* ======================================================== */}
         {/* MAIN BODY: CATALOG (LEFT) & POS CART (RIGHT)             */}
@@ -1054,6 +1054,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                 />
                 {searchQuery && (
                   <button
+                    aria-label="Limpiar búsqueda"
                     type="button"
                     onClick={() => setSearchQuery("")}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer"
@@ -1137,9 +1138,9 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                       >
                         <div>
                           <div className="flex items-start justify-between gap-2">
-                            <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white leading-tight">
+                            <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white leading-tight">
                               {product.name}
-                            </h4>
+                            </h3>
                             {inCartCount > 0 && (
                               <span className="rounded-full bg-orange-700 px-2 py-0.5 text-xs font-black text-white shrink-0">
                                 {inCartCount} en comanda
@@ -1245,12 +1246,13 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                   isDark ? "border-slate-800 bg-slate-900/30" : "border-slate-200 bg-slate-50"
                 }`}
               >
-                <label className="text-xs sm:text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                <span id="manual-sale-service-type-label" className="block text-xs sm:text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   Tipo de Servicio
-                </label>
-                <div className="mt-1.5 grid grid-cols-3 gap-1 bg-slate-200/60 dark:bg-slate-950 p-1 rounded-xl">
+                </span>
+                <div role="group" aria-labelledby="manual-sale-service-type-label" className="mt-1.5 grid grid-cols-3 gap-1 bg-slate-200/60 dark:bg-slate-950 p-1 rounded-xl">
                   <button
                     type="button"
+                    aria-pressed={serviceType === "mostrador"}
                     onClick={() => setServiceType("mostrador")}
                     className={`flex items-center justify-center gap-1 sm:gap-1.5 rounded-lg py-1.5 text-xs font-bold transition-all cursor-pointer ${
                       serviceType === "mostrador"
@@ -1264,6 +1266,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
 
                   <button
                     type="button"
+                    aria-pressed={serviceType === "mesa"}
                     onClick={() => setServiceType("mesa")}
                     className={`flex items-center justify-center gap-1 sm:gap-1.5 rounded-lg py-1.5 text-xs font-bold transition-all cursor-pointer ${
                       serviceType === "mesa"
@@ -1277,6 +1280,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
 
                   <button
                     type="button"
+                    aria-pressed={serviceType === "domicilio"}
                     onClick={() => setServiceType("domicilio")}
                     className={`flex items-center justify-center gap-1 sm:gap-1.5 rounded-lg py-1.5 text-xs font-bold transition-all cursor-pointer ${
                       serviceType === "domicilio"
@@ -1310,9 +1314,9 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                   {selectedItems.length === 0 ? (
                     <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 dark:border-slate-700/60 p-6 text-center">
                       <ShoppingBag className="size-8 text-slate-500 dark:text-slate-400 mb-1.5 opacity-40" />
-                      <h5 className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300">
                         Venta vacía
-                      </h5>
+                      </h4>
                       <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 max-w-[200px]">
                         Seleccioná productos en el catálogo para armar el pedido.
                       </p>
@@ -1337,9 +1341,9 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                             <span className="text-xs font-black text-orange-700 dark:text-orange-400">
                               {item.cantidad}x
                             </span>
-                            <h5 className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                            <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">
                               {item.name}
-                            </h5>
+                            </h4>
                           </div>
 
                           {/* Additions list */}
@@ -1378,6 +1382,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                         {/* Stepper + Delete */}
                         <div className="flex items-center gap-1 shrink-0">
                           <button
+                            aria-label="Disminuir cantidad"
                             type="button"
                             onClick={() => handleUpdateItemQty(index, -1)}
                             className={`size-6 flex items-center justify-center rounded-lg border text-xs cursor-pointer ${
@@ -1390,6 +1395,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                           </button>
                           <span className="w-5 text-center text-xs font-bold">{item.cantidad}</span>
                           <button
+                            aria-label="Aumentar cantidad"
                             type="button"
                             onClick={() => handleUpdateItemQty(index, 1)}
                             className={`size-6 flex items-center justify-center rounded-lg border text-xs cursor-pointer ${
@@ -1401,6 +1407,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                             <Plus className="size-3" />
                           </button>
                           <button
+                            aria-label="Eliminar producto"
                             type="button"
                             onClick={() => handleRemoveItem(index)}
                             title="Eliminar producto"
@@ -1445,11 +1452,11 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
 
                   {/* General Order Notes / Kitchen Observations */}
                   <div>
-                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center justify-between">
+                    <label htmlFor="manual-sale-modal-observaciones-del-pedido-opc" className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center justify-between">
                       <span>Observaciones del Pedido (Opcional)</span>
                       <span className="text-xs font-normal text-slate-500 dark:text-slate-400">Cocina & Entrega</span>
                     </label>
-                    <input
+                    <input id="manual-sale-modal-observaciones-del-pedido-opc"
                       type="text"
                       maxLength={250}
                       placeholder="Ej: Sin cebolla, salsas aparte, observaciones del cliente..."
@@ -1464,12 +1471,13 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                   {/* Payment Method & Cash Change */}
                   <div className="space-y-2 pt-1 border-t border-slate-200 dark:border-slate-800">
                     <div className="flex items-center justify-between">
-                      <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      <span id="manual-sale-payment-method-label" className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                         Método de Pago
-                      </label>
-                      <div className="flex items-center gap-1">
+                      </span>
+                      <div role="group" aria-labelledby="manual-sale-payment-method-label" className="flex items-center gap-1">
                         <button
                           type="button"
+                          aria-pressed={paymentMethod === "Efectivo"}
                           onClick={() => setPaymentMethod("Efectivo")}
                           className={`rounded-lg px-2.5 py-1 text-xs font-bold transition-all cursor-pointer ${getPaymentMethodBtnClass("Efectivo")}`}
                         >
@@ -1477,6 +1485,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                         </button>
                         <button
                           type="button"
+                          aria-pressed={paymentMethod === "Transferencia"}
                           onClick={() => setPaymentMethod("Transferencia")}
                           className={`rounded-lg px-2.5 py-1 text-xs font-bold transition-all cursor-pointer ${getPaymentMethodBtnClass("Transferencia")}`}
                         >
@@ -1510,10 +1519,10 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                     {paymentMethod === "Transferencia" && (
                       <div className="space-y-2 rounded-xl border border-indigo-500/20 bg-indigo-50/40 dark:bg-indigo-950/20 p-2.5">
                         <div className="flex items-center justify-between">
-                          <label className="text-xs font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-1.5">
+                          <span className="text-xs font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-1.5">
                             <Upload className="size-3 text-indigo-600 dark:text-indigo-400" />
                             <span>Comprobante de Transferencia (Opcional)</span>
-                          </label>
+                          </span>
                           {receiptPreview && (
                             <button
                               type="button"
@@ -1673,6 +1682,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                   </p>
                 </div>
                 <button
+                  aria-label="Cerrar personalización"
                   type="button"
                   onClick={() => {
                     setCustomizingProduct(null)
@@ -1689,9 +1699,9 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                 {/* Additions list */}
                 <div>
                   <div className="flex items-baseline justify-between mb-1.5">
-                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    <span id="manual-sale-additions-label" className="text-xs font-bold text-slate-700 dark:text-slate-300">
                       Adiciones / Modificadores disponibles:
-                    </label>
+                    </span>
                     <span className="text-xs text-slate-500 dark:text-slate-400">
                       (Modifican este plato)
                     </span>
@@ -1702,7 +1712,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                       No hay adiciones registradas para este local.
                     </p>
                   ) : (
-                    <div className="space-y-1.5">
+                    <div role="group" aria-labelledby="manual-sale-additions-label" className="space-y-1.5">
                       {additions.map((addition) => {
                         const qty = customAdditions[addition.id] || 0
                         const isSelected = qty > 0
@@ -1774,11 +1784,11 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
 
                 {/* Kitchen Observation */}
                 <div className="pt-2 border-t border-slate-200 dark:border-slate-800/80">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                  <label htmlFor="manual-sale-modal-nota-observacion-para-cocina" className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
                     <span>Nota / Observación para cocina</span>
                     <span className="text-xs font-normal text-slate-500 dark:text-slate-400">Opcional</span>
                   </label>
-                  <input
+                  <input id="manual-sale-modal-nota-observacion-para-cocina"
                     type="text"
                     maxLength={150}
                     placeholder="Ej: Término medio, sin salsas, salsa aparte..."

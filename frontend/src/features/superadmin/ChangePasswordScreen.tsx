@@ -142,7 +142,7 @@ export const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({
       {/* Form */}
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
         {errorMessage && (
-          <div className="flex items-start gap-2 rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-xs text-rose-600 dark:text-rose-400">
+          <div role="alert" className="flex items-start gap-2 rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-xs text-rose-600 dark:text-rose-400">
             <AlertCircle className="size-4 shrink-0 mt-0.5" />
             <span>{errorMessage}</span>
           </div>

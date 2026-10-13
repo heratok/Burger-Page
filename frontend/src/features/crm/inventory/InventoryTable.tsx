@@ -287,6 +287,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
+                            aria-label={`Editar insumo ${item.name}`}
                             type="button"
                             onClick={() => onEditItem(item)}
                             className="rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white"
@@ -295,6 +296,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
                             <Edit2 className="size-3.5" />
                           </button>
                           <button
+                            aria-label={`Eliminar insumo ${item.name}`}
                             type="button"
                             onClick={() => onDeleteItem(item)}
                             className="rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-rose-500/10 hover:text-rose-500 cursor-pointer"

@@ -93,6 +93,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({
               </td>
               <td className="py-3 px-4 text-right">
                 <button
+                  aria-label={`Editar plato ${prod.name}`}
                   type="button"
                   onClick={() => onEditProduct(prod)}
                   className="mr-1 rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-indigo-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-indigo-300 cursor-pointer"
@@ -101,6 +102,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                   <Edit2 className="size-4" />
                 </button>
                 <button
+                  aria-label={`Eliminar plato ${prod.name}`}
                   type="button"
                   onClick={() => onDeleteProduct(prod)}
                   className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-rose-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-rose-400 cursor-pointer"

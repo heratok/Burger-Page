@@ -92,6 +92,7 @@ export const SuppliersList: React.FC<SuppliersListProps> = ({
 
                     <div className="flex items-center gap-1">
                       <button
+                        aria-label={`Editar proveedor ${sup.name}`}
                         type="button"
                         onClick={() => onEditSupplier(sup)}
                         className={`rounded-lg p-1 transition-colors ${
@@ -104,6 +105,7 @@ export const SuppliersList: React.FC<SuppliersListProps> = ({
                         <Edit2 className="size-3.5" />
                       </button>
                       <button
+                        aria-label={`Eliminar proveedor ${sup.name}`}
                         type="button"
                         onClick={() => onDeleteSupplier(sup)}
                         className="rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-rose-500/10 hover:text-rose-500 cursor-pointer"

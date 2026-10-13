@@ -113,7 +113,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           </div>
 
           {error && (
-            <div className="rounded-lg border border-red-800/50 bg-red-500/10 px-3 py-2 text-xs text-red-600 dark:text-red-400">
+            <div role="alert" className="rounded-lg border border-red-800/50 bg-red-500/10 px-3 py-2 text-xs text-red-600 dark:text-red-400">
               {error}
             </div>
           )}

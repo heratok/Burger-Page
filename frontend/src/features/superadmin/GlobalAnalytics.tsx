@@ -88,6 +88,7 @@ export const GlobalAnalytics: React.FC = () => {
         <div className="w-full sm:w-52 self-start sm:self-auto">
           <Select
             size="md"
+            aria-label="Período"
             value={period}
             onChange={(e) => setPeriod(e.target.value)}
             options={[

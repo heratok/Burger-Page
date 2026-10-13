@@ -86,7 +86,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
   ]
 
   return (
-    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-md">
+    <div role="dialog" aria-modal="true" aria-labelledby="create-user-title" className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-md">
       <div
         className={`w-full max-w-md rounded-2xl border p-6 shadow-2xl transition-all ${
           isDark ? "border-slate-800 bg-[#0E1322] text-slate-100" : "border-slate-200 bg-white text-slate-900"
@@ -99,13 +99,14 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
               <UserPlus className="size-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold">Crear Usuario</h3>
+              <h3 id="create-user-title" className="text-base font-bold">Crear Usuario</h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 Asigna credenciales de acceso al panel de un restaurante.
               </p>
             </div>
           </div>
           <button
+            aria-label="Cerrar"
             type="button"
             onClick={onClose}
             className="rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
@@ -118,10 +119,10 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
           {/* Username */}
           <div>
-            <label className="block text-xs font-bold mb-1 text-slate-700 dark:text-slate-300">
+            <label htmlFor="create-user-modal-nombre-de-usuario" className="block text-xs font-bold mb-1 text-slate-700 dark:text-slate-300">
               Nombre de Usuario *
             </label>
-            <input
+            <input id="create-user-modal-nombre-de-usuario"
               type="text"
               required
               maxLength={50}
@@ -134,10 +135,10 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
 
           {/* Password */}
           <div>
-            <label className="block text-xs font-bold mb-1 text-slate-700 dark:text-slate-300">
+            <label htmlFor="create-user-modal-contrasena-minimo-8-caracter" className="block text-xs font-bold mb-1 text-slate-700 dark:text-slate-300">
               Contraseña * (mínimo 8 caracteres)
             </label>
-            <input
+            <input id="create-user-modal-contrasena-minimo-8-caracter"
               type="password"
               required
               minLength={8}
@@ -151,10 +152,10 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
 
           {/* Role */}
           <div>
-            <label className="block text-xs font-bold mb-1.5 text-slate-700 dark:text-slate-300">
+            <span id="create-user-role-label" className="block text-xs font-bold mb-1.5 text-slate-700 dark:text-slate-300">
               Rol del Usuario
-            </label>
-            <div className="grid grid-cols-2 gap-2.5">
+            </span>
+            <div role="group" aria-labelledby="create-user-role-label" className="grid grid-cols-2 gap-2.5">
               {[
                 { id: "restaurant_admin" as const, icon: Store, name: "Admin Restaurante", desc: "Gestiona un local" },
                 { id: "super_admin" as const, icon: Shield, name: "Super Admin", desc: "Acceso total a la plataforma" },
@@ -162,6 +163,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
                 <button
                   key={r.id}
                   type="button"
+                  aria-pressed={role === r.id}
                   onClick={() => {
                     setRole(r.id)
                     if (r.id === "super_admin") setRestaurantId("")

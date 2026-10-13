@@ -341,7 +341,7 @@ export const CustomerCRM: React.FC = () => {
             isDark ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-white"
           }`}
         >
-        <div className="overflow-x-auto">
+        <div role="region" aria-label="Tabla de clientes" tabIndex={0} className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
               <tr className={`border-b ${isDark ? "border-slate-800 text-slate-400" : "border-slate-100 text-slate-500"}`}>
@@ -409,6 +409,7 @@ export const CustomerCRM: React.FC = () => {
                         <span>Chat</span>
                       </button>
                       <button
+                        aria-label={`Ficha del cliente ${cust.nombre}`}
                         type="button"
                         onClick={() => openCustomerModal(cust)}
                         className="rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
@@ -570,11 +571,11 @@ export const CustomerCRM: React.FC = () => {
 
             {/* Notes input */}
             <div className="mt-4 space-y-2 text-xs">
-              <label className="font-bold flex items-center gap-1.5 text-slate-800 dark:text-slate-200">
+              <label htmlFor="customer-crm-notas-internas-del-cliente-p" className="font-bold flex items-center gap-1.5 text-slate-800 dark:text-slate-200">
                 <FileText className="size-3.5 text-indigo-600 dark:text-indigo-400" />
                 <span>Notas Internas del Cliente (Preferencias, Alergias, etc.)</span>
               </label>
-              <textarea
+              <textarea id="customer-crm-notas-internas-del-cliente-p"
                 rows={3}
                 maxLength={300}
                 value={notesEdit}
@@ -686,7 +687,7 @@ export const CustomerCRM: React.FC = () => {
 
                 <label className="flex flex-col gap-1 font-bold text-slate-800 dark:text-slate-200">
                   <span>Teléfono *</span>
-                  <input
+                  <input aria-required="true"
                     type="text"
                     maxLength={20}
                     value={createDraft.telefono}
@@ -713,7 +714,7 @@ export const CustomerCRM: React.FC = () => {
 
                 <label className="flex flex-col gap-1 font-bold text-slate-800 dark:text-slate-200">
                   <span>Dirección</span>
-                  <input
+                  <input aria-required="true"
                     type="text"
                     maxLength={120}
                     value={createDraft.direccion}

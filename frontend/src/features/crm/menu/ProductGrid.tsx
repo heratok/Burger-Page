@@ -75,9 +75,9 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
           {/* Body Content */}
           <div className="p-4 space-y-2">
             <div className="flex items-start justify-between gap-2">
-              <h3 className="font-bold tracking-tight line-clamp-1 text-slate-900 dark:text-white">
+              <h2 className="font-bold tracking-tight line-clamp-1 text-slate-900 dark:text-white">
                 {product.name}
-              </h3>
+              </h2>
               <span className="text-base font-black text-indigo-600 dark:text-indigo-400 whitespace-nowrap">
                 {formatCurrency(product.price)}
               </span>
@@ -97,6 +97,7 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
 
               <div className="flex items-center gap-1">
                 <button
+                  aria-label={`Editar plato ${product.name}`}
                   type="button"
                   onClick={() => onEditProduct(product)}
                   className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-indigo-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-indigo-300 cursor-pointer"
@@ -105,6 +106,7 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
                   <Edit2 className="size-4" />
                 </button>
                 <button
+                  aria-label={`Eliminar plato ${product.name}`}
                   type="button"
                   onClick={() => onDeleteProduct(product)}
                   className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-rose-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-rose-400 cursor-pointer"

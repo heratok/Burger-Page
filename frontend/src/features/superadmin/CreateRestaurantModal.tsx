@@ -258,6 +258,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
         className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-md"
         role="dialog"
         aria-modal="true"
+        aria-labelledby="create-restaurant-title"
         onKeyDown={(e) => {
           if (e.key === "Escape") {
             e.preventDefault()
@@ -365,13 +366,14 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
               <Store className="size-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold">Dar de Alta Nuevo Restaurante</h3>
+              <h3 id="create-restaurant-title" className="text-base font-bold">Dar de Alta Nuevo Restaurante</h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 Registra un nuevo inquilino con su propia tienda y panel CRM.
               </p>
             </div>
           </div>
           <button
+            aria-label="Cerrar"
             type="button"
             onClick={onClose}
             className="rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
@@ -382,7 +384,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
 
         {/* Error message */}
         {errorMessage && (
-          <div className="mt-4 flex items-start gap-2 rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-xs text-rose-600 dark:text-rose-400">
+          <div role="alert" className="mt-4 flex items-start gap-2 rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-xs text-rose-600 dark:text-rose-400">
             <AlertCircle className="size-4 shrink-0 mt-0.5" />
             <span>{errorMessage}</span>
           </div>
@@ -633,9 +635,9 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
           {/* Preset Template */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+              <span id="create-restaurant-template-label" className="block text-xs font-bold text-slate-700 dark:text-slate-300">
                 Plantilla Inicial de Menú
-              </label>
+              </span>
               {isLoadingTemplates && (
                 <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
                   <Loader2 className="size-3 animate-spin" />
@@ -668,7 +670,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
                 ))}
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+              <div role="group" aria-labelledby="create-restaurant-template-label" className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
                 {(templates.length > 0 ? templates : FALLBACK_TEMPLATES).map((tpl: any) => {
                   const isSelected = templateType === tpl.id
                   const hasApiCounts = typeof tpl.productCount === "number" && tpl.productCount > 0
@@ -680,6 +682,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
                     <button
                       key={tpl.id}
                       type="button"
+                      aria-pressed={isSelected}
                       onClick={() => setTemplateType(tpl.id as typeof templateType)}
                       className={`rounded-xl border p-2.5 text-left transition-all ${
                         isSelected
@@ -703,14 +706,15 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
 
           {/* Color Presets */}
           <div>
-            <label className="block text-xs font-bold mb-1.5 text-slate-700 dark:text-slate-300">
+            <span id="create-restaurant-color-label" className="block text-xs font-bold mb-1.5 text-slate-700 dark:text-slate-300">
               Color de Marca Principal
-            </label>
-            <div className="flex flex-wrap gap-2">
+            </span>
+            <div role="group" aria-labelledby="create-restaurant-color-label" className="flex flex-wrap gap-2">
               {THEME_COLOR_PRESETS.map((color) => (
                 <button
                   key={color.id}
                   type="button"
+                  aria-pressed={primaryColor === color.primary}
                   onClick={() => setPrimaryColor(color.primary)}
                   className="flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs transition-all border-slate-200 dark:border-slate-700 hover:border-slate-400"
                 >

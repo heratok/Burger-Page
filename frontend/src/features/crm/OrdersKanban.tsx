@@ -261,6 +261,7 @@ export const OrdersKanban: React.FC = () => {
             />
             {searchTerm && (
               <button
+                aria-label="Limpiar búsqueda"
                 type="button"
                 onClick={() => setSearchTerm("")}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 hover:text-slate-200 cursor-pointer"
@@ -445,9 +446,9 @@ export const OrdersKanban: React.FC = () => {
                   <div className="flex size-14 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400 mb-3">
                     <UtensilsCrossed className="size-7" />
                   </div>
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  <h2 className="text-sm font-bold text-slate-900 dark:text-white">
                     ¡Cocina al día! No hay comandas pendientes
-                  </h3>
+                  </h2>
                   <p className="mt-1 max-w-sm text-xs text-slate-500 dark:text-slate-400">
                     Los pedidos que entren desde la tienda web o las ventas que cargues a mano aparecerán aquí en tiempo real.
                   </p>
@@ -592,9 +593,9 @@ export const OrdersKanban: React.FC = () => {
                     <span className="flex size-7 items-center justify-center rounded-lg bg-white shadow-xs dark:bg-slate-800">
                       {col.icon}
                     </span>
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100">
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100">
                       {col.title}
-                    </h3>
+                    </h2>
                   </div>
                   <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${getColumnBadgeClass(colOrders.length)}`}>
                     {colOrders.length}

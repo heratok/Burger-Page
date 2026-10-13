@@ -293,6 +293,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
               {order.receiptUrl ? (
                 <div className="mt-2.5 flex items-center gap-3">
                   <button
+                    aria-label="Ver comprobante ampliado"
                     type="button"
                     onClick={() => setIsReceiptModalOpen(true)}
                     className="relative size-16 shrink-0 cursor-pointer overflow-hidden rounded-lg border border-indigo-200 dark:border-indigo-800 shadow-xs hover:opacity-90 transition-opacity group p-0 text-left"

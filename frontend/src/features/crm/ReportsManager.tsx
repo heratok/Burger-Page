@@ -289,6 +289,7 @@ export const ReportsManager: React.FC = () => {
               <div className="relative">
                 <input
                   type="date"
+                  aria-label="Desde"
                   value={startDate}
                   onChange={(e) => {
                     setStartDate(e.target.value)
@@ -309,6 +310,7 @@ export const ReportsManager: React.FC = () => {
               <div className="relative">
                 <input
                   type="date"
+                  aria-label="Hasta"
                   value={endDate}
                   onChange={(e) => {
                     setEndDate(e.target.value)
