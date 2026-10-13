@@ -16,9 +16,9 @@ import { createCartItem, type CartAddition, type CartItem } from "./cartEngine"
 import CharacterCounter from "@/components/CharacterCounter"
 import { LIMITS } from "@/lib/validation"
 import { useCatalog } from "@/context/RestaurantContext"
-import { formatCurrency, getContrastForeground } from "@/lib/utils"
+import { formatCurrency } from "@/lib/utils"
 import { resolveImageUrl } from "@/core/storage/supabaseStorage"
-import { getFontFamilyClass, getStoreThemeStyles } from "@/features/crm/utils/customizerStyles"
+import { getFontFamilyClass, getStoreThemeStyles, getBrandTokens } from "@/features/crm/utils/customizerStyles"
 
 export interface AdditionsModalProps {
   onClose: () => void
@@ -41,7 +41,8 @@ export default function AdditionsModal({
   const { additions: storeAdditions, storeConfig } = useCatalog()
   const themeStyles = getStoreThemeStyles(storeConfig.bgTheme, storeConfig.primaryColor)
   const fontClass = getFontFamilyClass(storeConfig.fontFamily)
-  const primaryForeground = getContrastForeground(storeConfig.primaryColor)
+  const brand = getBrandTokens(storeConfig.primaryColor, storeConfig.bgTheme)
+  const primaryForeground = brand.onFill
   const [cantidad, setCantidad] = useState(initial?.cantidad ?? 1)
   const [observaciones, setObservaciones] = useState(initial?.observacion ?? "")
   const [isImageExpanded, setIsImageExpanded] = useState(false)
@@ -207,7 +208,7 @@ export default function AdditionsModal({
                 {editing ? `Editar ${product.name}` : product.name}
               </DialogTitle>
               <p
-                style={{ color: storeConfig.primaryColor }}
+                style={{ color: brand.text }}
                 className="text-base sm:text-lg font-black tracking-tight shrink-0"
               >
                 {formatCurrency(product.price)}
@@ -270,7 +271,7 @@ export default function AdditionsModal({
                         aria-label={`Agregar ${adicion.name}`}
                         disabled={closed}
                         style={{
-                          backgroundColor: storeConfig.primaryColor,
+                          backgroundColor: brand.fill,
                           color: primaryForeground,
                         }}
                         className="size-11 rounded-full shadow-xs hover:opacity-90 transition-opacity disabled:opacity-30"
@@ -345,7 +346,7 @@ export default function AdditionsModal({
                   aria-label="Aumentar cantidad"
                   disabled={closed}
                   style={{
-                    backgroundColor: storeConfig.primaryColor,
+                    backgroundColor: brand.fill,
                     color: primaryForeground,
                   }}
                   className="size-10 sm:size-11 rounded-full shadow-xs hover:opacity-90 transition-opacity disabled:opacity-30"
@@ -361,7 +362,7 @@ export default function AdditionsModal({
               onClick={handleAdd}
               disabled={!product || (closed && !editing)}
               style={{
-                backgroundColor: storeConfig.primaryColor,
+                backgroundColor: brand.fill,
                 color: primaryForeground,
               }}
               className="h-11 sm:h-12 w-full rounded-xl text-sm sm:text-base font-bold shadow-md cursor-pointer hover:opacity-90 min-[420px]:w-auto min-[420px]:flex-1 sm:min-w-[200px] sm:flex-none"

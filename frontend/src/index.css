@@ -878,7 +878,7 @@ textarea::placeholder {
     color: var(--color-text-muted) !important;
   }
   .text-accent {
-    color: var(--color-accent) !important;
+    color: var(--brand-text, var(--color-accent)) !important;
   }
   .bg-bg-base {
     background-color: var(--color-bg-base) !important;
@@ -908,7 +908,7 @@ textarea::placeholder {
     border-color: var(--color-border-strong) !important;
   }
   .bg-accent {
-    background-color: var(--color-accent) !important;
+    background-color: var(--brand-fill, var(--color-accent)) !important;
   }
   .bg-accent-soft {
     background-color: var(--color-accent-soft, rgba(255, 122, 33, 0.12)) !important;

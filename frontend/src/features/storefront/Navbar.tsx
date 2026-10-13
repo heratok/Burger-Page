@@ -1,6 +1,7 @@
 import { ShoppingCart } from "lucide-react"
 import { useCatalog } from "@/context/RestaurantContext"
-import { formatCurrency, formatWhatsAppPhone, getContrastForeground } from "@/lib/utils"
+import { formatCurrency, formatWhatsAppPhone } from "@/lib/utils"
+import { getBrandTokens } from "@/features/crm/utils/customizerStyles"
 
 interface NavbarProps {
   cantidad: number
@@ -11,7 +12,8 @@ interface NavbarProps {
 
 export default function Navbar({ cantidad, total, onOpenCart, onGoToMenu }: NavbarProps) {
   const { storeConfig } = useCatalog()
-  const primaryForeground = getContrastForeground(storeConfig.primaryColor)
+  const brand = getBrandTokens(storeConfig.primaryColor, storeConfig.bgTheme)
+  const primaryForeground = brand.onFill
 
   const cartLabel = `Ver orden, ${cantidad} ${cantidad === 1 ? "producto" : "productos"}, total ${formatCurrency(total)}`
 
@@ -27,7 +29,7 @@ export default function Navbar({ cantidad, total, onOpenCart, onGoToMenu }: Navb
       {storeConfig.showAnnouncement && storeConfig.announcementText && (
         <div
           style={{
-            backgroundColor: storeConfig.primaryColor,
+            backgroundColor: brand.fill,
             color: primaryForeground,
           }}
           className="px-4 py-1.5 text-center text-xs font-bold tracking-wide shadow-xs"
@@ -41,7 +43,7 @@ export default function Navbar({ cantidad, total, onOpenCart, onGoToMenu }: Navb
           href="#main-content"
           className="sr-only focus:not-sr-only focus:fixed focus:top-28 focus:left-1/2 focus:-translate-x-1/2 focus:z-[100] whitespace-nowrap rounded-md focus:px-4 focus:py-2 px-4 py-2 font-medium focus:shadow-xl focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black"
           style={{
-            backgroundColor: storeConfig.primaryColor,
+            backgroundColor: brand.fill,
             color: primaryForeground,
           }}
         >
@@ -69,7 +71,7 @@ export default function Navbar({ cantidad, total, onOpenCart, onGoToMenu }: Navb
           ) : (
             <div
               style={{
-                backgroundColor: storeConfig.primaryColor,
+                backgroundColor: brand.fill,
                 color: primaryForeground,
               }}
               className="flex size-10 items-center justify-center rounded-full font-bold text-base shadow-xs"
@@ -112,7 +114,7 @@ export default function Navbar({ cantidad, total, onOpenCart, onGoToMenu }: Navb
               <span
                 aria-hidden="true"
                 style={{
-                  backgroundColor: storeConfig.primaryColor,
+                  backgroundColor: brand.fill,
                   color: primaryForeground,
                 }}
                 className="absolute -top-1 -right-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full px-1 text-xs leading-none font-bold shadow-xs"

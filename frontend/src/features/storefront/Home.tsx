@@ -19,8 +19,7 @@ import { useStoreOpenStatus } from "@/hooks/useStoreOpenStatus"
 import { useStoreStatusRefresh } from "@/hooks/useStoreStatusRefresh"
 import { closedMessage } from "@/lib/storeSchedule"
 import { useTenant, useCatalog } from "@/context/RestaurantContext"
-import { getFontFamilyClass, getStoreThemeStyles } from "@/features/crm/utils/customizerStyles"
-import { getContrastForeground } from "@/lib/utils"
+import { getFontFamilyClass, getStoreThemeStyles, getBrandTokens } from "@/features/crm/utils/customizerStyles"
 import { useHorizontalScroll } from "@/hooks/useHorizontalScroll"
 import { scrollBehavior } from "@/lib/motion"
 
@@ -232,7 +231,8 @@ export default function Home() {
   const showFullScreen = isCartOpen || isCheckoutOpen
   const showMobileBar = cartItems.length > 0 && !showFullScreen
 
-  const primaryForeground = getContrastForeground(storeConfig.primaryColor)
+  const brand = getBrandTokens(storeConfig.primaryColor, storeConfig.bgTheme)
+  const primaryForeground = brand.onFill
   const themeStyles = getStoreThemeStyles(storeConfig.bgTheme, storeConfig.primaryColor)
   const fontClass = getFontFamilyClass(storeConfig.fontFamily)
 
@@ -260,7 +260,7 @@ export default function Home() {
             <div className="mx-auto max-w-(--container) w-full px-4 pb-6 md:px-6 lg:px-8">
               <span
                 style={{
-                  backgroundColor: storeConfig.primaryColor,
+                  backgroundColor: brand.fill,
                   color: primaryForeground,
                 }}
                 className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-black shadow-md uppercase tracking-wider mb-2"
@@ -380,9 +380,9 @@ export default function Home() {
                       style={
                         selectedCategory === "ALL"
                           ? {
-                              backgroundColor: storeConfig.primaryColor,
+                              backgroundColor: brand.fill,
                               color: primaryForeground,
-                              borderColor: storeConfig.primaryColor,
+                              borderColor: brand.fill,
                             }
                           : undefined
                       }
@@ -405,9 +405,9 @@ export default function Home() {
                         style={
                           selectedCategory === cat
                             ? {
-                                backgroundColor: storeConfig.primaryColor,
+                                backgroundColor: brand.fill,
                                 color: primaryForeground,
-                                borderColor: storeConfig.primaryColor,
+                                borderColor: brand.fill,
                               }
                             : undefined
                         }

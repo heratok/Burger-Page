@@ -1,6 +1,7 @@
 import type React from "react"
 import type { StoreBgTheme, CardStyle, CardRadius, FontFamily } from "@/types/restaurant"
 import { getContrastForeground } from "@/lib/utils"
+import { normalizeHex, readableFill, readableOn } from "@/lib/color"
 
 export interface FullThemeTemplate {
   id: string
@@ -146,9 +147,9 @@ export function getBgStyle(theme: StoreBgTheme): { bg: string; text: string; sub
   }
 }
 
-export function getStoreThemeStyles(
+function getBaseThemeStyles(
   theme: StoreBgTheme,
-  primaryColor: string = "#FF7A21"
+  primaryColor: string
 ): React.CSSProperties {
   const primaryForeground = getContrastForeground(primaryColor)
   switch (theme) {
@@ -284,3 +285,58 @@ export function getStoreThemeStyles(
   }
 }
 
+
+export interface BrandTokens {
+  /** Brand color readable as text on the theme surfaces (>= 4.5:1). */
+  text: string
+  /** Brand color for fills that carry `onFill` text (>= 4.5:1). */
+  fill: string
+  /** Text color to render on top of `fill`. */
+  onFill: string
+  /** Brand readable on typical light / dark surfaces, for fixed-surface contexts. */
+  textOnLight: string
+  textOnDark: string
+}
+
+const LIGHT_SURFACES = ["#ffffff", "#f8fafc"]
+const DARK_SURFACES = ["#0f1112", "#181a1b", "#212529"]
+
+function themeSurfaces(theme: StoreBgTheme): string[] {
+  const vars = getBaseThemeStyles(theme, "#000000") as Record<string, string>
+  return [vars["--color-bg-base"], vars["--color-bg-surface"], vars["--color-card"]]
+}
+
+/** Derives the readable brand variants for a merchant color on the given storefront theme. */
+export function getBrandTokens(primaryColor: string, theme: StoreBgTheme): BrandTokens {
+  const raw = normalizeHex(primaryColor) ?? primaryColor
+  const { fill, text: onFill } = readableFill(raw)
+  return {
+    text: readableOn(themeSurfaces(theme), raw),
+    fill,
+    onFill,
+    textOnLight: readableOn(LIGHT_SURFACES, raw),
+    textOnDark: readableOn(DARK_SURFACES, raw),
+  }
+}
+
+export function getStoreThemeStyles(
+  theme: StoreBgTheme,
+  primaryColor: string = "#FF7A21"
+): React.CSSProperties {
+  const brand = getBrandTokens(primaryColor, theme)
+  const isLight = theme === "clean-white" || theme === "warm-cream"
+  return {
+    ...getBaseThemeStyles(theme, primaryColor),
+    "--status-open-text": isLight ? "#065f46" : "#6ee7b7",
+    "--status-closed-text": isLight ? "#b91c1c" : "#fca5a5",
+    "--brand": primaryColor,
+    "--brand-text": brand.text,
+    "--brand-text-on-light": brand.textOnLight,
+    "--brand-text-dark-surface": brand.textOnDark,
+    "--brand-fill": brand.fill,
+    "--on-brand": brand.onFill,
+    "--color-primary": brand.fill,
+    "--color-primary-foreground": brand.onFill,
+    "--color-accent-foreground": brand.onFill,
+  } as React.CSSProperties
+}

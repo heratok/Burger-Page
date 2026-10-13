@@ -11,21 +11,13 @@ const VIEWPORTS = [
 ] as const;
 const THEMES = ["light", "dark"] as const;
 
-/**
- * User-configured storefront brand colors (the tienda-pruebas fixture primary and the
- * customizer default). Brand-as-text/fill combinations are the merchant's choice, not a
- * stylesheet defect, so they are reported but not asserted. Matched by exact color value only.
- */
-const BRAND_COLORS = new Set(["#e63946", "#ff7a21"]);
 
-type Found = { real: string[]; brand: string[] };
-
-/** WCAG 1.4.3 contrast violations (axe color-contrast rule only). */
-async function contrastViolations(page: Page): Promise<Found> {
+/** WCAG 1.4.3 contrast violations (axe color-contrast rule only). Brand colors are asserted too. */
+async function contrastViolations(page: Page): Promise<string[]> {
   const results = await new AxeBuilder({ page })
     .withRules(["color-contrast"])
     .analyze();
-  const found: Found = { real: [], brand: [] };
+  const found: string[] = [];
   for (const v of results.violations) {
     for (const n of v.nodes) {
       const data = (n.any[0]?.data ?? {}) as {
@@ -34,10 +26,7 @@ async function contrastViolations(page: Page): Promise<Found> {
         contrastRatio?: number;
       };
       const line = `${n.target.join(" ")} fg=${data.fgColor} bg=${data.bgColor} ratio=${data.contrastRatio} html=${n.html.slice(0, 140)}`;
-      const isBrand =
-        BRAND_COLORS.has((data.fgColor ?? "").toLowerCase()) ||
-        BRAND_COLORS.has((data.bgColor ?? "").toLowerCase());
-      (isBrand ? found.brand : found.real).push(line);
+      found.push(line);
     }
   }
   return found;
@@ -47,12 +36,12 @@ async function audit(page: Page, label: string, tag: string) {
   await page.waitForTimeout(500);
   fs.mkdirSync(SHOTS_DIR, { recursive: true });
   await page.screenshot({ path: `${SHOTS_DIR}/contrast-${tag}-${label}.png` });
-  const { real, brand } = await contrastViolations(page);
+  const violations = await contrastViolations(page);
   fs.appendFileSync(
     `${SHOTS_DIR}/contrast-report.jsonl`,
-    `${JSON.stringify({ tag, label, violations: real, brand })}\n`,
+    `${JSON.stringify({ tag, label, violations })}\n`,
   );
-  expect.soft(real, `${label} (${tag}): color-contrast violations`).toEqual([]);
+  expect.soft(violations, `${label} (${tag}): color-contrast violations`).toEqual([]);
 }
 
 async function login(page: Page, username: string, password: string) {
@@ -173,6 +162,69 @@ for (const vp of VIEWPORTS) {
           await audit(page, `super-${id}`, tag);
         }
       });
+    });
+  }
+}
+
+/**
+ * Worst-case merchant brand colors, injected into the public tenant response only (the fixture
+ * row in the database is never modified, and rosto is never touched).
+ */
+const WORST_CASE_BRANDS = ["#ffeb3b", "#ff7a21", "#e63946"] as const;
+const STOREFRONT_THEMES = [
+  ["light", "clean-white"],
+  ["dark", "dark-charcoal"],
+] as const;
+
+function patchTenant(node: unknown, brand: string, bgTheme: string): void {
+  if (Array.isArray(node)) {
+    node.forEach((n) => patchTenant(n, brand, bgTheme));
+  } else if (node && typeof node === "object") {
+    const obj = node as Record<string, unknown>;
+    // The fixture stores no brand in config, so the keys must be added, not only rewritten.
+    if (obj.config && typeof obj.config === "object") {
+      Object.assign(obj.config, { primaryColor: brand, primaryHoverColor: brand, bgTheme });
+      obj.primaryColor = brand;
+      obj.theme = bgTheme;
+    }
+    Object.values(obj).forEach((v) => patchTenant(v, brand, bgTheme));
+  }
+}
+
+for (const brand of WORST_CASE_BRANDS) {
+  for (const [label, bgTheme] of STOREFRONT_THEMES) {
+    test(`storefront worst-case brand ${brand} on ${label} theme has no contrast violations`, async ({ page }) => {
+      await page.route(`**/api/restaurants/**`, async (route) => {
+        if (route.request().method() !== "GET") return route.continue();
+        const response = await route.fetch();
+        let body: unknown;
+        try {
+          body = await response.json();
+        } catch {
+          return route.fulfill({ response });
+        }
+        patchTenant(body, brand, bgTheme);
+        return route.fulfill({ response, json: body });
+      });
+      await page.emulateMedia({ colorScheme: label });
+      await page.goto(`/${TEST_RESTAURANT.slug}`);
+      await expect(page.locator("body")).toContainText(/Tienda de Pruebas|Cl[aá]sica/i, { timeout: 15000 });
+      // The injected brand must actually be applied, otherwise this test proves nothing.
+      await expect
+        .poll(() =>
+          page.evaluate(() =>
+            getComputedStyle(document.querySelector<HTMLElement>("[style*=--brand-fill]") ?? document.body)
+              .getPropertyValue("--brand")
+              .trim()
+              .toLowerCase(),
+          ),
+        )
+        .toBe(brand);
+      await audit(page, "storefront", `worst-${brand.slice(1)}-${label}`);
+
+      // Open the product modal and the cart so fills/text inside overlays are covered as well.
+      await page.getByRole("button", { name: /Agregar|Cl[aá]sica/i }).first().click().catch(() => undefined);
+      await audit(page, "storefront-overlay", `worst-${brand.slice(1)}-${label}`);
     });
   }
 }

@@ -42,7 +42,8 @@ import { cartItemToOrderItem, type CartItem } from "./cartEngine"
 import { useCatalog, useRestaurant } from "@/context/RestaurantContext"
 import { useStoreOpenStatus } from "@/hooks/useStoreOpenStatus"
 import { closedMessage } from "@/lib/storeSchedule"
-import { formatCurrency, getContrastForeground } from "@/lib/utils"
+import { formatCurrency } from "@/lib/utils"
+import { getBrandTokens } from "@/features/crm/utils/customizerStyles"
 
 const PENDING_TAB_HTML =
   "<!doctype html><title>Preparando tu pedido…</title><p style=\"font-family:sans-serif;text-align:center;margin-top:3rem\">Preparando tu pedido…</p>"
@@ -60,7 +61,8 @@ export interface CheckoutFormProps {
 
 export default function CheckoutForm({ onClose, onBackToCart, cartItems }: CheckoutFormProps) {
   const { storeConfig, addOrder } = useRestaurant()
-  const primaryForeground = getContrastForeground(storeConfig.primaryColor)
+  const brand = getBrandTokens(storeConfig.primaryColor, storeConfig.bgTheme)
+  const primaryForeground = brand.onFill
   const {
     register,
     handleSubmit,
@@ -363,7 +365,7 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
                     <RadioGroupItem value={value} id={`metodo-${value}`} className="sr-only" />
                     <span
                       aria-hidden="true"
-                      style={active ? { backgroundColor: storeConfig.primaryColor, color: primaryForeground } : undefined}
+                      style={active ? { backgroundColor: brand.fill, color: primaryForeground } : undefined}
                       className={`inline-flex size-9 shrink-0 items-center justify-center rounded-full ${
                         active ? "shadow-xs" : "bg-bg-elevated-2 text-text-muted"
                       }`}
@@ -453,7 +455,7 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
             aria-busy={isSubmitting}
             variant="default"
             size="lg"
-            style={{ backgroundColor: storeConfig.primaryColor, color: primaryForeground }}
+            style={{ backgroundColor: brand.fill, color: primaryForeground }}
             className="h-12 flex-1 text-base font-bold shadow-md cursor-pointer hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Send data-icon="inline-start" />
@@ -489,6 +491,7 @@ interface FormSummaryProps {
 
 function FormSummary({ cartItems, subtotal, deliveryFee, total }: FormSummaryProps) {
   const { storeConfig } = useCatalog()
+  const brand = getBrandTokens(storeConfig.primaryColor, storeConfig.bgTheme)
   const [open, setOpen] = useState(true)
 
   return (
@@ -515,7 +518,7 @@ function FormSummary({ cartItems, subtotal, deliveryFee, total }: FormSummaryPro
         </span>
         <span className="flex items-center gap-3">
           <span
-            style={{ color: storeConfig.primaryColor }}
+            style={{ color: brand.text }}
             className="text-base font-black"
           >
             {formatCurrency(total)}
@@ -569,7 +572,7 @@ function FormSummary({ cartItems, subtotal, deliveryFee, total }: FormSummaryPro
           <li className="flex items-center justify-between pt-1 text-sm font-black">
             <span style={{ color: "var(--color-text-primary)" }}>Total</span>
             <span
-              style={{ color: storeConfig.primaryColor }}
+              style={{ color: brand.text }}
               className="ml-3 shrink-0 text-base"
             >
               {formatCurrency(total)}

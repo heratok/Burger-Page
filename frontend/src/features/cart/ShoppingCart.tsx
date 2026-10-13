@@ -5,8 +5,9 @@ import type { CartItem } from "./cartEngine"
 import { useCatalog } from "@/context/RestaurantContext"
 import { useStoreOpenStatus } from "@/hooks/useStoreOpenStatus"
 import { closedMessage } from "@/lib/storeSchedule"
-import { formatCurrency, getContrastForeground } from "@/lib/utils"
+import { formatCurrency } from "@/lib/utils"
 import { resolveImageUrl } from "@/core/storage/supabaseStorage"
+import { getBrandTokens } from "@/features/crm/utils/customizerStyles"
 
 export interface ShoppingCartProps {
   onClose: () => void
@@ -26,6 +27,7 @@ function ShoppingCart({
   onEditItem,
 }: ShoppingCartProps) {
   const { storeConfig } = useCatalog()
+  const brand = getBrandTokens(storeConfig.primaryColor, storeConfig.bgTheme)
 
   const handleBackToMenu = () => {
     onClose()
@@ -156,7 +158,7 @@ function ShoppingCart({
                 </p>
               )}
               <p
-                style={{ color: storeConfig.primaryColor }}
+                style={{ color: brand.text }}
                 className="mt-2 text-base font-black tracking-tight"
               >
                 {formatCurrency(cartItem.total)}
@@ -211,7 +213,7 @@ function ShoppingCart({
                 Total
               </span>
               <span
-                style={{ color: storeConfig.primaryColor }}
+                style={{ color: brand.text }}
                 className="text-xl font-black"
               >
                 {formatCurrency(total)}
@@ -225,8 +227,8 @@ function ShoppingCart({
                 disabled={isBelowMinOrder || !isOpen || items.length === 0}
                 onClick={handleCheckout}
                 style={{
-                  backgroundColor: storeConfig.primaryColor,
-                  color: getContrastForeground(storeConfig.primaryColor),
+                  backgroundColor: brand.fill,
+                  color: brand.onFill,
                 }}
                 className="h-12 flex-1 sm:flex-none font-bold shadow-md cursor-pointer hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
               >

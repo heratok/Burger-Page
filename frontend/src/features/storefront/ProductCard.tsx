@@ -4,7 +4,8 @@ import { Card } from "@/components/ui/card"
 import type { MenuItem } from "@/types/restaurant"
 import { useCatalog } from "@/context/RestaurantContext"
 import { LazyImage } from "@/components/ui/LazyImage"
-import { formatCurrency, getContrastForeground } from "@/lib/utils"
+import { formatCurrency } from "@/lib/utils"
+import { getBrandTokens } from "@/features/crm/utils/customizerStyles"
 
 export interface ProductCardProps {
   product: MenuItem
@@ -18,7 +19,8 @@ export interface ProductCardProps {
 // change, but a card only needs to update when its own props or the theme change.
 const ProductCard = memo(function ProductCard({ product, onSelectProduct, closed = false }: ProductCardProps) {
   const { storeConfig } = useCatalog()
-  const primaryForeground = getContrastForeground(storeConfig.primaryColor)
+  const brand = getBrandTokens(storeConfig.primaryColor, storeConfig.bgTheme)
+  const primaryForeground = brand.onFill
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Enter" || e.key === " ") {
@@ -92,7 +94,7 @@ const ProductCard = memo(function ProductCard({ product, onSelectProduct, closed
               {product.isPopular && (
                 <span
                   style={{
-                    backgroundColor: storeConfig.primaryColor,
+                    backgroundColor: brand.fill,
                     color: primaryForeground,
                   }}
                   className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs font-bold shadow-xs"
@@ -140,7 +142,7 @@ const ProductCard = memo(function ProductCard({ product, onSelectProduct, closed
 
           <div className="mt-3 flex items-center justify-between pt-1">
             <span
-              style={{ color: storeConfig.primaryColor }}
+              style={{ color: brand.text }}
               className="text-base sm:text-lg font-black tracking-tight"
             >
               {formatCurrency(product.price)}
@@ -156,7 +158,7 @@ const ProductCard = memo(function ProductCard({ product, onSelectProduct, closed
               <span
                 aria-hidden="true"
                 style={{
-                  backgroundColor: storeConfig.primaryColor,
+                  backgroundColor: brand.fill,
                   color: primaryForeground,
                 }}
                 className="inline-flex size-8 sm:size-9 shrink-0 items-center justify-center rounded-full shadow-sm transition duration-150 ease-out group-hover:scale-110 group-active:scale-95"

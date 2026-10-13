@@ -1,7 +1,8 @@
 import { ShoppingCart } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useCatalog } from "@/context/RestaurantContext"
-import { formatCurrency, getContrastForeground } from "@/lib/utils"
+import { formatCurrency } from "@/lib/utils"
+import { getBrandTokens } from "@/features/crm/utils/customizerStyles"
 
 export interface MobileOrderBarProps {
   onOpenCart: () => void
@@ -15,7 +16,8 @@ export default function MobileOrderBar({
   total = 0,
 }: MobileOrderBarProps) {
   const { storeConfig } = useCatalog()
-  const primaryForeground = getContrastForeground(storeConfig.primaryColor)
+  const brand = getBrandTokens(storeConfig.primaryColor, storeConfig.bgTheme)
+  const primaryForeground = brand.onFill
   const label = `Ver orden, ${itemCount} ${itemCount === 1 ? "producto" : "productos"}, total ${formatCurrency(total)}`
 
   return (
@@ -26,7 +28,7 @@ export default function MobileOrderBar({
         aria-label={label}
         variant="default"
         size="lg"
-        style={{ backgroundColor: storeConfig.primaryColor, color: primaryForeground }}
+        style={{ backgroundColor: brand.fill, color: primaryForeground }}
         className="h-12 w-full justify-between rounded-2xl text-base font-bold shadow-md cursor-pointer hover:opacity-90"
       >
         <span className="inline-flex items-center gap-2">
