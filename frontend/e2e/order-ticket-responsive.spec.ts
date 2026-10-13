@@ -400,7 +400,7 @@ test.describe('Order Ticket and Comanda Responsive Verification (Mobile, Tablet,
       }
 
       // Add product to cart
-      const addProductBtn = page.getByTitle('Agregar 1 unidad rápida sin modificadores').first();
+      const addProductBtn = page.getByRole('button', { name: 'Agregar', exact: true }).first();
       await expect(addProductBtn).toBeVisible();
       await addProductBtn.click();
 

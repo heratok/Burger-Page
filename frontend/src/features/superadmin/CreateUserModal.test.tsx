@@ -39,4 +39,35 @@ describe("CreateUserModal - error mapping", () => {
       expect(toastErrorSpy).toHaveBeenCalledWith("El nombre de usuario ya está en uso por otra cuenta.")
     })
   })
+
+  it('associates labels with their controls and exposes the role picker as a labelled group', () => {
+    render(
+      <RestaurantProvider>
+        <CreateUserModal isOpen onClose={() => {}} />
+      </RestaurantProvider>
+    )
+    expect(screen.getByLabelText(/Nombre de Usuario/i)).toBe(screen.getByPlaceholderText('Ej. admin_local'))
+    expect(screen.getByLabelText(/Contraseña \*/i)).toBe(screen.getByPlaceholderText('Contraseña segura'))
+    const group = screen.getByRole('group', { name: 'Rol del Usuario' })
+    expect(group.querySelectorAll('button[aria-pressed]').length).toBe(2)
+    expect(screen.getByRole('button', { name: 'Cerrar' })).toBeDefined()
+  })
+})
+
+describe("CreateUserModal - keyboard accessibility", () => {
+  afterEach(() => cleanup())
+
+  it("closes on Escape and exposes a named modal dialog", () => {
+    const onClose = vi.fn()
+    render(
+      <RestaurantProvider>
+        <CreateUserModal isOpen onClose={onClose} />
+      </RestaurantProvider>
+    )
+    const dialog = screen.getByRole("dialog", { name: "Crear Usuario" })
+    expect(dialog.getAttribute("aria-modal")).toBe("true")
+    expect(dialog.contains(document.activeElement)).toBe(true)
+    fireEvent.keyDown(document.activeElement as Element, { key: "Escape" })
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
 })

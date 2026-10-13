@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect, useCallback } from "react"
+import { scrollBehavior } from "@/lib/motion"
 
 export interface UseHorizontalScrollOptions {
   step?: number
@@ -40,7 +41,7 @@ export function useHorizontalScroll(options: UseHorizontalScrollOptions = {}) {
 
   const scrollByAmount = (amount: number) => {
     if (!scrollRef.current) return
-    scrollRef.current.scrollBy({ left: amount, behavior: "smooth" })
+    scrollRef.current.scrollBy({ left: amount, behavior: scrollBehavior() })
   }
 
   const scrollLeft = () => scrollByAmount(-step)

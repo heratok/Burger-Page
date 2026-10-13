@@ -39,10 +39,11 @@ export const AdminSwitcher: React.FC<AdminSwitcherProps> = ({ collapsed = false,
 
   if (collapsed) {
     return (
-      <div className="flex justify-center" title="Cambiar restaurante / Directorio SaaS">
+      <div className="flex justify-center">
         <div className="relative group size-10">
           <select
             aria-label="Selector de restaurante"
+            title="Cambiar restaurante / Directorio SaaS"
             value={adminTab === "restaurants" ? "DIRECTORY" : activeRestaurant.id}
             onChange={(e) => {
               const val = e.target.value
@@ -54,7 +55,7 @@ export const AdminSwitcher: React.FC<AdminSwitcherProps> = ({ collapsed = false,
               }
               onSelect?.()
             }}
-            className="absolute inset-0 size-full opacity-0 cursor-pointer z-10"
+            className="text-sm absolute inset-0 size-full opacity-0 cursor-pointer z-10"
           >
             <optgroup label="🏢 Plataforma SaaS">
               <option value="DIRECTORY">🌐 Directorio Global SaaS</option>
@@ -78,11 +79,11 @@ export const AdminSwitcher: React.FC<AdminSwitcherProps> = ({ collapsed = false,
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between px-1">
-        <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+        <div className="flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
           <Crown className="size-3" />
           <span>Super Administrador</span>
         </div>
-        <span className="rounded-full bg-indigo-500/10 px-1.5 py-0.5 text-[9px] font-bold text-indigo-600 dark:text-indigo-300">
+        <span className="rounded-full bg-indigo-500/10 px-1.5 py-0.5 text-xs font-bold text-indigo-600 dark:text-indigo-300">
           {restaurants.length} locales
         </span>
       </div>
@@ -90,7 +91,7 @@ export const AdminSwitcher: React.FC<AdminSwitcherProps> = ({ collapsed = false,
       <Select
         aria-label="Selector de restaurante"
         size="sm"
-        leftIcon={<Store className="size-3.5 text-indigo-500" />}
+        leftIcon={<Store className="size-3.5 text-indigo-600 dark:text-indigo-400" />}
         value={adminTab === "restaurants" ? "DIRECTORY" : activeRestaurant.id}
         onChange={(e) => {
           const val = e.target.value

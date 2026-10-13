@@ -28,6 +28,7 @@ import { formatCurrency, formatWhatsAppPhone } from "@/lib/utils"
 import { resolveModalOrder } from "@/lib/orderMatching"
 import { KanbanOrderCard, LiveOrderCard, OrderDetailModal, OrderTicketModal } from "./orders"
 import { getOrderTableLabel } from "@/features/crm/tables/orderTable"
+import { Tooltip } from "@/components/ui/tooltip"
 
 export const OrdersKanban: React.FC = () => {
   const {
@@ -146,27 +147,27 @@ export const OrdersKanban: React.FC = () => {
     {
       id: "pending",
       title: "Nuevos / Pendientes",
-      icon: <Clock className="size-4 text-amber-500" />,
+      icon: <Clock className="size-4 text-amber-800 dark:text-amber-400" />,
     },
     {
       id: "cooking",
       title: "En Cocina",
-      icon: <ChefHat className="size-4 text-orange-500" />,
+      icon: <ChefHat className="size-4 text-orange-800 dark:text-orange-400" />,
     },
     {
       id: "delivering",
       title: "En Reparto",
-      icon: <Bike className="size-4 text-blue-500" />,
+      icon: <Bike className="size-4 text-blue-600 dark:text-blue-400" />,
     },
     {
       id: "delivered",
       title: "Entregados",
-      icon: <CheckCircle2 className="size-4 text-emerald-500" />,
+      icon: <CheckCircle2 className="size-4 text-emerald-700 dark:text-emerald-400" />,
     },
     {
       id: "cancelled",
       title: "Cancelados",
-      icon: <XCircle className="size-4 text-rose-500" />,
+      icon: <XCircle className="size-4 text-rose-600 dark:text-rose-400" />,
     },
   ]
 
@@ -183,14 +184,14 @@ export const OrdersKanban: React.FC = () => {
 
   const getViewModeBtnClass = (mode: "feed" | "kanban") => {
     if (viewMode !== mode) {
-      return "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+      return "text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
     }
     return isDark ? "bg-slate-700 text-white shadow-xs" : "bg-white text-slate-900 shadow-xs"
   }
 
   const getFeedTabClass = (tab: "active" | "history") => {
     if (feedTab !== tab) {
-      return "text-slate-500 hover:text-slate-800 dark:hover:text-slate-300"
+      return "text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-300"
     }
     if (tab === "active") {
       return isDark
@@ -204,7 +205,7 @@ export const OrdersKanban: React.FC = () => {
 
   const getActiveOrdersBadgeClass = () => {
     if (activeOrders.length === 0) {
-      return "bg-slate-200 dark:bg-slate-800 text-slate-500"
+      return "bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
     }
     return isDark
       ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
@@ -222,14 +223,14 @@ export const OrdersKanban: React.FC = () => {
 
   const getFilterChipCountClass = (isSelected: boolean) => {
     if (isSelected) {
-      return "bg-white/20 text-white"
+      return "bg-white/10 text-white"
     }
     return isDark ? "bg-slate-700 text-slate-300" : "bg-slate-200 text-slate-700"
   }
 
   const getColumnBadgeClass = (count: number) => {
     if (count === 0) {
-      return "text-slate-400"
+      return "text-slate-500 dark:text-slate-400"
     }
     return isDark
       ? "bg-slate-800 text-slate-100 border border-slate-700"
@@ -247,13 +248,13 @@ export const OrdersKanban: React.FC = () => {
         <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
           {/* Search Box */}
           <div className="relative flex-1 w-full max-w-none lg:max-w-md">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500 dark:text-slate-400" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Buscar por # orden, cliente, dirección o barrio..."
-              className={`w-full rounded-xl border pl-9 pr-4 py-2 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+              className={`w-full rounded-xl border pl-9 pr-4 py-2 text-base sm:text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                 isDark
                   ? "border-slate-700 bg-slate-800 text-slate-100 placeholder-slate-400"
                   : "border-slate-200 bg-slate-50 text-slate-900 placeholder-slate-400"
@@ -261,9 +262,10 @@ export const OrdersKanban: React.FC = () => {
             />
             {searchTerm && (
               <button
+                aria-label="Limpiar búsqueda"
                 type="button"
                 onClick={() => setSearchTerm("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 cursor-pointer"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 hover:text-slate-200 cursor-pointer"
               >
                 <X className="size-3.5" />
               </button>
@@ -274,7 +276,7 @@ export const OrdersKanban: React.FC = () => {
           <div className="w-full sm:w-52">
             <Select
               size="md"
-              leftIcon={<Filter className="size-3.5 text-slate-400" />}
+              leftIcon={<Filter className="size-3.5 text-slate-500 dark:text-slate-400" />}
               value={methodFilter}
               onChange={(e) => setMethodFilter(e.target.value)}
               aria-label="Filtrar por método de pago"
@@ -294,43 +296,46 @@ export const OrdersKanban: React.FC = () => {
               isDark ? "border-slate-800 bg-slate-800/80" : "border-slate-200 bg-slate-100"
             }`}
           >
-            <button
-              type="button"
-              onClick={() => handleViewModeChange("feed")}
-              className={`flex items-center gap-1.5 rounded-lg px-2 sm:px-2.5 py-1.5 text-xs font-bold transition-all cursor-pointer ${getViewModeBtnClass("feed")}`}
-              title="Feed directo de comandas"
-            >
-              <LayoutGrid className="size-3.5 shrink-0" />
-              <span>Comandas</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleViewModeChange("kanban")}
-              className={`flex items-center gap-1.5 rounded-lg px-2 sm:px-2.5 py-1.5 text-xs font-bold transition-all cursor-pointer ${getViewModeBtnClass("kanban")}`}
-              title="Tablero Kanban de 5 columnas"
-            >
-              <Columns3 className="size-3.5 shrink-0" />
-              <span>Kanban</span>
-            </button>
+            <Tooltip content={"Feed directo de comandas"}>
+              <button
+                type="button"
+                onClick={() => handleViewModeChange("feed")}
+                className={`pointer-coarse:min-h-11 flex items-center gap-1.5 rounded-lg px-2 sm:px-2.5 py-1.5 text-xs font-bold transition-all cursor-pointer ${getViewModeBtnClass("feed")}`}
+              >
+                <LayoutGrid className="size-3.5 shrink-0" />
+                <span>Comandas</span>
+              </button>
+            </Tooltip>
+            <Tooltip content={"Tablero Kanban de 5 columnas"}>
+              <button
+                type="button"
+                onClick={() => handleViewModeChange("kanban")}
+                className={`pointer-coarse:min-h-11 flex items-center gap-1.5 rounded-lg px-2 sm:px-2.5 py-1.5 text-xs font-bold transition-all cursor-pointer ${getViewModeBtnClass("kanban")}`}
+              >
+                <Columns3 className="size-3.5 shrink-0" />
+                <span>Kanban</span>
+              </button>
+            </Tooltip>
           </div>
 
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            aria-label="Sincronizar pedidos"
-            onClick={() => refreshOrders()}
-            disabled={isLoadingOrders}
-            className={`gap-1.5 rounded-xl border text-xs font-bold shrink-0 cursor-pointer ${
-              isDark
-                ? "border-slate-700 bg-slate-850 hover:bg-slate-800 text-slate-200"
-                : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
-            }`}
-            title="Sincronizar pedidos directamente con el servidor"
-          >
-            <RefreshCw className={`size-3.5 shrink-0 ${isLoadingOrders ? "animate-spin text-orange-500" : ""}`} />
-            <span className="hidden sm:inline">Sincronizar</span>
-          </Button>
+          <Tooltip content={"Sincronizar pedidos directamente con el servidor"}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              aria-label="Sincronizar pedidos"
+              onClick={() => refreshOrders()}
+              disabled={isLoadingOrders}
+              className={`gap-1.5 rounded-xl border text-xs font-bold shrink-0 cursor-pointer ${
+                isDark
+                  ? "border-slate-700 bg-slate-850 hover:bg-slate-800 text-slate-200"
+                  : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
+              }`}
+            >
+              <RefreshCw className={`size-3.5 shrink-0 ${isLoadingOrders ? "animate-spin text-orange-800 dark:text-orange-400" : ""}`} />
+              <span className="hidden sm:inline">Sincronizar</span>
+            </Button>
+          </Tooltip>
 
           <Button
             type="button"
@@ -354,11 +359,11 @@ export const OrdersKanban: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setFeedTab("active")}
-                className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all cursor-pointer ${getFeedTabClass("active")}`}
+                className={`pointer-coarse:min-h-11 flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all cursor-pointer ${getFeedTabClass("active")}`}
               >
                 <UtensilsCrossed className="size-3.5" />
                 <span>Comandas Activas</span>
-                <span className={`rounded-full px-2 py-0.5 text-[11px] font-black ${getActiveOrdersBadgeClass()}`}>
+                <span className={`rounded-full px-2 py-0.5 text-xs font-black ${getActiveOrdersBadgeClass()}`}>
                   {activeOrders.length}
                 </span>
               </button>
@@ -366,17 +371,17 @@ export const OrdersKanban: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setFeedTab("history")}
-                className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all cursor-pointer ${getFeedTabClass("history")}`}
+                className={`pointer-coarse:min-h-11 flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all cursor-pointer ${getFeedTabClass("history")}`}
               >
                 <Archive className="size-3.5" />
                 <span>Historial</span>
-                <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
                   {historyOrders.length}
                 </span>
               </button>
             </div>
 
-            <span className="text-xs text-slate-400 font-medium hidden sm:inline">
+            <span className="text-sm text-slate-500 dark:text-slate-400 font-medium hidden sm:inline">
               {feedTab === "active"
                 ? "Órdenes en preparación y despacho con acción de 1 clic"
                 : "Órdenes entregadas y canceladas"}
@@ -399,19 +404,19 @@ export const OrdersKanban: React.FC = () => {
                       id: "pending",
                       label: "Por Preparar",
                       count: activeOrders.filter((o) => o.status === "pending").length,
-                      icon: <Clock className="size-3 text-amber-500" />,
+                      icon: <Clock className="size-3 text-amber-800 dark:text-amber-400" />,
                     },
                     {
                       id: "cooking",
                       label: "En Cocina",
                       count: activeOrders.filter((o) => o.status === "cooking").length,
-                      icon: <ChefHat className="size-3 text-orange-500" />,
+                      icon: <ChefHat className="size-3 text-orange-800 dark:text-orange-400" />,
                     },
                     {
                       id: "delivering",
                       label: "En Reparto",
                       count: activeOrders.filter((o) => o.status === "delivering").length,
-                      icon: <Bike className="size-3 text-blue-500" />,
+                      icon: <Bike className="size-3 text-blue-600 dark:text-blue-400" />,
                     },
                   ].map((chip) => {
                     const isSelected = activeStatusFilter === chip.id
@@ -423,11 +428,11 @@ export const OrdersKanban: React.FC = () => {
                           setActiveStatusFilter(chip.id as "ALL" | "pending" | "cooking" | "delivering")
                           setActivePage(1)
                         }}
-                        className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${getFilterChipClass(isSelected)}`}
+                        className={`pointer-coarse:min-h-11 inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${getFilterChipClass(isSelected)}`}
                       >
                         {chip.icon}
                         <span>{chip.label}</span>
-                        <span className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${getFilterChipCountClass(isSelected)}`}>
+                        <span className={`rounded-full px-1.5 py-0.2 text-xs font-bold ${getFilterChipCountClass(isSelected)}`}>
                           {chip.count}
                         </span>
                       </button>
@@ -445,10 +450,10 @@ export const OrdersKanban: React.FC = () => {
                   <div className="flex size-14 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400 mb-3">
                     <UtensilsCrossed className="size-7" />
                   </div>
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  <h2 className="text-sm font-bold text-slate-900 dark:text-white">
                     ¡Cocina al día! No hay comandas pendientes
-                  </h3>
-                  <p className="mt-1 max-w-sm text-xs text-slate-500 dark:text-slate-400">
+                  </h2>
+                  <p className="mt-1 max-w-sm text-sm text-slate-500 dark:text-slate-400">
                     Los pedidos que entren desde la tienda web o las ventas que cargues a mano aparecerán aquí en tiempo real.
                   </p>
                   <Button
@@ -462,7 +467,7 @@ export const OrdersKanban: React.FC = () => {
                 </div>
               ) : displayedActiveOrders.length === 0 ? (
                 <div
-                  className={`flex flex-col items-center justify-center rounded-2xl border border-dashed p-10 text-center text-xs text-slate-400 ${
+                  className={`flex flex-col items-center justify-center rounded-2xl border border-dashed p-10 text-center text-sm text-slate-500 dark:text-slate-400 ${
                     isDark ? "border-slate-800" : "border-slate-200"
                   }`}
                 >
@@ -470,7 +475,7 @@ export const OrdersKanban: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setActiveStatusFilter("ALL")}
-                    className="mt-2 text-indigo-500 hover:underline font-semibold"
+                    className="mt-2 text-indigo-600 dark:text-indigo-400 hover:underline font-semibold"
                   >
                     Ver todas las comandas activas ({activeOrders.length})
                   </button>
@@ -521,7 +526,7 @@ export const OrdersKanban: React.FC = () => {
                 <KanbanBoardSkeleton isDark={isDark} columns={3} />
               ) : historyOrders.length === 0 ? (
                 <div
-                  className={`flex flex-col items-center justify-center rounded-2xl border border-dashed p-10 text-center text-xs text-slate-400 ${
+                  className={`flex flex-col items-center justify-center rounded-2xl border border-dashed p-10 text-center text-sm text-slate-500 dark:text-slate-400 ${
                     isDark ? "border-slate-800" : "border-slate-200"
                   }`}
                 >
@@ -592,9 +597,9 @@ export const OrdersKanban: React.FC = () => {
                     <span className="flex size-7 items-center justify-center rounded-lg bg-white shadow-xs dark:bg-slate-800">
                       {col.icon}
                     </span>
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100">
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100">
                       {col.title}
-                    </h3>
+                    </h2>
                   </div>
                   <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${getColumnBadgeClass(colOrders.length)}`}>
                     {colOrders.length}
@@ -605,10 +610,10 @@ export const OrdersKanban: React.FC = () => {
                 <div className="mt-3 flex-1 space-y-3 min-h-[300px] max-h-[calc(100vh-270px)] overflow-y-auto pr-1">
                   {colOrders.length === 0 ? (
                     <div
-                      className={`flex h-40 flex-col items-center justify-center rounded-xl border border-dashed text-center text-xs ${
+                      className={`flex h-40 flex-col items-center justify-center rounded-xl border border-dashed text-center text-sm ${
                         isDark
                           ? "border-slate-800 text-slate-400"
-                          : "border-slate-200 text-slate-400"
+                          : "border-slate-200 text-slate-500 dark:text-slate-400"
                       }`}
                     >
                       <span>Sin pedidos en esta fase</span>
@@ -628,7 +633,7 @@ export const OrdersKanban: React.FC = () => {
                         />
                       ))}
                       {isTerminalCol && colOrders.length > maxVisible && (
-                        <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-800 p-2.5 text-center text-[11px] text-slate-500 dark:text-slate-400 bg-slate-50/50 dark:bg-slate-900/50">
+                        <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-800 p-2.5 text-center text-sm text-slate-500 dark:text-slate-400 bg-slate-50/50 dark:bg-slate-900/50">
                           Mostrando las {maxVisible} órdenes más recientes ({colOrders.length} en total). Para consultar el histórico completo, ve a <strong>Reportes</strong>.
                         </div>
                       )}

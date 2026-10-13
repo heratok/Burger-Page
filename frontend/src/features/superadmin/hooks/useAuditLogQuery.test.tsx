@@ -58,7 +58,7 @@ describe("AuditLogScreen server state (infinite query)", () => {
 
     renderScreen()
     await findInTable("All Target")
-    const select = screen.getByLabelText(/Filtrar por acción/i)
+    const select = screen.getByLabelText(/Filtrar por acción/i, { selector: "select" })
 
     fireEvent.change(select, { target: { value: "user.create" } })
     await findInTable("User Target")

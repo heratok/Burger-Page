@@ -52,7 +52,7 @@ export const Pagination: React.FC<PaginationProps> = ({
 
         {onPageSizeChange && (
           <div className="flex items-center gap-1.5 ml-2 border-l pl-3 border-slate-200 dark:border-slate-700">
-            <span className="text-[11px] whitespace-nowrap">Por pág:</span>
+            <span className="text-xs whitespace-nowrap">Por pág:</span>
             <div className="w-20">
               <Select
                 size="sm"
@@ -78,7 +78,7 @@ export const Pagination: React.FC<PaginationProps> = ({
           disabled={currentPage <= 1}
           aria-label="Primera página"
           title="Primera página"
-          className="flex size-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 cursor-pointer transition-colors"
+          className="flex size-8 pointer-coarse:size-11 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 cursor-pointer transition-colors"
         >
           <ChevronsLeft className="size-4" />
         </button>
@@ -89,7 +89,7 @@ export const Pagination: React.FC<PaginationProps> = ({
           disabled={currentPage <= 1}
           aria-label="Página anterior"
           title="Página anterior"
-          className="flex size-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 cursor-pointer transition-colors"
+          className="flex size-8 pointer-coarse:size-11 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 cursor-pointer transition-colors"
         >
           <ChevronLeft className="size-4" />
         </button>
@@ -104,7 +104,7 @@ export const Pagination: React.FC<PaginationProps> = ({
           disabled={currentPage >= totalPages}
           aria-label="Página siguiente"
           title="Página siguiente"
-          className="flex size-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 cursor-pointer transition-colors"
+          className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 flex size-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 cursor-pointer transition-colors"
         >
           <ChevronRight className="size-4" />
         </button>
@@ -115,7 +115,7 @@ export const Pagination: React.FC<PaginationProps> = ({
           disabled={currentPage >= totalPages}
           aria-label="Última página"
           title="Última página"
-          className="flex size-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 cursor-pointer transition-colors"
+          className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 flex size-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 cursor-pointer transition-colors"
         >
           <ChevronsRight className="size-4" />
         </button>

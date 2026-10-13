@@ -13,6 +13,7 @@ import {
 } from "lucide-react"
 import { Pagination } from "@/components/ui/pagination"
 import { Select } from "@/components/ui/select"
+import { Tooltip } from "@/components/ui/tooltip"
 import { formatCurrency } from "@/lib/utils"
 
 import { CATEGORY_LABELS } from "./constants"
@@ -66,14 +67,14 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
       <div className="flex flex-wrap items-center gap-2.5">
         {/* Search Input */}
         <div className="relative flex-1 min-w-[220px]">
-          <Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-slate-500 dark:text-slate-400" />
           <input
             type="text"
             maxLength={60}
             placeholder="Buscar insumo por nombre o categoría..."
             value={searchTerm}
             onChange={(e) => onSearchChange(e.target.value)}
-            className={`w-full rounded-xl border pl-8.5 pr-4 py-2 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+            className={`w-full rounded-xl border pl-8.5 pr-4 py-2 text-base sm:text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
               isDark
                 ? "border-slate-800 bg-[#0E1322] text-white placeholder-slate-500"
                 : "border-slate-200 bg-white text-slate-900 placeholder-slate-400"
@@ -103,9 +104,9 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
         <button
           type="button"
           onClick={onToggleOnlyLowStock}
-          className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition-all ${
+          className={`pointer-coarse:min-h-11 flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition-all ${
             onlyLowStock
-              ? "border-amber-500 bg-amber-500/20 text-amber-400 font-bold"
+              ? "border-amber-500 bg-amber-500/20 text-amber-800 dark:text-amber-400 font-bold"
               : isDark
               ? "border-slate-800 bg-[#0E1322] text-slate-400 hover:text-white"
               : "border-slate-200 bg-white text-slate-600 hover:text-slate-900"
@@ -123,20 +124,20 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
         }`}
       >
         {totalItems === 0 ? (
-          <div className="p-12 text-center text-slate-400">
+          <div className="p-12 text-center text-slate-500 dark:text-slate-400">
             <Boxes className="size-10 mx-auto mb-2 text-slate-500 opacity-50" />
             <p className="text-sm font-semibold">No se encontraron insumos</p>
-            <p className="text-xs mt-1 text-slate-500">
+            <p className="text-sm mt-1 text-slate-500 dark:text-slate-400">
               {searchTerm || onlyLowStock
                 ? "Probá cambiando los filtros de búsqueda"
                 : "Empezá agregando materias primas para controlar tu stock"}
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+          <div role="region" aria-label="Tabla de inventario" tabIndex={0} className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
               <thead
-                className={`border-b text-[11px] font-bold uppercase tracking-wider ${
+                className={`border-b text-xs font-bold uppercase tracking-wider ${
                   isDark
                     ? "border-slate-800 bg-slate-900/50 text-slate-400"
                     : "border-slate-200 bg-slate-50 text-slate-500"
@@ -171,9 +172,11 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
                       <td className="px-4 py-3 font-semibold text-slate-900 dark:text-white">
                         <div className="flex items-center gap-2">
                           {isLow && (
-                            <span title="Stock por debajo del mínimo">
-                              <AlertTriangle className="size-3.5 text-amber-500 shrink-0" />
-                            </span>
+                            <Tooltip content="Stock por debajo del mínimo">
+                              <span role="img" tabIndex={0} aria-label="Stock por debajo del mínimo" className="shrink-0">
+                                <AlertTriangle className="size-3.5 text-amber-800 dark:text-amber-400" aria-hidden="true" />
+                              </span>
+                            </Tooltip>
                           )}
                           <span>{item.name}</span>
                         </div>
@@ -181,7 +184,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
 
                       {/* Category */}
                       <td className="px-4 py-3">
-                        <span className="rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:text-slate-300">
+                        <span className="rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-xs font-medium text-slate-600 dark:text-slate-300">
                           {CATEGORY_LABELS[item.category] || item.category}
                         </span>
                       </td>
@@ -193,13 +196,13 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
                             <span
                               className={`font-mono font-bold ${
                                 isLow
-                                  ? "text-amber-500 font-extrabold"
+                                  ? "text-amber-800 dark:text-amber-400 font-extrabold"
                                   : "text-slate-900 dark:text-slate-200"
                               }`}
                             >
                               {item.currentStock} {item.unit}
                             </span>
-                            <span className="text-[10px] text-slate-400 font-mono">
+                            <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">
                               (Mín: {item.minStockAlert})
                             </span>
                           </div>
@@ -226,7 +229,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
                           <button
                             type="button"
                             onClick={() => onAdjustStock(item.id, -1)}
-                            className={`rounded-lg border px-2 py-1 text-[11px] font-bold transition-colors ${
+                            className={`pointer-coarse:min-h-11 rounded-lg border px-2 py-1 text-xs font-bold transition-colors ${
                               isDark
                                 ? "border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700"
                                 : "border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200"
@@ -238,7 +241,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
                           <button
                             type="button"
                             onClick={() => onAdjustStock(item.id, 1)}
-                            className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-2 py-1 text-[11px] font-bold text-indigo-400 hover:bg-indigo-500/20"
+                            className="pointer-coarse:min-h-11 rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-2 py-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20"
                             title="Sumar 1"
                           >
                             +1
@@ -246,7 +249,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
                           <button
                             type="button"
                             onClick={() => onAdjustStock(item.id, 5)}
-                            className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-2 py-1 text-[11px] font-bold text-indigo-400 hover:bg-indigo-500/20"
+                            className="pointer-coarse:min-h-11 rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-2 py-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20"
                             title="Sumar 5"
                           >
                             +5
@@ -260,7 +263,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
                           <div className="text-slate-900 dark:text-slate-200">
                             {formatCurrency(item.costPerUnit)} /{item.unit.slice(0, 3)}
                           </div>
-                          <div className="text-[10px] text-slate-400">
+                          <div className="text-sm text-slate-500 dark:text-slate-400">
                             Total: {formatCurrency(itemValuation)}
                           </div>
                         </td>
@@ -269,17 +272,18 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
                       {/* Supplier */}
                       <td className="px-4 py-3">
                         {supplier ? (
-                          <button
-                            type="button"
-                            onClick={() => onSendSupplierWhatsApp(supplier)}
-                            className="inline-flex items-center gap-1 text-indigo-400 hover:underline"
-                            title="Pedir reposición por WhatsApp"
-                          >
-                            <span className="truncate max-w-[120px]">{supplier.name}</span>
-                            <MessageSquare className="size-3 text-emerald-400" />
-                          </button>
+                          <Tooltip content={"Pedir reposición por WhatsApp"}>
+                            <button
+                              type="button"
+                              onClick={() => onSendSupplierWhatsApp(supplier)}
+                              className="inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-400 hover:underline"
+                            >
+                              <span className="min-w-0 break-words text-left">{supplier.name}</span>
+                              <MessageSquare className="size-3 text-emerald-700 dark:text-emerald-400" />
+                            </button>
+                          </Tooltip>
                         ) : (
-                          <span className="text-slate-500 italic text-[11px]">Sin asignar</span>
+                          <span className="text-slate-500 italic text-sm">Sin asignar</span>
                         )}
                       </td>
 
@@ -287,17 +291,19 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
+                            aria-label={`Editar insumo ${item.name}`}
                             type="button"
                             onClick={() => onEditItem(item)}
-                            className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white"
+                            className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white"
                             title="Editar insumo"
                           >
                             <Edit2 className="size-3.5" />
                           </button>
                           <button
+                            aria-label={`Eliminar insumo ${item.name}`}
                             type="button"
                             onClick={() => onDeleteItem(item)}
-                            className="rounded-lg p-1 text-slate-400 hover:bg-rose-500/10 hover:text-rose-500 cursor-pointer"
+                            className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-rose-500/10 hover:text-rose-500 cursor-pointer"
                             title="Eliminar insumo"
                           >
                             <Trash2 className="size-3.5" />

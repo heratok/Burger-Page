@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react"
 import { useRestaurant } from "@/context/RestaurantContext"
+import { ModalShell } from "@/components/ui/modal-shell"
 import { apiClient } from "@/core/api/apiClient"
 import type { RoleDTO, Permission, RoleCreateInput } from "@burger-page/contracts"
 import { PERMISSIONS, DEFAULT_ROLE_TEMPLATES } from "@burger-page/contracts"
@@ -18,6 +19,7 @@ import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
 import { toast } from "sonner"
 import { PERMISSION_GROUPS, type PermissionMeta } from "./roles/permissionCatalog"
 import { summarizePermissions } from "./roles/permissionSummary"
+import { Tooltip } from "@/components/ui/tooltip"
 
 const ADMIN_ROLE_PRESET = {
   name: "Administrador General",
@@ -241,33 +243,34 @@ export const RolesManager: React.FC = () => {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-            <ShieldCheck className="size-6 text-indigo-500" />
+            <ShieldCheck className="size-6 text-indigo-600 dark:text-indigo-400" />
             <span>Roles y Permisos</span>
           </h2>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             Administra los roles personalizados y los permisos de acceso para tu equipo de trabajo.
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           {missingTemplates.length > 0 && roles.length > 0 && (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleCreateRecommended}
-              disabled={isCreatingRecommended}
-              className={`flex items-center gap-1.5 rounded-xl border px-3.5 py-2.5 text-xs font-semibold shadow-xs ${
-                isDark
-                  ? "border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700"
-                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-              }`}
-              title="Crea los roles estándar que faltan en tu restaurante"
-            >
-              <Sparkles className="size-3.5 text-amber-500" />
-              <span>
-                {isCreatingRecommended ? "Creando..." : `Crear roles faltantes (${missingTemplates.length})`}
-              </span>
-            </Button>
+            <Tooltip content={"Crea los roles estándar que faltan en tu restaurante"}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleCreateRecommended}
+                disabled={isCreatingRecommended}
+                className={`flex items-center gap-1.5 rounded-xl border px-3.5 py-2.5 text-xs font-semibold shadow-xs ${
+                  isDark
+                    ? "border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700"
+                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                <Sparkles className="size-3.5 text-amber-800 dark:text-amber-400" />
+                <span>
+                  {isCreatingRecommended ? "Creando..." : `Crear roles faltantes (${missingTemplates.length})`}
+                </span>
+              </Button>
+            </Tooltip>
           )}
           <Button
             type="button"
@@ -282,9 +285,10 @@ export const RolesManager: React.FC = () => {
 
       {/* Conflict banner if deletion failed */}
       {conflictError && (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs font-medium text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300 flex items-center justify-between">
+        <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm font-medium text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300 flex items-center justify-between">
           <span>{conflictError}</span>
           <button
+            aria-label="Cerrar aviso"
             type="button"
             onClick={() => setConflictError(null)}
             className="text-rose-600 hover:text-rose-900 dark:text-rose-400"
@@ -301,14 +305,14 @@ export const RolesManager: React.FC = () => {
         }`}
       >
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500 dark:text-slate-400" />
           <input
             type="text"
             maxLength={60}
             placeholder="Buscar rol por nombre o descripción..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className={`w-full rounded-xl border pl-9 pr-4 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+            className={`w-full rounded-xl border pl-9 pr-4 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
               isDark
                 ? "border-slate-700 bg-slate-800 text-white placeholder-slate-400"
                 : "border-slate-200 bg-slate-50 text-slate-900 placeholder-slate-400"
@@ -335,11 +339,11 @@ export const RolesManager: React.FC = () => {
             isDark ? "border-slate-800 bg-[#0E1322]" : "border-slate-200 bg-white"
           }`}
         >
-          <ShieldCheck className="size-12 mx-auto mb-3 text-slate-400 opacity-50" />
+          <ShieldCheck className="size-12 mx-auto mb-3 text-slate-500 dark:text-slate-400 opacity-50" />
           <h3 className="text-sm font-bold text-slate-900 dark:text-white">
             {searchTerm ? "No se encontraron roles coincidentes" : "No hay roles configurados"}
           </h3>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
             {searchTerm
               ? "Prueba buscando con otro término."
               : "Comienza creando los roles estándar recomendados (Cajero, Mesero, Cocina y Gerente) o personaliza uno desde cero."}
@@ -387,12 +391,12 @@ export const RolesManager: React.FC = () => {
                           {role.name}
                         </h3>
                         {role.isSystem && (
-                          <span className="rounded-md bg-indigo-500/10 px-2 py-0.5 text-[10px] font-bold text-indigo-500">
+                          <span className="rounded-md bg-indigo-500/10 px-2 py-0.5 text-xs font-bold text-indigo-600 dark:text-indigo-400">
                             Sistema
                           </span>
                         )}
                       </div>
-                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
+                      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 line-clamp-2">
                         {role.description || <span className="italic">Sin descripción</span>}
                       </p>
                     </div>
@@ -402,7 +406,7 @@ export const RolesManager: React.FC = () => {
                         type="button"
                         onClick={() => openEditModal(role)}
                         aria-label={`Editar rol ${role.name}`}
-                        className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors"
+                        className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors"
                         title="Editar rol"
                       >
                         <Pencil className="size-4" />
@@ -415,7 +419,7 @@ export const RolesManager: React.FC = () => {
                             setRoleToDelete(role)
                           }}
                           aria-label={`Eliminar rol ${role.name}`}
-                          className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400 transition-colors"
+                          className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400 transition-colors"
                           title="Eliminar rol"
                         >
                           <Trash2 className="size-4" />
@@ -427,36 +431,38 @@ export const RolesManager: React.FC = () => {
                   {/* Plain-language summary of what the role can do */}
                   <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800/80">
                     {permissionLines.length === 0 ? (
-                      <p className="text-xs italic text-slate-500 dark:text-slate-400">
+                      <p className="text-sm italic text-slate-500 dark:text-slate-400">
                         Sin permisos asignados
                       </p>
                     ) : (
                       <>
-                        <p className="mb-2 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                        <p className="mb-2 text-sm font-semibold text-slate-600 dark:text-slate-300">
                           Puede:
                         </p>
                         <ul className="space-y-1.5">
                           {permissionLines.map((line) => (
                             <li
                               key={line.area}
-                              className="flex items-start gap-1.5 text-xs text-slate-600 dark:text-slate-300"
+                              className="flex items-start gap-1.5 text-sm text-slate-600 dark:text-slate-300"
                             >
                               <span className="min-w-0">
                                 <span className="font-semibold text-slate-900 dark:text-white">
                                   {line.area}
                                 </span>
-                                <span className="text-slate-400 dark:text-slate-500">: </span>
+                                <span className="text-slate-500 dark:text-slate-400">: </span>
                                 <span>{line.actions}</span>
                               </span>
                               {line.sensitive && (
-                                <span
-                                  role="img"
-                                  aria-label="Permiso sensible"
-                                  title="Permiso sensible"
-                                  className="mt-0.5 shrink-0 text-amber-500"
-                                >
-                                  <AlertTriangle className="size-3.5" aria-hidden="true" />
-                                </span>
+                                <Tooltip content="Permiso sensible">
+                                  <span
+                                    role="img"
+                                    tabIndex={0}
+                                    aria-label="Permiso sensible"
+                                    className="mt-0.5 shrink-0 text-amber-800 dark:text-amber-400"
+                                  >
+                                    <AlertTriangle className="size-3.5" aria-hidden="true" />
+                                  </span>
+                                </Tooltip>
                               )}
                             </li>
                           ))}
@@ -466,7 +472,7 @@ export const RolesManager: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-[10px] text-slate-400">
+                <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
                   Actualizado: {new Date(role.updatedAt).toLocaleDateString("es-CO")}
                 </div>
               </div>
@@ -477,7 +483,11 @@ export const RolesManager: React.FC = () => {
 
       {/* Create / Edit Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-xs">
+        <ModalShell
+          aria-labelledby="role-modal-title"
+          onClose={() => setIsModalOpen(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-xs"
+        >
           <div
             className={`w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl border p-6 shadow-2xl transition-all ${
               isDark ? "border-slate-800 bg-[#0E1322] text-white" : "border-slate-200 bg-white text-slate-900"
@@ -485,21 +495,22 @@ export const RolesManager: React.FC = () => {
           >
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b pb-4 border-slate-100 dark:border-slate-800 shrink-0">
-              <h3 className="text-base font-black flex items-center gap-2 text-slate-900 dark:text-white">
-                <ShieldCheck className="size-5 text-indigo-500" />
+              <h3 id="role-modal-title" className="text-base font-black flex items-center gap-2 text-slate-900 dark:text-white">
+                <ShieldCheck className="size-5 text-indigo-600 dark:text-indigo-400" />
                 <span>{editingRole ? "Editar Rol" : "Crear Nuevo Rol"}</span>
               </h3>
               <button
+                aria-label="Cerrar"
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
                 <X className="size-5" />
               </button>
             </div>
 
             {/* Modal Body */}
-            <form onSubmit={handleSaveRole} className="flex-1 overflow-y-auto py-4 space-y-5 pr-1 text-xs">
+            <form onSubmit={handleSaveRole} className="flex-1 overflow-y-auto py-4 space-y-5 pr-1 text-sm">
               {/* Basic Fields */}
               <div className="space-y-3">
                 <div>
@@ -517,7 +528,7 @@ export const RolesManager: React.FC = () => {
                     placeholder="Ej. Cocinero de Parrilla, Cajero Turno Noche"
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
-                    className={`w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                    className={`text-base sm:text-sm w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                       isDark
                         ? "border-slate-700 bg-slate-800 text-white placeholder-slate-400"
                         : "border-slate-300 bg-white text-slate-900 placeholder-slate-400"
@@ -539,7 +550,7 @@ export const RolesManager: React.FC = () => {
                     placeholder="Describe las responsabilidades o funciones del rol..."
                     value={formDescription}
                     onChange={(e) => setFormDescription(e.target.value)}
-                    className={`w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                    className={`text-base sm:text-sm w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                       isDark
                         ? "border-slate-700 bg-slate-800 text-white placeholder-slate-400"
                         : "border-slate-300 bg-white text-slate-900 placeholder-slate-400"
@@ -550,30 +561,30 @@ export const RolesManager: React.FC = () => {
 
               {/* Presets Toolbar */}
               <div>
-                <label className="block font-bold mb-1.5 text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                  <Sparkles className="size-3.5 text-amber-500" />
+                <span id="roles-presets-label" className="block font-bold mb-1.5 text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                  <Sparkles className="size-3.5 text-amber-800 dark:text-amber-400" />
                   <span>Plantillas Rápidas (Presets)</span>
-                </label>
-                <div className="flex flex-wrap gap-2">
+                </span>
+                <div role="group" aria-labelledby="roles-presets-label" className="flex flex-wrap gap-2">
                   {PRESET_TEMPLATES.map((preset) => (
-                    <button
-                      key={preset.name}
-                      type="button"
-                      onClick={() => handleApplyPreset(preset.permissions)}
-                      className={`flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-[11px] font-semibold transition-all ${
-                        isDark
-                          ? "border-slate-700 bg-slate-800/80 text-slate-200 hover:border-indigo-500/50 hover:bg-slate-700"
-                          : "border-slate-200 bg-slate-100 text-slate-700 hover:border-indigo-300 hover:bg-slate-200"
-                      }`}
-                      title={preset.description}
-                    >
-                      <span>{preset.name}</span>
-                    </button>
+                    <Tooltip key={preset.name} content={preset.description}>
+                      <button
+                        type="button"
+                        onClick={() => handleApplyPreset(preset.permissions)}
+                        className={`pointer-coarse:min-h-11 flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all ${
+                          isDark
+                            ? "border-slate-700 bg-slate-800/80 text-slate-200 hover:border-indigo-500/50 hover:bg-slate-700"
+                            : "border-slate-200 bg-slate-100 text-slate-700 hover:border-indigo-300 hover:bg-slate-200"
+                        }`}
+                      >
+                        <span>{preset.name}</span>
+                      </button>
+                    </Tooltip>
                   ))}
                   <button
                     type="button"
                     onClick={() => setSelectedPermissions(new Set())}
-                    className={`rounded-xl border px-3 py-1.5 text-[11px] font-semibold transition-all text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 ${
+                    className={`pointer-coarse:min-h-11 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 ${
                       isDark ? "border-slate-800" : "border-slate-200"
                     }`}
                   >
@@ -588,7 +599,7 @@ export const RolesManager: React.FC = () => {
                   <span className="font-bold text-slate-800 dark:text-slate-200">
                     Permisos de Acceso ({selectedPermissions.size} de {PERMISSIONS.length})
                   </span>
-                  <div className="flex items-center gap-2 text-[11px]">
+                  <div className="flex items-center gap-2 text-sm">
                     <button
                       type="button"
                       onClick={() => setSelectedPermissions(new Set(PERMISSIONS))}
@@ -625,13 +636,13 @@ export const RolesManager: React.FC = () => {
                       >
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-2 font-bold text-slate-900 dark:text-slate-100">
-                            <GroupIcon className="size-4 text-indigo-500" />
+                            <GroupIcon className="size-4 text-indigo-600 dark:text-indigo-400" />
                             <span>{group.category}</span>
                           </div>
                           <button
                             type="button"
                             onClick={() => handleToggleCategory(group.permissions)}
-                            className="text-[11px] font-semibold text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400"
+                            className="text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400"
                           >
                             {allInGroupSelected ? "Quitar grupo" : "Seleccionar grupo"}
                           </button>
@@ -650,7 +661,7 @@ export const RolesManager: React.FC = () => {
                                       ? "bg-indigo-500/10 text-white"
                                       : "bg-indigo-50 text-slate-900"
                                     : isDark
-                                    ? "hover:bg-slate-800/50 text-slate-300"
+                                    ? "hover:bg-slate-800/50 text-slate-500 dark:text-slate-400"
                                     : "hover:bg-slate-100 text-slate-700"
                                 }`}
                               >
@@ -665,7 +676,7 @@ export const RolesManager: React.FC = () => {
                                   <div className="font-semibold text-slate-900 dark:text-white">
                                     {perm.label}
                                   </div>
-                                  <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                                  <div className="text-sm text-slate-600 dark:text-slate-400">
                                     {perm.description}
                                   </div>
                                 </div>
@@ -699,7 +710,7 @@ export const RolesManager: React.FC = () => {
               </div>
             </form>
           </div>
-        </div>
+        </ModalShell>
       )}
 
       {/* Delete Confirmation Modal */}

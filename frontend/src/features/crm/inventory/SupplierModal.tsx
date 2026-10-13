@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react"
 import type { Supplier } from "@/types/restaurant"
 import { Truck, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ModalShell } from "@/components/ui/modal-shell"
 
 export interface SupplierFormData {
   name: string
@@ -75,21 +76,26 @@ export const SupplierModal: React.FC<SupplierModalProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-xs">
+    <ModalShell
+      onClose={onClose}
+      aria-labelledby="supplier-modal-title"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-xs"
+    >
       <div
         className={`w-full max-w-md rounded-2xl border p-6 shadow-2xl ${
           isDark ? "border-slate-800 bg-[#0E1322] text-white" : "border-slate-200 bg-white text-slate-900"
         }`}
       >
         <div className={`flex items-center justify-between border-b pb-3 mb-4 ${isDark ? "border-slate-800" : "border-slate-200"}`}>
-          <h3 className="text-base font-bold flex items-center gap-2">
-            <Truck className="size-4 text-indigo-500" />
+          <h3 id="supplier-modal-title" className="text-base font-bold flex items-center gap-2">
+            <Truck className="size-4 text-indigo-600 dark:text-indigo-400" />
             <span>{editingSupplier ? "Editar Proveedor" : "Registrar Nuevo Proveedor"}</span>
           </h3>
           <button
+            aria-label="Cerrar"
             type="button"
             onClick={onClose}
-            className={`rounded-lg p-1 transition-colors ${
+            className={`pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1 transition-colors ${
               isDark ? "text-slate-400 hover:bg-slate-800 hover:text-white" : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
             }`}
           >
@@ -97,19 +103,19 @@ export const SupplierModal: React.FC<SupplierModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-3.5 text-xs">
+        <form onSubmit={handleSubmit} className="space-y-3.5 text-sm">
           <div>
-            <label className={`block font-semibold mb-1 ${isDark ? "text-slate-200" : "text-slate-700"}`}>
+            <label htmlFor="supplier-modal-nombre-de-la-empresa-proveed" className={`block font-semibold mb-1 ${isDark ? "text-slate-200" : "text-slate-700"}`}>
               Nombre de la Empresa / Proveedor *
             </label>
-            <input
+            <input id="supplier-modal-nombre-de-la-empresa-proveed"
               type="text"
               required
               maxLength={80}
               placeholder="Ej: Distribuidora Cárnicos San José"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className={`w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+              className={`text-base sm:text-sm w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                 isDark
                   ? "border-slate-700 bg-slate-800 text-white placeholder-slate-500"
                   : "border-slate-300 bg-white text-slate-900 placeholder-slate-400"
@@ -119,10 +125,10 @@ export const SupplierModal: React.FC<SupplierModalProps> = ({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={`block font-semibold mb-1 ${isDark ? "text-slate-200" : "text-slate-700"}`}>
+              <label htmlFor="supplier-modal-rubro-categoria" className={`block font-semibold mb-1 ${isDark ? "text-slate-200" : "text-slate-700"}`}>
                 Rubro / Categoría
               </label>
-              <input
+              <input id="supplier-modal-rubro-categoria"
                 type="text"
                 required
                 maxLength={50}
@@ -131,7 +137,7 @@ export const SupplierModal: React.FC<SupplierModalProps> = ({
                 onChange={(e) =>
                   setFormData({ ...formData, category: e.target.value })
                 }
-                className={`w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                className={`text-base sm:text-sm w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                   isDark
                     ? "border-slate-700 bg-slate-800 text-white placeholder-slate-500"
                     : "border-slate-300 bg-white text-slate-900 placeholder-slate-400"
@@ -140,10 +146,10 @@ export const SupplierModal: React.FC<SupplierModalProps> = ({
             </div>
 
             <div>
-              <label className={`block font-semibold mb-1 ${isDark ? "text-slate-200" : "text-slate-700"}`}>
+              <label htmlFor="supplier-modal-persona-de-contacto" className={`block font-semibold mb-1 ${isDark ? "text-slate-200" : "text-slate-700"}`}>
                 Persona de Contacto
               </label>
-              <input
+              <input id="supplier-modal-persona-de-contacto"
                 type="text"
                 maxLength={80}
                 placeholder="Ej: Carlos Gómez"
@@ -151,7 +157,7 @@ export const SupplierModal: React.FC<SupplierModalProps> = ({
                 onChange={(e) =>
                   setFormData({ ...formData, contactName: e.target.value })
                 }
-                className={`w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                className={`text-base sm:text-sm w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                   isDark
                     ? "border-slate-700 bg-slate-800 text-white placeholder-slate-500"
                     : "border-slate-300 bg-white text-slate-900 placeholder-slate-400"
@@ -161,17 +167,17 @@ export const SupplierModal: React.FC<SupplierModalProps> = ({
           </div>
 
           <div>
-            <label className={`block font-semibold mb-1 ${isDark ? "text-slate-200" : "text-slate-700"}`}>
+            <label htmlFor="supplier-modal-telefono-whatsapp-para-pedid" className={`block font-semibold mb-1 ${isDark ? "text-slate-200" : "text-slate-700"}`}>
               Teléfono / WhatsApp para Pedidos *
             </label>
-            <input
+            <input id="supplier-modal-telefono-whatsapp-para-pedid"
               type="text"
               required
               maxLength={20}
               placeholder="Ej: 573105551234"
               value={formData.phone}
               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              className={`w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+              className={`text-base sm:text-sm w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                 isDark
                   ? "border-slate-700 bg-slate-800 text-white placeholder-slate-500"
                   : "border-slate-300 bg-white text-slate-900 placeholder-slate-400"
@@ -180,16 +186,16 @@ export const SupplierModal: React.FC<SupplierModalProps> = ({
           </div>
 
           <div>
-            <label className={`block font-semibold mb-1 ${isDark ? "text-slate-200" : "text-slate-700"}`}>
+            <label htmlFor="supplier-modal-notas-dias-de-entrega-minimo" className={`block font-semibold mb-1 ${isDark ? "text-slate-200" : "text-slate-700"}`}>
               Notas / Días de Entrega / Mínimos
             </label>
-            <textarea
+            <textarea id="supplier-modal-notas-dias-de-entrega-minimo"
               rows={2}
               maxLength={300}
               placeholder="Ej: Entregan martes y viernes. Pedido mínimo $150.000."
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              className={`w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+              className={`text-base sm:text-sm w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                 isDark
                   ? "border-slate-700 bg-slate-800 text-white placeholder-slate-500"
                   : "border-slate-300 bg-white text-slate-900 placeholder-slate-400"
@@ -219,6 +225,6 @@ export const SupplierModal: React.FC<SupplierModalProps> = ({
           </div>
         </form>
       </div>
-    </div>
+    </ModalShell>
   )
 }

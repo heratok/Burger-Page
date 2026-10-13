@@ -11,14 +11,15 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
 import { Textarea } from "@/components/ui/textarea"
+import { ModalShell } from "@/components/ui/modal-shell"
 import type { MenuItem } from "@/types/restaurant"
 import { createCartItem, type CartAddition, type CartItem } from "./cartEngine"
 import CharacterCounter from "@/components/CharacterCounter"
 import { LIMITS } from "@/lib/validation"
 import { useCatalog } from "@/context/RestaurantContext"
-import { formatCurrency, getContrastForeground } from "@/lib/utils"
+import { formatCurrency } from "@/lib/utils"
 import { resolveImageUrl } from "@/core/storage/supabaseStorage"
-import { getFontFamilyClass, getStoreThemeStyles } from "@/features/crm/utils/customizerStyles"
+import { getFontFamilyClass, getStoreThemeStyles, getBrandTokens } from "@/features/crm/utils/customizerStyles"
 
 export interface AdditionsModalProps {
   onClose: () => void
@@ -41,7 +42,8 @@ export default function AdditionsModal({
   const { additions: storeAdditions, storeConfig } = useCatalog()
   const themeStyles = getStoreThemeStyles(storeConfig.bgTheme, storeConfig.primaryColor)
   const fontClass = getFontFamilyClass(storeConfig.fontFamily)
-  const primaryForeground = getContrastForeground(storeConfig.primaryColor)
+  const brand = getBrandTokens(storeConfig.primaryColor, storeConfig.bgTheme)
+  const primaryForeground = brand.onFill
   const [cantidad, setCantidad] = useState(initial?.cantidad ?? 1)
   const [observaciones, setObservaciones] = useState(initial?.observacion ?? "")
   const [isImageExpanded, setIsImageExpanded] = useState(false)
@@ -53,6 +55,7 @@ export default function AdditionsModal({
     setIsImageExpanded(true)
   }
 
+  // Capture phase: the base-ui Dialog underneath also listens for Escape and must not see this one.
   useEffect(() => {
     if (!isImageExpanded) return
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -167,7 +170,7 @@ export default function AdditionsModal({
             backgroundColor: "var(--color-bg-elevated)",
             borderColor: "var(--color-border-subtle)",
           }}
-          className="absolute top-3 right-3 z-30 inline-flex size-9 sm:size-10 items-center justify-center rounded-full border border-border-subtle bg-bg-elevated hover:bg-bg-elevated-2 text-text-muted hover:text-text-primary shadow-md transition-all active:scale-95 cursor-pointer backdrop-blur-md"
+          className="absolute top-3 right-3 z-30 inline-flex size-9 sm:size-10 pointer-coarse:size-11 items-center justify-center rounded-full border border-border-subtle bg-bg-elevated hover:bg-bg-elevated-2 text-text-muted hover:text-text-primary shadow-md transition-all active:scale-95 cursor-pointer backdrop-blur-md"
         >
           <X className="size-4 sm:size-5" />
         </button>
@@ -189,7 +192,7 @@ export default function AdditionsModal({
                 type="button"
                 onClick={handleOpenLightbox}
                 aria-label="Ampliar imagen"
-                className="absolute bottom-2.5 right-2.5 z-10 inline-flex items-center gap-1.5 rounded-full bg-black/60 hover:bg-black/80 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-md transition-all cursor-pointer active:scale-95 shadow-xs"
+                className="absolute bottom-2.5 right-2.5 z-10 inline-flex items-center gap-1.5 rounded-full bg-black/60 hover:bg-black/80 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-md transition-all cursor-pointer active:scale-95 shadow-xs"
               >
                 <Maximize2 className="size-3.5" />
                 <span>Ver foto</span>
@@ -198,7 +201,7 @@ export default function AdditionsModal({
           )}
 
           {/* Product Header: Title, Price, and Full Description (no line-clamp) */}
-          <header
+          <div
             style={{ backgroundColor: (themeStyles as any)["--color-bg-surface"] || "var(--color-bg-surface, #F4ECE1)" }}
             className="border-b border-border-subtle p-4 sm:p-5"
           >
@@ -207,18 +210,18 @@ export default function AdditionsModal({
                 {editing ? `Editar ${product.name}` : product.name}
               </DialogTitle>
               <p
-                style={{ color: storeConfig.primaryColor }}
+                style={{ color: brand.text }}
                 className="text-base sm:text-lg font-black tracking-tight shrink-0"
               >
                 {formatCurrency(product.price)}
               </p>
             </div>
             {product.description && (
-              <DialogDescription className="mt-2 text-xs sm:text-sm leading-relaxed text-text-secondary whitespace-pre-line">
+              <DialogDescription className="mt-2 text-sm leading-relaxed text-text-secondary whitespace-pre-line">
                 {product.description}
               </DialogDescription>
             )}
-          </header>
+          </div>
 
           <div className="space-y-4 sm:space-y-6 px-3.5 sm:px-5 py-3 sm:py-4">
           {adiciones.length > 0 && (
@@ -238,10 +241,10 @@ export default function AdditionsModal({
                     className="flex items-center gap-3 rounded-lg border border-border-subtle bg-bg-elevated p-3"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-text-primary">
+                      <p className="break-words text-sm font-medium text-text-primary">
                         {adicion.name}
                       </p>
-                      <p className="text-xs text-text-muted">
+                      <p className="text-sm text-text-muted">
                         +{formatCurrency(adicion.price)}
                       </p>
                     </div>
@@ -270,10 +273,10 @@ export default function AdditionsModal({
                         aria-label={`Agregar ${adicion.name}`}
                         disabled={closed}
                         style={{
-                          backgroundColor: storeConfig.primaryColor,
+                          backgroundColor: brand.fill,
                           color: primaryForeground,
                         }}
-                        className="size-11 rounded-full shadow-xs hover:opacity-90 transition-opacity disabled:opacity-30"
+                        className="size-11 rounded-full shadow-xs hover:brightness-95 transition-opacity disabled:opacity-30"
                       >
                         <Plus />
                       </Button>
@@ -306,7 +309,7 @@ export default function AdditionsModal({
               className="border-border-subtle bg-bg-input text-text-primary placeholder:text-text-muted focus-visible:ring-accent break-words [overflow-wrap:anywhere]"
             />
             <CharacterCounter value={observaciones} max={LIMITS.observaciones.max} />
-            <FieldDescription className="text-xs text-text-muted">
+            <FieldDescription className="text-sm text-text-muted">
               Cuéntanos cualquier detalle para preparar tu pedido.
             </FieldDescription>
           </Field>
@@ -319,7 +322,7 @@ export default function AdditionsModal({
         >
           <div className="flex flex-col gap-3 min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between">
             <div>
-              <p className="text-xs text-text-muted">Cantidad</p>
+              <p className="text-sm text-text-muted">Cantidad</p>
               <div className="mt-1 inline-flex items-center gap-2 rounded-full bg-bg-elevated px-2 py-1 border border-border-subtle">
                 <Button
                   type="button"
@@ -328,7 +331,7 @@ export default function AdditionsModal({
                   onClick={disminuirCantidad}
                   aria-label="Disminuir cantidad"
                   disabled={cantidad === 1}
-                  className="size-10 sm:size-11 rounded-full border border-border-subtle bg-bg-elevated-2 text-text-primary hover:opacity-80 disabled:opacity-30"
+                  className="size-11 rounded-full border border-border-subtle bg-bg-elevated-2 text-text-primary hover:opacity-80 disabled:opacity-30"
                 >
                   <Minus />
                 </Button>
@@ -345,10 +348,10 @@ export default function AdditionsModal({
                   aria-label="Aumentar cantidad"
                   disabled={closed}
                   style={{
-                    backgroundColor: storeConfig.primaryColor,
+                    backgroundColor: brand.fill,
                     color: primaryForeground,
                   }}
-                  className="size-10 sm:size-11 rounded-full shadow-xs hover:opacity-90 transition-opacity disabled:opacity-30"
+                  className="size-11 rounded-full shadow-xs hover:brightness-95 transition-opacity disabled:opacity-30"
                 >
                   <Plus />
                 </Button>
@@ -361,10 +364,10 @@ export default function AdditionsModal({
               onClick={handleAdd}
               disabled={!product || (closed && !editing)}
               style={{
-                backgroundColor: storeConfig.primaryColor,
+                backgroundColor: brand.fill,
                 color: primaryForeground,
               }}
-              className="h-11 sm:h-12 w-full rounded-xl text-sm sm:text-base font-bold shadow-md cursor-pointer hover:opacity-90 min-[420px]:w-auto min-[420px]:flex-1 sm:min-w-[200px] sm:flex-none"
+              className="h-11 sm:h-12 w-full rounded-xl text-sm sm:text-base font-bold shadow-md cursor-pointer hover:brightness-95 min-[420px]:w-auto min-[420px]:flex-1 sm:min-w-[200px] sm:flex-none"
             >
               {closed && !editing ? (
                 "Cerrado"
@@ -381,9 +384,7 @@ export default function AdditionsModal({
 
       {/* Fullscreen Lightbox / Expanded Image */}
       {isImageExpanded && product.src && typeof document !== "undefined" && createPortal(
-        <div
-          role="dialog"
-          aria-modal="true"
+        <ModalShell
           aria-label={`Foto ampliada de ${product.name}`}
           className="fixed inset-0 z-60 flex items-center justify-center bg-black/90 p-4 backdrop-blur-md animate-in fade-in-0 duration-150"
           onClick={(e) => {
@@ -417,13 +418,13 @@ export default function AdditionsModal({
             <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-4 sm:p-5 text-white">
               <p className="text-base sm:text-lg font-bold">{product.name}</p>
               {product.description && (
-                <p className="mt-1 text-xs sm:text-sm text-white/85 leading-relaxed">
+                <p className="mt-1 text-sm text-white/85 leading-relaxed">
                   {product.description}
                 </p>
               )}
             </div>
           </div>
-        </div>,
+        </ModalShell>,
         document.body
       )}
     </Dialog>

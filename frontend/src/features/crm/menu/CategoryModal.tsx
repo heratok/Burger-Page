@@ -3,6 +3,7 @@ import type { MenuItem } from "@/types/restaurant"
 import { Tags, X, Plus, Edit2, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
+import { ModalShell } from "@/components/ui/modal-shell"
 
 export interface CategoryModalProps {
   isOpen: boolean
@@ -55,7 +56,11 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 backdrop-blur-xs">
+      <ModalShell
+        onClose={handleCloseModal}
+        aria-labelledby="category-modal-title"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 backdrop-blur-xs"
+      >
         <div
           className={`w-full max-w-md rounded-2xl border p-6 shadow-2xl transition-all ${
             isDark ? "border-slate-800 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-900"
@@ -64,14 +69,15 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
           <div className="flex items-center justify-between border-b pb-3 border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-2">
               <Tags className="size-5 text-indigo-600 dark:text-indigo-400" />
-              <h3 className="font-bold text-base text-slate-900 dark:text-white">
+              <h3 id="category-modal-title" className="font-bold text-base text-slate-900 dark:text-white">
                 Gestionar Categorías del Menú
               </h3>
             </div>
             <button
+              aria-label="Cerrar gestión de categorías"
               type="button"
               onClick={handleCloseModal}
-              className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+              className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
             >
               <X className="size-5" />
             </button>
@@ -85,7 +91,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
               value={newCategoryName}
               onChange={(e) => setNewCategoryName(e.target.value)}
               placeholder="Nueva categoría (ej. Pizzas, Entradas, Postres)..."
-              className="flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+              className="flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-base sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
             />
             <Button
               type="submit"
@@ -98,8 +104,8 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
           </form>
 
           {/* Existing Categories List */}
-          <div className="mt-4 max-h-64 overflow-y-auto space-y-2 pr-1 text-xs">
-            <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+          <div className="mt-4 max-h-64 overflow-y-auto space-y-2 pr-1 text-sm">
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
               Categorías Activas ({categories.length})
             </p>
             {categories.map((cat) => {
@@ -132,20 +138,20 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
                             setEditingCategoryName(null)
                           }
                         }}
-                        className="flex-1 rounded-lg border border-indigo-500 bg-white px-2 py-1 text-xs text-slate-900 dark:bg-slate-900 dark:text-white"
+                        className="flex-1 rounded-lg border border-indigo-500 bg-white px-2 py-1 text-base sm:text-sm text-slate-900 dark:bg-slate-900 dark:text-white"
                         autoFocus
                       />
                       <button
                         type="button"
                         onClick={() => handleSaveEdit(cat)}
-                        className="rounded-lg bg-indigo-600 px-2 py-1 text-[11px] font-bold text-white hover:bg-indigo-700 cursor-pointer"
+                        className="pointer-coarse:min-h-11 rounded-lg bg-indigo-600 px-2 py-1 text-xs font-bold text-white hover:bg-indigo-700 cursor-pointer"
                       >
                         Guardar
                       </button>
                       <button
                         type="button"
                         onClick={() => setEditingCategoryName(null)}
-                        className="rounded-lg bg-slate-200 dark:bg-slate-700 px-2 py-1 text-[11px] font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-300 cursor-pointer"
+                        className="pointer-coarse:min-h-11 rounded-lg bg-slate-200 dark:bg-slate-700 px-2 py-1 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-300 cursor-pointer"
                       >
                         Cancelar
                       </button>
@@ -156,27 +162,29 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
                         <span className="font-semibold text-slate-800 dark:text-slate-200">
                           {cat}
                         </span>
-                        <span className="rounded-md bg-indigo-100 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-400">
+                        <span className="rounded-md bg-indigo-100 px-1.5 py-0.5 text-xs font-bold text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-400">
                           {count} {count === 1 ? "producto" : "productos"}
                         </span>
                       </div>
 
                       <div className="flex items-center gap-1">
                         <button
+                          aria-label={`Renombrar categoría ${cat}`}
                           type="button"
                           onClick={() => {
                             setEditingCategoryName(cat)
                             setEditCategoryInputValue(cat)
                           }}
-                          className="rounded-lg p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white cursor-pointer"
+                          className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white cursor-pointer"
                           title="Renombrar categoría"
                         >
                           <Edit2 className="size-3.5" />
                         </button>
                         <button
+                          aria-label={`Eliminar categoría ${cat}`}
                           type="button"
                           onClick={() => setCategoryToDelete(cat)}
-                          className="rounded-lg p-1 text-slate-500 hover:bg-slate-100 hover:text-rose-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-rose-400 cursor-pointer"
+                          className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1 text-slate-500 hover:bg-slate-100 hover:text-rose-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-rose-400 cursor-pointer"
                           title="Eliminar categoría"
                         >
                           <Trash2 className="size-3.5" />
@@ -201,7 +209,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
             </Button>
           </div>
         </div>
-      </div>
+      </ModalShell>
 
       {/* Delete Category Confirmation Modal */}
       <ConfirmDeleteModal

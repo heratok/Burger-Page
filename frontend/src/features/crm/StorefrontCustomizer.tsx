@@ -14,10 +14,10 @@ import {
 const TAB_COLUMNS = 4
 
 const CUSTOMIZER_TABS = [
-  { id: "templates", label: "Estilos", icon: Sparkles, iconClass: "text-amber-500" },
-  { id: "branding", label: "Marca", icon: ImageIcon, iconClass: "text-indigo-500" },
-  { id: "colors", label: "Colores", icon: Palette, iconClass: "text-rose-500" },
-  { id: "uiux", label: "Diseño", icon: Sliders, iconClass: "text-emerald-500" },
+  { id: "templates", label: "Estilos", icon: Sparkles, iconClass: "text-amber-800 dark:text-amber-400" },
+  { id: "branding", label: "Marca", icon: ImageIcon, iconClass: "text-indigo-600 dark:text-indigo-400" },
+  { id: "colors", label: "Colores", icon: Palette, iconClass: "text-rose-600 dark:text-rose-400" },
+  { id: "uiux", label: "Diseño", icon: Sliders, iconClass: "text-emerald-700 dark:text-emerald-400" },
 ] as const
 
 export const StorefrontCustomizer: React.FC = () => {
@@ -103,12 +103,12 @@ export const StorefrontCustomizer: React.FC = () => {
       >
         <div>
           <div className="flex items-center gap-2">
-            <Palette className="size-5 text-indigo-500" />
+            <Palette className="size-5 text-indigo-600 dark:text-indigo-400" />
             <h2 className="text-base font-bold text-slate-900 dark:text-white">
               Personalizador Visual de Tienda
             </h2>
           </div>
-          <p className={`text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+          <p className={`text-sm ${isDark ? "text-slate-400" : "text-slate-500"}`}>
             Modifica la apariencia, colores y experiencia de compra de tus clientes con vista previa en tiempo real.
           </p>
         </div>
@@ -122,7 +122,7 @@ export const StorefrontCustomizer: React.FC = () => {
             type="button"
             size="sm"
             onClick={handleSave}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-md shadow-emerald-600/20 cursor-pointer"
+            className="bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs shadow-md shadow-emerald-600/20 cursor-pointer"
           >
             <Save className="size-3.5 mr-1.5" />
             Guardar & Publicar
@@ -140,7 +140,7 @@ export const StorefrontCustomizer: React.FC = () => {
             aria-label="Secciones del personalizador"
             onKeyDown={handleKeyDown}
             style={{ gridTemplateColumns: `repeat(${TAB_COLUMNS}, minmax(0, 1fr))` }}
-            className="grid gap-1 rounded-xl border bg-slate-100 p-1 text-xs font-semibold dark:border-slate-700 dark:bg-slate-800"
+            className="grid gap-1 rounded-xl border bg-slate-100 p-1 text-sm font-semibold dark:border-slate-700 dark:bg-slate-800"
           >
             {CUSTOMIZER_TABS.map((tab, index) => {
               const Icon = tab.icon
@@ -158,10 +158,10 @@ export const StorefrontCustomizer: React.FC = () => {
                   aria-controls="customizer-tabpanel"
                   tabIndex={isActive ? 0 : -1}
                   onClick={() => setActiveSection(tab.id)}
-                  className={`flex min-h-10 items-center justify-center gap-1.5 rounded-lg px-1.5 py-2 text-center whitespace-nowrap transition-all cursor-pointer ${
+                  className={`pointer-coarse:min-h-11 flex min-h-10 items-center justify-center gap-1.5 rounded-lg px-1.5 py-2 text-center whitespace-nowrap transition-all cursor-pointer ${
                     isActive
                       ? "bg-white text-indigo-700 shadow-xs dark:bg-slate-700 dark:text-white font-bold"
-                      : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
+                      : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
                   }`}
                 >
                   <Icon className={`size-3.5 ${tab.iconClass} shrink-0`} />

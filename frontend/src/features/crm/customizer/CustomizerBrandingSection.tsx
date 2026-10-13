@@ -78,45 +78,45 @@ export const CustomizerBrandingSection: React.FC<CustomizerBrandingSectionProps>
   return (
     <>
       <div
-        className={`rounded-2xl border p-5 shadow-xs space-y-4 text-xs ${
+        className={`rounded-2xl border p-5 shadow-xs space-y-4 text-sm ${
           isDark ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-white"
         }`}
       >
         <h3 className="font-bold text-sm text-slate-900 dark:text-white">Identidad Visual & Fotos</h3>
 
         <div>
-          <label className="font-semibold block mb-1 text-slate-800 dark:text-slate-200">
+          <label htmlFor="customizer-branding-section-nombre-del-restaurante" className="font-semibold block mb-1 text-slate-800 dark:text-slate-200">
             Nombre del Restaurante
           </label>
-          <input
+          <input id="customizer-branding-section-nombre-del-restaurante"
             type="text"
             maxLength={80}
             value={draft.name}
             onChange={(e) => setDraft((prev) => ({ ...prev, name: e.target.value }))}
             placeholder="Ej. Burger Craft"
-            className="w-full rounded-xl border p-2.5 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white font-medium"
+            className="text-base sm:text-sm w-full rounded-xl border p-2.5 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white font-medium"
           />
         </div>
 
         <div>
-          <label className="font-semibold block mb-1 text-slate-800 dark:text-slate-200">
+          <label htmlFor="customizer-branding-section-slogan-tagline" className="font-semibold block mb-1 text-slate-800 dark:text-slate-200">
             Slogan / Tagline
           </label>
-          <input
+          <input id="customizer-branding-section-slogan-tagline"
             type="text"
             maxLength={120}
             value={draft.tagline}
             onChange={(e) => setDraft((prev) => ({ ...prev, tagline: e.target.value }))}
             placeholder="Ej. Cocina artesanal con sabor inolvidable"
-            className="w-full rounded-xl border p-2.5 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white"
+            className="text-base sm:text-sm w-full rounded-xl border p-2.5 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white"
           />
         </div>
 
         {/* Logo Upload */}
-        <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
-          <label className="font-semibold block text-slate-800 dark:text-slate-200">
+        <div role="group" aria-labelledby="branding-logo-label" className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
+          <span id="branding-logo-label" className="font-semibold block text-slate-800 dark:text-slate-200">
             Logo del Restaurante
-          </label>
+          </span>
 
           <div className="flex items-center gap-3">
             {draft.logoUrl ? (
@@ -167,12 +167,12 @@ export const CustomizerBrandingSection: React.FC<CustomizerBrandingSectionProps>
                 >
                   {uploadingField === "logoUrl" ? (
                     <>
-                      <Loader2 className="size-3.5 animate-spin text-indigo-500" />
+                      <Loader2 className="size-3.5 animate-spin text-indigo-600 dark:text-indigo-400" />
                       <span>Subiendo logo...</span>
                     </>
                   ) : (
                     <>
-                      <Upload className="size-3.5 text-indigo-500" />
+                      <Upload className="size-3.5 text-indigo-600 dark:text-indigo-400" />
                       <span>Subir Logo</span>
                     </>
                   )}
@@ -184,14 +184,15 @@ export const CustomizerBrandingSection: React.FC<CustomizerBrandingSectionProps>
                     size="sm"
                     disabled={uploadingField !== null}
                     onClick={() => setConfirmDeleteMedia("logo")}
-                    className="px-2.5 text-rose-500 hover:bg-rose-500/10 hover:text-rose-600 border-rose-500/30 cursor-pointer"
+                    className="px-2.5 text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 hover:text-rose-600 border-rose-500/30 cursor-pointer"
+                    aria-label="Eliminar logo"
                     title="Eliminar logo"
                   >
                     <Trash2 className="size-3.5" />
                   </Button>
                 )}
               </div>
-              <p className="text-[10px] text-slate-400">
+              <p className="text-sm text-slate-500 dark:text-slate-400">
                 Subí tu logo en formato PNG, JPG o WebP desde tu teléfono o PC.
               </p>
             </div>
@@ -199,10 +200,10 @@ export const CustomizerBrandingSection: React.FC<CustomizerBrandingSectionProps>
         </div>
 
         {/* Banner Upload */}
-        <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
-          <label className="font-semibold block text-slate-800 dark:text-slate-200">
+        <div role="group" aria-labelledby="branding-banner-label" className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
+          <span id="branding-banner-label" className="font-semibold block text-slate-800 dark:text-slate-200">
             Foto de Portada / Banner Superior
-          </label>
+          </span>
 
           {draft.bannerUrl && (
             <div className="relative h-24 w-full overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs">
@@ -218,6 +219,7 @@ export const CustomizerBrandingSection: React.FC<CustomizerBrandingSectionProps>
                 </div>
               )}
               <button
+                aria-label="Eliminar foto de portada"
                 type="button"
                 disabled={uploadingField !== null}
                 onClick={() => setConfirmDeleteMedia("banner")}
@@ -248,17 +250,17 @@ export const CustomizerBrandingSection: React.FC<CustomizerBrandingSectionProps>
           >
             {uploadingField === "bannerUrl" ? (
               <>
-                <Loader2 className="size-3.5 animate-spin text-indigo-500" />
+                <Loader2 className="size-3.5 animate-spin text-indigo-600 dark:text-indigo-400" />
                 <span>Subiendo portada...</span>
               </>
             ) : (
               <>
-                <Upload className="size-3.5 text-indigo-500" />
+                <Upload className="size-3.5 text-indigo-600 dark:text-indigo-400" />
                 <span>Subir Foto de Portada</span>
               </>
             )}
           </Button>
-          <p className="text-[10px] text-slate-400">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
             Imagen panorámica que aparece en la parte superior de la carta digital.
           </p>
 
@@ -279,15 +281,15 @@ export const CustomizerBrandingSection: React.FC<CustomizerBrandingSectionProps>
 
             {draft.showAnnouncement && (
               <div>
-                <label className="font-semibold block mb-1 text-slate-800 dark:text-slate-200">
+                <label htmlFor="customizer-branding-section-texto-del-anuncio" className="font-semibold block mb-1 text-slate-800 dark:text-slate-200">
                   Texto del Anuncio
                 </label>
-                <input
+                <input id="customizer-branding-section-texto-del-anuncio"
                   type="text"
                   value={draft.announcementText}
                   onChange={(e) => setDraft((prev) => ({ ...prev, announcementText: e.target.value }))}
                   placeholder="🔥 ¡Envío GRATIS hoy...!"
-                  className="w-full rounded-xl border p-2.5 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white"
+                  className="text-base sm:text-sm w-full rounded-xl border p-2.5 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white"
                 />
               </div>
             )}

@@ -16,13 +16,13 @@ export const CustomizerColorsSection: React.FC<CustomizerColorsSectionProps> = (
 }) => {
   return (
     <div
-      className={`rounded-2xl border p-5 shadow-xs space-y-5 text-xs ${
+      className={`rounded-2xl border p-5 shadow-xs space-y-5 text-sm ${
         isDark ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-white"
       }`}
     >
       <div>
         <div className="flex items-center gap-2">
-          <Palette className="size-4 text-rose-500" />
+          <Palette className="size-4 text-rose-600 dark:text-rose-400" />
           <h3 className="font-bold text-sm text-slate-900 dark:text-white">Color de Acento de la Tienda</h3>
         </div>
         <p className="text-slate-500 dark:text-slate-400 mt-0.5">
@@ -92,22 +92,23 @@ export const CustomizerColorsSection: React.FC<CustomizerColorsSectionProps> = (
                   }))
                 }
                 className="absolute inset-0 size-full opacity-0 cursor-pointer"
+                aria-label="Elegir color visualmente"
                 title="Elegir color visualmente"
               />
               <Pipette className="size-4 text-white drop-shadow-md pointer-events-none" />
             </div>
             <div className="min-w-0">
-              <span className="font-bold block text-slate-900 dark:text-white text-xs">
+              <span className="font-bold block text-slate-900 dark:text-white text-sm">
                 Elegir Color Personalizado
               </span>
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 block">
+              <span className="text-sm text-slate-500 dark:text-slate-400 block">
                 Hacé clic para abrir la paleta visual y elegir cualquier tono
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 py-1.5 text-[11px] font-semibold text-slate-700 dark:text-slate-200 shrink-0 pointer-events-none">
-            <Pipette className="size-3.5 text-indigo-500" />
+          <div className="flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 py-1.5 text-sm font-semibold text-slate-700 dark:text-slate-200 shrink-0 pointer-events-none">
+            <Pipette className="size-3.5 text-indigo-600 dark:text-indigo-400" />
             <span>Selector visual</span>
           </div>
         </label>
@@ -143,7 +144,7 @@ export const CustomizerColorsSection: React.FC<CustomizerColorsSectionProps> = (
                     className="size-4 rounded-full border border-slate-400/30"
                   />
                 </div>
-                <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                <span className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                   {opt.description}
                 </span>
               </button>

@@ -24,6 +24,7 @@ import {
   Pencil,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { DisabledReason } from "@/components/ui/tooltip"
 import { Select } from "@/components/ui/select"
 import { ResetPasswordModal } from "./ResetPasswordModal"
 import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
@@ -235,7 +236,7 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
     }
   }
 
-  const inputClass = `w-full rounded-xl border px-3.5 py-2 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+  const inputClass = `w-full rounded-xl border px-3.5 py-2 text-base sm:text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
     isDark
       ? "border-slate-700 bg-slate-800 text-white placeholder-slate-500"
       : "border-slate-200 bg-slate-50 text-slate-900 placeholder-slate-400"
@@ -248,6 +249,7 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
     >
         <DialogContent
           showCloseButton={false}
+          aria-labelledby="edit-restaurant-title"
           className="fixed top-1/2 left-1/2 z-50 w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 p-0 border-0 bg-transparent shadow-none"
         >
           <div
@@ -265,7 +267,7 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
                 <h3 id="edit-restaurant-title" className="text-base font-bold">
                   Editar Restaurante
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-sm text-slate-500 dark:text-slate-400">
                   Modificá los datos generales y gestioná los administradores de este local.
                 </p>
               </div>
@@ -274,7 +276,7 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200 cursor-pointer"
+              className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200 cursor-pointer"
               aria-label="Cerrar modal"
             >
               <X className="size-5" />
@@ -284,7 +286,7 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
           {/* Form */}
           <form onSubmit={handleSubmit} className="mt-5 space-y-6">
             {errorMessage && (
-              <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-600 dark:text-rose-400 font-medium">
+              <div role="alert" className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-600 dark:text-rose-400 font-medium">
                 {errorMessage}
               </div>
             )}
@@ -292,7 +294,7 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {/* Nombre */}
               <div className="space-y-1 sm:col-span-2">
-                <label htmlFor="edit-rest-name" className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                <label htmlFor="edit-rest-name" className="text-sm font-bold text-slate-700 dark:text-slate-300">
                   Nombre del Restaurante *
                 </label>
                 <input
@@ -308,7 +310,7 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
 
               {/* Tagline */}
               <div className="space-y-1 sm:col-span-2">
-                <label htmlFor="edit-rest-tagline" className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                <label htmlFor="edit-rest-tagline" className="text-sm font-bold text-slate-700 dark:text-slate-300">
                   Eslogan / Tagline
                 </label>
                 <input
@@ -323,7 +325,7 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
 
               {/* WhatsApp */}
               <div className="space-y-1 sm:col-span-2">
-                <label htmlFor="edit-rest-whatsapp" className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                <label htmlFor="edit-rest-whatsapp" className="text-sm font-bold text-slate-700 dark:text-slate-300">
                   WhatsApp (para recepción de pedidos)
                 </label>
                 <input
@@ -338,11 +340,11 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
 
               {/* Slug */}
               <div className="space-y-1 sm:col-span-2">
-                <label htmlFor="edit-rest-slug" className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                <label htmlFor="edit-rest-slug" className="text-sm font-bold text-slate-700 dark:text-slate-300">
                   Slug / URL Pública *
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-500 dark:text-slate-400">
                     /
                   </span>
                   <input
@@ -355,17 +357,17 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
                       setSlugError(null)
                     }}
                     placeholder="burger-craft"
-                    className={`${inputClass} pl-6 font-mono text-[11px]`}
+                    className={`${inputClass} pl-6 font-mono text-base sm:text-sm`}
                   />
                 </div>
                 {slugError && (
-                  <p className="text-[11px] font-semibold text-rose-500 mt-1">{slugError}</p>
+                  <p role="alert" className="text-sm font-semibold text-rose-600 dark:text-rose-400 mt-1">{slugError}</p>
                 )}
 
                 {/* Slug change warning */}
                 {isSlugChanged && (
-                  <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300 mt-2">
-                    <AlertTriangle className="size-4 shrink-0 mt-0.5 text-amber-500" />
+                  <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-300 mt-2">
+                    <AlertTriangle className="size-4 shrink-0 mt-0.5 text-amber-800 dark:text-amber-400" />
                     <span>
                       ⚠️ <strong>Atención:</strong> Al cambiar el slug se actualizará la URL de la tienda pública. Los enlaces anteriores y códigos QR dejarán de funcionar.
                     </span>
@@ -436,7 +438,7 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
               </div>
 
               <div className="space-y-1">
-                <label htmlFor="edit-rest-symbol" className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                <label htmlFor="edit-rest-symbol" className="text-sm font-bold text-slate-700 dark:text-slate-300">
                   Símbolo *
                 </label>
                 <input
@@ -457,7 +459,7 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
             <div className="border-t pt-5 border-slate-100 dark:border-slate-800 space-y-3">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2">
-                  <Users className="size-4 text-indigo-500" />
+                  <Users className="size-4 text-indigo-600 dark:text-indigo-400" />
                   <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
                     Administradores de este restaurante
                   </h4>
@@ -469,7 +471,7 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
                     e.stopPropagation()
                     setIsCreateUserOpen(true)
                   }}
-                  className="flex items-center gap-1.5 rounded-xl text-xs font-bold border border-indigo-500/30 px-3 py-1.5 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 cursor-pointer transition-colors"
+                  className="pointer-coarse:min-h-11 flex items-center gap-1.5 rounded-xl text-xs font-bold border border-indigo-500/30 px-3 py-1.5 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 cursor-pointer transition-colors"
                 >
                   <UserPlus className="size-3.5" />
                   <span>+ Agregar administrador</span>
@@ -477,12 +479,12 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
               </div>
 
               {isLoadingAdmins ? (
-                <div className="flex items-center justify-center p-6 text-xs text-slate-400 gap-2">
+                <div className="flex items-center justify-center p-6 text-sm text-slate-500 dark:text-slate-400 gap-2">
                   <Loader2 className="size-4 animate-spin" />
                   <span>Cargando administradores...</span>
                 </div>
               ) : admins.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-800 p-4 text-center text-xs text-slate-500 dark:text-slate-400">
+                <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-800 p-4 text-center text-sm text-slate-500 dark:text-slate-400">
                   No hay administradores registrados para este restaurante.
                 </div>
               ) : (
@@ -497,16 +499,16 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
                         className="flex items-center justify-between p-3 gap-3 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors"
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="flex size-7 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-500 shrink-0">
+                          <div className="flex size-7 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 shrink-0">
                             <Shield className="size-3.5" />
                           </div>
                           <div className="min-w-0">
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="font-bold text-xs truncate text-slate-900 dark:text-white">
+                              <span className="font-bold text-sm break-all text-slate-900 dark:text-white">
                                 {admin.username}
                               </span>
                               {isOwnAccount && (
-                                <span className="rounded-full bg-indigo-500/15 px-1.5 py-0.2 text-[9px] font-bold text-indigo-600 dark:text-indigo-300">
+                                <span className="rounded-full bg-indigo-500/15 px-1.5 py-0.2 text-xs font-bold text-indigo-600 dark:text-indigo-300">
                                   Tú
                                 </span>
                               )}
@@ -517,10 +519,10 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
                         <div className="flex items-center gap-2 shrink-0">
                           {/* Active badge */}
                           <span
-                            className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                            className={`rounded-full px-2 py-0.5 text-xs font-bold ${
                               admin.isActive !== false
-                                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                                : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+                                ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
+                                : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
                             }`}
                           >
                             {admin.isActive !== false ? "Activo" : "Inactivo"}
@@ -533,68 +535,60 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
                             onClick={() => setUserToEdit(admin)}
                             title="Editar usuario"
                             aria-label={`Editar usuario ${admin.username}`}
-                            className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-indigo-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-indigo-400 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-indigo-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-indigo-400 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             <Pencil className="size-3.5" />
                           </button>
 
                           {/* Toggle Active */}
-                          <button
-                            type="button"
-                            disabled={isActionLoading || isOwnAccount}
-                            onClick={() => handleToggleAdminActive(admin)}
-                            title={
-                              isOwnAccount
-                                ? "No podés modificar tu propia cuenta"
-                                : admin.isActive !== false
-                                ? "Desactivar usuario"
-                                : "Activar usuario"
-                            }
-                            aria-label={
-                              admin.isActive !== false
-                                ? `Desactivar usuario ${admin.username}`
-                                : `Activar usuario ${admin.username}`
-                            }
-                            className={`rounded-lg p-1.5 transition-colors cursor-pointer ${
-                              admin.isActive !== false
-                                ? "text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
-                                : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
-                            } disabled:opacity-50 disabled:cursor-not-allowed`}
-                          >
-                            <Power className="size-3.5" />
-                          </button>
+                          <DisabledReason reason={isOwnAccount ? "No podés modificar tu propia cuenta" : null}>
+                            <button
+                              type="button"
+                              disabled={isActionLoading || isOwnAccount}
+                              onClick={() => handleToggleAdminActive(admin)}
+                              title={admin.isActive !== false ? "Desactivar usuario" : "Activar usuario"}
+                              aria-label={
+                                admin.isActive !== false
+                                  ? `Desactivar usuario ${admin.username}`
+                                  : `Activar usuario ${admin.username}`
+                              }
+                              className={`pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1.5 transition-colors cursor-pointer ${
+                                admin.isActive !== false
+                                  ? "text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+                                  : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+                              } disabled:opacity-50 disabled:cursor-not-allowed`}
+                            >
+                              <Power className="size-3.5" />
+                            </button>
+                          </DisabledReason>
 
                           {/* Reset Password */}
-                          <button
-                            type="button"
-                            disabled={isActionLoading || isOwnAccount}
-                            onClick={() => handleResetAdminPassword(admin)}
-                            title={
-                              isOwnAccount
-                                ? "No podés restablecer tu propia contraseña desde aquí"
-                                : "Restablecer contraseña"
-                            }
-                            aria-label={`Restablecer contraseña de ${admin.username}`}
-                            className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-amber-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-amber-400 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            <KeyRound className="size-3.5" />
-                          </button>
+                          <DisabledReason reason={isOwnAccount ? "No podés restablecer tu propia contraseña desde aquí" : null}>
+                            <button
+                              type="button"
+                              disabled={isActionLoading || isOwnAccount}
+                              onClick={() => handleResetAdminPassword(admin)}
+                              title="Restablecer contraseña"
+                              aria-label={`Restablecer contraseña de ${admin.username}`}
+                              className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-amber-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-amber-400 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <KeyRound className="size-3.5" />
+                            </button>
+                          </DisabledReason>
 
                           {/* Delete */}
-                          <button
-                            type="button"
-                            disabled={isActionLoading || isOwnAccount}
-                            onClick={() => setUserToDelete(admin)}
-                            title={
-                              isOwnAccount
-                                ? "No podés eliminar tu propia cuenta"
-                                : "Eliminar usuario"
-                            }
-                            aria-label={`Eliminar usuario ${admin.username}`}
-                            className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-rose-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-rose-400 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            <Trash2 className="size-3.5" />
-                          </button>
+                          <DisabledReason reason={isOwnAccount ? "No podés eliminar tu propia cuenta" : null}>
+                            <button
+                              type="button"
+                              disabled={isActionLoading || isOwnAccount}
+                              onClick={() => setUserToDelete(admin)}
+                              title="Eliminar usuario"
+                              aria-label={`Eliminar usuario ${admin.username}`}
+                              className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-rose-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-rose-400 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <Trash2 className="size-3.5" />
+                            </button>
+                          </DisabledReason>
                         </div>
                       </div>
                     )

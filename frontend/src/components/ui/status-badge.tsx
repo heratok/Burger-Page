@@ -17,7 +17,7 @@ export const OrderStatusBadge: React.FC<StatusBadgeProps> = ({ status, className
     pending: {
       label: "Nuevo / Pendiente",
       bg: "bg-amber-500/15 dark:bg-amber-500/20",
-      text: "text-amber-700 dark:text-amber-300",
+      text: "text-amber-800 dark:text-amber-300",
       border: "border-amber-500/30",
       dot: "bg-amber-500",
       icon: <Clock className="size-3.5" />,
@@ -25,7 +25,7 @@ export const OrderStatusBadge: React.FC<StatusBadgeProps> = ({ status, className
     cooking: {
       label: "En Cocina",
       bg: "bg-orange-500/15 dark:bg-orange-500/20",
-      text: "text-orange-700 dark:text-orange-300",
+      text: "text-orange-800 dark:text-orange-300",
       border: "border-orange-500/30",
       dot: "bg-orange-500",
       icon: <ChefHat className="size-3.5" />,
@@ -92,17 +92,17 @@ export const LoyaltyBadge: React.FC<LoyaltyBadgeProps> = ({ tier, className }) =
   > = {
     vip: {
       label: "Cliente VIP",
-      bg: "bg-gradient-to-r from-purple-500/20 to-pink-500/20",
-      text: "text-purple-700 dark:text-purple-300 font-bold",
-      border: "border-purple-500/40 shadow-xs",
-      icon: <Crown className="size-3.5 text-amber-500" />,
+      bg: "bg-rose-500/15 dark:bg-rose-500/20",
+      text: "text-rose-700 dark:text-rose-300 font-bold",
+      border: "border-rose-500/40 shadow-xs",
+      icon: <Crown className="size-3.5 text-amber-800 dark:text-amber-400" />,
     },
     gold: {
       label: "Oro",
       bg: "bg-amber-500/15",
-      text: "text-amber-700 dark:text-amber-300",
+      text: "text-amber-800 dark:text-amber-300",
       border: "border-amber-500/30",
-      icon: <Award className="size-3.5 text-amber-600 dark:text-amber-400" />,
+      icon: <Award className="size-3.5 text-amber-800 dark:text-amber-400" />,
     },
     silver: {
       label: "Plata",
@@ -116,7 +116,7 @@ export const LoyaltyBadge: React.FC<LoyaltyBadgeProps> = ({ tier, className }) =
       bg: "bg-orange-800/10",
       text: "text-orange-900 dark:text-orange-300",
       border: "border-orange-700/20",
-      icon: <Shield className="size-3.5 text-orange-700 dark:text-orange-400" />,
+      icon: <Shield className="size-3.5 text-orange-800 dark:text-orange-400" />,
     },
   }
 

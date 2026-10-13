@@ -77,17 +77,24 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
   }
 
   return (
-    <div className="min-h-screen w-full relative flex items-center justify-center p-4 sm:p-6 lg:p-12 overflow-x-hidden bg-gradient-to-br from-[#0A0E1A] via-[#0F172A] to-[#131127] text-slate-100 font-sans">
+    <div className="min-h-screen w-full relative flex items-center justify-center p-4 sm:p-6 lg:p-12 overflow-x-hidden bg-gradient-to-br from-[#0A0E1A] via-[#0F172A] to-[#0A0E1A] text-slate-100 font-sans">
       {/* ======================================================== */}
       {/* VIBRANT LUMINOUS AURORA LIGHTS                           */}
       {/* ======================================================== */}
-      <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        {/* Top left vibrant cyan/indigo aura */}
-        <div className="absolute -top-40 -left-40 h-[600px] w-[600px] rounded-full bg-gradient-to-br from-indigo-500/25 via-cyan-500/20 to-transparent blur-[140px]" />
-        {/* Center warm amber/orange aura */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[500px] w-[700px] rounded-full bg-gradient-to-r from-orange-500/15 via-rose-500/15 to-indigo-600/15 blur-[160px]" />
-        {/* Bottom right purple aura */}
-        <div className="absolute -bottom-40 -right-40 h-[650px] w-[650px] rounded-full bg-gradient-to-tl from-purple-600/25 via-violet-500/20 to-transparent blur-[140px]" />
+      <div aria-hidden="true" className="pointer-events-none fixed inset-0 overflow-hidden">
+        {/* Static radial-gradient auras: zero blur cost, nothing animates. Side auras are desktop-only. */}
+        <div
+          className="hidden md:block absolute -top-40 -left-40 h-[600px] w-[600px]"
+          style={{ backgroundImage: "radial-gradient(circle at center, rgba(249,115,22,0.20) 0%, rgba(245,158,11,0.08) 45%, transparent 70%)" }}
+        />
+        <div
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[420px] w-[min(700px,100vw)]"
+          style={{ backgroundImage: "radial-gradient(ellipse at center, rgba(249,115,22,0.12) 0%, rgba(244,63,94,0.06) 45%, transparent 70%)" }}
+        />
+        <div
+          className="hidden md:block absolute -bottom-40 -right-40 h-[650px] w-[650px]"
+          style={{ backgroundImage: "radial-gradient(circle at center, rgba(217,119,6,0.20) 0%, rgba(249,115,22,0.08) 45%, transparent 70%)" }}
+        />
 
         {/* Ambient Subtle Tech Grid */}
         <div
@@ -130,33 +137,33 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
             <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-3.5 backdrop-blur-md">
               <div className="flex items-center gap-2 text-orange-400 mb-1">
                 <ShoppingBag className="size-4" />
-                <span className="text-xs font-bold text-white">Pedidos en Vivo</span>
+                <span className="text-sm font-bold text-white">Pedidos en Vivo</span>
               </div>
-              <p className="text-[11px] text-slate-400">Flujo Kanban de cocina y recepción WhatsApp.</p>
+              <p className="text-sm text-slate-400">Flujo Kanban de cocina y recepción WhatsApp.</p>
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-3.5 backdrop-blur-md">
               <div className="flex items-center gap-2 text-indigo-400 mb-1">
                 <Boxes className="size-4" />
-                <span className="text-xs font-bold text-white">Stock & Insumos</span>
+                <span className="text-sm font-bold text-white">Stock & Insumos</span>
               </div>
-              <p className="text-[11px] text-slate-400">Control de materias primas y proveedores.</p>
+              <p className="text-sm text-slate-400">Control de materias primas y proveedores.</p>
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-3.5 backdrop-blur-md">
               <div className="flex items-center gap-2 text-emerald-400 mb-1">
                 <Users className="size-4" />
-                <span className="text-xs font-bold text-white">Clientes</span>
+                <span className="text-sm font-bold text-white">Clientes</span>
               </div>
-              <p className="text-[11px] text-slate-400">Base de clientes y fidelización directa.</p>
+              <p className="text-sm text-slate-400">Base de clientes y fidelización directa.</p>
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-3.5 backdrop-blur-md">
               <div className="flex items-center gap-2 text-amber-400 mb-1">
                 <ShieldCheck className="size-4" />
-                <span className="text-xs font-bold text-white">Cifrado Seguro</span>
+                <span className="text-sm font-bold text-white">Cifrado Seguro</span>
               </div>
-              <p className="text-[11px] text-slate-400">Acceso autenticado y aislado por tenant.</p>
+              <p className="text-sm text-slate-400">Acceso autenticado y aislado por tenant.</p>
             </div>
           </div>
         </div>
@@ -168,13 +175,13 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
           <div className="w-full max-w-md rounded-3xl border border-white/15 bg-slate-900/85 p-6 sm:p-8 shadow-2xl shadow-indigo-950/80 backdrop-blur-2xl transition-all">
             {/* Header */}
             <div className="flex flex-col items-center text-center">
-              <div className="mb-4 flex size-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-orange-500 via-indigo-600 to-violet-600 p-0.5 shadow-lg shadow-indigo-600/30">
+              <div className="mb-4 flex size-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-orange-500 via-orange-600 to-amber-600 p-0.5 shadow-lg shadow-orange-600/30">
                 <div className="flex size-full items-center justify-center rounded-[14px] bg-slate-900 text-white">
                   <Flame className="size-7 text-orange-400" />
                 </div>
               </div>
 
-              <div className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-0.5 text-[10px] font-bold text-indigo-300 mb-2">
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-0.5 text-xs font-bold text-indigo-300 mb-2">
                 <ShieldCheck className="size-3 text-indigo-400" />
                 <span>Portal Administrativo</span>
               </div>
@@ -182,7 +189,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
               <h2 className="text-xl font-extrabold tracking-tight text-white">
                 Iniciar Sesión
               </h2>
-              <p className="text-xs text-slate-400 mt-1 max-w-xs">
+              <p className="text-sm text-slate-400 mt-1 max-w-xs">
                 Ingresá tus credenciales para acceder al panel de administración
               </p>
             </div>
@@ -190,12 +197,12 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
             {/* Login Form */}
             <form onSubmit={handleSubmit} className="mt-6 space-y-4">
               <div>
-                <label className="block text-xs font-bold mb-1.5 text-slate-300">
+                <label htmlFor="admin-auth-modal-usuario" className="block text-sm font-bold mb-1.5 text-slate-300">
                   Usuario
                 </label>
                 <div className="relative">
                   <User className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-                  <input
+                  <input id="admin-auth-modal-usuario"
                     type="text"
                     required
                     autoFocus
@@ -206,17 +213,17 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
                       setErrorMsg("")
                     }}
                     placeholder="Tu nombre de usuario"
-                    className="w-full rounded-2xl border border-slate-700/80 bg-slate-800/90 py-3 pl-10 pr-4 text-xs text-white placeholder-slate-500 transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 font-medium"
+                    className="w-full rounded-2xl border border-slate-700/80 bg-slate-800/90 py-3 pl-10 pr-4 text-base sm:text-sm text-white placeholder-slate-500 transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 font-medium"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-bold mb-1.5 text-slate-300">
+                <label htmlFor="admin-auth-modal-contrasena-de-acceso" className="block text-sm font-bold mb-1.5 text-slate-300">
                   Contraseña de Acceso
                 </label>
                 <div className="relative">
                   <Lock className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-                  <input
+                  <input id="admin-auth-modal-contrasena-de-acceso"
                     type={showPassword ? "text" : "password"}
                     required
                     maxLength={100}
@@ -226,7 +233,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
                       setErrorMsg("")
                     }}
                     placeholder="Ingresá tu clave de administración..."
-                    className="w-full rounded-2xl border border-slate-700/80 bg-slate-800/90 py-3 pl-10 pr-11 text-xs text-white placeholder-slate-500 transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 font-medium"
+                    className="w-full rounded-2xl border border-slate-700/80 bg-slate-800/90 py-3 pl-10 pr-11 text-base sm:text-sm text-white placeholder-slate-500 transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 font-medium"
                   />
                   <button
                     type="button"
@@ -239,7 +246,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
                 </div>
 
                 {errorMsg && (
-                  <div role="alert" aria-live="assertive" className="mt-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs font-medium text-rose-400 flex items-center gap-2 animate-in fade-in">
+                  <div role="alert" aria-live="assertive" className="mt-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm font-medium text-rose-400 flex items-center gap-2 animate-in fade-in">
                     <span>⚠️ {errorMsg}</span>
                   </div>
                 )}
@@ -257,7 +264,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
             </form>
 
             {/* Privacy & Security Guarantee */}
-            <div className="mt-6 flex items-center justify-center gap-2 rounded-xl border border-white/5 bg-slate-950/40 py-2.5 px-3 text-[11px] text-slate-400 text-center">
+            <div className="mt-6 flex items-center justify-center gap-2 rounded-xl border border-white/5 bg-slate-950/40 py-2.5 px-3 text-sm text-slate-400 text-center">
               <KeyRound className="size-3.5 text-indigo-400 shrink-0" />
               <span>Acceso protegido con cifrado y resolución automática de rol</span>
             </div>

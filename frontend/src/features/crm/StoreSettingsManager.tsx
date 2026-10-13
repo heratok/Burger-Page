@@ -48,19 +48,19 @@ export const StoreSettingsManager: React.FC = () => {
       >
         <div>
           <div className="flex items-center gap-2">
-            <span className="flex size-7 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-500 dark:bg-indigo-500/20 dark:text-indigo-400">
+            <span className="flex size-7 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400">
               <Settings className="size-4" />
             </span>
             <h2 className="text-base font-bold text-slate-900 dark:text-white">
               Ajustes de Negocio & Operación
             </h2>
             {hasChanges && (
-              <span className="rounded-full bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
+              <span className="rounded-full bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:text-amber-400">
                 Cambios pendientes
               </span>
             )}
           </div>
-          <p className={`text-xs mt-1 ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+          <p className={`text-sm mt-1 ${isDark ? "text-slate-400" : "text-slate-500"}`}>
             Configura los canales de venta por WhatsApp, reglas de compra, horarios de atención y disponibilidad en vivo.
           </p>
         </div>

@@ -8,11 +8,17 @@
     <meta name="description" content="Haz tu pedido en línea y recíbelo en la puerta de tu casa." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Non-blocking font CSS: first paint uses the metric-adjusted "Onest Fallback" (see src/index.css), then Onest swaps in without layout shift. -->
     <link
+      rel="preload"
+      as="style"
       href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
       crossorigin="anonymous"
+      onload="this.onload=null;this.rel='stylesheet'"
     />
+    <noscript>
+      <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet" crossorigin="anonymous" />
+    </noscript>
     <title>FoodOS</title>
   </head>
   <body>

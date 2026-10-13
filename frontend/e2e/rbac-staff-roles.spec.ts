@@ -341,11 +341,11 @@ test.describe('RBAC: customer CRUD, custom roles, staff team and permission gati
     const kitchen = await createStaff(USER_KITCHEN, ROLE_KITCHEN);
     kitchenTempPassword = kitchen.generated;
     await shot(page, '09-team-credentials-reveal');
-    await kitchen.reveal.getByRole('button', { name: 'Cerrar' }).click();
+    await kitchen.reveal.getByRole('button', { name: 'Cerrar', exact: true }).click();
 
     const custom = await createStaff(USER_CUSTOM, ROLE_CUSTOM);
     customTempPassword = custom.generated;
-    await custom.reveal.getByRole('button', { name: 'Cerrar' }).click();
+    await custom.reveal.getByRole('button', { name: 'Cerrar', exact: true }).click();
 
     const kitchenRow = page.locator('tbody tr').filter({ hasText: USER_KITCHEN });
     await expect(kitchenRow).toContainText(ROLE_KITCHEN);
@@ -381,7 +381,7 @@ test.describe('RBAC: customer CRUD, custom roles, staff team and permission gati
     expect(kitchenTempPassword.length).toBeGreaterThanOrEqual(8);
     expect(kitchenTempPassword).not.toBe(kitchen.generated);
     await shot(page, '11-team-reset-password');
-    await resetModal.getByRole('button', { name: 'Cerrar' }).click();
+    await resetModal.getByRole('button', { name: 'Cerrar', exact: true }).click();
 
     // Deleting a role that still has users is refused with the friendly message
     await gotoTab(page, NAV_LABELS.roles);

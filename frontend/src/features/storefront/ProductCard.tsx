@@ -4,7 +4,8 @@ import { Card } from "@/components/ui/card"
 import type { MenuItem } from "@/types/restaurant"
 import { useCatalog } from "@/context/RestaurantContext"
 import { LazyImage } from "@/components/ui/LazyImage"
-import { formatCurrency, getContrastForeground } from "@/lib/utils"
+import { formatCurrency } from "@/lib/utils"
+import { getBrandTokens } from "@/features/crm/utils/customizerStyles"
 
 export interface ProductCardProps {
   product: MenuItem
@@ -18,7 +19,8 @@ export interface ProductCardProps {
 // change, but a card only needs to update when its own props or the theme change.
 const ProductCard = memo(function ProductCard({ product, onSelectProduct, closed = false }: ProductCardProps) {
   const { storeConfig } = useCatalog()
-  const primaryForeground = getContrastForeground(storeConfig.primaryColor)
+  const brand = getBrandTokens(storeConfig.primaryColor, storeConfig.bgTheme)
+  const primaryForeground = brand.onFill
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Enter" || e.key === " ") {
@@ -75,7 +77,7 @@ const ProductCard = memo(function ProductCard({ product, onSelectProduct, closed
           backgroundColor: "var(--color-bg-elevated)",
           borderColor: "var(--color-border-subtle)",
         }}
-        className={`group relative flex h-full w-full flex-row items-stretch cursor-pointer gap-0 overflow-hidden p-3 sm:p-4 transition duration-200 ease-out hover:-translate-y-0.5 focus:outline-none focus-visible:focus-ring active:translate-y-0 ${radiusClass} ${styleClass}`}
+        className={`group relative flex h-full w-full flex-row items-stretch cursor-pointer gap-0 overflow-hidden p-3 sm:p-4 transition duration-200 ease-out hover:-translate-y-0.5 focus-ring active:translate-y-0 ${radiusClass} ${styleClass}`}
       >
         {/* Left Side: Square Thumbnail centered vertically */}
         <div className="relative size-24 min-[400px]:size-28 sm:size-32 aspect-square shrink-0 overflow-hidden rounded-xl bg-bg-elevated-2 self-center">
@@ -92,17 +94,17 @@ const ProductCard = memo(function ProductCard({ product, onSelectProduct, closed
               {product.isPopular && (
                 <span
                   style={{
-                    backgroundColor: storeConfig.primaryColor,
+                    backgroundColor: brand.fill,
                     color: primaryForeground,
                   }}
-                  className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[9px] font-bold shadow-xs"
+                  className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs font-bold shadow-xs"
                 >
                   <Flame className="size-2.5" />
                   Popular
                 </span>
               )}
               {product.isNew && (
-                <span className="flex items-center gap-0.5 rounded bg-emerald-500 px-1.5 py-0.5 text-[9px] font-bold text-white shadow-xs">
+                <span className="flex items-center gap-0.5 rounded bg-emerald-700 px-1.5 py-0.5 text-xs font-bold text-white shadow-xs">
                   <Sparkles className="size-2.5" />
                   Nuevo
                 </span>
@@ -112,7 +114,7 @@ const ProductCard = memo(function ProductCard({ product, onSelectProduct, closed
 
           {!product.inStock && (
             <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/65 backdrop-blur-2xs">
-              <span className="rounded bg-rose-600 px-2 py-0.5 text-[10px] font-bold text-white uppercase tracking-wider">
+              <span className="rounded bg-rose-600 px-2 py-0.5 text-xs font-bold text-white uppercase tracking-wider">
                 Agotado
               </span>
             </div>
@@ -130,9 +132,8 @@ const ProductCard = memo(function ProductCard({ product, onSelectProduct, closed
             </h2>
             {product.description && (
               <p
-                title={product.description}
                 style={{ color: "var(--color-text-secondary)" }}
-                className="text-xs sm:text-sm leading-relaxed font-normal text-pretty"
+                className="text-sm leading-relaxed font-normal text-pretty"
               >
                 {product.description}
               </p>
@@ -141,7 +142,7 @@ const ProductCard = memo(function ProductCard({ product, onSelectProduct, closed
 
           <div className="mt-3 flex items-center justify-between pt-1">
             <span
-              style={{ color: storeConfig.primaryColor }}
+              style={{ color: brand.text }}
               className="text-base sm:text-lg font-black tracking-tight"
             >
               {formatCurrency(product.price)}
@@ -157,7 +158,7 @@ const ProductCard = memo(function ProductCard({ product, onSelectProduct, closed
               <span
                 aria-hidden="true"
                 style={{
-                  backgroundColor: storeConfig.primaryColor,
+                  backgroundColor: brand.fill,
                   color: primaryForeground,
                 }}
                 className="inline-flex size-8 sm:size-9 shrink-0 items-center justify-center rounded-full shadow-sm transition duration-150 ease-out group-hover:scale-110 group-active:scale-95"

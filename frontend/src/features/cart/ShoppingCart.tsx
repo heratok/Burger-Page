@@ -5,8 +5,9 @@ import type { CartItem } from "./cartEngine"
 import { useCatalog } from "@/context/RestaurantContext"
 import { useStoreOpenStatus } from "@/hooks/useStoreOpenStatus"
 import { closedMessage } from "@/lib/storeSchedule"
-import { formatCurrency, getContrastForeground } from "@/lib/utils"
+import { formatCurrency } from "@/lib/utils"
 import { resolveImageUrl } from "@/core/storage/supabaseStorage"
+import { getBrandTokens } from "@/features/crm/utils/customizerStyles"
 
 export interface ShoppingCartProps {
   onClose: () => void
@@ -26,6 +27,7 @@ function ShoppingCart({
   onEditItem,
 }: ShoppingCartProps) {
   const { storeConfig } = useCatalog()
+  const brand = getBrandTokens(storeConfig.primaryColor, storeConfig.bgTheme)
 
   const handleBackToMenu = () => {
     onClose()
@@ -98,13 +100,13 @@ function ShoppingCart({
                 <div className="min-w-0">
                   <h2
                     style={{ color: "var(--color-text-primary)" }}
-                    className="truncate text-base font-bold"
+                    className="break-words text-base font-bold"
                   >
                     {cartItem.name}
                   </h2>
                   <p
                     style={{ color: "var(--color-text-muted)" }}
-                    className="mt-0.5 text-xs"
+                    className="mt-0.5 text-sm"
                   >
                     {cartItem.cantidad}× {cartItem.name}
                   </p>
@@ -138,7 +140,7 @@ function ShoppingCart({
               {cartItem.adiciones && cartItem.adiciones.length > 0 && (
                 <p
                   style={{ color: "var(--color-text-secondary)" }}
-                  className="mt-2 text-xs leading-relaxed break-words [overflow-wrap:anywhere]"
+                  className="mt-2 text-sm leading-relaxed break-words [overflow-wrap:anywhere]"
                 >
                   <span style={{ color: "var(--color-text-muted)" }}>Adiciones: </span>
                   {cartItem.adiciones
@@ -149,14 +151,14 @@ function ShoppingCart({
               {cartItem.observacion && (
                 <p
                   style={{ color: "var(--color-text-secondary)" }}
-                  className="mt-1 text-xs leading-relaxed break-words [overflow-wrap:anywhere]"
+                  className="mt-1 text-sm leading-relaxed break-words [overflow-wrap:anywhere]"
                 >
                   <span style={{ color: "var(--color-text-muted)" }}>Nota: </span>
                   {cartItem.observacion}
                 </p>
               )}
               <p
-                style={{ color: storeConfig.primaryColor }}
+                style={{ color: brand.text }}
                 className="mt-2 text-base font-black tracking-tight"
               >
                 {formatCurrency(cartItem.total)}
@@ -177,18 +179,18 @@ function ShoppingCart({
           {closedReason && (
             <div
               role="alert"
-              className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-xs font-medium text-amber-700 dark:text-amber-300"
+              className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-sm font-medium text-[color:var(--status-warning-text,#92400e)]"
             >
-              <AlertTriangle className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              <AlertTriangle className="size-4 shrink-0 text-[color:var(--status-warning-text,#92400e)]" />
               <span>{closedMessage(closedReason)}</span>
             </div>
           )}
           {isBelowMinOrder && (
             <div
               role="alert"
-              className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-xs font-medium text-amber-700 dark:text-amber-300"
+              className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-sm font-medium text-[color:var(--status-warning-text,#92400e)]"
             >
-              <AlertTriangle className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              <AlertTriangle className="size-4 shrink-0 text-[color:var(--status-warning-text,#92400e)]" />
               <span>
                 El pedido mínimo es de {formatCurrency(minOrderAmount)}. Te faltan {formatCurrency(amountNeeded)} para poder ordenar.
               </span>
@@ -211,7 +213,7 @@ function ShoppingCart({
                 Total
               </span>
               <span
-                style={{ color: storeConfig.primaryColor }}
+                style={{ color: brand.text }}
                 className="text-xl font-black"
               >
                 {formatCurrency(total)}
@@ -225,10 +227,10 @@ function ShoppingCart({
                 disabled={isBelowMinOrder || !isOpen || items.length === 0}
                 onClick={handleCheckout}
                 style={{
-                  backgroundColor: storeConfig.primaryColor,
-                  color: getContrastForeground(storeConfig.primaryColor),
+                  backgroundColor: brand.fill,
+                  color: brand.onFill,
                 }}
-                className="h-12 flex-1 sm:flex-none font-bold shadow-md cursor-pointer hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="h-12 flex-1 sm:flex-none font-bold shadow-md cursor-pointer hover:brightness-95 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Confirmar orden
               </Button>

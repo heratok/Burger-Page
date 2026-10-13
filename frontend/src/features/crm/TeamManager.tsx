@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react"
 import { useRestaurant } from "@/context/RestaurantContext"
+import { ModalShell } from "@/components/ui/modal-shell"
 import { apiClient } from "@/core/api/apiClient"
 import type { ApiUserRecord } from "@/core/api/apiClient"
 import type { RoleDTO } from "@burger-page/contracts"
@@ -256,10 +257,10 @@ export const TeamManager: React.FC = () => {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-            <Users className="size-6 text-indigo-500" />
+            <Users className="size-6 text-indigo-600 dark:text-indigo-400" />
             <span>Gestión de Equipo</span>
           </h2>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             Administra los usuarios de tu personal, asigna roles de acceso y genera credenciales seguras.
           </p>
         </div>
@@ -281,14 +282,14 @@ export const TeamManager: React.FC = () => {
         }`}
       >
         <div className="relative flex-1 w-full max-w-md">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500 dark:text-slate-400" />
           <input
             type="text"
             maxLength={60}
             placeholder="Buscar por nombre de usuario..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className={`w-full rounded-xl border pl-9 pr-4 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+            className={`w-full rounded-xl border pl-9 pr-4 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
               isDark
                 ? "border-slate-700 bg-slate-800 text-white placeholder-slate-400"
                 : "border-slate-200 bg-slate-50 text-slate-900 placeholder-slate-400"
@@ -323,11 +324,11 @@ export const TeamManager: React.FC = () => {
             isDark ? "border-slate-800 bg-[#0E1322]" : "border-slate-200 bg-white"
           }`}
         >
-          <Users className="size-12 mx-auto mb-3 text-slate-400 opacity-50" />
+          <Users className="size-12 mx-auto mb-3 text-slate-500 dark:text-slate-400 opacity-50" />
           <h3 className="text-sm font-bold text-slate-900 dark:text-white">
             {searchTerm ? "No se encontraron miembros coincidentes" : "No hay miembros registrados"}
           </h3>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
             {searchTerm
               ? "Prueba buscando con otro término."
               : "Registra a tus cocineros, cajeros y personal de salón para darles acceso controlado."}
@@ -349,10 +350,10 @@ export const TeamManager: React.FC = () => {
             isDark ? "border-slate-800 bg-[#0E1322]" : "border-slate-200 bg-white"
           }`}
         >
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+          <div role="region" aria-label="Tabla de equipo" tabIndex={0} className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
               <thead
-                className={`border-b text-[11px] font-bold uppercase tracking-wider ${
+                className={`border-b text-xs font-bold uppercase tracking-wider ${
                   isDark
                     ? "border-slate-800 bg-slate-900/50 text-slate-400"
                     : "border-slate-200 bg-slate-50 text-slate-500"
@@ -393,7 +394,7 @@ export const TeamManager: React.FC = () => {
                             <div className="flex items-center gap-1.5">
                               <span>{user.username}</span>
                               {isCurrent && (
-                                <span className="rounded bg-indigo-100 dark:bg-indigo-900/40 px-1.5 py-0.2 text-[9px] font-bold text-indigo-700 dark:text-indigo-300">
+                                <span className="rounded bg-indigo-100 dark:bg-indigo-900/40 px-1.5 py-0.2 text-xs font-bold text-indigo-700 dark:text-indigo-300">
                                   Tú
                                 </span>
                               )}
@@ -405,11 +406,11 @@ export const TeamManager: React.FC = () => {
                       {/* Role */}
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">
-                          <Shield className="size-3.5 text-indigo-500" />
+                          <Shield className="size-3.5 text-indigo-600 dark:text-indigo-400" />
                           <span
-                            className={`rounded-md px-2 py-0.5 text-[11px] font-semibold ${
+                            className={`rounded-md px-2 py-0.5 text-xs font-semibold ${
                               isAdmin
-                                ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                                ? "bg-amber-500/10 text-amber-800 dark:text-amber-400"
                                 : "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
                             }`}
                           >
@@ -421,12 +422,12 @@ export const TeamManager: React.FC = () => {
                       {/* Status */}
                       <td className="px-4 py-3">
                         {isActive ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-700 dark:text-emerald-400">
                             <UserCheck className="size-3" />
                             <span>Activo</span>
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-slate-500/10 px-2 py-0.5 text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-slate-500/10 px-2 py-0.5 text-xs font-bold text-slate-500 dark:text-slate-400">
                             <UserX className="size-3" />
                             <span>Inactivo</span>
                           </span>
@@ -436,17 +437,17 @@ export const TeamManager: React.FC = () => {
                       {/* Security */}
                       <td className="px-4 py-3">
                         {user.mustChangePassword ? (
-                          <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-800 dark:text-amber-400">
                             <AlertCircle className="size-3" />
                             <span>Requiere cambio</span>
                           </span>
                         ) : (
-                          <span className="text-[10px] text-slate-400">Clave configurada</span>
+                          <span className="text-sm text-slate-500 dark:text-slate-400">Clave configurada</span>
                         )}
                       </td>
 
                       {/* Date */}
-                      <td className="px-4 py-3 text-slate-500 dark:text-slate-400 text-[11px]">
+                      <td className="px-4 py-3 text-slate-500 dark:text-slate-400 text-xs">
                         {user.createdAt
                           ? new Date(user.createdAt).toLocaleDateString("es-CO")
                           : "—"}
@@ -459,7 +460,7 @@ export const TeamManager: React.FC = () => {
                             type="button"
                             onClick={() => setResetTargetUser(user)}
                             aria-label={`Restablecer clave ${user.username}`}
-                            className="rounded-lg p-1.5 text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-950/40 dark:hover:text-indigo-300 transition-colors"
+                            className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-950/40 dark:hover:text-indigo-300 transition-colors"
                             title="Restablecer contraseña"
                           >
                             <KeyRound className="size-4" />
@@ -468,7 +469,7 @@ export const TeamManager: React.FC = () => {
                             type="button"
                             onClick={() => openEditModal(user)}
                             aria-label={`Editar usuario ${user.username}`}
-                            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors"
+                            className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors"
                             title="Editar usuario"
                           >
                             <Pencil className="size-4" />
@@ -478,7 +479,7 @@ export const TeamManager: React.FC = () => {
                               type="button"
                               onClick={() => setUserToDelete(user)}
                               aria-label={`Eliminar usuario ${user.username}`}
-                              className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400 transition-colors"
+                              className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400 transition-colors"
                               title="Eliminar usuario"
                             >
                               <Trash2 className="size-4" />
@@ -497,7 +498,11 @@ export const TeamManager: React.FC = () => {
 
       {/* Create Modal */}
       {isCreateOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-xs">
+        <ModalShell
+          aria-label="Registrar nuevo miembro"
+          onClose={() => setIsCreateOpen(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-xs"
+        >
           <div
             className={`w-full max-w-md rounded-2xl border p-6 shadow-2xl transition-all ${
               isDark ? "border-slate-800 bg-[#0E1322] text-white" : "border-slate-200 bg-white text-slate-900"
@@ -505,19 +510,20 @@ export const TeamManager: React.FC = () => {
           >
             <div className="flex items-center justify-between border-b pb-3 mb-4 border-slate-100 dark:border-slate-800">
               <h3 className="text-base font-bold flex items-center gap-2">
-                <Users className="size-4 text-indigo-500" />
+                <Users className="size-4 text-indigo-600 dark:text-indigo-400" />
                 <span>Registrar Nuevo Miembro</span>
               </h3>
               <button
+                aria-label="Cerrar"
                 type="button"
                 onClick={() => setIsCreateOpen(false)}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 <X className="size-4" />
               </button>
             </div>
 
-            <form onSubmit={handleCreate} className="space-y-4 text-xs">
+            <form onSubmit={handleCreate} className="space-y-4 text-sm">
               <div>
                 <label
                   htmlFor="create-username-input"
@@ -533,7 +539,7 @@ export const TeamManager: React.FC = () => {
                   placeholder="ej. camilo_caja, laura_cocina"
                   value={createUsername}
                   onChange={(e) => setCreateUsername(e.target.value.toLowerCase().replace(/\s+/g, "_"))}
-                  className={`w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                  className={`text-base sm:text-sm w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                     isDark
                       ? "border-slate-700 bg-slate-800 text-white placeholder-slate-400"
                       : "border-slate-300 bg-white text-slate-900 placeholder-slate-400"
@@ -552,7 +558,7 @@ export const TeamManager: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setCreatePassword(generateRandomPassword())}
-                    className="text-[11px] font-semibold text-indigo-500 hover:underline flex items-center gap-1"
+                    className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
                   >
                     <Sparkles className="size-3" />
                     <span>Regenerar</span>
@@ -564,7 +570,7 @@ export const TeamManager: React.FC = () => {
                   required
                   value={createPassword}
                   onChange={(e) => setCreatePassword(e.target.value)}
-                  className={`w-full rounded-xl border p-2.5 font-mono text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                  className={`w-full rounded-xl border p-2.5 font-mono text-base sm:text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                     isDark
                       ? "border-slate-700 bg-slate-800 text-white"
                       : "border-slate-300 bg-white text-slate-900"
@@ -580,7 +586,7 @@ export const TeamManager: React.FC = () => {
                   Rol Asignado *
                 </label>
                 {roles.length === 0 ? (
-                  <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
+                  <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
                     <p className="font-medium">
                       No hay roles creados todavía. Para asignar permisos a tu personal, primero crea los roles recomendados.
                     </p>
@@ -609,7 +615,7 @@ export const TeamManager: React.FC = () => {
                       searchable={false}
                     />
                     {rolesMap.get(createRoleId)?.description && (
-                      <p className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                      <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">
                         {rolesMap.get(createRoleId)?.description}
                       </p>
                     )}
@@ -617,7 +623,7 @@ export const TeamManager: React.FC = () => {
                 )}
               </div>
 
-              <div className="rounded-xl border border-indigo-100 bg-indigo-50/60 p-3 text-[11px] text-indigo-900 dark:border-indigo-900/40 dark:bg-indigo-950/20 dark:text-indigo-300">
+              <div className="rounded-xl border border-indigo-100 bg-indigo-50/60 p-3 text-sm text-indigo-900 dark:border-indigo-900/40 dark:bg-indigo-950/20 dark:text-indigo-300">
                 El empleado deberá cambiar esta contraseña temporal obligatoriamente en su primer inicio de sesión.
               </div>
 
@@ -640,12 +646,16 @@ export const TeamManager: React.FC = () => {
               </div>
             </form>
           </div>
-        </div>
+        </ModalShell>
       )}
 
       {/* Edit Modal */}
       {editingUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-xs">
+        <ModalShell
+          aria-label="Editar miembro del equipo"
+          onClose={() => setEditingUser(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-xs"
+        >
           <div
             className={`w-full max-w-md rounded-2xl border p-6 shadow-2xl transition-all ${
               isDark ? "border-slate-800 bg-[#0E1322] text-white" : "border-slate-200 bg-white text-slate-900"
@@ -653,19 +663,20 @@ export const TeamManager: React.FC = () => {
           >
             <div className="flex items-center justify-between border-b pb-3 mb-4 border-slate-100 dark:border-slate-800">
               <h3 className="text-base font-bold flex items-center gap-2">
-                <Pencil className="size-4 text-indigo-500" />
+                <Pencil className="size-4 text-indigo-600 dark:text-indigo-400" />
                 <span>Editar Miembro del Equipo</span>
               </h3>
               <button
+                aria-label="Cerrar"
                 type="button"
                 onClick={() => setEditingUser(null)}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 <X className="size-4" />
               </button>
             </div>
 
-            <form onSubmit={handleEdit} className="space-y-4 text-xs">
+            <form onSubmit={handleEdit} className="space-y-4 text-sm">
               <div>
                 <label
                   htmlFor="edit-username-input"
@@ -680,7 +691,7 @@ export const TeamManager: React.FC = () => {
                   maxLength={40}
                   value={editUsername}
                   onChange={(e) => setEditUsername(e.target.value.toLowerCase().replace(/\s+/g, "_"))}
-                  className={`w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                  className={`text-base sm:text-sm w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                     isDark
                       ? "border-slate-700 bg-slate-800 text-white placeholder-slate-400"
                       : "border-slate-300 bg-white text-slate-900 placeholder-slate-400"
@@ -697,7 +708,7 @@ export const TeamManager: React.FC = () => {
                     Rol Asignado *
                   </label>
                   {roles.length === 0 ? (
-                    <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
+                    <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
                       <p className="font-medium">
                         No hay roles creados todavía. Para asignar permisos a tu personal, primero crea los roles recomendados.
                       </p>
@@ -726,7 +737,7 @@ export const TeamManager: React.FC = () => {
                         searchable={false}
                       />
                       {rolesMap.get(editRoleId)?.description && (
-                        <p className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                        <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">
                           {rolesMap.get(editRoleId)?.description}
                         </p>
                       )}
@@ -736,7 +747,7 @@ export const TeamManager: React.FC = () => {
               )}
 
               <div className="flex items-center gap-2 pt-1">
-                <input
+                <input aria-required="true"
                   id="edit-active-toggle"
                   type="checkbox"
                   checked={editIsActive}
@@ -773,32 +784,37 @@ export const TeamManager: React.FC = () => {
               </div>
             </form>
           </div>
-        </div>
+        </ModalShell>
       )}
 
       {/* Credentials Reveal Modal */}
       {credentialsReveal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-xs">
+        <ModalShell
+          aria-label="Credenciales de acceso"
+          onClose={() => setCredentialsReveal(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-xs"
+        >
           <div
             className={`w-full max-w-md rounded-2xl border p-6 shadow-2xl transition-all ${
               isDark ? "border-slate-800 bg-[#0E1322] text-white" : "border-slate-200 bg-white text-slate-900"
             }`}
           >
             <div className="flex items-center justify-between border-b pb-3 mb-4 border-slate-100 dark:border-slate-800">
-              <h3 className="text-base font-bold flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+              <h3 className="text-base font-bold flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
                 <Check className="size-5" />
                 <span>Credenciales de Acceso</span>
               </h3>
               <button
+                aria-label="Cerrar credenciales de acceso"
                 type="button"
                 onClick={() => setCredentialsReveal(null)}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 <X className="size-4" />
               </button>
             </div>
 
-            <p className="text-xs text-slate-600 dark:text-slate-300 mb-4">
+            <p className="text-sm text-slate-600 dark:text-slate-300 mb-4">
               Copia las credenciales a continuación para enviarlas al empleado por WhatsApp o en persona:
             </p>
 
@@ -808,14 +824,14 @@ export const TeamManager: React.FC = () => {
               }`}
             >
               <div>
-                <span className="text-[10px] uppercase font-bold text-slate-400">Usuario</span>
+                <span className="text-xs uppercase font-bold text-slate-500 dark:text-slate-400">Usuario</span>
                 <div className="font-bold text-slate-900 dark:text-white select-all">
                   {credentialsReveal.username}
                 </div>
               </div>
               <div>
-                <span className="text-[10px] uppercase font-bold text-slate-400">Clave Temporal</span>
-                <div className="font-bold text-emerald-600 dark:text-emerald-400 select-all">
+                <span className="text-xs uppercase font-bold text-slate-500 dark:text-slate-400">Clave Temporal</span>
+                <div className="font-bold text-emerald-700 dark:text-emerald-400 select-all">
                   {credentialsReveal.password}
                 </div>
               </div>
@@ -843,32 +859,37 @@ export const TeamManager: React.FC = () => {
               </Button>
             </div>
           </div>
-        </div>
+        </ModalShell>
       )}
 
       {/* Reset Password Result Modal */}
       {newTempPasswordModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-xs">
+        <ModalShell
+          aria-label="Nueva clave temporal"
+          onClose={() => setNewTempPasswordModal(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-xs"
+        >
           <div
             className={`w-full max-w-md rounded-2xl border p-6 shadow-2xl transition-all ${
               isDark ? "border-slate-800 bg-[#0E1322] text-white" : "border-slate-200 bg-white text-slate-900"
             }`}
           >
             <div className="flex items-center justify-between border-b pb-3 mb-4 border-slate-100 dark:border-slate-800">
-              <h3 className="text-base font-bold flex items-center gap-2 text-indigo-500">
+              <h3 className="text-base font-bold flex items-center gap-2 text-orange-800 dark:text-orange-400">
                 <KeyRound className="size-5" />
                 <span>Nueva Clave Temporal</span>
               </h3>
               <button
+                aria-label="Cerrar nueva clave temporal"
                 type="button"
                 onClick={() => setNewTempPasswordModal(null)}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 <X className="size-4" />
               </button>
             </div>
 
-            <p className="text-xs text-slate-600 dark:text-slate-300 mb-3">
+            <p className="text-sm text-slate-600 dark:text-slate-300 mb-3">
               Se ha generado una nueva contraseña temporal para el usuario{" "}
               <strong>{newTempPasswordModal.username}</strong>:
             </p>
@@ -877,7 +898,7 @@ export const TeamManager: React.FC = () => {
               className={`rounded-xl border p-4 text-center font-mono text-sm font-bold select-all ${
                 isDark
                   ? "border-slate-800 bg-slate-900 text-emerald-400"
-                  : "border-slate-200 bg-slate-50 text-emerald-600"
+                  : "border-slate-200 bg-slate-50 text-emerald-700 dark:text-emerald-400"
               }`}
             >
               {newTempPasswordModal.temporaryPassword}
@@ -903,7 +924,7 @@ export const TeamManager: React.FC = () => {
               </Button>
             </div>
           </div>
-        </div>
+        </ModalShell>
       )}
 
       {/* Reset Password Confirmation Dialog */}

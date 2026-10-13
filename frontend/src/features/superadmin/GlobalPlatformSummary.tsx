@@ -22,33 +22,33 @@ export const GlobalPlatformSummary: React.FC<GlobalPlatformSummaryProps> = ({ on
       title: "Facturación Global Plataforma",
       value: orPlaceholder(formatCurrency(globalStats.totalRevenue)),
       sub: "Ventas acumuladas de todos los restaurantes",
-      icon: <DollarSign className="size-5 text-emerald-500" />,
+      icon: <DollarSign className="size-5 text-emerald-700 dark:text-emerald-400" />,
       badge: "+24.8% este mes",
-      badgeColor: "text-emerald-500 bg-emerald-500/10",
+      badgeColor: "text-emerald-700 dark:text-emerald-400 bg-emerald-500/10",
     },
     {
       title: "Órdenes Procesadas",
       value: orPlaceholder(globalStats.totalOrders.toString()),
       sub: "Total de pedidos registrados en red",
-      icon: <ShoppingBag className="size-5 text-indigo-500" />,
+      icon: <ShoppingBag className="size-5 text-indigo-600 dark:text-indigo-400" />,
       badge: "100% en tiempo real",
-      badgeColor: "text-indigo-500 bg-indigo-500/10",
+      badgeColor: "text-indigo-600 dark:text-indigo-400 bg-indigo-500/10",
     },
     {
       title: "Restaurantes Activos",
       value: orPlaceholder(`${globalStats.activeRestaurants} / ${globalStats.totalRestaurants}`),
       sub: "Locales gastronómicos operando",
-      icon: <Store className="size-5 text-amber-500" />,
+      icon: <Store className="size-5 text-amber-800 dark:text-amber-400" />,
       badge: "SaaS Multi-Tenant",
-      badgeColor: "text-amber-500 bg-amber-500/10",
+      badgeColor: "text-amber-800 dark:text-amber-400 bg-amber-500/10",
     },
     {
       title: "Clientes en Base de Datos",
       value: orPlaceholder(globalStats.totalCustomers.toString()),
       sub: "Contactos consolidados para WhatsApp",
-      icon: <Users className="size-5 text-purple-500" />,
+      icon: <Users className="size-5 text-purple-600 dark:text-purple-400" />,
       badge: "Fidelización activa",
-      badgeColor: "text-purple-500 bg-purple-500/10",
+      badgeColor: "text-purple-600 dark:text-purple-400 bg-purple-500/10",
     },
   ]
 
@@ -63,14 +63,14 @@ export const GlobalPlatformSummary: React.FC<GlobalPlatformSummaryProps> = ({ on
         <div>
           <div className="flex items-center gap-2">
             <span className="flex size-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
               Super Administrador &middot; SaaS Hub
             </span>
           </div>
           <h2 className="mt-1 text-xl font-black tracking-tight text-slate-900 dark:text-white">
             Directorio Global de Restaurantes
           </h2>
-          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+          <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
             Administra franquicias, inquilinos, tiendas públicas y sus configuraciones individuales.
           </p>
         </div>
@@ -88,7 +88,7 @@ export const GlobalPlatformSummary: React.FC<GlobalPlatformSummaryProps> = ({ on
       {globalStats.isError && (
         <p
           role="alert"
-          className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-xs font-semibold text-rose-600 dark:text-rose-400"
+          className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-sm font-semibold text-rose-600 dark:text-rose-400"
         >
           No se pudieron cargar las métricas de la plataforma. Recargá la página para reintentar.
         </p>
@@ -104,7 +104,7 @@ export const GlobalPlatformSummary: React.FC<GlobalPlatformSummaryProps> = ({ on
             }`}
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+              <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">
                 {c.title}
               </span>
               <div className="flex size-9 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800">
@@ -114,8 +114,8 @@ export const GlobalPlatformSummary: React.FC<GlobalPlatformSummaryProps> = ({ on
             <div className="mt-2 text-2xl font-black tracking-tight text-slate-900 dark:text-white">
               {c.value}
             </div>
-            <div className="mt-2.5 flex items-center justify-between border-t border-slate-100 dark:border-slate-800/80 pt-2 text-[11px]">
-              <span className="text-slate-400 truncate max-w-[150px]">{c.sub}</span>
+            <div className="mt-2.5 flex items-center justify-between border-t border-slate-100 dark:border-slate-800/80 pt-2 text-sm">
+              <span className="text-slate-500 dark:text-slate-400 min-w-0 break-words">{c.sub}</span>
               <span className={`rounded-full px-2 py-0.5 font-bold ${c.badgeColor}`}>
                 {c.badge}
               </span>

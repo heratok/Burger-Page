@@ -48,7 +48,7 @@ export const FlagThumbnail: React.FC<{ code: string; alt?: string }> = ({ code, 
     return (
       <span
         aria-hidden="true"
-        className="w-5 h-3.5 rounded-xs bg-slate-100 dark:bg-slate-800 text-[9px] font-mono font-bold flex items-center justify-center shrink-0 text-slate-500 border border-slate-200 dark:border-slate-700 select-none"
+        className="w-5 h-3.5 rounded-xs bg-slate-100 dark:bg-slate-800 text-xs font-mono font-bold flex items-center justify-center shrink-0 text-slate-600 border border-slate-200 dark:border-slate-700 select-none"
       >
         {code ? code.toUpperCase().slice(0, 2) : "??"}
       </span>
@@ -95,6 +95,9 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
     ref
   ) => {
     const effectiveAriaLabel = ariaLabel || ariaLabelAttr || label
+    const autoId = React.useId()
+    const fieldId = id ?? autoId
+    const errorId = `${fieldId}-error`
     const [isOpen, setIsOpen] = useState(false)
     const [searchQuery, setSearchQuery] = useState("")
     const [focusedIndex, setFocusedIndex] = useState(-1)
@@ -234,8 +237,8 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
   }
 
   const sizeClasses = {
-    sm: "text-xs py-1.5 px-2.5 min-h-[34px]",
-    md: "text-xs py-2.5 px-3 min-h-[40px]",
+    sm: "text-sm py-1.5 px-2.5 min-h-[34px] pointer-coarse:min-h-11",
+    md: "text-sm py-2.5 px-3 min-h-[40px] pointer-coarse:min-h-11",
     lg: "text-sm py-3 px-3.5 min-h-[46px]",
   }[size]
 
@@ -258,9 +261,9 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
     >
       {label && (
         <label
-          htmlFor={id}
+          htmlFor={fieldId}
           onClick={() => triggerRef.current?.focus()}
-          className="font-semibold block mb-1 text-slate-800 dark:text-slate-200 text-xs cursor-pointer"
+          className="font-semibold block mb-1 text-slate-800 dark:text-slate-200 text-sm cursor-pointer"
         >
           {label}
         </label>
@@ -269,15 +272,18 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
       {/* Accessible hidden native select for testing-library and form synchronization */}
       <select
         ref={ref}
-        id={id}
+        id={fieldId}
         name={name}
         required={required}
         disabled={disabled}
         aria-label={effectiveAriaLabel}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? errorId : undefined}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         tabIndex={-1}
-        className="sr-only"
+        aria-hidden="true"
+        className="text-sm sr-only"
       >
         {value && !options.some((o) => o.value === value) && (
           <option value={value}>{value}</option>
@@ -330,6 +336,13 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
         onClick={() => !disabled && setIsOpen((prev) => !prev)}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
+        aria-label={
+          effectiveAriaLabel
+            ? `${effectiveAriaLabel}: ${selectedOption?.label ?? (value || placeholder)}`
+            : undefined
+        }
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? errorId : undefined}
         aria-controls={id ? `${id}-menu` : undefined}
         className={cn(
           "w-full flex items-center justify-between gap-2 rounded-xl border transition-all text-left cursor-pointer",
@@ -350,7 +363,7 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
           {leftIcon && (
             <span
               data-testid={id ? `${id}-left-icon` : undefined}
-              className="shrink-0 text-slate-400 dark:text-slate-500 flex items-center justify-center pointer-events-none"
+              className="shrink-0 text-slate-500 dark:text-slate-400 flex items-center justify-center pointer-events-none"
             >
               {leftIcon}
             </span>
@@ -365,7 +378,7 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
                 {selectedOption.label}
               </span>
               {selectedOption.badge && (
-                <span className="shrink-0 px-1.5 py-0.5 rounded-md text-[10px] font-mono font-semibold bg-slate-100 dark:bg-slate-700/80 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-slate-600/60">
+                <span className="shrink-0 px-1.5 py-0.5 rounded-md text-xs font-mono font-semibold bg-slate-100 dark:bg-slate-700/80 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-slate-600/60">
                   {selectedOption.badge}
                 </span>
               )}
@@ -373,20 +386,20 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
           ) : value ? (
             <span className="truncate font-medium text-slate-900 dark:text-white">{value}</span>
           ) : (
-            <span className="text-slate-400 dark:text-slate-500 truncate">{placeholder}</span>
+            <span className="text-slate-500 dark:text-slate-400 truncate">{placeholder}</span>
           )}
         </div>
 
         <ChevronDown
           className={cn(
-            "size-4 shrink-0 text-slate-400 transition-transform duration-200",
+            "size-4 shrink-0 text-slate-500 dark:text-slate-400 transition-transform duration-200",
             isOpen && "rotate-180"
           )}
         />
       </button>
 
       {error && (
-        <span className="text-[11px] font-medium text-rose-500 dark:text-rose-400 block mt-1">
+        <span id={errorId} role="alert" className="text-sm font-medium text-rose-600 dark:text-rose-400 block mt-1">
           {error}
         </span>
       )}
@@ -396,7 +409,6 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
         <div
           id={id ? `${id}-menu` : undefined}
           data-testid={id ? `${id}-menu` : "modern-select-menu"}
-          role="listbox"
           className={cn(
             "rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-2xl p-1.5 space-y-1 z-50 absolute mt-1.5 left-0 right-0",
             menuClassName
@@ -405,7 +417,7 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
           {/* Search Filter Input */}
           {isSearchable && (
             <div className="relative px-1 pt-0.5 pb-1">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-3.5 text-slate-400 dark:text-slate-500 pointer-events-none" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-3.5 text-slate-500 dark:text-slate-400 pointer-events-none" />
               <input
                 ref={searchInputRef}
                 type="text"
@@ -416,15 +428,19 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
                 }}
                 placeholder={searchPlaceholder}
                 aria-label={searchPlaceholder}
-                className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-base sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
               />
             </div>
           )}
 
           {/* Options List */}
-          <div className="max-h-60 overflow-y-auto p-0.5 space-y-0.5 overscroll-contain">
+          <div
+            role="listbox"
+            aria-label={effectiveAriaLabel ?? placeholder}
+            className="max-h-60 overflow-y-auto p-0.5 space-y-0.5 overscroll-contain"
+          >
             {filteredOptions.length === 0 ? (
-              <div className="py-4 text-center text-xs text-slate-400 dark:text-slate-500">
+              <div role="presentation" className="py-4 text-center text-sm text-slate-500 dark:text-slate-400">
                 No se encontraron opciones
               </div>
             ) : (
@@ -438,7 +454,7 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
                 return (
                   <React.Fragment key={opt.value}>
                     {showGroupHeader && (
-                      <div className="px-2.5 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 select-none">
+                      <div role="presentation" className="px-2.5 pt-2 pb-1 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 select-none">
                         {opt.group}
                       </div>
                     )}
@@ -453,7 +469,7 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
                       onClick={() => handleSelectOption(opt)}
                       onMouseEnter={() => setFocusedIndex(index)}
                       className={cn(
-                        "w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs text-left cursor-pointer transition-colors select-none",
+                        "pointer-coarse:min-h-11 w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-sm text-left cursor-pointer transition-colors select-none",
                         isSelected
                           ? "bg-indigo-50/80 dark:bg-slate-800/90 text-indigo-900 dark:text-white font-medium"
                           : isFocused
@@ -468,7 +484,7 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
                         <div className="min-w-0 truncate">
                           <span className="truncate block font-medium">{opt.label}</span>
                           {opt.sublabel && (
-                            <span className="text-[10px] text-slate-400 dark:text-slate-500 block truncate">
+                            <span className="text-sm text-slate-500 dark:text-slate-400 block truncate">
                               {opt.sublabel}
                             </span>
                           )}
@@ -477,7 +493,7 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
 
                       <div className="flex items-center gap-1.5 shrink-0 ml-2">
                         {opt.badge && (
-                          <span className="px-1.5 py-0.5 rounded-md text-[10px] font-mono font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700/60">
+                          <span className="px-1.5 py-0.5 rounded-md text-xs font-mono font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700/60">
                             {opt.badge}
                           </span>
                         )}

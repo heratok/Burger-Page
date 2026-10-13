@@ -114,16 +114,16 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
               #{order.orderNumber}
             </span>
             <span
-              className={`flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[11px] font-bold ${currentStatus.bg} ${currentStatus.text}`}
+              className={`flex items-center gap-1 rounded-lg border px-2 py-0.5 text-xs font-bold ${currentStatus.bg} ${currentStatus.text}`}
             >
               {currentStatus.icon}
               <span>{currentStatus.label}</span>
             </span>
           </div>
 
-          <div className="flex items-center gap-1 text-[11px] font-medium text-slate-400">
+          <div className="flex items-center gap-1 text-sm font-medium text-slate-500 dark:text-slate-400">
             {isDelayed && (
-              <span className="flex items-center gap-0.5 rounded-md bg-rose-500/10 px-1.5 py-0.5 text-[10px] font-bold text-rose-600 dark:text-rose-400">
+              <span className="flex items-center gap-0.5 rounded-md bg-rose-500/10 px-1.5 py-0.5 text-xs font-bold text-rose-600 dark:text-rose-400">
                 <AlertCircle className="size-3" />
                 Demorado
               </span>
@@ -135,12 +135,12 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
         {/* Customer & Address Information */}
         <div className="mt-3 flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate">
+            <h2 className="text-sm font-bold text-slate-900 dark:text-white break-words">
               {order.customer.nombre}
-            </h4>
-            <div className="mt-1 flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 truncate">
-              <MapPin className="size-3.5 shrink-0 text-slate-400" />
-              <span className="truncate">
+            </h2>
+            <div className="mt-1 flex items-start gap-1 text-sm text-slate-500 dark:text-slate-400">
+              <MapPin className="size-3.5 shrink-0 text-slate-500 dark:text-slate-400" />
+              <span className="min-w-0 break-words">
                 {getOrderLocationText(order, " — ")}
               </span>
             </div>
@@ -149,7 +149,7 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
           <button
             type="button"
             onClick={() => onWhatsApp(order)}
-            className="shrink-0 flex items-center gap-1 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-600 hover:bg-emerald-500/20 dark:text-emerald-400 cursor-pointer"
+            className="pointer-coarse:min-h-11 shrink-0 flex items-center gap-1 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400 cursor-pointer"
             title="Chat WhatsApp con cliente"
           >
             <MessageCircle className="size-3.5" />
@@ -159,18 +159,18 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
 
         {/* Order Items Breakdown */}
         <div
-          className={`mt-3 rounded-xl p-3 text-xs space-y-2 ${
+          className={`mt-3 rounded-xl p-3 text-sm space-y-2 ${
             isDark ? "bg-slate-800/60 text-slate-200" : "bg-slate-50 text-slate-800"
           }`}
         >
           <div className="space-y-1.5 font-medium">
             {order.items.map((item, idx) => (
               <div key={idx} className="flex items-baseline justify-between gap-2">
-                <span className="font-semibold text-slate-900 dark:text-white truncate">
+                <span className="min-w-0 font-semibold text-slate-900 dark:text-white break-words">
                   {item.cantidad || (item as any).quantity || 1}× {item.name || (item as any).productName || "Producto"}
                 </span>
                 {item.adiciones && item.adiciones.length > 0 && (
-                  <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                  <span className="text-sm text-slate-500 dark:text-slate-400">
                     +{item.adiciones.map((a) => a.name).join(", ")}
                   </span>
                 )}
@@ -179,7 +179,7 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
           </div>
 
           {order.comentario && (
-            <div className="rounded-lg border border-amber-300/40 bg-amber-50/50 dark:border-amber-500/30 dark:bg-amber-950/30 p-2 text-[11px] text-amber-800 dark:text-amber-200 break-words [overflow-wrap:anywhere]">
+            <div className="rounded-lg border border-amber-300/40 bg-amber-50/50 dark:border-amber-500/30 dark:bg-amber-950/30 p-2 text-sm text-amber-800 dark:text-amber-200 break-words [overflow-wrap:anywhere]">
               <span className="font-bold">Nota: </span>
               &quot;{order.comentario}&quot;
             </div>
@@ -187,13 +187,13 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
         </div>
 
         {/* Totals & Payment Info */}
-        <div className="mt-3 flex items-center justify-between border-t border-slate-100 dark:border-slate-800/80 pt-2.5 text-xs">
+        <div className="mt-3 flex items-center justify-between border-t border-slate-100 dark:border-slate-800/80 pt-2.5 text-sm">
           <div>
             <span className="text-base font-black text-slate-900 dark:text-white">
               {formatCurrency(order.finalTotal)}
             </span>
             {order.deliveryFee > 0 && (
-              <span className="ml-1.5 text-[10px] text-slate-400">
+              <span className="ml-1.5 text-sm text-slate-500 dark:text-slate-400">
                 (inc. envío {formatCurrency(order.deliveryFee)})
               </span>
             )}
@@ -201,9 +201,9 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
 
           <div className="flex items-center gap-1.5 flex-wrap justify-end">
             <span
-              className={`rounded-md px-2 py-0.5 text-[10px] font-bold ${
+              className={`rounded-md px-2 py-0.5 text-xs font-bold ${
                 order.metodo === "Efectivo"
-                  ? "bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400"
+                  ? "bg-amber-500/10 text-amber-800 dark:bg-amber-500/20 dark:text-amber-400"
                   : "bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400"
               }`}
             >
@@ -211,17 +211,17 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
             </span>
             {order.metodo === "Transferencia" && (
               order.receiptUrl ? (
-                <span className="inline-flex items-center rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                <span className="inline-flex items-center rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-xs font-bold text-emerald-700 dark:text-emerald-400">
                   ✓ Soporte
                 </span>
               ) : (
-                <span className="inline-flex items-center rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                <span className="inline-flex items-center rounded-md bg-amber-500/10 px-1.5 py-0.5 text-xs font-bold text-amber-800 dark:text-amber-400">
                   ! Sin soporte
                 </span>
               )
             )}
             {order.metodo === "Efectivo" && order.cambio !== undefined && order.cambio > 0 && (
-              <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+              <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">
                 Cambio: {formatCurrency(order.cambio)}
               </span>
             )}
@@ -234,7 +234,7 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
         <button
           type="button"
           onClick={() => onViewDetails(order)}
-          className="min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer"
+          className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer"
           title="Ver detalles completos de la orden"
           aria-label="Ver detalles completos de la orden"
         >
@@ -245,7 +245,7 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
           <button
             type="button"
             onClick={() => (onPrintOrder ?? onPrintTicket)?.(order)}
-            className="min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer transition-colors"
+            className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer transition-colors"
             title="Imprimir ticket / comanda"
             aria-label="Imprimir ticket / comanda"
           >
@@ -255,9 +255,10 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
 
         {canManage && onEditOrder && order.status !== "delivered" && order.status !== "cancelled" && (
           <button
+            aria-label={`Editar venta #${order.orderNumber}`}
             type="button"
             onClick={() => onEditOrder(order)}
-            className="min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl border border-indigo-200 dark:border-indigo-800 p-2 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700 dark:text-indigo-400 dark:hover:bg-indigo-950/50 cursor-pointer transition-colors"
+            className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl border border-indigo-200 dark:border-indigo-800 p-2 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700 dark:text-indigo-400 dark:hover:bg-indigo-950/50 cursor-pointer transition-colors"
             title="Editar venta"
           >
             <Pencil className="size-4" />
@@ -271,7 +272,7 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
               <button
                 type="button"
                 onClick={() => onUpdateStatus(order.id, "delivered")}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 transition-colors cursor-pointer"
+                className="pointer-coarse:min-h-11 flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-700 px-3 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-800 transition-colors cursor-pointer"
               >
                 <Check className="size-4" />
                 <span>Completar (1 Clic)</span>
@@ -282,7 +283,7 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
                 <button
                   type="button"
                   onClick={() => onUpdateStatus(order.id, "cooking")}
-                  className="flex items-center gap-1 rounded-xl border border-orange-500/30 bg-orange-500/10 px-2.5 py-2 text-xs font-bold text-orange-600 hover:bg-orange-500/20 dark:text-orange-400 cursor-pointer"
+                  className="pointer-coarse:min-h-11 flex items-center gap-1 rounded-xl border border-orange-500/30 bg-orange-500/10 px-2.5 py-2 text-xs font-bold text-orange-800 hover:bg-orange-500/20 dark:text-orange-400 cursor-pointer"
                   title="Mover a cocina"
                 >
                   <ChefHat className="size-4" />
@@ -294,7 +295,7 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
                 <button
                   type="button"
                   onClick={() => onUpdateStatus(order.id, "delivering")}
-                  className="flex items-center gap-1 rounded-xl border border-blue-500/30 bg-blue-500/10 px-2.5 py-2 text-xs font-bold text-blue-600 hover:bg-blue-500/20 dark:text-blue-400 cursor-pointer"
+                  className="pointer-coarse:min-h-11 flex items-center gap-1 rounded-xl border border-blue-500/30 bg-blue-500/10 px-2.5 py-2 text-xs font-bold text-blue-600 hover:bg-blue-500/20 dark:text-blue-400 cursor-pointer"
                   title="Despachar con repartidor"
                 >
                   <Bike className="size-4" />
@@ -306,7 +307,7 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
             <button
               type="button"
               onClick={() => onUpdateStatus(order.id, "pending")}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer"
+              className="pointer-coarse:min-h-11 flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer"
             >
               <RotateCcw className="size-3.5" />
               <span>Reabrir Orden</span>

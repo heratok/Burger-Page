@@ -281,5 +281,84 @@ describe("AdminLayout - Super Admin Navigation & Global Modules (TDD)", () => {
     expect(screen.getByRole("button", { name: /^Roles$/i })).toBeDefined()
   })
 
+
+  it('renders a skip link as the first focusable element that targets the main landmark', () => {
+    sessionStorage.setItem(
+      'burger_page_session_v2',
+      JSON.stringify({ role: 'super', authenticatedAt: new Date().toISOString() })
+    )
+    render(
+      <RestaurantProvider>
+        <AdminLayout>
+          <div>Contenido</div>
+        </AdminLayout>
+      </RestaurantProvider>
+    )
+    const skip = screen.getByRole('link', { name: 'Saltar al contenido' })
+    expect(skip.getAttribute('href')).toBe('#main-content')
+    const main = screen.getByRole('main')
+    expect(main.id).toBe('main-content')
+    expect(main.getAttribute('tabindex')).toBe('-1')
+    const focusables = Array.from(
+      document.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input, select, textarea')
+    )
+    expect(focusables[0]).toBe(skip)
+  })
 })
 
+describe("AdminLayout - mobile drawer accessibility", () => {
+  const originalMatchMedia = window.matchMedia
+
+  beforeEach(() => {
+    localStorage.clear()
+    sessionStorage.clear()
+    sessionStorage.setItem(
+      "burger_page_session_v2",
+      JSON.stringify({ role: "restaurant", restaurantId: "burger-craft", authenticatedAt: new Date().toISOString() })
+    )
+    // Below the lg breakpoint: the sidebar is an off-canvas drawer.
+    window.matchMedia = ((query: string) => ({
+      matches: false,
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    })) as unknown as typeof window.matchMedia
+  })
+
+  afterEach(() => {
+    cleanup()
+    window.matchMedia = originalMatchMedia
+  })
+
+  const renderLayout = () =>
+    render(
+      <RestaurantProvider>
+        <AdminLayout>
+          <div>Dashboard</div>
+        </AdminLayout>
+      </RestaurantProvider>
+    )
+
+  it("keeps the closed drawer inert, exposing aria-expanded on the toggle", () => {
+    const { container } = renderLayout()
+    const aside = container.querySelector("aside") as HTMLElement
+    expect(aside.hasAttribute("inert")).toBe(true)
+    const toggle = screen.getByRole("button", { name: "Abrir menú" })
+    expect(toggle.getAttribute("aria-expanded")).toBe("false")
+    expect(toggle.getAttribute("aria-controls")).toBe(aside.id)
+  })
+
+  it("opens with focus inside, closes on Escape and returns focus to the toggle", () => {
+    const { container } = renderLayout()
+    const aside = container.querySelector("aside") as HTMLElement
+    const toggle = screen.getByRole("button", { name: "Abrir menú" })
+    toggle.focus()
+    fireEvent.click(toggle)
+    expect(aside.hasAttribute("inert")).toBe(false)
+    expect(toggle.getAttribute("aria-expanded")).toBe("true")
+    expect(aside.contains(document.activeElement)).toBe(true)
+    fireEvent.keyDown(document.activeElement as Element, { key: "Escape" })
+    expect(aside.hasAttribute("inert")).toBe(true)
+    expect(document.activeElement).toBe(toggle)
+  })
+})

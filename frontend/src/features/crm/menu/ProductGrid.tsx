@@ -46,17 +46,17 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
               className="size-full object-cover transition duration-300 group-hover:scale-105"
             />
             <div className="absolute top-2.5 left-2.5 flex flex-wrap gap-1.5 z-10">
-              <span className="rounded-md bg-black/75 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur-xs">
+              <span className="rounded-md bg-black/75 px-2 py-0.5 text-xs font-bold text-white backdrop-blur-xs">
                 {product.category}
               </span>
               {product.isPopular && (
-                <span className="flex items-center gap-1 rounded-md bg-amber-500/95 px-2 py-0.5 text-[10px] font-bold text-white shadow-xs">
+                <span className="flex items-center gap-1 rounded-md bg-amber-700/95 px-2 py-0.5 text-xs font-bold text-white shadow-xs">
                   <Flame className="size-3" />
                   Popular
                 </span>
               )}
               {product.isNew && (
-                <span className="flex items-center gap-1 rounded-md bg-emerald-500/95 px-2 py-0.5 text-[10px] font-bold text-white shadow-xs">
+                <span className="flex items-center gap-1 rounded-md bg-emerald-700/95 px-2 py-0.5 text-xs font-bold text-white shadow-xs">
                   <Sparkles className="size-3" />
                   Nuevo
                 </span>
@@ -75,15 +75,15 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
           {/* Body Content */}
           <div className="p-4 space-y-2">
             <div className="flex items-start justify-between gap-2">
-              <h3 className="font-bold tracking-tight line-clamp-1 text-slate-900 dark:text-white">
+              <h2 className="font-bold tracking-tight line-clamp-1 text-slate-900 dark:text-white">
                 {product.name}
-              </h3>
+              </h2>
               <span className="text-base font-black text-indigo-600 dark:text-indigo-400 whitespace-nowrap">
                 {formatCurrency(product.price)}
               </span>
             </div>
 
-            <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 min-h-[32px]">
+            <p className="text-sm text-slate-600 dark:text-slate-300 line-clamp-2 min-h-[32px]">
               {product.description}
             </p>
 
@@ -97,17 +97,19 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
 
               <div className="flex items-center gap-1">
                 <button
+                  aria-label={`Editar plato ${product.name}`}
                   type="button"
                   onClick={() => onEditProduct(product)}
-                  className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-indigo-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-indigo-300 cursor-pointer"
+                  className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-indigo-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-indigo-300 cursor-pointer"
                   title="Editar plato"
                 >
                   <Edit2 className="size-4" />
                 </button>
                 <button
+                  aria-label={`Eliminar plato ${product.name}`}
                   type="button"
                   onClick={() => onDeleteProduct(product)}
-                  className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-rose-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-rose-400 cursor-pointer"
+                  className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-rose-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-rose-400 cursor-pointer"
                   title="Eliminar plato"
                 >
                   <Trash2 className="size-4" />

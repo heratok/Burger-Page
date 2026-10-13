@@ -48,13 +48,13 @@ const FIELD_TRANSLATIONS: Record<string, string> = {
 
 function getActionColorBadge(action: string): string {
   if (action.includes("create") || action.includes("activate") || action.includes("restore")) {
-    return "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+    return "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30"
   }
   if (action.includes("delete") || action.includes("deactivate")) {
     return "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30"
   }
   if (action.includes("pause") || action.includes("reset_password")) {
-    return "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30"
+    return "bg-amber-500/15 text-amber-800 dark:text-amber-400 border-amber-500/30"
   }
   return "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/30"
 }
@@ -152,7 +152,7 @@ export const AuditLogScreen: React.FC = () => {
     setToDate("")
   }
 
-  const inputDateClass = `rounded-xl border px-3 py-2 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+  const inputDateClass = `rounded-xl border px-3 py-2 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
     isDark
       ? "border-slate-800 bg-slate-900 text-slate-200"
       : "border-slate-200 bg-white text-slate-700"
@@ -169,14 +169,14 @@ export const AuditLogScreen: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <span className="flex size-2 rounded-full bg-indigo-500 animate-pulse" />
-            <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+            <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
               Super Administrador · Seguridad & Trazabilidad
             </span>
           </div>
           <h2 className="mt-1 text-xl font-black tracking-tight text-slate-900 dark:text-white sm:text-2xl">
             Registro de Auditoría
           </h2>
-          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+          <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
             Historial inmutable de modificaciones sobre restaurantes, usuarios y configuraciones clave.
           </p>
         </div>
@@ -185,7 +185,7 @@ export const AuditLogScreen: React.FC = () => {
           type="button"
           onClick={() => void reload()}
           disabled={isLoading}
-          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 px-3.5 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer self-start sm:self-auto"
+          className="pointer-coarse:min-h-11 inline-flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 px-3.5 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer self-start sm:self-auto"
         >
           <RefreshCw className={`size-3.5 ${isLoading ? "animate-spin" : ""}`} />
           <span>Actualizar</span>
@@ -198,8 +198,8 @@ export const AuditLogScreen: React.FC = () => {
           isDark ? "border-slate-800 bg-[#0E1322]" : "border-slate-200 bg-white"
         }`}
       >
-        <div className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-300">
-          <Filter className="size-3.5 text-indigo-500" />
+        <div className="flex items-center gap-2 text-sm font-bold text-slate-700 dark:text-slate-300">
+          <Filter className="size-3.5 text-indigo-600 dark:text-indigo-400" />
           <span>Filtros de búsqueda</span>
         </div>
 
@@ -250,7 +250,7 @@ export const AuditLogScreen: React.FC = () => {
           <div className="space-y-1">
             <label
               htmlFor="filter-from-date"
-              className="text-[11px] font-bold text-slate-500 dark:text-slate-400"
+              className="text-sm font-bold text-slate-500 dark:text-slate-400"
             >
               Fecha desde
             </label>
@@ -268,7 +268,7 @@ export const AuditLogScreen: React.FC = () => {
           <div className="space-y-1">
             <label
               htmlFor="filter-to-date"
-              className="text-[11px] font-bold text-slate-500 dark:text-slate-400"
+              className="text-sm font-bold text-slate-500 dark:text-slate-400"
             >
               Fecha hasta
             </label>
@@ -299,11 +299,11 @@ export const AuditLogScreen: React.FC = () => {
       {/* Main Content: Error / Loading / Empty / Tables */}
       {error ? (
         <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-6 text-center space-y-3">
-          <AlertTriangle className="size-8 mx-auto text-rose-500" />
+          <AlertTriangle className="size-8 mx-auto text-rose-600 dark:text-rose-400" />
           <div className="text-sm font-bold text-rose-600 dark:text-rose-400">
             Ocurrió un error al cargar el registro de auditoría.
           </div>
-          <p className="text-xs text-rose-500/80">{error}</p>
+          <p className="text-sm text-rose-600 dark:text-rose-400">{error}</p>
           <Button
             type="button"
             variant="outline"
@@ -314,9 +314,9 @@ export const AuditLogScreen: React.FC = () => {
           </Button>
         </div>
       ) : isLoading && items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center p-12 text-slate-400 gap-2">
-          <Loader2 className="size-6 animate-spin text-indigo-500" />
-          <span className="text-xs font-medium">Cargando registros de auditoría...</span>
+        <div className="flex flex-col items-center justify-center p-12 text-slate-500 dark:text-slate-400 gap-2">
+          <Loader2 className="size-6 animate-spin text-indigo-600 dark:text-indigo-400" />
+          <span className="text-sm font-medium">Cargando registros de auditoría...</span>
         </div>
       ) : items.length === 0 ? (
         <div
@@ -324,11 +324,11 @@ export const AuditLogScreen: React.FC = () => {
             isDark ? "border-slate-800 bg-[#0E1322]" : "border-slate-200 bg-white"
           }`}
         >
-          <ClipboardList className="size-10 mx-auto text-slate-400/40 mb-3" />
+          <ClipboardList className="size-10 mx-auto text-slate-500 dark:text-slate-400 mb-3" />
           <h3 className="text-sm font-bold text-slate-900 dark:text-white">
             No se encontraron registros de auditoría
           </h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
             No hay operaciones registradas con los filtros actuales. Podés cambiar los criterios de búsqueda.
           </p>
         </div>
@@ -340,9 +340,9 @@ export const AuditLogScreen: React.FC = () => {
               isDark ? "border-slate-800 bg-[#0E1322]" : "border-slate-200 bg-white"
             }`}
           >
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <div role="region" aria-label="Tabla de auditoría" tabIndex={0} className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   <tr>
                     <th className="px-4 py-3.5">Fecha y Hora</th>
                     <th className="px-4 py-3.5">Actor</th>
@@ -360,8 +360,8 @@ export const AuditLogScreen: React.FC = () => {
                     >
                       {/* Fecha */}
                       <td className="px-4 py-3 text-slate-600 dark:text-slate-300 whitespace-nowrap">
-                        <div className="flex items-center gap-1.5 font-mono text-[11px]">
-                          <Clock className="size-3 text-slate-400" />
+                        <div className="flex items-center gap-1.5 font-mono text-xs">
+                          <Clock className="size-3 text-slate-500 dark:text-slate-400" />
                           <span>{dateFormatted}</span>
                         </div>
                       </td>
@@ -369,7 +369,7 @@ export const AuditLogScreen: React.FC = () => {
                       {/* Actor */}
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5 font-semibold text-slate-900 dark:text-white">
-                          <User className="size-3 text-indigo-500" />
+                          <User className="size-3 text-indigo-600 dark:text-indigo-400" />
                           <span>{item.actorUsername || item.actorUserId || "Sistema"}</span>
                         </div>
                       </td>
@@ -377,7 +377,7 @@ export const AuditLogScreen: React.FC = () => {
                       {/* Acción */}
                       <td className="px-4 py-3">
                         <span
-                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold border ${badgeClass}`}
+                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold border ${badgeClass}`}
                         >
                           {humanAction}
                         </span>
@@ -391,13 +391,13 @@ export const AuditLogScreen: React.FC = () => {
                       {/* Restaurante */}
                       <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
                         <div className="flex items-center gap-1">
-                          <Store className="size-3 text-slate-400" />
+                          <Store className="size-3 text-slate-500 dark:text-slate-400" />
                           <span>{restName}</span>
                         </div>
                       </td>
 
                       {/* Detalles */}
-                      <td className="px-4 py-3 text-slate-500 dark:text-slate-400 max-w-xs truncate">
+                      <td className="px-4 py-3 text-slate-500 dark:text-slate-400 max-w-xs break-words">
                         {detailsText}
                       </td>
                     </tr>
@@ -412,40 +412,40 @@ export const AuditLogScreen: React.FC = () => {
             {rows.map(({ item, humanAction, badgeClass, restName, dateFormatted, targetLabel, detailsText }) => (
               <div
                 key={item.id}
-                className={`rounded-2xl border p-4 shadow-xs space-y-2.5 text-xs ${
+                className={`rounded-2xl border p-4 shadow-xs space-y-2.5 text-sm ${
                   isDark ? "border-slate-800 bg-[#0E1322]" : "border-slate-200 bg-white"
                 }`}
               >
                 <div className="flex items-center justify-between gap-2">
                   <span
-                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold border ${badgeClass}`}
+                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-bold border ${badgeClass}`}
                   >
                     {humanAction}
                   </span>
-                  <span className="font-mono text-[10px] text-slate-400 flex items-center gap-1">
+                  <span className="font-mono text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
                     <Clock className="size-3" />
                     {dateFormatted}
                   </span>
                 </div>
 
-                <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center justify-between text-sm">
                   <div className="flex items-center gap-1 font-semibold text-slate-900 dark:text-white">
-                    <User className="size-3 text-indigo-500" />
+                    <User className="size-3 text-indigo-600 dark:text-indigo-400" />
                     <span>{item.actorUsername || item.actorUserId || "Sistema"}</span>
                   </div>
-                  <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400 text-[11px]">
-                    <Store className="size-3 text-slate-400" />
+                  <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400 text-sm">
+                    <Store className="size-3 text-slate-500 dark:text-slate-400" />
                     <span>{restName}</span>
                   </div>
                 </div>
 
-                <div className="border-t border-slate-100 dark:border-slate-800 pt-2 flex items-center justify-between text-xs">
-                  <span className="font-bold text-slate-800 dark:text-slate-200 truncate">
+                <div className="border-t border-slate-100 dark:border-slate-800 pt-2 flex items-center justify-between text-sm">
+                  <span className="font-bold text-slate-800 dark:text-slate-200 min-w-0 break-words">
                     {targetLabel}
                   </span>
                 </div>
 
-                <div className="text-[11px] text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/60 p-2 rounded-xl">
+                <div className="text-sm text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/60 p-2 rounded-xl">
                   {detailsText}
                 </div>
               </div>

@@ -84,8 +84,8 @@ describe("EditUserModal (TDD)", () => {
 
     expect(screen.getByText("Editar Usuario")).toBeDefined()
     expect((screen.getByLabelText(/Nombre de usuario/i) as HTMLInputElement).value).toBe("craft_manager")
-    expect((screen.getByLabelText(/Rol en la plataforma/i) as HTMLSelectElement).value).toBe("restaurant_admin")
-    expect((screen.getByLabelText(/Restaurante Asignado/i) as HTMLSelectElement).value).toBe("rest-burger-craft")
+    expect((screen.getByLabelText(/Rol en la plataforma/i, { selector: "select" }) as HTMLSelectElement).value).toBe("restaurant_admin")
+    expect((screen.getByLabelText(/Restaurante Asignado/i, { selector: "select" }) as HTMLSelectElement).value).toBe("rest-burger-craft")
   })
 
   it("disables restaurant selector when role is super_admin", () => {
@@ -99,10 +99,10 @@ describe("EditUserModal (TDD)", () => {
       </RestaurantProvider>
     )
 
-    const roleSelect = screen.getByLabelText(/Rol en la plataforma/i) as HTMLSelectElement
+    const roleSelect = screen.getByLabelText(/Rol en la plataforma/i, { selector: "select" }) as HTMLSelectElement
     fireEvent.change(roleSelect, { target: { value: "super_admin" } })
 
-    const restaurantSelect = screen.getByLabelText(/Restaurante Asignado/i) as HTMLSelectElement
+    const restaurantSelect = screen.getByLabelText(/Restaurante Asignado/i, { selector: "select" }) as HTMLSelectElement
     expect(restaurantSelect.disabled).toBe(true)
     expect(screen.getByText(/Los Super Administradores tienen acceso global/i)).toBeDefined()
   })
@@ -127,7 +127,7 @@ describe("EditUserModal (TDD)", () => {
       </RestaurantProvider>
     )
 
-    const roleSelect = screen.getByLabelText(/Rol en la plataforma/i) as HTMLSelectElement
+    const roleSelect = screen.getByLabelText(/Rol en la plataforma/i, { selector: "select" }) as HTMLSelectElement
     expect(roleSelect.disabled).toBe(true)
     expect(screen.getByText(/No podés modificar tu propio rol/i)).toBeDefined()
   })
