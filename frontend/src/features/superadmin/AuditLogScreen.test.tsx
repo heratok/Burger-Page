@@ -140,7 +140,7 @@ describe("AuditLogScreen (TDD)", () => {
     })
 
     // Filter by action
-    const actionSelect = screen.getByLabelText(/Filtrar por acción/i)
+    const actionSelect = screen.getByLabelText(/Filtrar por acción/i, { selector: "select" })
     fireEvent.change(actionSelect, { target: { value: "restaurant.update" } })
 
     await waitFor(() => {
@@ -273,7 +273,7 @@ describe("AuditLogScreen (TDD)", () => {
 
     // Initial load triggered firstPromise (in flight)
     // Now user quickly changes action filter
-    const actionSelect = screen.getByLabelText(/Filtrar por acción/i)
+    const actionSelect = screen.getByLabelText(/Filtrar por acción/i, { selector: "select" })
     fireEvent.change(actionSelect, { target: { value: "user.create" } })
 
     // Second call resolves immediately with mockAuditLogs[1]
@@ -327,7 +327,7 @@ describe("AuditLogScreen (TDD)", () => {
     fireEvent.click(screen.getByRole("button", { name: /Cargar más/i }))
 
     // User changes filter while pagination is in flight
-    const actionSelect = screen.getByLabelText(/Filtrar por acción/i)
+    const actionSelect = screen.getByLabelText(/Filtrar por acción/i, { selector: "select" })
     fireEvent.change(actionSelect, { target: { value: "user.create" } })
 
     await waitFor(() => {

@@ -59,45 +59,45 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
       }`}
     >
       {/* Card Header */}
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <span className="text-xs font-black text-indigo-600 dark:text-indigo-400">
+      <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-0.5">
+        <div className="min-w-0">
+          <span className="text-sm font-black text-indigo-600 dark:text-indigo-400">
             #{order.orderNumber}
           </span>
-          <h4 className="mt-0.5 text-xs font-bold leading-tight line-clamp-1 text-slate-900 dark:text-white">
+          <h3 className="mt-0.5 text-sm font-bold leading-tight break-words text-slate-900 dark:text-white">
             {order.customer.nombre}
-          </h4>
+          </h3>
         </div>
-        <span className="text-[10px] font-medium text-slate-400 dark:text-slate-400 whitespace-nowrap">
+        <span className="text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap">
           {formatElapsed(order.createdAt)}
         </span>
       </div>
 
       {/* Address preview */}
-      <div className="mt-2 flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1">
-        <MapPin className="size-3 shrink-0 text-slate-400" />
-        <span className="truncate">
+      <div className="mt-2 flex items-start gap-1 text-sm text-slate-500 dark:text-slate-400">
+        <MapPin className="size-3 shrink-0 text-slate-500 dark:text-slate-400" />
+        <span className="min-w-0 break-words">
           {getOrderLocationText(order)}
         </span>
       </div>
 
       {/* Items Summary */}
       <div
-        className={`mt-2.5 rounded-lg p-2 text-[11px] ${
+        className={`mt-2.5 rounded-lg p-2 text-sm ${
           isDark ? "bg-slate-800/80 text-slate-200" : "bg-slate-50 text-slate-700"
         }`}
       >
         <div className="space-y-1 font-medium">
           {order.items.map((item, idx) => (
-            <div key={idx} className="flex justify-between truncate">
-              <span className="truncate">
+            <div key={idx} className="flex justify-between gap-3">
+              <span className="min-w-0 break-words">
                 {item.cantidad || (item as any).quantity || 1}× {item.name || (item as any).productName || "Producto"}
               </span>
             </div>
           ))}
         </div>
         {order.comentario && (
-          <p className="mt-1.5 border-t border-slate-200/40 dark:border-slate-700/60 pt-1 text-[10px] italic text-amber-600 dark:text-amber-300 line-clamp-2 break-words [overflow-wrap:anywhere]">
+          <p className="mt-1.5 border-t border-slate-200/40 dark:border-slate-700/60 pt-1 text-sm italic text-amber-800 dark:text-amber-300 break-words [overflow-wrap:anywhere]">
             &quot;{order.comentario}&quot;
           </p>
         )}
@@ -105,14 +105,14 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
 
       {/* Totals & Payment */}
       <div className="mt-3 flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-2.5">
-        <span className="text-xs font-black text-slate-900 dark:text-white">
+        <span className="text-sm font-black text-slate-900 dark:text-white">
           {formatCurrency(order.finalTotal)}
         </span>
         <div className="flex items-center gap-1 flex-wrap justify-end">
           <span
-            className={`rounded-md px-2 py-0.5 text-[10px] font-bold ${
+            className={`rounded-md px-2 py-0.5 text-xs font-bold ${
               order.metodo === "Efectivo"
-                ? "bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400"
+                ? "bg-amber-500/10 text-amber-800 dark:bg-amber-500/20 dark:text-amber-400"
                 : "bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400"
             }`}
           >
@@ -120,10 +120,10 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
           </span>
           {order.metodo === "Transferencia" && (
             <span
-              className={`rounded-md px-1.5 py-0.5 text-[9px] font-bold ${
+              className={`rounded-md px-1.5 py-0.5 text-xs font-bold ${
                 order.receiptUrl
-                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                  : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                  ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                  : "bg-amber-500/10 text-amber-800 dark:text-amber-400"
               }`}
             >
               {order.receiptUrl ? "✓ Soporte" : "! Sin soporte"}
@@ -137,7 +137,7 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
         <button
           type="button"
           onClick={() => onViewDetails(order)}
-          className="min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer transition-colors"
+          className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer transition-colors"
           title="Ver detalles completos del pedido"
           aria-label="Ver detalles completos del pedido"
         >
@@ -148,7 +148,7 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
           <button
             type="button"
             onClick={() => (onPrintOrder ?? onPrintTicket)?.(order)}
-            className="min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer transition-colors"
+            className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer transition-colors"
             title="Imprimir ticket / comanda"
             aria-label="Imprimir ticket / comanda"
           >
@@ -158,9 +158,10 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
 
         {canManage && onEditOrder && (
           <button
+            aria-label={`Editar venta #${order.orderNumber}`}
             type="button"
             onClick={() => onEditOrder(order)}
-            className="min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg border border-indigo-200 dark:border-indigo-800 p-2 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700 dark:text-indigo-400 dark:hover:bg-indigo-950/50 cursor-pointer transition-colors"
+            className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg border border-indigo-200 dark:border-indigo-800 p-2 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700 dark:text-indigo-400 dark:hover:bg-indigo-950/50 cursor-pointer transition-colors"
             title="Editar venta"
           >
             <Pencil className="size-4" />
@@ -171,7 +172,7 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
           <button
             type="button"
             onClick={() => onUpdateStatus(order.id, "cooking")}
-            className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-orange-500 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-orange-600 cursor-pointer"
+            className="pointer-coarse:min-h-11 flex flex-1 items-center justify-center gap-1 rounded-lg bg-orange-700 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-orange-800 cursor-pointer"
           >
             <ChefHat className="size-3.5" />
             <span>A Cocina</span>
@@ -181,7 +182,7 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
           <button
             type="button"
             onClick={() => onUpdateStatus(order.id, "delivering")}
-            className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-blue-600 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-blue-700 cursor-pointer"
+            className="pointer-coarse:min-h-11 flex flex-1 items-center justify-center gap-1 rounded-lg bg-blue-600 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-blue-700 cursor-pointer"
           >
             <Bike className="size-3.5" />
             <span>Despachar</span>
@@ -191,7 +192,7 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
           <button
             type="button"
             onClick={() => onUpdateStatus(order.id, "delivered")}
-            className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-emerald-600 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 cursor-pointer"
+            className="pointer-coarse:min-h-11 flex flex-1 items-center justify-center gap-1 rounded-lg bg-emerald-700 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-emerald-800 cursor-pointer"
           >
             <CheckCircle2 className="size-3.5" />
             <span>Entregado</span>
@@ -199,9 +200,10 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
         )}
         {order.status !== "cancelled" && order.status !== "delivered" && (
           <button
+            aria-label={`Chat de WhatsApp con el cliente del pedido #${order.orderNumber}`}
             type="button"
             onClick={() => onWhatsApp(order)}
-            className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-1.5 text-emerald-600 hover:bg-emerald-500/20 dark:text-emerald-400 cursor-pointer"
+            className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-1.5 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400 cursor-pointer"
             title="Chat WhatsApp con cliente"
           >
             <MessageCircle className="size-3.5" />

@@ -47,7 +47,7 @@ export default function ProductSearch({ onChangeText, total = 0 }: ProductSearch
           placeholder="Buscar en el menú..."
           autoComplete="off"
           maxLength={LIMITS.busqueda.max}
-          className="h-11 bg-transparent text-sm placeholder:text-text-muted text-text-primary focus:outline-none"
+          className="h-11 bg-transparent text-base sm:text-sm placeholder:text-text-muted text-text-primary focus:outline-none"
         />
         {value && (
           <InputGroupAddon align="inline-end" className="pr-1">
@@ -57,7 +57,7 @@ export default function ProductSearch({ onChangeText, total = 0 }: ProductSearch
               size="icon-sm"
               onClick={handleClear}
               aria-label="Limpiar búsqueda"
-              className="size-10 rounded-full text-text-muted hover:bg-bg-elevated-2 hover:text-text-primary"
+              className="size-10 pointer-coarse:size-11 rounded-full text-text-muted hover:bg-bg-elevated-2 hover:text-text-primary"
             >
               <X />
             </Button>
@@ -65,7 +65,7 @@ export default function ProductSearch({ onChangeText, total = 0 }: ProductSearch
         )}
       </InputGroup>
       {message && (
-        <p className="mt-2 text-center text-xs text-text-muted" aria-live="polite">
+        <p className="mt-2 text-center text-sm text-text-muted" aria-live="polite">
           {message}
         </p>
       )}

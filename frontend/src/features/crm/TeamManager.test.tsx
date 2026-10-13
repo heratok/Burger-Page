@@ -132,7 +132,7 @@ describe("TeamManager Component (TDD)", () => {
     const usernameInput = screen.getByLabelText(/Nombre de Usuario/i)
     fireEvent.change(usernameInput, { target: { value: "pedro_cocina" } })
 
-    const roleSelect = screen.getByLabelText(/Rol Asignado/i)
+    const roleSelect = screen.getByLabelText(/Rol Asignado/i, { selector: "select" })
     fireEvent.change(roleSelect, { target: { value: "role-cook" } })
 
     // Save
@@ -166,7 +166,7 @@ describe("TeamManager Component (TDD)", () => {
 
     expect(screen.getByText("Editar Miembro del Equipo")).toBeDefined()
 
-    const roleSelect = screen.getByLabelText(/Rol Asignado/i)
+    const roleSelect = screen.getByLabelText(/Rol Asignado/i, { selector: "select" })
     fireEvent.change(roleSelect, { target: { value: "role-cook" } })
 
     const saveBtn = screen.getByRole("button", { name: /Guardar Cambios/i })

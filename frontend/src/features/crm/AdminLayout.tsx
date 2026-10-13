@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense } from "react"
+import React, { useState, useEffect, useRef, Suspense } from "react"
 import { useRestaurant } from "@/context/RestaurantContext"
 import {
   LayoutDashboard,
@@ -35,6 +35,9 @@ import { AdminSwitcher, CreateRestaurantModal, CreateUserModal, ChangePasswordSc
 import { useAppRouter, isTabAllowed } from "@/core/router/useAppRouter"
 import { AdminContentFallback } from "@/components/ui/LoadingFallbacks"
 import { ManualSaleModal } from "./ManualSaleModal"
+import { Tooltip } from "@/components/ui/tooltip"
+import { useModalBehavior } from "@/components/ui/modal-shell"
+import { useMediaQuery } from "@/lib/useMediaQuery"
 
 
 interface AdminLayoutProps {
@@ -62,6 +65,15 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const { navigateTo } = useAppRouter()
 
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
+  // Tailwind `lg`: below it the sidebar is an off-canvas drawer. jsdom has no matchMedia: assume desktop.
+  const isDesktop = useMediaQuery("(min-width: 1024px)", true)
+  const isDrawerClosed = !isDesktop && !isMobileSidebarOpen
+  const sidebarRef = useRef<HTMLElement>(null)
+  const trapDrawerTab = useModalBehavior(sidebarRef, {
+    active: !isDesktop && isMobileSidebarOpen,
+    onClose: () => setIsMobileSidebarOpen(false),
+    captureOnActivate: true,
+  })
   const [isManualSaleOpen, setIsManualSaleOpen] = useState(false)
   const [isCreateRestaurantOpen, setIsCreateRestaurantOpen] = useState(false)
   const [isCreateUserOpen, setIsCreateUserOpen] = useState(false)
@@ -94,6 +106,15 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
 
   const isDark = adminTheme === "dark"
+
+  // Portaled dialogs (base-ui) render outside this root: mirror the theme class on <html> so `dark:` variants reach them.
+  useEffect(() => {
+    if (!isDark) return
+    const root = document.documentElement
+    root.classList.add("dark")
+    return () => root.classList.remove("dark")
+  }, [isDark])
+
   const isSuper = session.role === "super"
   const isSuperGlobalMode = isSuper && (adminTab === "restaurants" || adminTab === "users" || adminTab === "metrics" || adminTab === "audit")
   const isSuperTenantMode = isSuper && !isSuperGlobalMode
@@ -229,11 +250,21 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         isDark ? "dark admin-dark bg-[#0B0F19] text-slate-100" : "admin-light bg-[#F8FAFC] text-slate-900"
       }`}
     >
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-1/2 focus:-translate-x-1/2 focus:z-[100] whitespace-nowrap rounded-md focus:px-4 focus:py-2 bg-orange-700 px-4 py-2 text-sm font-semibold text-white focus:shadow-xl focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-orange-700"
+      >
+        Saltar al contenido
+      </a>
+
       {/* Mobile Drawer Overlay */}
       {isMobileSidebarOpen && (
         <button
           type="button"
           aria-label="Cerrar barra lateral"
+          aria-hidden="true"
+          tabIndex={-1}
+          data-modal-keep
           className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs lg:hidden border-none p-0 cursor-default"
           onClick={() => setIsMobileSidebarOpen(false)}
         />
@@ -244,8 +275,13 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         {/* DESKTOP & MOBILE SIDEBAR                                  */}
         {/* ======================================================== */}
         <aside
+          ref={sidebarRef}
+          id="admin-sidebar"
           role="complementary"
           aria-label="Sidebar de navegación"
+          onKeyDown={trapDrawerTab}
+          // `inert` removes the closed drawer from the tab order and the accessibility tree (it implies hidden).
+          {...(isDrawerClosed ? ({ inert: "" } as React.HTMLAttributes<HTMLElement>) : {})}
           className={`fixed inset-y-0 left-0 z-50 flex h-dvh max-h-dvh flex-col border-r transition-all duration-300 ease-in-out lg:sticky lg:top-0 lg:h-screen lg:max-h-screen lg:translate-x-0 ${
             isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
           } ${
@@ -265,16 +301,15 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
             {isSuperGlobalMode ? (
               <div className={`flex items-center gap-2.5 min-w-0 ${isSidebarCollapsed ? "lg:justify-center" : ""}`}>
                 <div
-                  title={isSidebarCollapsed ? "SaaS Platform (Super Admin)" : undefined}
-                  className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-tr from-amber-500 to-indigo-600 text-white font-bold text-xs shrink-0 shadow-md ring-1 ring-amber-500/20"
+                  className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-tr from-amber-500 to-orange-600 text-white font-bold text-xs shrink-0 shadow-md ring-1 ring-amber-500/20"
                 >
                   <Crown className="size-4.5" />
                 </div>
-                <div className={`flex flex-col min-w-0 leading-tight ${isSidebarCollapsed ? "lg:hidden" : ""}`}>
+                <div className={`flex flex-col min-w-0 leading-tight ${isSidebarCollapsed ? "lg:sr-only" : ""}`}>
                   <span className="font-bold tracking-tight text-xs truncate text-slate-900 dark:text-white">
                     SaaS Platform
                   </span>
-                  <span className="text-[9px] font-bold tracking-wider uppercase text-amber-500">
+                  <span className="text-xs font-bold tracking-wider uppercase text-amber-800 dark:text-amber-400">
                     Super Admin
                   </span>
                 </div>
@@ -285,22 +320,20 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                   <img
                     src={storeConfig.logoUrl}
                     alt=""
-                    title={isSidebarCollapsed ? `${storeConfig.name} (Super Admin)` : undefined}
                     className="size-9 rounded-xl object-cover border border-amber-500/40 shrink-0 shadow-xs"
                   />
                 ) : (
                   <div
-                    title={isSidebarCollapsed ? `${storeConfig.name} (Super Admin)` : undefined}
-                    className="flex size-9 items-center justify-center rounded-lg bg-gradient-to-tr from-amber-500 to-indigo-600 text-white font-bold text-xs shrink-0"
+                    className="flex size-9 items-center justify-center rounded-lg bg-gradient-to-tr from-amber-500 to-orange-600 text-white font-bold text-xs shrink-0"
                   >
                     <Crown className="size-4.5" />
                   </div>
                 )}
-                <div className={`flex flex-col min-w-0 leading-tight ${isSidebarCollapsed ? "lg:hidden" : ""}`}>
+                <div className={`flex flex-col min-w-0 leading-tight ${isSidebarCollapsed ? "lg:sr-only" : ""}`}>
                   <span className="font-bold tracking-tight text-xs truncate text-slate-900 dark:text-white">
                     {storeConfig.name}
                   </span>
-                  <span className="text-[9px] font-bold tracking-wider uppercase text-amber-500">
+                  <span className="text-xs font-bold tracking-wider uppercase text-amber-800 dark:text-amber-400">
                     👑 Super Admin
                   </span>
                 </div>
@@ -311,22 +344,20 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                   <img
                     src={storeConfig.logoUrl}
                     alt=""
-                    title={isSidebarCollapsed ? `${storeConfig.name} (Panel de Control)` : undefined}
                     className="size-9 rounded-xl object-cover border border-indigo-500/30 shrink-0 shadow-xs"
                   />
                 ) : (
                   <div
-                    title={isSidebarCollapsed ? `${storeConfig.name} (Panel de Control)` : undefined}
-                    className="flex size-9 items-center justify-center rounded-xl bg-orange-500 text-white font-bold text-xs shrink-0 shadow-xs"
+                    className="flex size-9 items-center justify-center rounded-xl bg-orange-700 text-white font-bold text-xs shrink-0 shadow-xs"
                   >
                     <Store className="size-4.5" />
                   </div>
                 )}
-                <div className={`flex flex-col min-w-0 leading-tight ${isSidebarCollapsed ? "lg:hidden" : ""}`}>
+                <div className={`flex flex-col min-w-0 leading-tight ${isSidebarCollapsed ? "lg:sr-only" : ""}`}>
                   <span className="font-bold tracking-tight text-xs truncate text-slate-900 dark:text-white">
                     {storeConfig.name}
                   </span>
-                  <span className="text-[9px] font-semibold tracking-wider uppercase text-orange-600 dark:text-orange-400">
+                  <span className="text-xs font-semibold tracking-wider uppercase text-orange-800 dark:text-orange-400">
                     Panel de Control
                   </span>
                 </div>
@@ -338,7 +369,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
               type="button"
               aria-label="Cerrar menú"
               onClick={() => setIsMobileSidebarOpen(false)}
-              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 lg:hidden cursor-pointer"
+              className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 lg:hidden cursor-pointer"
             >
               <X className="size-5" />
             </button>
@@ -356,7 +387,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
           {/* Navigation Links */}
           <nav className="flex-1 min-h-0 space-y-1 p-2 overflow-y-auto overscroll-contain" aria-label="Menú Lateral">
-            <div className={`px-2 pb-1 text-[9px] font-bold uppercase tracking-wider text-slate-400 ${isSidebarCollapsed ? "lg:hidden" : ""}`}>
+            <div className={`px-2 pb-1 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 ${isSidebarCollapsed ? "lg:hidden" : ""}`}>
               {isSuperGlobalMode ? "Módulos SaaS Global" : "Módulos del Restaurante"}
             </div>
 
@@ -365,10 +396,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
               const isActive = adminTab === item.id
 
               return (
+                <Tooltip key={item.id} content={item.label} side="right" disabled={!isSidebarCollapsed}>
                 <button
-                  key={item.id}
                   type="button"
-                  title={item.label}
                   aria-label={item.label}
                   onClick={() => {
                     navigateTo(`/admin/${item.id}`)
@@ -401,20 +431,21 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
                   {item.badge !== undefined && (
                     <span
-                      className={`ml-1.5 shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                      className={`ml-1.5 shrink-0 rounded-full px-1.5 py-0.5 text-xs font-bold ${
                         isSidebarCollapsed
-                          ? "lg:absolute lg:-top-1 lg:-right-1 lg:flex lg:h-4 lg:min-w-4 lg:items-center lg:justify-center lg:bg-rose-500 lg:px-1 lg:text-[9px] lg:text-white lg:shadow-xs"
+                          ? "lg:absolute lg:-top-1 lg:-right-1 lg:flex lg:h-4 lg:min-w-4 lg:items-center lg:justify-center lg:bg-rose-500 lg:px-1 lg:text-xs lg:text-white lg:shadow-xs"
                           : ""
                       } ${
                         isActive
-                          ? "bg-white/20 text-white"
-                          : "bg-indigo-500/15 text-indigo-500 dark:bg-indigo-500/20 dark:text-indigo-300"
+                          ? "bg-white/10 text-white"
+                          : "bg-indigo-500/15 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300"
                       }`}
                     >
                       {item.badge}
                     </span>
                   )}
                 </button>
+                </Tooltip>
               )
             })}
           </nav>
@@ -432,7 +463,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                   navigateTo("/admin/restaurants")
                   setIsMobileSidebarOpen(false)
                 }}
-                className={`flex items-center rounded-xl border border-amber-500/40 bg-amber-500/10 font-bold text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 active:scale-95 transition-all shadow-xs cursor-pointer ${
+                className={`flex items-center rounded-xl border border-amber-500/40 bg-amber-500/10 font-bold text-amber-800 dark:text-amber-300 hover:bg-amber-500/20 active:scale-95 transition-all shadow-xs cursor-pointer ${
                   isSidebarCollapsed
                     ? "lg:size-10 lg:mx-auto lg:justify-center w-full justify-center gap-2 py-2.5 text-xs"
                     : "w-full justify-center gap-2 py-2.5 text-xs"
@@ -470,7 +501,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 title="Cambiar Contraseña"
                 aria-label="Cambiar Contraseña"
                 onClick={() => setIsChangePasswordOpen(true)}
-                className={`flex items-center justify-center rounded-xl text-slate-400 hover:bg-indigo-500/10 hover:text-indigo-500 dark:hover:text-indigo-400 active:scale-95 transition-all cursor-pointer ${
+                className={`pointer-coarse:min-h-11 flex items-center justify-center rounded-xl text-slate-500 dark:text-slate-400 hover:bg-indigo-500/10 hover:text-indigo-500 dark:hover:text-indigo-400 active:scale-95 transition-all cursor-pointer ${
                   isSidebarCollapsed
                     ? "lg:size-10 lg:mx-auto w-full gap-1.5 py-1.5 text-xs font-semibold"
                     : "w-full gap-1.5 py-1.5 text-xs font-semibold"
@@ -491,7 +522,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                   logout()
                   navigateTo("/")
                 }}
-                className={`flex items-center justify-center rounded-xl text-slate-400 hover:bg-rose-500/10 hover:text-rose-500 active:scale-95 transition-all cursor-pointer ${
+                className={`pointer-coarse:min-h-11 flex items-center justify-center rounded-xl text-slate-500 dark:text-slate-400 hover:bg-rose-500/10 hover:text-rose-500 active:scale-95 transition-all cursor-pointer ${
                   isSidebarCollapsed
                     ? "lg:size-10 lg:mx-auto w-full gap-1.5 py-1.5 text-xs font-semibold"
                     : "w-full gap-1.5 py-1.5 text-xs font-semibold"
@@ -525,7 +556,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
               <button
                 type="button"
                 onClick={() => setIsMobileSidebarOpen(true)}
-                className="rounded-xl border p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 lg:hidden cursor-pointer"
+                aria-expanded={isMobileSidebarOpen}
+                aria-controls="admin-sidebar"
+                className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-xl border p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 lg:hidden cursor-pointer"
                 aria-label="Abrir menú"
               >
                 <MenuIcon className="size-5" />
@@ -551,7 +584,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 <span className="font-semibold text-slate-500 dark:text-slate-400 hidden sm:inline truncate">
                   {isSuperGlobalMode ? "SaaS Platform" : storeConfig.name}
                 </span>
-                <ChevronRight className="size-3.5 text-slate-400 hidden sm:inline shrink-0" />
+                <ChevronRight className="size-3.5 text-slate-500 dark:text-slate-400 hidden sm:inline shrink-0" />
                 <span className="font-bold text-slate-900 dark:text-white truncate">
                   {activeItem.label}
                 </span>
@@ -563,8 +596,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
               {/* Context Banner & Return button for Super Admin in Tenant Mode */}
               {isSuperTenantMode && (
                 <div className="flex items-center gap-2">
-                  <div className="hidden xl:flex items-center gap-2 rounded-xl bg-amber-500/10 border border-amber-500/30 px-3 py-1.5 text-xs text-amber-700 dark:text-amber-300 font-semibold shadow-xs">
-                    <Crown className="size-3.5 text-amber-500 shrink-0" />
+                  <div className="hidden xl:flex items-center gap-2 rounded-xl bg-amber-500/10 border border-amber-500/30 px-3 py-1.5 text-xs text-amber-800 dark:text-amber-300 font-semibold shadow-xs">
+                    <Crown className="size-3.5 text-amber-800 dark:text-amber-400 shrink-0" />
                     <span>Modo Super Admin: <strong>{activeRestaurant.config.name}</strong></span>
                   </div>
 
@@ -576,7 +609,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                       switchRestaurant("")
                       navigateTo("/admin/restaurants")
                     }}
-                    className="flex items-center gap-1.5 rounded-xl border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 font-bold text-xs cursor-pointer shadow-xs"
+                    className="flex items-center gap-1.5 rounded-xl border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300 hover:bg-amber-500/20 font-bold text-xs cursor-pointer shadow-xs"
                   >
                     <ArrowLeft className="size-3.5" />
                     <span className="hidden sm:inline">Volver al Panel Super Admin</span>
@@ -598,9 +631,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                   }`}
                 >
                   {soundEnabled ? (
-                    <Volume2 className="size-4 text-emerald-500" />
+                    <Volume2 className="size-4 text-emerald-700 dark:text-emerald-400" />
                   ) : (
-                    <VolumeX className="size-4 text-slate-400" />
+                    <VolumeX className="size-4 text-slate-500 dark:text-slate-400" />
                   )}
                 </button>
               )}
@@ -610,7 +643,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 type="button"
                 onClick={toggleAdminTheme}
                 title={`Cambiar a modo ${isDark ? "claro" : "oscuro"}`}
-                className={`inline-flex size-9 items-center justify-center rounded-xl border transition-all ${
+                className={`pointer-coarse:min-h-11 pointer-coarse:min-w-11 inline-flex size-9 items-center justify-center rounded-xl border transition-all ${
                   isDark
                     ? "border-slate-800 bg-slate-900 text-amber-400 hover:bg-slate-800"
                     : "border-slate-200 bg-slate-50 text-indigo-600 hover:bg-slate-100"
@@ -655,7 +688,11 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           </header>
 
           {/* Content Body */}
-          <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+          <main id="main-content" tabIndex={-1} className="flex-1 focus:outline-none overflow-y-auto p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+            {/* Dashboard and Reports render their own visible h1; every other view gets one here. */}
+            {adminTab !== "dashboard" && adminTab !== "reports" && (
+              <h1 className="sr-only">{activeItem.label}</h1>
+            )}
             <Suspense fallback={<AdminContentFallback isDark={isDark} />}>
               {children}
             </Suspense>

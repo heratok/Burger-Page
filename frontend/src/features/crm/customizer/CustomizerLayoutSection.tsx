@@ -16,14 +16,14 @@ export const CustomizerLayoutSection: React.FC<CustomizerLayoutSectionProps> = (
 }) => {
   return (
     <div
-      className={`rounded-2xl border p-5 shadow-xs space-y-5 text-xs ${
+      className={`rounded-2xl border p-5 shadow-xs space-y-5 text-sm ${
         isDark ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-white"
       }`}
     >
       {/* Typography Selector */}
       <div>
         <div className="flex items-center gap-1.5 mb-1">
-          <Type className="size-4 text-indigo-500" />
+          <Type className="size-4 text-indigo-600 dark:text-indigo-400" />
           <h3 className="font-bold text-sm text-slate-900 dark:text-white">
             Tipografía de la Carta
           </h3>
@@ -49,10 +49,10 @@ export const CustomizerLayoutSection: React.FC<CustomizerLayoutSectionProps> = (
                   : "border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
               }`}
             >
-              <span className={`block text-xs font-bold ${font.fontClass}`}>
+              <span className={`block text-sm font-bold ${font.fontClass}`}>
                 {font.name}
               </span>
-              <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 block">
+              <span className="text-sm text-slate-500 dark:text-slate-400 mt-0.5 block">
                 {font.desc}
               </span>
             </button>
@@ -83,7 +83,7 @@ export const CustomizerLayoutSection: React.FC<CustomizerLayoutSectionProps> = (
               }`}
             >
               <span className="block font-semibold">{st.name}</span>
-              <span className="text-[10px] text-slate-500 dark:text-slate-400">{st.desc}</span>
+              <span className="text-sm text-slate-500 dark:text-slate-400">{st.desc}</span>
             </button>
           ))}
         </div>
@@ -103,7 +103,7 @@ export const CustomizerLayoutSection: React.FC<CustomizerLayoutSectionProps> = (
               key={r.id}
               type="button"
               onClick={() => setDraft((prev) => ({ ...prev, cardRadius: r.id as CardRadius }))}
-              className={`rounded-xl border py-2 text-xs transition-all cursor-pointer ${
+              className={`pointer-coarse:min-h-11 rounded-xl border py-2 text-xs transition-all cursor-pointer ${
                 draft.cardRadius === r.id
                   ? "border-indigo-600 bg-indigo-50/10 font-bold text-indigo-600 dark:text-indigo-400"
                   : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"

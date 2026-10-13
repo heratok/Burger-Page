@@ -19,9 +19,9 @@ import { useStoreOpenStatus } from "@/hooks/useStoreOpenStatus"
 import { useStoreStatusRefresh } from "@/hooks/useStoreStatusRefresh"
 import { closedMessage } from "@/lib/storeSchedule"
 import { useTenant, useCatalog } from "@/context/RestaurantContext"
-import { getFontFamilyClass, getStoreThemeStyles } from "@/features/crm/utils/customizerStyles"
-import { getContrastForeground } from "@/lib/utils"
+import { getFontFamilyClass, getStoreThemeStyles, getBrandTokens } from "@/features/crm/utils/customizerStyles"
 import { useHorizontalScroll } from "@/hooks/useHorizontalScroll"
+import { scrollBehavior } from "@/lib/motion"
 
 export default function Home() {
   const { activeRestaurant, refreshStoreStatus } = useTenant()
@@ -95,14 +95,14 @@ export default function Home() {
     }
     const activeBtn = pillRefs.current.get(cat)
     if (activeBtn && typeof activeBtn.scrollIntoView === "function") {
-      activeBtn.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" })
+      activeBtn.scrollIntoView({ behavior: scrollBehavior(), inline: "center", block: "nearest" })
     }
     const targetSection =
       cat === "ALL"
         ? document.getElementById("storefront-catalog")
         : document.getElementById(`category-section-${encodeURIComponent(cat)}`)
     if (targetSection && typeof targetSection.scrollIntoView === "function") {
-      targetSection.scrollIntoView({ behavior: "smooth", block: "start" })
+      targetSection.scrollIntoView({ behavior: scrollBehavior(), block: "start" })
     }
   }
 
@@ -231,7 +231,8 @@ export default function Home() {
   const showFullScreen = isCartOpen || isCheckoutOpen
   const showMobileBar = cartItems.length > 0 && !showFullScreen
 
-  const primaryForeground = getContrastForeground(storeConfig.primaryColor)
+  const brand = getBrandTokens(storeConfig.primaryColor, storeConfig.bgTheme)
+  const primaryForeground = brand.onFill
   const themeStyles = getStoreThemeStyles(storeConfig.bgTheme, storeConfig.primaryColor)
   const fontClass = getFontFamilyClass(storeConfig.fontFamily)
 
@@ -247,10 +248,6 @@ export default function Home() {
         onGoToMenu={handleCloseCart}
       />
 
-      <a id="main" className="sr-only" tabIndex={-1}>
-        Inicio del contenido principal
-      </a>
-
       {/* Hero Banner if Enabled */}
       {!showFullScreen && storeConfig.showBanner && storeConfig.bannerUrl && (
         <div className="relative h-48 sm:h-64 md:h-72 w-full overflow-hidden">
@@ -263,7 +260,7 @@ export default function Home() {
             <div className="mx-auto max-w-(--container) w-full px-4 pb-6 md:px-6 lg:px-8">
               <span
                 style={{
-                  backgroundColor: storeConfig.primaryColor,
+                  backgroundColor: brand.fill,
                   color: primaryForeground,
                 }}
                 className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-black shadow-md uppercase tracking-wider mb-2"
@@ -274,7 +271,7 @@ export default function Home() {
               <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-white drop-shadow-md">
                 {storeConfig.name}
               </h1>
-              <p className="mt-1 text-xs sm:text-sm text-slate-200 max-w-xl line-clamp-2">
+              <p className="mt-1 text-sm text-slate-200 max-w-xl line-clamp-2">
                 {storeConfig.tagline} &middot; {storeConfig.estimatedDeliveryTime}
               </p>
             </div>
@@ -283,7 +280,9 @@ export default function Home() {
       )}
 
       <main
-        className={`mx-auto max-w-(--container) px-4 pt-6 md:px-6 lg:px-8 ${
+        id="main-content"
+        tabIndex={-1}
+        className={`mx-auto max-w-(--container) focus:outline-none px-4 pt-6 md:px-6 lg:px-8 ${
           showMobileBar ? "pb-44 sm:pb-6" : "pb-12"
         }`}
       >
@@ -355,7 +354,7 @@ export default function Home() {
                         backgroundColor: "var(--color-bg-elevated)",
                         borderColor: "var(--color-border-subtle)",
                       }}
-                      className="absolute left-0 z-30 flex size-6.5 -translate-x-1 sm:-translate-x-2 items-center justify-center rounded-full bg-bg-elevated shadow-md border border-border-subtle text-text-primary hover:bg-bg-elevated-2 transition-all cursor-pointer"
+                      className="absolute left-0 z-30 flex size-6.5 pointer-coarse:size-11 -translate-x-1 sm:-translate-x-2 items-center justify-center rounded-full bg-bg-elevated shadow-md border border-border-subtle text-text-primary hover:bg-bg-elevated-2 transition-all cursor-pointer"
                       aria-label="Desplazar categorías hacia la izquierda"
                     >
                       <ChevronLeft className="size-3.5" />
@@ -369,7 +368,7 @@ export default function Home() {
                     onMouseUp={handleMouseUp}
                     onMouseLeave={handleMouseUp}
                     onWheel={handleWheel}
-                    className="flex flex-1 items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth select-none cursor-grab active:cursor-grabbing py-0.5"
+                    className="flex flex-1 items-center gap-1.5 overflow-x-auto scroll-px-10 no-scrollbar scroll-smooth select-none cursor-grab active:cursor-grabbing py-0.5"
                     aria-label="Categorías del menú"
                   >
                     <button
@@ -381,13 +380,13 @@ export default function Home() {
                       style={
                         selectedCategory === "ALL"
                           ? {
-                              backgroundColor: storeConfig.primaryColor,
+                              backgroundColor: brand.fill,
                               color: primaryForeground,
-                              borderColor: storeConfig.primaryColor,
+                              borderColor: brand.fill,
                             }
                           : undefined
                       }
-                      className={`shrink-0 whitespace-nowrap rounded-full px-4 py-1.5 text-xs font-bold transition-all ${
+                      className={`shrink-0 whitespace-nowrap rounded-full px-4 py-1.5 pointer-coarse:min-h-11 text-xs font-bold transition-all ${
                         selectedCategory === "ALL"
                           ? "shadow-sm"
                           : "border border-border-subtle bg-bg-elevated text-text-primary hover:bg-bg-elevated-2 hover:border-border-strong"
@@ -406,13 +405,13 @@ export default function Home() {
                         style={
                           selectedCategory === cat
                             ? {
-                                backgroundColor: storeConfig.primaryColor,
+                                backgroundColor: brand.fill,
                                 color: primaryForeground,
-                                borderColor: storeConfig.primaryColor,
+                                borderColor: brand.fill,
                               }
                             : undefined
                         }
-                        className={`shrink-0 whitespace-nowrap rounded-full px-4 py-1.5 text-xs font-bold transition-all ${
+                        className={`shrink-0 whitespace-nowrap rounded-full px-4 py-1.5 pointer-coarse:min-h-11 text-xs font-bold transition-all ${
                           selectedCategory === cat
                             ? "shadow-sm"
                             : "border border-border-subtle bg-bg-elevated text-text-primary hover:bg-bg-elevated-2 hover:border-border-strong"
@@ -431,7 +430,7 @@ export default function Home() {
                         backgroundColor: "var(--color-bg-elevated)",
                         borderColor: "var(--color-border-subtle)",
                       }}
-                      className="absolute right-0 z-30 flex size-6.5 translate-x-1 sm:translate-x-2 items-center justify-center rounded-full bg-bg-elevated shadow-md border border-border-subtle text-text-primary hover:bg-bg-elevated-2 transition-all cursor-pointer"
+                      className="absolute right-0 z-30 flex size-6.5 pointer-coarse:size-11 translate-x-1 sm:translate-x-2 items-center justify-center rounded-full bg-bg-elevated shadow-md border border-border-subtle text-text-primary hover:bg-bg-elevated-2 transition-all cursor-pointer"
                       aria-label="Desplazar categorías hacia la derecha"
                     >
                       <ChevronRight className="size-3.5" />
@@ -452,14 +451,14 @@ export default function Home() {
                     <section
                       key={category}
                       id={`category-section-${encodeURIComponent(category)}`}
-                      className="scroll-mt-32 sm:scroll-mt-36 space-y-3 sm:space-y-4"
+                      className="space-y-3 sm:space-y-4"
                     >
                       <button
                         type="button"
                         onClick={() => toggleCategoryCollapse(category)}
                         aria-expanded={!isCollapsed}
                         aria-controls={sectionContentId}
-                        className="group/header flex w-full cursor-pointer items-center justify-between border-b border-border-subtle pb-2 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 rounded-lg"
+                        className="group/header flex w-full cursor-pointer items-center justify-between pointer-coarse:min-h-11 border-b border-border-subtle pb-2 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 rounded-lg"
                       >
                         <div className="flex items-center gap-2">
                           <h2
@@ -479,8 +478,8 @@ export default function Home() {
                             {items.length}
                           </span>
                         </div>
-                        <div className="flex items-center gap-1.5 text-xs text-text-muted">
-                          <span className="hidden sm:inline font-medium text-[11px] opacity-75">
+                        <div className="flex items-center gap-1.5 text-sm text-text-muted">
+                          <span className="hidden sm:inline font-medium text-sm">
                             {isCollapsed ? "Mostrar" : "Minimizar"}
                           </span>
                           <span

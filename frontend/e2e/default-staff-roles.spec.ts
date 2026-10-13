@@ -230,7 +230,7 @@ test.describe('E2E: Default Staff Roles & Empty State Flow', () => {
     const credsModal = page.locator('div.fixed').filter({ hasText: /Credenciales de Acceso/i });
     await expect(credsModal).toBeVisible({ timeout: 10000 });
     await expect(credsModal.getByText(STAFF_USER)).toBeVisible();
-    await credsModal.getByRole('button', { name: /Cerrar/i }).click();
+    await credsModal.getByRole('button', { name: 'Cerrar', exact: true }).click();
 
     // Verify user appears in Team list
     await expect(page.locator('table').getByText(STAFF_USER)).toBeVisible({ timeout: 10000 });

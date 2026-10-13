@@ -34,13 +34,13 @@ export const CustomizerPresetsSection: React.FC<CustomizerPresetsSectionProps> =
 
   return (
     <div
-      className={`rounded-2xl border p-5 shadow-xs space-y-4 text-xs ${
+      className={`rounded-2xl border p-5 shadow-xs space-y-4 text-sm ${
         isDark ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-white"
       }`}
     >
       <div>
         <div className="flex items-center gap-2">
-          <Sparkles className="size-4 text-amber-500" />
+          <Sparkles className="size-4 text-amber-800 dark:text-amber-400" />
           <h3 className="font-bold text-sm text-slate-900 dark:text-white">
             Estilos Listos en 1 Clic
           </h3>
@@ -83,22 +83,22 @@ export const CustomizerPresetsSection: React.FC<CustomizerPresetsSectionProps> =
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-slate-900 dark:text-white text-xs">
+                    <span className="font-bold text-slate-900 dark:text-white text-sm">
                       {tpl.name}
                     </span>
                     {isMatching && (
-                      <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[9px] font-bold text-emerald-600 dark:text-emerald-400">
+                      <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-bold text-emerald-700 dark:text-emerald-400">
                         Activo
                       </span>
                     )}
                   </div>
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400 block truncate">
+                  <span className="text-sm text-slate-600 dark:text-slate-400 block truncate">
                     {tpl.tagline}
                   </span>
                 </div>
               </div>
 
-              <div className="flex items-center gap-1 text-[10px] font-semibold text-slate-400 shrink-0">
+              <div className="flex items-center gap-1 text-sm font-semibold text-slate-600 dark:text-slate-400 shrink-0">
                 <span className="uppercase tracking-wider font-mono">{tpl.fontFamily}</span>
               </div>
             </button>

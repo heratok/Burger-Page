@@ -10,14 +10,14 @@ export const AdminLoadingFallback: React.FC = () => {
   return (
     <div className="min-h-screen w-full bg-[#0B0F19] text-slate-100 flex flex-col items-center justify-center p-6">
       <div className="flex flex-col items-center gap-4 text-center max-w-xs animate-in fade-in duration-200">
-        <div className="flex size-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 text-white shadow-xl shadow-indigo-600/30">
+        <div className="flex size-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-orange-600 to-amber-500 text-white shadow-xl shadow-orange-600/30">
           <ShieldCheck className="size-7 animate-pulse" />
         </div>
         <div className="space-y-1">
           <h3 className="text-sm font-bold text-white tracking-wide">Cargando Panel Administrativo</h3>
-          <p className="text-xs text-slate-400">Verificando credenciales y sesión...</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Verificando credenciales y sesión...</p>
         </div>
-        <Loader2 className="size-5 text-indigo-500 animate-spin mt-2" />
+        <Loader2 className="size-5 text-indigo-600 dark:text-indigo-400 animate-spin mt-2" />
       </div>
     </div>
   )
@@ -33,7 +33,7 @@ export const LandingLoadingFallback: React.FC = () => {
         <div className="flex size-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-orange-500 to-amber-500 text-white shadow-xl shadow-orange-500/20">
           <Sparkles className="size-6 animate-pulse" />
         </div>
-        <Loader2 className="size-5 text-orange-500 animate-spin mt-2" />
+        <Loader2 className="size-5 text-orange-800 dark:text-orange-400 animate-spin mt-2" />
       </div>
     </div>
   )

@@ -30,6 +30,9 @@ export const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
   confirmText = "Eliminar definitivamente",
   cancelText = "Cancelar",
 }) => {
+  // Destructive confirmation: start on the least destructive action.
+  const cancelRef = React.useRef<HTMLButtonElement>(null)
+
   if (!isOpen) return null
 
   const handleConfirm = () => {
@@ -41,6 +44,7 @@ export const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
         showCloseButton={false}
+        initialFocus={cancelRef}
         className="fixed top-1/2 left-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0E1322] p-6 shadow-2xl text-slate-900 dark:text-slate-100"
       >
         <div className="flex items-start gap-4">
@@ -53,7 +57,7 @@ export const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
               <DialogTitle className="text-lg font-black text-slate-900 dark:text-white">
                 {title}
               </DialogTitle>
-              <DialogDescription className="mt-1.5 text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+              <DialogDescription className="mt-1.5 text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
                 {description || (
                   <>
                     ¿Estás seguro de que deseas eliminar{" "}
@@ -68,6 +72,7 @@ export const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
 
         <div className="mt-6 flex flex-col sm:flex-row items-center justify-end gap-2.5">
           <Button
+            ref={cancelRef}
             type="button"
             variant="outline"
             onClick={onClose}

@@ -42,7 +42,8 @@ import { cartItemToOrderItem, type CartItem } from "./cartEngine"
 import { useCatalog, useRestaurant } from "@/context/RestaurantContext"
 import { useStoreOpenStatus } from "@/hooks/useStoreOpenStatus"
 import { closedMessage } from "@/lib/storeSchedule"
-import { formatCurrency, getContrastForeground } from "@/lib/utils"
+import { formatCurrency } from "@/lib/utils"
+import { getBrandTokens } from "@/features/crm/utils/customizerStyles"
 
 const PENDING_TAB_HTML =
   "<!doctype html><title>Preparando tu pedido…</title><p style=\"font-family:sans-serif;text-align:center;margin-top:3rem\">Preparando tu pedido…</p>"
@@ -60,7 +61,8 @@ export interface CheckoutFormProps {
 
 export default function CheckoutForm({ onClose, onBackToCart, cartItems }: CheckoutFormProps) {
   const { storeConfig, addOrder } = useRestaurant()
-  const primaryForeground = getContrastForeground(storeConfig.primaryColor)
+  const brand = getBrandTokens(storeConfig.primaryColor, storeConfig.bgTheme)
+  const primaryForeground = brand.onFill
   const {
     register,
     handleSubmit,
@@ -247,11 +249,12 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
                 autoComplete="name"
                 maxLength={LIMITS.nombre.max}
                 aria-invalid={!!errors.nombre}
+                aria-describedby={errors.nombre ? "nombre-error" : undefined}
                 {...register("nombre")}
               />
             </InputGroup>
             {errors.nombre && (
-              <FieldError className="flex items-start gap-1.5">
+              <FieldError id="nombre-error" className="flex items-start gap-1.5">
                 <CircleAlert className="mt-0.5 size-3.5 shrink-0" data-icon="inline-start" aria-hidden="true" />
                 {errors.nombre.message}
               </FieldError>
@@ -274,11 +277,12 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
                 autoComplete="tel"
                 maxLength={LIMITS.telefono.max}
                 aria-invalid={!!errors.telefono}
+                aria-describedby={errors.telefono ? "telefono-error" : undefined}
                 {...register("telefono")}
               />
             </InputGroup>
             {errors.telefono && (
-              <FieldError className="flex items-start gap-1.5">
+              <FieldError id="telefono-error" className="flex items-start gap-1.5">
                 <CircleAlert className="mt-0.5 size-3.5 shrink-0" data-icon="inline-start" aria-hidden="true" />
                 {errors.telefono.message}
               </FieldError>
@@ -301,11 +305,12 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
                   autoComplete="street-address"
                   maxLength={LIMITS.dir.max}
                   aria-invalid={!!errors.dir}
+                aria-describedby={errors.dir ? "dir-error" : undefined}
                   {...register("dir")}
                 />
               </InputGroup>
               {errors.dir && (
-                <FieldError className="flex items-start gap-1.5">
+                <FieldError id="dir-error" className="flex items-start gap-1.5">
                   <CircleAlert className="mt-0.5 size-3.5 shrink-0" data-icon="inline-start" aria-hidden="true" />
                   {errors.dir.message}
                 </FieldError>
@@ -327,11 +332,12 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
                 autoComplete="address-level3"
                 maxLength={LIMITS.barrio.max}
                 aria-invalid={!!errors.barrio}
+                aria-describedby={errors.barrio ? "barrio-error" : undefined}
                 {...register("barrio")}
               />
               </InputGroup>
               {errors.barrio && (
-                <FieldError className="flex items-start gap-1.5">
+                <FieldError id="barrio-error" className="flex items-start gap-1.5">
                   <CircleAlert className="mt-0.5 size-3.5 shrink-0" data-icon="inline-start" aria-hidden="true" />
                   {errors.barrio.message}
                 </FieldError>
@@ -363,14 +369,14 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
                     <RadioGroupItem value={value} id={`metodo-${value}`} className="sr-only" />
                     <span
                       aria-hidden="true"
-                      style={active ? { backgroundColor: storeConfig.primaryColor, color: primaryForeground } : undefined}
+                      style={active ? { backgroundColor: brand.fill, color: primaryForeground } : undefined}
                       className={`inline-flex size-9 shrink-0 items-center justify-center rounded-full ${
                         active ? "shadow-xs" : "bg-bg-elevated-2 text-text-muted"
                       }`}
                     >
                       <Icon className="size-4" />
                     </span>
-                    <span className="text-sm font-semibold text-text-primary truncate">{value}</span>
+                    <span className="text-sm font-semibold text-text-primary min-w-0 break-words">{value}</span>
                   </Label>
                 )
               })}
@@ -427,9 +433,9 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
         {closedReason && (
           <div
             role="alert"
-            className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-sm font-medium text-amber-700 dark:text-amber-300"
+            className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-sm font-medium text-[color:var(--status-warning-text,#92400e)]"
           >
-            <CircleAlert className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+            <CircleAlert className="size-4 shrink-0 text-[color:var(--status-warning-text,#92400e)]" />
             <span>{closedMessage(closedReason)}</span>
           </div>
         )}
@@ -437,9 +443,9 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
         {isBelowMinOrder && (
           <div
             role="alert"
-            className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-sm font-medium text-amber-700 dark:text-amber-300"
+            className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-sm font-medium text-[color:var(--status-warning-text,#92400e)]"
           >
-            <CircleAlert className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+            <CircleAlert className="size-4 shrink-0 text-[color:var(--status-warning-text,#92400e)]" />
             <span>
               El pedido mínimo es de {formatCurrency(minOrderAmount)} (faltan {formatCurrency(amountNeeded)}).
             </span>
@@ -453,8 +459,8 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
             aria-busy={isSubmitting}
             variant="default"
             size="lg"
-            style={{ backgroundColor: storeConfig.primaryColor, color: primaryForeground }}
-            className="h-12 flex-1 text-base font-bold shadow-md cursor-pointer hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ backgroundColor: brand.fill, color: primaryForeground }}
+            className="h-12 flex-1 text-base font-bold shadow-md cursor-pointer hover:brightness-95 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Send data-icon="inline-start" />
             {isSubmitting ? "Enviando pedido..." : "Enviar pedido por WhatsApp"}
@@ -489,6 +495,7 @@ interface FormSummaryProps {
 
 function FormSummary({ cartItems, subtotal, deliveryFee, total }: FormSummaryProps) {
   const { storeConfig } = useCatalog()
+  const brand = getBrandTokens(storeConfig.primaryColor, storeConfig.bgTheme)
   const [open, setOpen] = useState(true)
 
   return (
@@ -504,7 +511,7 @@ function FormSummary({ cartItems, subtotal, deliveryFee, total }: FormSummaryPro
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-controls="order-summary"
-        className="flex w-full items-center justify-between px-4 py-3 text-left transition duration-150 ease-out focus:outline-none focus-visible:focus-ring cursor-pointer"
+        className="flex w-full items-center justify-between px-4 py-3 text-left transition duration-150 ease-out focus-ring cursor-pointer"
       >
         <span
           style={{ color: "var(--color-text-primary)" }}
@@ -515,7 +522,7 @@ function FormSummary({ cartItems, subtotal, deliveryFee, total }: FormSummaryPro
         </span>
         <span className="flex items-center gap-3">
           <span
-            style={{ color: storeConfig.primaryColor }}
+            style={{ color: brand.text }}
             className="text-base font-black"
           >
             {formatCurrency(total)}
@@ -535,7 +542,7 @@ function FormSummary({ cartItems, subtotal, deliveryFee, total }: FormSummaryPro
               style={{ color: "var(--color-text-secondary)" }}
               className="flex items-center justify-between text-sm"
             >
-              <span className="truncate">
+              <span className="min-w-0 break-words">
                 {item.cantidad}× {item.name}
               </span>
               <span
@@ -569,7 +576,7 @@ function FormSummary({ cartItems, subtotal, deliveryFee, total }: FormSummaryPro
           <li className="flex items-center justify-between pt-1 text-sm font-black">
             <span style={{ color: "var(--color-text-primary)" }}>Total</span>
             <span
-              style={{ color: storeConfig.primaryColor }}
+              style={{ color: brand.text }}
               className="ml-3 shrink-0 text-base"
             >
               {formatCurrency(total)}

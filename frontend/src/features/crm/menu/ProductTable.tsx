@@ -26,9 +26,9 @@ export const ProductTable: React.FC<ProductTableProps> = ({
         isDark ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-white"
       }`}
     >
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs">
-        <thead>
+      <div role="region" aria-label="Tabla de productos" tabIndex={0} className="overflow-x-auto">
+        <table className="w-full text-left text-sm">
+        <thead className="text-xs">
           <tr className={`border-b ${isDark ? "border-slate-800 text-slate-400" : "border-slate-100 text-slate-500"}`}>
             <th className="py-3 px-4 font-semibold">Producto</th>
             <th className="py-3 px-4 font-semibold">Categoría</th>
@@ -56,14 +56,14 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                   />
                   <div>
                     <div className="font-bold text-slate-900 dark:text-white">{prod.name}</div>
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1 max-w-xs">
+                    <div className="text-sm text-slate-500 dark:text-slate-400 line-clamp-1 max-w-xs">
                       {prod.description}
                     </div>
                   </div>
                 </div>
               </td>
               <td className="py-3 px-4">
-                <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300 border dark:border-slate-700">
+                <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300 border dark:border-slate-700">
                   {prod.category}
                 </span>
               </td>
@@ -73,12 +73,12 @@ export const ProductTable: React.FC<ProductTableProps> = ({
               <td className="py-3 px-4">
                 <div className="flex gap-1">
                   {prod.isPopular && (
-                    <span className="rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400 border dark:border-amber-500/30">
+                    <span className="rounded bg-amber-500/10 px-1.5 py-0.5 text-xs font-bold text-amber-800 dark:text-amber-400 border dark:border-amber-500/30">
                       Popular
                     </span>
                   )}
                   {prod.isNew && (
-                    <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 border dark:border-emerald-500/30">
+                    <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-xs font-bold text-emerald-700 dark:text-emerald-400 border dark:border-emerald-500/30">
                       Nuevo
                     </span>
                   )}
@@ -93,17 +93,19 @@ export const ProductTable: React.FC<ProductTableProps> = ({
               </td>
               <td className="py-3 px-4 text-right">
                 <button
+                  aria-label={`Editar plato ${prod.name}`}
                   type="button"
                   onClick={() => onEditProduct(prod)}
-                  className="mr-1 rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-indigo-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-indigo-300 cursor-pointer"
+                  className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 mr-1 rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-indigo-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-indigo-300 cursor-pointer"
                   title="Editar plato"
                 >
                   <Edit2 className="size-4" />
                 </button>
                 <button
+                  aria-label={`Eliminar plato ${prod.name}`}
                   type="button"
                   onClick={() => onDeleteProduct(prod)}
-                  className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-rose-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-rose-400 cursor-pointer"
+                  className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-rose-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-rose-400 cursor-pointer"
                   title="Eliminar plato"
                 >
                   <Trash2 className="size-4" />

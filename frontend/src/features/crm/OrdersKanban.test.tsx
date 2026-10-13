@@ -46,7 +46,7 @@ describe("OrdersKanban Component (TDD Tests)", () => {
 
     expect(screen.getByText(/¡Cocina al día! No hay comandas pendientes/i)).toBeDefined()
 
-    const select = screen.getByLabelText(/Filtrar por método de pago/i)
+    const select = screen.getByLabelText(/Filtrar por método de pago/i, { selector: "select" })
     fireEvent.change(select, { target: { value: "Efectivo" } })
     expect(select).toBeDefined()
   })

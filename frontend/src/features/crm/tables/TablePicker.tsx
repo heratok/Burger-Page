@@ -89,26 +89,26 @@ export function TablePicker({
   }
 
   const tableButtonClass = (selected: boolean) => {
-    if (selected) return "border-orange-500 bg-orange-500 text-white shadow-md shadow-orange-500/25"
+    if (selected) return "border-orange-500 bg-orange-700 text-white shadow-md shadow-orange-500/25"
     return isDark
       ? "border-slate-700 bg-slate-900 text-slate-200 hover:border-orange-500/60"
       : "border-slate-300 bg-white text-slate-800 hover:border-orange-500/60"
   }
 
-  const inputClass = `w-full rounded-lg border px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-orange-500 ${
+  const inputClass = `w-full rounded-lg border px-2.5 py-1.5 text-base sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-orange-500 ${
     isDark ? "border-slate-700 bg-slate-950 text-white" : "border-slate-300 bg-white"
   }`
 
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">Mesa *</span>
+        <span className="text-sm font-bold text-slate-500 dark:text-slate-400">Mesa *</span>
         {!isCreating && (
           <button
             ref={addButtonRef}
             type="button"
             onClick={openCreate}
-            className="rounded-lg px-1.5 py-0.5 text-[10px] font-bold text-orange-600 hover:bg-orange-500/10 dark:text-orange-400 cursor-pointer"
+            className="pointer-coarse:min-h-11 rounded-lg px-1.5 py-0.5 text-xs font-bold text-orange-800 hover:bg-orange-500/10 dark:text-orange-400 cursor-pointer"
           >
             + Nueva mesa
           </button>
@@ -116,21 +116,21 @@ export function TablePicker({
       </div>
 
       {legacyLabel && !selectedTableId && (
-        <p className="rounded-lg bg-amber-500/10 px-2.5 py-1.5 text-[11px] font-medium text-amber-700 dark:text-amber-300">
+        <p className="rounded-lg bg-amber-500/10 px-2.5 py-1.5 text-sm font-medium text-amber-800 dark:text-amber-300">
           {legacyLabel} — Registrada antes de las mesas. Elegí una mesa para vincularla o dejá este texto como está.
         </p>
       )}
 
-      {isLoading && <p className="text-[11px] text-slate-500 dark:text-slate-400">Cargando mesas...</p>}
-      {!isLoading && loadError && <p className="text-[11px] text-rose-600 dark:text-rose-400">{loadError}</p>}
+      {isLoading && <p className="text-sm text-slate-500 dark:text-slate-400">Cargando mesas...</p>}
+      {!isLoading && loadError && <p className="text-sm text-rose-600 dark:text-rose-400">{loadError}</p>}
 
       {!isLoading && !loadError && activeTables.length === 0 && (
-        <div className="rounded-lg border border-dashed border-slate-300 p-3 text-center text-[11px] text-slate-500 dark:border-slate-700 dark:text-slate-400">
+        <div className="rounded-lg border border-dashed border-slate-300 p-3 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
           <p>No hay mesas activas. Creá una acá o administralas en</p>
           <button
             type="button"
             onClick={onOpenManager}
-            className="mt-1 font-bold text-orange-600 underline dark:text-orange-400 cursor-pointer"
+            className="mt-1 font-bold text-orange-800 underline dark:text-orange-400 cursor-pointer"
           >
             Personalizar → Mesas
           </button>
@@ -141,7 +141,7 @@ export function TablePicker({
         <div className="max-h-44 space-y-2 overflow-y-auto pr-0.5">
           {groups.map((group) => (
             <div key={group.zone} className="space-y-1">
-              <h4 className="text-[10px] font-bold uppercase tracking-wide text-slate-400">{group.zone}</h4>
+              <h4 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">{group.zone}</h4>
               <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4">
                 {group.tables.map((table) => {
                   const selected = table.id === selectedTableId
@@ -152,14 +152,14 @@ export function TablePicker({
                       type="button"
                       aria-pressed={selected}
                       onClick={() => onSelect(table.id)}
-                      className={`flex min-h-10 flex-col items-center justify-center rounded-lg border px-1.5 py-1 text-center text-xs font-bold transition-all cursor-pointer ${tableButtonClass(
+                      className={`pointer-coarse:min-h-11 flex min-h-10 flex-col items-center justify-center rounded-lg border px-1.5 py-1 text-center text-xs font-bold transition-all cursor-pointer ${tableButtonClass(
                         selected
                       )}`}
                     >
                       <span className="line-clamp-2 [overflow-wrap:anywhere]">{table.name}</span>
                       {occupied && (
                         <span
-                          className={`mt-0.5 rounded-full px-1.5 text-[9px] font-black uppercase ${
+                          className={`mt-0.5 rounded-full px-1.5 text-xs font-black uppercase ${
                             selected ? "bg-white/25 text-white" : "bg-rose-500/15 text-rose-600 dark:text-rose-400"
                           }`}
                         >
@@ -210,19 +210,19 @@ export function TablePicker({
               type="button"
               onClick={() => void handleCreate()}
               disabled={isSaving || !preview}
-              className="shrink-0 rounded-lg bg-orange-500 px-2.5 py-1.5 text-xs font-bold text-white disabled:opacity-50 cursor-pointer"
+              className="pointer-coarse:min-h-11 shrink-0 rounded-lg bg-orange-700 px-2.5 py-1.5 text-xs font-bold text-white disabled:opacity-50 cursor-pointer"
             >
               Crear
             </button>
             <button
               type="button"
               onClick={closeCreate}
-              className="shrink-0 rounded-lg px-2 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800 cursor-pointer"
+              className="pointer-coarse:min-h-11 shrink-0 rounded-lg px-2 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800 cursor-pointer"
             >
               Cancelar
             </button>
           </div>
-          {preview && <p className="text-[11px] text-slate-500 dark:text-slate-400">Se creará: {preview}</p>}
+          {preview && <p className="text-sm text-slate-500 dark:text-slate-400">Se creará: {preview}</p>}
         </div>
       )}
     </div>

@@ -35,14 +35,14 @@ export const InventoryStats: React.FC<InventoryStatsProps> = ({
           <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
             Insumos Registrados
           </span>
-          <div className="flex size-8 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-500">
+          <div className="flex size-8 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
             <Boxes className="size-4" />
           </div>
         </div>
         <div className="mt-2 text-2xl font-black text-slate-900 dark:text-white">
           {totalItems}
         </div>
-        <span className="text-[11px] text-slate-400">Total en catálogo de materias primas</span>
+        <span className="text-xs text-slate-500 dark:text-slate-400">Total en catálogo de materias primas</span>
       </div>
 
       {/* Metric 2: Low Stock Alert */}
@@ -64,17 +64,17 @@ export const InventoryStats: React.FC<InventoryStatsProps> = ({
         }`}
       >
         <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">
+          <span className="text-xs font-semibold text-amber-800 dark:text-amber-400">
             Alertas de Bajo Stock
           </span>
-          <div className="flex size-8 items-center justify-center rounded-xl bg-amber-500/20 text-amber-500 animate-pulse">
+          <div className="flex size-8 items-center justify-center rounded-xl bg-amber-500/20 text-amber-800 dark:text-amber-400 animate-pulse">
             <AlertTriangle className="size-4" />
           </div>
         </div>
-        <div className="mt-2 text-2xl font-black text-amber-500">
+        <div className="mt-2 text-2xl font-black text-amber-800 dark:text-amber-400">
           {lowStockCount}
         </div>
-        <span className="text-[11px] text-amber-600/80 dark:text-amber-400/80">
+        <span className="text-xs text-amber-800 dark:text-amber-400/80">
           {lowStockCount > 0 ? "Requieren reposición urgente" : "Stock en niveles óptimos"}
         </span>
       </div>
@@ -90,14 +90,14 @@ export const InventoryStats: React.FC<InventoryStatsProps> = ({
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
               Valor del Inventario
             </span>
-            <div className="flex size-8 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500">
+            <div className="flex size-8 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
               <DollarSign className="size-4" />
             </div>
           </div>
-          <div className="mt-2 text-2xl font-black text-emerald-500">
+          <div className="mt-2 text-2xl font-black text-emerald-700 dark:text-emerald-400">
             {formatCurrency(totalInventoryValue)}
           </div>
-          <span className="text-[11px] text-slate-400">Valorización total a costo actual</span>
+          <span className="text-xs text-slate-500 dark:text-slate-400">Valorización total a costo actual</span>
         </div>
       )}
 
@@ -117,14 +117,14 @@ export const InventoryStats: React.FC<InventoryStatsProps> = ({
           <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
             Proveedores Activos
           </span>
-          <div className="flex size-8 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-500">
+          <div className="flex size-8 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
             <Truck className="size-4" />
           </div>
         </div>
         <div className="mt-2 text-2xl font-black text-slate-900 dark:text-white">
           {suppliersCount}
         </div>
-        <span className="text-[11px] text-slate-400">Contactos directos de compra</span>
+        <span className="text-xs text-slate-500 dark:text-slate-400">Contactos directos de compra</span>
       </div>
     </div>
   )

@@ -62,12 +62,12 @@ export const MenuFilterBar: React.FC<MenuFilterBarProps> = ({
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
           onWheel={handleWheel}
-          className="flex flex-1 items-center gap-2 min-w-0 overflow-x-auto no-scrollbar py-0.5 select-none cursor-grab active:cursor-grabbing scroll-smooth"
+          className="flex flex-1 items-center gap-2 min-w-0 overflow-x-auto scroll-px-10 no-scrollbar py-0.5 select-none cursor-grab active:cursor-grabbing scroll-smooth"
         >
           <button
             type="button"
             onClick={() => handleItemClick(() => onSelectCategory("ALL"))}
-            className={`shrink-0 whitespace-nowrap rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
+            className={`pointer-coarse:min-h-11 shrink-0 whitespace-nowrap rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
               selectedCategory === "ALL"
                 ? "bg-indigo-600 text-white shadow-xs"
                 : isDark
@@ -82,7 +82,7 @@ export const MenuFilterBar: React.FC<MenuFilterBarProps> = ({
               key={cat}
               type="button"
               onClick={() => handleItemClick(() => onSelectCategory(cat))}
-              className={`shrink-0 whitespace-nowrap rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
+              className={`pointer-coarse:min-h-11 shrink-0 whitespace-nowrap rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
                 selectedCategory === cat
                   ? "bg-indigo-600 text-white shadow-xs"
                   : isDark
@@ -119,13 +119,13 @@ export const MenuFilterBar: React.FC<MenuFilterBarProps> = ({
 
       <div className="flex items-center gap-2 shrink-0">
         <div className="relative w-full sm:w-56">
-          <Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-slate-500 dark:text-slate-400" />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Buscar plato..."
-            className={`w-full rounded-xl border pl-8 pr-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+            className={`w-full rounded-xl border pl-8 pr-3 py-1.5 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
               isDark
                 ? "border-slate-700 bg-slate-800 text-slate-100 placeholder-slate-400"
                 : "border-slate-200 bg-white text-slate-800 placeholder-slate-400"
@@ -134,24 +134,28 @@ export const MenuFilterBar: React.FC<MenuFilterBarProps> = ({
         </div>
         <div className="flex rounded-xl border p-0.5 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
           <button
+            aria-label="Vista de cuadrícula"
             type="button"
+            aria-pressed={viewMode === "grid"}
             onClick={() => onViewModeChange("grid")}
-            className={`rounded-lg p-1.5 text-xs ${
+            className={`pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1.5 text-xs ${
               viewMode === "grid"
                 ? "bg-white shadow-xs text-slate-900 dark:bg-slate-700 dark:text-white"
-                : "text-slate-400"
+                : "text-slate-500 dark:text-slate-400"
             }`}
             title="Cuadrícula"
           >
             <LayoutGrid className="size-4" />
           </button>
           <button
+            aria-label="Vista de lista"
             type="button"
+            aria-pressed={viewMode === "table"}
             onClick={() => onViewModeChange("table")}
-            className={`rounded-lg p-1.5 text-xs ${
+            className={`pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1.5 text-xs ${
               viewMode === "table"
                 ? "bg-white shadow-xs text-slate-900 dark:bg-slate-700 dark:text-white"
-                : "text-slate-400"
+                : "text-slate-500 dark:text-slate-400"
             }`}
             title="Lista"
           >

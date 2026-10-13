@@ -37,8 +37,8 @@ describe("CreateRestaurantModal (TDD)", () => {
     expect(screen.getByLabelText(/Slug \/ URL Pública/i)).toBeDefined()
     expect(screen.getByLabelText(/Usuario Admin/i)).toBeDefined()
     expect(screen.getByLabelText(/Clave Admin/i)).toBeDefined()
-    expect((screen.getByLabelText(/Zona Horaria/i) as HTMLSelectElement).value).toBe("America/Bogota")
-    expect((screen.getByLabelText(/^Moneda/i) as HTMLSelectElement).value).toBe("COP")
+    expect((screen.getByLabelText(/Zona Horaria/i, { selector: "select" }) as HTMLSelectElement).value).toBe("America/Bogota")
+    expect((screen.getByLabelText(/^Moneda/i, { selector: "select" }) as HTMLSelectElement).value).toBe("COP")
     expect((screen.getByLabelText(/Símbolo/i) as HTMLInputElement).value).toBe("$")
   })
 
@@ -85,12 +85,12 @@ describe("CreateRestaurantModal (TDD)", () => {
     fireEvent.click(screen.getByText("Pizzería"))
 
     // Change currency to USD
-    fireEvent.change(screen.getByLabelText(/^Moneda/i), {
+    fireEvent.change(screen.getByLabelText(/^Moneda/i, { selector: "select" }), {
       target: { value: "USD" },
     })
 
     // Change timezone
-    fireEvent.change(screen.getByLabelText(/Zona Horaria/i), {
+    fireEvent.change(screen.getByLabelText(/Zona Horaria/i, { selector: "select" }), {
       target: { value: "America/New_York" },
     })
 
@@ -262,7 +262,7 @@ describe("CreateRestaurantModal (TDD)", () => {
     })
 
     // With burger template selected, currency select should only have COP, USD, EUR
-    const currencySelect = screen.getByLabelText(/^Moneda/i) as HTMLSelectElement
+    const currencySelect = screen.getByLabelText(/^Moneda/i, { selector: "select" }) as HTMLSelectElement
     const options = Array.from(currencySelect.options).map((o) => o.value)
     expect(options).toEqual(["COP", "USD", "EUR"])
     expect(screen.getByText(/Los platos de ejemplo de esta plantilla tienen precios calculados para las monedas admitidas/i)).toBeDefined()
@@ -297,7 +297,7 @@ describe("CreateRestaurantModal (TDD)", () => {
     // Select blank
     fireEvent.click(screen.getByText("En Blanco"))
     // Select BOB currency
-    const currencySelect = screen.getByLabelText(/^Moneda/i) as HTMLSelectElement
+    const currencySelect = screen.getByLabelText(/^Moneda/i, { selector: "select" }) as HTMLSelectElement
     fireEvent.change(currencySelect, { target: { value: "BOB" } })
     expect(currencySelect.value).toBe("BOB")
 
@@ -306,7 +306,7 @@ describe("CreateRestaurantModal (TDD)", () => {
 
     // Currency should have auto-reset to COP
     await waitFor(() => {
-      expect((screen.getByLabelText(/^Moneda/i) as HTMLSelectElement).value).toBe("COP")
+      expect((screen.getByLabelText(/^Moneda/i, { selector: "select" }) as HTMLSelectElement).value).toBe("COP")
     })
   })
 

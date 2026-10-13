@@ -101,7 +101,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
     }
   }
 
-  const inputClass = `w-full rounded-xl border px-3.5 py-2 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+  const inputClass = `w-full rounded-xl border px-3.5 py-2 text-base sm:text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
     isDark
       ? "border-slate-700 bg-slate-800 text-white placeholder-slate-500"
       : "border-slate-200 bg-slate-50 text-slate-900 placeholder-slate-400"
@@ -111,6 +111,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
     <Dialog open={true} onOpenChange={(open) => !open && !isSubmitting && onClose()}>
       <DialogContent
         showCloseButton={false}
+        aria-labelledby="edit-user-title"
         className="fixed top-1/2 left-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 p-0 border-0 bg-transparent shadow-none"
       >
         <div
@@ -128,7 +129,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
               <h3 id="edit-user-title" className="text-base font-bold">
                 Editar Usuario
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-sm text-slate-500 dark:text-slate-400">
                 Modificá el nombre de usuario, rol o restaurante asignado.
               </p>
             </div>
@@ -137,7 +138,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200 cursor-pointer"
+            className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200 cursor-pointer"
             aria-label="Cerrar modal"
           >
             <X className="size-5" />
@@ -147,14 +148,14 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
         {/* Form */}
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
           {errorMessage && (
-            <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-600 dark:text-rose-400 font-medium">
+            <div role="alert" className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-600 dark:text-rose-400 font-medium">
               {errorMessage}
             </div>
           )}
 
           {/* Username */}
           <div className="space-y-1">
-            <label htmlFor="edit-user-username" className="text-xs font-bold text-slate-700 dark:text-slate-300">
+            <label htmlFor="edit-user-username" className="text-sm font-bold text-slate-700 dark:text-slate-300">
               Nombre de usuario *
             </label>
             <input
@@ -187,7 +188,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
               ]}
             />
             {isOwnAccount && role === "super_admin" && (
-              <p className="text-[11px] font-semibold text-amber-500 flex items-center gap-1 mt-1">
+              <p className="text-sm font-semibold text-amber-800 dark:text-amber-400 flex items-center gap-1 mt-1">
                 <AlertTriangle className="size-3 shrink-0" />
                 <span>No podés modificar tu propio rol ni quitarte permisos de Super Administrador.</span>
               </p>
@@ -214,7 +215,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
               ]}
             />
             {role === "super_admin" ? (
-              <p className="text-[11px] text-slate-400 mt-1">
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                 Los Super Administradores tienen acceso global y no se asocian a un local específico.
               </p>
             ) : null}
@@ -223,10 +224,10 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
           {/* Active status */}
           <div className="flex items-center justify-between rounded-xl border border-slate-100 dark:border-slate-800 p-3">
             <div>
-              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+              <span className="text-sm font-bold text-slate-700 dark:text-slate-300 block">
                 Estado de la cuenta
               </span>
-              <span className="text-[11px] text-slate-400">
+              <span className="text-sm text-slate-500 dark:text-slate-400">
                 {isActive ? "El usuario puede iniciar sesión y gestionar sus recursos." : "El acceso del usuario está bloqueado."}
               </span>
             </div>
@@ -234,10 +235,10 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
               type="button"
               disabled={isOwnAccount}
               onClick={() => setIsActive(!isActive)}
-              className={`rounded-full px-3 py-1 text-xs font-bold transition-colors cursor-pointer ${
+              className={`pointer-coarse:min-h-11 rounded-full px-3 py-1 text-xs font-bold transition-colors cursor-pointer ${
                 isActive
-                  ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/25"
-                  : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 hover:bg-slate-200"
+                  ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/25"
+                  : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 hover:bg-slate-200"
               } disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               {isActive ? "Activo" : "Inactivo"}

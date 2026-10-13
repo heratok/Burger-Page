@@ -56,7 +56,7 @@ export const TabsTrigger: React.FC<{
       aria-selected={isActive}
       onClick={() => ctx.onValueChange(value)}
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-1.5 text-sm font-medium transition-all duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-50",
+        "pointer-coarse:min-h-11 inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-1.5 text-sm font-medium transition-all duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-50",
         isActive
           ? "bg-card text-foreground shadow-sm font-semibold"
           : "text-muted-foreground hover:text-foreground hover:bg-card/40",
@@ -92,7 +92,7 @@ export const TabsContent: React.FC<{
   return (
     <div
       role="tabpanel"
-      className={cn("mt-4 focus-visible:outline-none", className)}
+      className={cn("mt-4 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2", className)}
     >
       {children}
     </div>

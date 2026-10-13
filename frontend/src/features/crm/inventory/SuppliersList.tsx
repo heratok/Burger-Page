@@ -36,13 +36,13 @@ export const SuppliersList: React.FC<SuppliersListProps> = ({
     <div className="space-y-4">
       {/* Search bar */}
       <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" />
+        <Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-slate-500 dark:text-slate-400" />
         <input
           type="text"
           placeholder="Buscar proveedor por nombre, contacto o rubro..."
           value={searchTerm}
           onChange={(e) => onSearchChange(e.target.value)}
-          className={`w-full rounded-xl border pl-8.5 pr-4 py-2 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+          className={`w-full rounded-xl border pl-8.5 pr-4 py-2 text-base sm:text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
             isDark
               ? "border-slate-800 bg-[#0E1322] text-white placeholder-slate-500"
               : "border-slate-200 bg-white text-slate-900 placeholder-slate-400"
@@ -52,13 +52,13 @@ export const SuppliersList: React.FC<SuppliersListProps> = ({
 
       {suppliers.length === 0 ? (
         <div
-          className={`rounded-2xl border p-12 text-center text-slate-400 ${
+          className={`rounded-2xl border p-12 text-center text-slate-500 dark:text-slate-400 ${
             isDark ? "border-slate-800 bg-[#0E1322]" : "border-slate-200 bg-white"
           }`}
         >
           <Truck className="size-10 mx-auto mb-2 text-slate-500 opacity-50" />
           <p className="text-sm font-semibold">No hay proveedores registrados</p>
-          <p className="text-xs mt-1 text-slate-500">
+          <p className="text-sm mt-1 text-slate-500">
             Registrá tus distribuidores para contactarlos en 1 clic y pedir reposiciones directas.
           </p>
         </div>
@@ -82,7 +82,7 @@ export const SuppliersList: React.FC<SuppliersListProps> = ({
                 <div>
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <div>
-                      <span className="rounded-md bg-indigo-500/10 px-2 py-0.5 text-[10px] font-bold text-indigo-400">
+                      <span className="rounded-md bg-indigo-500/10 px-2 py-0.5 text-xs font-bold text-indigo-600 dark:text-indigo-400">
                         {sup.category}
                       </span>
                       <h3 className="text-sm font-bold text-slate-900 dark:text-white mt-1.5">
@@ -92,21 +92,23 @@ export const SuppliersList: React.FC<SuppliersListProps> = ({
 
                     <div className="flex items-center gap-1">
                       <button
+                        aria-label={`Editar proveedor ${sup.name}`}
                         type="button"
                         onClick={() => onEditSupplier(sup)}
-                        className={`rounded-lg p-1 transition-colors ${
+                        className={`pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1 transition-colors ${
                           isDark
                             ? "text-slate-400 hover:bg-slate-800 hover:text-white"
-                            : "text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                            : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-700"
                         }`}
                         title="Editar proveedor"
                       >
                         <Edit2 className="size-3.5" />
                       </button>
                       <button
+                        aria-label={`Eliminar proveedor ${sup.name}`}
                         type="button"
                         onClick={() => onDeleteSupplier(sup)}
-                        className="rounded-lg p-1 text-slate-400 hover:bg-rose-500/10 hover:text-rose-500 cursor-pointer"
+                        className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-rose-500/10 hover:text-rose-500 cursor-pointer"
                         title="Eliminar proveedor"
                       >
                         <Trash2 className="size-3.5" />
@@ -115,7 +117,7 @@ export const SuppliersList: React.FC<SuppliersListProps> = ({
                   </div>
 
                   {/* Contact details */}
-                  <div className="space-y-1.5 text-xs my-3">
+                  <div className="space-y-1.5 text-sm my-3">
                     <div className="flex items-center gap-2">
                       <span className={isDark ? "text-slate-400" : "text-slate-500"}>Contacto:</span>
                       <span className={`font-semibold ${isDark ? "text-slate-200" : "text-slate-800"}`}>
@@ -128,7 +130,7 @@ export const SuppliersList: React.FC<SuppliersListProps> = ({
                     </div>
                     {sup.notes && (
                       <p
-                        className={`text-[11px] italic mt-2.5 p-2.5 rounded-xl border transition-colors ${
+                        className={`text-sm italic mt-2.5 p-2.5 rounded-xl border transition-colors ${
                           isDark
                             ? "border-slate-800 bg-slate-900/60 text-slate-300"
                             : "border-slate-200 bg-slate-50 text-slate-700 font-medium"
@@ -141,13 +143,13 @@ export const SuppliersList: React.FC<SuppliersListProps> = ({
 
                   {/* Supplied Items Summary */}
                   <div
-                    className={`pt-2.5 border-t text-[11px] flex items-center justify-between ${
+                    className={`pt-2.5 border-t text-sm flex items-center justify-between ${
                       isDark ? "border-slate-800/60 text-slate-400" : "border-slate-100 text-slate-500"
                     }`}
                   >
                     <span>{suppliedItems.length} insumos provistos</span>
                     {criticalItems.length > 0 && (
-                      <span className="text-amber-500 font-bold flex items-center gap-1">
+                      <span className="text-amber-800 dark:text-amber-400 font-bold flex items-center gap-1">
                         <AlertTriangle className="size-3" />
                         {criticalItems.length} por reponer
                       </span>
@@ -160,7 +162,7 @@ export const SuppliersList: React.FC<SuppliersListProps> = ({
                   <Button
                     type="button"
                     onClick={() => onSendSupplierWhatsApp(sup)}
-                    className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-600 py-2 text-xs font-bold text-white shadow-sm hover:bg-emerald-700"
+                    className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-700 py-2 text-xs font-bold text-white shadow-sm hover:bg-emerald-800"
                   >
                     <MessageSquare className="size-3.5" />
                     <span>Pedir Reposición por WhatsApp</span>

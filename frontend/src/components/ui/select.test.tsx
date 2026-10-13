@@ -18,7 +18,7 @@ describe("Select UI Component", () => {
       />
     )
 
-    const selectEl = screen.getByRole("combobox", { name: "Selector de prueba" })
+    const selectEl = screen.getByLabelText("Selector de prueba", { selector: "select" })
     expect(selectEl).toBeDefined()
     expect(screen.getAllByText("Opción 1").length).toBeGreaterThan(0)
     expect(screen.getByText("Opción 2")).toBeDefined()
@@ -66,7 +66,7 @@ describe("Select UI Component", () => {
       />
     )
 
-    const selectEl = screen.getByRole("combobox", { name: "Selector interactivo" })
+    const selectEl = screen.getByLabelText("Selector interactivo", { selector: "select" })
     fireEvent.change(selectEl, { target: { value: "second" } })
 
     expect(handleChange).toHaveBeenCalledTimes(1)
@@ -95,7 +95,7 @@ describe("Select UI Component", () => {
       </Select>
     )
 
-    expect(screen.getByRole("combobox", { name: "Selector con children" })).toBeDefined()
+    expect(screen.getByLabelText("Selector con children", { selector: "select" })).toBeDefined()
     expect(screen.getByText("Uno")).toBeDefined()
   })
 

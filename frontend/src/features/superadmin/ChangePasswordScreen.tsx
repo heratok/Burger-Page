@@ -109,17 +109,17 @@ export const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({
           <div
             className={`flex size-12 items-center justify-center rounded-2xl ${
               activeForced
-                ? "bg-amber-500/10 text-amber-500 border border-amber-500/25"
+                ? "bg-amber-500/10 text-amber-800 dark:text-amber-400 border border-amber-500/25"
                 : "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/25"
             }`}
           >
             {activeForced ? <ShieldAlert className="size-6" /> : <Lock className="size-6" />}
           </div>
           <div>
-            <h2 className="text-lg font-black tracking-tight text-slate-900 dark:text-white">
+            <h2 id="change-password-title" className="text-lg font-black tracking-tight text-slate-900 dark:text-white">
               {activeForced ? "Cambio de contraseña obligatorio" : "Cambiar contraseña"}
             </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
               {activeForced
                 ? "Debes definir una nueva contraseña antes de continuar utilizando el panel."
                 : "Actualiza tu clave de acceso al panel administrativo."}
@@ -132,7 +132,7 @@ export const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({
             type="button"
             onClick={handleClose}
             aria-label="Cerrar"
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+            className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
           >
             <X className="size-5" />
           </button>
@@ -142,7 +142,7 @@ export const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({
       {/* Form */}
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
         {errorMessage && (
-          <div className="flex items-start gap-2 rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-xs text-rose-600 dark:text-rose-400">
+          <div role="alert" className="flex items-start gap-2 rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-sm text-rose-600 dark:text-rose-400">
             <AlertCircle className="size-4 shrink-0 mt-0.5" />
             <span>{errorMessage}</span>
           </div>
@@ -152,7 +152,7 @@ export const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({
         <div>
           <label
             htmlFor="currentPassword"
-            className="block text-xs font-bold mb-1 text-slate-700 dark:text-slate-300"
+            className="block text-sm font-bold mb-1 text-slate-700 dark:text-slate-300"
           >
             Contraseña actual
           </label>
@@ -167,7 +167,7 @@ export const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({
                 setErrorMessage(null)
               }}
               placeholder="Ingresa tu contraseña actual"
-              className={`w-full rounded-xl border px-3.5 py-2.5 pr-10 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+              className={`w-full rounded-xl border px-3.5 py-2.5 pr-10 text-base sm:text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                 isDark
                   ? "border-slate-700 bg-slate-800 text-white placeholder-slate-500"
                   : "border-slate-200 bg-slate-50 text-slate-900 placeholder-slate-400"
@@ -178,7 +178,7 @@ export const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({
               onClick={() => setShowCurrent(!showCurrent)}
               tabIndex={-1}
               aria-label={showCurrent ? "Ocultar contraseña actual" : "Mostrar contraseña actual"}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
             >
               {showCurrent ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
             </button>
@@ -189,7 +189,7 @@ export const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({
         <div>
           <label
             htmlFor="newPassword"
-            className="block text-xs font-bold mb-1 text-slate-700 dark:text-slate-300"
+            className="block text-sm font-bold mb-1 text-slate-700 dark:text-slate-300"
           >
             Nueva contraseña
           </label>
@@ -204,7 +204,7 @@ export const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({
                 setErrorMessage(null)
               }}
               placeholder="Mínimo 8 caracteres"
-              className={`w-full rounded-xl border px-3.5 py-2.5 pr-10 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+              className={`w-full rounded-xl border px-3.5 py-2.5 pr-10 text-base sm:text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                 isDark
                   ? "border-slate-700 bg-slate-800 text-white placeholder-slate-500"
                   : "border-slate-200 bg-slate-50 text-slate-900 placeholder-slate-400"
@@ -215,19 +215,19 @@ export const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({
               onClick={() => setShowNew(!showNew)}
               tabIndex={-1}
               aria-label={showNew ? "Ocultar nueva contraseña" : "Mostrar nueva contraseña"}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
             >
               {showNew ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
             </button>
           </div>
           {isTooShort && (
-            <p className="mt-1 text-[11px] font-semibold text-rose-500 flex items-center gap-1">
+            <p className="mt-1 text-sm font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-1">
               <AlertCircle className="size-3" />
               <span>La nueva contraseña debe tener al menos 8 caracteres.</span>
             </p>
           )}
           {isSameAsCurrent && (
-            <p className="mt-1 text-[11px] font-semibold text-rose-500 flex items-center gap-1">
+            <p className="mt-1 text-sm font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-1">
               <AlertCircle className="size-3" />
               <span>La nueva contraseña debe ser diferente a la actual.</span>
             </p>
@@ -238,7 +238,7 @@ export const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({
         <div>
           <label
             htmlFor="confirmPassword"
-            className="block text-xs font-bold mb-1 text-slate-700 dark:text-slate-300"
+            className="block text-sm font-bold mb-1 text-slate-700 dark:text-slate-300"
           >
             Confirmar nueva contraseña
           </label>
@@ -253,7 +253,7 @@ export const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({
                 setErrorMessage(null)
               }}
               placeholder="Repite la nueva contraseña"
-              className={`w-full rounded-xl border px-3.5 py-2.5 pr-10 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+              className={`w-full rounded-xl border px-3.5 py-2.5 pr-10 text-base sm:text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                 isDark
                   ? "border-slate-700 bg-slate-800 text-white placeholder-slate-500"
                   : "border-slate-200 bg-slate-50 text-slate-900 placeholder-slate-400"
@@ -264,13 +264,13 @@ export const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({
               onClick={() => setShowConfirm(!showConfirm)}
               tabIndex={-1}
               aria-label={showConfirm ? "Ocultar confirmación" : "Mostrar confirmación"}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
             >
               {showConfirm ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
             </button>
           </div>
           {isMismatch && (
-            <p className="mt-1 text-[11px] font-semibold text-rose-500 flex items-center gap-1">
+            <p className="mt-1 text-sm font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-1">
               <AlertCircle className="size-3" />
               <span>Las contraseñas no coinciden.</span>
             </p>
@@ -333,6 +333,7 @@ export const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({
     <Dialog open={true} onOpenChange={(open) => !open && handleClose?.()}>
       <DialogContent
         showCloseButton={false}
+        aria-labelledby="change-password-title"
         onKeyDown={(e) => {
           if (e.key === "Escape") {
             handleClose?.()

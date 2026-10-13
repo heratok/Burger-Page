@@ -33,7 +33,7 @@ const primaryButtonClass =
   "flex shrink-0 items-center justify-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-2 text-xs font-bold text-white shadow-xs transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
 
 const linkButtonClass =
-  "self-start rounded-lg px-1.5 py-0.5 text-[11px] font-bold text-indigo-600 hover:bg-indigo-500/10 dark:text-indigo-400 cursor-pointer"
+  "self-start rounded-lg px-1.5 py-0.5 text-xs font-bold text-indigo-600 hover:bg-indigo-500/10 dark:text-indigo-400 cursor-pointer"
 
 export const CustomizerTablesSection: React.FC<CustomizerTablesSectionProps> = ({
   restaurantId,
@@ -150,7 +150,7 @@ export const CustomizerTablesSection: React.FC<CustomizerTablesSectionProps> = (
 
   const canSaveEdit = previewTableName(editZone, Number(editNumber)) !== null
 
-  const inputClass = `rounded-xl border px-2.5 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+  const inputClass = `rounded-xl border px-2.5 py-2 text-base sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
     isDark ? "border-slate-700 bg-slate-800 text-white" : "border-slate-300 bg-white text-slate-900"
   }`
   const numberProps = {
@@ -159,19 +159,19 @@ export const CustomizerTablesSection: React.FC<CustomizerTablesSectionProps> = (
     min: MIN_TABLE_NUMBER,
     max: MAX_TABLE_NUMBER,
   } as const
-  const fieldLabelClass = "text-[10px] font-bold text-slate-500 dark:text-slate-400"
+  const fieldLabelClass = "text-xs font-bold text-slate-500 dark:text-slate-400"
 
   return (
     <div
-      className={`rounded-2xl border p-5 shadow-xs space-y-4 text-xs ${
+      className={`rounded-2xl border p-5 shadow-xs space-y-4 text-sm ${
         isDark ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-white"
       }`}
     >
       <div className="flex items-center gap-2">
-        <LayoutGrid className="size-4 text-sky-500" />
+        <LayoutGrid className="size-4 text-sky-700 dark:text-sky-400" />
         <h3 className="font-bold text-sm text-slate-900 dark:text-white">Mesas del salón</h3>
       </div>
-      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+      <p className="text-sm text-slate-500 dark:text-slate-400">
         Estas mesas aparecen al registrar una venta en &quot;Mesa / Salón&quot;. Los cambios se guardan al instante,
         sin usar &quot;Guardar &amp; Publicar&quot;. Desactivá una mesa para ocultarla sin perder su historial.
       </p>
@@ -236,12 +236,12 @@ export const CustomizerTablesSection: React.FC<CustomizerTablesSectionProps> = (
         </div>
 
         {isRange ? (
-          <p className="text-[11px] text-slate-500 dark:text-slate-400">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
             {rangePreview ?? "Indicá una zona y un rango válido (hasta 100 mesas)."}
           </p>
         ) : (
           singlePreview && (
-            <p className="text-[11px] text-slate-500 dark:text-slate-400">Se creará: {singlePreview}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Se creará: {singlePreview}</p>
           )
         )}
 
@@ -263,7 +263,7 @@ export const CustomizerTablesSection: React.FC<CustomizerTablesSectionProps> = (
         </div>
 
         {isRange && rangeResult && (
-          <p role="status" className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
+          <p role="status" className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
             {rangeResult}
           </p>
         )}
@@ -277,7 +277,7 @@ export const CustomizerTablesSection: React.FC<CustomizerTablesSectionProps> = (
           <button
             type="button"
             onClick={() => void reload()}
-            className="rounded-lg border border-rose-300 px-2 py-1 font-bold cursor-pointer"
+            className="pointer-coarse:min-h-11 rounded-lg border border-rose-300 px-2 py-1 font-bold cursor-pointer"
           >
             Reintentar
           </button>
@@ -292,7 +292,7 @@ export const CustomizerTablesSection: React.FC<CustomizerTablesSectionProps> = (
 
       {groups.map((group) => (
         <section key={group.zone} className="space-y-1.5">
-          <h4 className="text-[10px] font-bold uppercase tracking-wide text-slate-400">{group.zone}</h4>
+          <h4 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">{group.zone}</h4>
           <ul className="space-y-1.5">
             {group.tables.map((table, index) => (
               <li
@@ -368,7 +368,7 @@ export const CustomizerTablesSection: React.FC<CustomizerTablesSectionProps> = (
                         onClick={() => void commitEdit(table)}
                         className={iconButtonClass}
                       >
-                        <Check className="size-3.5 text-emerald-600" />
+                        <Check className="size-3.5 text-emerald-700 dark:text-emerald-400" />
                       </button>
                       <button
                         type="button"
@@ -383,7 +383,7 @@ export const CustomizerTablesSection: React.FC<CustomizerTablesSectionProps> = (
                     <span className="block break-words text-sm font-semibold text-slate-900 dark:text-white">
                       {table.name}
                       {!table.isActive && (
-                        <span className="ml-2 text-[10px] font-bold uppercase text-slate-400">Inactiva</span>
+                        <span className="ml-2 text-xs font-bold uppercase text-slate-500 dark:text-slate-400">Inactiva</span>
                       )}
                     </span>
                   )}

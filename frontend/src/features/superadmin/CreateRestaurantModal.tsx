@@ -17,6 +17,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Select } from "@/components/ui/select"
+import { ModalShell } from "@/components/ui/modal-shell"
 import { THEME_COLOR_PRESETS } from "@/constants/themePresets"
 import { apiClient } from "@/core/api/apiClient"
 import { toast } from "sonner"
@@ -254,16 +255,9 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
   // Credentials View
   if (createdCredentials) {
     return (
-      <div
+      <ModalShell
         className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-md"
-        role="dialog"
-        aria-modal="true"
-        onKeyDown={(e) => {
-          if (e.key === "Escape") {
-            e.preventDefault()
-            e.stopPropagation()
-          }
-        }}
+        aria-labelledby="create-restaurant-credentials-title"
       >
         <div
           className={`w-full max-w-md rounded-2xl border p-6 shadow-2xl transition-all ${
@@ -272,12 +266,12 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
         >
           {/* Header */}
           <div className="flex items-center gap-3">
-            <div className="flex size-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+            <div className="flex size-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
               <KeyRound className="size-6" />
             </div>
             <div>
-              <h3 className="text-base font-bold">Credenciales del Administrador</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <h3 id="create-restaurant-credentials-title" className="text-base font-bold">Credenciales del Administrador</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
                 Restaurante creado con éxito
               </p>
             </div>
@@ -285,8 +279,8 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
 
           <div className="mt-5 space-y-3.5">
             {/* Warning banner */}
-            <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/25 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-400">
-              <AlertTriangle className="size-4 shrink-0 mt-0.5 text-amber-500" />
+            <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/25 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-400">
+              <AlertTriangle className="size-4 shrink-0 mt-0.5 text-amber-800 dark:text-amber-400" />
               <span>
                 <strong>Atención:</strong> Esta contraseña provisional es de uso único y solo se mostrará esta vez. Cópiala y entrégala al administrador del restaurante; deberá cambiarla obligatoriamente en su primer inicio de sesión.
               </span>
@@ -294,7 +288,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
 
             {/* Username credential */}
             <div className={`p-3 rounded-xl border ${isDark ? "bg-slate-900/60 border-slate-800" : "bg-slate-50 border-slate-200"}`}>
-              <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">
+              <div className="text-sm font-bold text-slate-500 dark:text-slate-400 mb-1">
                 Usuario administrador
               </div>
               <div className="flex items-center justify-between gap-2">
@@ -305,9 +299,9 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
                   type="button"
                   onClick={() => handleCopy(createdCredentials.username, "user")}
                   aria-label={copiedUser ? "Usuario copiado" : "Copiar usuario administrador"}
-                  className="rounded-lg border px-2 py-1 text-[11px] font-semibold flex items-center gap-1 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                  className="pointer-coarse:min-h-11 rounded-lg border px-2 py-1 text-xs font-semibold flex items-center gap-1 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                 >
-                  {copiedUser ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3 text-slate-400" />}
+                  {copiedUser ? <Check className="size-3 text-emerald-700 dark:text-emerald-400" /> : <Copy className="size-3 text-slate-500 dark:text-slate-400" />}
                   <span>{copiedUser ? "Copiado" : "Copiar"}</span>
                 </button>
               </div>
@@ -316,7 +310,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
             {/* Password credential */}
             {createdCredentials.password && (
               <div className={`p-3 rounded-xl border ${isDark ? "bg-slate-900/60 border-slate-800" : "bg-slate-50 border-slate-200"}`}>
-                <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">
+                <div className="text-sm font-bold text-slate-500 dark:text-slate-400 mb-1">
                   Contraseña provisional
                 </div>
                 <div className="flex items-center justify-between gap-2">
@@ -327,9 +321,9 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
                     type="button"
                     onClick={() => handleCopy(createdCredentials.password!, "pass")}
                     aria-label={copiedPass ? "Clave copiada" : "Copiar clave provisional"}
-                    className="rounded-lg border px-2 py-1 text-[11px] font-semibold flex items-center gap-1 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                    className="pointer-coarse:min-h-11 rounded-lg border px-2 py-1 text-xs font-semibold flex items-center gap-1 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                   >
-                    {copiedPass ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3 text-slate-400" />}
+                    {copiedPass ? <Check className="size-3 text-emerald-700 dark:text-emerald-400" /> : <Copy className="size-3 text-slate-500 dark:text-slate-400" />}
                     <span>{copiedPass ? "Copiado" : "Copiar"}</span>
                   </button>
                 </div>
@@ -347,12 +341,16 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
             </Button>
           </div>
         </div>
-      </div>
+      </ModalShell>
     )
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-md">
+    <ModalShell
+      onClose={onClose}
+      aria-labelledby="create-restaurant-title"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-md"
+    >
       <div
         className={`w-full max-w-xl rounded-2xl border p-6 shadow-2xl transition-all max-h-[90vh] overflow-y-auto ${
           isDark ? "border-slate-800 bg-[#0E1322] text-slate-100" : "border-slate-200 bg-white text-slate-900"
@@ -365,16 +363,17 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
               <Store className="size-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold">Dar de Alta Nuevo Restaurante</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <h3 id="create-restaurant-title" className="text-base font-bold">Dar de Alta Nuevo Restaurante</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
                 Registra un nuevo inquilino con su propia tienda y panel CRM.
               </p>
             </div>
           </div>
           <button
+            aria-label="Cerrar"
             type="button"
             onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+            className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
           >
             <X className="size-5" />
           </button>
@@ -382,7 +381,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
 
         {/* Error message */}
         {errorMessage && (
-          <div className="mt-4 flex items-start gap-2 rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-xs text-rose-600 dark:text-rose-400">
+          <div role="alert" className="mt-4 flex items-start gap-2 rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-sm text-rose-600 dark:text-rose-400">
             <AlertCircle className="size-4 shrink-0 mt-0.5" />
             <span>{errorMessage}</span>
           </div>
@@ -395,7 +394,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
             <div>
               <label
                 htmlFor="restaurant-name"
-                className="block text-xs font-bold mb-1 text-slate-700 dark:text-slate-300"
+                className="block text-sm font-bold mb-1 text-slate-700 dark:text-slate-300"
               >
                 Nombre del Restaurante *
               </label>
@@ -407,7 +406,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
                 value={name}
                 onChange={(e) => handleNameChange(e.target.value)}
                 placeholder="Ej. Sushi Master Bogotá"
-                className={`w-full rounded-xl border px-3.5 py-2 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                className={`w-full rounded-xl border px-3.5 py-2 text-base sm:text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                   isDark
                     ? "border-slate-700 bg-slate-800 text-white placeholder-slate-500"
                     : "border-slate-200 bg-slate-50 text-slate-900 placeholder-slate-400"
@@ -418,12 +417,12 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
             <div>
               <label
                 htmlFor="restaurant-slug"
-                className="block text-xs font-bold mb-1 text-slate-700 dark:text-slate-300"
+                className="block text-sm font-bold mb-1 text-slate-700 dark:text-slate-300"
               >
                 Slug / URL Pública *
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-mono text-slate-400">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-mono text-slate-500 dark:text-slate-400">
                   /
                 </span>
                 <input
@@ -434,7 +433,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
                   value={slug}
                   onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
                   placeholder="sushi-master"
-                  className={`w-full rounded-xl border pl-6 pr-3.5 py-2 text-xs font-mono transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                  className={`w-full rounded-xl border pl-6 pr-3.5 py-2 text-base sm:text-sm font-mono transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                     isDark
                       ? "border-slate-700 bg-slate-800 text-indigo-400"
                       : "border-slate-200 bg-slate-50 text-indigo-600"
@@ -448,7 +447,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
           <div>
             <label
               htmlFor="restaurant-tagline"
-              className="block text-xs font-bold mb-1 text-slate-700 dark:text-slate-300"
+              className="block text-sm font-bold mb-1 text-slate-700 dark:text-slate-300"
             >
               Slogan / Descripción Corta
             </label>
@@ -459,7 +458,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
               value={tagline}
               onChange={(e) => setTagline(e.target.value)}
               placeholder="Ej. Rollos artesanales y cocina nikkei contemporánea"
-              className={`w-full rounded-xl border px-3.5 py-2 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+              className={`w-full rounded-xl border px-3.5 py-2 text-base sm:text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                 isDark
                   ? "border-slate-700 bg-slate-800 text-white placeholder-slate-500"
                   : "border-slate-200 bg-slate-50 text-slate-900 placeholder-slate-400"
@@ -471,12 +470,12 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
           <div>
             <label
               htmlFor="restaurant-whatsapp"
-              className="block text-xs font-bold mb-1 text-slate-700 dark:text-slate-300"
+              className="block text-sm font-bold mb-1 text-slate-700 dark:text-slate-300"
             >
               WhatsApp de Pedidos
             </label>
             <div className="relative">
-              <Phone className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" />
+              <Phone className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-slate-500 dark:text-slate-400" />
               <input
                 id="restaurant-whatsapp"
                 type="text"
@@ -484,7 +483,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
                 value={whatsapp}
                 onChange={(e) => setWhatsapp(e.target.value)}
                 placeholder="573001234567"
-                className={`w-full rounded-xl border pl-9 pr-3.5 py-2 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                className={`w-full rounded-xl border pl-9 pr-3.5 py-2 text-base sm:text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                   isDark
                     ? "border-slate-700 bg-slate-800 text-white"
                     : "border-slate-200 bg-slate-50 text-slate-900"
@@ -550,7 +549,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
             <div className="sm:col-span-1">
               <label
                 htmlFor="restaurant-currency-symbol"
-                className="block text-xs font-bold mb-1 text-slate-700 dark:text-slate-300"
+                className="block text-sm font-bold mb-1 text-slate-700 dark:text-slate-300"
               >
                 Símbolo *
               </label>
@@ -563,7 +562,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
                 value={currencySymbol}
                 onChange={(e) => setCurrencySymbol(e.target.value)}
                 placeholder="$"
-                className={`w-full rounded-xl border px-3.5 py-2 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                className={`w-full rounded-xl border px-3.5 py-2 text-base sm:text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                   isDark
                     ? "border-slate-700 bg-slate-800 text-white"
                     : "border-slate-200 bg-slate-50 text-slate-900"
@@ -574,11 +573,11 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
 
           {/* Helper note explaining currency restriction or blank support */}
           {supportedCurrencies ? (
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 -mt-2">
+            <p className="text-sm text-slate-500 dark:text-slate-400 -mt-2">
               Los platos de ejemplo de esta plantilla tienen precios calculados para las monedas admitidas ({supportedCurrencies.join(", ")}). Si necesitás otra moneda, elegí la plantilla «En Blanco».
             </p>
           ) : (
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 -mt-2">
+            <p className="text-sm text-slate-500 dark:text-slate-400 -mt-2">
               La plantilla «En Blanco» admite cualquier moneda disponible.
             </p>
           )}
@@ -588,7 +587,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
             <div>
               <label
                 htmlFor="restaurant-admin-username"
-                className="block text-xs font-bold mb-1 text-slate-700 dark:text-slate-300"
+                className="block text-sm font-bold mb-1 text-slate-700 dark:text-slate-300"
               >
                 Usuario Admin (Opcional)
               </label>
@@ -599,7 +598,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
                 value={adminUsername}
                 onChange={(e) => setAdminUsername(e.target.value)}
                 placeholder={`admin_${slug || "slug"}`}
-                className={`w-full rounded-xl border px-3.5 py-2 text-xs font-mono transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                className={`w-full rounded-xl border px-3.5 py-2 text-base sm:text-sm font-mono transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                   isDark
                     ? "border-slate-700 bg-slate-800 text-white placeholder-slate-500"
                     : "border-slate-200 bg-slate-50 text-slate-900 placeholder-slate-400"
@@ -610,7 +609,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
             <div>
               <label
                 htmlFor="restaurant-admin-password"
-                className="block text-xs font-bold mb-1 text-slate-700 dark:text-slate-300"
+                className="block text-sm font-bold mb-1 text-slate-700 dark:text-slate-300"
               >
                 Clave Admin (Opcional, mín. 8 caracteres)
               </label>
@@ -621,7 +620,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
                 value={adminPassword}
                 onChange={(e) => setAdminPassword(e.target.value)}
                 placeholder="Generar automáticamente"
-                className={`w-full rounded-xl border px-3.5 py-2 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                className={`w-full rounded-xl border px-3.5 py-2 text-base sm:text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                   isDark
                     ? "border-slate-700 bg-slate-800 text-white placeholder-slate-500"
                     : "border-slate-200 bg-slate-50 text-slate-900 placeholder-slate-400"
@@ -633,11 +632,11 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
           {/* Preset Template */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+              <span id="create-restaurant-template-label" className="block text-sm font-bold text-slate-700 dark:text-slate-300">
                 Plantilla Inicial de Menú
-              </label>
+              </span>
               {isLoadingTemplates && (
-                <div className="flex items-center gap-1 text-[11px] text-slate-400">
+                <div className="flex items-center gap-1 text-sm text-slate-500 dark:text-slate-400">
                   <Loader2 className="size-3 animate-spin" />
                   <span>Cargando plantillas...</span>
                 </div>
@@ -646,7 +645,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
                 <button
                   type="button"
                   onClick={fetchTemplates}
-                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-500 hover:text-indigo-400 underline cursor-pointer"
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-400 underline cursor-pointer"
                 >
                   <RefreshCw className="size-3" />
                   <span>Reintentar</span>
@@ -668,7 +667,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
                 ))}
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+              <div role="group" aria-labelledby="create-restaurant-template-label" className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
                 {(templates.length > 0 ? templates : FALLBACK_TEMPLATES).map((tpl: any) => {
                   const isSelected = templateType === tpl.id
                   const hasApiCounts = typeof tpl.productCount === "number" && tpl.productCount > 0
@@ -680,6 +679,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
                     <button
                       key={tpl.id}
                       type="button"
+                      aria-pressed={isSelected}
                       onClick={() => setTemplateType(tpl.id as typeof templateType)}
                       className={`rounded-xl border p-2.5 text-left transition-all ${
                         isSelected
@@ -689,38 +689,39 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
                           : "border-slate-200 bg-white hover:border-slate-300"
                       }`}
                     >
-                      <div className="text-xs font-bold">{tpl.name}</div>
-                      <div className="mt-0.5 text-[10px] text-slate-400">{countsText}</div>
+                      <div className="text-sm font-bold">{tpl.name}</div>
+                      <div className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">{countsText}</div>
                     </button>
                   )
                 })}
               </div>
             )}
-            <p className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+            <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">
               💡 Los platos de muestra se crean automáticamente y podrás editarlos o eliminarlos en cualquier momento desde el menú.
             </p>
           </div>
 
           {/* Color Presets */}
           <div>
-            <label className="block text-xs font-bold mb-1.5 text-slate-700 dark:text-slate-300">
+            <span id="create-restaurant-color-label" className="block text-sm font-bold mb-1.5 text-slate-700 dark:text-slate-300">
               Color de Marca Principal
-            </label>
-            <div className="flex flex-wrap gap-2">
+            </span>
+            <div role="group" aria-labelledby="create-restaurant-color-label" className="flex flex-wrap gap-2">
               {THEME_COLOR_PRESETS.map((color) => (
                 <button
                   key={color.id}
                   type="button"
+                  aria-pressed={primaryColor === color.primary}
                   onClick={() => setPrimaryColor(color.primary)}
-                  className="flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs transition-all border-slate-200 dark:border-slate-700 hover:border-slate-400"
+                  className="pointer-coarse:min-h-11 flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs transition-all border-slate-200 dark:border-slate-700 hover:border-slate-400"
                 >
                   <span
                     className="size-3.5 rounded-full shadow-xs"
                     style={{ backgroundColor: color.primary }}
                   />
-                  <span className="text-[11px] font-medium">{color.name}</span>
+                  <span className="text-sm font-medium">{color.name}</span>
                   {primaryColor === color.primary && (
-                    <Check className="size-3 text-indigo-500" />
+                    <Check className="size-3 text-indigo-600 dark:text-indigo-400" />
                   )}
                 </button>
               ))}
@@ -753,6 +754,6 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
           </div>
         </form>
       </div>
-    </div>
+    </ModalShell>
   )
 }
