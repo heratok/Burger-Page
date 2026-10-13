@@ -265,7 +265,7 @@ export default function LandingPage() {
                     </div>
                     <div>
                       <h3 className="font-bold text-sm text-slate-900 dark:text-white">Craft Monster Burger</h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                      <p className="text-sm text-slate-500 dark:text-slate-400">
                         Doble carne 150g, cheddar fundido, tocineta
                       </p>
                     </div>
@@ -280,7 +280,7 @@ export default function LandingPage() {
                     </div>
                     <div>
                       <h3 className="font-bold text-sm text-slate-900 dark:text-white">Papas Rústicas Cheddar</h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                      <p className="text-sm text-slate-500 dark:text-slate-400">
                         Papas crocantes con salsa artesanal
                       </p>
                     </div>
@@ -306,12 +306,12 @@ export default function LandingPage() {
                 <div className="rounded-xl bg-white dark:bg-[#202C33] border border-emerald-100 dark:border-[#2A3942] p-3 text-xs text-slate-800 dark:text-[#E9EDEF] font-mono space-y-1.5 leading-relaxed shadow-xs">
                   <p className="font-bold text-emerald-700 dark:text-[#25D366]">👋 ¡Hola Craft Burger! Nuevo Pedido:</p>
                   <p>• 1x Craft Monster Burger ($28.000)</p>
-                  <p className="text-emerald-700 dark:text-[#25D366] text-xs pl-2">+ Tocineta Extra ($3.500)</p>
+                  <p className="text-emerald-700 dark:text-[#25D366] text-sm pl-2">+ Tocineta Extra ($3.500)</p>
                   <p>• 1x Papas Rústicas ($12.500)</p>
                   <div className="border-t border-slate-100 dark:border-slate-700/60 pt-1 text-slate-900 dark:text-white font-bold">
                     Total a Pagar: $44.000
                   </div>
-                  <p className="text-emerald-700 dark:text-[#25D366] text-xs">📍 Cra 15 # 85-30 • Pago: Efectivo</p>
+                  <p className="text-emerald-700 dark:text-[#25D366] text-sm">📍 Cra 15 # 85-30 • Pago: Efectivo</p>
                 </div>
               </div>
             </div>
@@ -340,7 +340,7 @@ export default function LandingPage() {
                 <MessageSquare className="size-6" />
               </div>
               <h3 className="text-base font-bold text-slate-900 dark:text-white">Checkout Directo a WhatsApp</h3>
-              <p className="mt-2 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+              <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
                 Tus clientes no tienen que registrarse ni descargar apps pesadas. El pedido se arma en segundos
                 y te llega estructurado con dirección, método de pago y desglose total.
               </p>
@@ -352,7 +352,7 @@ export default function LandingPage() {
                 <TrendingUp className="size-6" />
               </div>
               <h3 className="text-base font-bold text-slate-900 dark:text-white">Adiciones y Upselling Inteligente</h3>
-              <p className="mt-2 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+              <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
                 Aumentá tu ganancia ofreciendo salsas, tocineta, quesos o combos antes de finalizar la
                 compra. El ticket promedio sube un 45% comprobado.
               </p>
@@ -364,7 +364,7 @@ export default function LandingPage() {
                 <Palette className="size-6" />
               </div>
               <h3 className="text-base font-bold text-slate-900 dark:text-white">Personalización Total de Marca</h3>
-              <p className="mt-2 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+              <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
                 Tu tienda luce con tus colores, logotipo, banners y tipografías. Cada restaurante
                 tiene su propio slug aislado y una identidad visual única.
               </p>
@@ -376,7 +376,7 @@ export default function LandingPage() {
                 <Zap className="size-6" />
               </div>
               <h3 className="text-base font-bold text-slate-900 dark:text-white">Gestor de Pedidos Kanban</h3>
-              <p className="mt-2 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+              <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
                 Controlá tus órdenes en tiempo real con alertas sonoras. Movelas fácilmente entre
                 Pendiente, Cocinando, En Camino y Entregado.
               </p>
@@ -388,7 +388,7 @@ export default function LandingPage() {
                 <Users className="size-6" />
               </div>
               <h3 className="text-base font-bold text-slate-900 dark:text-white">CRM y Base de Clientes</h3>
-              <p className="mt-2 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+              <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
                 Guardá automáticamente el historial de compras de tus comensales, segmentá clientes VIP
                 y conocé quiénes son los más fieles a tu marca.
               </p>
@@ -400,7 +400,7 @@ export default function LandingPage() {
                 <QrCode className="size-6" />
               </div>
               <h3 className="text-base font-bold text-slate-900 dark:text-white">Menú QR para Mesas y Delivery</h3>
-              <p className="mt-2 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+              <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
                 Imprimí el código QR para tus mesas o pegalo en tus empaques. Tus clientes escanean y
                 acceden al instante a una carta ultra rápida.
               </p>
@@ -426,7 +426,7 @@ export default function LandingPage() {
                 1
               </div>
               <h3 className="text-base font-bold text-slate-900 dark:text-white">Creá tu Menú</h3>
-              <p className="mt-2 text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-normal">
+              <p className="mt-2 text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-normal">
                 Cargá tus categorías, fotos de productos, precios, ingredientes y adiciones opcionales
                 desde tu panel administrativo sin código.
               </p>
@@ -437,7 +437,7 @@ export default function LandingPage() {
                 2
               </div>
               <h3 className="text-base font-bold text-slate-900 dark:text-white">Compartí tu Link o QR</h3>
-              <p className="mt-2 text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-normal">
+              <p className="mt-2 text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-normal">
                 Colocá tu enlace personalizado en tu biografía de Instagram, estados de WhatsApp o imprimí
                 códigos QR en tus mesas y empaques.
               </p>
@@ -448,7 +448,7 @@ export default function LandingPage() {
                 3
               </div>
               <h3 className="text-base font-bold text-slate-900 dark:text-white">Recibí Pedidos Listos</h3>
-              <p className="mt-2 text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-normal">
+              <p className="mt-2 text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-normal">
                 El comensal pide en segundos y a vos te entra el mensaje estructurado con todo el detalle
                 para preparar y despachar.
               </p>

@@ -18,7 +18,7 @@ export const StoreStatus: React.FC<StoreStatusProps> = ({ config, status }) => {
   const detail = reason === "paused" ? "Pedidos en pausa" : describeNextOpening(next)
 
   return (
-    <div className="flex flex-col items-center gap-2 text-center text-xs">
+    <div className="flex flex-col items-center gap-2 text-center text-sm">
       <div role="status" aria-live="polite" className="flex flex-wrap items-center justify-center gap-2">
         <span
           style={{ color: isOpen ? "var(--status-open-text, #065f46)" : "var(--status-closed-text, #b91c1c)" }}

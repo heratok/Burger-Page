@@ -246,7 +246,7 @@ export const RolesManager: React.FC = () => {
             <ShieldCheck className="size-6 text-indigo-600 dark:text-indigo-400" />
             <span>Roles y Permisos</span>
           </h2>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             Administra los roles personalizados y los permisos de acceso para tu equipo de trabajo.
           </p>
         </div>
@@ -285,7 +285,7 @@ export const RolesManager: React.FC = () => {
 
       {/* Conflict banner if deletion failed */}
       {conflictError && (
-        <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs font-medium text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300 flex items-center justify-between">
+        <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm font-medium text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300 flex items-center justify-between">
           <span>{conflictError}</span>
           <button
             aria-label="Cerrar aviso"
@@ -312,7 +312,7 @@ export const RolesManager: React.FC = () => {
             placeholder="Buscar rol por nombre o descripción..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className={`w-full rounded-xl border pl-9 pr-4 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+            className={`w-full rounded-xl border pl-9 pr-4 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
               isDark
                 ? "border-slate-700 bg-slate-800 text-white placeholder-slate-400"
                 : "border-slate-200 bg-slate-50 text-slate-900 placeholder-slate-400"
@@ -343,7 +343,7 @@ export const RolesManager: React.FC = () => {
           <h3 className="text-sm font-bold text-slate-900 dark:text-white">
             {searchTerm ? "No se encontraron roles coincidentes" : "No hay roles configurados"}
           </h3>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
             {searchTerm
               ? "Prueba buscando con otro término."
               : "Comienza creando los roles estándar recomendados (Cajero, Mesero, Cocina y Gerente) o personaliza uno desde cero."}
@@ -396,7 +396,7 @@ export const RolesManager: React.FC = () => {
                           </span>
                         )}
                       </div>
-                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
+                      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 line-clamp-2">
                         {role.description || <span className="italic">Sin descripción</span>}
                       </p>
                     </div>
@@ -431,19 +431,19 @@ export const RolesManager: React.FC = () => {
                   {/* Plain-language summary of what the role can do */}
                   <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800/80">
                     {permissionLines.length === 0 ? (
-                      <p className="text-xs italic text-slate-500 dark:text-slate-400">
+                      <p className="text-sm italic text-slate-500 dark:text-slate-400">
                         Sin permisos asignados
                       </p>
                     ) : (
                       <>
-                        <p className="mb-2 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                        <p className="mb-2 text-sm font-semibold text-slate-600 dark:text-slate-300">
                           Puede:
                         </p>
                         <ul className="space-y-1.5">
                           {permissionLines.map((line) => (
                             <li
                               key={line.area}
-                              className="flex items-start gap-1.5 text-xs text-slate-600 dark:text-slate-300"
+                              className="flex items-start gap-1.5 text-sm text-slate-600 dark:text-slate-300"
                             >
                               <span className="min-w-0">
                                 <span className="font-semibold text-slate-900 dark:text-white">
@@ -510,7 +510,7 @@ export const RolesManager: React.FC = () => {
             </div>
 
             {/* Modal Body */}
-            <form onSubmit={handleSaveRole} className="flex-1 overflow-y-auto py-4 space-y-5 pr-1 text-xs">
+            <form onSubmit={handleSaveRole} className="flex-1 overflow-y-auto py-4 space-y-5 pr-1 text-sm">
               {/* Basic Fields */}
               <div className="space-y-3">
                 <div>
@@ -528,7 +528,7 @@ export const RolesManager: React.FC = () => {
                     placeholder="Ej. Cocinero de Parrilla, Cajero Turno Noche"
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
-                    className={`w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                    className={`text-base sm:text-sm w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                       isDark
                         ? "border-slate-700 bg-slate-800 text-white placeholder-slate-400"
                         : "border-slate-300 bg-white text-slate-900 placeholder-slate-400"
@@ -550,7 +550,7 @@ export const RolesManager: React.FC = () => {
                     placeholder="Describe las responsabilidades o funciones del rol..."
                     value={formDescription}
                     onChange={(e) => setFormDescription(e.target.value)}
-                    className={`w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                    className={`text-base sm:text-sm w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                       isDark
                         ? "border-slate-700 bg-slate-800 text-white placeholder-slate-400"
                         : "border-slate-300 bg-white text-slate-900 placeholder-slate-400"
@@ -599,7 +599,7 @@ export const RolesManager: React.FC = () => {
                   <span className="font-bold text-slate-800 dark:text-slate-200">
                     Permisos de Acceso ({selectedPermissions.size} de {PERMISSIONS.length})
                   </span>
-                  <div className="flex items-center gap-2 text-xs">
+                  <div className="flex items-center gap-2 text-sm">
                     <button
                       type="button"
                       onClick={() => setSelectedPermissions(new Set(PERMISSIONS))}
@@ -676,7 +676,7 @@ export const RolesManager: React.FC = () => {
                                   <div className="font-semibold text-slate-900 dark:text-white">
                                     {perm.label}
                                   </div>
-                                  <div className="text-xs text-slate-500 dark:text-slate-400">
+                                  <div className="text-sm text-slate-500 dark:text-slate-400">
                                     {perm.description}
                                   </div>
                                 </div>

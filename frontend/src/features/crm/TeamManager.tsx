@@ -260,7 +260,7 @@ export const TeamManager: React.FC = () => {
             <Users className="size-6 text-indigo-600 dark:text-indigo-400" />
             <span>Gestión de Equipo</span>
           </h2>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             Administra los usuarios de tu personal, asigna roles de acceso y genera credenciales seguras.
           </p>
         </div>
@@ -289,7 +289,7 @@ export const TeamManager: React.FC = () => {
             placeholder="Buscar por nombre de usuario..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className={`w-full rounded-xl border pl-9 pr-4 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+            className={`w-full rounded-xl border pl-9 pr-4 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
               isDark
                 ? "border-slate-700 bg-slate-800 text-white placeholder-slate-400"
                 : "border-slate-200 bg-slate-50 text-slate-900 placeholder-slate-400"
@@ -328,7 +328,7 @@ export const TeamManager: React.FC = () => {
           <h3 className="text-sm font-bold text-slate-900 dark:text-white">
             {searchTerm ? "No se encontraron miembros coincidentes" : "No hay miembros registrados"}
           </h3>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
             {searchTerm
               ? "Prueba buscando con otro término."
               : "Registra a tus cocineros, cajeros y personal de salón para darles acceso controlado."}
@@ -351,7 +351,7 @@ export const TeamManager: React.FC = () => {
           }`}
         >
           <div role="region" aria-label="Tabla de equipo" tabIndex={0} className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full text-left text-sm">
               <thead
                 className={`border-b text-xs font-bold uppercase tracking-wider ${
                   isDark
@@ -442,7 +442,7 @@ export const TeamManager: React.FC = () => {
                             <span>Requiere cambio</span>
                           </span>
                         ) : (
-                          <span className="text-xs text-slate-500 dark:text-slate-400">Clave configurada</span>
+                          <span className="text-sm text-slate-500 dark:text-slate-400">Clave configurada</span>
                         )}
                       </td>
 
@@ -523,7 +523,7 @@ export const TeamManager: React.FC = () => {
               </button>
             </div>
 
-            <form onSubmit={handleCreate} className="space-y-4 text-xs">
+            <form onSubmit={handleCreate} className="space-y-4 text-sm">
               <div>
                 <label
                   htmlFor="create-username-input"
@@ -539,7 +539,7 @@ export const TeamManager: React.FC = () => {
                   placeholder="ej. camilo_caja, laura_cocina"
                   value={createUsername}
                   onChange={(e) => setCreateUsername(e.target.value.toLowerCase().replace(/\s+/g, "_"))}
-                  className={`w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                  className={`text-base sm:text-sm w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                     isDark
                       ? "border-slate-700 bg-slate-800 text-white placeholder-slate-400"
                       : "border-slate-300 bg-white text-slate-900 placeholder-slate-400"
@@ -570,7 +570,7 @@ export const TeamManager: React.FC = () => {
                   required
                   value={createPassword}
                   onChange={(e) => setCreatePassword(e.target.value)}
-                  className={`w-full rounded-xl border p-2.5 font-mono text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                  className={`w-full rounded-xl border p-2.5 font-mono text-base sm:text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                     isDark
                       ? "border-slate-700 bg-slate-800 text-white"
                       : "border-slate-300 bg-white text-slate-900"
@@ -586,7 +586,7 @@ export const TeamManager: React.FC = () => {
                   Rol Asignado *
                 </label>
                 {roles.length === 0 ? (
-                  <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
+                  <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
                     <p className="font-medium">
                       No hay roles creados todavía. Para asignar permisos a tu personal, primero crea los roles recomendados.
                     </p>
@@ -615,7 +615,7 @@ export const TeamManager: React.FC = () => {
                       searchable={false}
                     />
                     {rolesMap.get(createRoleId)?.description && (
-                      <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
+                      <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">
                         {rolesMap.get(createRoleId)?.description}
                       </p>
                     )}
@@ -623,7 +623,7 @@ export const TeamManager: React.FC = () => {
                 )}
               </div>
 
-              <div className="rounded-xl border border-indigo-100 bg-indigo-50/60 p-3 text-xs text-indigo-900 dark:border-indigo-900/40 dark:bg-indigo-950/20 dark:text-indigo-300">
+              <div className="rounded-xl border border-indigo-100 bg-indigo-50/60 p-3 text-sm text-indigo-900 dark:border-indigo-900/40 dark:bg-indigo-950/20 dark:text-indigo-300">
                 El empleado deberá cambiar esta contraseña temporal obligatoriamente en su primer inicio de sesión.
               </div>
 
@@ -676,7 +676,7 @@ export const TeamManager: React.FC = () => {
               </button>
             </div>
 
-            <form onSubmit={handleEdit} className="space-y-4 text-xs">
+            <form onSubmit={handleEdit} className="space-y-4 text-sm">
               <div>
                 <label
                   htmlFor="edit-username-input"
@@ -691,7 +691,7 @@ export const TeamManager: React.FC = () => {
                   maxLength={40}
                   value={editUsername}
                   onChange={(e) => setEditUsername(e.target.value.toLowerCase().replace(/\s+/g, "_"))}
-                  className={`w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                  className={`text-base sm:text-sm w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                     isDark
                       ? "border-slate-700 bg-slate-800 text-white placeholder-slate-400"
                       : "border-slate-300 bg-white text-slate-900 placeholder-slate-400"
@@ -708,7 +708,7 @@ export const TeamManager: React.FC = () => {
                     Rol Asignado *
                   </label>
                   {roles.length === 0 ? (
-                    <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
+                    <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
                       <p className="font-medium">
                         No hay roles creados todavía. Para asignar permisos a tu personal, primero crea los roles recomendados.
                       </p>
@@ -737,7 +737,7 @@ export const TeamManager: React.FC = () => {
                         searchable={false}
                       />
                       {rolesMap.get(editRoleId)?.description && (
-                        <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
+                        <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">
                           {rolesMap.get(editRoleId)?.description}
                         </p>
                       )}
@@ -814,7 +814,7 @@ export const TeamManager: React.FC = () => {
               </button>
             </div>
 
-            <p className="text-xs text-slate-600 dark:text-slate-300 mb-4">
+            <p className="text-sm text-slate-600 dark:text-slate-300 mb-4">
               Copia las credenciales a continuación para enviarlas al empleado por WhatsApp o en persona:
             </p>
 
@@ -889,7 +889,7 @@ export const TeamManager: React.FC = () => {
               </button>
             </div>
 
-            <p className="text-xs text-slate-600 dark:text-slate-300 mb-3">
+            <p className="text-sm text-slate-600 dark:text-slate-300 mb-3">
               Se ha generado una nueva contraseña temporal para el usuario{" "}
               <strong>{newTempPasswordModal.username}</strong>:
             </p>

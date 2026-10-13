@@ -59,12 +59,12 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
       }`}
     >
       {/* Card Header */}
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <span className="text-xs font-black text-indigo-600 dark:text-indigo-400">
+      <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-0.5">
+        <div className="min-w-0">
+          <span className="text-sm font-black text-indigo-600 dark:text-indigo-400">
             #{order.orderNumber}
           </span>
-          <h3 className="mt-0.5 text-xs font-bold leading-tight break-words text-slate-900 dark:text-white">
+          <h3 className="mt-0.5 text-sm font-bold leading-tight break-words text-slate-900 dark:text-white">
             {order.customer.nombre}
           </h3>
         </div>
@@ -74,7 +74,7 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
       </div>
 
       {/* Address preview */}
-      <div className="mt-2 flex items-start gap-1 text-xs text-slate-500 dark:text-slate-400">
+      <div className="mt-2 flex items-start gap-1 text-sm text-slate-500 dark:text-slate-400">
         <MapPin className="size-3 shrink-0 text-slate-500 dark:text-slate-400" />
         <span className="min-w-0 break-words">
           {getOrderLocationText(order)}
@@ -83,13 +83,13 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
 
       {/* Items Summary */}
       <div
-        className={`mt-2.5 rounded-lg p-2 text-xs ${
+        className={`mt-2.5 rounded-lg p-2 text-sm ${
           isDark ? "bg-slate-800/80 text-slate-200" : "bg-slate-50 text-slate-700"
         }`}
       >
         <div className="space-y-1 font-medium">
           {order.items.map((item, idx) => (
-            <div key={idx} className="flex justify-between">
+            <div key={idx} className="flex justify-between gap-3">
               <span className="min-w-0 break-words">
                 {item.cantidad || (item as any).quantity || 1}× {item.name || (item as any).productName || "Producto"}
               </span>
@@ -97,7 +97,7 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
           ))}
         </div>
         {order.comentario && (
-          <p className="mt-1.5 border-t border-slate-200/40 dark:border-slate-700/60 pt-1 text-xs italic text-amber-700 dark:text-amber-300 break-words [overflow-wrap:anywhere]">
+          <p className="mt-1.5 border-t border-slate-200/40 dark:border-slate-700/60 pt-1 text-sm italic text-amber-700 dark:text-amber-300 break-words [overflow-wrap:anywhere]">
             &quot;{order.comentario}&quot;
           </p>
         )}
@@ -105,7 +105,7 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
 
       {/* Totals & Payment */}
       <div className="mt-3 flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-2.5">
-        <span className="text-xs font-black text-slate-900 dark:text-white">
+        <span className="text-sm font-black text-slate-900 dark:text-white">
           {formatCurrency(order.finalTotal)}
         </span>
         <div className="flex items-center gap-1 flex-wrap justify-end">

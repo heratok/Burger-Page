@@ -168,7 +168,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
         </div>
 
         {/* Customer Information */}
-        <div className="mt-4 rounded-xl bg-slate-50 dark:bg-slate-800 p-3.5 text-xs space-y-2 border dark:border-slate-700">
+        <div className="mt-4 rounded-xl bg-slate-50 dark:bg-slate-800 p-3.5 text-sm space-y-2 border dark:border-slate-700">
           <div className="flex items-center justify-between">
             <span className="font-bold text-slate-900 dark:text-white text-sm">
               {order.customer.nombre}
@@ -191,7 +191,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
             </span>
           </div>
           {order.comentario && (
-            <div className="mt-2 rounded-lg border border-amber-300/40 bg-amber-50/50 dark:border-amber-500/30 dark:bg-amber-950/30 p-2.5 text-xs text-amber-800 dark:text-amber-200 break-words [overflow-wrap:anywhere]">
+            <div className="mt-2 rounded-lg border border-amber-300/40 bg-amber-50/50 dark:border-amber-500/30 dark:bg-amber-950/30 p-2.5 text-sm text-amber-800 dark:text-amber-200 break-words [overflow-wrap:anywhere]">
               <span className="font-bold">Nota del cliente: </span>
               &quot;{order.comentario}&quot;
             </div>
@@ -206,9 +206,9 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
           {order.items.map((item, idx) => (
             <div
               key={idx}
-              className="rounded-xl border border-slate-200 dark:border-slate-700 p-3 text-xs space-y-1.5 bg-slate-50/70 dark:bg-slate-800"
+              className="rounded-xl border border-slate-200 dark:border-slate-700 p-3 text-sm space-y-1.5 bg-slate-50/70 dark:bg-slate-800"
             >
-              <div className="flex justify-between font-bold text-slate-900 dark:text-white">
+              <div className="flex justify-between gap-3 font-bold text-slate-900 dark:text-white">
                 <span>
                   {item.cantidad || (item as any).quantity || 1}× {item.name || (item as any).productName || "Producto"}
                 </span>
@@ -224,7 +224,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                 </span>
               </div>
               {item.adiciones && item.adiciones.length > 0 && (
-                <div className="text-xs text-slate-600 dark:text-slate-300 pl-3 border-l-2 border-slate-300 dark:border-slate-600 space-y-0.5">
+                <div className="text-sm text-slate-600 dark:text-slate-300 pl-3 border-l-2 border-slate-300 dark:border-slate-600 space-y-0.5">
                   {item.adiciones.map((a, i) => (
                     <div key={i}>
                       + {a.cantidad}× {a.name} ({formatCurrency(a.price * a.cantidad)})
@@ -233,7 +233,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                 </div>
               )}
               {item.observacion && (
-                <p className="text-xs text-amber-700 dark:text-amber-300 italic pt-0.5 break-words [overflow-wrap:anywhere]">
+                <p className="text-sm text-amber-700 dark:text-amber-300 italic pt-0.5 break-words [overflow-wrap:anywhere]">
                   Nota: {item.observacion}
                 </p>
               )}
@@ -242,26 +242,26 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
         </div>
 
         {/* Payment & Totals */}
-        <div className="mt-4 border-t pt-3 border-slate-100 dark:border-slate-800 text-xs space-y-1.5">
-          <div className="flex justify-between text-slate-500 dark:text-slate-400">
+        <div className="mt-4 border-t pt-3 border-slate-100 dark:border-slate-800 text-sm space-y-1.5">
+          <div className="flex justify-between gap-3 text-slate-500 dark:text-slate-400">
             <span>Subtotal productos</span>
             <span className="font-semibold text-slate-800 dark:text-slate-200">
               {formatCurrency(order.total ?? (order as any).subtotal ?? 0)}
             </span>
           </div>
-          <div className="flex justify-between text-slate-500 dark:text-slate-400">
+          <div className="flex justify-between gap-3 text-slate-500 dark:text-slate-400">
             <span>Costo de domicilio</span>
             <span className="font-semibold text-slate-800 dark:text-slate-200">
               {formatCurrency(order.deliveryFee ?? (order as any).costoEnvio ?? 0)}
             </span>
           </div>
-          <div className="flex justify-between text-sm font-bold pt-1.5 border-t border-slate-100 dark:border-slate-800 text-slate-900 dark:text-white">
+          <div className="flex justify-between gap-3 text-sm font-bold pt-1.5 border-t border-slate-100 dark:border-slate-800 text-slate-900 dark:text-white">
             <span>Total a Pagar</span>
             <span className="text-indigo-600 dark:text-indigo-400 text-base font-black">
               {formatCurrency(order.finalTotal || 0)}
             </span>
           </div>
-          <div className="mt-2 rounded-lg bg-slate-100 dark:bg-slate-800 p-2.5 text-xs flex justify-between border dark:border-slate-700 text-slate-800 dark:text-slate-200">
+          <div className="mt-2 rounded-lg bg-slate-100 dark:bg-slate-800 p-2.5 text-sm flex justify-between border dark:border-slate-700 text-slate-800 dark:text-slate-200">
             <span>Método: <strong>{order.metodo}</strong></span>
             {order.pagoCon && (
               <span>
@@ -275,7 +275,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
           {order.metodo === "Transferencia" && (
             <div className="mt-2.5 rounded-xl border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/50 dark:bg-indigo-950/30 p-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5">
+                <span className="text-sm font-bold text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5">
                   <FileText className="size-3.5 text-indigo-600 dark:text-indigo-400" />
                   Soporte de Transferencia
                 </span>
@@ -309,7 +309,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                     </div>
                   </button>
                   <div className="min-w-0 flex-1 space-y-1">
-                    <p className="text-xs text-slate-600 dark:text-slate-300">
+                    <p className="text-sm text-slate-600 dark:text-slate-300">
                       Comprobante disponible para verificación contable.
                     </p>
                     <div className="flex items-center gap-2.5 pt-0.5">
@@ -321,7 +321,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                         <Eye className="size-3.5" />
                         <span>Ver soporte</span>
                       </button>
-                      <label className="text-xs font-semibold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 cursor-pointer">
+                      <label className="text-sm font-semibold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 cursor-pointer">
                         {isUploading ? "Subiendo..." : "Cambiar"}
                         <input
                           type="file"
@@ -337,7 +337,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
               ) : (
                 <div className="mt-2.5">
                   <label
-                    className={`flex items-center justify-center gap-2 rounded-lg border border-dashed border-indigo-300 dark:border-indigo-700 bg-white/80 dark:bg-slate-900/80 px-3 py-2 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 cursor-pointer transition-colors ${
+                    className={`flex items-center justify-center gap-2 rounded-lg border border-dashed border-indigo-300 dark:border-indigo-700 bg-white/80 dark:bg-slate-900/80 px-3 py-2 text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 cursor-pointer transition-colors ${
                       isUploading ? "opacity-50 pointer-events-none" : ""
                     }`}
                   >
@@ -351,7 +351,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                       className="hidden"
                     />
                   </label>
-                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 text-center">
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 text-center">
                     Carga el comprobante post-venta para el registro contable
                   </p>
                 </div>
@@ -365,7 +365,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
           <div className="mt-5 flex flex-wrap gap-2 border-t pt-4 border-slate-100 dark:border-slate-800">
             {canManage && (
               <>
-                <div className="text-xs font-semibold w-full text-slate-500 dark:text-slate-400">
+                <div className="text-sm font-semibold w-full text-slate-500 dark:text-slate-400">
                   Cambiar estado de orden:
                 </div>
                 <button
@@ -449,7 +449,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
             <div className="flex items-center justify-between pb-3 border-b border-slate-800 text-white">
               <div>
                 <h3 className="font-bold text-sm">Comprobante de Transferencia</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Orden #{order.orderNumber} • {order.customer.nombre}</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Orden #{order.orderNumber} • {order.customer.nombre}</p>
               </div>
               <div className="flex items-center gap-2">
                 <a

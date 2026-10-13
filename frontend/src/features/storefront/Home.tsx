@@ -271,7 +271,7 @@ export default function Home() {
               <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-white drop-shadow-md">
                 {storeConfig.name}
               </h1>
-              <p className="mt-1 text-xs sm:text-sm text-slate-200 max-w-xl line-clamp-2">
+              <p className="mt-1 text-sm text-slate-200 max-w-xl line-clamp-2">
                 {storeConfig.tagline} &middot; {storeConfig.estimatedDeliveryTime}
               </p>
             </div>
@@ -478,8 +478,8 @@ export default function Home() {
                             {items.length}
                           </span>
                         </div>
-                        <div className="flex items-center gap-1.5 text-xs text-text-muted">
-                          <span className="hidden sm:inline font-medium text-xs">
+                        <div className="flex items-center gap-1.5 text-sm text-text-muted">
+                          <span className="hidden sm:inline font-medium text-sm">
                             {isCollapsed ? "Mostrar" : "Minimizar"}
                           </span>
                           <span

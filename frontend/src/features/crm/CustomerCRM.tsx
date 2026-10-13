@@ -221,7 +221,7 @@ export const CustomerCRM: React.FC = () => {
           </span>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="text-2xl font-black text-slate-900 dark:text-white">{customers.length}</span>
-            <span className="text-xs text-slate-500 dark:text-slate-400">registrados</span>
+            <span className="text-sm text-slate-500 dark:text-slate-400">registrados</span>
           </div>
         </div>
 
@@ -237,7 +237,7 @@ export const CustomerCRM: React.FC = () => {
             <span className="text-2xl font-black text-amber-700 dark:text-amber-400">
               {stats.vipCount + stats.goldCount}
             </span>
-            <span className="text-xs text-slate-500 dark:text-slate-400">alta frecuencia</span>
+            <span className="text-sm text-slate-500 dark:text-slate-400">alta frecuencia</span>
           </div>
         </div>
 
@@ -270,7 +270,7 @@ export const CustomerCRM: React.FC = () => {
             <span className="text-2xl font-black text-slate-900 dark:text-white">
               {stats.avgOrders}
             </span>
-            <span className="text-xs text-slate-500 dark:text-slate-400">órdenes</span>
+            <span className="text-sm text-slate-500 dark:text-slate-400">órdenes</span>
           </div>
         </div>
       </div>
@@ -292,7 +292,7 @@ export const CustomerCRM: React.FC = () => {
               setCurrentPage(1)
             }}
             placeholder="Buscar por nombre, teléfono o barrio..."
-            className={`w-full rounded-xl border pl-9 pr-4 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+            className={`w-full rounded-xl border pl-9 pr-4 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
               isDark
                 ? "border-slate-700 bg-slate-800 text-slate-100 placeholder-slate-400"
                 : "border-slate-200 bg-slate-50 text-slate-900 placeholder-slate-400"
@@ -343,8 +343,8 @@ export const CustomerCRM: React.FC = () => {
           }`}
         >
         <div role="region" aria-label="Tabla de clientes" tabIndex={0} className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead>
+          <table className="w-full text-left text-sm">
+            <thead className="text-xs">
               <tr className={`border-b ${isDark ? "border-slate-800 text-slate-400" : "border-slate-100 text-slate-500"}`}>
                 <th className="py-3 px-4 font-semibold">Cliente</th>
                 <th className="py-3 px-4 font-semibold">Teléfono</th>
@@ -385,7 +385,7 @@ export const CustomerCRM: React.FC = () => {
                     <div className="font-medium max-w-[14rem] break-words text-slate-900 dark:text-slate-200">
                       {cust.direccion}
                     </div>
-                    <div className="text-xs text-slate-500 dark:text-slate-400">{cust.barrio}</div>
+                    <div className="text-sm text-slate-500 dark:text-slate-400">{cust.barrio}</div>
                   </td>
                   <td className="py-3 px-4 font-bold text-center text-slate-900 dark:text-slate-100">
                     {cust.totalOrders}
@@ -478,7 +478,7 @@ export const CustomerCRM: React.FC = () => {
               isDark ? "border-slate-800 bg-slate-900 text-slate-100" : "border-slate-200 bg-white text-slate-900"
             }`}
           >
-            <div className="flex items-start justify-between border-b pb-4 border-slate-100 dark:border-slate-800">
+            <div className="flex items-start justify-between gap-3 border-b pb-4 border-slate-100 dark:border-slate-800">
               <div>
                 <div className="flex items-center gap-2">
                   <h3 id="customer-profile-title" className="text-base font-black text-slate-900 dark:text-white">
@@ -486,7 +486,7 @@ export const CustomerCRM: React.FC = () => {
                   </h3>
                   <LoyaltyBadge tier={selectedCustomer.loyaltyTier} />
                 </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-sm text-slate-500 dark:text-slate-400">
                   Celular: {selectedCustomer.telefono} &middot; {selectedCustomer.barrio}
                 </p>
               </div>
@@ -502,7 +502,7 @@ export const CustomerCRM: React.FC = () => {
 
             {canManageCustomers && (
               isEditing ? (
-                <div className="mt-4 grid grid-cols-1 gap-3 text-xs sm:grid-cols-2">
+                <div className="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
                   {(
                     [
                       ["nombre", "Nombre"],
@@ -519,7 +519,7 @@ export const CustomerCRM: React.FC = () => {
                         maxLength={120}
                         value={detailsDraft[field]}
                         onChange={(e) => setDetailsDraft((prev) => ({ ...prev, [field]: e.target.value }))}
-                        className="rounded-xl border p-2 font-normal text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                        className="text-base sm:text-sm rounded-xl border p-2 font-normal text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                       />
                     </label>
                   ))}
@@ -538,7 +538,7 @@ export const CustomerCRM: React.FC = () => {
                   </div>
                 </div>
               ) : (
-                <div className="mt-3 flex justify-end gap-2 text-xs">
+                <div className="mt-3 flex justify-end gap-2 text-sm">
                   <Button size="sm" variant="outline" onClick={() => setIsEditing(true)}>
                     <Pencil className="size-3.5" />
                     Editar datos
@@ -557,7 +557,7 @@ export const CustomerCRM: React.FC = () => {
             )}
 
             {/* Spending stats */}
-            <div className={`mt-4 grid gap-3 text-xs ${can?.("finance.view") ? "grid-cols-2" : "grid-cols-1"}`}>
+            <div className={`mt-4 grid gap-3 text-sm ${can?.("finance.view") ? "grid-cols-2" : "grid-cols-1"}`}>
               <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-800 border dark:border-slate-700">
                 <span className="text-slate-500 dark:text-slate-400 font-medium">Total Pedidos</span>
                 <p className="text-lg font-black text-slate-900 dark:text-white">
@@ -575,7 +575,7 @@ export const CustomerCRM: React.FC = () => {
             </div>
 
             {/* Notes input */}
-            <div className="mt-4 space-y-2 text-xs">
+            <div className="mt-4 space-y-2 text-sm">
               <label htmlFor="customer-crm-notas-internas-del-cliente-p" className="font-bold flex items-center gap-1.5 text-slate-800 dark:text-slate-200">
                 <FileText className="size-3.5 text-indigo-600 dark:text-indigo-400" />
                 <span>Notas Internas del Cliente (Preferencias, Alergias, etc.)</span>
@@ -592,7 +592,7 @@ export const CustomerCRM: React.FC = () => {
                     ? "Ej. Prefiere la carne bien cocida. Dejar con portería si no contesta..."
                     : "Sin notas registradas"
                 }
-                className={`w-full rounded-xl border p-2.5 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white ${
+                className={`text-base sm:text-sm w-full rounded-xl border p-2.5 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white ${
                   !canManageCustomers ? "opacity-75 cursor-not-allowed bg-slate-50 dark:bg-slate-800/50" : ""
                 }`}
               />
@@ -607,7 +607,7 @@ export const CustomerCRM: React.FC = () => {
             </div>
 
             {/* Orders History in Modal */}
-            <div className="mt-4 border-t pt-3 border-slate-100 dark:border-slate-800 text-xs">
+            <div className="mt-4 border-t pt-3 border-slate-100 dark:border-slate-800 text-sm">
               <h4 className="font-bold mb-2 text-slate-900 dark:text-slate-200">
                 Historial de Pedidos Registrados ({customerOrders.length})
               </h4>
@@ -615,7 +615,7 @@ export const CustomerCRM: React.FC = () => {
                 {customerOrders.map((ord) => (
                   <div
                     key={ord.id}
-                    className="flex items-center justify-between rounded-lg border border-slate-200 dark:border-slate-700 p-2.5 text-xs text-slate-900 dark:text-slate-100 bg-slate-50/80 dark:bg-slate-800"
+                    className="flex items-center justify-between rounded-lg border border-slate-200 dark:border-slate-700 p-2.5 text-sm text-slate-900 dark:text-slate-100 bg-slate-50/80 dark:bg-slate-800"
                   >
                     <div>
                       <span className="font-bold text-indigo-600 dark:text-indigo-400">
@@ -648,12 +648,12 @@ export const CustomerCRM: React.FC = () => {
               isDark ? "border-slate-800 bg-slate-900 text-slate-100" : "border-slate-200 bg-white text-slate-900"
             }`}
           >
-            <div className="flex items-start justify-between border-b pb-4 border-slate-100 dark:border-slate-800">
+            <div className="flex items-start justify-between gap-3 border-b pb-4 border-slate-100 dark:border-slate-800">
               <div>
                 <h3 id="create-customer-title" className="text-base font-black text-slate-900 dark:text-white">
                   Nuevo Cliente
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-sm text-slate-500 dark:text-slate-400">
                   Registra los datos del cliente para su historial y fidelización
                 </p>
               </div>
@@ -667,7 +667,7 @@ export const CustomerCRM: React.FC = () => {
               </button>
             </div>
 
-            <form onSubmit={handleCreateCustomer} className="mt-4 space-y-3 text-xs">
+            <form onSubmit={handleCreateCustomer} className="mt-4 space-y-3 text-sm">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <label className="flex flex-col gap-1 font-bold text-slate-800 dark:text-slate-200">
                   <span>Nombre *</span>
@@ -680,14 +680,14 @@ export const CustomerCRM: React.FC = () => {
                       if (createErrors.nombre) setCreateErrors((prev) => ({ ...prev, nombre: undefined }))
                     }}
                     placeholder="Ej. Juan Pérez"
-                    className={`rounded-xl border p-2 font-normal text-slate-900 dark:bg-slate-800 dark:text-white ${
+                    className={`text-base sm:text-sm rounded-xl border p-2 font-normal text-slate-900 dark:bg-slate-800 dark:text-white ${
                       createErrors.nombre
                         ? "border-rose-500 focus:ring-rose-500"
                         : "border-slate-200 dark:border-slate-700"
                     }`}
                   />
                   {createErrors.nombre && (
-                    <span className="text-xs font-medium text-rose-600 dark:text-rose-400">{createErrors.nombre}</span>
+                    <span className="text-sm font-medium text-rose-600 dark:text-rose-400">{createErrors.nombre}</span>
                   )}
                 </label>
 
@@ -702,17 +702,17 @@ export const CustomerCRM: React.FC = () => {
                       if (createErrors.telefono) setCreateErrors((prev) => ({ ...prev, telefono: undefined }))
                     }}
                     placeholder="Ej. 3001234567"
-                    className={`rounded-xl border p-2 font-normal text-slate-900 dark:bg-slate-800 dark:text-white ${
+                    className={`text-base sm:text-sm rounded-xl border p-2 font-normal text-slate-900 dark:bg-slate-800 dark:text-white ${
                       createErrors.telefono
                         ? "border-rose-500 focus:ring-rose-500"
                         : "border-slate-200 dark:border-slate-700"
                     }`}
                   />
                   {createErrors.telefono && (
-                    <span className="text-xs font-medium text-rose-600 dark:text-rose-400">{createErrors.telefono}</span>
+                    <span className="text-sm font-medium text-rose-600 dark:text-rose-400">{createErrors.telefono}</span>
                   )}
                   {existingCustomerWithPhone && (
-                    <span className="text-xs font-medium text-amber-700 dark:text-amber-400">
+                    <span className="text-sm font-medium text-amber-700 dark:text-amber-400">
                       Este teléfono ya está registrado ({existingCustomerWithPhone.nombre}; se actualizarán sus datos)
                     </span>
                   )}
@@ -726,7 +726,7 @@ export const CustomerCRM: React.FC = () => {
                     value={createDraft.direccion}
                     onChange={(e) => setCreateDraft((prev) => ({ ...prev, direccion: e.target.value }))}
                     placeholder="Ej. Carrera 10 # 20-30"
-                    className="rounded-xl border border-slate-200 p-2 font-normal text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                    className="text-base sm:text-sm rounded-xl border border-slate-200 p-2 font-normal text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                   />
                 </label>
 
@@ -738,7 +738,7 @@ export const CustomerCRM: React.FC = () => {
                     value={createDraft.barrio}
                     onChange={(e) => setCreateDraft((prev) => ({ ...prev, barrio: e.target.value }))}
                     placeholder="Ej. Poblado"
-                    className="rounded-xl border border-slate-200 p-2 font-normal text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                    className="text-base sm:text-sm rounded-xl border border-slate-200 p-2 font-normal text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                   />
                 </label>
 
@@ -750,7 +750,7 @@ export const CustomerCRM: React.FC = () => {
                     value={createDraft.email}
                     onChange={(e) => setCreateDraft((prev) => ({ ...prev, email: e.target.value }))}
                     placeholder="Ej. cliente@ejemplo.com"
-                    className="rounded-xl border border-slate-200 p-2 font-normal text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                    className="text-base sm:text-sm rounded-xl border border-slate-200 p-2 font-normal text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                   />
                 </label>
 
@@ -762,7 +762,7 @@ export const CustomerCRM: React.FC = () => {
                     value={createDraft.notes}
                     onChange={(e) => setCreateDraft((prev) => ({ ...prev, notes: e.target.value }))}
                     placeholder="Preferencias, alergias, o instrucciones especiales..."
-                    className="rounded-xl border border-slate-200 p-2 font-normal text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                    className="text-base sm:text-sm rounded-xl border border-slate-200 p-2 font-normal text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                   />
                 </label>
               </div>

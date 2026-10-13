@@ -95,14 +95,14 @@ export function TablePicker({
       : "border-slate-300 bg-white text-slate-800 hover:border-orange-500/60"
   }
 
-  const inputClass = `w-full rounded-lg border px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-orange-500 ${
+  const inputClass = `w-full rounded-lg border px-2.5 py-1.5 text-base sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-orange-500 ${
     isDark ? "border-slate-700 bg-slate-950 text-white" : "border-slate-300 bg-white"
   }`
 
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Mesa *</span>
+        <span className="text-sm font-bold text-slate-500 dark:text-slate-400">Mesa *</span>
         {!isCreating && (
           <button
             ref={addButtonRef}
@@ -116,16 +116,16 @@ export function TablePicker({
       </div>
 
       {legacyLabel && !selectedTableId && (
-        <p className="rounded-lg bg-amber-500/10 px-2.5 py-1.5 text-xs font-medium text-amber-700 dark:text-amber-300">
+        <p className="rounded-lg bg-amber-500/10 px-2.5 py-1.5 text-sm font-medium text-amber-700 dark:text-amber-300">
           {legacyLabel} — Registrada antes de las mesas. Elegí una mesa para vincularla o dejá este texto como está.
         </p>
       )}
 
-      {isLoading && <p className="text-xs text-slate-500 dark:text-slate-400">Cargando mesas...</p>}
-      {!isLoading && loadError && <p className="text-xs text-rose-600 dark:text-rose-400">{loadError}</p>}
+      {isLoading && <p className="text-sm text-slate-500 dark:text-slate-400">Cargando mesas...</p>}
+      {!isLoading && loadError && <p className="text-sm text-rose-600 dark:text-rose-400">{loadError}</p>}
 
       {!isLoading && !loadError && activeTables.length === 0 && (
-        <div className="rounded-lg border border-dashed border-slate-300 p-3 text-center text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
+        <div className="rounded-lg border border-dashed border-slate-300 p-3 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
           <p>No hay mesas activas. Creá una acá o administralas en</p>
           <button
             type="button"
@@ -222,7 +222,7 @@ export function TablePicker({
               Cancelar
             </button>
           </div>
-          {preview && <p className="text-xs text-slate-500 dark:text-slate-400">Se creará: {preview}</p>}
+          {preview && <p className="text-sm text-slate-500 dark:text-slate-400">Se creará: {preview}</p>}
         </div>
       )}
     </div>

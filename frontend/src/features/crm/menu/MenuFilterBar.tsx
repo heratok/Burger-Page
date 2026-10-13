@@ -125,7 +125,7 @@ export const MenuFilterBar: React.FC<MenuFilterBarProps> = ({
             value={searchTerm}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Buscar plato..."
-            className={`w-full rounded-xl border pl-8 pr-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+            className={`w-full rounded-xl border pl-8 pr-3 py-1.5 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
               isDark
                 ? "border-slate-700 bg-slate-800 text-slate-100 placeholder-slate-400"
                 : "border-slate-200 bg-white text-slate-800 placeholder-slate-400"

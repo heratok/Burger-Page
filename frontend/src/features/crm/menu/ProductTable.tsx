@@ -27,8 +27,8 @@ export const ProductTable: React.FC<ProductTableProps> = ({
       }`}
     >
       <div role="region" aria-label="Tabla de productos" tabIndex={0} className="overflow-x-auto">
-        <table className="w-full text-left text-xs">
-        <thead>
+        <table className="w-full text-left text-sm">
+        <thead className="text-xs">
           <tr className={`border-b ${isDark ? "border-slate-800 text-slate-400" : "border-slate-100 text-slate-500"}`}>
             <th className="py-3 px-4 font-semibold">Producto</th>
             <th className="py-3 px-4 font-semibold">Categoría</th>
@@ -56,7 +56,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                   />
                   <div>
                     <div className="font-bold text-slate-900 dark:text-white">{prod.name}</div>
-                    <div className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1 max-w-xs">
+                    <div className="text-sm text-slate-500 dark:text-slate-400 line-clamp-1 max-w-xs">
                       {prod.description}
                     </div>
                   </div>

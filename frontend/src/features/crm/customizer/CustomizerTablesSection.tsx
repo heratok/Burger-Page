@@ -150,7 +150,7 @@ export const CustomizerTablesSection: React.FC<CustomizerTablesSectionProps> = (
 
   const canSaveEdit = previewTableName(editZone, Number(editNumber)) !== null
 
-  const inputClass = `rounded-xl border px-2.5 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+  const inputClass = `rounded-xl border px-2.5 py-2 text-base sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
     isDark ? "border-slate-700 bg-slate-800 text-white" : "border-slate-300 bg-white text-slate-900"
   }`
   const numberProps = {
@@ -163,7 +163,7 @@ export const CustomizerTablesSection: React.FC<CustomizerTablesSectionProps> = (
 
   return (
     <div
-      className={`rounded-2xl border p-5 shadow-xs space-y-4 text-xs ${
+      className={`rounded-2xl border p-5 shadow-xs space-y-4 text-sm ${
         isDark ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-white"
       }`}
     >
@@ -171,7 +171,7 @@ export const CustomizerTablesSection: React.FC<CustomizerTablesSectionProps> = (
         <LayoutGrid className="size-4 text-sky-700 dark:text-sky-400" />
         <h3 className="font-bold text-sm text-slate-900 dark:text-white">Mesas del salón</h3>
       </div>
-      <p className="text-xs text-slate-500 dark:text-slate-400">
+      <p className="text-sm text-slate-500 dark:text-slate-400">
         Estas mesas aparecen al registrar una venta en &quot;Mesa / Salón&quot;. Los cambios se guardan al instante,
         sin usar &quot;Guardar &amp; Publicar&quot;. Desactivá una mesa para ocultarla sin perder su historial.
       </p>
@@ -236,12 +236,12 @@ export const CustomizerTablesSection: React.FC<CustomizerTablesSectionProps> = (
         </div>
 
         {isRange ? (
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
             {rangePreview ?? "Indicá una zona y un rango válido (hasta 100 mesas)."}
           </p>
         ) : (
           singlePreview && (
-            <p className="text-xs text-slate-500 dark:text-slate-400">Se creará: {singlePreview}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Se creará: {singlePreview}</p>
           )
         )}
 
@@ -263,7 +263,7 @@ export const CustomizerTablesSection: React.FC<CustomizerTablesSectionProps> = (
         </div>
 
         {isRange && rangeResult && (
-          <p role="status" className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
+          <p role="status" className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
             {rangeResult}
           </p>
         )}

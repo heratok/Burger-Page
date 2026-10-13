@@ -254,7 +254,7 @@ export const OrdersKanban: React.FC = () => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Buscar por # orden, cliente, dirección o barrio..."
-              className={`w-full rounded-xl border pl-9 pr-4 py-2 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+              className={`w-full rounded-xl border pl-9 pr-4 py-2 text-base sm:text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                 isDark
                   ? "border-slate-700 bg-slate-800 text-slate-100 placeholder-slate-400"
                   : "border-slate-200 bg-slate-50 text-slate-900 placeholder-slate-400"
@@ -381,7 +381,7 @@ export const OrdersKanban: React.FC = () => {
               </button>
             </div>
 
-            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium hidden sm:inline">
+            <span className="text-sm text-slate-500 dark:text-slate-400 font-medium hidden sm:inline">
               {feedTab === "active"
                 ? "Órdenes en preparación y despacho con acción de 1 clic"
                 : "Órdenes entregadas y canceladas"}
@@ -453,7 +453,7 @@ export const OrdersKanban: React.FC = () => {
                   <h2 className="text-sm font-bold text-slate-900 dark:text-white">
                     ¡Cocina al día! No hay comandas pendientes
                   </h2>
-                  <p className="mt-1 max-w-sm text-xs text-slate-500 dark:text-slate-400">
+                  <p className="mt-1 max-w-sm text-sm text-slate-500 dark:text-slate-400">
                     Los pedidos que entren desde la tienda web o las ventas que cargues a mano aparecerán aquí en tiempo real.
                   </p>
                   <Button
@@ -467,7 +467,7 @@ export const OrdersKanban: React.FC = () => {
                 </div>
               ) : displayedActiveOrders.length === 0 ? (
                 <div
-                  className={`flex flex-col items-center justify-center rounded-2xl border border-dashed p-10 text-center text-xs text-slate-500 dark:text-slate-400 ${
+                  className={`flex flex-col items-center justify-center rounded-2xl border border-dashed p-10 text-center text-sm text-slate-500 dark:text-slate-400 ${
                     isDark ? "border-slate-800" : "border-slate-200"
                   }`}
                 >
@@ -526,7 +526,7 @@ export const OrdersKanban: React.FC = () => {
                 <KanbanBoardSkeleton isDark={isDark} columns={3} />
               ) : historyOrders.length === 0 ? (
                 <div
-                  className={`flex flex-col items-center justify-center rounded-2xl border border-dashed p-10 text-center text-xs text-slate-500 dark:text-slate-400 ${
+                  className={`flex flex-col items-center justify-center rounded-2xl border border-dashed p-10 text-center text-sm text-slate-500 dark:text-slate-400 ${
                     isDark ? "border-slate-800" : "border-slate-200"
                   }`}
                 >
@@ -610,7 +610,7 @@ export const OrdersKanban: React.FC = () => {
                 <div className="mt-3 flex-1 space-y-3 min-h-[300px] max-h-[calc(100vh-270px)] overflow-y-auto pr-1">
                   {colOrders.length === 0 ? (
                     <div
-                      className={`flex h-40 flex-col items-center justify-center rounded-xl border border-dashed text-center text-xs ${
+                      className={`flex h-40 flex-col items-center justify-center rounded-xl border border-dashed text-center text-sm ${
                         isDark
                           ? "border-slate-800 text-slate-400"
                           : "border-slate-200 text-slate-500 dark:text-slate-400"
@@ -633,7 +633,7 @@ export const OrdersKanban: React.FC = () => {
                         />
                       ))}
                       {isTerminalCol && colOrders.length > maxVisible && (
-                        <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-800 p-2.5 text-center text-xs text-slate-500 dark:text-slate-400 bg-slate-50/50 dark:bg-slate-900/50">
+                        <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-800 p-2.5 text-center text-sm text-slate-500 dark:text-slate-400 bg-slate-50/50 dark:bg-slate-900/50">
                           Mostrando las {maxVisible} órdenes más recientes ({colOrders.length} en total). Para consultar el histórico completo, ve a <strong>Reportes</strong>.
                         </div>
                       )}

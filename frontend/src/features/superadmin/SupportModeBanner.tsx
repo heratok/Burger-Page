@@ -46,7 +46,7 @@ export const SupportModeBanner: React.FC<SupportModeBannerProps> = ({
     <div
       role="status"
       aria-label="Modo soporte"
-      className="w-full bg-amber-500 text-amber-950 px-4 py-2 text-xs sm:text-sm font-medium flex items-center justify-between sm:justify-center gap-2 shadow-xs shrink-0 z-40 border-b border-amber-600/20"
+      className="w-full bg-amber-500 text-amber-950 px-4 py-2 text-sm font-medium flex items-center justify-between sm:justify-center gap-2 shadow-xs shrink-0 z-40 border-b border-amber-600/20"
     >
       <div className="flex items-center gap-1.5 flex-wrap justify-center">
         <ShieldAlert className="size-4 shrink-0 text-amber-950" />

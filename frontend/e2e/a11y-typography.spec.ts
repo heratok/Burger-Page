@@ -38,6 +38,39 @@ async function findTinyText(page: Page): Promise<Offender[]> {
   }, MIN_FONT_PX);
 }
 
+const MIN_CONTROL_PX = 14;
+/** iOS Safari zooms the page on focus when a text-entry control is below 16px. */
+const MIN_MOBILE_ENTRY_PX = 16;
+
+type SmallControl = { control: string; fontSize: number; min: number };
+
+/** Visible form controls whose value text is below 14px (16px for text-entry inputs on mobile). */
+async function findSmallControls(page: Page, mobile: boolean): Promise<SmallControl[]> {
+  return page.evaluate(
+    ({ minControl, minEntry, mobile }) => {
+      const found: { control: string; fontSize: number; min: number }[] = [];
+      const entryTypes = new Set(["text", "search", "email", "tel", "url", "password", "number", ""]);
+      for (const el of document.querySelectorAll<HTMLInputElement>("input, textarea, select")) {
+        const type = el instanceof HTMLInputElement ? el.type : "textarea";
+        if (["checkbox", "radio", "range", "color", "file", "hidden", "submit", "button"].includes(type)) continue;
+        if (el.closest(".sr-only, [hidden], [aria-hidden=\"true\"]")) continue;
+        const style = getComputedStyle(el);
+        const rect = el.getBoundingClientRect();
+        if (style.display === "none" || style.visibility === "hidden" || rect.width <= 1 || rect.height <= 1) continue;
+        const size = parseFloat(style.fontSize);
+        const isEntry = el instanceof HTMLTextAreaElement || entryTypes.has(type);
+        const min = mobile && isEntry ? minEntry : minControl;
+        if (size < min) {
+          const label = el.getAttribute("aria-label") || el.getAttribute("placeholder") || el.id || el.tagName;
+          found.push({ control: String(label).slice(0, 40), fontSize: size, min });
+        }
+      }
+      return found;
+    },
+    { minControl: MIN_CONTROL_PX, minEntry: MIN_MOBILE_ENTRY_PX, mobile },
+  );
+}
+
 async function hasHorizontalOverflow(page: Page): Promise<boolean> {
   return page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
 }
@@ -47,6 +80,8 @@ async function audit(page: Page, label: string, tag: string) {
   fs.mkdirSync(SHOTS_DIR, { recursive: true });
   await page.screenshot({ path: `${SHOTS_DIR}/${tag}-${label}.png` });
   expect(await findTinyText(page), `${label}: text below ${MIN_FONT_PX}px`).toEqual([]);
+  const mobile = (page.viewportSize()?.width ?? 1280) < 768;
+  expect(await findSmallControls(page, mobile), `${label}: form controls below minimum size`).toEqual([]);
   expect(await hasHorizontalOverflow(page), `${label}: horizontal page overflow`).toBe(false);
 }
 

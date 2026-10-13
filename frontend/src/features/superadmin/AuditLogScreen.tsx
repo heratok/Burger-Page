@@ -152,7 +152,7 @@ export const AuditLogScreen: React.FC = () => {
     setToDate("")
   }
 
-  const inputDateClass = `rounded-xl border px-3 py-2 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+  const inputDateClass = `rounded-xl border px-3 py-2 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
     isDark
       ? "border-slate-800 bg-slate-900 text-slate-200"
       : "border-slate-200 bg-white text-slate-700"
@@ -176,7 +176,7 @@ export const AuditLogScreen: React.FC = () => {
           <h2 className="mt-1 text-xl font-black tracking-tight text-slate-900 dark:text-white sm:text-2xl">
             Registro de Auditoría
           </h2>
-          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+          <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
             Historial inmutable de modificaciones sobre restaurantes, usuarios y configuraciones clave.
           </p>
         </div>
@@ -198,7 +198,7 @@ export const AuditLogScreen: React.FC = () => {
           isDark ? "border-slate-800 bg-[#0E1322]" : "border-slate-200 bg-white"
         }`}
       >
-        <div className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-300">
+        <div className="flex items-center gap-2 text-sm font-bold text-slate-700 dark:text-slate-300">
           <Filter className="size-3.5 text-indigo-600 dark:text-indigo-400" />
           <span>Filtros de búsqueda</span>
         </div>
@@ -250,7 +250,7 @@ export const AuditLogScreen: React.FC = () => {
           <div className="space-y-1">
             <label
               htmlFor="filter-from-date"
-              className="text-xs font-bold text-slate-500 dark:text-slate-400"
+              className="text-sm font-bold text-slate-500 dark:text-slate-400"
             >
               Fecha desde
             </label>
@@ -268,7 +268,7 @@ export const AuditLogScreen: React.FC = () => {
           <div className="space-y-1">
             <label
               htmlFor="filter-to-date"
-              className="text-xs font-bold text-slate-500 dark:text-slate-400"
+              className="text-sm font-bold text-slate-500 dark:text-slate-400"
             >
               Fecha hasta
             </label>
@@ -303,7 +303,7 @@ export const AuditLogScreen: React.FC = () => {
           <div className="text-sm font-bold text-rose-600 dark:text-rose-400">
             Ocurrió un error al cargar el registro de auditoría.
           </div>
-          <p className="text-xs text-rose-600 dark:text-rose-400">{error}</p>
+          <p className="text-sm text-rose-600 dark:text-rose-400">{error}</p>
           <Button
             type="button"
             variant="outline"
@@ -316,7 +316,7 @@ export const AuditLogScreen: React.FC = () => {
       ) : isLoading && items.length === 0 ? (
         <div className="flex flex-col items-center justify-center p-12 text-slate-500 dark:text-slate-400 gap-2">
           <Loader2 className="size-6 animate-spin text-indigo-600 dark:text-indigo-400" />
-          <span className="text-xs font-medium">Cargando registros de auditoría...</span>
+          <span className="text-sm font-medium">Cargando registros de auditoría...</span>
         </div>
       ) : items.length === 0 ? (
         <div
@@ -328,7 +328,7 @@ export const AuditLogScreen: React.FC = () => {
           <h3 className="text-sm font-bold text-slate-900 dark:text-white">
             No se encontraron registros de auditoría
           </h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
             No hay operaciones registradas con los filtros actuales. Podés cambiar los criterios de búsqueda.
           </p>
         </div>
@@ -341,7 +341,7 @@ export const AuditLogScreen: React.FC = () => {
             }`}
           >
             <div role="region" aria-label="Tabla de auditoría" tabIndex={0} className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
+              <table className="w-full text-left text-sm">
                 <thead className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   <tr>
                     <th className="px-4 py-3.5">Fecha y Hora</th>
@@ -412,7 +412,7 @@ export const AuditLogScreen: React.FC = () => {
             {rows.map(({ item, humanAction, badgeClass, restName, dateFormatted, targetLabel, detailsText }) => (
               <div
                 key={item.id}
-                className={`rounded-2xl border p-4 shadow-xs space-y-2.5 text-xs ${
+                className={`rounded-2xl border p-4 shadow-xs space-y-2.5 text-sm ${
                   isDark ? "border-slate-800 bg-[#0E1322]" : "border-slate-200 bg-white"
                 }`}
               >
@@ -428,24 +428,24 @@ export const AuditLogScreen: React.FC = () => {
                   </span>
                 </div>
 
-                <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center justify-between text-sm">
                   <div className="flex items-center gap-1 font-semibold text-slate-900 dark:text-white">
                     <User className="size-3 text-indigo-600 dark:text-indigo-400" />
                     <span>{item.actorUsername || item.actorUserId || "Sistema"}</span>
                   </div>
-                  <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400 text-xs">
+                  <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400 text-sm">
                     <Store className="size-3 text-slate-500 dark:text-slate-400" />
                     <span>{restName}</span>
                   </div>
                 </div>
 
-                <div className="border-t border-slate-100 dark:border-slate-800 pt-2 flex items-center justify-between text-xs">
+                <div className="border-t border-slate-100 dark:border-slate-800 pt-2 flex items-center justify-between text-sm">
                   <span className="font-bold text-slate-800 dark:text-slate-200 min-w-0 break-words">
                     {targetLabel}
                   </span>
                 </div>
 
-                <div className="text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/60 p-2 rounded-xl">
+                <div className="text-sm text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/60 p-2 rounded-xl">
                   {detailsText}
                 </div>
               </div>

@@ -135,7 +135,7 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-3.5 text-xs">
+        <form onSubmit={handleSubmit} className="space-y-3.5 text-sm">
           <div>
             <label htmlFor="inventory-item-modal-nombre-del-insumo" className={`block font-semibold mb-1 ${isDark ? "text-slate-200" : "text-slate-700"}`}>
               Nombre del Insumo *
@@ -147,7 +147,7 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({
               placeholder="Ej: Pan Brioche de Papa, Carne Angus 150g, etc."
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className={`w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+              className={`text-base sm:text-sm w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                 isDark
                   ? "border-slate-700 bg-slate-800 text-white placeholder-slate-500"
                   : "border-slate-300 bg-white text-slate-900 placeholder-slate-400"
@@ -207,7 +207,7 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({
                 onChange={(e) =>
                   setFormData({ ...formData, currentStock: Number(e.target.value) })
                 }
-                className={`w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                className={`text-base sm:text-sm w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                   isDark
                     ? "border-slate-700 bg-slate-800 text-white"
                     : "border-slate-300 bg-white text-slate-900"
@@ -228,7 +228,7 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({
                 onChange={(e) =>
                   setFormData({ ...formData, minStockAlert: Number(e.target.value) })
                 }
-                className={`w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                className={`text-base sm:text-sm w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                   isDark
                     ? "border-slate-700 bg-slate-800 text-white"
                     : "border-slate-300 bg-white text-slate-900"
@@ -250,7 +250,7 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({
                   onChange={(e) =>
                     setFormData({ ...formData, costPerUnit: Number(e.target.value) })
                   }
-                  className={`w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                  className={`text-base sm:text-sm w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                     isDark
                       ? "border-slate-700 bg-slate-800 text-white"
                       : "border-slate-300 bg-white text-slate-900"

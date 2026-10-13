@@ -55,7 +55,7 @@ export const AdminSwitcher: React.FC<AdminSwitcherProps> = ({ collapsed = false,
               }
               onSelect?.()
             }}
-            className="absolute inset-0 size-full opacity-0 cursor-pointer z-10"
+            className="text-sm absolute inset-0 size-full opacity-0 cursor-pointer z-10"
           >
             <optgroup label="🏢 Plataforma SaaS">
               <option value="DIRECTORY">🌐 Directorio Global SaaS</option>

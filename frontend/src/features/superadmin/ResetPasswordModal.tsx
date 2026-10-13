@@ -64,7 +64,7 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
               <DialogTitle className="text-lg font-black text-slate-900 dark:text-white">
                 Contraseña Restablecida
               </DialogTitle>
-              <DialogDescription className="mt-1.5 text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+              <DialogDescription className="mt-1.5 text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
                 Se generó una contraseña provisional para el usuario{" "}
                 <strong className="text-slate-900 dark:text-white">&quot;{username}&quot;</strong>.
               </DialogDescription>
@@ -105,7 +105,7 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
         </div>
 
         {/* Warning Banner */}
-        <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300">
+        <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300">
           <AlertTriangle className="size-4 shrink-0 mt-0.5 text-amber-700 dark:text-amber-400" />
           <p className="leading-snug">
             Esta contraseña <strong>solo se mostrará una vez</strong>. Cópiala y compártela de forma segura. El usuario deberá cambiarla obligatoriamente en su próximo inicio de sesión.

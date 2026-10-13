@@ -83,7 +83,7 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
               </span>
             </div>
 
-            <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 min-h-[32px]">
+            <p className="text-sm text-slate-600 dark:text-slate-300 line-clamp-2 min-h-[32px]">
               {product.description}
             </p>
 

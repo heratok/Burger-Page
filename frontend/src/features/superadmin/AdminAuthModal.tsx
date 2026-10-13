@@ -137,33 +137,33 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
             <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-3.5 backdrop-blur-md">
               <div className="flex items-center gap-2 text-orange-400 mb-1">
                 <ShoppingBag className="size-4" />
-                <span className="text-xs font-bold text-white">Pedidos en Vivo</span>
+                <span className="text-sm font-bold text-white">Pedidos en Vivo</span>
               </div>
-              <p className="text-xs text-slate-400">Flujo Kanban de cocina y recepción WhatsApp.</p>
+              <p className="text-sm text-slate-400">Flujo Kanban de cocina y recepción WhatsApp.</p>
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-3.5 backdrop-blur-md">
               <div className="flex items-center gap-2 text-indigo-400 mb-1">
                 <Boxes className="size-4" />
-                <span className="text-xs font-bold text-white">Stock & Insumos</span>
+                <span className="text-sm font-bold text-white">Stock & Insumos</span>
               </div>
-              <p className="text-xs text-slate-400">Control de materias primas y proveedores.</p>
+              <p className="text-sm text-slate-400">Control de materias primas y proveedores.</p>
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-3.5 backdrop-blur-md">
               <div className="flex items-center gap-2 text-emerald-400 mb-1">
                 <Users className="size-4" />
-                <span className="text-xs font-bold text-white">Clientes</span>
+                <span className="text-sm font-bold text-white">Clientes</span>
               </div>
-              <p className="text-xs text-slate-400">Base de clientes y fidelización directa.</p>
+              <p className="text-sm text-slate-400">Base de clientes y fidelización directa.</p>
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-3.5 backdrop-blur-md">
               <div className="flex items-center gap-2 text-amber-400 mb-1">
                 <ShieldCheck className="size-4" />
-                <span className="text-xs font-bold text-white">Cifrado Seguro</span>
+                <span className="text-sm font-bold text-white">Cifrado Seguro</span>
               </div>
-              <p className="text-xs text-slate-400">Acceso autenticado y aislado por tenant.</p>
+              <p className="text-sm text-slate-400">Acceso autenticado y aislado por tenant.</p>
             </div>
           </div>
         </div>
@@ -189,7 +189,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
               <h2 className="text-xl font-extrabold tracking-tight text-white">
                 Iniciar Sesión
               </h2>
-              <p className="text-xs text-slate-400 mt-1 max-w-xs">
+              <p className="text-sm text-slate-400 mt-1 max-w-xs">
                 Ingresá tus credenciales para acceder al panel de administración
               </p>
             </div>
@@ -197,7 +197,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
             {/* Login Form */}
             <form onSubmit={handleSubmit} className="mt-6 space-y-4">
               <div>
-                <label htmlFor="admin-auth-modal-usuario" className="block text-xs font-bold mb-1.5 text-slate-300">
+                <label htmlFor="admin-auth-modal-usuario" className="block text-sm font-bold mb-1.5 text-slate-300">
                   Usuario
                 </label>
                 <div className="relative">
@@ -213,12 +213,12 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
                       setErrorMsg("")
                     }}
                     placeholder="Tu nombre de usuario"
-                    className="w-full rounded-2xl border border-slate-700/80 bg-slate-800/90 py-3 pl-10 pr-4 text-xs text-white placeholder-slate-500 transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 font-medium"
+                    className="w-full rounded-2xl border border-slate-700/80 bg-slate-800/90 py-3 pl-10 pr-4 text-base sm:text-sm text-white placeholder-slate-500 transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 font-medium"
                   />
                 </div>
               </div>
               <div>
-                <label htmlFor="admin-auth-modal-contrasena-de-acceso" className="block text-xs font-bold mb-1.5 text-slate-300">
+                <label htmlFor="admin-auth-modal-contrasena-de-acceso" className="block text-sm font-bold mb-1.5 text-slate-300">
                   Contraseña de Acceso
                 </label>
                 <div className="relative">
@@ -233,7 +233,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
                       setErrorMsg("")
                     }}
                     placeholder="Ingresá tu clave de administración..."
-                    className="w-full rounded-2xl border border-slate-700/80 bg-slate-800/90 py-3 pl-10 pr-11 text-xs text-white placeholder-slate-500 transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 font-medium"
+                    className="w-full rounded-2xl border border-slate-700/80 bg-slate-800/90 py-3 pl-10 pr-11 text-base sm:text-sm text-white placeholder-slate-500 transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 font-medium"
                   />
                   <button
                     type="button"
@@ -246,7 +246,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
                 </div>
 
                 {errorMsg && (
-                  <div role="alert" aria-live="assertive" className="mt-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs font-medium text-rose-400 flex items-center gap-2 animate-in fade-in">
+                  <div role="alert" aria-live="assertive" className="mt-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm font-medium text-rose-400 flex items-center gap-2 animate-in fade-in">
                     <span>⚠️ {errorMsg}</span>
                   </div>
                 )}
@@ -264,7 +264,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
             </form>
 
             {/* Privacy & Security Guarantee */}
-            <div className="mt-6 flex items-center justify-center gap-2 rounded-xl border border-white/5 bg-slate-950/40 py-2.5 px-3 text-xs text-slate-400 text-center">
+            <div className="mt-6 flex items-center justify-center gap-2 rounded-xl border border-white/5 bg-slate-950/40 py-2.5 px-3 text-sm text-slate-400 text-center">
               <KeyRound className="size-3.5 text-indigo-400 shrink-0" />
               <span>Acceso protegido con cifrado y resolución automática de rol</span>
             </div>

@@ -187,7 +187,7 @@ export const UsersDirectory: React.FC = () => {
           <h2 className="text-xl font-bold tracking-tight sm:text-2xl text-slate-900 dark:text-white">
             Directorio Global de Usuarios
           </h2>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
             Control de credenciales, roles y asignaciones de restaurantes para administradores.
           </p>
         </div>
@@ -205,7 +205,7 @@ export const UsersDirectory: React.FC = () => {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className={`rounded-2xl border p-4 shadow-xs ${isDark ? "border-slate-800 bg-[#0E1322]" : "border-slate-200 bg-white"}`}>
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Total Usuarios</span>
+            <span className="text-sm font-bold text-slate-500 dark:text-slate-400">Total Usuarios</span>
             <div className="flex size-8 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
               <Users className="size-4" />
             </div>
@@ -216,7 +216,7 @@ export const UsersDirectory: React.FC = () => {
 
         <div className={`rounded-2xl border p-4 shadow-xs ${isDark ? "border-slate-800 bg-[#0E1322]" : "border-slate-200 bg-white"}`}>
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Super Admins</span>
+            <span className="text-sm font-bold text-slate-500 dark:text-slate-400">Super Admins</span>
             <div className="flex size-8 items-center justify-center rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-400">
               <Shield className="size-4" />
             </div>
@@ -224,12 +224,12 @@ export const UsersDirectory: React.FC = () => {
           <div className="mt-2 text-2xl font-black text-amber-700 dark:text-amber-400">
             {users.filter((u) => u.role === "super_admin" || u.role === "super").length}
           </div>
-          <span className="text-xs text-slate-500 dark:text-slate-400">Acceso total a la plataforma</span>
+          <span className="text-sm text-slate-500 dark:text-slate-400">Acceso total a la plataforma</span>
         </div>
 
         <div className={`rounded-2xl border p-4 shadow-xs ${isDark ? "border-slate-800 bg-[#0E1322]" : "border-slate-200 bg-white"}`}>
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Admins Locales</span>
+            <span className="text-sm font-bold text-slate-500 dark:text-slate-400">Admins Locales</span>
             <div className="flex size-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
               <Store className="size-4" />
             </div>
@@ -237,7 +237,7 @@ export const UsersDirectory: React.FC = () => {
           <div className="mt-2 text-2xl font-black text-emerald-700 dark:text-emerald-400">
             {users.filter((u) => u.role === "restaurant_admin" || u.role === "restaurant").length}
           </div>
-          <span className="text-xs text-slate-500 dark:text-slate-400">Encargados de locales</span>
+          <span className="text-sm text-slate-500 dark:text-slate-400">Encargados de locales</span>
         </div>
       </div>
 
@@ -254,7 +254,7 @@ export const UsersDirectory: React.FC = () => {
               setCurrentPage(1)
             }}
             placeholder="Buscar por nombre de usuario..."
-            className={`w-full rounded-xl border pl-9 pr-4 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+            className={`w-full rounded-xl border pl-9 pr-4 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
               isDark
                 ? "border-slate-700 bg-slate-800/80 text-slate-100 placeholder-slate-400"
                 : "border-slate-200 bg-slate-50 text-slate-900 placeholder-slate-400"
@@ -309,15 +309,15 @@ export const UsersDirectory: React.FC = () => {
       ) : (
         <div className={`overflow-hidden rounded-2xl border shadow-xs ${isDark ? "border-slate-800 bg-[#0E1322]" : "border-slate-200 bg-white"}`}>
           <div role="region" aria-label="Tabla de usuarios" tabIndex={0} className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full text-left text-sm">
               <thead className={`border-b text-xs font-bold uppercase tracking-wider ${isDark ? "border-slate-800 bg-slate-900/60 text-slate-400" : "border-slate-200 bg-slate-50/80 text-slate-500"}`}>
                 <tr>
-                  <th className="px-4 py-3">Usuario</th>
-                  <th className="px-4 py-3">Rol</th>
-                  <th className="px-4 py-3">Restaurante Asignado</th>
-                  <th className="px-4 py-3">Fecha de Registro</th>
-                  <th className="px-4 py-3">Estado</th>
-                  <th className="px-4 py-3 text-right">Acciones</th>
+                  <th className="px-3 py-3">Usuario</th>
+                  <th className="px-3 py-3">Rol</th>
+                  <th className="px-3 py-3">Restaurante Asignado</th>
+                  <th className="px-3 py-3">Fecha de Registro</th>
+                  <th className="px-3 py-3">Estado</th>
+                  <th className="px-3 py-3 text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody className={`divide-y ${isDark ? "divide-slate-800/60 text-slate-200" : "divide-slate-100 text-slate-700"}`}>
@@ -352,7 +352,7 @@ export const UsersDirectory: React.FC = () => {
 
                     return (
                       <tr key={u.id} className={`transition-colors ${isDark ? "hover:bg-slate-800/40" : "hover:bg-slate-50/80"}`}>
-                        <td className="px-4 py-3 font-semibold">
+                        <td className="px-3 py-3 font-semibold">
                           <div className="flex items-center gap-2.5">
                             <div className={`flex size-8 items-center justify-center rounded-xl font-bold text-xs ${
                               isSuperAdmin
@@ -375,7 +375,7 @@ export const UsersDirectory: React.FC = () => {
                           </div>
                         </td>
 
-                        <td className="px-4 py-3">
+                        <td className="px-3 py-3">
                           {isSuperAdmin ? (
                             <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2.5 py-0.5 text-xs font-bold text-amber-800 dark:text-amber-400 border border-amber-500/30">
                               <Shield className="size-3" />
@@ -389,7 +389,7 @@ export const UsersDirectory: React.FC = () => {
                           )}
                         </td>
 
-                        <td className="px-4 py-3">
+                        <td className="px-3 py-3">
                           {isSuperAdmin ? (
                             <span className="text-slate-500 dark:text-slate-400 italic">Acceso Global (Todos los locales)</span>
                           ) : assignedName ? (
@@ -402,29 +402,29 @@ export const UsersDirectory: React.FC = () => {
                           )}
                         </td>
 
-                        <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
+                        <td className="px-3 py-3 text-slate-500 dark:text-slate-400">
                           <div className="flex items-center gap-1.5">
                             <Calendar className="size-3 text-slate-500 dark:text-slate-400" />
                             <span>{formatDate(u.createdAt)}</span>
                           </div>
                         </td>
 
-                        <td className="px-4 py-3">
+                        <td className="px-3 py-3">
                           {isActive ? (
-                            <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                            <span className="inline-flex items-center gap-1 text-sm font-bold text-emerald-700 dark:text-emerald-400">
                               <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
                               <span>Activo</span>
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-500 dark:text-slate-400">
+                            <span className="inline-flex items-center gap-1 text-sm font-bold text-slate-500 dark:text-slate-400">
                               <span className="size-1.5 rounded-full bg-slate-400" />
                               <span>Inactivo</span>
                             </span>
                           )}
                         </td>
 
-                        <td className="px-4 py-3 text-right">
-                          <div className="flex min-w-max items-center justify-end gap-1.5">
+                        <td className="px-3 py-3 text-right">
+                          <div className="flex min-w-max items-center justify-end gap-1">
                             {/* Edit user */}
                             <Button
                               type="button"

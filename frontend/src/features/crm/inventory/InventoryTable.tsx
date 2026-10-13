@@ -74,7 +74,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
             placeholder="Buscar insumo por nombre o categoría..."
             value={searchTerm}
             onChange={(e) => onSearchChange(e.target.value)}
-            className={`w-full rounded-xl border pl-8.5 pr-4 py-2 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+            className={`w-full rounded-xl border pl-8.5 pr-4 py-2 text-base sm:text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
               isDark
                 ? "border-slate-800 bg-[#0E1322] text-white placeholder-slate-500"
                 : "border-slate-200 bg-white text-slate-900 placeholder-slate-400"
@@ -127,7 +127,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
           <div className="p-12 text-center text-slate-500 dark:text-slate-400">
             <Boxes className="size-10 mx-auto mb-2 text-slate-500 opacity-50" />
             <p className="text-sm font-semibold">No se encontraron insumos</p>
-            <p className="text-xs mt-1 text-slate-500 dark:text-slate-400">
+            <p className="text-sm mt-1 text-slate-500 dark:text-slate-400">
               {searchTerm || onlyLowStock
                 ? "Probá cambiando los filtros de búsqueda"
                 : "Empezá agregando materias primas para controlar tu stock"}
@@ -135,7 +135,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
           </div>
         ) : (
           <div role="region" aria-label="Tabla de inventario" tabIndex={0} className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full text-left text-sm">
               <thead
                 className={`border-b text-xs font-bold uppercase tracking-wider ${
                   isDark
@@ -263,7 +263,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
                           <div className="text-slate-900 dark:text-slate-200">
                             {formatCurrency(item.costPerUnit)} /{item.unit.slice(0, 3)}
                           </div>
-                          <div className="text-xs text-slate-500 dark:text-slate-400">
+                          <div className="text-sm text-slate-500 dark:text-slate-400">
                             Total: {formatCurrency(itemValuation)}
                           </div>
                         </td>
@@ -283,7 +283,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
                             </button>
                           </Tooltip>
                         ) : (
-                          <span className="text-slate-500 italic text-xs">Sin asignar</span>
+                          <span className="text-slate-500 italic text-sm">Sin asignar</span>
                         )}
                       </td>
 

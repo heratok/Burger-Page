@@ -86,7 +86,7 @@ export const AdditionModal: React.FC<AdditionModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-4 space-y-3 text-xs">
+        <form onSubmit={handleSubmit} className="mt-4 space-y-3 text-sm">
           <div>
             <label htmlFor="addition-modal-nombre-de-la-adicion" className="font-semibold block mb-1 text-slate-800 dark:text-slate-200">
               Nombre de la Adición
@@ -98,7 +98,7 @@ export const AdditionModal: React.FC<AdditionModalProps> = ({
               value={additionForm.name}
               onChange={(e) => setAdditionForm({ ...additionForm, name: e.target.value })}
               placeholder="Ej. Tocineta ahumada extra"
-              className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+              className="text-base sm:text-sm w-full rounded-xl border border-slate-300 bg-white p-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
             />
           </div>
           <div>
@@ -113,7 +113,7 @@ export const AdditionModal: React.FC<AdditionModalProps> = ({
               step="any"
               value={additionForm.price}
               onChange={(e) => setAdditionForm({ ...additionForm, price: Number(e.target.value) })}
-              className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+              className="text-base sm:text-sm w-full rounded-xl border border-slate-300 bg-white p-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
             />
           </div>
           <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">

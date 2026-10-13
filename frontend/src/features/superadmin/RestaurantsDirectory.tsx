@@ -222,7 +222,7 @@ export const RestaurantsDirectory: React.FC = () => {
                       ? "Buscar por nombre, slug o tipo..."
                       : "Buscar restaurante eliminado..."
                   }
-                  className={`w-full rounded-xl border pl-9 pr-4 py-2 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                  className={`w-full rounded-xl border pl-9 pr-4 py-2 text-base sm:text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                     isDark
                       ? "border-slate-700 bg-slate-800 text-white placeholder-slate-400"
                       : "border-slate-200 bg-slate-50 text-slate-900 placeholder-slate-400"
@@ -232,7 +232,7 @@ export const RestaurantsDirectory: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-3">
-              <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
+              <div className="text-sm font-medium text-slate-500 dark:text-slate-400">
                 {activeTab === "active" ? (
                   <>Mostrando <strong>{filteredRestaurants.length}</strong> de {restaurants.length} restaurantes</>
                 ) : (
@@ -245,7 +245,7 @@ export const RestaurantsDirectory: React.FC = () => {
           {/* Table */}
           {activeTab === "deleted" ? (
             <div role="region" aria-label="Tabla de restaurantes" tabIndex={0} className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
+              <table className="w-full text-left text-sm">
                 <thead className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   <tr>
                     <th className="px-4 py-3.5">Restaurante & Slug Original</th>
@@ -257,7 +257,7 @@ export const RestaurantsDirectory: React.FC = () => {
                 <tbody className="divide-y divide-slate-100 dark:border-slate-800">
                   {isLoadingDeleted ? (
                     <tr>
-                      <td colSpan={4} className="p-8 text-center text-xs text-slate-500 dark:text-slate-400">
+                      <td colSpan={4} className="p-8 text-center text-sm text-slate-500 dark:text-slate-400">
                         <div className="flex items-center justify-center gap-2">
                           <Loader2 className="size-4 animate-spin text-indigo-600 dark:text-indigo-400" />
                           <span>Cargando restaurantes eliminados...</span>
@@ -266,7 +266,7 @@ export const RestaurantsDirectory: React.FC = () => {
                     </tr>
                   ) : paginatedDeletedRestaurants.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="p-8 text-center text-xs text-slate-500 dark:text-slate-400">
+                      <td colSpan={4} className="p-8 text-center text-sm text-slate-500 dark:text-slate-400">
                         {searchTerm
                           ? "No se encontraron restaurantes eliminados con ese criterio."
                           : "No hay restaurantes eliminados en este momento."}
@@ -322,7 +322,7 @@ export const RestaurantsDirectory: React.FC = () => {
             </div>
           ) : (
             <div role="region" aria-label="Tabla de restaurantes eliminados" tabIndex={0} className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
+              <table className="w-full text-left text-sm">
                 <thead className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   <tr>
                     <th className="px-4 py-3.5">Restaurante & Slug</th>
@@ -405,7 +405,7 @@ export const RestaurantsDirectory: React.FC = () => {
                           <span className="font-semibold text-slate-700 dark:text-slate-200">
                             {catalogSize.products} productos
                           </span>
-                          <span className="text-xs text-slate-500 dark:text-slate-400 ml-1">
+                          <span className="text-sm text-slate-500 dark:text-slate-400 ml-1">
                             ({catalogSize.additions} adiciones)
                           </span>
                         </td>
@@ -417,7 +417,7 @@ export const RestaurantsDirectory: React.FC = () => {
 
                         {/* Orders count */}
                         <td className="px-4 py-4">
-                          <span className="rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 font-bold text-slate-700 dark:text-slate-300">
+                          <span className="whitespace-nowrap rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-xs font-bold text-slate-700 dark:text-slate-300">
                             {restaurantOrders.length} pedidos
                           </span>
                         </td>
@@ -575,7 +575,7 @@ export const RestaurantsDirectory: React.FC = () => {
                   <h3 id="restore-restaurant-title" className="text-base font-bold">
                     ¿Restaurar restaurante?
                   </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
                     {restaurantToRestore.name}
                   </p>
                 </div>
@@ -591,7 +591,7 @@ export const RestaurantsDirectory: React.FC = () => {
               </button>
             </div>
 
-            <div className="mt-4 space-y-4 text-xs">
+            <div className="mt-4 space-y-4 text-sm">
               <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
                 El restaurante volverá en estado PAUSADO. Sus administradores vuelven con el estado que tenían antes de eliminarlo. Deberás reactivarlo manualmente cuando desees que comience a operar.
               </p>
@@ -617,7 +617,7 @@ export const RestaurantsDirectory: React.FC = () => {
                       value={restoreSlug}
                       onChange={(e) => setRestoreSlug(e.target.value.toLowerCase())}
                       placeholder="nuevo-slug"
-                      className={`w-full rounded-xl border px-3.5 py-2 text-xs font-mono transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                      className={`w-full rounded-xl border px-3.5 py-2 text-base sm:text-sm font-mono transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                         isDark
                           ? "border-slate-700 bg-slate-800 text-white"
                           : "border-slate-200 bg-slate-50 text-slate-900"

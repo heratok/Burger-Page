@@ -173,7 +173,7 @@ export const OrderTicketModal: React.FC<OrderTicketModalProps> = ({
                 Imprimir Comanda / Ticket
               </h3>
             </div>
-            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+            <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
               Orden #{order.orderNumber} · Vista previa formato térmico 80mm
             </p>
           </div>

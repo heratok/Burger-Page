@@ -237,8 +237,8 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
   }
 
   const sizeClasses = {
-    sm: "text-xs py-1.5 px-2.5 min-h-[34px]",
-    md: "text-xs py-2.5 px-3 min-h-[40px]",
+    sm: "text-sm py-1.5 px-2.5 min-h-[34px]",
+    md: "text-sm py-2.5 px-3 min-h-[40px]",
     lg: "text-sm py-3 px-3.5 min-h-[46px]",
   }[size]
 
@@ -263,7 +263,7 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
         <label
           htmlFor={fieldId}
           onClick={() => triggerRef.current?.focus()}
-          className="font-semibold block mb-1 text-slate-800 dark:text-slate-200 text-xs cursor-pointer"
+          className="font-semibold block mb-1 text-slate-800 dark:text-slate-200 text-sm cursor-pointer"
         >
           {label}
         </label>
@@ -283,7 +283,7 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
         onChange={(e) => onChange(e.target.value)}
         tabIndex={-1}
         aria-hidden="true"
-        className="sr-only"
+        className="text-sm sr-only"
       >
         {value && !options.some((o) => o.value === value) && (
           <option value={value}>{value}</option>
@@ -399,7 +399,7 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
       </button>
 
       {error && (
-        <span id={errorId} role="alert" className="text-xs font-medium text-rose-600 dark:text-rose-400 block mt-1">
+        <span id={errorId} role="alert" className="text-sm font-medium text-rose-600 dark:text-rose-400 block mt-1">
           {error}
         </span>
       )}
@@ -428,7 +428,7 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
                 }}
                 placeholder={searchPlaceholder}
                 aria-label={searchPlaceholder}
-                className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-xs text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-base sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
               />
             </div>
           )}
@@ -440,7 +440,7 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
             className="max-h-60 overflow-y-auto p-0.5 space-y-0.5 overscroll-contain"
           >
             {filteredOptions.length === 0 ? (
-              <div role="presentation" className="py-4 text-center text-xs text-slate-500 dark:text-slate-400">
+              <div role="presentation" className="py-4 text-center text-sm text-slate-500 dark:text-slate-400">
                 No se encontraron opciones
               </div>
             ) : (
@@ -469,7 +469,7 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
                       onClick={() => handleSelectOption(opt)}
                       onMouseEnter={() => setFocusedIndex(index)}
                       className={cn(
-                        "w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs text-left cursor-pointer transition-colors select-none",
+                        "w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-sm text-left cursor-pointer transition-colors select-none",
                         isSelected
                           ? "bg-indigo-50/80 dark:bg-slate-800/90 text-indigo-900 dark:text-white font-medium"
                           : isFocused
@@ -484,7 +484,7 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
                         <div className="min-w-0 truncate">
                           <span className="truncate block font-medium">{opt.label}</span>
                           {opt.sublabel && (
-                            <span className="text-xs text-slate-500 dark:text-slate-400 block truncate">
+                            <span className="text-sm text-slate-500 dark:text-slate-400 block truncate">
                               {opt.sublabel}
                             </span>
                           )}

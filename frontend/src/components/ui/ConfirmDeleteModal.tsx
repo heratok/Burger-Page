@@ -57,7 +57,7 @@ export const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
               <DialogTitle className="text-lg font-black text-slate-900 dark:text-white">
                 {title}
               </DialogTitle>
-              <DialogDescription className="mt-1.5 text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+              <DialogDescription className="mt-1.5 text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
                 {description || (
                   <>
                     ¿Estás seguro de que deseas eliminar{" "}

@@ -133,7 +133,7 @@ const ProductCard = memo(function ProductCard({ product, onSelectProduct, closed
             {product.description && (
               <p
                 style={{ color: "var(--color-text-secondary)" }}
-                className="text-xs sm:text-sm leading-relaxed font-normal text-pretty"
+                className="text-sm leading-relaxed font-normal text-pretty"
               >
                 {product.description}
               </p>

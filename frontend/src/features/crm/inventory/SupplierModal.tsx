@@ -103,7 +103,7 @@ export const SupplierModal: React.FC<SupplierModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-3.5 text-xs">
+        <form onSubmit={handleSubmit} className="space-y-3.5 text-sm">
           <div>
             <label htmlFor="supplier-modal-nombre-de-la-empresa-proveed" className={`block font-semibold mb-1 ${isDark ? "text-slate-200" : "text-slate-700"}`}>
               Nombre de la Empresa / Proveedor *
@@ -115,7 +115,7 @@ export const SupplierModal: React.FC<SupplierModalProps> = ({
               placeholder="Ej: Distribuidora Cárnicos San José"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className={`w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+              className={`text-base sm:text-sm w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                 isDark
                   ? "border-slate-700 bg-slate-800 text-white placeholder-slate-500"
                   : "border-slate-300 bg-white text-slate-900 placeholder-slate-400"
@@ -137,7 +137,7 @@ export const SupplierModal: React.FC<SupplierModalProps> = ({
                 onChange={(e) =>
                   setFormData({ ...formData, category: e.target.value })
                 }
-                className={`w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                className={`text-base sm:text-sm w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                   isDark
                     ? "border-slate-700 bg-slate-800 text-white placeholder-slate-500"
                     : "border-slate-300 bg-white text-slate-900 placeholder-slate-400"
@@ -157,7 +157,7 @@ export const SupplierModal: React.FC<SupplierModalProps> = ({
                 onChange={(e) =>
                   setFormData({ ...formData, contactName: e.target.value })
                 }
-                className={`w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                className={`text-base sm:text-sm w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                   isDark
                     ? "border-slate-700 bg-slate-800 text-white placeholder-slate-500"
                     : "border-slate-300 bg-white text-slate-900 placeholder-slate-400"
@@ -177,7 +177,7 @@ export const SupplierModal: React.FC<SupplierModalProps> = ({
               placeholder="Ej: 573105551234"
               value={formData.phone}
               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              className={`w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+              className={`text-base sm:text-sm w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                 isDark
                   ? "border-slate-700 bg-slate-800 text-white placeholder-slate-500"
                   : "border-slate-300 bg-white text-slate-900 placeholder-slate-400"
@@ -195,7 +195,7 @@ export const SupplierModal: React.FC<SupplierModalProps> = ({
               placeholder="Ej: Entregan martes y viernes. Pedido mínimo $150.000."
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              className={`w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+              className={`text-base sm:text-sm w-full rounded-xl border p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                 isDark
                   ? "border-slate-700 bg-slate-800 text-white placeholder-slate-500"
                   : "border-slate-300 bg-white text-slate-900 placeholder-slate-400"

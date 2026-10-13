@@ -215,7 +215,7 @@ export default function AdditionsModal({
               </p>
             </div>
             {product.description && (
-              <DialogDescription className="mt-2 text-xs sm:text-sm leading-relaxed text-text-secondary whitespace-pre-line">
+              <DialogDescription className="mt-2 text-sm leading-relaxed text-text-secondary whitespace-pre-line">
                 {product.description}
               </DialogDescription>
             )}
@@ -242,7 +242,7 @@ export default function AdditionsModal({
                       <p className="break-words text-sm font-medium text-text-primary">
                         {adicion.name}
                       </p>
-                      <p className="text-xs text-text-muted">
+                      <p className="text-sm text-text-muted">
                         +{formatCurrency(adicion.price)}
                       </p>
                     </div>
@@ -307,7 +307,7 @@ export default function AdditionsModal({
               className="border-border-subtle bg-bg-input text-text-primary placeholder:text-text-muted focus-visible:ring-accent break-words [overflow-wrap:anywhere]"
             />
             <CharacterCounter value={observaciones} max={LIMITS.observaciones.max} />
-            <FieldDescription className="text-xs text-text-muted">
+            <FieldDescription className="text-sm text-text-muted">
               Cuéntanos cualquier detalle para preparar tu pedido.
             </FieldDescription>
           </Field>
@@ -320,7 +320,7 @@ export default function AdditionsModal({
         >
           <div className="flex flex-col gap-3 min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between">
             <div>
-              <p className="text-xs text-text-muted">Cantidad</p>
+              <p className="text-sm text-text-muted">Cantidad</p>
               <div className="mt-1 inline-flex items-center gap-2 rounded-full bg-bg-elevated px-2 py-1 border border-border-subtle">
                 <Button
                   type="button"
@@ -418,7 +418,7 @@ export default function AdditionsModal({
             <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-4 sm:p-5 text-white">
               <p className="text-base sm:text-lg font-bold">{product.name}</p>
               {product.description && (
-                <p className="mt-1 text-xs sm:text-sm text-white/85 leading-relaxed">
+                <p className="mt-1 text-sm text-white/85 leading-relaxed">
                   {product.description}
                 </p>
               )}

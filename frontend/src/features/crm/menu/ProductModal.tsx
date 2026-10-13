@@ -201,7 +201,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-4 space-y-4 text-xs">
+        <form onSubmit={handleSubmit} className="mt-4 space-y-4 text-sm">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <label htmlFor="product-modal-nombre-del-producto" className="font-semibold block mb-1 text-slate-800 dark:text-slate-200">
@@ -214,7 +214,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                 value={productForm.name}
                 onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
                 placeholder="Ej. Plato Especial de la Casa"
-                className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500 font-medium"
+                className="text-base sm:text-sm w-full rounded-xl border border-slate-300 bg-white p-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500 font-medium"
               />
             </div>
             <div>
@@ -230,7 +230,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                 value={productForm.price}
                 onChange={(e) => setProductForm({ ...productForm, price: Number(e.target.value) })}
                 placeholder="0.00"
-                className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500"
+                className="text-base sm:text-sm w-full rounded-xl border border-slate-300 bg-white p-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500"
               />
             </div>
           </div>
@@ -259,7 +259,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                   value={productForm.category}
                   onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}
                   placeholder="Ej. Entradas, Postres, Bebidas"
-                  className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500"
+                  className="text-base sm:text-sm w-full rounded-xl border border-slate-300 bg-white p-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500"
                 />
               ) : (
                 <Select
@@ -293,7 +293,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                 onChange={(e) =>
                   setProductForm({ ...productForm, preparationTimeMinutes: Number(e.target.value) })
                 }
-                className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500"
+                className="text-base sm:text-sm w-full rounded-xl border border-slate-300 bg-white p-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500"
               />
             </div>
           </div>
@@ -316,11 +316,11 @@ export const ProductModal: React.FC<ProductModalProps> = ({
               <div className="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700/80 bg-slate-50/90 dark:bg-slate-800/60 p-3 space-y-3 transition-colors">
                 {/* Viewport Header with Fit Controls */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 min-w-0">
+                  <div className="flex items-center gap-1.5 text-sm font-bold text-slate-700 dark:text-slate-200 min-w-0">
                     <Sparkles className="size-3.5 text-emerald-700 dark:text-emerald-400 shrink-0" />
                     <span className="truncate">Previsualización del Plato</span>
                   </div>
-                  <div className="grid grid-cols-2 sm:flex items-center rounded-lg bg-slate-200/80 p-0.5 dark:bg-slate-900/90 border border-slate-200/50 dark:border-slate-700/60 text-xs font-semibold w-full sm:w-auto shrink-0">
+                  <div className="grid grid-cols-2 sm:flex items-center rounded-lg bg-slate-200/80 p-0.5 dark:bg-slate-900/90 border border-slate-200/50 dark:border-slate-700/60 text-sm font-semibold w-full sm:w-auto shrink-0">
                     <Tooltip content={"Ver cómo se recortará en la tarjeta del menú"}>
                       <button
                         type="button"
@@ -382,7 +382,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                             ? "Optimizando foto..."
                             : "Guardando foto..."}
                         </span>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                        <p className="text-sm text-slate-500 dark:text-slate-400">
                           {imageUploadStatus === "success"
                             ? "Formato WebP de alta calidad aplicado"
                             : imageUploadStatus === "optimizing"
@@ -398,7 +398,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                       )}
                     </div>
                   )}
-                  <div className="absolute bottom-2.5 left-2.5 max-w-[calc(100%-1.25rem)] flex items-center gap-1.5 rounded-lg bg-black/80 px-2.5 py-1 text-xs font-bold text-white backdrop-blur-md border border-white/10 truncate">
+                  <div className="absolute bottom-2.5 left-2.5 max-w-[calc(100%-1.25rem)] flex items-center gap-1.5 rounded-lg bg-black/80 px-2.5 py-1 text-sm font-bold text-white backdrop-blur-md border border-white/10 truncate">
                     {imageUploadStatus === "success" ? (
                       <>
                         <CheckCircle2 className="size-3 text-emerald-700 dark:text-emerald-400 shrink-0" />
@@ -469,7 +469,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                           ? "Optimizando foto..."
                           : "Guardando foto..."}
                       </span>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                      <p className="text-sm text-slate-500 dark:text-slate-400">
                         {imageUploadStatus === "success"
                           ? "Formato WebP de alta calidad aplicado"
                           : imageUploadStatus === "optimizing"
@@ -495,10 +495,10 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                         <Upload className="size-4" />
                       </div>
                       <div>
-                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
+                        <span className="text-sm font-bold text-slate-800 dark:text-slate-200 block">
                           Subir foto desde tu teléfono o PC
                         </span>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
                           Se comprime automáticamente a formato WebP ultraliviano
                         </p>
                       </div>
@@ -515,7 +515,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                       value={productForm.src}
                       onChange={(e) => setProductForm({ ...productForm, src: e.target.value })}
                       placeholder="https://images.unsplash.com/..."
-                      className="w-full rounded-xl border border-slate-300 bg-white p-2 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500 text-xs"
+                      className="w-full rounded-xl border border-slate-300 bg-white p-2 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500 text-base sm:text-sm"
                     />
                   </>
                 )}
@@ -533,7 +533,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
               value={productForm.description}
               onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
               placeholder="Describe los ingredientes, preparación y acompañamientos..."
-              className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500"
+              className="text-base sm:text-sm w-full rounded-xl border border-slate-300 bg-white p-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500"
             />
           </div>
 

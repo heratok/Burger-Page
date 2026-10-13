@@ -34,7 +34,7 @@ export const CustomizerPresetsSection: React.FC<CustomizerPresetsSectionProps> =
 
   return (
     <div
-      className={`rounded-2xl border p-5 shadow-xs space-y-4 text-xs ${
+      className={`rounded-2xl border p-5 shadow-xs space-y-4 text-sm ${
         isDark ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-white"
       }`}
     >
@@ -83,7 +83,7 @@ export const CustomizerPresetsSection: React.FC<CustomizerPresetsSectionProps> =
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-slate-900 dark:text-white text-xs">
+                    <span className="font-bold text-slate-900 dark:text-white text-sm">
                       {tpl.name}
                     </span>
                     {isMatching && (
@@ -92,13 +92,13 @@ export const CustomizerPresetsSection: React.FC<CustomizerPresetsSectionProps> =
                       </span>
                     )}
                   </div>
-                  <span className="text-xs text-slate-600 dark:text-slate-400 block truncate">
+                  <span className="text-sm text-slate-600 dark:text-slate-400 block truncate">
                     {tpl.tagline}
                   </span>
                 </div>
               </div>
 
-              <div className="flex items-center gap-1 text-xs font-semibold text-slate-600 dark:text-slate-400 shrink-0">
+              <div className="flex items-center gap-1 text-sm font-semibold text-slate-600 dark:text-slate-400 shrink-0">
                 <span className="uppercase tracking-wider font-mono">{tpl.fontFamily}</span>
               </div>
             </button>

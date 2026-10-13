@@ -42,7 +42,7 @@ export const SuppliersList: React.FC<SuppliersListProps> = ({
           placeholder="Buscar proveedor por nombre, contacto o rubro..."
           value={searchTerm}
           onChange={(e) => onSearchChange(e.target.value)}
-          className={`w-full rounded-xl border pl-8.5 pr-4 py-2 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+          className={`w-full rounded-xl border pl-8.5 pr-4 py-2 text-base sm:text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
             isDark
               ? "border-slate-800 bg-[#0E1322] text-white placeholder-slate-500"
               : "border-slate-200 bg-white text-slate-900 placeholder-slate-400"
@@ -58,7 +58,7 @@ export const SuppliersList: React.FC<SuppliersListProps> = ({
         >
           <Truck className="size-10 mx-auto mb-2 text-slate-500 opacity-50" />
           <p className="text-sm font-semibold">No hay proveedores registrados</p>
-          <p className="text-xs mt-1 text-slate-500">
+          <p className="text-sm mt-1 text-slate-500">
             Registrá tus distribuidores para contactarlos en 1 clic y pedir reposiciones directas.
           </p>
         </div>
@@ -117,7 +117,7 @@ export const SuppliersList: React.FC<SuppliersListProps> = ({
                   </div>
 
                   {/* Contact details */}
-                  <div className="space-y-1.5 text-xs my-3">
+                  <div className="space-y-1.5 text-sm my-3">
                     <div className="flex items-center gap-2">
                       <span className={isDark ? "text-slate-400" : "text-slate-500"}>Contacto:</span>
                       <span className={`font-semibold ${isDark ? "text-slate-200" : "text-slate-800"}`}>
@@ -130,7 +130,7 @@ export const SuppliersList: React.FC<SuppliersListProps> = ({
                     </div>
                     {sup.notes && (
                       <p
-                        className={`text-xs italic mt-2.5 p-2.5 rounded-xl border transition-colors ${
+                        className={`text-sm italic mt-2.5 p-2.5 rounded-xl border transition-colors ${
                           isDark
                             ? "border-slate-800 bg-slate-900/60 text-slate-300"
                             : "border-slate-200 bg-slate-50 text-slate-700 font-medium"
@@ -143,7 +143,7 @@ export const SuppliersList: React.FC<SuppliersListProps> = ({
 
                   {/* Supplied Items Summary */}
                   <div
-                    className={`pt-2.5 border-t text-xs flex items-center justify-between ${
+                    className={`pt-2.5 border-t text-sm flex items-center justify-between ${
                       isDark ? "border-slate-800/60 text-slate-400" : "border-slate-100 text-slate-500"
                     }`}
                   >

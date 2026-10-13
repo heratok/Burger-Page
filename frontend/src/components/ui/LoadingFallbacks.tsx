@@ -15,7 +15,7 @@ export const AdminLoadingFallback: React.FC = () => {
         </div>
         <div className="space-y-1">
           <h3 className="text-sm font-bold text-white tracking-wide">Cargando Panel Administrativo</h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400">Verificando credenciales y sesión...</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Verificando credenciales y sesión...</p>
         </div>
         <Loader2 className="size-5 text-indigo-600 dark:text-indigo-400 animate-spin mt-2" />
       </div>

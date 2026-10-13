@@ -123,7 +123,7 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
 
   return (
     <div
-      className={`rounded-2xl border p-4 sm:p-5 shadow-xs space-y-4 text-xs ${
+      className={`rounded-2xl border p-4 sm:p-5 shadow-xs space-y-4 text-sm ${
         isDark ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-white"
       }`}
     >
@@ -135,7 +135,7 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
             <h3 className="font-bold text-sm text-slate-900 dark:text-white">
               Información Comercial, Pedidos & Domicilios
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-sm text-slate-500 dark:text-slate-400">
               Ajusta los canales de venta, reglas de compra, horarios y disponibilidad en vivo.
             </p>
           </div>
@@ -168,10 +168,10 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
               <ShoppingBag className="size-3.5" />
             </div>
             <div className="min-w-0">
-              <span className="font-bold text-xs text-slate-900 dark:text-white block">
+              <span className="font-bold text-sm text-slate-900 dark:text-white block">
                 Canales & Reglas de Compra
               </span>
-              <span className="text-xs text-slate-500 dark:text-slate-400 truncate block">
+              <span className="text-sm text-slate-500 dark:text-slate-400 truncate block">
                 WhatsApp, costos de envío, mínimos y tiempo estimado
               </span>
             </div>
@@ -204,7 +204,7 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
                     +{draft.whatsappNumber}
                   </span>
                 ) : (
-                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                  <span className="text-sm text-slate-500 dark:text-slate-400">
                     Sin WhatsApp configurado
                   </span>
                 )}
@@ -230,11 +230,11 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
                     value={phoneParts.nationalNumber}
                     onChange={(e) => handleNationalNumberChange(e.target.value)}
                     placeholder="3022575805"
-                    className="w-full rounded-xl border border-slate-200 p-2.5 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white font-mono font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-xs"
+                    className="w-full rounded-xl border border-slate-200 p-2.5 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white font-mono font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-base sm:text-sm"
                   />
                 </div>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                 Los pedidos finalizados por los clientes se enviarán formateados a este número.
                 {draft.whatsappNumber && (
                   <span className="ml-1 text-slate-700 dark:text-slate-300 font-medium">
@@ -264,7 +264,7 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
                     max={10000000}
                     value={draft.deliveryFee}
                     onChange={(e) => setDraft((prev) => ({ ...prev, deliveryFee: Number(e.target.value) }))}
-                    className="w-full p-2.5 bg-transparent text-slate-900 dark:text-white outline-none font-mono text-xs"
+                    className="w-full p-2.5 bg-transparent text-slate-900 dark:text-white outline-none font-mono text-base sm:text-sm"
                   />
                 </div>
               </div>
@@ -287,7 +287,7 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
                     value={draft.minOrderAmount || 0}
                     onChange={(e) => setDraft((prev) => ({ ...prev, minOrderAmount: Number(e.target.value) }))}
                     placeholder="20000"
-                    className="w-full p-2.5 bg-transparent text-slate-900 dark:text-white outline-none font-mono text-xs"
+                    className="w-full p-2.5 bg-transparent text-slate-900 dark:text-white outline-none font-mono text-base sm:text-sm"
                   />
                 </div>
               </div>
@@ -309,7 +309,7 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
                   value={draft.estimatedDeliveryTime}
                   onChange={(e) => setDraft((prev) => ({ ...prev, estimatedDeliveryTime: e.target.value }))}
                   placeholder="30 - 45 min"
-                  className="w-full rounded-xl border border-slate-200 p-2.5 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-xs"
+                  className="w-full rounded-xl border border-slate-200 p-2.5 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-base sm:text-sm"
                 />
                 <div className="flex flex-wrap gap-1.5 mt-2">
                   {DELIVERY_TIME_PRESETS.map((preset) => {
@@ -371,7 +371,7 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
                     value={draft.currencySymbol || "$"}
                     onChange={(e) => setDraft((prev) => ({ ...prev, currencySymbol: e.target.value }))}
                     placeholder="$"
-                    className="w-full rounded-xl border border-slate-200 p-2.5 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white font-mono text-center focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-xs"
+                    className="w-full rounded-xl border border-slate-200 p-2.5 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white font-mono text-center focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-base sm:text-sm"
                   />
                 </div>
               </div>
@@ -398,10 +398,10 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
               <Clock className="size-3.5" />
             </div>
             <div className="min-w-0">
-              <span className="font-bold text-xs text-slate-900 dark:text-white block">
+              <span className="font-bold text-sm text-slate-900 dark:text-white block">
                 Horario de Atención & Zona
               </span>
-              <span className="text-xs text-slate-500 dark:text-slate-400 truncate block">
+              <span className="text-sm text-slate-500 dark:text-slate-400 truncate block">
                 Configuración de apertura semanal y huso horario
               </span>
             </div>
@@ -425,7 +425,7 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
           >
             {/* Weekly Schedule Editor */}
             <div className="space-y-2">
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-sm text-slate-500 dark:text-slate-400">
                 Los clientes podrán pedir en el storefront únicamente durante estos rangos horarios.
               </p>
               <WeeklyScheduleEditor
@@ -445,7 +445,7 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
                   Zona horaria
                 </label>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-sm text-slate-500 dark:text-slate-400">
                 El horario de apertura y cierre se calcula automáticamente con base en la hora de esta región.
               </p>
               <ModernSelect
@@ -479,10 +479,10 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
               <Store className="size-3.5" />
             </div>
             <div className="min-w-0">
-              <span className="font-bold text-xs text-slate-900 dark:text-white block">
+              <span className="font-bold text-sm text-slate-900 dark:text-white block">
                 Disponibilidad & Local
               </span>
-              <span className="text-xs text-slate-500 dark:text-slate-400 truncate block">
+              <span className="text-sm text-slate-500 dark:text-slate-400 truncate block">
                 Pausa de pedidos y dirección física
               </span>
             </div>
@@ -535,7 +535,7 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
                     Bloquea los pedidos de clientes ahora mismo, sin importar el horario. Tú puedes seguir registrando ventas.
                   </p>
                 </div>
@@ -558,7 +558,7 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
                 value={draft.address}
                 onChange={(e) => setDraft((prev) => ({ ...prev, address: e.target.value }))}
                 placeholder="Calle 45 # 22-18"
-                className="w-full rounded-xl border border-slate-200 p-2.5 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                className="text-base sm:text-sm w-full rounded-xl border border-slate-200 p-2.5 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
               />
             </div>
           </div>

@@ -60,7 +60,7 @@ export const StoreSettingsManager: React.FC = () => {
               </span>
             )}
           </div>
-          <p className={`text-xs mt-1 ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+          <p className={`text-sm mt-1 ${isDark ? "text-slate-400" : "text-slate-500"}`}>
             Configura los canales de venta por WhatsApp, reglas de compra, horarios de atención y disponibilidad en vivo.
           </p>
         </div>

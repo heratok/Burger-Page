@@ -25,7 +25,7 @@ export const TablesManager: React.FC = () => {
               Gestión de Mesas & Códigos QR
             </h2>
           </div>
-          <p className={`text-xs mt-1 ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+          <p className={`text-sm mt-1 ${isDark ? "text-slate-400" : "text-slate-500"}`}>
             Configura las mesas de tu salón, genera códigos QR descargables para pedidos en mesa y controla su disponibilidad.
           </p>
         </div>

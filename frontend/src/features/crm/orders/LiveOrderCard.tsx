@@ -121,7 +121,7 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
             </span>
           </div>
 
-          <div className="flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+          <div className="flex items-center gap-1 text-sm font-medium text-slate-500 dark:text-slate-400">
             {isDelayed && (
               <span className="flex items-center gap-0.5 rounded-md bg-rose-500/10 px-1.5 py-0.5 text-xs font-bold text-rose-600 dark:text-rose-400">
                 <AlertCircle className="size-3" />
@@ -138,7 +138,7 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
             <h2 className="text-sm font-bold text-slate-900 dark:text-white break-words">
               {order.customer.nombre}
             </h2>
-            <div className="mt-1 flex items-start gap-1 text-xs text-slate-500 dark:text-slate-400">
+            <div className="mt-1 flex items-start gap-1 text-sm text-slate-500 dark:text-slate-400">
               <MapPin className="size-3.5 shrink-0 text-slate-500 dark:text-slate-400" />
               <span className="min-w-0 break-words">
                 {getOrderLocationText(order, " — ")}
@@ -159,7 +159,7 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
 
         {/* Order Items Breakdown */}
         <div
-          className={`mt-3 rounded-xl p-3 text-xs space-y-2 ${
+          className={`mt-3 rounded-xl p-3 text-sm space-y-2 ${
             isDark ? "bg-slate-800/60 text-slate-200" : "bg-slate-50 text-slate-800"
           }`}
         >
@@ -170,7 +170,7 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
                   {item.cantidad || (item as any).quantity || 1}× {item.name || (item as any).productName || "Producto"}
                 </span>
                 {item.adiciones && item.adiciones.length > 0 && (
-                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                  <span className="text-sm text-slate-500 dark:text-slate-400">
                     +{item.adiciones.map((a) => a.name).join(", ")}
                   </span>
                 )}
@@ -179,7 +179,7 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
           </div>
 
           {order.comentario && (
-            <div className="rounded-lg border border-amber-300/40 bg-amber-50/50 dark:border-amber-500/30 dark:bg-amber-950/30 p-2 text-xs text-amber-800 dark:text-amber-200 break-words [overflow-wrap:anywhere]">
+            <div className="rounded-lg border border-amber-300/40 bg-amber-50/50 dark:border-amber-500/30 dark:bg-amber-950/30 p-2 text-sm text-amber-800 dark:text-amber-200 break-words [overflow-wrap:anywhere]">
               <span className="font-bold">Nota: </span>
               &quot;{order.comentario}&quot;
             </div>
@@ -187,13 +187,13 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
         </div>
 
         {/* Totals & Payment Info */}
-        <div className="mt-3 flex items-center justify-between border-t border-slate-100 dark:border-slate-800/80 pt-2.5 text-xs">
+        <div className="mt-3 flex items-center justify-between border-t border-slate-100 dark:border-slate-800/80 pt-2.5 text-sm">
           <div>
             <span className="text-base font-black text-slate-900 dark:text-white">
               {formatCurrency(order.finalTotal)}
             </span>
             {order.deliveryFee > 0 && (
-              <span className="ml-1.5 text-xs text-slate-500 dark:text-slate-400">
+              <span className="ml-1.5 text-sm text-slate-500 dark:text-slate-400">
                 (inc. envío {formatCurrency(order.deliveryFee)})
               </span>
             )}
@@ -221,7 +221,7 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
               )
             )}
             {order.metodo === "Efectivo" && order.cambio !== undefined && order.cambio > 0 && (
-              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+              <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">
                 Cambio: {formatCurrency(order.cambio)}
               </span>
             )}

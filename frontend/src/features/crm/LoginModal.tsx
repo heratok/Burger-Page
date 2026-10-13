@@ -72,7 +72,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             <Lock className="size-7 text-white" />
           </div>
           <h2 id="login-modal-title" className="text-lg font-bold text-white">Panel de Administración</h2>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             Ingresa tus credenciales para acceder
           </p>
         </div>
@@ -118,7 +118,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           </div>
 
           {error && (
-            <div role="alert" className="rounded-lg border border-red-800/50 bg-red-500/10 px-3 py-2 text-xs text-red-600 dark:text-red-400">
+            <div role="alert" className="rounded-lg border border-red-800/50 bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-400">
               {error}
             </div>
           )}

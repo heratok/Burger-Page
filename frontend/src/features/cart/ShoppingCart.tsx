@@ -106,7 +106,7 @@ function ShoppingCart({
                   </h2>
                   <p
                     style={{ color: "var(--color-text-muted)" }}
-                    className="mt-0.5 text-xs"
+                    className="mt-0.5 text-sm"
                   >
                     {cartItem.cantidad}× {cartItem.name}
                   </p>
@@ -140,7 +140,7 @@ function ShoppingCart({
               {cartItem.adiciones && cartItem.adiciones.length > 0 && (
                 <p
                   style={{ color: "var(--color-text-secondary)" }}
-                  className="mt-2 text-xs leading-relaxed break-words [overflow-wrap:anywhere]"
+                  className="mt-2 text-sm leading-relaxed break-words [overflow-wrap:anywhere]"
                 >
                   <span style={{ color: "var(--color-text-muted)" }}>Adiciones: </span>
                   {cartItem.adiciones
@@ -151,7 +151,7 @@ function ShoppingCart({
               {cartItem.observacion && (
                 <p
                   style={{ color: "var(--color-text-secondary)" }}
-                  className="mt-1 text-xs leading-relaxed break-words [overflow-wrap:anywhere]"
+                  className="mt-1 text-sm leading-relaxed break-words [overflow-wrap:anywhere]"
                 >
                   <span style={{ color: "var(--color-text-muted)" }}>Nota: </span>
                   {cartItem.observacion}
@@ -179,7 +179,7 @@ function ShoppingCart({
           {closedReason && (
             <div
               role="alert"
-              className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-xs font-medium text-amber-700 dark:text-amber-300"
+              className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-sm font-medium text-amber-700 dark:text-amber-300"
             >
               <AlertTriangle className="size-4 shrink-0 text-amber-700 dark:text-amber-400" />
               <span>{closedMessage(closedReason)}</span>
@@ -188,7 +188,7 @@ function ShoppingCart({
           {isBelowMinOrder && (
             <div
               role="alert"
-              className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-xs font-medium text-amber-700 dark:text-amber-300"
+              className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-sm font-medium text-amber-700 dark:text-amber-300"
             >
               <AlertTriangle className="size-4 shrink-0 text-amber-700 dark:text-amber-400" />
               <span>

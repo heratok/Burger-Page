@@ -16,7 +16,7 @@ export const CustomizerLayoutSection: React.FC<CustomizerLayoutSectionProps> = (
 }) => {
   return (
     <div
-      className={`rounded-2xl border p-5 shadow-xs space-y-5 text-xs ${
+      className={`rounded-2xl border p-5 shadow-xs space-y-5 text-sm ${
         isDark ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-white"
       }`}
     >
@@ -49,10 +49,10 @@ export const CustomizerLayoutSection: React.FC<CustomizerLayoutSectionProps> = (
                   : "border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
               }`}
             >
-              <span className={`block text-xs font-bold ${font.fontClass}`}>
+              <span className={`block text-sm font-bold ${font.fontClass}`}>
                 {font.name}
               </span>
-              <span className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 block">
+              <span className="text-sm text-slate-500 dark:text-slate-400 mt-0.5 block">
                 {font.desc}
               </span>
             </button>
@@ -83,7 +83,7 @@ export const CustomizerLayoutSection: React.FC<CustomizerLayoutSectionProps> = (
               }`}
             >
               <span className="block font-semibold">{st.name}</span>
-              <span className="text-xs text-slate-500 dark:text-slate-400">{st.desc}</span>
+              <span className="text-sm text-slate-500 dark:text-slate-400">{st.desc}</span>
             </button>
           ))}
         </div>

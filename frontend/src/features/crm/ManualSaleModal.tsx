@@ -240,7 +240,7 @@ function buildOrderPayload(params: {
 }
 
 function getFieldInputClass(isDark: boolean): string {
-  return `mt-1 w-full rounded-lg border px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-orange-500 ${
+  return `mt-1 w-full rounded-lg border px-2.5 py-1.5 text-base sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-orange-500 ${
     isDark ? "border-slate-700 bg-slate-950 text-white" : "border-slate-300 bg-white"
   }`
 }
@@ -263,7 +263,7 @@ function MesaInputs({
     <div className="space-y-2">
       {tableSelector}
       <div>
-        <label htmlFor="manual-sale-modal-nombre-cliente-opcional" className="text-xs font-bold text-slate-500 dark:text-slate-400">
+        <label htmlFor="manual-sale-modal-nombre-cliente-opcional" className="text-sm font-bold text-slate-500 dark:text-slate-400">
           Nombre Cliente (Opcional)
         </label>
         <input id="manual-sale-modal-nombre-cliente-opcional"
@@ -307,7 +307,7 @@ function DomicilioInputs({
     <div className="space-y-2">
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label htmlFor="manual-sale-modal-nombre-cliente" className="text-xs font-bold text-slate-500 dark:text-slate-400">
+          <label htmlFor="manual-sale-modal-nombre-cliente" className="text-sm font-bold text-slate-500 dark:text-slate-400">
             Nombre Cliente *
           </label>
           <input aria-required="true" id="manual-sale-modal-nombre-cliente"
@@ -320,7 +320,7 @@ function DomicilioInputs({
           />
         </div>
         <div>
-          <label htmlFor="manual-sale-modal-telefono" className="text-xs font-bold text-slate-500 dark:text-slate-400">
+          <label htmlFor="manual-sale-modal-telefono" className="text-sm font-bold text-slate-500 dark:text-slate-400">
             Teléfono
           </label>
           <input id="manual-sale-modal-telefono"
@@ -335,7 +335,7 @@ function DomicilioInputs({
       </div>
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label htmlFor="manual-sale-modal-direccion-de-entrega" className="text-xs font-bold text-slate-500 dark:text-slate-400">
+          <label htmlFor="manual-sale-modal-direccion-de-entrega" className="text-sm font-bold text-slate-500 dark:text-slate-400">
             Dirección de Entrega *
           </label>
           <input aria-required="true" id="manual-sale-modal-direccion-de-entrega"
@@ -348,7 +348,7 @@ function DomicilioInputs({
           />
         </div>
         <div>
-          <label htmlFor="manual-sale-modal-barrio" className="text-xs font-bold text-slate-500 dark:text-slate-400">
+          <label htmlFor="manual-sale-modal-barrio" className="text-sm font-bold text-slate-500 dark:text-slate-400">
             Barrio *
           </label>
           <input aria-required="true" id="manual-sale-modal-barrio"
@@ -384,7 +384,7 @@ function MostradorInputs({
   return (
     <div className="grid grid-cols-2 gap-2">
       <div>
-        <label htmlFor="manual-sale-modal-nombre-cliente-opcional-385" className="text-xs font-bold text-slate-500 dark:text-slate-400">
+        <label htmlFor="manual-sale-modal-nombre-cliente-opcional-385" className="text-sm font-bold text-slate-500 dark:text-slate-400">
           Nombre Cliente (Opcional)
         </label>
         <input id="manual-sale-modal-nombre-cliente-opcional-385"
@@ -397,7 +397,7 @@ function MostradorInputs({
         />
       </div>
       <div>
-        <label htmlFor="manual-sale-modal-telefono-opcional" className="text-xs font-bold text-slate-500 dark:text-slate-400">
+        <label htmlFor="manual-sale-modal-telefono-opcional" className="text-sm font-bold text-slate-500 dark:text-slate-400">
           Teléfono (Opcional)
         </label>
         <input id="manual-sale-modal-telefono-opcional"
@@ -955,7 +955,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                     {storeConfig.name}
                   </span>
                 </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1">
+                <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-1">
                   {orderToEdit
                     ? "Modificá los productos, cliente, notas o método de pago de la orden"
                     : "Registrá ventas en mesa, mostrador o pedidos telefónicos"}
@@ -965,7 +965,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
 
             <div className="flex items-center gap-2">
               {totalItemsCount > 0 && (
-                <div className="md:hidden flex items-center gap-1 rounded-lg bg-orange-500/10 px-2 py-1 text-xs font-bold text-orange-700 dark:text-orange-400">
+                <div className="md:hidden flex items-center gap-1 rounded-lg bg-orange-500/10 px-2 py-1 text-sm font-bold text-orange-700 dark:text-orange-400">
                   <span>{formatCOP(finalTotal)}</span>
                 </div>
               )}
@@ -1048,7 +1048,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                   placeholder="Buscar producto por nombre..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className={`w-full rounded-xl border pl-9 pr-4 py-2 text-xs sm:text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-orange-500 ${
+                  className={`w-full rounded-xl border pl-9 pr-4 py-2 text-base sm:text-sm sm:text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-orange-500 ${
                     isDark
                       ? "border-slate-800 bg-slate-950 text-white placeholder-slate-500"
                       : "border-slate-200 bg-white text-slate-900 placeholder-slate-400"
@@ -1121,7 +1121,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
               {filteredProducts.length === 0 ? (
                 <div className="flex h-full flex-col items-center justify-center p-8 text-center">
                   <UtensilsCrossed className="size-10 text-slate-500 dark:text-slate-400 mb-2 opacity-50" />
-                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                  <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
                     No se encontraron productos en el menú
                   </p>
                 </div>
@@ -1140,7 +1140,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                       >
                         <div>
                           <div className="flex items-start justify-between gap-2">
-                            <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white leading-tight">
+                            <h3 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">
                               {product.name}
                             </h3>
                             {inCartCount > 0 && (
@@ -1151,14 +1151,14 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                           </div>
 
                           {product.description && (
-                            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
+                            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 line-clamp-2">
                               {product.description}
                             </p>
                           )}
                         </div>
 
                         <div className="mt-3 flex flex-wrap items-center justify-between gap-x-2 gap-y-2 pt-2 border-t border-slate-100 dark:border-slate-800/60">
-                          <span className="text-xs sm:text-sm font-black text-orange-700 dark:text-orange-400">
+                          <span className="text-sm font-black text-orange-700 dark:text-orange-400">
                             {formatCOP(product.price)}
                           </span>
 
@@ -1204,7 +1204,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                     {totalItemsCount}
                   </div>
                   <div>
-                    <span className="text-xs text-slate-500 dark:text-slate-400 block font-medium">Total Pedido</span>
+                    <span className="text-sm text-slate-500 dark:text-slate-400 block font-medium">Total Pedido</span>
                     <span className="text-sm font-black text-orange-700 dark:text-orange-400 leading-none">
                       {formatCOP(finalTotal)}
                     </span>
@@ -1229,7 +1229,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
             }`}
           >
             {/* Mobile Sub-header to go back to catalog */}
-            <div className="md:hidden flex items-center justify-between px-3.5 py-2.5 bg-orange-500/10 border-b border-orange-500/20 text-xs shrink-0">
+            <div className="md:hidden flex items-center justify-between px-3.5 py-2.5 bg-orange-500/10 border-b border-orange-500/20 text-sm shrink-0">
               <button
                 type="button"
                 onClick={() => setMobileTab("catalog")}
@@ -1238,7 +1238,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                 <ArrowLeft className="size-3.5" />
                 <span>+ Agregar más platos</span>
               </button>
-              <span className="text-slate-500 dark:text-slate-400 text-xs font-semibold">
+              <span className="text-slate-500 dark:text-slate-400 text-sm font-semibold">
                 {selectedItems.length} {selectedItems.length === 1 ? "ítem" : "ítems"}
               </span>
             </div>
@@ -1318,10 +1318,10 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                   {selectedItems.length === 0 ? (
                     <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 dark:border-slate-700/60 p-6 text-center">
                       <ShoppingBag className="size-8 text-slate-500 dark:text-slate-400 mb-1.5 opacity-40" />
-                      <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300">
                         Venta vacía
                       </h4>
-                      <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 max-w-[200px]">
+                      <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400 max-w-[200px]">
                         Seleccioná productos en el catálogo para armar el pedido.
                       </p>
                       <button
@@ -1342,30 +1342,30 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                       >
                         <div className="flex-1 min-w-0">
                           <div className="flex items-baseline gap-1.5">
-                            <span className="text-xs font-black text-orange-700 dark:text-orange-400">
+                            <span className="text-sm font-black text-orange-700 dark:text-orange-400">
                               {item.cantidad}x
                             </span>
-                            <h4 className="text-xs font-bold text-slate-900 dark:text-white min-w-0 break-words">
+                            <h4 className="text-sm font-bold text-slate-900 dark:text-white min-w-0 break-words">
                               {item.name}
                             </h4>
                           </div>
 
                           {/* Additions list */}
                           {item.adiciones && item.adiciones.length > 0 && (
-                            <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 break-words">
+                            <div className="mt-0.5 text-sm text-slate-500 dark:text-slate-400 break-words">
                               + {item.adiciones.map((a) => `${a.name} (${a.cantidad})`).join(", ")}
                             </div>
                           )}
 
                           {/* Observacion */}
                           {item.observacion && (
-                            <div className="mt-0.5 text-xs italic text-amber-700 dark:text-amber-400 break-words">
+                            <div className="mt-0.5 text-sm italic text-amber-700 dark:text-amber-400 break-words">
                               &ldquo;{item.observacion}&rdquo;
                             </div>
                           )}
 
                           <div className="mt-1 flex items-center gap-2 flex-wrap">
-                            <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                            <span className="text-sm font-bold text-slate-700 dark:text-slate-300">
                               {formatCOP(item.total)}
                             </span>
 
@@ -1397,7 +1397,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                           >
                             <Minus className="size-3" />
                           </button>
-                          <span className="w-5 text-center text-xs font-bold">{item.cantidad}</span>
+                          <span className="w-5 text-center text-sm font-bold">{item.cantidad}</span>
                           <button
                             aria-label="Aumentar cantidad"
                             type="button"
@@ -1456,9 +1456,9 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
 
                   {/* General Order Notes / Kitchen Observations */}
                   <div>
-                    <label htmlFor="manual-sale-modal-observaciones-del-pedido-opc" className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center justify-between">
+                    <label htmlFor="manual-sale-modal-observaciones-del-pedido-opc" className="text-sm font-bold text-slate-500 dark:text-slate-400 flex items-center justify-between">
                       <span>Observaciones del Pedido (Opcional)</span>
-                      <span className="text-xs font-normal text-slate-500 dark:text-slate-400">Cocina & Entrega</span>
+                      <span className="text-sm font-normal text-slate-500 dark:text-slate-400">Cocina & Entrega</span>
                     </label>
                     <input id="manual-sale-modal-observaciones-del-pedido-opc"
                       type="text"
@@ -1466,7 +1466,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                       placeholder="Ej: Sin cebolla, salsas aparte, observaciones del cliente..."
                       value={orderNotes}
                       onChange={(e) => setOrderNotes(e.target.value)}
-                      className={`mt-1 w-full rounded-lg border px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-orange-500 ${
+                      className={`mt-1 w-full rounded-lg border px-2.5 py-1.5 text-base sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-orange-500 ${
                         isDark ? "border-slate-700 bg-slate-950 text-white placeholder-slate-500" : "border-slate-300 bg-white placeholder-slate-400"
                       }`}
                     />
@@ -1507,13 +1507,13 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                             placeholder="Paga con: $..."
                             value={pagoCon}
                             onChange={(e) => setPagoCon(e.target.value.replace(/\D/g, ""))}
-                            className={`w-full rounded-lg border px-2.5 py-1 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-emerald-500 ${
+                            className={`w-full rounded-lg border px-2.5 py-1 text-base sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-emerald-500 ${
                               isDark ? "border-slate-700 bg-slate-950 text-white" : "border-slate-300 bg-white"
                             }`}
                           />
                         </div>
                         {cambio !== null && (
-                          <div className="rounded-lg bg-emerald-500/10 px-2.5 py-1 text-xs font-black text-emerald-700 dark:text-emerald-400 whitespace-nowrap">
+                          <div className="rounded-lg bg-emerald-500/10 px-2.5 py-1 text-sm font-black text-emerald-700 dark:text-emerald-400 whitespace-nowrap">
                             Cambio: {formatCOP(cambio)}
                           </div>
                         )}
@@ -1523,7 +1523,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                     {paymentMethod === "Transferencia" && (
                       <div className="space-y-2 rounded-xl border border-indigo-500/20 bg-indigo-50/40 dark:bg-indigo-950/20 p-2.5">
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-1.5">
+                          <span className="text-sm font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-1.5">
                             <Upload className="size-3 text-indigo-600 dark:text-indigo-400" />
                             <span>Comprobante de Transferencia (Opcional)</span>
                           </span>
@@ -1546,15 +1546,15 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                               className="size-12 rounded-md object-cover border border-slate-200 dark:border-slate-700"
                             />
                             <div className="min-w-0 flex-1">
-                              <p className="text-xs font-bold text-slate-800 dark:text-slate-200 break-all">
+                              <p className="text-sm font-bold text-slate-800 dark:text-slate-200 break-all">
                                 {receiptFile?.name ?? "Comprobante cargado"}
                               </p>
-                              <span className="text-xs text-emerald-700 dark:text-emerald-400 font-semibold">
+                              <span className="text-sm text-emerald-700 dark:text-emerald-400 font-semibold">
                                 ✓ Listo para adjuntar
                               </span>
                             </div>
                             <label
-                              className="rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-2.5 py-1 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer"
+                              className="rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-2.5 py-1 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer"
                             >
                               Cambiar
                               <input
@@ -1573,9 +1573,9 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                           >
                             <div className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400">
                               <ImageIcon className="size-4" />
-                              <span className="text-xs font-semibold">Cargar comprobante</span>
+                              <span className="text-sm font-semibold">Cargar comprobante</span>
                             </div>
-                            <span className="text-xs text-slate-500 dark:text-slate-400">
+                            <span className="text-sm text-slate-500 dark:text-slate-400">
                               Formatos JPG, PNG, WebP (máx. 10MB)
                             </span>
                             <input
@@ -1592,17 +1592,17 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
 
                   {/* Subtotal, Fee and Grand Total Breakdown */}
                   <div className="pt-2 border-t border-slate-200 dark:border-slate-800 space-y-1">
-                    <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400">
+                    <div className="flex justify-between gap-3 text-sm text-slate-500 dark:text-slate-400">
                       <span>Subtotal productos:</span>
                       <span>{formatCOP(subtotal)}</span>
                     </div>
                     {deliveryFee > 0 && (
-                      <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400">
+                      <div className="flex justify-between gap-3 text-sm text-slate-500 dark:text-slate-400">
                         <span>Costo de envío:</span>
                         <span>{formatCOP(deliveryFee)}</span>
                       </div>
                     )}
-                    <div className="flex justify-between text-sm sm:text-base font-black text-slate-900 dark:text-white pt-1">
+                    <div className="flex justify-between gap-3 text-sm sm:text-base font-black text-slate-900 dark:text-white pt-1">
                       <span>Total a Cobrar:</span>
                       <span className="text-orange-700 dark:text-orange-400">{formatCOP(finalTotal)}</span>
                     </div>
@@ -1617,14 +1617,14 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                 }`}
               >
                 {!orderToEdit ? (
-                  <label className="flex items-center gap-2 cursor-pointer select-none text-xs text-slate-700 dark:text-slate-300 min-h-[44px] sm:min-h-0">
+                  <label className="flex items-center gap-2 cursor-pointer select-none text-sm text-slate-700 dark:text-slate-300 min-h-[44px] sm:min-h-0">
                     <input
                       type="checkbox"
                       checked={printTicketOnSave}
                       onChange={(e) => setPrintTicketOnSave(e.target.checked)}
                       className="size-4 rounded border-slate-300 text-orange-700 dark:text-orange-400 focus:ring-orange-500 cursor-pointer"
                     />
-                    <span className="font-semibold text-xs">Imprimir comanda al guardar</span>
+                    <span className="font-semibold text-sm">Imprimir comanda al guardar</span>
                   </label>
                 ) : (
                   <div />
@@ -1673,14 +1673,14 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
               }`}
             >
               {/* Modal Header */}
-              <div className="flex items-start justify-between pb-3 border-b border-slate-200 dark:border-slate-800 shrink-0">
+              <div className="flex items-start justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800 shrink-0">
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="rounded-md bg-orange-500/10 px-2 py-0.5 text-xs font-black uppercase text-orange-700 dark:text-orange-400">
                       {editingCartItemIndex !== null ? "Modificar ítem" : "Personalizar plato"}
                     </span>
                     {customizingProduct.category && (
-                      <span className="text-xs font-medium text-slate-500 dark:text-slate-400 capitalize">
+                      <span className="text-sm font-medium text-slate-500 dark:text-slate-400 capitalize">
                         {customizingProduct.category}
                       </span>
                     )}
@@ -1688,7 +1688,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                   <h3 id="manual-sale-customize-title" className="mt-1 text-sm sm:text-base font-bold text-slate-900 dark:text-white leading-tight">
                     {customizingProduct.name}
                   </h3>
-                  <p className="text-xs text-orange-700 dark:text-orange-400 font-bold">
+                  <p className="text-sm text-orange-700 dark:text-orange-400 font-bold">
                     Precio base: {formatCOP(customizingProduct.price)}
                   </p>
                 </div>
@@ -1709,17 +1709,17 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
               <div className="flex-1 overflow-y-auto py-3 space-y-3 min-h-0 pr-1">
                 {/* Additions list */}
                 <div>
-                  <div className="flex items-baseline justify-between mb-1.5">
-                    <span id="manual-sale-additions-label" className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  <div className="flex items-baseline justify-between gap-3 mb-1.5">
+                    <span id="manual-sale-additions-label" className="text-sm font-bold text-slate-700 dark:text-slate-300">
                       Adiciones / Modificadores disponibles:
                     </span>
-                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                    <span className="text-sm text-slate-500 dark:text-slate-400">
                       (Modifican este plato)
                     </span>
                   </div>
 
                   {additions.length === 0 ? (
-                    <p className="text-xs text-slate-500 dark:text-slate-400 italic py-2">
+                    <p className="text-sm text-slate-500 dark:text-slate-400 italic py-2">
                       No hay adiciones registradas para este local.
                     </p>
                   ) : (
@@ -1735,14 +1735,14 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                           >
                             <div className="min-w-0 flex-1 pr-2">
                               <div className="flex items-center gap-1.5">
-                                <span className="font-bold text-xs text-slate-900 dark:text-white">
+                                <span className="font-bold text-sm text-slate-900 dark:text-white">
                                   {addition.name}
                                 </span>
                                 {isSelected && (
                                   <span className="size-1.5 rounded-full bg-orange-500" />
                                 )}
                               </div>
-                              <span className="text-xs font-semibold text-orange-700 dark:text-orange-400">
+                              <span className="text-sm font-semibold text-orange-700 dark:text-orange-400">
                                 +{formatCOP(addition.price)} c/u
                               </span>
                             </div>
@@ -1768,7 +1768,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                                 <Minus className="size-3.5" />
                               </button>
 
-                              <span className="w-6 text-center text-xs font-black text-slate-900 dark:text-white">
+                              <span className="w-6 text-center text-sm font-black text-slate-900 dark:text-white">
                                 {qty}
                               </span>
 
@@ -1795,9 +1795,9 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
 
                 {/* Kitchen Observation */}
                 <div className="pt-2 border-t border-slate-200 dark:border-slate-800/80">
-                  <label htmlFor="manual-sale-modal-nota-observacion-para-cocina" className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                  <label htmlFor="manual-sale-modal-nota-observacion-para-cocina" className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
                     <span>Nota / Observación para cocina</span>
-                    <span className="text-xs font-normal text-slate-500 dark:text-slate-400">Opcional</span>
+                    <span className="text-sm font-normal text-slate-500 dark:text-slate-400">Opcional</span>
                   </label>
                   <input id="manual-sale-modal-nota-observacion-para-cocina"
                     type="text"
@@ -1805,7 +1805,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                     placeholder="Ej: Término medio, sin salsas, salsa aparte..."
                     value={customItemNote}
                     onChange={(e) => setCustomItemNote(e.target.value)}
-                    className={`mt-1.5 w-full rounded-xl border px-3 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all ${
+                    className={`mt-1.5 w-full rounded-xl border px-3 py-2 text-base sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all ${
                       isDark
                         ? "border-slate-700 bg-slate-950 text-white placeholder-slate-500"
                         : "border-slate-300 bg-white text-slate-900 placeholder-slate-400"
@@ -1817,7 +1817,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
               {/* Modal Footer with Live Price Calculation */}
               <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 shrink-0">
                 <div className="flex items-baseline justify-between sm:justify-start sm:gap-2">
-                  <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                  <span className="text-sm text-slate-500 dark:text-slate-400 font-medium">
                     Total del plato:
                   </span>
                   <div className="flex items-baseline gap-1.5">
@@ -1825,7 +1825,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                       {formatCOP(currentModalItemTotal)}
                     </span>
                     {currentModalAdditionsTotal > 0 && (
-                      <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                      <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">
                         (incl. {formatCOP(currentModalAdditionsTotal)} extras)
                       </span>
                     )}

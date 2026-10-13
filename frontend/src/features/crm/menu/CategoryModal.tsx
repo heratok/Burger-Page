@@ -91,7 +91,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
               value={newCategoryName}
               onChange={(e) => setNewCategoryName(e.target.value)}
               placeholder="Nueva categoría (ej. Pizzas, Entradas, Postres)..."
-              className="flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+              className="flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-base sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
             />
             <Button
               type="submit"
@@ -104,7 +104,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
           </form>
 
           {/* Existing Categories List */}
-          <div className="mt-4 max-h-64 overflow-y-auto space-y-2 pr-1 text-xs">
+          <div className="mt-4 max-h-64 overflow-y-auto space-y-2 pr-1 text-sm">
             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
               Categorías Activas ({categories.length})
             </p>
@@ -138,7 +138,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
                             setEditingCategoryName(null)
                           }
                         }}
-                        className="flex-1 rounded-lg border border-indigo-500 bg-white px-2 py-1 text-xs text-slate-900 dark:bg-slate-900 dark:text-white"
+                        className="flex-1 rounded-lg border border-indigo-500 bg-white px-2 py-1 text-base sm:text-sm text-slate-900 dark:bg-slate-900 dark:text-white"
                         autoFocus
                       />
                       <button

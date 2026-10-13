@@ -287,7 +287,7 @@ export const DashboardOverview: React.FC = () => {
               <h2 className="text-base font-bold tracking-tight text-slate-900 dark:text-white">
                 Rendimiento de Ventas Semanal
               </h2>
-              <p className={`text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+              <p className={`text-sm ${isDark ? "text-slate-400" : "text-slate-500"}`}>
                 Ingresos diarios acumulados por canal de venta
               </p>
             </div>
@@ -302,7 +302,7 @@ export const DashboardOverview: React.FC = () => {
               <div className="flex size-10 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
                 <TrendingUp className="size-5" />
               </div>
-              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
                 No hay ventas registradas en los últimos 7 días.
               </p>
             </div>
@@ -311,7 +311,7 @@ export const DashboardOverview: React.FC = () => {
               {chartDays.items.map((item, idx) => (
                 <div key={idx} className="group relative flex flex-1 flex-col items-center gap-2">
                   {/* Tooltip on hover */}
-                  <div className="pointer-events-none absolute -top-8 hidden rounded-md bg-slate-900 px-2 py-1 text-xs font-bold text-white shadow-md group-hover:block dark:bg-slate-800 border dark:border-slate-700">
+                  <div className="pointer-events-none absolute -top-8 hidden rounded-md bg-slate-900 px-2 py-1 text-sm font-bold text-white shadow-md group-hover:block dark:bg-slate-800 border dark:border-slate-700">
                     {formatCurrency(item.amount)}
                   </div>
                   {/* Bar */}
@@ -325,7 +325,7 @@ export const DashboardOverview: React.FC = () => {
                       }`}
                     />
                   </div>
-                  <span className={`text-xs font-medium ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                  <span className={`text-sm font-medium ${isDark ? "text-slate-400" : "text-slate-500"}`}>
                     {item.day}
                   </span>
                 </div>
@@ -345,7 +345,7 @@ export const DashboardOverview: React.FC = () => {
               <h2 className="text-base font-bold tracking-tight text-slate-900 dark:text-white">
                 Platos Más Vendidos
               </h2>
-              <p className={`text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+              <p className={`text-sm ${isDark ? "text-slate-400" : "text-slate-500"}`}>
                 Ranking por volumen de pedidos
               </p>
             </div>
@@ -354,7 +354,7 @@ export const DashboardOverview: React.FC = () => {
 
           <div className="mt-4 space-y-4">
             {topProducts.length === 0 ? (
-              <p className="text-xs text-slate-500 dark:text-slate-400 text-center py-6">
+              <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-6">
                 No hay ventas registradas aún.
               </p>
             ) : (
@@ -362,7 +362,7 @@ export const DashboardOverview: React.FC = () => {
                 const percentage = Math.round((prod.count / maxProductCount) * 100)
                 return (
                   <div key={idx} className="space-y-1.5">
-                    <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center justify-between text-sm">
                       <div className="flex min-w-0 items-center gap-2">
                         <span className="flex size-5 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
                           {idx + 1}
@@ -411,7 +411,7 @@ export const DashboardOverview: React.FC = () => {
             <h2 className="text-base font-bold tracking-tight text-slate-900 dark:text-white">
               Actividad de Pedidos Recientes
             </h2>
-            <p className={`text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+            <p className={`text-sm ${isDark ? "text-slate-400" : "text-slate-500"}`}>
               Monitoreo y despacho en tiempo real
             </p>
           </div>
@@ -427,8 +427,8 @@ export const DashboardOverview: React.FC = () => {
         </div>
 
         <div role="region" aria-label="Tabla desplazable" tabIndex={0} className="mt-4 overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead>
+          <table className="w-full text-left text-sm">
+            <thead className="text-xs">
               <tr className={`border-b ${isDark ? "border-slate-800 text-slate-400" : "border-slate-100 text-slate-500"}`}>
                 <th className="py-2.5 px-3 font-semibold">Orden</th>
                 <th className="py-2.5 px-3 font-semibold">Cliente</th>
@@ -459,7 +459,7 @@ export const DashboardOverview: React.FC = () => {
                     </td>
                     <td className="py-3 px-3">
                       <div className="font-semibold text-slate-900 dark:text-slate-100">{ord.customer.nombre}</div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400">{ord.customer.barrio}</div>
+                      <div className="text-sm text-slate-500 dark:text-slate-400">{ord.customer.barrio}</div>
                     </td>
                     <td className="py-3 px-3 max-w-[16rem] break-words text-slate-700 dark:text-slate-300">
                       {ord.items.map((i) => `${i.cantidad}× ${i.name}`).join(", ")}
@@ -504,7 +504,7 @@ export const DashboardOverview: React.FC = () => {
                         </button>
                       )}
                       {ord.status === "delivered" && (
-                        <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Finalizado</span>
+                        <span className="text-sm text-slate-500 dark:text-slate-400 font-medium">Finalizado</span>
                       )}
                     </td>
                   </tr>

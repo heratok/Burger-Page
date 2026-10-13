@@ -80,7 +80,7 @@ export const GlobalAnalytics: React.FC = () => {
           <h2 className="text-xl font-bold tracking-tight sm:text-2xl text-slate-900 dark:text-white">
             Métricas & Rendimiento Global SaaS
           </h2>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
             Consolidado financiero, volumen de transacciones y comparativa de ingresos de todos los locales.
           </p>
         </div>
@@ -105,7 +105,7 @@ export const GlobalAnalytics: React.FC = () => {
         {/* Total Revenue */}
         <div className={`rounded-2xl border p-5 shadow-xs ${isDark ? "border-slate-800 bg-[#0E1322]" : "border-slate-200 bg-white"}`}>
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Facturación Consolidada</span>
+            <span className="text-sm font-bold text-slate-500 dark:text-slate-400">Facturación Consolidada</span>
             <div className="flex size-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
               <DollarSign className="size-4.5" />
             </div>
@@ -113,7 +113,7 @@ export const GlobalAnalytics: React.FC = () => {
           <div className="mt-3 text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
             {formatCurrency(stats.totalRevenue)}
           </div>
-          <div className="mt-2 flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400 font-semibold">
+          <div className="mt-2 flex items-center gap-1.5 text-sm text-emerald-700 dark:text-emerald-400 font-semibold">
             <TrendingUp className="size-3.5" />
             <span>100% de locales en línea</span>
           </div>
@@ -122,7 +122,7 @@ export const GlobalAnalytics: React.FC = () => {
         {/* Total Orders */}
         <div className={`rounded-2xl border p-5 shadow-xs ${isDark ? "border-slate-800 bg-[#0E1322]" : "border-slate-200 bg-white"}`}>
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Órdenes de Plataforma</span>
+            <span className="text-sm font-bold text-slate-500 dark:text-slate-400">Órdenes de Plataforma</span>
             <div className="flex size-9 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
               <ShoppingBag className="size-4.5" />
             </div>
@@ -130,7 +130,7 @@ export const GlobalAnalytics: React.FC = () => {
           <div className="mt-3 text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
             {stats.totalOrders}
           </div>
-          <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+          <div className="mt-2 text-sm text-slate-500 dark:text-slate-400">
             Pedidos registrados en cocina y delivery
           </div>
         </div>
@@ -138,7 +138,7 @@ export const GlobalAnalytics: React.FC = () => {
         {/* Active Tenants */}
         <div className={`rounded-2xl border p-5 shadow-xs ${isDark ? "border-slate-800 bg-[#0E1322]" : "border-slate-200 bg-white"}`}>
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Locales Activos</span>
+            <span className="text-sm font-bold text-slate-500 dark:text-slate-400">Locales Activos</span>
             <div className="flex size-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
               <Store className="size-4.5" />
             </div>
@@ -146,7 +146,7 @@ export const GlobalAnalytics: React.FC = () => {
           <div className="mt-3 text-2xl sm:text-3xl font-black text-amber-700 dark:text-amber-400">
             {stats.activeCount} <span className="text-sm font-normal text-slate-500 dark:text-slate-400">/ {stats.totalTenants}</span>
           </div>
-          <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+          <div className="mt-2 text-sm text-slate-500 dark:text-slate-400">
             Franquicias operando activamente
           </div>
         </div>
@@ -154,7 +154,7 @@ export const GlobalAnalytics: React.FC = () => {
         {/* Average Ticket */}
         <div className={`rounded-2xl border p-5 shadow-xs ${isDark ? "border-slate-800 bg-[#0E1322]" : "border-slate-200 bg-white"}`}>
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Ticket Promedio Global</span>
+            <span className="text-sm font-bold text-slate-500 dark:text-slate-400">Ticket Promedio Global</span>
             <div className="flex size-9 items-center justify-center rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20">
               <TrendingUp className="size-4.5" />
             </div>
@@ -162,7 +162,7 @@ export const GlobalAnalytics: React.FC = () => {
           <div className="mt-3 text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
             {formatCurrency(stats.avgTicket)}
           </div>
-          <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+          <div className="mt-2 text-sm text-slate-500 dark:text-slate-400">
             Gasto medio por cliente en la plataforma
           </div>
         </div>
@@ -175,7 +175,7 @@ export const GlobalAnalytics: React.FC = () => {
             <h3 className="text-base font-bold text-slate-900 dark:text-white">
               Ranking de Restaurantes por Facturación
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-sm text-slate-500 dark:text-slate-400">
               Participación porcentual y volumen de ventas generado por cada local.
             </p>
           </div>
@@ -185,7 +185,7 @@ export const GlobalAnalytics: React.FC = () => {
         </div>
 
         <div role="region" aria-label="Tabla de métricas" tabIndex={0} className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+          <table className="w-full text-left text-sm">
             <thead className={`border-b text-xs font-bold uppercase tracking-wider ${isDark ? "border-slate-800 bg-slate-900/60 text-slate-400" : "border-slate-200 bg-slate-50/80 text-slate-500"}`}>
               <tr>
                 <th className="px-4 py-3">Restaurante</th>
@@ -248,7 +248,7 @@ export const GlobalAnalytics: React.FC = () => {
                             style={{ width: `${Math.max(percentage, 5)}%` }}
                           />
                         </div>
-                        <span className="font-bold text-xs text-slate-600 dark:text-slate-300">{percentage}%</span>
+                        <span className="font-bold text-sm text-slate-600 dark:text-slate-300">{percentage}%</span>
                       </div>
                     </td>
 

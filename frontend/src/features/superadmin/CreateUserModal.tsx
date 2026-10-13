@@ -72,7 +72,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
     }
   }
 
-  const inputClass = `w-full rounded-xl border px-3.5 py-2 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+  const inputClass = `w-full rounded-xl border px-3.5 py-2 text-base sm:text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
     isDark
       ? "border-slate-700 bg-slate-800 text-white placeholder-slate-500"
       : "border-slate-200 bg-slate-50 text-slate-900 placeholder-slate-400"
@@ -101,7 +101,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
             </div>
             <div>
               <h3 id="create-user-title" className="text-base font-bold">Crear Usuario</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-sm text-slate-500 dark:text-slate-400">
                 Asigna credenciales de acceso al panel de un restaurante.
               </p>
             </div>
@@ -120,7 +120,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
           {/* Username */}
           <div>
-            <label htmlFor="create-user-modal-nombre-de-usuario" className="block text-xs font-bold mb-1 text-slate-700 dark:text-slate-300">
+            <label htmlFor="create-user-modal-nombre-de-usuario" className="block text-sm font-bold mb-1 text-slate-700 dark:text-slate-300">
               Nombre de Usuario *
             </label>
             <input id="create-user-modal-nombre-de-usuario"
@@ -136,7 +136,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
 
           {/* Password */}
           <div>
-            <label htmlFor="create-user-modal-contrasena-minimo-8-caracter" className="block text-xs font-bold mb-1 text-slate-700 dark:text-slate-300">
+            <label htmlFor="create-user-modal-contrasena-minimo-8-caracter" className="block text-sm font-bold mb-1 text-slate-700 dark:text-slate-300">
               Contraseña * (mínimo 8 caracteres)
             </label>
             <input id="create-user-modal-contrasena-minimo-8-caracter"
@@ -153,7 +153,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
 
           {/* Role */}
           <div>
-            <span id="create-user-role-label" className="block text-xs font-bold mb-1.5 text-slate-700 dark:text-slate-300">
+            <span id="create-user-role-label" className="block text-sm font-bold mb-1.5 text-slate-700 dark:text-slate-300">
               Rol del Usuario
             </span>
             <div role="group" aria-labelledby="create-user-role-label" className="grid grid-cols-2 gap-2.5">
@@ -181,8 +181,8 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
                     role === r.id ? "text-indigo-600 dark:text-indigo-400" : "text-slate-500 dark:text-slate-400"
                   }`} />
                   <div>
-                    <div className="text-xs font-bold">{r.name}</div>
-                    <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{r.desc}</div>
+                    <div className="text-sm font-bold">{r.name}</div>
+                    <div className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">{r.desc}</div>
                   </div>
                 </button>
               ))}

@@ -78,7 +78,7 @@ export const CustomizerBrandingSection: React.FC<CustomizerBrandingSectionProps>
   return (
     <>
       <div
-        className={`rounded-2xl border p-5 shadow-xs space-y-4 text-xs ${
+        className={`rounded-2xl border p-5 shadow-xs space-y-4 text-sm ${
           isDark ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-white"
         }`}
       >
@@ -94,7 +94,7 @@ export const CustomizerBrandingSection: React.FC<CustomizerBrandingSectionProps>
             value={draft.name}
             onChange={(e) => setDraft((prev) => ({ ...prev, name: e.target.value }))}
             placeholder="Ej. Burger Craft"
-            className="w-full rounded-xl border p-2.5 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white font-medium"
+            className="text-base sm:text-sm w-full rounded-xl border p-2.5 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white font-medium"
           />
         </div>
 
@@ -108,7 +108,7 @@ export const CustomizerBrandingSection: React.FC<CustomizerBrandingSectionProps>
             value={draft.tagline}
             onChange={(e) => setDraft((prev) => ({ ...prev, tagline: e.target.value }))}
             placeholder="Ej. Cocina artesanal con sabor inolvidable"
-            className="w-full rounded-xl border p-2.5 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white"
+            className="text-base sm:text-sm w-full rounded-xl border p-2.5 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white"
           />
         </div>
 
@@ -192,7 +192,7 @@ export const CustomizerBrandingSection: React.FC<CustomizerBrandingSectionProps>
                   </Button>
                 )}
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-sm text-slate-500 dark:text-slate-400">
                 Subí tu logo en formato PNG, JPG o WebP desde tu teléfono o PC.
               </p>
             </div>
@@ -260,7 +260,7 @@ export const CustomizerBrandingSection: React.FC<CustomizerBrandingSectionProps>
               </>
             )}
           </Button>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
             Imagen panorámica que aparece en la parte superior de la carta digital.
           </p>
 
@@ -289,7 +289,7 @@ export const CustomizerBrandingSection: React.FC<CustomizerBrandingSectionProps>
                   value={draft.announcementText}
                   onChange={(e) => setDraft((prev) => ({ ...prev, announcementText: e.target.value }))}
                   placeholder="🔥 ¡Envío GRATIS hoy...!"
-                  className="w-full rounded-xl border p-2.5 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white"
+                  className="text-base sm:text-sm w-full rounded-xl border p-2.5 dark:border-slate-700 dark:bg-slate-800 text-slate-900 dark:text-white"
                 />
               </div>
             )}

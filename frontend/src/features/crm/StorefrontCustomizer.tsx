@@ -108,7 +108,7 @@ export const StorefrontCustomizer: React.FC = () => {
               Personalizador Visual de Tienda
             </h2>
           </div>
-          <p className={`text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+          <p className={`text-sm ${isDark ? "text-slate-400" : "text-slate-500"}`}>
             Modifica la apariencia, colores y experiencia de compra de tus clientes con vista previa en tiempo real.
           </p>
         </div>
@@ -140,7 +140,7 @@ export const StorefrontCustomizer: React.FC = () => {
             aria-label="Secciones del personalizador"
             onKeyDown={handleKeyDown}
             style={{ gridTemplateColumns: `repeat(${TAB_COLUMNS}, minmax(0, 1fr))` }}
-            className="grid gap-1 rounded-xl border bg-slate-100 p-1 text-xs font-semibold dark:border-slate-700 dark:bg-slate-800"
+            className="grid gap-1 rounded-xl border bg-slate-100 p-1 text-sm font-semibold dark:border-slate-700 dark:bg-slate-800"
           >
             {CUSTOMIZER_TABS.map((tab, index) => {
               const Icon = tab.icon

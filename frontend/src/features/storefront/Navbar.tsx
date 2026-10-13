@@ -89,7 +89,7 @@ export default function Navbar({ cantidad, total, onOpenCart, onGoToMenu }: Navb
             </span>
             <span
               style={{ color: "var(--color-text-secondary)" }}
-              className="text-xs line-clamp-1 font-medium"
+              className="text-sm line-clamp-1 font-medium"
             >
               {storeConfig.tagline}
             </span>

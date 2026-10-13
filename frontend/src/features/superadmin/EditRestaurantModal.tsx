@@ -236,7 +236,7 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
     }
   }
 
-  const inputClass = `w-full rounded-xl border px-3.5 py-2 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+  const inputClass = `w-full rounded-xl border px-3.5 py-2 text-base sm:text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
     isDark
       ? "border-slate-700 bg-slate-800 text-white placeholder-slate-500"
       : "border-slate-200 bg-slate-50 text-slate-900 placeholder-slate-400"
@@ -266,7 +266,7 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
                 <h3 id="edit-restaurant-title" className="text-base font-bold">
                   Editar Restaurante
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-sm text-slate-500 dark:text-slate-400">
                   Modificá los datos generales y gestioná los administradores de este local.
                 </p>
               </div>
@@ -285,7 +285,7 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
           {/* Form */}
           <form onSubmit={handleSubmit} className="mt-5 space-y-6">
             {errorMessage && (
-              <div role="alert" className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-600 dark:text-rose-400 font-medium">
+              <div role="alert" className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-600 dark:text-rose-400 font-medium">
                 {errorMessage}
               </div>
             )}
@@ -293,7 +293,7 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {/* Nombre */}
               <div className="space-y-1 sm:col-span-2">
-                <label htmlFor="edit-rest-name" className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                <label htmlFor="edit-rest-name" className="text-sm font-bold text-slate-700 dark:text-slate-300">
                   Nombre del Restaurante *
                 </label>
                 <input
@@ -309,7 +309,7 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
 
               {/* Tagline */}
               <div className="space-y-1 sm:col-span-2">
-                <label htmlFor="edit-rest-tagline" className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                <label htmlFor="edit-rest-tagline" className="text-sm font-bold text-slate-700 dark:text-slate-300">
                   Eslogan / Tagline
                 </label>
                 <input
@@ -324,7 +324,7 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
 
               {/* WhatsApp */}
               <div className="space-y-1 sm:col-span-2">
-                <label htmlFor="edit-rest-whatsapp" className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                <label htmlFor="edit-rest-whatsapp" className="text-sm font-bold text-slate-700 dark:text-slate-300">
                   WhatsApp (para recepción de pedidos)
                 </label>
                 <input
@@ -339,11 +339,11 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
 
               {/* Slug */}
               <div className="space-y-1 sm:col-span-2">
-                <label htmlFor="edit-rest-slug" className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                <label htmlFor="edit-rest-slug" className="text-sm font-bold text-slate-700 dark:text-slate-300">
                   Slug / URL Pública *
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-500 dark:text-slate-400">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-500 dark:text-slate-400">
                     /
                   </span>
                   <input
@@ -356,16 +356,16 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
                       setSlugError(null)
                     }}
                     placeholder="burger-craft"
-                    className={`${inputClass} pl-6 font-mono text-xs`}
+                    className={`${inputClass} pl-6 font-mono text-base sm:text-sm`}
                   />
                 </div>
                 {slugError && (
-                  <p role="alert" className="text-xs font-semibold text-rose-600 dark:text-rose-400 mt-1">{slugError}</p>
+                  <p role="alert" className="text-sm font-semibold text-rose-600 dark:text-rose-400 mt-1">{slugError}</p>
                 )}
 
                 {/* Slug change warning */}
                 {isSlugChanged && (
-                  <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300 mt-2">
+                  <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300 mt-2">
                     <AlertTriangle className="size-4 shrink-0 mt-0.5 text-amber-700 dark:text-amber-400" />
                     <span>
                       ⚠️ <strong>Atención:</strong> Al cambiar el slug se actualizará la URL de la tienda pública. Los enlaces anteriores y códigos QR dejarán de funcionar.
@@ -437,7 +437,7 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
               </div>
 
               <div className="space-y-1">
-                <label htmlFor="edit-rest-symbol" className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                <label htmlFor="edit-rest-symbol" className="text-sm font-bold text-slate-700 dark:text-slate-300">
                   Símbolo *
                 </label>
                 <input
@@ -478,12 +478,12 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
               </div>
 
               {isLoadingAdmins ? (
-                <div className="flex items-center justify-center p-6 text-xs text-slate-500 dark:text-slate-400 gap-2">
+                <div className="flex items-center justify-center p-6 text-sm text-slate-500 dark:text-slate-400 gap-2">
                   <Loader2 className="size-4 animate-spin" />
                   <span>Cargando administradores...</span>
                 </div>
               ) : admins.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-800 p-4 text-center text-xs text-slate-500 dark:text-slate-400">
+                <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-800 p-4 text-center text-sm text-slate-500 dark:text-slate-400">
                   No hay administradores registrados para este restaurante.
                 </div>
               ) : (
@@ -503,7 +503,7 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
                           </div>
                           <div className="min-w-0">
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="font-bold text-xs break-all text-slate-900 dark:text-white">
+                              <span className="font-bold text-sm break-all text-slate-900 dark:text-white">
                                 {admin.username}
                               </span>
                               {isOwnAccount && (
