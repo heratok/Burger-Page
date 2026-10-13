@@ -57,7 +57,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
   return (
     <>
       <ModalShell
-        onClose={onClose}
+        onClose={handleCloseModal}
         aria-labelledby="category-modal-title"
         className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 backdrop-blur-xs"
       >

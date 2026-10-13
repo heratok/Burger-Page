@@ -584,7 +584,7 @@ export const RolesManager: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setSelectedPermissions(new Set())}
-                    className={`rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 ${
+                    className={`rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 ${
                       isDark ? "border-slate-800" : "border-slate-200"
                     }`}
                   >
@@ -642,7 +642,7 @@ export const RolesManager: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => handleToggleCategory(group.permissions)}
-                            className="text-xs font-semibold text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400"
+                            className="text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400"
                           >
                             {allInGroupSelected ? "Quitar grupo" : "Seleccionar grupo"}
                           </button>

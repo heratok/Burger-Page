@@ -271,7 +271,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           role="complementary"
           aria-label="Sidebar de navegación"
           onKeyDown={trapDrawerTab}
-          {...(isDrawerClosed ? ({ inert: "", "aria-hidden": true } as React.HTMLAttributes<HTMLElement>) : {})}
+          // `inert` removes the closed drawer from the tab order and the accessibility tree (it implies hidden).
+          {...(isDrawerClosed ? ({ inert: "" } as React.HTMLAttributes<HTMLElement>) : {})}
           className={`fixed inset-y-0 left-0 z-50 flex h-dvh max-h-dvh flex-col border-r transition-all duration-300 ease-in-out lg:sticky lg:top-0 lg:h-screen lg:max-h-screen lg:translate-x-0 ${
             isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
           } ${

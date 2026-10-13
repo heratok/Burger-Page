@@ -61,7 +61,8 @@ const layoutAvailable = () => document.documentElement.getClientRects().length >
 function getTabbables(root: HTMLElement): HTMLElement[] {
   const withLayout = layoutAvailable()
   return Array.from(root.querySelectorAll<HTMLElement>(TABBABLE)).filter((el) => {
-    if (el.closest("[inert],[hidden]")) return false
+    // :disabled also covers controls disabled through an ancestor <fieldset disabled>.
+    if (el.matches(":disabled") || el.closest("[inert],[hidden]")) return false
     if (el.getAttribute("aria-hidden") === "true") return false
     if (withLayout) {
       if (el.getClientRects().length === 0) return false

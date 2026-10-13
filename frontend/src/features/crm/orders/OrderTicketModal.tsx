@@ -482,7 +482,7 @@ export const OrderTicketModal: React.FC<OrderTicketModalProps> = ({
                 <div className="text-center space-y-0.5 pt-1 text-slate-500 text-xs">
                   <div className="font-bold text-slate-800">¡GRACIAS POR SU COMPRA!</div>
                   <div>Burger-Page CRM &middot; Facturación</div>
-                  <div className="text-xs pt-1 text-slate-500 dark:text-slate-400 tracking-wider">
+                  <div className="text-xs pt-1 text-slate-600 tracking-wider">
                     - - - - - - CORTE DE TICKET - - - - - -
                   </div>
                 </div>
@@ -573,7 +573,7 @@ export const OrderTicketModal: React.FC<OrderTicketModalProps> = ({
                   <div className="text-center font-black text-xs uppercase tracking-widest pt-2">
                     --- ENVIADO A COCINA ---
                   </div>
-                  <div className="text-center text-xs pt-1 text-slate-500 dark:text-slate-400 tracking-wider">
+                  <div className="text-center text-xs pt-1 text-slate-600 tracking-wider">
                     - - - - - - CORTE DE TICKET - - - - - -
                   </div>
                 </div>

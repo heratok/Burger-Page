@@ -339,11 +339,10 @@ describe("AdminLayout - mobile drawer accessibility", () => {
       </RestaurantProvider>
     )
 
-  it("keeps the closed drawer inert and hidden, exposing aria-expanded on the toggle", () => {
+  it("keeps the closed drawer inert, exposing aria-expanded on the toggle", () => {
     const { container } = renderLayout()
     const aside = container.querySelector("aside") as HTMLElement
     expect(aside.hasAttribute("inert")).toBe(true)
-    expect(aside.getAttribute("aria-hidden")).toBe("true")
     const toggle = screen.getByRole("button", { name: "Abrir menú" })
     expect(toggle.getAttribute("aria-expanded")).toBe("false")
     expect(toggle.getAttribute("aria-controls")).toBe(aside.id)
