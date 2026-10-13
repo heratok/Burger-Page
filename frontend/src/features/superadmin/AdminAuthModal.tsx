@@ -81,13 +81,20 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
       {/* ======================================================== */}
       {/* VIBRANT LUMINOUS AURORA LIGHTS                           */}
       {/* ======================================================== */}
-      <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        {/* Top left warm orange aura */}
-        <div className="absolute -top-40 -left-40 h-[600px] w-[600px] rounded-full bg-gradient-to-br from-orange-500/25 via-amber-500/20 to-transparent blur-[140px]" />
-        {/* Center warm amber/orange aura */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[500px] w-[700px] rounded-full bg-gradient-to-r from-orange-500/15 via-rose-500/15 to-amber-600/15 blur-[160px]" />
-        {/* Bottom right amber aura */}
-        <div className="absolute -bottom-40 -right-40 h-[650px] w-[650px] rounded-full bg-gradient-to-tl from-amber-600/25 via-orange-500/20 to-transparent blur-[140px]" />
+      <div aria-hidden="true" className="pointer-events-none fixed inset-0 overflow-hidden">
+        {/* Static radial-gradient auras: zero blur cost, nothing animates. Side auras are desktop-only. */}
+        <div
+          className="hidden md:block absolute -top-40 -left-40 h-[600px] w-[600px]"
+          style={{ backgroundImage: "radial-gradient(circle at center, rgba(249,115,22,0.20) 0%, rgba(245,158,11,0.08) 45%, transparent 70%)" }}
+        />
+        <div
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[420px] w-[min(700px,100vw)]"
+          style={{ backgroundImage: "radial-gradient(ellipse at center, rgba(249,115,22,0.12) 0%, rgba(244,63,94,0.06) 45%, transparent 70%)" }}
+        />
+        <div
+          className="hidden md:block absolute -bottom-40 -right-40 h-[650px] w-[650px]"
+          style={{ backgroundImage: "radial-gradient(circle at center, rgba(217,119,6,0.20) 0%, rgba(249,115,22,0.08) 45%, transparent 70%)" }}
+        />
 
         {/* Ambient Subtle Tech Grid */}
         <div

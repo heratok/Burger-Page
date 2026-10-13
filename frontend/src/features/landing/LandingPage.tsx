@@ -56,24 +56,31 @@ export default function LandingPage() {
         isDark ? "dark bg-[#0B0F19] text-slate-100" : "bg-[#FAFAFA] text-slate-800"
       }`}
     >
-      {/* Background ambient warm lighting */}
-      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+      {/* Background ambient warm lighting: static radial gradients (no blur filter, no animation) */}
+      <div aria-hidden="true" className="pointer-events-none fixed inset-0 overflow-hidden">
         <div
-          className={`absolute -top-32 left-1/2 -translate-x-1/2 h-[550px] w-[850px] rounded-full blur-[130px] transition-colors duration-500 ${
-            isDark
-              ? "bg-gradient-to-tr from-orange-500/10 via-amber-500/5 to-orange-600/10"
-              : "bg-gradient-to-tr from-orange-400/10 via-amber-300/15 to-orange-400/10"
-          }`}
+          className="absolute -top-32 left-1/2 -translate-x-1/2 h-[420px] w-[min(850px,100vw)]"
+          style={{
+            backgroundImage: isDark
+              ? "radial-gradient(ellipse at center, rgba(249,115,22,0.14) 0%, rgba(245,158,11,0.06) 45%, transparent 72%)"
+              : "radial-gradient(ellipse at center, rgba(251,146,60,0.16) 0%, rgba(252,211,77,0.10) 45%, transparent 72%)",
+          }}
         />
         <div
-          className={`absolute top-[35%] right-[-10%] h-[450px] w-[550px] rounded-full blur-[140px] transition-colors duration-500 ${
-            isDark ? "bg-amber-500/5" : "bg-amber-400/10"
-          }`}
+          className="hidden md:block absolute top-[35%] right-[-10%] h-[450px] w-[550px]"
+          style={{
+            backgroundImage: isDark
+              ? "radial-gradient(ellipse at center, rgba(245,158,11,0.07) 0%, transparent 70%)"
+              : "radial-gradient(ellipse at center, rgba(251,191,36,0.14) 0%, transparent 70%)",
+          }}
         />
         <div
-          className={`absolute bottom-10 left-[-10%] h-[450px] w-[550px] rounded-full blur-[140px] transition-colors duration-500 ${
-            isDark ? "bg-orange-600/5" : "bg-orange-500/10"
-          }`}
+          className="hidden md:block absolute bottom-10 left-[-10%] h-[450px] w-[550px]"
+          style={{
+            backgroundImage: isDark
+              ? "radial-gradient(ellipse at center, rgba(234,88,12,0.07) 0%, transparent 70%)"
+              : "radial-gradient(ellipse at center, rgba(249,115,22,0.13) 0%, transparent 70%)",
+          }}
         />
         {/* Subtle dot grid pattern */}
         <div
