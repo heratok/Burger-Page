@@ -244,7 +244,7 @@ export const RestaurantsDirectory: React.FC = () => {
 
           {/* Table */}
           {activeTab === "deleted" ? (
-            <div className="overflow-x-auto">
+            <div role="region" aria-label="Tabla de restaurantes" tabIndex={0} className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   <tr>
@@ -321,7 +321,7 @@ export const RestaurantsDirectory: React.FC = () => {
               </table>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div role="region" aria-label="Tabla de restaurantes eliminados" tabIndex={0} className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   <tr>

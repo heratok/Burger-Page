@@ -718,7 +718,7 @@ export const ReportsManager: React.FC = () => {
                 No hay transacciones registradas en este rango de fechas.
               </div>
             ) : (
-              <div className="mt-4 overflow-x-auto">
+              <div role="region" aria-label="Tabla de ventas del período" tabIndex={0} className="mt-4 overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead>
                     <tr className={`border-b ${isDark ? "border-slate-800 text-slate-400" : "border-slate-100 text-slate-500"}`}>

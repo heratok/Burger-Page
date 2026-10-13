@@ -135,9 +135,9 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
         {/* Customer & Address Information */}
         <div className="mt-3 flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <h4 className="text-sm font-bold text-slate-900 dark:text-white break-words">
+            <h2 className="text-sm font-bold text-slate-900 dark:text-white break-words">
               {order.customer.nombre}
-            </h4>
+            </h2>
             <div className="mt-1 flex items-start gap-1 text-xs text-slate-500 dark:text-slate-400">
               <MapPin className="size-3.5 shrink-0 text-slate-500 dark:text-slate-400" />
               <span className="min-w-0 break-words">

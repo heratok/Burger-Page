@@ -26,7 +26,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({
         isDark ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-white"
       }`}
     >
-      <div className="overflow-x-auto">
+      <div role="region" aria-label="Tabla de productos" tabIndex={0} className="overflow-x-auto">
         <table className="w-full text-left text-xs">
         <thead>
           <tr className={`border-b ${isDark ? "border-slate-800 text-slate-400" : "border-slate-100 text-slate-500"}`}>

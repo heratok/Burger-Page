@@ -64,9 +64,9 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
           <span className="text-xs font-black text-indigo-600 dark:text-indigo-400">
             #{order.orderNumber}
           </span>
-          <h4 className="mt-0.5 text-xs font-bold leading-tight break-words text-slate-900 dark:text-white">
+          <h3 className="mt-0.5 text-xs font-bold leading-tight break-words text-slate-900 dark:text-white">
             {order.customer.nombre}
-          </h4>
+          </h3>
         </div>
         <span className="text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap">
           {formatElapsed(order.createdAt)}

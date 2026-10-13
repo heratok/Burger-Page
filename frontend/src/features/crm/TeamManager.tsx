@@ -349,7 +349,7 @@ export const TeamManager: React.FC = () => {
             isDark ? "border-slate-800 bg-[#0E1322]" : "border-slate-200 bg-white"
           }`}
         >
-          <div className="overflow-x-auto">
+          <div role="region" aria-label="Tabla de equipo" tabIndex={0} className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead
                 className={`border-b text-xs font-bold uppercase tracking-wider ${

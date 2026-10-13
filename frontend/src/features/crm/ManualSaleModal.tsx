@@ -1156,12 +1156,12 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                           )}
                         </div>
 
-                        <div className="mt-3 flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800/60">
+                        <div className="mt-3 flex flex-wrap items-center justify-between gap-x-2 gap-y-2 pt-2 border-t border-slate-100 dark:border-slate-800/60">
                           <span className="text-xs sm:text-sm font-black text-orange-700 dark:text-orange-400">
                             {formatCOP(product.price)}
                           </span>
 
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex flex-wrap items-center justify-end gap-1.5">
                             {hasAdditions && (
                               <Tooltip content={"Personalizar adiciones y notas de cocina"}>
                                 <button

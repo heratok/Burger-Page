@@ -134,7 +134,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div role="region" aria-label="Tabla de inventario" tabIndex={0} className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead
                 className={`border-b text-xs font-bold uppercase tracking-wider ${

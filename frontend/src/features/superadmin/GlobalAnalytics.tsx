@@ -184,7 +184,7 @@ export const GlobalAnalytics: React.FC = () => {
           </span>
         </div>
 
-        <div className="overflow-x-auto">
+        <div role="region" aria-label="Tabla de métricas" tabIndex={0} className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className={`border-b text-xs font-bold uppercase tracking-wider ${isDark ? "border-slate-800 bg-slate-900/60 text-slate-400" : "border-slate-200 bg-slate-50/80 text-slate-500"}`}>
               <tr>
