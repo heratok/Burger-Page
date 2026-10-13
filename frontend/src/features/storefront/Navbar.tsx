@@ -38,7 +38,7 @@ export default function Navbar({ cantidad, total, onOpenCart, onGoToMenu }: Navb
 
       <div className="mx-auto flex h-16 max-w-(--container) items-center justify-between px-4 md:px-6 lg:px-8">
         <a
-          href="#main"
+          href="#main-content"
           className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 rounded-md px-4 py-2 font-medium focus:outline-none focus:ring-2"
           style={{
             backgroundColor: storeConfig.primaryColor,

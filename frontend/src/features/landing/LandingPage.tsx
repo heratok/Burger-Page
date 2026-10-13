@@ -92,6 +92,13 @@ export default function LandingPage() {
       {/* ======================================================== */}
       {/* TOP PLATFORM NAVBAR                                      */}
       {/* ======================================================== */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] rounded-md bg-orange-700 px-4 py-2 text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-white"
+      >
+        Saltar al contenido
+      </a>
+
       <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/85 backdrop-blur-md dark:border-slate-800/80 dark:bg-[#0B0F19]/85 transition-colors">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           {/* Logo Brand */}
@@ -153,7 +160,7 @@ export default function LandingPage() {
         </div>
       </header>
 
-      <main id="main-content">
+      <main id="main-content" tabIndex={-1}>
         {/* ======================================================== */}
         {/* HERO SECTION                                             */}
         {/* ======================================================== */}

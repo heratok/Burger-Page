@@ -247,10 +247,6 @@ export default function Home() {
         onGoToMenu={handleCloseCart}
       />
 
-      <a id="main" className="sr-only" tabIndex={-1}>
-        Inicio del contenido principal
-      </a>
-
       {/* Hero Banner if Enabled */}
       {!showFullScreen && storeConfig.showBanner && storeConfig.bannerUrl && (
         <div className="relative h-48 sm:h-64 md:h-72 w-full overflow-hidden">
@@ -283,7 +279,9 @@ export default function Home() {
       )}
 
       <main
-        className={`mx-auto max-w-(--container) px-4 pt-6 md:px-6 lg:px-8 ${
+        id="main-content"
+        tabIndex={-1}
+        className={`mx-auto max-w-(--container) focus:outline-none px-4 pt-6 md:px-6 lg:px-8 ${
           showMobileBar ? "pb-44 sm:pb-6" : "pb-12"
         }`}
       >

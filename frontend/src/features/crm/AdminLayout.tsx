@@ -229,6 +229,13 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         isDark ? "dark admin-dark bg-[#0B0F19] text-slate-100" : "admin-light bg-[#F8FAFC] text-slate-900"
       }`}
     >
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] rounded-md bg-orange-700 px-4 py-2 text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-white"
+      >
+        Saltar al contenido
+      </a>
+
       {/* Mobile Drawer Overlay */}
       {isMobileSidebarOpen && (
         <button
@@ -655,7 +662,11 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           </header>
 
           {/* Content Body */}
-          <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+          <main id="main-content" tabIndex={-1} className="flex-1 focus:outline-none overflow-y-auto p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+            {/* Dashboard and Reports render their own visible h1; every other view gets one here. */}
+            {adminTab !== "dashboard" && adminTab !== "reports" && (
+              <h1 className="sr-only">{activeItem.label}</h1>
+            )}
             <Suspense fallback={<AdminContentFallback isDark={isDark} />}>
               {children}
             </Suspense>

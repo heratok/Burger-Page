@@ -281,5 +281,27 @@ describe("AdminLayout - Super Admin Navigation & Global Modules (TDD)", () => {
     expect(screen.getByRole("button", { name: /^Roles$/i })).toBeDefined()
   })
 
-})
 
+  it('renders a skip link as the first focusable element that targets the main landmark', () => {
+    sessionStorage.setItem(
+      'burger_page_session_v2',
+      JSON.stringify({ role: 'super', authenticatedAt: new Date().toISOString() })
+    )
+    render(
+      <RestaurantProvider>
+        <AdminLayout>
+          <div>Contenido</div>
+        </AdminLayout>
+      </RestaurantProvider>
+    )
+    const skip = screen.getByRole('link', { name: 'Saltar al contenido' })
+    expect(skip.getAttribute('href')).toBe('#main-content')
+    const main = screen.getByRole('main')
+    expect(main.id).toBe('main-content')
+    expect(main.getAttribute('tabindex')).toBe('-1')
+    const focusables = Array.from(
+      document.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input, select, textarea')
+    )
+    expect(focusables[0]).toBe(skip)
+  })
+})
