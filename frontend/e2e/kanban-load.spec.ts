@@ -232,7 +232,7 @@ test.describe('Kanban Board - High Load & Responsiveness Suite', () => {
     await expect(page.getByRole('heading', { name: /Cancelados/i })).toBeVisible();
 
     // 3. Verify column counts (60 orders split across 5 columns = 12 per column)
-    const pendingColumn = page.locator('div:has(> div > div > h3:has-text("Nuevos / Pendientes"))');
+    const pendingColumn = page.locator('div:has(> div > div > h2:has-text("Nuevos / Pendientes"))');
     const pendingHeaderBadge = pendingColumn.locator('span.rounded-full').first();
     await expect(pendingHeaderBadge).toHaveText('12');
 
@@ -287,7 +287,7 @@ test.describe('Kanban Board - High Load & Responsiveness Suite', () => {
     await passwordInput.fill('craft');
     await page.getByRole('button', { name: /Acceder al Panel/i }).click();
 
-    const pendingColumn = page.locator('div:has(> div > div > h3:has-text("Nuevos / Pendientes"))');
+    const pendingColumn = page.locator('div:has(> div > div > h2:has-text("Nuevos / Pendientes"))');
     const pendingHeaderBadge = pendingColumn.locator('span.rounded-full').first();
     await expect(pendingHeaderBadge).toHaveText('12');
 

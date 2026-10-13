@@ -96,7 +96,7 @@ test.describe('Optimistic UI Updates (Zero-Reload), Skeletons & Real-Time Feedba
     await expect(productModal).not.toBeVisible({ timeout: 8000 });
 
     // Verify product card appeared INSTANTLY without reload
-    const productHeading = page.locator('h3').filter({ hasText: testProductName });
+    const productHeading = page.getByRole('heading', { name: testProductName });
     await expect(productHeading).toBeVisible({ timeout: 8000 });
 
     // 6. Delete Product from Menu

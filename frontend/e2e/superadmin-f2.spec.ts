@@ -51,7 +51,7 @@ test.describe.serial('Super Admin F2 Capabilities E2E Suite', () => {
     await slugInput.fill(pizzaRestSlug);
 
     // 4. Select Currency: USD ($)
-    const currencySelect = modal.getByLabel('Moneda');
+    const currencySelect = modal.getByLabel('Moneda', { exact: true });
     await currencySelect.selectOption('USD');
 
     // Verify symbol updated to $
