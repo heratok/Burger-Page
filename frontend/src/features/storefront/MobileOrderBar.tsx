@@ -29,7 +29,7 @@ export default function MobileOrderBar({
         variant="default"
         size="lg"
         style={{ backgroundColor: brand.fill, color: primaryForeground }}
-        className="h-12 w-full justify-between rounded-2xl text-base font-bold shadow-md cursor-pointer hover:opacity-90"
+        className="h-12 w-full justify-between rounded-2xl text-base font-bold shadow-md cursor-pointer hover:brightness-95"
       >
         <span className="inline-flex items-center gap-2">
           <ShoppingCart className="size-5" style={{ color: primaryForeground }} data-icon="inline-start" />

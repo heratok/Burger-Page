@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react"
+import React, { useState, useEffect, useMemo, useRef } from "react"
 import { useUi, useAuth, useTenant } from "@/context/RestaurantContext"
 import {
   Users,
@@ -68,6 +68,8 @@ export const UsersDirectory: React.FC = () => {
   const [restaurantFilter, setRestaurantFilter] = useState<string>("ALL")
   const [isCreateUserOpen, setIsCreateUserOpen] = useState(false)
   const [resetModalData, setResetModalData] = useState<{ username: string; temporaryPassword?: string } | null>(null)
+  // The reset button is disabled while the request runs (focus is lost): remember it so the dialog can return focus to it.
+  const resetTriggerRef = useRef<HTMLElement | null>(null)
   const [userToDelete, setUserToDelete] = useState<ApiUserRecord | null>(null)
   const [userToEdit, setUserToEdit] = useState<ApiUserRecord | null>(null)
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
@@ -217,11 +219,11 @@ export const UsersDirectory: React.FC = () => {
         <div className={`rounded-2xl border p-4 shadow-xs ${isDark ? "border-slate-800 bg-[#0E1322]" : "border-slate-200 bg-white"}`}>
           <div className="flex items-center justify-between">
             <span className="text-sm font-bold text-slate-500 dark:text-slate-400">Super Admins</span>
-            <div className="flex size-8 items-center justify-center rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-400">
+            <div className="flex size-8 items-center justify-center rounded-lg bg-amber-500/10 text-amber-800 dark:text-amber-400">
               <Shield className="size-4" />
             </div>
           </div>
-          <div className="mt-2 text-2xl font-black text-amber-700 dark:text-amber-400">
+          <div className="mt-2 text-2xl font-black text-amber-800 dark:text-amber-400">
             {users.filter((u) => u.role === "super_admin" || u.role === "super").length}
           </div>
           <span className="text-sm text-slate-500 dark:text-slate-400">Acceso total a la plataforma</span>
@@ -356,7 +358,7 @@ export const UsersDirectory: React.FC = () => {
                           <div className="flex items-center gap-2.5">
                             <div className={`flex size-8 items-center justify-center rounded-xl font-bold text-xs ${
                               isSuperAdmin
-                                ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30"
+                                ? "bg-amber-500/15 text-amber-800 dark:text-amber-400 border border-amber-500/30"
                                 : "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30"
                             }`}>
                               {u.username.charAt(0).toUpperCase()}
@@ -468,7 +470,10 @@ export const UsersDirectory: React.FC = () => {
                                 variant="outline"
                                 size="sm"
                                 disabled={isSelf || isBusy}
-                                onClick={() => handleResetPassword(u)}
+                                onClick={(e) => {
+                                  resetTriggerRef.current = e.currentTarget
+                                  handleResetPassword(u)
+                                }}
                                 title="Restablecer contraseña"
                                 aria-label="Restablecer clave"
                                 className="h-7 px-2.5 text-xs font-semibold rounded-lg text-indigo-600 dark:text-indigo-400 border-indigo-500/30 hover:bg-indigo-500/10 disabled:opacity-40 disabled:pointer-events-none"
@@ -534,6 +539,7 @@ export const UsersDirectory: React.FC = () => {
           onClose={() => setResetModalData(null)}
           username={resetModalData.username}
           temporaryPassword={resetModalData.temporaryPassword}
+          returnFocusRef={resetTriggerRef}
         />
       )}
 

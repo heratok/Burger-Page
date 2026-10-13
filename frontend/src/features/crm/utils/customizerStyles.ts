@@ -329,6 +329,8 @@ export function getStoreThemeStyles(
     ...getBaseThemeStyles(theme, primaryColor),
     "--status-open-text": isLight ? "#065f46" : "#6ee7b7",
     "--status-closed-text": isLight ? "#b91c1c" : "#fca5a5",
+    "--status-warning-text": isLight ? "#92400e" : "#fcd34d",
+    "--color-destructive": isLight ? "#b91c1c" : "#ff453a",
     "--brand": primaryColor,
     "--brand-text": brand.text,
     "--brand-text-on-light": brand.textOnLight,

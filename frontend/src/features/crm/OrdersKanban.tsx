@@ -147,12 +147,12 @@ export const OrdersKanban: React.FC = () => {
     {
       id: "pending",
       title: "Nuevos / Pendientes",
-      icon: <Clock className="size-4 text-amber-700 dark:text-amber-400" />,
+      icon: <Clock className="size-4 text-amber-800 dark:text-amber-400" />,
     },
     {
       id: "cooking",
       title: "En Cocina",
-      icon: <ChefHat className="size-4 text-orange-700 dark:text-orange-400" />,
+      icon: <ChefHat className="size-4 text-orange-800 dark:text-orange-400" />,
     },
     {
       id: "delivering",
@@ -332,7 +332,7 @@ export const OrdersKanban: React.FC = () => {
                   : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
               }`}
             >
-              <RefreshCw className={`size-3.5 shrink-0 ${isLoadingOrders ? "animate-spin text-orange-700 dark:text-orange-400" : ""}`} />
+              <RefreshCw className={`size-3.5 shrink-0 ${isLoadingOrders ? "animate-spin text-orange-800 dark:text-orange-400" : ""}`} />
               <span className="hidden sm:inline">Sincronizar</span>
             </Button>
           </Tooltip>
@@ -404,13 +404,13 @@ export const OrdersKanban: React.FC = () => {
                       id: "pending",
                       label: "Por Preparar",
                       count: activeOrders.filter((o) => o.status === "pending").length,
-                      icon: <Clock className="size-3 text-amber-700 dark:text-amber-400" />,
+                      icon: <Clock className="size-3 text-amber-800 dark:text-amber-400" />,
                     },
                     {
                       id: "cooking",
                       label: "En Cocina",
                       count: activeOrders.filter((o) => o.status === "cooking").length,
-                      icon: <ChefHat className="size-3 text-orange-700 dark:text-orange-400" />,
+                      icon: <ChefHat className="size-3 text-orange-800 dark:text-orange-400" />,
                     },
                     {
                       id: "delivering",

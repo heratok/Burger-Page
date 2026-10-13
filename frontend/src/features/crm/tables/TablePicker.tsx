@@ -108,7 +108,7 @@ export function TablePicker({
             ref={addButtonRef}
             type="button"
             onClick={openCreate}
-            className="pointer-coarse:min-h-11 rounded-lg px-1.5 py-0.5 text-xs font-bold text-orange-700 hover:bg-orange-500/10 dark:text-orange-400 cursor-pointer"
+            className="pointer-coarse:min-h-11 rounded-lg px-1.5 py-0.5 text-xs font-bold text-orange-800 hover:bg-orange-500/10 dark:text-orange-400 cursor-pointer"
           >
             + Nueva mesa
           </button>
@@ -116,7 +116,7 @@ export function TablePicker({
       </div>
 
       {legacyLabel && !selectedTableId && (
-        <p className="rounded-lg bg-amber-500/10 px-2.5 py-1.5 text-sm font-medium text-amber-700 dark:text-amber-300">
+        <p className="rounded-lg bg-amber-500/10 px-2.5 py-1.5 text-sm font-medium text-amber-800 dark:text-amber-300">
           {legacyLabel} — Registrada antes de las mesas. Elegí una mesa para vincularla o dejá este texto como está.
         </p>
       )}
@@ -130,7 +130,7 @@ export function TablePicker({
           <button
             type="button"
             onClick={onOpenManager}
-            className="mt-1 font-bold text-orange-700 underline dark:text-orange-400 cursor-pointer"
+            className="mt-1 font-bold text-orange-800 underline dark:text-orange-400 cursor-pointer"
           >
             Personalizar → Mesas
           </button>

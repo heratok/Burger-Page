@@ -73,7 +73,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({
               <td className="py-3 px-4">
                 <div className="flex gap-1">
                   {prod.isPopular && (
-                    <span className="rounded bg-amber-500/10 px-1.5 py-0.5 text-xs font-bold text-amber-700 dark:text-amber-400 border dark:border-amber-500/30">
+                    <span className="rounded bg-amber-500/10 px-1.5 py-0.5 text-xs font-bold text-amber-800 dark:text-amber-400 border dark:border-amber-500/30">
                       Popular
                     </span>
                   )}

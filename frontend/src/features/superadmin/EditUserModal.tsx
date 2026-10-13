@@ -111,6 +111,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
     <Dialog open={true} onOpenChange={(open) => !open && !isSubmitting && onClose()}>
       <DialogContent
         showCloseButton={false}
+        aria-labelledby="edit-user-title"
         className="fixed top-1/2 left-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 p-0 border-0 bg-transparent shadow-none"
       >
         <div
@@ -187,7 +188,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
               ]}
             />
             {isOwnAccount && role === "super_admin" && (
-              <p className="text-sm font-semibold text-amber-700 dark:text-amber-400 flex items-center gap-1 mt-1">
+              <p className="text-sm font-semibold text-amber-800 dark:text-amber-400 flex items-center gap-1 mt-1">
                 <AlertTriangle className="size-3 shrink-0" />
                 <span>No podés modificar tu propio rol ni quitarte permisos de Super Administrador.</span>
               </p>

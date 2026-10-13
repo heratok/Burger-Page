@@ -233,7 +233,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                 </div>
               )}
               {item.observacion && (
-                <p className="text-sm text-amber-700 dark:text-amber-300 italic pt-0.5 break-words [overflow-wrap:anywhere]">
+                <p className="text-sm text-amber-800 dark:text-amber-300 italic pt-0.5 break-words [overflow-wrap:anywhere]">
                   Nota: {item.observacion}
                 </p>
               )}
@@ -284,7 +284,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                     ✓ Comprobante cargado
                   </span>
                 ) : (
-                  <span className="inline-flex items-center rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-bold text-amber-700 dark:text-amber-400">
+                  <span className="inline-flex items-center rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-bold text-amber-800 dark:text-amber-400">
                     ! Sin soporte adjunto
                   </span>
                 )}
@@ -296,7 +296,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                     aria-label="Ver comprobante ampliado"
                     type="button"
                     onClick={() => setIsReceiptModalOpen(true)}
-                    className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 relative size-16 shrink-0 cursor-pointer overflow-hidden rounded-lg border border-indigo-200 dark:border-indigo-800 shadow-xs hover:opacity-90 transition-opacity group p-0 text-left"
+                    className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 relative size-16 shrink-0 cursor-pointer overflow-hidden rounded-lg border border-indigo-200 dark:border-indigo-800 shadow-xs hover:brightness-95 transition-opacity group p-0 text-left"
                     title="Clic para ver comprobante ampliado"
                   >
                     <img

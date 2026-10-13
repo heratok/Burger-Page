@@ -53,7 +53,7 @@ export default function EmptyCart({ onBackToMenu }: EmptyCartProps) {
         size="lg"
         onClick={onBackToMenu}
         style={{ backgroundColor: brand.fill, color: primaryForeground }}
-        className="mt-6 h-12 px-6 font-bold shadow-md cursor-pointer hover:opacity-90"
+        className="mt-6 h-12 px-6 font-bold shadow-md cursor-pointer hover:brightness-95"
       >
         Explorar menú
       </Button>

@@ -249,6 +249,7 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
     >
         <DialogContent
           showCloseButton={false}
+          aria-labelledby="edit-restaurant-title"
           className="fixed top-1/2 left-1/2 z-50 w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 p-0 border-0 bg-transparent shadow-none"
         >
           <div
@@ -365,8 +366,8 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
 
                 {/* Slug change warning */}
                 {isSlugChanged && (
-                  <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300 mt-2">
-                    <AlertTriangle className="size-4 shrink-0 mt-0.5 text-amber-700 dark:text-amber-400" />
+                  <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-300 mt-2">
+                    <AlertTriangle className="size-4 shrink-0 mt-0.5 text-amber-800 dark:text-amber-400" />
                     <span>
                       ⚠️ <strong>Atención:</strong> Al cambiar el slug se actualizará la URL de la tienda pública. Los enlaces anteriores y códigos QR dejarán de funcionar.
                     </span>

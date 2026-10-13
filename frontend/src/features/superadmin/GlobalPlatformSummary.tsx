@@ -38,9 +38,9 @@ export const GlobalPlatformSummary: React.FC<GlobalPlatformSummaryProps> = ({ on
       title: "Restaurantes Activos",
       value: orPlaceholder(`${globalStats.activeRestaurants} / ${globalStats.totalRestaurants}`),
       sub: "Locales gastronómicos operando",
-      icon: <Store className="size-5 text-amber-700 dark:text-amber-400" />,
+      icon: <Store className="size-5 text-amber-800 dark:text-amber-400" />,
       badge: "SaaS Multi-Tenant",
-      badgeColor: "text-amber-700 dark:text-amber-400 bg-amber-500/10",
+      badgeColor: "text-amber-800 dark:text-amber-400 bg-amber-500/10",
     },
     {
       title: "Clientes en Base de Datos",

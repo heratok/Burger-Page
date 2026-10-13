@@ -97,7 +97,7 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
           ))}
         </div>
         {order.comentario && (
-          <p className="mt-1.5 border-t border-slate-200/40 dark:border-slate-700/60 pt-1 text-sm italic text-amber-700 dark:text-amber-300 break-words [overflow-wrap:anywhere]">
+          <p className="mt-1.5 border-t border-slate-200/40 dark:border-slate-700/60 pt-1 text-sm italic text-amber-800 dark:text-amber-300 break-words [overflow-wrap:anywhere]">
             &quot;{order.comentario}&quot;
           </p>
         )}
@@ -112,7 +112,7 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
           <span
             className={`rounded-md px-2 py-0.5 text-xs font-bold ${
               order.metodo === "Efectivo"
-                ? "bg-amber-500/10 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400"
+                ? "bg-amber-500/10 text-amber-800 dark:bg-amber-500/20 dark:text-amber-400"
                 : "bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400"
             }`}
           >
@@ -123,7 +123,7 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
               className={`rounded-md px-1.5 py-0.5 text-xs font-bold ${
                 order.receiptUrl
                   ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-                  : "bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                  : "bg-amber-500/10 text-amber-800 dark:text-amber-400"
               }`}
             >
               {order.receiptUrl ? "✓ Soporte" : "! Sin soporte"}

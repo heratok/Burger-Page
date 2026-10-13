@@ -64,17 +64,17 @@ export const InventoryStats: React.FC<InventoryStatsProps> = ({
         }`}
       >
         <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">
+          <span className="text-xs font-semibold text-amber-800 dark:text-amber-400">
             Alertas de Bajo Stock
           </span>
-          <div className="flex size-8 items-center justify-center rounded-xl bg-amber-500/20 text-amber-700 dark:text-amber-400 animate-pulse">
+          <div className="flex size-8 items-center justify-center rounded-xl bg-amber-500/20 text-amber-800 dark:text-amber-400 animate-pulse">
             <AlertTriangle className="size-4" />
           </div>
         </div>
-        <div className="mt-2 text-2xl font-black text-amber-700 dark:text-amber-400">
+        <div className="mt-2 text-2xl font-black text-amber-800 dark:text-amber-400">
           {lowStockCount}
         </div>
-        <span className="text-xs text-amber-700 dark:text-amber-400/80">
+        <span className="text-xs text-amber-800 dark:text-amber-400/80">
           {lowStockCount > 0 ? "Requieren reposición urgente" : "Stock en niveles óptimos"}
         </span>
       </div>

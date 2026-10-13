@@ -234,7 +234,7 @@ export const CustomerCRM: React.FC = () => {
             Clientes VIP & Oro
           </span>
           <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-black text-amber-700 dark:text-amber-400">
+            <span className="text-2xl font-black text-amber-800 dark:text-amber-400">
               {stats.vipCount + stats.goldCount}
             </span>
             <span className="text-sm text-slate-500 dark:text-slate-400">alta frecuencia</span>
@@ -712,7 +712,7 @@ export const CustomerCRM: React.FC = () => {
                     <span className="text-sm font-medium text-rose-600 dark:text-rose-400">{createErrors.telefono}</span>
                   )}
                   {existingCustomerWithPhone && (
-                    <span className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                    <span className="text-sm font-medium text-amber-800 dark:text-amber-400">
                       Este teléfono ya está registrado ({existingCustomerWithPhone.nombre}; se actualizarán sus datos)
                     </span>
                   )}

@@ -130,7 +130,7 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
       {/* Main Section Header */}
       <div className="flex items-center justify-between border-b pb-3 border-slate-100 dark:border-slate-800">
         <div className="flex items-center gap-2">
-          <DollarSign className="size-4 text-amber-700 dark:text-amber-400" />
+          <DollarSign className="size-4 text-amber-800 dark:text-amber-400" />
           <div>
             <h3 className="font-bold text-sm text-slate-900 dark:text-white">
               Información Comercial, Pedidos & Domicilios
@@ -164,7 +164,7 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
           className="w-full flex items-center justify-between p-3 sm:p-3.5 text-left transition-colors hover:bg-slate-100/60 dark:hover:bg-slate-800/40 rounded-xl cursor-pointer"
         >
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="flex items-center justify-center size-7 rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-400 shrink-0">
+            <div className="flex items-center justify-center size-7 rounded-lg bg-amber-500/10 text-amber-800 dark:text-amber-400 shrink-0">
               <ShoppingBag className="size-3.5" />
             </div>
             <div className="min-w-0">
@@ -489,7 +489,7 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
           </div>
           <div className="flex items-center gap-2 shrink-0 ml-2">
             {draft.ordersPaused ? (
-              <span className="rounded-full bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-xs font-bold text-amber-700 dark:text-amber-300">
+              <span className="rounded-full bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-xs font-bold text-amber-800 dark:text-amber-300">
                 Pausado
               </span>
             ) : (
@@ -522,11 +522,11 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <PauseCircle
-                      className={`size-4 shrink-0 ${draft.ordersPaused ? "text-amber-700 dark:text-amber-400" : "text-slate-500 dark:text-slate-400"}`}
+                      className={`size-4 shrink-0 ${draft.ordersPaused ? "text-amber-800 dark:text-amber-400" : "text-slate-500 dark:text-slate-400"}`}
                     />
                     <span className="font-bold text-sm text-slate-900 dark:text-white">Pausar Pedidos</span>
                     {draft.ordersPaused ? (
-                      <span className="rounded-full bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-xs font-bold text-amber-700 dark:text-amber-300">
+                      <span className="rounded-full bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-xs font-bold text-amber-800 dark:text-amber-300">
                         Pausado
                       </span>
                     ) : (

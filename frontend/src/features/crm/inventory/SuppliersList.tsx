@@ -149,7 +149,7 @@ export const SuppliersList: React.FC<SuppliersListProps> = ({
                   >
                     <span>{suppliedItems.length} insumos provistos</span>
                     {criticalItems.length > 0 && (
-                      <span className="text-amber-700 dark:text-amber-400 font-bold flex items-center gap-1">
+                      <span className="text-amber-800 dark:text-amber-400 font-bold flex items-center gap-1">
                         <AlertTriangle className="size-3" />
                         {criticalItems.length} por reponer
                       </span>

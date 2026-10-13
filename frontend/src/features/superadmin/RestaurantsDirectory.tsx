@@ -559,6 +559,7 @@ export const RestaurantsDirectory: React.FC = () => {
         >
           <DialogContent
             showCloseButton={false}
+            aria-labelledby="restore-restaurant-title"
             className="fixed top-1/2 left-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 p-0 border-0 bg-transparent shadow-none"
           >
             <div
@@ -598,8 +599,8 @@ export const RestaurantsDirectory: React.FC = () => {
 
               {isSlugConflict && (
                 <div className="space-y-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3">
-                  <div className="flex items-start gap-2 text-amber-700 dark:text-amber-300">
-                    <AlertTriangle className="size-4 shrink-0 mt-0.5 text-amber-700 dark:text-amber-400" />
+                  <div className="flex items-start gap-2 text-amber-800 dark:text-amber-300">
+                    <AlertTriangle className="size-4 shrink-0 mt-0.5 text-amber-800 dark:text-amber-400" />
                     <span>{slugConflictError}</span>
                   </div>
                   <div>

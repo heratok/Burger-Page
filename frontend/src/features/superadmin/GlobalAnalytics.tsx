@@ -139,11 +139,11 @@ export const GlobalAnalytics: React.FC = () => {
         <div className={`rounded-2xl border p-5 shadow-xs ${isDark ? "border-slate-800 bg-[#0E1322]" : "border-slate-200 bg-white"}`}>
           <div className="flex items-center justify-between">
             <span className="text-sm font-bold text-slate-500 dark:text-slate-400">Locales Activos</span>
-            <div className="flex size-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
+            <div className="flex size-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-800 dark:text-amber-400 border border-amber-500/20">
               <Store className="size-4.5" />
             </div>
           </div>
-          <div className="mt-3 text-2xl sm:text-3xl font-black text-amber-700 dark:text-amber-400">
+          <div className="mt-3 text-2xl sm:text-3xl font-black text-amber-800 dark:text-amber-400">
             {stats.activeCount} <span className="text-sm font-normal text-slate-500 dark:text-slate-400">/ {stats.totalTenants}</span>
           </div>
           <div className="mt-2 text-sm text-slate-500 dark:text-slate-400">
@@ -229,7 +229,7 @@ export const GlobalAnalytics: React.FC = () => {
                       <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold ${
                         r.isActive
                           ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-                          : "bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                          : "bg-amber-500/10 text-amber-800 dark:text-amber-400"
                       }`}>
                         <span className={`size-1.5 rounded-full ${r.isActive ? "bg-emerald-500" : "bg-amber-500"}`} />
                         <span>{r.isActive ? "Operando" : "Pausado"}</span>

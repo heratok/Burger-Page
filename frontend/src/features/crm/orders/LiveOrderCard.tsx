@@ -203,7 +203,7 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
             <span
               className={`rounded-md px-2 py-0.5 text-xs font-bold ${
                 order.metodo === "Efectivo"
-                  ? "bg-amber-500/10 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400"
+                  ? "bg-amber-500/10 text-amber-800 dark:bg-amber-500/20 dark:text-amber-400"
                   : "bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400"
               }`}
             >
@@ -215,7 +215,7 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
                   ✓ Soporte
                 </span>
               ) : (
-                <span className="inline-flex items-center rounded-md bg-amber-500/10 px-1.5 py-0.5 text-xs font-bold text-amber-700 dark:text-amber-400">
+                <span className="inline-flex items-center rounded-md bg-amber-500/10 px-1.5 py-0.5 text-xs font-bold text-amber-800 dark:text-amber-400">
                   ! Sin soporte
                 </span>
               )
@@ -283,7 +283,7 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
                 <button
                   type="button"
                   onClick={() => onUpdateStatus(order.id, "cooking")}
-                  className="pointer-coarse:min-h-11 flex items-center gap-1 rounded-xl border border-orange-500/30 bg-orange-500/10 px-2.5 py-2 text-xs font-bold text-orange-700 hover:bg-orange-500/20 dark:text-orange-400 cursor-pointer"
+                  className="pointer-coarse:min-h-11 flex items-center gap-1 rounded-xl border border-orange-500/30 bg-orange-500/10 px-2.5 py-2 text-xs font-bold text-orange-800 hover:bg-orange-500/20 dark:text-orange-400 cursor-pointer"
                   title="Mover a cocina"
                 >
                   <ChefHat className="size-4" />

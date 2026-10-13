@@ -216,7 +216,7 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({
             </div>
 
             <div>
-              <label htmlFor="inventory-item-modal-alerta-minima" className="block font-semibold mb-1 text-amber-700 dark:text-amber-400">
+              <label htmlFor="inventory-item-modal-alerta-minima" className="block font-semibold mb-1 text-amber-800 dark:text-amber-400">
                 Alerta Mínima
               </label>
               <input id="inventory-item-modal-alerta-minima"

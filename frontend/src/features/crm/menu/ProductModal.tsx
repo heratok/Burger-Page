@@ -369,7 +369,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                           </div>
                         ) : (
                           <div className="relative flex size-14 items-center justify-center rounded-2xl bg-slate-900 border border-slate-700 text-orange-400 shadow-xl">
-                            <Loader2 className="size-7 animate-spin text-orange-700 dark:text-orange-400" />
+                            <Loader2 className="size-7 animate-spin text-orange-800 dark:text-orange-400" />
                           </div>
                         )}
                       </div>
@@ -456,7 +456,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                         </div>
                       ) : (
                         <div className="relative flex size-14 items-center justify-center rounded-2xl bg-slate-900 border border-slate-700 text-orange-400 shadow-xl">
-                          <Loader2 className="size-7 animate-spin text-orange-700 dark:text-orange-400" />
+                          <Loader2 className="size-7 animate-spin text-orange-800 dark:text-orange-400" />
                         </div>
                       )}
                     </div>

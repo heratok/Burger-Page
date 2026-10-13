@@ -279,8 +279,8 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
 
           <div className="mt-5 space-y-3.5">
             {/* Warning banner */}
-            <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/25 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-400">
-              <AlertTriangle className="size-4 shrink-0 mt-0.5 text-amber-700 dark:text-amber-400" />
+            <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/25 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-400">
+              <AlertTriangle className="size-4 shrink-0 mt-0.5 text-amber-800 dark:text-amber-400" />
               <span>
                 <strong>Atención:</strong> Esta contraseña provisional es de uso único y solo se mostrará esta vez. Cópiala y entrégala al administrador del restaurante; deberá cambiarla obligatoriamente en su primer inicio de sesión.
               </span>

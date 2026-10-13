@@ -109,14 +109,14 @@ export const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({
           <div
             className={`flex size-12 items-center justify-center rounded-2xl ${
               activeForced
-                ? "bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/25"
+                ? "bg-amber-500/10 text-amber-800 dark:text-amber-400 border border-amber-500/25"
                 : "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/25"
             }`}
           >
             {activeForced ? <ShieldAlert className="size-6" /> : <Lock className="size-6" />}
           </div>
           <div>
-            <h2 className="text-lg font-black tracking-tight text-slate-900 dark:text-white">
+            <h2 id="change-password-title" className="text-lg font-black tracking-tight text-slate-900 dark:text-white">
               {activeForced ? "Cambio de contraseña obligatorio" : "Cambiar contraseña"}
             </h2>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
@@ -333,6 +333,7 @@ export const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({
     <Dialog open={true} onOpenChange={(open) => !open && handleClose?.()}>
       <DialogContent
         showCloseButton={false}
+        aria-labelledby="change-password-title"
         onKeyDown={(e) => {
           if (e.key === "Escape") {
             handleClose?.()

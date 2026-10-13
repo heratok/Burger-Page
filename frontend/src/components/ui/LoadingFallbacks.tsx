@@ -33,7 +33,7 @@ export const LandingLoadingFallback: React.FC = () => {
         <div className="flex size-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-orange-500 to-amber-500 text-white shadow-xl shadow-orange-500/20">
           <Sparkles className="size-6 animate-pulse" />
         </div>
-        <Loader2 className="size-5 text-orange-700 dark:text-orange-400 animate-spin mt-2" />
+        <Loader2 className="size-5 text-orange-800 dark:text-orange-400 animate-spin mt-2" />
       </div>
     </div>
   )

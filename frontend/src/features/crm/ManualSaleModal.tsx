@@ -943,7 +943,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
         >
           <div className="flex items-center justify-between px-3.5 sm:px-6 py-3">
             <div className="flex items-center gap-2.5 sm:gap-3">
-              <div className="flex size-8 sm:size-9 items-center justify-center rounded-xl bg-orange-500/10 text-orange-700 dark:text-orange-400">
+              <div className="flex size-8 sm:size-9 items-center justify-center rounded-xl bg-orange-500/10 text-orange-800 dark:text-orange-400">
                 <ShoppingBag className="size-4 sm:size-5" />
               </div>
               <div>
@@ -965,7 +965,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
 
             <div className="flex items-center gap-2">
               {totalItemsCount > 0 && (
-                <div className="md:hidden flex items-center gap-1 rounded-lg bg-orange-500/10 px-2 py-1 text-sm font-bold text-orange-700 dark:text-orange-400">
+                <div className="md:hidden flex items-center gap-1 rounded-lg bg-orange-500/10 px-2 py-1 text-sm font-bold text-orange-800 dark:text-orange-400">
                   <span>{formatCOP(finalTotal)}</span>
                 </div>
               )}
@@ -1013,7 +1013,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
               {totalItemsCount > 0 && (
                 <span
                   className={`ml-1 rounded-full px-1.5 py-0.5 text-xs font-black ${
-                    mobileTab === "cart" ? "bg-white text-orange-700 dark:text-orange-400" : "bg-orange-700 text-white"
+                    mobileTab === "cart" ? "bg-white text-orange-800 dark:text-orange-400" : "bg-orange-700 text-white"
                   }`}
                 >
                   {totalItemsCount}
@@ -1158,7 +1158,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                         </div>
 
                         <div className="mt-3 flex flex-wrap items-center justify-between gap-x-2 gap-y-2 pt-2 border-t border-slate-100 dark:border-slate-800/60">
-                          <span className="text-sm font-black text-orange-700 dark:text-orange-400">
+                          <span className="text-sm font-black text-orange-800 dark:text-orange-400">
                             {formatCOP(product.price)}
                           </span>
 
@@ -1168,9 +1168,9 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                                 <button
                                   type="button"
                                   onClick={() => handleOpenCustomize(product)}
-                                  className="pointer-coarse:min-h-11 inline-flex items-center gap-1 rounded-lg border border-orange-500/30 bg-orange-500/10 hover:bg-orange-500/20 text-orange-700 dark:text-orange-400 font-bold px-2 py-1 text-xs transition-all cursor-pointer shadow-2xs active:scale-95"
+                                  className="pointer-coarse:min-h-11 inline-flex items-center gap-1 rounded-lg border border-orange-500/30 bg-orange-500/10 hover:bg-orange-500/20 text-orange-800 dark:text-orange-400 font-bold px-2 py-1 text-xs transition-all cursor-pointer shadow-2xs active:scale-95"
                                 >
-                                  <PlusCircle className="size-3.5 text-orange-700 dark:text-orange-400" />
+                                  <PlusCircle className="size-3.5 text-orange-800 dark:text-orange-400" />
                                   <span>+ Extras</span>
                                 </button>
                               </Tooltip>
@@ -1200,12 +1200,12 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
             {totalItemsCount > 0 && (
               <div className="md:hidden shrink-0 p-3 border-t border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-[#0E1322]/95 backdrop-blur-md flex items-center justify-between shadow-xl">
                 <div className="flex items-center gap-2.5">
-                  <div className="flex size-9 items-center justify-center rounded-xl bg-orange-500/10 text-orange-700 dark:text-orange-400 font-bold text-xs">
+                  <div className="flex size-9 items-center justify-center rounded-xl bg-orange-500/10 text-orange-800 dark:text-orange-400 font-bold text-xs">
                     {totalItemsCount}
                   </div>
                   <div>
                     <span className="text-sm text-slate-500 dark:text-slate-400 block font-medium">Total Pedido</span>
-                    <span className="text-sm font-black text-orange-700 dark:text-orange-400 leading-none">
+                    <span className="text-sm font-black text-orange-800 dark:text-orange-400 leading-none">
                       {formatCOP(finalTotal)}
                     </span>
                   </div>
@@ -1233,7 +1233,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
               <button
                 type="button"
                 onClick={() => setMobileTab("catalog")}
-                className="flex items-center gap-1.5 text-orange-700 dark:text-orange-400 font-bold cursor-pointer"
+                className="flex items-center gap-1.5 text-orange-800 dark:text-orange-400 font-bold cursor-pointer"
               >
                 <ArrowLeft className="size-3.5" />
                 <span>+ Agregar más platos</span>
@@ -1342,7 +1342,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                       >
                         <div className="flex-1 min-w-0">
                           <div className="flex items-baseline gap-1.5">
-                            <span className="text-sm font-black text-orange-700 dark:text-orange-400">
+                            <span className="text-sm font-black text-orange-800 dark:text-orange-400">
                               {item.cantidad}x
                             </span>
                             <h4 className="text-sm font-bold text-slate-900 dark:text-white min-w-0 break-words">
@@ -1359,7 +1359,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
 
                           {/* Observacion */}
                           {item.observacion && (
-                            <div className="mt-0.5 text-sm italic text-amber-700 dark:text-amber-400 break-words">
+                            <div className="mt-0.5 text-sm italic text-amber-800 dark:text-amber-400 break-words">
                               &ldquo;{item.observacion}&rdquo;
                             </div>
                           )}
@@ -1373,7 +1373,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                               <button
                                 type="button"
                                 onClick={() => handleEditCartItem(index)}
-                                className="inline-flex items-center gap-1 text-xs font-semibold text-orange-700 dark:text-orange-400 hover:underline cursor-pointer"
+                                className="inline-flex items-center gap-1 text-xs font-semibold text-orange-800 dark:text-orange-400 hover:underline cursor-pointer"
                                 title="Modificar adiciones o notas de cocina"
                               >
                                 <SlidersHorizontal className="size-2.5" />
@@ -1604,7 +1604,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                     )}
                     <div className="flex justify-between gap-3 text-sm sm:text-base font-black text-slate-900 dark:text-white pt-1">
                       <span>Total a Cobrar:</span>
-                      <span className="text-orange-700 dark:text-orange-400">{formatCOP(finalTotal)}</span>
+                      <span className="text-orange-800 dark:text-orange-400">{formatCOP(finalTotal)}</span>
                     </div>
                   </div>
                 </div>
@@ -1622,7 +1622,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                       type="checkbox"
                       checked={printTicketOnSave}
                       onChange={(e) => setPrintTicketOnSave(e.target.checked)}
-                      className="size-4 rounded border-slate-300 text-orange-700 dark:text-orange-400 focus:ring-orange-500 cursor-pointer"
+                      className="size-4 rounded border-slate-300 text-orange-800 dark:text-orange-400 focus:ring-orange-500 cursor-pointer"
                     />
                     <span className="font-semibold text-sm">Imprimir comanda al guardar</span>
                   </label>
@@ -1676,7 +1676,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
               <div className="flex items-start justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800 shrink-0">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="rounded-md bg-orange-500/10 px-2 py-0.5 text-xs font-black uppercase text-orange-700 dark:text-orange-400">
+                    <span className="rounded-md bg-orange-500/10 px-2 py-0.5 text-xs font-black uppercase text-orange-800 dark:text-orange-400">
                       {editingCartItemIndex !== null ? "Modificar ítem" : "Personalizar plato"}
                     </span>
                     {customizingProduct.category && (
@@ -1688,7 +1688,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                   <h3 id="manual-sale-customize-title" className="mt-1 text-sm sm:text-base font-bold text-slate-900 dark:text-white leading-tight">
                     {customizingProduct.name}
                   </h3>
-                  <p className="text-sm text-orange-700 dark:text-orange-400 font-bold">
+                  <p className="text-sm text-orange-800 dark:text-orange-400 font-bold">
                     Precio base: {formatCOP(customizingProduct.price)}
                   </p>
                 </div>
@@ -1742,7 +1742,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                                   <span className="size-1.5 rounded-full bg-orange-500" />
                                 )}
                               </div>
-                              <span className="text-sm font-semibold text-orange-700 dark:text-orange-400">
+                              <span className="text-sm font-semibold text-orange-800 dark:text-orange-400">
                                 +{formatCOP(addition.price)} c/u
                               </span>
                             </div>
@@ -1821,7 +1821,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                     Total del plato:
                   </span>
                   <div className="flex items-baseline gap-1.5">
-                    <span className="text-sm sm:text-base font-black text-orange-700 dark:text-orange-400">
+                    <span className="text-sm sm:text-base font-black text-orange-800 dark:text-orange-400">
                       {formatCOP(currentModalItemTotal)}
                     </span>
                     {currentModalAdditionsTotal > 0 && (

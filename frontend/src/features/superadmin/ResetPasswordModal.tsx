@@ -15,6 +15,8 @@ interface ResetPasswordModalProps {
   onClose: () => void
   username: string
   temporaryPassword?: string
+  /** Element that gets focus back on close (the trigger may be disabled while the request runs). */
+  returnFocusRef?: React.RefObject<HTMLElement | null>
 }
 
 export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
@@ -22,6 +24,7 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
   onClose,
   username,
   temporaryPassword,
+  returnFocusRef,
 }) => {
   const [copied, setCopied] = useState(false)
 
@@ -46,6 +49,7 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
     <Dialog open={isOpen} onOpenChange={() => { /* Do not close on outside click or escape */ }}>
       <DialogContent
         showCloseButton={false}
+        finalFocus={returnFocusRef}
         onKeyDown={(e) => {
           if (e.key === "Escape") {
             e.preventDefault()
@@ -55,7 +59,7 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
         className="fixed top-1/2 left-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0E1322] p-6 shadow-2xl text-slate-900 dark:text-slate-100"
       >
         <div className="flex items-start gap-4">
-          <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-800 dark:text-amber-400 border border-amber-500/20">
             <KeyRound className="size-6" />
           </div>
 
@@ -105,8 +109,8 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
         </div>
 
         {/* Warning Banner */}
-        <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300">
-          <AlertTriangle className="size-4 shrink-0 mt-0.5 text-amber-700 dark:text-amber-400" />
+        <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-300">
+          <AlertTriangle className="size-4 shrink-0 mt-0.5 text-amber-800 dark:text-amber-400" />
           <p className="leading-snug">
             Esta contraseña <strong>solo se mostrará una vez</strong>. Cópiala y compártela de forma segura. El usuario deberá cambiarla obligatoriamente en su próximo inicio de sesión.
           </p>

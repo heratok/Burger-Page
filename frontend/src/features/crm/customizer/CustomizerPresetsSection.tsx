@@ -40,7 +40,7 @@ export const CustomizerPresetsSection: React.FC<CustomizerPresetsSectionProps> =
     >
       <div>
         <div className="flex items-center gap-2">
-          <Sparkles className="size-4 text-amber-700 dark:text-amber-400" />
+          <Sparkles className="size-4 text-amber-800 dark:text-amber-400" />
           <h3 className="font-bold text-sm text-slate-900 dark:text-white">
             Estilos Listos en 1 Clic
           </h3>

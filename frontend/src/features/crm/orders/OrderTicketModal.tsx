@@ -232,14 +232,14 @@ export const OrderTicketModal: React.FC<OrderTicketModalProps> = ({
                 onClick={() => setMode("kitchen")}
                 className={`pointer-coarse:min-h-11 pointer-coarse:min-w-11 flex items-center gap-2.5 rounded-lg p-2 md:p-2.5 text-left transition-all cursor-pointer min-h-[44px] ${
                   mode === "kitchen"
-                    ? "bg-white text-orange-700 shadow-xs dark:bg-slate-900 dark:text-orange-400 ring-1 ring-black/5 dark:ring-white/10"
+                    ? "bg-white text-orange-800 shadow-xs dark:bg-slate-900 dark:text-orange-400 ring-1 ring-black/5 dark:ring-white/10"
                     : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-slate-800"
                 }`}
               >
                 <div
                   className={`p-1.5 rounded-lg shrink-0 ${
                     mode === "kitchen"
-                      ? "bg-orange-50 dark:bg-orange-950/60 text-orange-700 dark:text-orange-400"
+                      ? "bg-orange-50 dark:bg-orange-950/60 text-orange-800 dark:text-orange-400"
                       : "bg-slate-200/60 dark:bg-slate-700/60 text-slate-500"
                   }`}
                 >

@@ -225,7 +225,7 @@ export const DashboardOverview: React.FC = () => {
           isDark={isDark}
           badge={
             metrics.activeOrdersCount > 0 ? (
-              <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-bold text-amber-700 dark:text-amber-400">
+              <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-bold text-amber-800 dark:text-amber-400">
                 {metrics.activeOrdersCount} activos
               </span>
             ) : undefined
@@ -349,7 +349,7 @@ export const DashboardOverview: React.FC = () => {
                 Ranking por volumen de pedidos
               </p>
             </div>
-            <Flame className="size-4 text-orange-700 dark:text-orange-400" />
+            <Flame className="size-4 text-orange-800 dark:text-orange-400" />
           </div>
 
           <div className="mt-4 space-y-4">
@@ -480,7 +480,7 @@ export const DashboardOverview: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => updateOrderStatus(ord.id, "cooking")}
-                          className="pointer-coarse:min-h-11 rounded-lg bg-orange-500/10 px-2.5 py-1 text-xs font-semibold text-orange-700 hover:bg-orange-500/20 dark:bg-orange-500/20 dark:text-orange-300"
+                          className="pointer-coarse:min-h-11 rounded-lg bg-orange-500/10 px-2.5 py-1 text-xs font-semibold text-orange-800 hover:bg-orange-500/20 dark:bg-orange-500/20 dark:text-orange-300"
                         >
                           Pasar a Cocina
                         </button>

@@ -174,7 +174,7 @@ export default function LandingPage() {
         <section className="relative pt-16 pb-20 md:pt-24 md:pb-28">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
             {/* Badge */}
-            <div className="inline-flex items-center gap-2 rounded-full border border-brand-orange-subtle bg-orange-500/10 dark:bg-orange-500/15 px-4 py-1.5 text-xs font-bold text-orange-700 dark:text-orange-300 backdrop-blur-md mb-6 shadow-xs">
+            <div className="inline-flex items-center gap-2 rounded-full border border-brand-orange-subtle bg-orange-500/10 dark:bg-orange-500/15 px-4 py-1.5 text-xs font-bold text-orange-800 dark:text-orange-300 backdrop-blur-md mb-6 shadow-xs">
               <Sparkles className="size-3.5 text-orange-500" />
               <span>La plataforma para pedidos directos sin comisiones abusivas</span>
             </div>
@@ -463,7 +463,7 @@ export default function LandingPage() {
       <section className="py-20 border-t border-slate-200/80 dark:border-slate-800/80 bg-[#FAFAFA] dark:bg-[#0D121F] text-center transition-colors">
         <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
           <div className="rounded-3xl border border-orange-200/80 dark:border-orange-900/40 bg-gradient-to-br from-orange-50 via-white to-amber-50 dark:from-slate-900 dark:via-[#131926] dark:to-slate-900 p-8 sm:p-12 relative overflow-hidden shadow-xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-brand-orange-subtle bg-orange-500/10 px-3.5 py-1 text-xs font-bold text-orange-700 dark:text-orange-300 mb-4">
+            <div className="inline-flex items-center gap-2 rounded-full border border-brand-orange-subtle bg-orange-500/10 px-3.5 py-1 text-xs font-bold text-orange-800 dark:text-orange-300 mb-4">
               <Flame className="size-3.5 text-orange-500" />
               <span>Empezá a vender hoy mismo</span>
             </div>

@@ -14,7 +14,7 @@ import {
 const TAB_COLUMNS = 4
 
 const CUSTOMIZER_TABS = [
-  { id: "templates", label: "Estilos", icon: Sparkles, iconClass: "text-amber-700 dark:text-amber-400" },
+  { id: "templates", label: "Estilos", icon: Sparkles, iconClass: "text-amber-800 dark:text-amber-400" },
   { id: "branding", label: "Marca", icon: ImageIcon, iconClass: "text-indigo-600 dark:text-indigo-400" },
   { id: "colors", label: "Colores", icon: Palette, iconClass: "text-rose-600 dark:text-rose-400" },
   { id: "uiux", label: "Diseño", icon: Sliders, iconClass: "text-emerald-700 dark:text-emerald-400" },

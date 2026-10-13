@@ -52,12 +52,9 @@ function openingTags(code: string, name: string): { open: string; index: number 
  * Overlays intentionally not using the shell. Each entry must say why.
  * - AdminLayout: the mobile-drawer backdrop is a decorative scrim; the drawer itself is handled in
  *   AdminLayout (inert when closed, Escape, focus return) and covered by e2e/a11y-modals.spec.ts.
- * - AdditionsModal: photo lightbox portalled out of a base-ui Dialog; it owns a capture-phase Escape
- *   (so the parent Dialog does not close too) and focus hand-off to its close button / trigger.
  */
 const ALLOWLIST = [
   '/src/features/crm/AdminLayout.tsx',
-  '/src/features/cart/AdditionsModal.tsx',
 ];
 
 const isOverlay = (open: string) =>
@@ -93,5 +90,20 @@ describe('modal semantics', () => {
     }
     expect(count).toBeGreaterThan(10);
     expect(offenders, `ModalShell without aria-labelledby/aria-label:\n${offenders.join('\n')}`).toEqual([]);
+  });
+
+  it('every base-ui DialogContent has an accessible name (DialogTitle, aria-labelledby or aria-label)', () => {
+    const offenders: string[] = [];
+    let count = 0;
+    for (const [file, code] of Object.entries(sources)) {
+      if (file.endsWith('/dialog.tsx')) continue;
+      for (const el of openingTags(code, 'DialogContent')) {
+        count++;
+        if (/\baria-label(?:ledby)?=/.test(el.open) || code.includes('<DialogTitle')) continue;
+        offenders.push(`${file}:${lineOf(code, el.index)}`);
+      }
+    }
+    expect(count).toBeGreaterThan(3);
+    expect(offenders, `DialogContent without a name:\n${offenders.join('\n')}`).toEqual([]);
   });
 });

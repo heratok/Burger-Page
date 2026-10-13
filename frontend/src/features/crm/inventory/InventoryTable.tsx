@@ -106,7 +106,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
           onClick={onToggleOnlyLowStock}
           className={`pointer-coarse:min-h-11 flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition-all ${
             onlyLowStock
-              ? "border-amber-500 bg-amber-500/20 text-amber-700 dark:text-amber-400 font-bold"
+              ? "border-amber-500 bg-amber-500/20 text-amber-800 dark:text-amber-400 font-bold"
               : isDark
               ? "border-slate-800 bg-[#0E1322] text-slate-400 hover:text-white"
               : "border-slate-200 bg-white text-slate-600 hover:text-slate-900"
@@ -174,7 +174,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
                           {isLow && (
                             <Tooltip content="Stock por debajo del mínimo">
                               <span role="img" tabIndex={0} aria-label="Stock por debajo del mínimo" className="shrink-0">
-                                <AlertTriangle className="size-3.5 text-amber-700 dark:text-amber-400" aria-hidden="true" />
+                                <AlertTriangle className="size-3.5 text-amber-800 dark:text-amber-400" aria-hidden="true" />
                               </span>
                             </Tooltip>
                           )}
@@ -196,7 +196,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
                             <span
                               className={`font-mono font-bold ${
                                 isLow
-                                  ? "text-amber-700 dark:text-amber-400 font-extrabold"
+                                  ? "text-amber-800 dark:text-amber-400 font-extrabold"
                                   : "text-slate-900 dark:text-slate-200"
                               }`}
                             >

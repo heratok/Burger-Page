@@ -24,8 +24,8 @@ const variantStyles: Record<StatCardVariant, { iconBg: string; text: string }> =
     text: "text-slate-600 dark:text-slate-400",
   },
   warning: {
-    iconBg: "bg-amber-500/10 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400",
-    text: "text-amber-700 dark:text-amber-400",
+    iconBg: "bg-amber-500/10 text-amber-800 dark:bg-amber-500/20 dark:text-amber-400",
+    text: "text-amber-800 dark:text-amber-400",
   },
   success: {
     iconBg: "bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400",

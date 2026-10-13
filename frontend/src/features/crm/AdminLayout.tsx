@@ -106,6 +106,15 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
 
   const isDark = adminTheme === "dark"
+
+  // Portaled dialogs (base-ui) render outside this root: mirror the theme class on <html> so `dark:` variants reach them.
+  useEffect(() => {
+    if (!isDark) return
+    const root = document.documentElement
+    root.classList.add("dark")
+    return () => root.classList.remove("dark")
+  }, [isDark])
+
   const isSuper = session.role === "super"
   const isSuperGlobalMode = isSuper && (adminTab === "restaurants" || adminTab === "users" || adminTab === "metrics" || adminTab === "audit")
   const isSuperTenantMode = isSuper && !isSuperGlobalMode
@@ -300,7 +309,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                   <span className="font-bold tracking-tight text-xs truncate text-slate-900 dark:text-white">
                     SaaS Platform
                   </span>
-                  <span className="text-xs font-bold tracking-wider uppercase text-amber-700 dark:text-amber-400">
+                  <span className="text-xs font-bold tracking-wider uppercase text-amber-800 dark:text-amber-400">
                     Super Admin
                   </span>
                 </div>
@@ -324,7 +333,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                   <span className="font-bold tracking-tight text-xs truncate text-slate-900 dark:text-white">
                     {storeConfig.name}
                   </span>
-                  <span className="text-xs font-bold tracking-wider uppercase text-amber-700 dark:text-amber-400">
+                  <span className="text-xs font-bold tracking-wider uppercase text-amber-800 dark:text-amber-400">
                     👑 Super Admin
                   </span>
                 </div>
@@ -348,7 +357,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                   <span className="font-bold tracking-tight text-xs truncate text-slate-900 dark:text-white">
                     {storeConfig.name}
                   </span>
-                  <span className="text-xs font-semibold tracking-wider uppercase text-orange-700 dark:text-orange-400">
+                  <span className="text-xs font-semibold tracking-wider uppercase text-orange-800 dark:text-orange-400">
                     Panel de Control
                   </span>
                 </div>
@@ -454,7 +463,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                   navigateTo("/admin/restaurants")
                   setIsMobileSidebarOpen(false)
                 }}
-                className={`flex items-center rounded-xl border border-amber-500/40 bg-amber-500/10 font-bold text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 active:scale-95 transition-all shadow-xs cursor-pointer ${
+                className={`flex items-center rounded-xl border border-amber-500/40 bg-amber-500/10 font-bold text-amber-800 dark:text-amber-300 hover:bg-amber-500/20 active:scale-95 transition-all shadow-xs cursor-pointer ${
                   isSidebarCollapsed
                     ? "lg:size-10 lg:mx-auto lg:justify-center w-full justify-center gap-2 py-2.5 text-xs"
                     : "w-full justify-center gap-2 py-2.5 text-xs"
@@ -587,8 +596,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
               {/* Context Banner & Return button for Super Admin in Tenant Mode */}
               {isSuperTenantMode && (
                 <div className="flex items-center gap-2">
-                  <div className="hidden xl:flex items-center gap-2 rounded-xl bg-amber-500/10 border border-amber-500/30 px-3 py-1.5 text-xs text-amber-700 dark:text-amber-300 font-semibold shadow-xs">
-                    <Crown className="size-3.5 text-amber-700 dark:text-amber-400 shrink-0" />
+                  <div className="hidden xl:flex items-center gap-2 rounded-xl bg-amber-500/10 border border-amber-500/30 px-3 py-1.5 text-xs text-amber-800 dark:text-amber-300 font-semibold shadow-xs">
+                    <Crown className="size-3.5 text-amber-800 dark:text-amber-400 shrink-0" />
                     <span>Modo Super Admin: <strong>{activeRestaurant.config.name}</strong></span>
                   </div>
 
@@ -600,7 +609,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                       switchRestaurant("")
                       navigateTo("/admin/restaurants")
                     }}
-                    className="flex items-center gap-1.5 rounded-xl border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 font-bold text-xs cursor-pointer shadow-xs"
+                    className="flex items-center gap-1.5 rounded-xl border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300 hover:bg-amber-500/20 font-bold text-xs cursor-pointer shadow-xs"
                   >
                     <ArrowLeft className="size-3.5" />
                     <span className="hidden sm:inline">Volver al Panel Super Admin</span>

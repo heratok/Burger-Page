@@ -54,7 +54,7 @@ function getActionColorBadge(action: string): string {
     return "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30"
   }
   if (action.includes("pause") || action.includes("reset_password")) {
-    return "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30"
+    return "bg-amber-500/15 text-amber-800 dark:text-amber-400 border-amber-500/30"
   }
   return "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/30"
 }

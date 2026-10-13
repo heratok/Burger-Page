@@ -265,7 +265,7 @@ export const RolesManager: React.FC = () => {
                     : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
                 }`}
               >
-                <Sparkles className="size-3.5 text-amber-700 dark:text-amber-400" />
+                <Sparkles className="size-3.5 text-amber-800 dark:text-amber-400" />
                 <span>
                   {isCreatingRecommended ? "Creando..." : `Crear roles faltantes (${missingTemplates.length})`}
                 </span>
@@ -458,7 +458,7 @@ export const RolesManager: React.FC = () => {
                                     role="img"
                                     tabIndex={0}
                                     aria-label="Permiso sensible"
-                                    className="mt-0.5 shrink-0 text-amber-700 dark:text-amber-400"
+                                    className="mt-0.5 shrink-0 text-amber-800 dark:text-amber-400"
                                   >
                                     <AlertTriangle className="size-3.5" aria-hidden="true" />
                                   </span>
@@ -562,7 +562,7 @@ export const RolesManager: React.FC = () => {
               {/* Presets Toolbar */}
               <div>
                 <span id="roles-presets-label" className="block font-bold mb-1.5 text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                  <Sparkles className="size-3.5 text-amber-700 dark:text-amber-400" />
+                  <Sparkles className="size-3.5 text-amber-800 dark:text-amber-400" />
                   <span>Plantillas Rápidas (Presets)</span>
                 </span>
                 <div role="group" aria-labelledby="roles-presets-label" className="flex flex-wrap gap-2">
@@ -676,7 +676,7 @@ export const RolesManager: React.FC = () => {
                                   <div className="font-semibold text-slate-900 dark:text-white">
                                     {perm.label}
                                   </div>
-                                  <div className="text-sm text-slate-500 dark:text-slate-400">
+                                  <div className="text-sm text-slate-600 dark:text-slate-400">
                                     {perm.description}
                                   </div>
                                 </div>

@@ -179,18 +179,18 @@ function ShoppingCart({
           {closedReason && (
             <div
               role="alert"
-              className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-sm font-medium text-amber-700 dark:text-amber-300"
+              className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-sm font-medium text-[color:var(--status-warning-text,#92400e)]"
             >
-              <AlertTriangle className="size-4 shrink-0 text-amber-700 dark:text-amber-400" />
+              <AlertTriangle className="size-4 shrink-0 text-[color:var(--status-warning-text,#92400e)]" />
               <span>{closedMessage(closedReason)}</span>
             </div>
           )}
           {isBelowMinOrder && (
             <div
               role="alert"
-              className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-sm font-medium text-amber-700 dark:text-amber-300"
+              className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-sm font-medium text-[color:var(--status-warning-text,#92400e)]"
             >
-              <AlertTriangle className="size-4 shrink-0 text-amber-700 dark:text-amber-400" />
+              <AlertTriangle className="size-4 shrink-0 text-[color:var(--status-warning-text,#92400e)]" />
               <span>
                 El pedido mínimo es de {formatCurrency(minOrderAmount)}. Te faltan {formatCurrency(amountNeeded)} para poder ordenar.
               </span>
@@ -230,7 +230,7 @@ function ShoppingCart({
                   backgroundColor: brand.fill,
                   color: brand.onFill,
                 }}
-                className="h-12 flex-1 sm:flex-none font-bold shadow-md cursor-pointer hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="h-12 flex-1 sm:flex-none font-bold shadow-md cursor-pointer hover:brightness-95 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Confirmar orden
               </Button>

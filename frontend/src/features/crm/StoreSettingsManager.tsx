@@ -55,7 +55,7 @@ export const StoreSettingsManager: React.FC = () => {
               Ajustes de Negocio & Operación
             </h2>
             {hasChanges && (
-              <span className="rounded-full bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
+              <span className="rounded-full bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:text-amber-400">
                 Cambios pendientes
               </span>
             )}

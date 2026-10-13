@@ -14,7 +14,7 @@ export const RestaurantNotFound: React.FC<RestaurantNotFoundProps> = ({ attempte
     return (
       <div className="min-h-screen bg-[#0F1112] text-white flex flex-col items-center justify-center p-4">
         <div className="w-full max-w-lg rounded-3xl border border-slate-800 bg-[#181A1B] p-8 text-center shadow-2xl">
-          <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-700 dark:text-amber-400 ring-1 ring-amber-500/30">
+          <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-800 dark:text-amber-400 ring-1 ring-amber-500/30">
             <AlertCircle className="size-8" />
           </div>
           <h1 className="text-2xl font-black tracking-tight">No pudimos cargar el restaurante</h1>
@@ -42,7 +42,7 @@ export const RestaurantNotFound: React.FC<RestaurantNotFoundProps> = ({ attempte
   return (
     <div className="min-h-screen bg-[#0F1112] text-white flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-lg rounded-3xl border border-slate-800 bg-[#181A1B] p-8 text-center shadow-2xl">
-        <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-700 dark:text-amber-400 ring-1 ring-amber-500/30">
+        <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-800 dark:text-amber-400 ring-1 ring-amber-500/30">
           <AlertCircle className="size-8" />
         </div>
 

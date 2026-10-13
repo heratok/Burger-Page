@@ -249,11 +249,12 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
                 autoComplete="name"
                 maxLength={LIMITS.nombre.max}
                 aria-invalid={!!errors.nombre}
+                aria-describedby={errors.nombre ? "nombre-error" : undefined}
                 {...register("nombre")}
               />
             </InputGroup>
             {errors.nombre && (
-              <FieldError className="flex items-start gap-1.5">
+              <FieldError id="nombre-error" className="flex items-start gap-1.5">
                 <CircleAlert className="mt-0.5 size-3.5 shrink-0" data-icon="inline-start" aria-hidden="true" />
                 {errors.nombre.message}
               </FieldError>
@@ -276,11 +277,12 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
                 autoComplete="tel"
                 maxLength={LIMITS.telefono.max}
                 aria-invalid={!!errors.telefono}
+                aria-describedby={errors.telefono ? "telefono-error" : undefined}
                 {...register("telefono")}
               />
             </InputGroup>
             {errors.telefono && (
-              <FieldError className="flex items-start gap-1.5">
+              <FieldError id="telefono-error" className="flex items-start gap-1.5">
                 <CircleAlert className="mt-0.5 size-3.5 shrink-0" data-icon="inline-start" aria-hidden="true" />
                 {errors.telefono.message}
               </FieldError>
@@ -303,11 +305,12 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
                   autoComplete="street-address"
                   maxLength={LIMITS.dir.max}
                   aria-invalid={!!errors.dir}
+                aria-describedby={errors.dir ? "dir-error" : undefined}
                   {...register("dir")}
                 />
               </InputGroup>
               {errors.dir && (
-                <FieldError className="flex items-start gap-1.5">
+                <FieldError id="dir-error" className="flex items-start gap-1.5">
                   <CircleAlert className="mt-0.5 size-3.5 shrink-0" data-icon="inline-start" aria-hidden="true" />
                   {errors.dir.message}
                 </FieldError>
@@ -329,11 +332,12 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
                 autoComplete="address-level3"
                 maxLength={LIMITS.barrio.max}
                 aria-invalid={!!errors.barrio}
+                aria-describedby={errors.barrio ? "barrio-error" : undefined}
                 {...register("barrio")}
               />
               </InputGroup>
               {errors.barrio && (
-                <FieldError className="flex items-start gap-1.5">
+                <FieldError id="barrio-error" className="flex items-start gap-1.5">
                   <CircleAlert className="mt-0.5 size-3.5 shrink-0" data-icon="inline-start" aria-hidden="true" />
                   {errors.barrio.message}
                 </FieldError>
@@ -429,9 +433,9 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
         {closedReason && (
           <div
             role="alert"
-            className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-sm font-medium text-amber-700 dark:text-amber-300"
+            className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-sm font-medium text-[color:var(--status-warning-text,#92400e)]"
           >
-            <CircleAlert className="size-4 shrink-0 text-amber-700 dark:text-amber-400" />
+            <CircleAlert className="size-4 shrink-0 text-[color:var(--status-warning-text,#92400e)]" />
             <span>{closedMessage(closedReason)}</span>
           </div>
         )}
@@ -439,9 +443,9 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
         {isBelowMinOrder && (
           <div
             role="alert"
-            className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-sm font-medium text-amber-700 dark:text-amber-300"
+            className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-sm font-medium text-[color:var(--status-warning-text,#92400e)]"
           >
-            <CircleAlert className="size-4 shrink-0 text-amber-700 dark:text-amber-400" />
+            <CircleAlert className="size-4 shrink-0 text-[color:var(--status-warning-text,#92400e)]" />
             <span>
               El pedido mínimo es de {formatCurrency(minOrderAmount)} (faltan {formatCurrency(amountNeeded)}).
             </span>
@@ -456,7 +460,7 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
             variant="default"
             size="lg"
             style={{ backgroundColor: brand.fill, color: primaryForeground }}
-            className="h-12 flex-1 text-base font-bold shadow-md cursor-pointer hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="h-12 flex-1 text-base font-bold shadow-md cursor-pointer hover:brightness-95 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Send data-icon="inline-start" />
             {isSubmitting ? "Enviando pedido..." : "Enviar pedido por WhatsApp"}

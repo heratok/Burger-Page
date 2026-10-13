@@ -327,7 +327,7 @@ export const ReportsManager: React.FC = () => {
             </div>
 
             {datePreset === "custom" && (
-              <span className="rounded-lg bg-amber-500/15 px-2 py-1 text-xs font-bold text-amber-700 dark:text-amber-400 flex items-center gap-1">
+              <span className="rounded-lg bg-amber-500/15 px-2 py-1 text-xs font-bold text-amber-800 dark:text-amber-400 flex items-center gap-1">
                 <Calendar className="size-3" />
                 Rango libre
               </span>
@@ -378,12 +378,12 @@ export const ReportsManager: React.FC = () => {
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Efectivo en Caja
             </span>
-            <span className="flex size-8 items-center justify-center rounded-lg bg-amber-500/10 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400">
+            <span className="flex size-8 items-center justify-center rounded-lg bg-amber-500/10 text-amber-800 dark:bg-amber-500/20 dark:text-amber-400">
               <Banknote className="size-4" />
             </span>
           </div>
           <div className="mt-3">
-            <span className="text-2xl font-black tracking-tight text-amber-700 dark:text-amber-400">
+            <span className="text-2xl font-black tracking-tight text-amber-800 dark:text-amber-400">
               {formatCurrency(closeout.cashTotal)}
             </span>
           </div>
@@ -495,9 +495,9 @@ export const ReportsManager: React.FC = () => {
               </div>
               <div className="flex items-center justify-between pt-2">
                 <span className="flex items-center gap-1">
-                  <Banknote className="size-3 text-amber-700 dark:text-amber-400" /> Efectivo Recibido
+                  <Banknote className="size-3 text-amber-800 dark:text-amber-400" /> Efectivo Recibido
                 </span>
-                <span className="font-bold text-amber-700 dark:text-amber-400">
+                <span className="font-bold text-amber-800 dark:text-amber-400">
                   {formatCurrency(closeout.cashTotal)}
                 </span>
               </div>
@@ -634,7 +634,7 @@ export const ReportsManager: React.FC = () => {
               <div className="flex flex-col justify-between rounded-xl border p-4 transition-all hover:border-indigo-500/40 border-slate-200 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-800/40">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="flex size-7 items-center justify-center rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-400">
+                    <span className="flex size-7 items-center justify-center rounded-lg bg-amber-500/10 text-amber-800 dark:text-amber-400">
                       <Boxes className="size-4" />
                     </span>
                     <h3 className="text-sm font-bold text-slate-900 dark:text-white">
@@ -644,7 +644,7 @@ export const ReportsManager: React.FC = () => {
                   <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">
                     Stock actual, alertas de nivel mínimo, costos unitarios, valuación y proveedores.
                   </p>
-                  <div className="mt-2 text-sm font-bold text-amber-700 dark:text-amber-400">
+                  <div className="mt-2 text-sm font-bold text-amber-800 dark:text-amber-400">
                     {inventory.length} insumos catalogados
                   </div>
                 </div>
@@ -761,7 +761,7 @@ export const ReportsManager: React.FC = () => {
                           <span
                             className={`rounded-md px-2 py-0.5 text-xs font-bold ${
                               ord.metodo === "Efectivo"
-                                ? "bg-amber-500/10 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400"
+                                ? "bg-amber-500/10 text-amber-800 dark:bg-amber-500/20 dark:text-amber-400"
                                 : "bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400"
                             }`}
                           >

@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
 import { Textarea } from "@/components/ui/textarea"
+import { ModalShell } from "@/components/ui/modal-shell"
 import type { MenuItem } from "@/types/restaurant"
 import { createCartItem, type CartAddition, type CartItem } from "./cartEngine"
 import CharacterCounter from "@/components/CharacterCounter"
@@ -54,6 +55,7 @@ export default function AdditionsModal({
     setIsImageExpanded(true)
   }
 
+  // Capture phase: the base-ui Dialog underneath also listens for Escape and must not see this one.
   useEffect(() => {
     if (!isImageExpanded) return
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -199,7 +201,7 @@ export default function AdditionsModal({
           )}
 
           {/* Product Header: Title, Price, and Full Description (no line-clamp) */}
-          <header
+          <div
             style={{ backgroundColor: (themeStyles as any)["--color-bg-surface"] || "var(--color-bg-surface, #F4ECE1)" }}
             className="border-b border-border-subtle p-4 sm:p-5"
           >
@@ -219,7 +221,7 @@ export default function AdditionsModal({
                 {product.description}
               </DialogDescription>
             )}
-          </header>
+          </div>
 
           <div className="space-y-4 sm:space-y-6 px-3.5 sm:px-5 py-3 sm:py-4">
           {adiciones.length > 0 && (
@@ -274,7 +276,7 @@ export default function AdditionsModal({
                           backgroundColor: brand.fill,
                           color: primaryForeground,
                         }}
-                        className="size-11 rounded-full shadow-xs hover:opacity-90 transition-opacity disabled:opacity-30"
+                        className="size-11 rounded-full shadow-xs hover:brightness-95 transition-opacity disabled:opacity-30"
                       >
                         <Plus />
                       </Button>
@@ -314,7 +316,7 @@ export default function AdditionsModal({
         </div>
       </div>
 
-      <footer
+      <div
           style={{ backgroundColor: (themeStyles as any)["--color-bg-surface"] || "var(--color-bg-surface, #F4ECE1)" }}
           className="border-t border-border-subtle p-3.5 sm:p-5"
         >
@@ -349,7 +351,7 @@ export default function AdditionsModal({
                     backgroundColor: brand.fill,
                     color: primaryForeground,
                   }}
-                  className="size-11 rounded-full shadow-xs hover:opacity-90 transition-opacity disabled:opacity-30"
+                  className="size-11 rounded-full shadow-xs hover:brightness-95 transition-opacity disabled:opacity-30"
                 >
                   <Plus />
                 </Button>
@@ -365,7 +367,7 @@ export default function AdditionsModal({
                 backgroundColor: brand.fill,
                 color: primaryForeground,
               }}
-              className="h-11 sm:h-12 w-full rounded-xl text-sm sm:text-base font-bold shadow-md cursor-pointer hover:opacity-90 min-[420px]:w-auto min-[420px]:flex-1 sm:min-w-[200px] sm:flex-none"
+              className="h-11 sm:h-12 w-full rounded-xl text-sm sm:text-base font-bold shadow-md cursor-pointer hover:brightness-95 min-[420px]:w-auto min-[420px]:flex-1 sm:min-w-[200px] sm:flex-none"
             >
               {closed && !editing ? (
                 "Cerrado"
@@ -377,14 +379,12 @@ export default function AdditionsModal({
               )}
             </Button>
           </div>
-        </footer>
+        </div>
       </DialogContent>
 
       {/* Fullscreen Lightbox / Expanded Image */}
       {isImageExpanded && product.src && typeof document !== "undefined" && createPortal(
-        <div
-          role="dialog"
-          aria-modal="true"
+        <ModalShell
           aria-label={`Foto ampliada de ${product.name}`}
           className="fixed inset-0 z-60 flex items-center justify-center bg-black/90 p-4 backdrop-blur-md animate-in fade-in-0 duration-150"
           onClick={(e) => {
@@ -424,7 +424,7 @@ export default function AdditionsModal({
               )}
             </div>
           </div>
-        </div>,
+        </ModalShell>,
         document.body
       )}
     </Dialog>
