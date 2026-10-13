@@ -352,7 +352,7 @@ export const TeamManager: React.FC = () => {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead
-                className={`border-b text-[11px] font-bold uppercase tracking-wider ${
+                className={`border-b text-xs font-bold uppercase tracking-wider ${
                   isDark
                     ? "border-slate-800 bg-slate-900/50 text-slate-400"
                     : "border-slate-200 bg-slate-50 text-slate-500"
@@ -393,7 +393,7 @@ export const TeamManager: React.FC = () => {
                             <div className="flex items-center gap-1.5">
                               <span>{user.username}</span>
                               {isCurrent && (
-                                <span className="rounded bg-indigo-100 dark:bg-indigo-900/40 px-1.5 py-0.2 text-[9px] font-bold text-indigo-700 dark:text-indigo-300">
+                                <span className="rounded bg-indigo-100 dark:bg-indigo-900/40 px-1.5 py-0.2 text-xs font-bold text-indigo-700 dark:text-indigo-300">
                                   Tú
                                 </span>
                               )}
@@ -407,7 +407,7 @@ export const TeamManager: React.FC = () => {
                         <div className="flex items-center gap-1.5">
                           <Shield className="size-3.5 text-indigo-500" />
                           <span
-                            className={`rounded-md px-2 py-0.5 text-[11px] font-semibold ${
+                            className={`rounded-md px-2 py-0.5 text-xs font-semibold ${
                               isAdmin
                                 ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
                                 : "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
@@ -421,12 +421,12 @@ export const TeamManager: React.FC = () => {
                       {/* Status */}
                       <td className="px-4 py-3">
                         {isActive ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
                             <UserCheck className="size-3" />
                             <span>Activo</span>
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-slate-500/10 px-2 py-0.5 text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-slate-500/10 px-2 py-0.5 text-xs font-bold text-slate-500 dark:text-slate-400">
                             <UserX className="size-3" />
                             <span>Inactivo</span>
                           </span>
@@ -436,17 +436,17 @@ export const TeamManager: React.FC = () => {
                       {/* Security */}
                       <td className="px-4 py-3">
                         {user.mustChangePassword ? (
-                          <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">
                             <AlertCircle className="size-3" />
                             <span>Requiere cambio</span>
                           </span>
                         ) : (
-                          <span className="text-[10px] text-slate-400">Clave configurada</span>
+                          <span className="text-xs text-slate-400">Clave configurada</span>
                         )}
                       </td>
 
                       {/* Date */}
-                      <td className="px-4 py-3 text-slate-500 dark:text-slate-400 text-[11px]">
+                      <td className="px-4 py-3 text-slate-500 dark:text-slate-400 text-xs">
                         {user.createdAt
                           ? new Date(user.createdAt).toLocaleDateString("es-CO")
                           : "—"}
@@ -552,7 +552,7 @@ export const TeamManager: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setCreatePassword(generateRandomPassword())}
-                    className="text-[11px] font-semibold text-indigo-500 hover:underline flex items-center gap-1"
+                    className="text-xs font-semibold text-indigo-500 hover:underline flex items-center gap-1"
                   >
                     <Sparkles className="size-3" />
                     <span>Regenerar</span>
@@ -609,7 +609,7 @@ export const TeamManager: React.FC = () => {
                       searchable={false}
                     />
                     {rolesMap.get(createRoleId)?.description && (
-                      <p className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                      <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
                         {rolesMap.get(createRoleId)?.description}
                       </p>
                     )}
@@ -617,7 +617,7 @@ export const TeamManager: React.FC = () => {
                 )}
               </div>
 
-              <div className="rounded-xl border border-indigo-100 bg-indigo-50/60 p-3 text-[11px] text-indigo-900 dark:border-indigo-900/40 dark:bg-indigo-950/20 dark:text-indigo-300">
+              <div className="rounded-xl border border-indigo-100 bg-indigo-50/60 p-3 text-xs text-indigo-900 dark:border-indigo-900/40 dark:bg-indigo-950/20 dark:text-indigo-300">
                 El empleado deberá cambiar esta contraseña temporal obligatoriamente en su primer inicio de sesión.
               </div>
 
@@ -726,7 +726,7 @@ export const TeamManager: React.FC = () => {
                         searchable={false}
                       />
                       {rolesMap.get(editRoleId)?.description && (
-                        <p className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                        <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
                           {rolesMap.get(editRoleId)?.description}
                         </p>
                       )}
@@ -808,13 +808,13 @@ export const TeamManager: React.FC = () => {
               }`}
             >
               <div>
-                <span className="text-[10px] uppercase font-bold text-slate-400">Usuario</span>
+                <span className="text-xs uppercase font-bold text-slate-400">Usuario</span>
                 <div className="font-bold text-slate-900 dark:text-white select-all">
                   {credentialsReveal.username}
                 </div>
               </div>
               <div>
-                <span className="text-[10px] uppercase font-bold text-slate-400">Clave Temporal</span>
+                <span className="text-xs uppercase font-bold text-slate-400">Clave Temporal</span>
                 <div className="font-bold text-emerald-600 dark:text-emerald-400 select-all">
                   {credentialsReveal.password}
                 </div>

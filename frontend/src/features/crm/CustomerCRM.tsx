@@ -371,7 +371,7 @@ export const CustomerCRM: React.FC = () => {
                       </div>
                       <div>
                         <div className="font-bold text-slate-900 dark:text-white">{cust.nombre}</div>
-                        <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                        <div className="text-xs text-slate-500 dark:text-slate-400">
                           Último pedido: {new Date(cust.lastOrderDate).toLocaleDateString("es-CO")}
                         </div>
                       </div>
@@ -384,7 +384,7 @@ export const CustomerCRM: React.FC = () => {
                     <div className="font-medium truncate max-w-[180px] text-slate-900 dark:text-slate-200">
                       {cust.direccion}
                     </div>
-                    <div className="text-[10px] text-slate-500 dark:text-slate-400">{cust.barrio}</div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400">{cust.barrio}</div>
                   </td>
                   <td className="py-3 px-4 font-bold text-center text-slate-900 dark:text-slate-100">
                     {cust.totalOrders}
@@ -402,7 +402,7 @@ export const CustomerCRM: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => openWhatsAppMarketing(cust)}
-                        className="flex items-center gap-1 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-[11px] font-bold text-emerald-600 hover:bg-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-300"
+                        className="flex items-center gap-1 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs font-bold text-emerald-600 hover:bg-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-300"
                         title="Contactar por WhatsApp"
                       >
                         <MessageCircle className="size-3.5" />
@@ -680,7 +680,7 @@ export const CustomerCRM: React.FC = () => {
                     }`}
                   />
                   {createErrors.nombre && (
-                    <span className="text-[11px] font-medium text-rose-500">{createErrors.nombre}</span>
+                    <span className="text-xs font-medium text-rose-500">{createErrors.nombre}</span>
                   )}
                 </label>
 
@@ -702,10 +702,10 @@ export const CustomerCRM: React.FC = () => {
                     }`}
                   />
                   {createErrors.telefono && (
-                    <span className="text-[11px] font-medium text-rose-500">{createErrors.telefono}</span>
+                    <span className="text-xs font-medium text-rose-500">{createErrors.telefono}</span>
                   )}
                   {existingCustomerWithPhone && (
-                    <span className="text-[11px] font-medium text-amber-500">
+                    <span className="text-xs font-medium text-amber-500">
                       Este teléfono ya está registrado ({existingCustomerWithPhone.nombre}; se actualizarán sus datos)
                     </span>
                   )}

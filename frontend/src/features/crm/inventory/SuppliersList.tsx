@@ -82,7 +82,7 @@ export const SuppliersList: React.FC<SuppliersListProps> = ({
                 <div>
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <div>
-                      <span className="rounded-md bg-indigo-500/10 px-2 py-0.5 text-[10px] font-bold text-indigo-400">
+                      <span className="rounded-md bg-indigo-500/10 px-2 py-0.5 text-xs font-bold text-indigo-400">
                         {sup.category}
                       </span>
                       <h3 className="text-sm font-bold text-slate-900 dark:text-white mt-1.5">
@@ -128,7 +128,7 @@ export const SuppliersList: React.FC<SuppliersListProps> = ({
                     </div>
                     {sup.notes && (
                       <p
-                        className={`text-[11px] italic mt-2.5 p-2.5 rounded-xl border transition-colors ${
+                        className={`text-xs italic mt-2.5 p-2.5 rounded-xl border transition-colors ${
                           isDark
                             ? "border-slate-800 bg-slate-900/60 text-slate-300"
                             : "border-slate-200 bg-slate-50 text-slate-700 font-medium"
@@ -141,7 +141,7 @@ export const SuppliersList: React.FC<SuppliersListProps> = ({
 
                   {/* Supplied Items Summary */}
                   <div
-                    className={`pt-2.5 border-t text-[11px] flex items-center justify-between ${
+                    className={`pt-2.5 border-t text-xs flex items-center justify-between ${
                       isDark ? "border-slate-800/60 text-slate-400" : "border-slate-100 text-slate-500"
                     }`}
                   >

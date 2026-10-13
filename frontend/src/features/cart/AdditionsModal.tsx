@@ -189,7 +189,7 @@ export default function AdditionsModal({
                 type="button"
                 onClick={handleOpenLightbox}
                 aria-label="Ampliar imagen"
-                className="absolute bottom-2.5 right-2.5 z-10 inline-flex items-center gap-1.5 rounded-full bg-black/60 hover:bg-black/80 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-md transition-all cursor-pointer active:scale-95 shadow-xs"
+                className="absolute bottom-2.5 right-2.5 z-10 inline-flex items-center gap-1.5 rounded-full bg-black/60 hover:bg-black/80 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-md transition-all cursor-pointer active:scale-95 shadow-xs"
               >
                 <Maximize2 className="size-3.5" />
                 <span>Ver foto</span>

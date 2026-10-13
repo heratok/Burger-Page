@@ -48,7 +48,7 @@ export const FlagThumbnail: React.FC<{ code: string; alt?: string }> = ({ code, 
     return (
       <span
         aria-hidden="true"
-        className="w-5 h-3.5 rounded-xs bg-slate-100 dark:bg-slate-800 text-[9px] font-mono font-bold flex items-center justify-center shrink-0 text-slate-500 border border-slate-200 dark:border-slate-700 select-none"
+        className="w-5 h-3.5 rounded-xs bg-slate-100 dark:bg-slate-800 text-xs font-mono font-bold flex items-center justify-center shrink-0 text-slate-500 border border-slate-200 dark:border-slate-700 select-none"
       >
         {code ? code.toUpperCase().slice(0, 2) : "??"}
       </span>
@@ -365,7 +365,7 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
                 {selectedOption.label}
               </span>
               {selectedOption.badge && (
-                <span className="shrink-0 px-1.5 py-0.5 rounded-md text-[10px] font-mono font-semibold bg-slate-100 dark:bg-slate-700/80 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-slate-600/60">
+                <span className="shrink-0 px-1.5 py-0.5 rounded-md text-xs font-mono font-semibold bg-slate-100 dark:bg-slate-700/80 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-slate-600/60">
                   {selectedOption.badge}
                 </span>
               )}
@@ -386,7 +386,7 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
       </button>
 
       {error && (
-        <span className="text-[11px] font-medium text-rose-500 dark:text-rose-400 block mt-1">
+        <span className="text-xs font-medium text-rose-500 dark:text-rose-400 block mt-1">
           {error}
         </span>
       )}
@@ -438,7 +438,7 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
                 return (
                   <React.Fragment key={opt.value}>
                     {showGroupHeader && (
-                      <div className="px-2.5 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 select-none">
+                      <div className="px-2.5 pt-2 pb-1 text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 select-none">
                         {opt.group}
                       </div>
                     )}
@@ -468,7 +468,7 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
                         <div className="min-w-0 truncate">
                           <span className="truncate block font-medium">{opt.label}</span>
                           {opt.sublabel && (
-                            <span className="text-[10px] text-slate-400 dark:text-slate-500 block truncate">
+                            <span className="text-xs text-slate-400 dark:text-slate-500 block truncate">
                               {opt.sublabel}
                             </span>
                           )}
@@ -477,7 +477,7 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
 
                       <div className="flex items-center gap-1.5 shrink-0 ml-2">
                         {opt.badge && (
-                          <span className="px-1.5 py-0.5 rounded-md text-[10px] font-mono font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700/60">
+                          <span className="px-1.5 py-0.5 rounded-md text-xs font-mono font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700/60">
                             {opt.badge}
                           </span>
                         )}

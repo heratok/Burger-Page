@@ -114,16 +114,16 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
               #{order.orderNumber}
             </span>
             <span
-              className={`flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[11px] font-bold ${currentStatus.bg} ${currentStatus.text}`}
+              className={`flex items-center gap-1 rounded-lg border px-2 py-0.5 text-xs font-bold ${currentStatus.bg} ${currentStatus.text}`}
             >
               {currentStatus.icon}
               <span>{currentStatus.label}</span>
             </span>
           </div>
 
-          <div className="flex items-center gap-1 text-[11px] font-medium text-slate-400">
+          <div className="flex items-center gap-1 text-xs font-medium text-slate-400">
             {isDelayed && (
-              <span className="flex items-center gap-0.5 rounded-md bg-rose-500/10 px-1.5 py-0.5 text-[10px] font-bold text-rose-600 dark:text-rose-400">
+              <span className="flex items-center gap-0.5 rounded-md bg-rose-500/10 px-1.5 py-0.5 text-xs font-bold text-rose-600 dark:text-rose-400">
                 <AlertCircle className="size-3" />
                 Demorado
               </span>
@@ -170,7 +170,7 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
                   {item.cantidad || (item as any).quantity || 1}× {item.name || (item as any).productName || "Producto"}
                 </span>
                 {item.adiciones && item.adiciones.length > 0 && (
-                  <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
                     +{item.adiciones.map((a) => a.name).join(", ")}
                   </span>
                 )}
@@ -179,7 +179,7 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
           </div>
 
           {order.comentario && (
-            <div className="rounded-lg border border-amber-300/40 bg-amber-50/50 dark:border-amber-500/30 dark:bg-amber-950/30 p-2 text-[11px] text-amber-800 dark:text-amber-200 break-words [overflow-wrap:anywhere]">
+            <div className="rounded-lg border border-amber-300/40 bg-amber-50/50 dark:border-amber-500/30 dark:bg-amber-950/30 p-2 text-xs text-amber-800 dark:text-amber-200 break-words [overflow-wrap:anywhere]">
               <span className="font-bold">Nota: </span>
               &quot;{order.comentario}&quot;
             </div>
@@ -193,7 +193,7 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
               {formatCurrency(order.finalTotal)}
             </span>
             {order.deliveryFee > 0 && (
-              <span className="ml-1.5 text-[10px] text-slate-400">
+              <span className="ml-1.5 text-xs text-slate-400">
                 (inc. envío {formatCurrency(order.deliveryFee)})
               </span>
             )}
@@ -201,7 +201,7 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
 
           <div className="flex items-center gap-1.5 flex-wrap justify-end">
             <span
-              className={`rounded-md px-2 py-0.5 text-[10px] font-bold ${
+              className={`rounded-md px-2 py-0.5 text-xs font-bold ${
                 order.metodo === "Efectivo"
                   ? "bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400"
                   : "bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400"
@@ -211,17 +211,17 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
             </span>
             {order.metodo === "Transferencia" && (
               order.receiptUrl ? (
-                <span className="inline-flex items-center rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                <span className="inline-flex items-center rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
                   ✓ Soporte
                 </span>
               ) : (
-                <span className="inline-flex items-center rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                <span className="inline-flex items-center rounded-md bg-amber-500/10 px-1.5 py-0.5 text-xs font-bold text-amber-600 dark:text-amber-400">
                   ! Sin soporte
                 </span>
               )
             )}
             {order.metodo === "Efectivo" && order.cambio !== undefined && order.cambio > 0 && (
-              <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                 Cambio: {formatCurrency(order.cambio)}
               </span>
             )}

@@ -191,7 +191,7 @@ export const CustomizerBrandingSection: React.FC<CustomizerBrandingSectionProps>
                   </Button>
                 )}
               </div>
-              <p className="text-[10px] text-slate-400">
+              <p className="text-xs text-slate-400">
                 Subí tu logo en formato PNG, JPG o WebP desde tu teléfono o PC.
               </p>
             </div>
@@ -258,7 +258,7 @@ export const CustomizerBrandingSection: React.FC<CustomizerBrandingSectionProps>
               </>
             )}
           </Button>
-          <p className="text-[10px] text-slate-400">
+          <p className="text-xs text-slate-400">
             Imagen panorámica que aparece en la parte superior de la carta digital.
           </p>
 

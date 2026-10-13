@@ -99,7 +99,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
 
           {/* Existing Categories List */}
           <div className="mt-4 max-h-64 overflow-y-auto space-y-2 pr-1 text-xs">
-            <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
               Categorías Activas ({categories.length})
             </p>
             {categories.map((cat) => {
@@ -138,14 +138,14 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
                       <button
                         type="button"
                         onClick={() => handleSaveEdit(cat)}
-                        className="rounded-lg bg-indigo-600 px-2 py-1 text-[11px] font-bold text-white hover:bg-indigo-700 cursor-pointer"
+                        className="rounded-lg bg-indigo-600 px-2 py-1 text-xs font-bold text-white hover:bg-indigo-700 cursor-pointer"
                       >
                         Guardar
                       </button>
                       <button
                         type="button"
                         onClick={() => setEditingCategoryName(null)}
-                        className="rounded-lg bg-slate-200 dark:bg-slate-700 px-2 py-1 text-[11px] font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-300 cursor-pointer"
+                        className="rounded-lg bg-slate-200 dark:bg-slate-700 px-2 py-1 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-300 cursor-pointer"
                       >
                         Cancelar
                       </button>
@@ -156,7 +156,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
                         <span className="font-semibold text-slate-800 dark:text-slate-200">
                           {cat}
                         </span>
-                        <span className="rounded-md bg-indigo-100 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-400">
+                        <span className="rounded-md bg-indigo-100 px-1.5 py-0.5 text-xs font-bold text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-400">
                           {count} {count === 1 ? "producto" : "productos"}
                         </span>
                       </div>

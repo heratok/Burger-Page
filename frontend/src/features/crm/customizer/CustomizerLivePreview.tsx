@@ -112,7 +112,7 @@ export const CustomizerLivePreview: React.FC<CustomizerLivePreviewProps> = ({
                 backgroundColor: draft.primaryColor,
                 color: primaryForeground,
               }}
-              className="py-1.5 px-3 text-center text-[10px] font-bold tracking-wide truncate"
+              className="py-1.5 px-3 text-center text-xs font-bold tracking-wide truncate"
             >
               {draft.announcementText}
             </div>
@@ -145,7 +145,7 @@ export const CustomizerLivePreview: React.FC<CustomizerLivePreviewProps> = ({
               )}
               <div>
                 <h4 className="text-xs font-bold leading-tight line-clamp-1">{draft.name}</h4>
-                <p style={{ color: currentBgStyle.subText }} className="text-[10px] line-clamp-1">
+                <p style={{ color: currentBgStyle.subText }} className="text-xs line-clamp-1">
                   {draft.tagline}
                 </p>
               </div>
@@ -162,7 +162,7 @@ export const CustomizerLivePreview: React.FC<CustomizerLivePreviewProps> = ({
                     backgroundColor: draft.primaryColor,
                     color: primaryForeground,
                   }}
-                  className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full text-[9px] font-bold"
+                  className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full text-xs font-bold"
                 >
                   2
                 </span>
@@ -191,7 +191,7 @@ export const CustomizerLivePreview: React.FC<CustomizerLivePreviewProps> = ({
           <div className="p-3 sm:p-4 flex-1 space-y-3 overflow-y-auto max-h-[420px]">
             <div className="flex items-center justify-between text-xs">
               <span className="font-bold">Menú Destacado</span>
-              <span style={{ color: draft.primaryColor }} className="font-semibold text-[11px]">
+              <span style={{ color: draft.primaryColor }} className="font-semibold text-xs">
                 {products.length} productos
               </span>
             </div>
@@ -225,7 +225,7 @@ export const CustomizerLivePreview: React.FC<CustomizerLivePreviewProps> = ({
                             backgroundColor: draft.primaryColor,
                             color: primaryForeground,
                           }}
-                          className="absolute top-1.5 left-1.5 rounded px-1.5 py-0.5 text-[9px] font-bold shadow-xs z-10"
+                          className="absolute top-1.5 left-1.5 rounded px-1.5 py-0.5 text-xs font-bold shadow-xs z-10"
                         >
                           Popular
                         </span>
@@ -234,12 +234,12 @@ export const CustomizerLivePreview: React.FC<CustomizerLivePreviewProps> = ({
 
                     <div className="p-2.5 flex flex-col flex-1 justify-between gap-1.5">
                       <div>
-                        <h5 className="text-[11px] font-bold leading-tight line-clamp-1">
+                        <h5 className="text-xs font-bold leading-tight line-clamp-1">
                           {p.name}
                         </h5>
                         <p
                           style={{ color: currentBgStyle.subText }}
-                          className="text-[9px] line-clamp-1"
+                          className="text-xs line-clamp-1"
                         >
                           {p.description}
                         </p>
@@ -274,7 +274,7 @@ export const CustomizerLivePreview: React.FC<CustomizerLivePreviewProps> = ({
             style={{ borderColor: "rgba(128,128,128,0.15)" }}
             className="mt-auto border-t p-2.5 flex items-center justify-between"
           >
-            <div className="text-[10px]">
+            <div className="text-xs">
               <span style={{ color: currentBgStyle.subText }}>Total orden:</span>
               <div style={{ color: draft.primaryColor }} className="font-bold text-xs">
                 $54.000
@@ -286,7 +286,7 @@ export const CustomizerLivePreview: React.FC<CustomizerLivePreviewProps> = ({
                 backgroundColor: draft.primaryColor,
                 color: primaryForeground,
               }}
-              className="rounded-xl px-3 py-1.5 text-[11px] font-bold shadow-xs"
+              className="rounded-xl px-3 py-1.5 text-xs font-bold shadow-xs"
             >
               Ver Mi Pedido (2)
             </button>

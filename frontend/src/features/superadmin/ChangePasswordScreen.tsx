@@ -221,13 +221,13 @@ export const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({
             </button>
           </div>
           {isTooShort && (
-            <p className="mt-1 text-[11px] font-semibold text-rose-500 flex items-center gap-1">
+            <p className="mt-1 text-xs font-semibold text-rose-500 flex items-center gap-1">
               <AlertCircle className="size-3" />
               <span>La nueva contraseña debe tener al menos 8 caracteres.</span>
             </p>
           )}
           {isSameAsCurrent && (
-            <p className="mt-1 text-[11px] font-semibold text-rose-500 flex items-center gap-1">
+            <p className="mt-1 text-xs font-semibold text-rose-500 flex items-center gap-1">
               <AlertCircle className="size-3" />
               <span>La nueva contraseña debe ser diferente a la actual.</span>
             </p>
@@ -270,7 +270,7 @@ export const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({
             </button>
           </div>
           {isMismatch && (
-            <p className="mt-1 text-[11px] font-semibold text-rose-500 flex items-center gap-1">
+            <p className="mt-1 text-xs font-semibold text-rose-500 flex items-center gap-1">
               <AlertCircle className="size-3" />
               <span>Las contraseñas no coinciden.</span>
             </p>

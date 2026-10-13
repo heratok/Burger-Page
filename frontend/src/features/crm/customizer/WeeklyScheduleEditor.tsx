@@ -76,7 +76,7 @@ export const WeeklyScheduleEditor: React.FC<WeeklyScheduleEditorProps> = ({ sche
           <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-200 font-semibold">
             <Sparkles className="size-3.5 text-amber-500 shrink-0" aria-hidden="true" />
             <span>Configuración masiva / Horario general</span>
-            <span className="text-[11px] font-normal text-slate-400 dark:text-slate-500">
+            <span className="text-xs font-normal text-slate-400 dark:text-slate-500">
               ({openDaysCount}/7 abiertos)
             </span>
           </div>
@@ -84,7 +84,7 @@ export const WeeklyScheduleEditor: React.FC<WeeklyScheduleEditorProps> = ({ sche
             <div
               role="status"
               aria-live="polite"
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20"
             >
               <Check className="size-3 text-emerald-500 shrink-0" aria-hidden="true" />
               <span>{feedback}</span>
@@ -95,7 +95,7 @@ export const WeeklyScheduleEditor: React.FC<WeeklyScheduleEditorProps> = ({ sche
         <div className="flex flex-wrap items-center justify-between gap-2.5 pt-0.5">
           {/* Master time inputs */}
           <div className="flex items-center gap-1.5 sm:gap-2">
-            <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Horario:</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Horario:</span>
             <input
               type="time"
               aria-label="Horario masivo apertura"
@@ -119,7 +119,7 @@ export const WeeklyScheduleEditor: React.FC<WeeklyScheduleEditorProps> = ({ sche
             {isOvernightRange(bulkOpen, bulkClose) && (
               <span
                 title="Cierra al día siguiente (cruza la medianoche)"
-                className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 shrink-0 select-none whitespace-nowrap"
+                className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 shrink-0 select-none whitespace-nowrap"
               >
                 <Moon className="size-3 text-amber-500 shrink-0" aria-hidden="true" />
                 <span>+1 día</span>
@@ -129,14 +129,14 @@ export const WeeklyScheduleEditor: React.FC<WeeklyScheduleEditorProps> = ({ sche
 
           {/* Action buttons */}
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-[11px] text-slate-400 dark:text-slate-500 mr-0.5 hidden sm:inline">Aplicar a:</span>
+            <span className="text-xs text-slate-400 dark:text-slate-500 mr-0.5 hidden sm:inline">Aplicar a:</span>
             <button
               type="button"
               onClick={() => {
                 onChange(applyRangeToDays(schedule, DAY_DISPLAY_ORDER, bulkOpen, bulkClose))
                 showFeedback("¡Aplicado a toda la semana!")
               }}
-              className="rounded-lg border border-indigo-200 dark:border-indigo-800/60 bg-indigo-50/80 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 px-2.5 py-1 text-[11px] font-semibold text-indigo-700 dark:text-indigo-300 transition-colors cursor-pointer shadow-2xs focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
+              className="rounded-lg border border-indigo-200 dark:border-indigo-800/60 bg-indigo-50/80 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 px-2.5 py-1 text-xs font-semibold text-indigo-700 dark:text-indigo-300 transition-colors cursor-pointer shadow-2xs focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
               aria-label="Toda la semana"
             >
               Toda la semana
@@ -147,7 +147,7 @@ export const WeeklyScheduleEditor: React.FC<WeeklyScheduleEditorProps> = ({ sche
                 onChange(applyRangeToDays(schedule, WEEKDAY_NUMBERS, bulkOpen, bulkClose))
                 showFeedback("¡Aplicado a Lun a Vie!")
               }}
-              className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 px-2.5 py-1 text-[11px] font-semibold text-slate-700 dark:text-slate-200 transition-colors cursor-pointer shadow-2xs focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
+              className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:text-slate-200 transition-colors cursor-pointer shadow-2xs focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
               aria-label="Lun a Vie"
             >
               Lun a Vie
@@ -158,7 +158,7 @@ export const WeeklyScheduleEditor: React.FC<WeeklyScheduleEditorProps> = ({ sche
                 onChange(applyRangeToDays(schedule, WEEKEND_NUMBERS, bulkOpen, bulkClose))
                 showFeedback("¡Aplicado a Fin de semana!")
               }}
-              className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 px-2.5 py-1 text-[11px] font-semibold text-slate-700 dark:text-slate-200 transition-colors cursor-pointer shadow-2xs focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
+              className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:text-slate-200 transition-colors cursor-pointer shadow-2xs focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
               aria-label="Fin de semana"
             >
               Fin de semana
@@ -169,7 +169,7 @@ export const WeeklyScheduleEditor: React.FC<WeeklyScheduleEditorProps> = ({ sche
                 onChange(setAll24Hours())
                 showFeedback("¡Todos 24 horas!")
               }}
-              className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 px-2.5 py-1 text-[11px] font-semibold text-slate-700 dark:text-slate-200 transition-colors cursor-pointer shadow-2xs focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
+              className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:text-slate-200 transition-colors cursor-pointer shadow-2xs focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
               aria-label="Todos 24h"
             >
               Todos 24h
@@ -223,7 +223,7 @@ export const WeeklyScheduleEditor: React.FC<WeeklyScheduleEditorProps> = ({ sche
                           type="button"
                           onClick={() => onChange(setDayCustomHours(schedule, day))}
                           aria-label={`Definir horario para ${name}`}
-                          className="rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 px-2 py-0.5 text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 transition-colors cursor-pointer"
+                          className="rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 px-2 py-0.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400 transition-colors cursor-pointer"
                         >
                           Definir horario
                         </button>
@@ -233,7 +233,7 @@ export const WeeklyScheduleEditor: React.FC<WeeklyScheduleEditorProps> = ({ sche
                           onClick={() => onChange(setDay24Hours(schedule, day))}
                           aria-label={`Poner ${name} en 24 horas`}
                           title="Cambiar a horario 24 horas"
-                          className="rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 px-2 py-0.5 text-[11px] font-semibold text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
+                          className="rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 px-2 py-0.5 text-xs font-semibold text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
                         >
                           24h
                         </button>
@@ -277,7 +277,7 @@ export const WeeklyScheduleEditor: React.FC<WeeklyScheduleEditorProps> = ({ sche
                         {overnight && (
                           <span
                             title="Cierra al día siguiente (cruza la medianoche)"
-                            className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 shrink-0 select-none whitespace-nowrap"
+                            className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 shrink-0 select-none whitespace-nowrap"
                           >
                             <Moon className="size-3 text-amber-500 shrink-0" aria-hidden="true" />
                             <span>+1 día</span>
@@ -295,7 +295,7 @@ export const WeeklyScheduleEditor: React.FC<WeeklyScheduleEditorProps> = ({ sche
 
               {/* Extra ranges if pre-existing in DB */}
               {extras.length > 0 && (
-                <div className="text-[11px] text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800/60 pt-1 mt-1.5">
+                <div className="text-xs text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800/60 pt-1 mt-1.5">
                   También: {formatRanges(extras)} (se conserva al guardar)
                 </div>
               )}
@@ -305,7 +305,7 @@ export const WeeklyScheduleEditor: React.FC<WeeklyScheduleEditorProps> = ({ sche
       </div>
 
       {/* Helper Note */}
-      <div className="flex items-start gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 px-1 pt-1">
+      <div className="flex items-start gap-1.5 text-xs text-slate-500 dark:text-slate-400 px-1 pt-1">
         <Clock className="size-3.5 text-slate-400 shrink-0 mt-0.5" aria-hidden="true" />
         <p>
           Si el cierre es menor que la apertura, el horario cruza la medianoche (por ejemplo 20:00 - 02:00, indicado con{" "}

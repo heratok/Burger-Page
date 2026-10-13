@@ -274,7 +274,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                   <span className="font-bold tracking-tight text-xs truncate text-slate-900 dark:text-white">
                     SaaS Platform
                   </span>
-                  <span className="text-[9px] font-bold tracking-wider uppercase text-amber-500">
+                  <span className="text-xs font-bold tracking-wider uppercase text-amber-500">
                     Super Admin
                   </span>
                 </div>
@@ -300,7 +300,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                   <span className="font-bold tracking-tight text-xs truncate text-slate-900 dark:text-white">
                     {storeConfig.name}
                   </span>
-                  <span className="text-[9px] font-bold tracking-wider uppercase text-amber-500">
+                  <span className="text-xs font-bold tracking-wider uppercase text-amber-500">
                     👑 Super Admin
                   </span>
                 </div>
@@ -326,7 +326,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                   <span className="font-bold tracking-tight text-xs truncate text-slate-900 dark:text-white">
                     {storeConfig.name}
                   </span>
-                  <span className="text-[9px] font-semibold tracking-wider uppercase text-orange-600 dark:text-orange-400">
+                  <span className="text-xs font-semibold tracking-wider uppercase text-orange-600 dark:text-orange-400">
                     Panel de Control
                   </span>
                 </div>
@@ -356,7 +356,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
           {/* Navigation Links */}
           <nav className="flex-1 min-h-0 space-y-1 p-2 overflow-y-auto overscroll-contain" aria-label="Menú Lateral">
-            <div className={`px-2 pb-1 text-[9px] font-bold uppercase tracking-wider text-slate-400 ${isSidebarCollapsed ? "lg:hidden" : ""}`}>
+            <div className={`px-2 pb-1 text-xs font-bold uppercase tracking-wider text-slate-400 ${isSidebarCollapsed ? "lg:hidden" : ""}`}>
               {isSuperGlobalMode ? "Módulos SaaS Global" : "Módulos del Restaurante"}
             </div>
 
@@ -401,9 +401,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
                   {item.badge !== undefined && (
                     <span
-                      className={`ml-1.5 shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                      className={`ml-1.5 shrink-0 rounded-full px-1.5 py-0.5 text-xs font-bold ${
                         isSidebarCollapsed
-                          ? "lg:absolute lg:-top-1 lg:-right-1 lg:flex lg:h-4 lg:min-w-4 lg:items-center lg:justify-center lg:bg-rose-500 lg:px-1 lg:text-[9px] lg:text-white lg:shadow-xs"
+                          ? "lg:absolute lg:-top-1 lg:-right-1 lg:flex lg:h-4 lg:min-w-4 lg:items-center lg:justify-center lg:bg-rose-500 lg:px-1 lg:text-xs lg:text-white lg:shadow-xs"
                           : ""
                       } ${
                         isActive

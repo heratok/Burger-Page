@@ -87,18 +87,18 @@ export const CustomizerPresetsSection: React.FC<CustomizerPresetsSectionProps> =
                       {tpl.name}
                     </span>
                     {isMatching && (
-                      <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[9px] font-bold text-emerald-600 dark:text-emerald-400">
+                      <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
                         Activo
                       </span>
                     )}
                   </div>
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400 block truncate">
+                  <span className="text-xs text-slate-500 dark:text-slate-400 block truncate">
                     {tpl.tagline}
                   </span>
                 </div>
               </div>
 
-              <div className="flex items-center gap-1 text-[10px] font-semibold text-slate-400 shrink-0">
+              <div className="flex items-center gap-1 text-xs font-semibold text-slate-400 shrink-0">
                 <span className="uppercase tracking-wider font-mono">{tpl.fontFamily}</span>
               </div>
             </button>

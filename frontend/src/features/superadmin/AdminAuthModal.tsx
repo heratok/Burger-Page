@@ -132,7 +132,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
                 <ShoppingBag className="size-4" />
                 <span className="text-xs font-bold text-white">Pedidos en Vivo</span>
               </div>
-              <p className="text-[11px] text-slate-400">Flujo Kanban de cocina y recepción WhatsApp.</p>
+              <p className="text-xs text-slate-400">Flujo Kanban de cocina y recepción WhatsApp.</p>
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-3.5 backdrop-blur-md">
@@ -140,7 +140,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
                 <Boxes className="size-4" />
                 <span className="text-xs font-bold text-white">Stock & Insumos</span>
               </div>
-              <p className="text-[11px] text-slate-400">Control de materias primas y proveedores.</p>
+              <p className="text-xs text-slate-400">Control de materias primas y proveedores.</p>
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-3.5 backdrop-blur-md">
@@ -148,7 +148,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
                 <Users className="size-4" />
                 <span className="text-xs font-bold text-white">Clientes</span>
               </div>
-              <p className="text-[11px] text-slate-400">Base de clientes y fidelización directa.</p>
+              <p className="text-xs text-slate-400">Base de clientes y fidelización directa.</p>
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-3.5 backdrop-blur-md">
@@ -156,7 +156,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
                 <ShieldCheck className="size-4" />
                 <span className="text-xs font-bold text-white">Cifrado Seguro</span>
               </div>
-              <p className="text-[11px] text-slate-400">Acceso autenticado y aislado por tenant.</p>
+              <p className="text-xs text-slate-400">Acceso autenticado y aislado por tenant.</p>
             </div>
           </div>
         </div>
@@ -174,7 +174,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
                 </div>
               </div>
 
-              <div className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-0.5 text-[10px] font-bold text-indigo-300 mb-2">
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-0.5 text-xs font-bold text-indigo-300 mb-2">
                 <ShieldCheck className="size-3 text-indigo-400" />
                 <span>Portal Administrativo</span>
               </div>
@@ -257,7 +257,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
             </form>
 
             {/* Privacy & Security Guarantee */}
-            <div className="mt-6 flex items-center justify-center gap-2 rounded-xl border border-white/5 bg-slate-950/40 py-2.5 px-3 text-[11px] text-slate-400 text-center">
+            <div className="mt-6 flex items-center justify-center gap-2 rounded-xl border border-white/5 bg-slate-950/40 py-2.5 px-3 text-xs text-slate-400 text-center">
               <KeyRound className="size-3.5 text-indigo-400 shrink-0" />
               <span>Acceso protegido con cifrado y resolución automática de rol</span>
             </div>

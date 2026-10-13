@@ -325,7 +325,7 @@ export const ReportsManager: React.FC = () => {
             </div>
 
             {datePreset === "custom" && (
-              <span className="rounded-lg bg-amber-500/15 px-2 py-1 text-[11px] font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
+              <span className="rounded-lg bg-amber-500/15 px-2 py-1 text-xs font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
                 <Calendar className="size-3" />
                 Rango libre
               </span>
@@ -358,7 +358,7 @@ export const ReportsManager: React.FC = () => {
               {formatCurrency(closeout.totalSales)}
             </span>
           </div>
-          <div className="mt-1 flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+          <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
             <span className="font-semibold text-emerald-600 dark:text-emerald-400">
               {closeout.deliveredOrdersCount} entregados
             </span>
@@ -385,7 +385,7 @@ export const ReportsManager: React.FC = () => {
               {formatCurrency(closeout.cashTotal)}
             </span>
           </div>
-          <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+          <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
             <span className="font-medium">{closeout.cashOrdersCount} órdenes cobradas en efectivo</span>
           </div>
         </div>
@@ -409,7 +409,7 @@ export const ReportsManager: React.FC = () => {
               {formatCurrency(closeout.transferTotal)}
             </span>
           </div>
-          <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+          <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
             <span className="font-medium">{closeout.transferOrdersCount} órdenes por transferencia</span>
           </div>
         </div>
@@ -433,7 +433,7 @@ export const ReportsManager: React.FC = () => {
               {formatCurrency(closeout.avgTicket)}
             </span>
           </div>
-          <div className="mt-1 flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+          <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
             <Truck className="size-3 text-slate-400" />
             <span>Domicilios: {formatCurrency(closeout.deliveryFeesTotal)}</span>
           </div>
@@ -475,10 +475,10 @@ export const ReportsManager: React.FC = () => {
               <h3 className="font-bold text-slate-900 dark:text-white text-sm">
                 {storeConfig.name}
               </h3>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 {presetLabel}
               </p>
-              <p className="mt-1 text-[10px] text-slate-400 dark:text-slate-500">
+              <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
                 Generado: {new Date().toLocaleString("es-CO")}
               </p>
             </div>
@@ -529,7 +529,7 @@ export const ReportsManager: React.FC = () => {
 
             {/* Signatures for physical cashier closing */}
             <div className="mt-6 pt-4 border-t border-dashed border-slate-200 dark:border-slate-700 space-y-4">
-              <div className="flex justify-between gap-4 text-[10px] text-slate-400">
+              <div className="flex justify-between gap-4 text-xs text-slate-400">
                 <div className="w-1/2 border-t border-slate-300 pt-1 text-center dark:border-slate-700">
                   Firma Cajero
                 </div>
@@ -579,10 +579,10 @@ export const ReportsManager: React.FC = () => {
                       Historial de Ventas
                     </h3>
                   </div>
-                  <p className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                  <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
                     Detalle de órdenes, clientes, productos, fletes, medios de pago y observaciones.
                   </p>
-                  <div className="mt-2 text-[10px] font-bold text-indigo-600 dark:text-indigo-400">
+                  <div className="mt-2 text-xs font-bold text-indigo-600 dark:text-indigo-400">
                     {filteredOrders.length} pedidos en rango ({presetLabel})
                   </div>
                 </div>
@@ -609,10 +609,10 @@ export const ReportsManager: React.FC = () => {
                       Base de Clientes
                     </h3>
                   </div>
-                  <p className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                  <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
                     Directorio completo con celulares, direcciones, niveles VIP/Oro, gasto acumulado y notas.
                   </p>
-                  <div className="mt-2 text-[10px] font-bold text-purple-600 dark:text-purple-400">
+                  <div className="mt-2 text-xs font-bold text-purple-600 dark:text-purple-400">
                     {customers.length} contactos registrados
                   </div>
                 </div>
@@ -639,10 +639,10 @@ export const ReportsManager: React.FC = () => {
                       Auditoría de Inventario
                     </h3>
                   </div>
-                  <p className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                  <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
                     Stock actual, alertas de nivel mínimo, costos unitarios, valuación y proveedores.
                   </p>
-                  <div className="mt-2 text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                  <div className="mt-2 text-xs font-bold text-amber-600 dark:text-amber-400">
                     {inventory.length} insumos catalogados
                   </div>
                 </div>
@@ -669,10 +669,10 @@ export const ReportsManager: React.FC = () => {
                       Cuadre de Caja (Z)
                     </h3>
                   </div>
-                  <p className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                  <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
                     Totales financieros consolidados por medio de pago para libros contables.
                   </p>
-                  <div className="mt-2 text-[10px] font-bold text-blue-600 dark:text-blue-400">
+                  <div className="mt-2 text-xs font-bold text-blue-600 dark:text-blue-400">
                     Período: {presetLabel}
                   </div>
                 </div>
@@ -757,7 +757,7 @@ export const ReportsManager: React.FC = () => {
                         </td>
                         <td className="py-2.5 px-3">
                           <span
-                            className={`rounded-md px-2 py-0.5 text-[10px] font-bold ${
+                            className={`rounded-md px-2 py-0.5 text-xs font-bold ${
                               ord.metodo === "Efectivo"
                                 ? "bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400"
                                 : "bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400"

@@ -245,7 +245,7 @@ export const RestaurantsDirectory: React.FC = () => {
           {activeTab === "deleted" ? (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                <thead className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   <tr>
                     <th className="px-4 py-3.5">Restaurante & Slug Original</th>
                     <th className="px-4 py-3.5">Fecha de Eliminación</th>
@@ -282,7 +282,7 @@ export const RestaurantsDirectory: React.FC = () => {
                             <span className="font-bold text-slate-900 dark:text-white text-sm">
                               {dr.name}
                             </span>
-                            <div className="mt-0.5 font-mono text-[11px] text-slate-400">
+                            <div className="mt-0.5 font-mono text-xs text-slate-400">
                               /{dr.slug}
                             </div>
                           </div>
@@ -298,7 +298,7 @@ export const RestaurantsDirectory: React.FC = () => {
                               })
                             : "Fecha desconocida"}
                         </td>
-                        <td className="px-4 py-4 font-mono text-[11px] text-slate-400">
+                        <td className="px-4 py-4 font-mono text-xs text-slate-400">
                           {dr.id}
                         </td>
                         <td className="px-4 py-4 text-right">
@@ -322,7 +322,7 @@ export const RestaurantsDirectory: React.FC = () => {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                <thead className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   <tr>
                     <th className="px-4 py-3.5">Restaurante & Slug</th>
                     <th className="px-4 py-3.5">Estado</th>
@@ -365,12 +365,12 @@ export const RestaurantsDirectory: React.FC = () => {
                                   {r.config.name}
                                 </span>
                                 {isSelected && (
-                                  <span className="rounded-full bg-indigo-500/15 px-1.5 py-0.5 text-[9px] font-bold text-indigo-600 dark:text-indigo-300">
+                                  <span className="rounded-full bg-indigo-500/15 px-1.5 py-0.5 text-xs font-bold text-indigo-600 dark:text-indigo-300">
                                     Seleccionado
                                   </span>
                                 )}
                               </div>
-                              <div className="mt-0.5 flex items-center gap-1 font-mono text-[11px] text-indigo-600 dark:text-indigo-400">
+                              <div className="mt-0.5 flex items-center gap-1 font-mono text-xs text-indigo-600 dark:text-indigo-400">
                                 <span>/{r.slug}</span>
                               </div>
                             </div>
@@ -383,7 +383,7 @@ export const RestaurantsDirectory: React.FC = () => {
                             type="button"
                             onClick={() => updateRestaurant(r.id, { isActive: !r.isActive })}
                             title={r.isActive ? "Pausar restaurante temporalmente (conserva visibilidad en SaaS)" : "Reactivar restaurante"}
-                            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold transition-all cursor-pointer ${
+                            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold transition-all cursor-pointer ${
                               r.isActive
                                 ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/25"
                                 : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 hover:bg-slate-200"
@@ -403,7 +403,7 @@ export const RestaurantsDirectory: React.FC = () => {
                           <span className="font-semibold text-slate-700 dark:text-slate-200">
                             {catalogSize.products} productos
                           </span>
-                          <span className="text-[11px] text-slate-400 ml-1">
+                          <span className="text-xs text-slate-400 ml-1">
                             ({catalogSize.additions} adiciones)
                           </span>
                         </td>

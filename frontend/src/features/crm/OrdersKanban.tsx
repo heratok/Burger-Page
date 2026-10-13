@@ -358,7 +358,7 @@ export const OrdersKanban: React.FC = () => {
               >
                 <UtensilsCrossed className="size-3.5" />
                 <span>Comandas Activas</span>
-                <span className={`rounded-full px-2 py-0.5 text-[11px] font-black ${getActiveOrdersBadgeClass()}`}>
+                <span className={`rounded-full px-2 py-0.5 text-xs font-black ${getActiveOrdersBadgeClass()}`}>
                   {activeOrders.length}
                 </span>
               </button>
@@ -370,7 +370,7 @@ export const OrdersKanban: React.FC = () => {
               >
                 <Archive className="size-3.5" />
                 <span>Historial</span>
-                <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
                   {historyOrders.length}
                 </span>
               </button>
@@ -427,7 +427,7 @@ export const OrdersKanban: React.FC = () => {
                       >
                         {chip.icon}
                         <span>{chip.label}</span>
-                        <span className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${getFilterChipCountClass(isSelected)}`}>
+                        <span className={`rounded-full px-1.5 py-0.2 text-xs font-bold ${getFilterChipCountClass(isSelected)}`}>
                           {chip.count}
                         </span>
                       </button>
@@ -628,7 +628,7 @@ export const OrdersKanban: React.FC = () => {
                         />
                       ))}
                       {isTerminalCol && colOrders.length > maxVisible && (
-                        <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-800 p-2.5 text-center text-[11px] text-slate-500 dark:text-slate-400 bg-slate-50/50 dark:bg-slate-900/50">
+                        <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-800 p-2.5 text-center text-xs text-slate-500 dark:text-slate-400 bg-slate-50/50 dark:bg-slate-900/50">
                           Mostrando las {maxVisible} órdenes más recientes ({colOrders.length} en total). Para consultar el histórico completo, ve a <strong>Reportes</strong>.
                         </div>
                       )}

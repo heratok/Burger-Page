@@ -311,7 +311,7 @@ export const DashboardOverview: React.FC = () => {
               {chartDays.items.map((item, idx) => (
                 <div key={idx} className="group relative flex flex-1 flex-col items-center gap-2">
                   {/* Tooltip on hover */}
-                  <div className="pointer-events-none absolute -top-8 hidden rounded-md bg-slate-900 px-2 py-1 text-[11px] font-bold text-white shadow-md group-hover:block dark:bg-slate-800 border dark:border-slate-700">
+                  <div className="pointer-events-none absolute -top-8 hidden rounded-md bg-slate-900 px-2 py-1 text-xs font-bold text-white shadow-md group-hover:block dark:bg-slate-800 border dark:border-slate-700">
                     {formatCurrency(item.amount)}
                   </div>
                   {/* Bar */}
@@ -364,7 +364,7 @@ export const DashboardOverview: React.FC = () => {
                   <div key={idx} className="space-y-1.5">
                     <div className="flex items-center justify-between text-xs">
                       <div className="flex items-center gap-2 truncate">
-                        <span className="flex size-5 items-center justify-center rounded-full bg-slate-100 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                        <span className="flex size-5 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
                           {idx + 1}
                         </span>
                         <span className="font-semibold truncate text-slate-900 dark:text-slate-200">
@@ -459,7 +459,7 @@ export const DashboardOverview: React.FC = () => {
                     </td>
                     <td className="py-3 px-3">
                       <div className="font-semibold text-slate-900 dark:text-slate-100">{ord.customer.nombre}</div>
-                      <div className="text-[11px] text-slate-500 dark:text-slate-400">{ord.customer.barrio}</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">{ord.customer.barrio}</div>
                     </td>
                     <td className="py-3 px-3 max-w-[200px] truncate text-slate-700 dark:text-slate-300">
                       {ord.items.map((i) => `${i.cantidad}× ${i.name}`).join(", ")}
@@ -468,7 +468,7 @@ export const DashboardOverview: React.FC = () => {
                       {formatCurrency(ord.finalTotal)}
                     </td>
                     <td className="py-3 px-3">
-                      <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300 border dark:border-slate-700">
+                      <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300 border dark:border-slate-700">
                         {ord.metodo}
                       </span>
                     </td>
@@ -480,7 +480,7 @@ export const DashboardOverview: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => updateOrderStatus(ord.id, "cooking")}
-                          className="rounded-lg bg-orange-500/10 px-2.5 py-1 text-[11px] font-semibold text-orange-600 hover:bg-orange-500/20 dark:bg-orange-500/20 dark:text-orange-300"
+                          className="rounded-lg bg-orange-500/10 px-2.5 py-1 text-xs font-semibold text-orange-600 hover:bg-orange-500/20 dark:bg-orange-500/20 dark:text-orange-300"
                         >
                           Pasar a Cocina
                         </button>
@@ -489,7 +489,7 @@ export const DashboardOverview: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => updateOrderStatus(ord.id, "delivering")}
-                          className="rounded-lg bg-blue-500/10 px-2.5 py-1 text-[11px] font-semibold text-blue-600 hover:bg-blue-500/20 dark:bg-blue-500/20 dark:text-blue-300"
+                          className="rounded-lg bg-blue-500/10 px-2.5 py-1 text-xs font-semibold text-blue-600 hover:bg-blue-500/20 dark:bg-blue-500/20 dark:text-blue-300"
                         >
                           Enviar en Reparto
                         </button>
@@ -498,13 +498,13 @@ export const DashboardOverview: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => updateOrderStatus(ord.id, "delivered")}
-                          className="rounded-lg bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-600 hover:bg-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-300"
+                          className="rounded-lg bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-600 hover:bg-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-300"
                         >
                           Completar Entrega
                         </button>
                       )}
                       {ord.status === "delivered" && (
-                        <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Finalizado</span>
+                        <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Finalizado</span>
                       )}
                     </td>
                   </tr>

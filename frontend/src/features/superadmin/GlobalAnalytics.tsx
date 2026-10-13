@@ -185,7 +185,7 @@ export const GlobalAnalytics: React.FC = () => {
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className={`border-b text-[11px] font-bold uppercase tracking-wider ${isDark ? "border-slate-800 bg-slate-900/60 text-slate-400" : "border-slate-200 bg-slate-50/80 text-slate-500"}`}>
+            <thead className={`border-b text-xs font-bold uppercase tracking-wider ${isDark ? "border-slate-800 bg-slate-900/60 text-slate-400" : "border-slate-200 bg-slate-50/80 text-slate-500"}`}>
               <tr>
                 <th className="px-4 py-3">Restaurante</th>
                 <th className="px-4 py-3">Estado</th>
@@ -203,7 +203,7 @@ export const GlobalAnalytics: React.FC = () => {
                   <tr key={r.id} className={`transition-colors ${isDark ? "hover:bg-slate-800/40" : "hover:bg-slate-50/80"}`}>
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-3">
-                        <span className="flex size-6 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 font-bold text-[11px] text-slate-500">
+                        <span className="flex size-6 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 font-bold text-xs text-slate-500">
                           #{idx + 1}
                         </span>
                         {r.logoUrl ? (
@@ -219,13 +219,13 @@ export const GlobalAnalytics: React.FC = () => {
                         )}
                         <div>
                           <div className="font-bold text-slate-900 dark:text-white">{r.name}</div>
-                          <div className="text-[10px] text-slate-400 font-mono">/{r.slug}</div>
+                          <div className="text-xs text-slate-400 font-mono">/{r.slug}</div>
                         </div>
                       </div>
                     </td>
 
                     <td className="px-4 py-3.5">
-                      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold ${
                         r.isActive
                           ? "bg-emerald-500/10 text-emerald-500"
                           : "bg-amber-500/10 text-amber-500"

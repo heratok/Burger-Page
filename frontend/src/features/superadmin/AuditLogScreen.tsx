@@ -169,7 +169,7 @@ export const AuditLogScreen: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <span className="flex size-2 rounded-full bg-indigo-500 animate-pulse" />
-            <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+            <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
               Super Administrador · Seguridad & Trazabilidad
             </span>
           </div>
@@ -250,7 +250,7 @@ export const AuditLogScreen: React.FC = () => {
           <div className="space-y-1">
             <label
               htmlFor="filter-from-date"
-              className="text-[11px] font-bold text-slate-500 dark:text-slate-400"
+              className="text-xs font-bold text-slate-500 dark:text-slate-400"
             >
               Fecha desde
             </label>
@@ -268,7 +268,7 @@ export const AuditLogScreen: React.FC = () => {
           <div className="space-y-1">
             <label
               htmlFor="filter-to-date"
-              className="text-[11px] font-bold text-slate-500 dark:text-slate-400"
+              className="text-xs font-bold text-slate-500 dark:text-slate-400"
             >
               Fecha hasta
             </label>
@@ -342,7 +342,7 @@ export const AuditLogScreen: React.FC = () => {
           >
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                <thead className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   <tr>
                     <th className="px-4 py-3.5">Fecha y Hora</th>
                     <th className="px-4 py-3.5">Actor</th>
@@ -360,7 +360,7 @@ export const AuditLogScreen: React.FC = () => {
                     >
                       {/* Fecha */}
                       <td className="px-4 py-3 text-slate-600 dark:text-slate-300 whitespace-nowrap">
-                        <div className="flex items-center gap-1.5 font-mono text-[11px]">
+                        <div className="flex items-center gap-1.5 font-mono text-xs">
                           <Clock className="size-3 text-slate-400" />
                           <span>{dateFormatted}</span>
                         </div>
@@ -377,7 +377,7 @@ export const AuditLogScreen: React.FC = () => {
                       {/* Acción */}
                       <td className="px-4 py-3">
                         <span
-                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold border ${badgeClass}`}
+                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold border ${badgeClass}`}
                         >
                           {humanAction}
                         </span>
@@ -418,11 +418,11 @@ export const AuditLogScreen: React.FC = () => {
               >
                 <div className="flex items-center justify-between gap-2">
                   <span
-                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold border ${badgeClass}`}
+                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-bold border ${badgeClass}`}
                   >
                     {humanAction}
                   </span>
-                  <span className="font-mono text-[10px] text-slate-400 flex items-center gap-1">
+                  <span className="font-mono text-xs text-slate-400 flex items-center gap-1">
                     <Clock className="size-3" />
                     {dateFormatted}
                   </span>
@@ -433,7 +433,7 @@ export const AuditLogScreen: React.FC = () => {
                     <User className="size-3 text-indigo-500" />
                     <span>{item.actorUsername || item.actorUserId || "Sistema"}</span>
                   </div>
-                  <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400 text-[11px]">
+                  <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400 text-xs">
                     <Store className="size-3 text-slate-400" />
                     <span>{restName}</span>
                   </div>
@@ -445,7 +445,7 @@ export const AuditLogScreen: React.FC = () => {
                   </span>
                 </div>
 
-                <div className="text-[11px] text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/60 p-2 rounded-xl">
+                <div className="text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/60 p-2 rounded-xl">
                   {detailsText}
                 </div>
               </div>

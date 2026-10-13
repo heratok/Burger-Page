@@ -117,7 +117,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
               </span>
               <OrderStatusBadge status={order.status} />
             </div>
-            <span className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 block truncate">
+            <span className="text-xs text-slate-500 dark:text-slate-400 block truncate">
               Registrada el {new Date(order.createdAt).toLocaleString("es-CO")}
             </span>
           </div>
@@ -224,7 +224,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                 </span>
               </div>
               {item.adiciones && item.adiciones.length > 0 && (
-                <div className="text-[11px] text-slate-600 dark:text-slate-300 pl-3 border-l-2 border-slate-300 dark:border-slate-600 space-y-0.5">
+                <div className="text-xs text-slate-600 dark:text-slate-300 pl-3 border-l-2 border-slate-300 dark:border-slate-600 space-y-0.5">
                   {item.adiciones.map((a, i) => (
                     <div key={i}>
                       + {a.cantidad}× {a.name} ({formatCurrency(a.price * a.cantidad)})
@@ -233,7 +233,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                 </div>
               )}
               {item.observacion && (
-                <p className="text-[11px] text-amber-600 dark:text-amber-300 italic pt-0.5 break-words [overflow-wrap:anywhere]">
+                <p className="text-xs text-amber-600 dark:text-amber-300 italic pt-0.5 break-words [overflow-wrap:anywhere]">
                   Nota: {item.observacion}
                 </p>
               )}
@@ -261,7 +261,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
               {formatCurrency(order.finalTotal || 0)}
             </span>
           </div>
-          <div className="mt-2 rounded-lg bg-slate-100 dark:bg-slate-800 p-2.5 text-[11px] flex justify-between border dark:border-slate-700 text-slate-800 dark:text-slate-200">
+          <div className="mt-2 rounded-lg bg-slate-100 dark:bg-slate-800 p-2.5 text-xs flex justify-between border dark:border-slate-700 text-slate-800 dark:text-slate-200">
             <span>Método: <strong>{order.metodo}</strong></span>
             {order.pagoCon && (
               <span>
@@ -280,11 +280,11 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                   Soporte de Transferencia
                 </span>
                 {order.receiptUrl ? (
-                  <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                  <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
                     ✓ Comprobante cargado
                   </span>
                 ) : (
-                  <span className="inline-flex items-center rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                  <span className="inline-flex items-center rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-bold text-amber-600 dark:text-amber-400">
                     ! Sin soporte adjunto
                   </span>
                 )}
@@ -350,7 +350,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                       className="hidden"
                     />
                   </label>
-                  <p className="mt-1 text-[10px] text-slate-400 text-center">
+                  <p className="mt-1 text-xs text-slate-400 text-center">
                     Carga el comprobante post-venta para el registro contable
                   </p>
                 </div>

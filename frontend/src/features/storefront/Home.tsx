@@ -480,7 +480,7 @@ export default function Home() {
                           </span>
                         </div>
                         <div className="flex items-center gap-1.5 text-xs text-text-muted">
-                          <span className="hidden sm:inline font-medium text-[11px] opacity-75">
+                          <span className="hidden sm:inline font-medium text-xs opacity-75">
                             {isCollapsed ? "Mostrar" : "Minimizar"}
                           </span>
                           <span

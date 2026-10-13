@@ -355,11 +355,11 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
                       setSlugError(null)
                     }}
                     placeholder="burger-craft"
-                    className={`${inputClass} pl-6 font-mono text-[11px]`}
+                    className={`${inputClass} pl-6 font-mono text-xs`}
                   />
                 </div>
                 {slugError && (
-                  <p className="text-[11px] font-semibold text-rose-500 mt-1">{slugError}</p>
+                  <p className="text-xs font-semibold text-rose-500 mt-1">{slugError}</p>
                 )}
 
                 {/* Slug change warning */}
@@ -506,7 +506,7 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
                                 {admin.username}
                               </span>
                               {isOwnAccount && (
-                                <span className="rounded-full bg-indigo-500/15 px-1.5 py-0.2 text-[9px] font-bold text-indigo-600 dark:text-indigo-300">
+                                <span className="rounded-full bg-indigo-500/15 px-1.5 py-0.2 text-xs font-bold text-indigo-600 dark:text-indigo-300">
                                   Tú
                                 </span>
                               )}
@@ -517,7 +517,7 @@ export const EditRestaurantModal: React.FC<EditRestaurantModalProps> = ({
                         <div className="flex items-center gap-2 shrink-0">
                           {/* Active badge */}
                           <span
-                            className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                            className={`rounded-full px-2 py-0.5 text-xs font-bold ${
                               admin.isActive !== false
                                 ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
                                 : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"

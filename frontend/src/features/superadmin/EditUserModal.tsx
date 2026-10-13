@@ -187,7 +187,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
               ]}
             />
             {isOwnAccount && role === "super_admin" && (
-              <p className="text-[11px] font-semibold text-amber-500 flex items-center gap-1 mt-1">
+              <p className="text-xs font-semibold text-amber-500 flex items-center gap-1 mt-1">
                 <AlertTriangle className="size-3 shrink-0" />
                 <span>No podés modificar tu propio rol ni quitarte permisos de Super Administrador.</span>
               </p>
@@ -214,7 +214,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
               ]}
             />
             {role === "super_admin" ? (
-              <p className="text-[11px] text-slate-400 mt-1">
+              <p className="text-xs text-slate-400 mt-1">
                 Los Super Administradores tienen acceso global y no se asocian a un local específico.
               </p>
             ) : null}
@@ -226,7 +226,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
               <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
                 Estado de la cuenta
               </span>
-              <span className="text-[11px] text-slate-400">
+              <span className="text-xs text-slate-400">
                 {isActive ? "El usuario puede iniciar sesión y gestionar sus recursos." : "El acceso del usuario está bloqueado."}
               </span>
             </div>

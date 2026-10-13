@@ -294,7 +294,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
 
             {/* Username credential */}
             <div className={`p-3 rounded-xl border ${isDark ? "bg-slate-900/60 border-slate-800" : "bg-slate-50 border-slate-200"}`}>
-              <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">
+              <div className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">
                 Usuario administrador
               </div>
               <div className="flex items-center justify-between gap-2">
@@ -305,7 +305,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
                   type="button"
                   onClick={() => handleCopy(createdCredentials.username, "user")}
                   aria-label={copiedUser ? "Usuario copiado" : "Copiar usuario administrador"}
-                  className="rounded-lg border px-2 py-1 text-[11px] font-semibold flex items-center gap-1 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                  className="rounded-lg border px-2 py-1 text-xs font-semibold flex items-center gap-1 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                 >
                   {copiedUser ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3 text-slate-400" />}
                   <span>{copiedUser ? "Copiado" : "Copiar"}</span>
@@ -316,7 +316,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
             {/* Password credential */}
             {createdCredentials.password && (
               <div className={`p-3 rounded-xl border ${isDark ? "bg-slate-900/60 border-slate-800" : "bg-slate-50 border-slate-200"}`}>
-                <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">
+                <div className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">
                   Contraseña provisional
                 </div>
                 <div className="flex items-center justify-between gap-2">
@@ -327,7 +327,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
                     type="button"
                     onClick={() => handleCopy(createdCredentials.password!, "pass")}
                     aria-label={copiedPass ? "Clave copiada" : "Copiar clave provisional"}
-                    className="rounded-lg border px-2 py-1 text-[11px] font-semibold flex items-center gap-1 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                    className="rounded-lg border px-2 py-1 text-xs font-semibold flex items-center gap-1 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                   >
                     {copiedPass ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3 text-slate-400" />}
                     <span>{copiedPass ? "Copiado" : "Copiar"}</span>
@@ -574,11 +574,11 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
 
           {/* Helper note explaining currency restriction or blank support */}
           {supportedCurrencies ? (
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 -mt-2">
+            <p className="text-xs text-slate-500 dark:text-slate-400 -mt-2">
               Los platos de ejemplo de esta plantilla tienen precios calculados para las monedas admitidas ({supportedCurrencies.join(", ")}). Si necesitás otra moneda, elegí la plantilla «En Blanco».
             </p>
           ) : (
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 -mt-2">
+            <p className="text-xs text-slate-500 dark:text-slate-400 -mt-2">
               La plantilla «En Blanco» admite cualquier moneda disponible.
             </p>
           )}
@@ -637,7 +637,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
                 Plantilla Inicial de Menú
               </label>
               {isLoadingTemplates && (
-                <div className="flex items-center gap-1 text-[11px] text-slate-400">
+                <div className="flex items-center gap-1 text-xs text-slate-400">
                   <Loader2 className="size-3 animate-spin" />
                   <span>Cargando plantillas...</span>
                 </div>
@@ -646,7 +646,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
                 <button
                   type="button"
                   onClick={fetchTemplates}
-                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-500 hover:text-indigo-400 underline cursor-pointer"
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-500 hover:text-indigo-400 underline cursor-pointer"
                 >
                   <RefreshCw className="size-3" />
                   <span>Reintentar</span>
@@ -690,13 +690,13 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
                       }`}
                     >
                       <div className="text-xs font-bold">{tpl.name}</div>
-                      <div className="mt-0.5 text-[10px] text-slate-400">{countsText}</div>
+                      <div className="mt-0.5 text-xs text-slate-400">{countsText}</div>
                     </button>
                   )
                 })}
               </div>
             )}
-            <p className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+            <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
               💡 Los platos de muestra se crean automáticamente y podrás editarlos o eliminarlos en cualquier momento desde el menú.
             </p>
           </div>
@@ -718,7 +718,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
                     className="size-3.5 rounded-full shadow-xs"
                     style={{ backgroundColor: color.primary }}
                   />
-                  <span className="text-[11px] font-medium">{color.name}</span>
+                  <span className="text-xs font-medium">{color.name}</span>
                   {primaryColor === color.primary && (
                     <Check className="size-3 text-indigo-500" />
                   )}

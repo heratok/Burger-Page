@@ -95,14 +95,14 @@ const ProductCard = memo(function ProductCard({ product, onSelectProduct, closed
                     backgroundColor: storeConfig.primaryColor,
                     color: primaryForeground,
                   }}
-                  className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[9px] font-bold shadow-xs"
+                  className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs font-bold shadow-xs"
                 >
                   <Flame className="size-2.5" />
                   Popular
                 </span>
               )}
               {product.isNew && (
-                <span className="flex items-center gap-0.5 rounded bg-emerald-500 px-1.5 py-0.5 text-[9px] font-bold text-white shadow-xs">
+                <span className="flex items-center gap-0.5 rounded bg-emerald-500 px-1.5 py-0.5 text-xs font-bold text-white shadow-xs">
                   <Sparkles className="size-2.5" />
                   Nuevo
                 </span>
@@ -112,7 +112,7 @@ const ProductCard = memo(function ProductCard({ product, onSelectProduct, closed
 
           {!product.inStock && (
             <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/65 backdrop-blur-2xs">
-              <span className="rounded bg-rose-600 px-2 py-0.5 text-[10px] font-bold text-white uppercase tracking-wider">
+              <span className="rounded bg-rose-600 px-2 py-0.5 text-xs font-bold text-white uppercase tracking-wider">
                 Agotado
               </span>
             </div>

@@ -74,7 +74,7 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
 
         {/* Temporary Password Box */}
         <div className="mt-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 p-4">
-          <span className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+          <span className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
             Contraseña temporal
           </span>
           <div className="flex items-center justify-between gap-3">

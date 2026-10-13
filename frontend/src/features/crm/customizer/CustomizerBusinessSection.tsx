@@ -135,7 +135,7 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
             <h3 className="font-bold text-sm text-slate-900 dark:text-white">
               Información Comercial, Pedidos & Domicilios
             </h3>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               Ajusta los canales de venta, reglas de compra, horarios y disponibilidad en vivo.
             </p>
           </div>
@@ -144,7 +144,7 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
         <button
           type="button"
           onClick={toggleAll}
-          className="shrink-0 text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors cursor-pointer px-2 py-1 rounded-lg hover:bg-indigo-50 dark:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-500"
+          className="shrink-0 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors cursor-pointer px-2 py-1 rounded-lg hover:bg-indigo-50 dark:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-500"
         >
           {allOpen ? "Colapsar todo" : "Expandir todo"}
         </button>
@@ -171,13 +171,13 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
               <span className="font-bold text-xs text-slate-900 dark:text-white block">
                 Canales & Reglas de Compra
               </span>
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate block">
+              <span className="text-xs text-slate-500 dark:text-slate-400 truncate block">
                 WhatsApp, costos de envío, mínimos y tiempo estimado
               </span>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0 ml-2">
-            <span className="hidden sm:inline-block rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:text-slate-300 font-mono">
+            <span className="hidden sm:inline-block rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-xs font-medium text-slate-600 dark:text-slate-300 font-mono">
               {draft.whatsappNumber ? `+${draft.whatsappNumber}` : "Sin WhatsApp"}
             </span>
             <ChevronDown
@@ -200,11 +200,11 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
                   Número de WhatsApp para Pedidos
                 </label>
                 {draft.whatsappNumber ? (
-                  <span className="font-mono text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                  <span className="font-mono text-xs font-semibold text-emerald-600 dark:text-emerald-400">
                     +{draft.whatsappNumber}
                   </span>
                 ) : (
-                  <span className="text-[11px] text-slate-400 dark:text-slate-500">
+                  <span className="text-xs text-slate-400 dark:text-slate-500">
                     Sin WhatsApp configurado
                   </span>
                 )}
@@ -233,7 +233,7 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
                   />
                 </div>
               </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 Los pedidos finalizados por los clientes se enviarán formateados a este número.
                 {draft.whatsappNumber && (
                   <span className="ml-1 text-slate-700 dark:text-slate-300 font-medium">
@@ -318,7 +318,7 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
                         key={preset}
                         type="button"
                         onClick={() => setDraft((prev) => ({ ...prev, estimatedDeliveryTime: preset }))}
-                        className={`px-2 py-1 rounded-lg text-[11px] font-medium transition-colors cursor-pointer border ${
+                        className={`px-2 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer border ${
                           isSelected
                             ? "bg-indigo-500/15 border-indigo-500/40 text-indigo-700 dark:text-indigo-300 font-semibold"
                             : "bg-slate-100 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200/80 dark:hover:bg-slate-700"
@@ -400,13 +400,13 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
               <span className="font-bold text-xs text-slate-900 dark:text-white block">
                 Horario de Atención & Zona
               </span>
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate block">
+              <span className="text-xs text-slate-500 dark:text-slate-400 truncate block">
                 Configuración de apertura semanal y huso horario
               </span>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0 ml-2">
-            <span className="rounded-md bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-500/20 px-2 py-0.5 text-[10px] font-semibold">
+            <span className="rounded-md bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-500/20 px-2 py-0.5 text-xs font-semibold">
               {openDaysCount}/7 abiertos
             </span>
             <ChevronDown
@@ -424,7 +424,7 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
           >
             {/* Weekly Schedule Editor */}
             <div className="space-y-2">
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Los clientes podrán pedir en el storefront únicamente durante estos rangos horarios.
               </p>
               <WeeklyScheduleEditor
@@ -444,7 +444,7 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
                   Zona horaria
                 </label>
               </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 El horario de apertura y cierre se calcula automáticamente con base en la hora de esta región.
               </p>
               <ModernSelect
@@ -481,18 +481,18 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
               <span className="font-bold text-xs text-slate-900 dark:text-white block">
                 Disponibilidad & Local
               </span>
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate block">
+              <span className="text-xs text-slate-500 dark:text-slate-400 truncate block">
                 Pausa de pedidos y dirección física
               </span>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0 ml-2">
             {draft.ordersPaused ? (
-              <span className="rounded-full bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300">
+              <span className="rounded-full bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-xs font-bold text-amber-700 dark:text-amber-300">
                 Pausado
               </span>
             ) : (
-              <span className="rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+              <span className="rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
                 Operando
               </span>
             )}
@@ -525,16 +525,16 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
                     />
                     <span className="font-bold text-sm text-slate-900 dark:text-white">Pausar Pedidos</span>
                     {draft.ordersPaused ? (
-                      <span className="rounded-full bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300">
+                      <span className="rounded-full bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-xs font-bold text-amber-700 dark:text-amber-300">
                         Pausado
                       </span>
                     ) : (
-                      <span className="rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                      <span className="rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
                         Normal
                       </span>
                     )}
                   </div>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
                     Bloquea los pedidos de clientes ahora mismo, sin importar el horario. Tú puedes seguir registrando ventas.
                   </p>
                 </div>

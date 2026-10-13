@@ -387,7 +387,7 @@ export const RolesManager: React.FC = () => {
                           {role.name}
                         </h3>
                         {role.isSystem && (
-                          <span className="rounded-md bg-indigo-500/10 px-2 py-0.5 text-[10px] font-bold text-indigo-500">
+                          <span className="rounded-md bg-indigo-500/10 px-2 py-0.5 text-xs font-bold text-indigo-500">
                             Sistema
                           </span>
                         )}
@@ -466,7 +466,7 @@ export const RolesManager: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-[10px] text-slate-400">
+                <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-400">
                   Actualizado: {new Date(role.updatedAt).toLocaleDateString("es-CO")}
                 </div>
               </div>
@@ -560,7 +560,7 @@ export const RolesManager: React.FC = () => {
                       key={preset.name}
                       type="button"
                       onClick={() => handleApplyPreset(preset.permissions)}
-                      className={`flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-[11px] font-semibold transition-all ${
+                      className={`flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all ${
                         isDark
                           ? "border-slate-700 bg-slate-800/80 text-slate-200 hover:border-indigo-500/50 hover:bg-slate-700"
                           : "border-slate-200 bg-slate-100 text-slate-700 hover:border-indigo-300 hover:bg-slate-200"
@@ -573,7 +573,7 @@ export const RolesManager: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setSelectedPermissions(new Set())}
-                    className={`rounded-xl border px-3 py-1.5 text-[11px] font-semibold transition-all text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 ${
+                    className={`rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 ${
                       isDark ? "border-slate-800" : "border-slate-200"
                     }`}
                   >
@@ -588,7 +588,7 @@ export const RolesManager: React.FC = () => {
                   <span className="font-bold text-slate-800 dark:text-slate-200">
                     Permisos de Acceso ({selectedPermissions.size} de {PERMISSIONS.length})
                   </span>
-                  <div className="flex items-center gap-2 text-[11px]">
+                  <div className="flex items-center gap-2 text-xs">
                     <button
                       type="button"
                       onClick={() => setSelectedPermissions(new Set(PERMISSIONS))}
@@ -631,7 +631,7 @@ export const RolesManager: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => handleToggleCategory(group.permissions)}
-                            className="text-[11px] font-semibold text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400"
+                            className="text-xs font-semibold text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400"
                           >
                             {allInGroupSelected ? "Quitar grupo" : "Seleccionar grupo"}
                           </button>
@@ -665,7 +665,7 @@ export const RolesManager: React.FC = () => {
                                   <div className="font-semibold text-slate-900 dark:text-white">
                                     {perm.label}
                                   </div>
-                                  <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                                  <div className="text-xs text-slate-500 dark:text-slate-400">
                                     {perm.description}
                                   </div>
                                 </div>

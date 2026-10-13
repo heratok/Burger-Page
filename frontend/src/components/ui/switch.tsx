@@ -52,7 +52,7 @@ export const Switch: React.FC<SwitchProps> = ({
             </div>
           )}
           {description && (
-            <div className="text-[11px] text-slate-500 dark:text-slate-400">
+            <div className="text-xs text-slate-500 dark:text-slate-400">
               {description}
             </div>
           )}

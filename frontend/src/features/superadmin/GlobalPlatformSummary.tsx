@@ -63,7 +63,7 @@ export const GlobalPlatformSummary: React.FC<GlobalPlatformSummaryProps> = ({ on
         <div>
           <div className="flex items-center gap-2">
             <span className="flex size-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
               Super Administrador &middot; SaaS Hub
             </span>
           </div>
@@ -114,7 +114,7 @@ export const GlobalPlatformSummary: React.FC<GlobalPlatformSummaryProps> = ({ on
             <div className="mt-2 text-2xl font-black tracking-tight text-slate-900 dark:text-white">
               {c.value}
             </div>
-            <div className="mt-2.5 flex items-center justify-between border-t border-slate-100 dark:border-slate-800/80 pt-2 text-[11px]">
+            <div className="mt-2.5 flex items-center justify-between border-t border-slate-100 dark:border-slate-800/80 pt-2 text-xs">
               <span className="text-slate-400 truncate max-w-[150px]">{c.sub}</span>
               <span className={`rounded-full px-2 py-0.5 font-bold ${c.badgeColor}`}>
                 {c.badge}

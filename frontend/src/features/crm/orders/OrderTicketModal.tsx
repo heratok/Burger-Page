@@ -230,7 +230,7 @@ export const OrderTicketModal: React.FC<OrderTicketModalProps> = ({
                 </div>
                 <div className="min-w-0">
                   <div className="text-xs font-bold leading-tight">Ticket Completo</div>
-                  <div className="hidden md:block text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate">
+                  <div className="hidden md:block text-xs text-slate-500 dark:text-slate-400 font-medium truncate">
                     Despacho & Facturación
                   </div>
                 </div>
@@ -258,7 +258,7 @@ export const OrderTicketModal: React.FC<OrderTicketModalProps> = ({
                 </div>
                 <div className="min-w-0">
                   <div className="text-xs font-bold leading-tight">Comanda Cocina</div>
-                  <div className="hidden md:block text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate">
+                  <div className="hidden md:block text-xs text-slate-500 dark:text-slate-400 font-medium truncate">
                     KOT para preparación
                   </div>
                 </div>
@@ -271,12 +271,12 @@ export const OrderTicketModal: React.FC<OrderTicketModalProps> = ({
                 <span className="font-black text-sm text-slate-900 dark:text-white">
                   Orden #{order.orderNumber}
                 </span>
-                <span className="rounded-md px-2 py-0.5 text-[10px] font-black uppercase tracking-wide bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200/50 dark:border-indigo-800/50 truncate max-w-[150px]">
+                <span className="rounded-md px-2 py-0.5 text-xs font-black uppercase tracking-wide bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200/50 dark:border-indigo-800/50 truncate max-w-[150px]">
                   {service.isTable ? `Mesa: ${getOrderTableLabel(order) || "Salón"}` : service.label}
                 </span>
               </div>
 
-              <div className="space-y-1.5 text-slate-600 dark:text-slate-300 text-[11px]">
+              <div className="space-y-1.5 text-slate-600 dark:text-slate-300 text-xs">
                 <div className="flex justify-between">
                   <span className="text-slate-500 dark:text-slate-400 font-medium">Registro:</span>
                   <span className="font-semibold text-slate-700 dark:text-slate-300">
@@ -295,7 +295,7 @@ export const OrderTicketModal: React.FC<OrderTicketModalProps> = ({
                     {formatCurrency(order.finalTotal || order.total || 0)}
                   </span>
                 </div>
-                <div className="flex justify-between items-center text-[10px]">
+                <div className="flex justify-between items-center text-xs">
                   <span className="text-slate-500 dark:text-slate-400">Medio:</span>
                   <span className="font-bold px-1.5 py-0.5 rounded bg-slate-200/70 dark:bg-slate-700/70 text-slate-800 dark:text-slate-200">
                     {order.metodo === "Efectivo" ? "Cobro directo" : order.metodo}
@@ -306,7 +306,7 @@ export const OrderTicketModal: React.FC<OrderTicketModalProps> = ({
 
             {/* Desktop Action Controls (Tablet & Desktop md+) */}
             <div className="hidden md:flex flex-col gap-2.5 mt-auto pt-2 border-t border-slate-100 dark:border-slate-800">
-              <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+              <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                 <span className="size-2 rounded-full bg-emerald-500 inline-block animate-pulse" />
                 <span>80mm térmica lista</span>
               </div>
@@ -335,7 +335,7 @@ export const OrderTicketModal: React.FC<OrderTicketModalProps> = ({
             {/* Stylized Physical Thermal Ticket (80mm width) */}
             <div
               id="printable-ticket"
-              className="w-full max-w-[310px] bg-white text-slate-950 font-mono text-[11px] leading-relaxed p-4 shadow-md border border-dashed border-slate-300 rounded-xs select-text mx-auto"
+              className="w-full max-w-[310px] bg-white text-slate-950 font-mono text-xs leading-relaxed p-4 shadow-md border border-dashed border-slate-300 rounded-xs select-text mx-auto"
             >
             {mode === "full" ? (
               /* ================= MODE: FULL TICKET / DESPACHO ================= */
@@ -343,7 +343,7 @@ export const OrderTicketModal: React.FC<OrderTicketModalProps> = ({
                 {/* Header */}
                 <div className="text-center space-y-0.5">
                   <div className="text-sm font-black uppercase tracking-wider">{restaurantName}</div>
-                  <div className="text-[10px] font-bold tracking-tight text-slate-600">
+                  <div className="text-xs font-bold tracking-tight text-slate-600">
                     TICKET DE VENTA / DESPACHO
                   </div>
                   <div className="text-xs font-black pt-0.5">ORDEN #{order.orderNumber}</div>
@@ -352,12 +352,12 @@ export const OrderTicketModal: React.FC<OrderTicketModalProps> = ({
                 <div className="border-b border-dashed border-slate-400 my-1.5" />
 
                 {/* Metadata */}
-                <div className="text-[10px] space-y-0.5 text-slate-800">
+                <div className="text-xs space-y-0.5 text-slate-800">
                   <div className="flex justify-between">
                     <span>FECHA: {orderDate.date}</span>
                     <span>HORA: {orderDate.time}</span>
                   </div>
-                  <div className="font-bold text-[11px] text-slate-950 pt-0.5">
+                  <div className="font-bold text-xs text-slate-950 pt-0.5">
                     MODO: {service.label}
                   </div>
                 </div>
@@ -365,7 +365,7 @@ export const OrderTicketModal: React.FC<OrderTicketModalProps> = ({
                 <div className="border-b border-dashed border-slate-400 my-1.5" />
 
                 {/* Customer Information */}
-                <div className="text-[10px] space-y-0.5 text-slate-900">
+                <div className="text-xs space-y-0.5 text-slate-900">
                   <div>
                     <span className="font-bold">CLIENTE: </span>
                     {order.customer.nombre}
@@ -385,7 +385,7 @@ export const OrderTicketModal: React.FC<OrderTicketModalProps> = ({
                     </div>
                   )}
                   {order.comentario && (
-                    <div className="mt-1 p-1 bg-slate-50 border border-slate-200 text-[10px] italic">
+                    <div className="mt-1 p-1 bg-slate-50 border border-slate-200 text-xs italic">
                       Nota cliente: &quot;{order.comentario}&quot;
                     </div>
                   )}
@@ -394,7 +394,7 @@ export const OrderTicketModal: React.FC<OrderTicketModalProps> = ({
                 <div className="border-b border-dashed border-slate-400 my-1.5" />
 
                 {/* Items Breakdown */}
-                <div className="text-[10px] font-bold flex justify-between uppercase pb-1 border-b border-slate-300">
+                <div className="text-xs font-bold flex justify-between uppercase pb-1 border-b border-slate-300">
                   <span>CANT &middot; DESCRIPCIÓN</span>
                   <span>TOTAL</span>
                 </div>
@@ -424,7 +424,7 @@ export const OrderTicketModal: React.FC<OrderTicketModalProps> = ({
                           </span>
                         </div>
                         {item.adiciones && item.adiciones.length > 0 && (
-                          <div className="pl-3 text-[10px] text-slate-600 space-y-0.5">
+                          <div className="pl-3 text-xs text-slate-600 space-y-0.5">
                             {item.adiciones.map((a: any, aIdx: number) => (
                               <div key={aIdx}>
                                 + {a.cantidad || 1}x {a.name} ({formatCurrency(a.price * (a.cantidad || 1))})
@@ -433,7 +433,7 @@ export const OrderTicketModal: React.FC<OrderTicketModalProps> = ({
                           </div>
                         )}
                         {item.observacion && (
-                          <div className="pl-3 text-[10px] text-slate-800 italic">
+                          <div className="pl-3 text-xs text-slate-800 italic">
                             * Obs: {item.observacion}
                           </div>
                         )}
@@ -465,7 +465,7 @@ export const OrderTicketModal: React.FC<OrderTicketModalProps> = ({
                 <div className="border-b border-dashed border-slate-400 my-2" />
 
                 {/* Payment Info */}
-                <div className="text-[10px] space-y-0.5 text-slate-800">
+                <div className="text-xs space-y-0.5 text-slate-800">
                   <div>
                     <span className="font-bold">MÉTODO DE PAGO: </span>
                     {order.metodo}
@@ -490,10 +490,10 @@ export const OrderTicketModal: React.FC<OrderTicketModalProps> = ({
                 <div className="border-b border-dashed border-slate-400 my-2" />
 
                 {/* Footer */}
-                <div className="text-center space-y-0.5 pt-1 text-slate-500 text-[10px]">
+                <div className="text-center space-y-0.5 pt-1 text-slate-500 text-xs">
                   <div className="font-bold text-slate-800">¡GRACIAS POR SU COMPRA!</div>
                   <div>Burger-Page CRM &middot; Facturación</div>
-                  <div className="text-[9px] pt-1 text-slate-400 tracking-wider">
+                  <div className="text-xs pt-1 text-slate-400 tracking-wider">
                     - - - - - - CORTE DE TICKET - - - - - -
                   </div>
                 </div>
@@ -514,13 +514,13 @@ export const OrderTicketModal: React.FC<OrderTicketModalProps> = ({
                   </div>
                 </div>
 
-                <div className="flex justify-between text-[11px] font-bold border-y border-black py-1">
+                <div className="flex justify-between text-xs font-bold border-y border-black py-1">
                   <span>HORA: {orderDate.time}</span>
                   <span>FECHA: {orderDate.date}</span>
                 </div>
 
                 {/* Customer name / quick reference */}
-                <div className="text-[11px] font-bold text-slate-900">
+                <div className="text-xs font-bold text-slate-900">
                   <span>REF: </span>
                   {order.customer.nombre}
                 </div>
@@ -528,7 +528,7 @@ export const OrderTicketModal: React.FC<OrderTicketModalProps> = ({
                 <div className="border-b-2 border-black my-1.5" />
 
                 {/* Kitchen Items breakdown */}
-                <div className="text-[11px] font-black uppercase pb-1 border-b border-dashed border-slate-400 flex justify-between">
+                <div className="text-xs font-black uppercase pb-1 border-b border-dashed border-slate-400 flex justify-between">
                   <span>CANT &middot; DETALLE</span>
                   <span>COCINA</span>
                 </div>
@@ -556,7 +556,7 @@ export const OrderTicketModal: React.FC<OrderTicketModalProps> = ({
                           </div>
                         )}
                         {item.observacion && (
-                          <div className="ml-2 mt-1 p-1 bg-amber-100 border-l-3 border-amber-600 text-amber-950 text-[11px] font-black uppercase">
+                          <div className="ml-2 mt-1 p-1 bg-amber-100 border-l-3 border-amber-600 text-amber-950 text-xs font-black uppercase">
                             ** OBS: {item.observacion} **
                           </div>
                         )}
@@ -568,7 +568,7 @@ export const OrderTicketModal: React.FC<OrderTicketModalProps> = ({
                 {/* General Note */}
                 {order.comentario && (
                   <div className="mt-2 p-2 border-2 border-black bg-slate-100 text-xs font-black uppercase space-y-0.5">
-                    <div className="text-[10px] text-slate-600 font-bold">NOTA GENERAL DE LA ORDEN:</div>
+                    <div className="text-xs text-slate-600 font-bold">NOTA GENERAL DE LA ORDEN:</div>
                     <div className="text-black">&quot;{order.comentario}&quot;</div>
                   </div>
                 )}
@@ -584,7 +584,7 @@ export const OrderTicketModal: React.FC<OrderTicketModalProps> = ({
                   <div className="text-center font-black text-xs uppercase tracking-widest pt-2">
                     --- ENVIADO A COCINA ---
                   </div>
-                  <div className="text-center text-[9px] pt-1 text-slate-400 tracking-wider">
+                  <div className="text-center text-xs pt-1 text-slate-400 tracking-wider">
                     - - - - - - CORTE DE TICKET - - - - - -
                   </div>
                 </div>
@@ -596,7 +596,7 @@ export const OrderTicketModal: React.FC<OrderTicketModalProps> = ({
 
         {/* Mobile Sticky Bottom Bar (<md) */}
         <div className="md:hidden mt-3 pt-3 border-t border-slate-200 dark:border-slate-800 flex flex-col gap-2 shrink-0">
-          <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between px-1">
+          <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center justify-between px-1">
             <div className="flex items-center gap-1.5">
               <span className="size-2 rounded-full bg-emerald-500 inline-block animate-pulse" />
               <span>80mm térmica lista</span>

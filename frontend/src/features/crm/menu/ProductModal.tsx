@@ -238,7 +238,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsCustomCategoryInput(!isCustomCategoryInput)}
-                  className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+                  className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
                 >
                   {isCustomCategoryInput ? "Elegir existente" : "+ Nueva categoría"}
                 </button>
@@ -312,7 +312,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                     <Sparkles className="size-3.5 text-emerald-500 shrink-0" />
                     <span className="truncate">Previsualización del Plato</span>
                   </div>
-                  <div className="grid grid-cols-2 sm:flex items-center rounded-lg bg-slate-200/80 p-0.5 dark:bg-slate-900/90 border border-slate-200/50 dark:border-slate-700/60 text-[11px] font-semibold w-full sm:w-auto shrink-0">
+                  <div className="grid grid-cols-2 sm:flex items-center rounded-lg bg-slate-200/80 p-0.5 dark:bg-slate-900/90 border border-slate-200/50 dark:border-slate-700/60 text-xs font-semibold w-full sm:w-auto shrink-0">
                     <button
                       type="button"
                       onClick={() => setPreviewFitMode("cover")}
@@ -372,7 +372,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                             ? "Optimizando foto..."
                             : "Guardando foto..."}
                         </span>
-                        <p className="text-[11px] text-slate-300">
+                        <p className="text-xs text-slate-300">
                           {imageUploadStatus === "success"
                             ? "Formato WebP de alta calidad aplicado"
                             : imageUploadStatus === "optimizing"
@@ -388,7 +388,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                       )}
                     </div>
                   )}
-                  <div className="absolute bottom-2.5 left-2.5 max-w-[calc(100%-1.25rem)] flex items-center gap-1.5 rounded-lg bg-black/80 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur-md border border-white/10 truncate">
+                  <div className="absolute bottom-2.5 left-2.5 max-w-[calc(100%-1.25rem)] flex items-center gap-1.5 rounded-lg bg-black/80 px-2.5 py-1 text-xs font-bold text-white backdrop-blur-md border border-white/10 truncate">
                     {imageUploadStatus === "success" ? (
                       <>
                         <CheckCircle2 className="size-3 text-emerald-400 shrink-0" />
@@ -459,7 +459,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                           ? "Optimizando foto..."
                           : "Guardando foto..."}
                       </span>
-                      <p className="text-[11px] text-slate-300">
+                      <p className="text-xs text-slate-300">
                         {imageUploadStatus === "success"
                           ? "Formato WebP de alta calidad aplicado"
                           : imageUploadStatus === "optimizing"
@@ -488,7 +488,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                         <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
                           Subir foto desde tu teléfono o PC
                         </span>
-                        <p className="text-[10px] text-slate-400 dark:text-slate-400 mt-0.5">
+                        <p className="text-xs text-slate-400 dark:text-slate-400 mt-0.5">
                           Se comprime automáticamente a formato WebP ultraliviano
                         </p>
                       </div>
@@ -496,7 +496,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
 
                     <div className="flex items-center gap-2 pt-1">
                       <div className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
-                      <span className="text-[10px] uppercase font-bold text-slate-400">o ingresa una URL</span>
+                      <span className="text-xs uppercase font-bold text-slate-400">o ingresa una URL</span>
                       <div className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
                     </div>
 

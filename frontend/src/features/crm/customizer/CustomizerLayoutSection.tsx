@@ -52,7 +52,7 @@ export const CustomizerLayoutSection: React.FC<CustomizerLayoutSectionProps> = (
               <span className={`block text-xs font-bold ${font.fontClass}`}>
                 {font.name}
               </span>
-              <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 block">
+              <span className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 block">
                 {font.desc}
               </span>
             </button>
@@ -83,7 +83,7 @@ export const CustomizerLayoutSection: React.FC<CustomizerLayoutSectionProps> = (
               }`}
             >
               <span className="block font-semibold">{st.name}</span>
-              <span className="text-[10px] text-slate-500 dark:text-slate-400">{st.desc}</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">{st.desc}</span>
             </button>
           ))}
         </div>

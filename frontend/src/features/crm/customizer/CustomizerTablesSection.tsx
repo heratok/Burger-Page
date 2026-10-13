@@ -33,7 +33,7 @@ const primaryButtonClass =
   "flex shrink-0 items-center justify-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-2 text-xs font-bold text-white shadow-xs transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
 
 const linkButtonClass =
-  "self-start rounded-lg px-1.5 py-0.5 text-[11px] font-bold text-indigo-600 hover:bg-indigo-500/10 dark:text-indigo-400 cursor-pointer"
+  "self-start rounded-lg px-1.5 py-0.5 text-xs font-bold text-indigo-600 hover:bg-indigo-500/10 dark:text-indigo-400 cursor-pointer"
 
 export const CustomizerTablesSection: React.FC<CustomizerTablesSectionProps> = ({
   restaurantId,
@@ -159,7 +159,7 @@ export const CustomizerTablesSection: React.FC<CustomizerTablesSectionProps> = (
     min: MIN_TABLE_NUMBER,
     max: MAX_TABLE_NUMBER,
   } as const
-  const fieldLabelClass = "text-[10px] font-bold text-slate-500 dark:text-slate-400"
+  const fieldLabelClass = "text-xs font-bold text-slate-500 dark:text-slate-400"
 
   return (
     <div
@@ -171,7 +171,7 @@ export const CustomizerTablesSection: React.FC<CustomizerTablesSectionProps> = (
         <LayoutGrid className="size-4 text-sky-500" />
         <h3 className="font-bold text-sm text-slate-900 dark:text-white">Mesas del salón</h3>
       </div>
-      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+      <p className="text-xs text-slate-500 dark:text-slate-400">
         Estas mesas aparecen al registrar una venta en &quot;Mesa / Salón&quot;. Los cambios se guardan al instante,
         sin usar &quot;Guardar &amp; Publicar&quot;. Desactivá una mesa para ocultarla sin perder su historial.
       </p>
@@ -236,12 +236,12 @@ export const CustomizerTablesSection: React.FC<CustomizerTablesSectionProps> = (
         </div>
 
         {isRange ? (
-          <p className="text-[11px] text-slate-500 dark:text-slate-400">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             {rangePreview ?? "Indicá una zona y un rango válido (hasta 100 mesas)."}
           </p>
         ) : (
           singlePreview && (
-            <p className="text-[11px] text-slate-500 dark:text-slate-400">Se creará: {singlePreview}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Se creará: {singlePreview}</p>
           )
         )}
 
@@ -263,7 +263,7 @@ export const CustomizerTablesSection: React.FC<CustomizerTablesSectionProps> = (
         </div>
 
         {isRange && rangeResult && (
-          <p role="status" className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
+          <p role="status" className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
             {rangeResult}
           </p>
         )}
@@ -292,7 +292,7 @@ export const CustomizerTablesSection: React.FC<CustomizerTablesSectionProps> = (
 
       {groups.map((group) => (
         <section key={group.zone} className="space-y-1.5">
-          <h4 className="text-[10px] font-bold uppercase tracking-wide text-slate-400">{group.zone}</h4>
+          <h4 className="text-xs font-bold uppercase tracking-wide text-slate-400">{group.zone}</h4>
           <ul className="space-y-1.5">
             {group.tables.map((table, index) => (
               <li
@@ -383,7 +383,7 @@ export const CustomizerTablesSection: React.FC<CustomizerTablesSectionProps> = (
                     <span className="block break-words text-sm font-semibold text-slate-900 dark:text-white">
                       {table.name}
                       {!table.isActive && (
-                        <span className="ml-2 text-[10px] font-bold uppercase text-slate-400">Inactiva</span>
+                        <span className="ml-2 text-xs font-bold uppercase text-slate-400">Inactiva</span>
                       )}
                     </span>
                   )}

@@ -46,17 +46,17 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
               className="size-full object-cover transition duration-300 group-hover:scale-105"
             />
             <div className="absolute top-2.5 left-2.5 flex flex-wrap gap-1.5 z-10">
-              <span className="rounded-md bg-black/75 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur-xs">
+              <span className="rounded-md bg-black/75 px-2 py-0.5 text-xs font-bold text-white backdrop-blur-xs">
                 {product.category}
               </span>
               {product.isPopular && (
-                <span className="flex items-center gap-1 rounded-md bg-amber-500/95 px-2 py-0.5 text-[10px] font-bold text-white shadow-xs">
+                <span className="flex items-center gap-1 rounded-md bg-amber-500/95 px-2 py-0.5 text-xs font-bold text-white shadow-xs">
                   <Flame className="size-3" />
                   Popular
                 </span>
               )}
               {product.isNew && (
-                <span className="flex items-center gap-1 rounded-md bg-emerald-500/95 px-2 py-0.5 text-[10px] font-bold text-white shadow-xs">
+                <span className="flex items-center gap-1 rounded-md bg-emerald-500/95 px-2 py-0.5 text-xs font-bold text-white shadow-xs">
                   <Sparkles className="size-3" />
                   Nuevo
                 </span>

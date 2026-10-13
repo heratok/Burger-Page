@@ -52,7 +52,7 @@ export const Pagination: React.FC<PaginationProps> = ({
 
         {onPageSizeChange && (
           <div className="flex items-center gap-1.5 ml-2 border-l pl-3 border-slate-200 dark:border-slate-700">
-            <span className="text-[11px] whitespace-nowrap">Por pág:</span>
+            <span className="text-xs whitespace-nowrap">Por pág:</span>
             <div className="w-20">
               <Select
                 size="sm"

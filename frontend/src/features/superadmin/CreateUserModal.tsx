@@ -179,7 +179,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
                   }`} />
                   <div>
                     <div className="text-xs font-bold">{r.name}</div>
-                    <div className="mt-0.5 text-[10px] text-slate-400">{r.desc}</div>
+                    <div className="mt-0.5 text-xs text-slate-400">{r.desc}</div>
                   </div>
                 </button>
               ))}

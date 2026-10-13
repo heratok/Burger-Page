@@ -42,7 +42,7 @@ export const InventoryStats: React.FC<InventoryStatsProps> = ({
         <div className="mt-2 text-2xl font-black text-slate-900 dark:text-white">
           {totalItems}
         </div>
-        <span className="text-[11px] text-slate-400">Total en catálogo de materias primas</span>
+        <span className="text-xs text-slate-400">Total en catálogo de materias primas</span>
       </div>
 
       {/* Metric 2: Low Stock Alert */}
@@ -74,7 +74,7 @@ export const InventoryStats: React.FC<InventoryStatsProps> = ({
         <div className="mt-2 text-2xl font-black text-amber-500">
           {lowStockCount}
         </div>
-        <span className="text-[11px] text-amber-600/80 dark:text-amber-400/80">
+        <span className="text-xs text-amber-600/80 dark:text-amber-400/80">
           {lowStockCount > 0 ? "Requieren reposición urgente" : "Stock en niveles óptimos"}
         </span>
       </div>
@@ -97,7 +97,7 @@ export const InventoryStats: React.FC<InventoryStatsProps> = ({
           <div className="mt-2 text-2xl font-black text-emerald-500">
             {formatCurrency(totalInventoryValue)}
           </div>
-          <span className="text-[11px] text-slate-400">Valorización total a costo actual</span>
+          <span className="text-xs text-slate-400">Valorización total a costo actual</span>
         </div>
       )}
 
@@ -124,7 +124,7 @@ export const InventoryStats: React.FC<InventoryStatsProps> = ({
         <div className="mt-2 text-2xl font-black text-slate-900 dark:text-white">
           {suppliersCount}
         </div>
-        <span className="text-[11px] text-slate-400">Contactos directos de compra</span>
+        <span className="text-xs text-slate-400">Contactos directos de compra</span>
       </div>
     </div>
   )

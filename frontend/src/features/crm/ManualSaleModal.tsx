@@ -261,7 +261,7 @@ function MesaInputs({
     <div className="space-y-2">
       {tableSelector}
       <div>
-        <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+        <label className="text-xs font-bold text-slate-500 dark:text-slate-400">
           Nombre Cliente (Opcional)
         </label>
         <input
@@ -305,7 +305,7 @@ function DomicilioInputs({
     <div className="space-y-2">
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+          <label className="text-xs font-bold text-slate-500 dark:text-slate-400">
             Nombre Cliente *
           </label>
           <input
@@ -318,7 +318,7 @@ function DomicilioInputs({
           />
         </div>
         <div>
-          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+          <label className="text-xs font-bold text-slate-500 dark:text-slate-400">
             Teléfono
           </label>
           <input
@@ -333,7 +333,7 @@ function DomicilioInputs({
       </div>
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+          <label className="text-xs font-bold text-slate-500 dark:text-slate-400">
             Dirección de Entrega *
           </label>
           <input
@@ -346,7 +346,7 @@ function DomicilioInputs({
           />
         </div>
         <div>
-          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+          <label className="text-xs font-bold text-slate-500 dark:text-slate-400">
             Barrio *
           </label>
           <input
@@ -382,7 +382,7 @@ function MostradorInputs({
   return (
     <div className="grid grid-cols-2 gap-2">
       <div>
-        <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+        <label className="text-xs font-bold text-slate-500 dark:text-slate-400">
           Nombre Cliente (Opcional)
         </label>
         <input
@@ -395,7 +395,7 @@ function MostradorInputs({
         />
       </div>
       <div>
-        <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+        <label className="text-xs font-bold text-slate-500 dark:text-slate-400">
           Teléfono (Opcional)
         </label>
         <input
@@ -953,7 +953,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                     {storeConfig.name}
                   </span>
                 </div>
-                <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 line-clamp-1">
+                <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1">
                   {orderToEdit
                     ? "Modificá los productos, cliente, notas o método de pago de la orden"
                     : "Registrá ventas en mesa, mostrador o pedidos telefónicos"}
@@ -1010,7 +1010,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
               <span>2. Pedido & Cobro</span>
               {totalItemsCount > 0 && (
                 <span
-                  className={`ml-1 rounded-full px-1.5 py-0.5 text-[10px] font-black ${
+                  className={`ml-1 rounded-full px-1.5 py-0.5 text-xs font-black ${
                     mobileTab === "cart" ? "bg-white text-orange-600" : "bg-orange-500 text-white"
                   }`}
                 >
@@ -1141,14 +1141,14 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                               {product.name}
                             </h4>
                             {inCartCount > 0 && (
-                              <span className="rounded-full bg-orange-500 px-2 py-0.5 text-[10px] font-black text-white shrink-0">
+                              <span className="rounded-full bg-orange-500 px-2 py-0.5 text-xs font-black text-white shrink-0">
                                 {inCartCount} en comanda
                               </span>
                             )}
                           </div>
 
                           {product.description && (
-                            <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2">
+                            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
                               {product.description}
                             </p>
                           )}
@@ -1199,7 +1199,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                     {totalItemsCount}
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 block font-medium">Total Pedido</span>
+                    <span className="text-xs text-slate-400 block font-medium">Total Pedido</span>
                     <span className="text-sm font-black text-orange-500 leading-none">
                       {formatCOP(finalTotal)}
                     </span>
@@ -1233,7 +1233,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                 <ArrowLeft className="size-3.5" />
                 <span>+ Agregar más platos</span>
               </button>
-              <span className="text-slate-500 dark:text-slate-400 text-[11px] font-semibold">
+              <span className="text-slate-500 dark:text-slate-400 text-xs font-semibold">
                 {selectedItems.length} {selectedItems.length === 1 ? "ítem" : "ítems"}
               </span>
             </div>
@@ -1245,7 +1245,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                   isDark ? "border-slate-800 bg-slate-900/30" : "border-slate-200 bg-slate-50"
                 }`}
               >
-                <label className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                <label className="text-xs sm:text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   Tipo de Servicio
                 </label>
                 <div className="mt-1.5 grid grid-cols-3 gap-1 bg-slate-200/60 dark:bg-slate-950 p-1 rounded-xl">
@@ -1294,7 +1294,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
               <div className="flex-1 overflow-y-auto min-h-0 divide-y divide-slate-100 dark:divide-slate-800/60">
                 {/* Order Items Section */}
                 <div className="p-3 sm:p-3.5 space-y-2">
-                  <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     <span>Comanda ({totalItemsCount})</span>
                     {selectedItems.length > 0 && (
                       <button
@@ -1313,7 +1313,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                       <h5 className="text-xs font-bold text-slate-700 dark:text-slate-300">
                         Venta vacía
                       </h5>
-                      <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400 max-w-[200px]">
+                      <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 max-w-[200px]">
                         Seleccioná productos en el catálogo para armar el pedido.
                       </p>
                       <button
@@ -1344,20 +1344,20 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
 
                           {/* Additions list */}
                           {item.adiciones && item.adiciones.length > 0 && (
-                            <div className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                            <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 truncate">
                               + {item.adiciones.map((a) => `${a.name} (${a.cantidad})`).join(", ")}
                             </div>
                           )}
 
                           {/* Observacion */}
                           {item.observacion && (
-                            <div className="mt-0.5 text-[10px] italic text-amber-600 dark:text-amber-400 truncate">
+                            <div className="mt-0.5 text-xs italic text-amber-600 dark:text-amber-400 truncate">
                               &ldquo;{item.observacion}&rdquo;
                             </div>
                           )}
 
                           <div className="mt-1 flex items-center gap-2 flex-wrap">
-                            <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                            <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
                               {formatCOP(item.total)}
                             </span>
 
@@ -1365,7 +1365,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                               <button
                                 type="button"
                                 onClick={() => handleEditCartItem(index)}
-                                className="inline-flex items-center gap-1 text-[10px] font-semibold text-orange-600 dark:text-orange-400 hover:underline cursor-pointer"
+                                className="inline-flex items-center gap-1 text-xs font-semibold text-orange-600 dark:text-orange-400 hover:underline cursor-pointer"
                                 title="Modificar adiciones o notas de cocina"
                               >
                                 <SlidersHorizontal className="size-2.5" />
@@ -1445,9 +1445,9 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
 
                   {/* General Order Notes / Kitchen Observations */}
                   <div>
-                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center justify-between">
                       <span>Observaciones del Pedido (Opcional)</span>
-                      <span className="text-[9px] font-normal text-slate-400">Cocina & Entrega</span>
+                      <span className="text-xs font-normal text-slate-400">Cocina & Entrega</span>
                     </label>
                     <input
                       type="text"
@@ -1464,7 +1464,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                   {/* Payment Method & Cash Change */}
                   <div className="space-y-2 pt-1 border-t border-slate-200 dark:border-slate-800">
                     <div className="flex items-center justify-between">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                         Método de Pago
                       </label>
                       <div className="flex items-center gap-1">
@@ -1510,7 +1510,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                     {paymentMethod === "Transferencia" && (
                       <div className="space-y-2 rounded-xl border border-indigo-500/20 bg-indigo-50/40 dark:bg-indigo-950/20 p-2.5">
                         <div className="flex items-center justify-between">
-                          <label className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-1.5">
+                          <label className="text-xs font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-1.5">
                             <Upload className="size-3 text-indigo-500" />
                             <span>Comprobante de Transferencia (Opcional)</span>
                           </label>
@@ -1518,7 +1518,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                             <button
                               type="button"
                               onClick={handleRemoveReceipt}
-                              className="text-[10px] font-semibold text-rose-500 hover:underline cursor-pointer"
+                              className="text-xs font-semibold text-rose-500 hover:underline cursor-pointer"
                             >
                               Quitar
                             </button>
@@ -1536,12 +1536,12 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                               <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
                                 {receiptFile?.name ?? "Comprobante cargado"}
                               </p>
-                              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                              <span className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
                                 ✓ Listo para adjuntar
                               </span>
                             </div>
                             <label
-                              className="rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-2.5 py-1 text-[11px] font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer"
+                              className="rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-2.5 py-1 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer"
                             >
                               Cambiar
                               <input
@@ -1562,7 +1562,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                               <ImageIcon className="size-4" />
                               <span className="text-xs font-semibold">Cargar comprobante</span>
                             </div>
-                            <span className="text-[10px] text-slate-400">
+                            <span className="text-xs text-slate-400">
                               Formatos JPG, PNG, WebP (máx. 10MB)
                             </span>
                             <input
@@ -1611,7 +1611,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                       onChange={(e) => setPrintTicketOnSave(e.target.checked)}
                       className="size-4 rounded border-slate-300 text-orange-600 focus:ring-orange-500 cursor-pointer"
                     />
-                    <span className="font-semibold text-[11px] sm:text-xs">Imprimir comanda al guardar</span>
+                    <span className="font-semibold text-xs">Imprimir comanda al guardar</span>
                   </label>
                 ) : (
                   <div />
@@ -1656,11 +1656,11 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
               <div className="flex items-start justify-between pb-3 border-b border-slate-200 dark:border-slate-800 shrink-0">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="rounded-md bg-orange-500/10 px-2 py-0.5 text-[10px] font-black uppercase text-orange-600 dark:text-orange-400">
+                    <span className="rounded-md bg-orange-500/10 px-2 py-0.5 text-xs font-black uppercase text-orange-600 dark:text-orange-400">
                       {editingCartItemIndex !== null ? "Modificar ítem" : "Personalizar plato"}
                     </span>
                     {customizingProduct.category && (
-                      <span className="text-[10px] font-medium text-slate-400 capitalize">
+                      <span className="text-xs font-medium text-slate-400 capitalize">
                         {customizingProduct.category}
                       </span>
                     )}
@@ -1692,7 +1692,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                     <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                       Adiciones / Modificadores disponibles:
                     </label>
-                    <span className="text-[10px] text-slate-400">
+                    <span className="text-xs text-slate-400">
                       (Modifican este plato)
                     </span>
                   </div>
@@ -1721,7 +1721,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                                   <span className="size-1.5 rounded-full bg-orange-500" />
                                 )}
                               </div>
-                              <span className="text-[11px] font-semibold text-orange-600 dark:text-orange-400">
+                              <span className="text-xs font-semibold text-orange-600 dark:text-orange-400">
                                 +{formatCOP(addition.price)} c/u
                               </span>
                             </div>
@@ -1776,7 +1776,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                 <div className="pt-2 border-t border-slate-200 dark:border-slate-800/80">
                   <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
                     <span>Nota / Observación para cocina</span>
-                    <span className="text-[10px] font-normal text-slate-400">Opcional</span>
+                    <span className="text-xs font-normal text-slate-400">Opcional</span>
                   </label>
                   <input
                     type="text"
@@ -1804,7 +1804,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                       {formatCOP(currentModalItemTotal)}
                     </span>
                     {currentModalAdditionsTotal > 0 && (
-                      <span className="text-[10px] font-semibold text-slate-400">
+                      <span className="text-xs font-semibold text-slate-400">
                         (incl. {formatCOP(currentModalAdditionsTotal)} extras)
                       </span>
                     )}

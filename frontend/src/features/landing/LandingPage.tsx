@@ -102,11 +102,11 @@ export default function LandingPage() {
             <div>
               <span className="text-base font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5">
                 FoodOS
-                <span className="rounded-full bg-orange-500/10 dark:bg-orange-500/20 px-2 py-0.5 text-[10px] font-bold text-orange-600 dark:text-orange-400 border border-brand-orange-subtle">
+                <span className="rounded-full bg-orange-500/10 dark:bg-orange-500/20 px-2 py-0.5 text-xs font-bold text-orange-600 dark:text-orange-400 border border-brand-orange-subtle">
                   SaaS
                 </span>
               </span>
-              <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 hidden sm:block -mt-0.5">
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400 hidden sm:block -mt-0.5">
                 Menús Digitales & Pedidos WhatsApp
               </span>
             </div>
@@ -289,15 +289,15 @@ export default function LandingPage() {
                   <MessageSquare className="size-4 text-emerald-600 dark:text-[#25D366]" />
                   <span>Mensaje formateado en WhatsApp:</span>
                 </div>
-                <div className="rounded-xl bg-white dark:bg-[#202C33] border border-emerald-100 dark:border-[#2A3942] p-3 text-[11px] text-slate-800 dark:text-[#E9EDEF] font-mono space-y-1.5 leading-relaxed shadow-xs">
+                <div className="rounded-xl bg-white dark:bg-[#202C33] border border-emerald-100 dark:border-[#2A3942] p-3 text-xs text-slate-800 dark:text-[#E9EDEF] font-mono space-y-1.5 leading-relaxed shadow-xs">
                   <p className="font-bold text-emerald-700 dark:text-[#25D366]">👋 ¡Hola Craft Burger! Nuevo Pedido:</p>
                   <p>• 1x Craft Monster Burger ($28.000)</p>
-                  <p className="text-emerald-700 dark:text-[#25D366] text-[10px] pl-2">+ Tocineta Extra ($3.500)</p>
+                  <p className="text-emerald-700 dark:text-[#25D366] text-xs pl-2">+ Tocineta Extra ($3.500)</p>
                   <p>• 1x Papas Rústicas ($12.500)</p>
                   <div className="border-t border-slate-100 dark:border-slate-700/60 pt-1 text-slate-900 dark:text-white font-bold">
                     Total a Pagar: $44.000
                   </div>
-                  <p className="text-emerald-700 dark:text-[#25D366] text-[10px]">📍 Cra 15 # 85-30 • Pago: Efectivo</p>
+                  <p className="text-emerald-700 dark:text-[#25D366] text-xs">📍 Cra 15 # 85-30 • Pago: Efectivo</p>
                 </div>
               </div>
             </div>

@@ -136,7 +136,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead
-                className={`border-b text-[11px] font-bold uppercase tracking-wider ${
+                className={`border-b text-xs font-bold uppercase tracking-wider ${
                   isDark
                     ? "border-slate-800 bg-slate-900/50 text-slate-400"
                     : "border-slate-200 bg-slate-50 text-slate-500"
@@ -181,7 +181,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
 
                       {/* Category */}
                       <td className="px-4 py-3">
-                        <span className="rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:text-slate-300">
+                        <span className="rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-xs font-medium text-slate-600 dark:text-slate-300">
                           {CATEGORY_LABELS[item.category] || item.category}
                         </span>
                       </td>
@@ -199,7 +199,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
                             >
                               {item.currentStock} {item.unit}
                             </span>
-                            <span className="text-[10px] text-slate-400 font-mono">
+                            <span className="text-xs text-slate-400 font-mono">
                               (Mín: {item.minStockAlert})
                             </span>
                           </div>
@@ -226,7 +226,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
                           <button
                             type="button"
                             onClick={() => onAdjustStock(item.id, -1)}
-                            className={`rounded-lg border px-2 py-1 text-[11px] font-bold transition-colors ${
+                            className={`rounded-lg border px-2 py-1 text-xs font-bold transition-colors ${
                               isDark
                                 ? "border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700"
                                 : "border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200"
@@ -238,7 +238,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
                           <button
                             type="button"
                             onClick={() => onAdjustStock(item.id, 1)}
-                            className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-2 py-1 text-[11px] font-bold text-indigo-400 hover:bg-indigo-500/20"
+                            className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-2 py-1 text-xs font-bold text-indigo-400 hover:bg-indigo-500/20"
                             title="Sumar 1"
                           >
                             +1
@@ -246,7 +246,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
                           <button
                             type="button"
                             onClick={() => onAdjustStock(item.id, 5)}
-                            className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-2 py-1 text-[11px] font-bold text-indigo-400 hover:bg-indigo-500/20"
+                            className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-2 py-1 text-xs font-bold text-indigo-400 hover:bg-indigo-500/20"
                             title="Sumar 5"
                           >
                             +5
@@ -260,7 +260,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
                           <div className="text-slate-900 dark:text-slate-200">
                             {formatCurrency(item.costPerUnit)} /{item.unit.slice(0, 3)}
                           </div>
-                          <div className="text-[10px] text-slate-400">
+                          <div className="text-xs text-slate-400">
                             Total: {formatCurrency(itemValuation)}
                           </div>
                         </td>
@@ -279,7 +279,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
                             <MessageSquare className="size-3 text-emerald-400" />
                           </button>
                         ) : (
-                          <span className="text-slate-500 italic text-[11px]">Sin asignar</span>
+                          <span className="text-slate-500 italic text-xs">Sin asignar</span>
                         )}
                       </td>
 

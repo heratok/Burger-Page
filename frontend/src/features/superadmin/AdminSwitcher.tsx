@@ -78,11 +78,11 @@ export const AdminSwitcher: React.FC<AdminSwitcherProps> = ({ collapsed = false,
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between px-1">
-        <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+        <div className="flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
           <Crown className="size-3" />
           <span>Super Administrador</span>
         </div>
-        <span className="rounded-full bg-indigo-500/10 px-1.5 py-0.5 text-[9px] font-bold text-indigo-600 dark:text-indigo-300">
+        <span className="rounded-full bg-indigo-500/10 px-1.5 py-0.5 text-xs font-bold text-indigo-600 dark:text-indigo-300">
           {restaurants.length} locales
         </span>
       </div>
