@@ -9,6 +9,7 @@ import { toast } from "sonner"
 import { calculateLineItemTotal } from "@/features/cart/cartEngine"
 import { getOrderTableLabel } from "@/features/crm/tables/orderTable"
 import { OrderTicketModal } from "./OrderTicketModal"
+import { ModalShell } from "@/components/ui/modal-shell"
 
 export interface OrderDetailModalProps {
   order: Order | null
@@ -97,9 +98,8 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
   if (!isOpen || !order) return null
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
+    <ModalShell
+      onClose={onClose}
       aria-label={`Detalles de la Orden #${order.orderNumber}`}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-2 sm:p-4 backdrop-blur-xs overflow-y-auto"
     >
@@ -440,7 +440,11 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
 
       {/* Lightbox Modal for Receipt Image */}
       {isReceiptModalOpen && order.receiptUrl && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm">
+        <ModalShell
+          onClose={() => setIsReceiptModalOpen(false)}
+          aria-label="Comprobante de transferencia"
+          className="fixed inset-0 z-60 flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm"
+        >
           <div className="relative max-h-[90vh] max-w-2xl w-full rounded-2xl overflow-hidden bg-slate-900 border border-slate-700 p-4 shadow-2xl flex flex-col">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800 text-white">
               <div>
@@ -476,7 +480,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
               />
             </div>
           </div>
-        </div>
+        </ModalShell>
       )}
 
       {/* Thermal Ticket / Kitchen Comanda Modal */}
@@ -486,6 +490,6 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
         isDark={isDark}
         onClose={() => setIsTicketModalOpen(false)}
       />
-    </div>
+    </ModalShell>
   )
 }

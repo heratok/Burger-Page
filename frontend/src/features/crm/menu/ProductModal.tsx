@@ -9,6 +9,7 @@ import { optimizeImageToWebP } from "@/lib/imageOptimizer"
 import { uploadImageToStorage } from "@/core/storage/supabaseStorage"
 import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
 import { Tooltip } from "@/components/ui/tooltip"
+import { ModalShell } from "@/components/ui/modal-shell"
 
 export interface ProductModalProps {
   isOpen: boolean
@@ -176,14 +177,18 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-3 sm:p-4 backdrop-blur-xs">
+    <ModalShell
+      onClose={onClose}
+      aria-labelledby="product-modal-title"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-3 sm:p-4 backdrop-blur-xs"
+    >
       <div
         className={`w-full max-w-lg max-h-[92vh] sm:max-h-[90vh] overflow-y-auto rounded-2xl border p-4 sm:p-6 shadow-2xl transition-all ${
           isDark ? "border-slate-800 bg-slate-900 text-slate-100" : "border-slate-200 bg-white text-slate-900"
         }`}
       >
         <div className="flex items-center justify-between border-b pb-3.5 sm:pb-4 border-slate-100 dark:border-slate-800">
-          <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white min-w-0 break-words pr-2">
+          <h3 id="product-modal-title" className="text-sm sm:text-base font-bold text-slate-900 dark:text-white min-w-0 break-words pr-2">
             {editingProduct ? `Editar "${editingProduct.name}"` : "Nuevo Producto"}
           </h3>
           <button
@@ -596,6 +601,6 @@ export const ProductModal: React.FC<ProductModalProps> = ({
         description="¿Estás seguro de que deseas quitar la foto de este producto? Podrás subir una nueva foto o asignar una por URL cuando lo desees."
         confirmText="Sí, quitar foto"
       />
-    </div>
+    </ModalShell>
   )
 }

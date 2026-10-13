@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react"
 import { useRestaurant } from "@/context/RestaurantContext"
+import { ModalShell } from "@/components/ui/modal-shell"
 import type { MenuItem, Order } from "@/types/restaurant"
 import {
   CartItem,
@@ -926,7 +927,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
   if (!isOpen) return null
 
   return (
-    <div role="dialog" aria-modal="true" aria-labelledby="manual-sale-title" className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-0 sm:p-4 backdrop-blur-md">
+    <ModalShell onClose={handleClose} aria-labelledby="manual-sale-title" className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-0 sm:p-4 backdrop-blur-md">
       <div
         className={`flex flex-col w-full h-full sm:h-[92vh] sm:max-h-[920px] max-w-6xl rounded-none sm:rounded-2xl border-0 sm:border shadow-2xl overflow-hidden transition-all ${
           isDark ? "border-slate-800 bg-[#0E1322] text-slate-100" : "border-slate-200 bg-white text-slate-900"
@@ -1658,7 +1659,14 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
         {/* CUSTOMIZE ADDITIONS SUB-MODAL                            */}
         {/* ======================================================== */}
         {customizingProduct && (
-          <div className="fixed inset-0 z-60 flex items-end sm:items-center justify-center bg-black/75 p-0 sm:p-4 backdrop-blur-xs transition-all">
+          <ModalShell
+            aria-labelledby="manual-sale-customize-title"
+            onClose={() => {
+              setCustomizingProduct(null)
+              setEditingCartItemIndex(null)
+            }}
+            className="fixed inset-0 z-60 flex items-end sm:items-center justify-center bg-black/75 p-0 sm:p-4 backdrop-blur-xs transition-all"
+          >
             <div
               className={`w-full max-w-lg rounded-t-2xl sm:rounded-2xl border p-4 sm:p-5 shadow-2xl flex flex-col max-h-[85vh] animate-in fade-in zoom-in-95 duration-150 ${
                 isDark ? "border-slate-800 bg-[#0E1322] text-slate-100" : "border-slate-200 bg-white text-slate-900"
@@ -1677,7 +1685,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                       </span>
                     )}
                   </div>
-                  <h3 className="mt-1 text-sm sm:text-base font-bold text-slate-900 dark:text-white leading-tight">
+                  <h3 id="manual-sale-customize-title" className="mt-1 text-sm sm:text-base font-bold text-slate-900 dark:text-white leading-tight">
                     {customizingProduct.name}
                   </h3>
                   <p className="text-xs text-orange-700 dark:text-orange-400 font-bold">
@@ -1848,9 +1856,9 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                 </div>
               </div>
             </div>
-          </div>
+          </ModalShell>
         )}
       </div>
-    </div>
+    </ModalShell>
   )
 }

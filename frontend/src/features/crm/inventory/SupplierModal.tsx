@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react"
 import type { Supplier } from "@/types/restaurant"
 import { Truck, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ModalShell } from "@/components/ui/modal-shell"
 
 export interface SupplierFormData {
   name: string
@@ -75,14 +76,18 @@ export const SupplierModal: React.FC<SupplierModalProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-xs">
+    <ModalShell
+      onClose={onClose}
+      aria-labelledby="supplier-modal-title"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-xs"
+    >
       <div
         className={`w-full max-w-md rounded-2xl border p-6 shadow-2xl ${
           isDark ? "border-slate-800 bg-[#0E1322] text-white" : "border-slate-200 bg-white text-slate-900"
         }`}
       >
         <div className={`flex items-center justify-between border-b pb-3 mb-4 ${isDark ? "border-slate-800" : "border-slate-200"}`}>
-          <h3 className="text-base font-bold flex items-center gap-2">
+          <h3 id="supplier-modal-title" className="text-base font-bold flex items-center gap-2">
             <Truck className="size-4 text-indigo-600 dark:text-indigo-400" />
             <span>{editingSupplier ? "Editar Proveedor" : "Registrar Nuevo Proveedor"}</span>
           </h3>
@@ -220,6 +225,6 @@ export const SupplierModal: React.FC<SupplierModalProps> = ({
           </div>
         </form>
       </div>
-    </div>
+    </ModalShell>
   )
 }

@@ -5,6 +5,7 @@ import { formatCurrency } from "@/lib/utils"
 import { calculateLineItemTotal } from "@/features/cart/cartEngine"
 import { getOrderTableLabel } from "@/features/crm/tables/orderTable"
 import { useRestaurant } from "@/context/RestaurantContext"
+import { ModalShell } from "@/components/ui/modal-shell"
 
 export type TicketPrintMode = "full" | "kitchen"
 
@@ -46,17 +47,6 @@ export const OrderTicketModal: React.FC<OrderTicketModalProps> = ({
       setMode(initialMode)
     }
   }, [isOpen, initialMode])
-
-  useEffect(() => {
-    if (!isOpen) return
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        onClose()
-      }
-    }
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [isOpen, onClose])
 
   let contextStoreName = "BURGER PAGE"
   try {
@@ -100,9 +90,8 @@ export const OrderTicketModal: React.FC<OrderTicketModalProps> = ({
   if (!isOpen || !order) return null
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
+    <ModalShell
+      onClose={onClose}
       aria-labelledby="ticket-modal-title"
       className="fixed inset-0 z-60 flex items-center justify-center bg-black/75 p-3 sm:p-5 backdrop-blur-xs overflow-y-auto"
     >
@@ -627,6 +616,6 @@ export const OrderTicketModal: React.FC<OrderTicketModalProps> = ({
           </div>
         </div>
       </div>
-    </div>
+    </ModalShell>
   )
 }

@@ -3,6 +3,7 @@ import type { MenuItem } from "@/types/restaurant"
 import { Tags, X, Plus, Edit2, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
+import { ModalShell } from "@/components/ui/modal-shell"
 
 export interface CategoryModalProps {
   isOpen: boolean
@@ -55,7 +56,11 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 backdrop-blur-xs">
+      <ModalShell
+        onClose={onClose}
+        aria-labelledby="category-modal-title"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 backdrop-blur-xs"
+      >
         <div
           className={`w-full max-w-md rounded-2xl border p-6 shadow-2xl transition-all ${
             isDark ? "border-slate-800 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-900"
@@ -64,7 +69,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
           <div className="flex items-center justify-between border-b pb-3 border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-2">
               <Tags className="size-5 text-indigo-600 dark:text-indigo-400" />
-              <h3 className="font-bold text-base text-slate-900 dark:text-white">
+              <h3 id="category-modal-title" className="font-bold text-base text-slate-900 dark:text-white">
                 Gestionar Categorías del Menú
               </h3>
             </div>
@@ -204,7 +209,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
             </Button>
           </div>
         </div>
-      </div>
+      </ModalShell>
 
       {/* Delete Category Confirmation Modal */}
       <ConfirmDeleteModal

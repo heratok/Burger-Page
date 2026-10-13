@@ -12,6 +12,7 @@ import {
 } from "lucide-react"
 import { LoyaltyBadge } from "@/components/ui/status-badge"
 import { Button } from "@/components/ui/button"
+import { ModalShell } from "@/components/ui/modal-shell"
 import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
 import { Pagination } from "@/components/ui/pagination"
 import { Select } from "@/components/ui/select"
@@ -467,7 +468,11 @@ export const CustomerCRM: React.FC = () => {
 
       {/* Customer Profile & Notes Modal */}
       {selectedCustomer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 backdrop-blur-xs">
+        <ModalShell
+          onClose={closeCustomerModal}
+          aria-labelledby="customer-profile-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 backdrop-blur-xs"
+        >
           <div
             className={`w-full max-w-lg rounded-2xl border p-6 shadow-2xl transition-all ${
               isDark ? "border-slate-800 bg-slate-900 text-slate-100" : "border-slate-200 bg-white text-slate-900"
@@ -476,7 +481,7 @@ export const CustomerCRM: React.FC = () => {
             <div className="flex items-start justify-between border-b pb-4 border-slate-100 dark:border-slate-800">
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-base font-black text-slate-900 dark:text-white">
+                  <h3 id="customer-profile-title" className="text-base font-black text-slate-900 dark:text-white">
                     {selectedCustomer.nombre}
                   </h3>
                   <LoyaltyBadge tier={selectedCustomer.loyaltyTier} />
@@ -628,16 +633,17 @@ export const CustomerCRM: React.FC = () => {
               </div>
             </div>
           </div>
-        </div>
+        </ModalShell>
       )}
 
       {/* Create Customer Modal */}
       {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 backdrop-blur-xs">
+        <ModalShell
+          onClose={closeCreateModal}
+          aria-labelledby="create-customer-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 backdrop-blur-xs"
+        >
           <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="create-customer-title"
             className={`w-full max-w-lg rounded-2xl border p-6 shadow-2xl transition-all ${
               isDark ? "border-slate-800 bg-slate-900 text-slate-100" : "border-slate-200 bg-white text-slate-900"
             }`}
@@ -782,7 +788,7 @@ export const CustomerCRM: React.FC = () => {
               </div>
             </form>
           </div>
-        </div>
+        </ModalShell>
       )}
 
       <ConfirmDeleteModal

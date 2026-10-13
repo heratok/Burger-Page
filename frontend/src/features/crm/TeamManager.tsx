@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react"
 import { useRestaurant } from "@/context/RestaurantContext"
+import { ModalShell } from "@/components/ui/modal-shell"
 import { apiClient } from "@/core/api/apiClient"
 import type { ApiUserRecord } from "@/core/api/apiClient"
 import type { RoleDTO } from "@burger-page/contracts"
@@ -497,7 +498,11 @@ export const TeamManager: React.FC = () => {
 
       {/* Create Modal */}
       {isCreateOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-xs">
+        <ModalShell
+          aria-label="Registrar nuevo miembro"
+          onClose={() => setIsCreateOpen(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-xs"
+        >
           <div
             className={`w-full max-w-md rounded-2xl border p-6 shadow-2xl transition-all ${
               isDark ? "border-slate-800 bg-[#0E1322] text-white" : "border-slate-200 bg-white text-slate-900"
@@ -641,12 +646,16 @@ export const TeamManager: React.FC = () => {
               </div>
             </form>
           </div>
-        </div>
+        </ModalShell>
       )}
 
       {/* Edit Modal */}
       {editingUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-xs">
+        <ModalShell
+          aria-label="Editar miembro del equipo"
+          onClose={() => setEditingUser(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-xs"
+        >
           <div
             className={`w-full max-w-md rounded-2xl border p-6 shadow-2xl transition-all ${
               isDark ? "border-slate-800 bg-[#0E1322] text-white" : "border-slate-200 bg-white text-slate-900"
@@ -775,12 +784,16 @@ export const TeamManager: React.FC = () => {
               </div>
             </form>
           </div>
-        </div>
+        </ModalShell>
       )}
 
       {/* Credentials Reveal Modal */}
       {credentialsReveal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-xs">
+        <ModalShell
+          aria-label="Credenciales de acceso"
+          onClose={() => setCredentialsReveal(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-xs"
+        >
           <div
             className={`w-full max-w-md rounded-2xl border p-6 shadow-2xl transition-all ${
               isDark ? "border-slate-800 bg-[#0E1322] text-white" : "border-slate-200 bg-white text-slate-900"
@@ -846,12 +859,16 @@ export const TeamManager: React.FC = () => {
               </Button>
             </div>
           </div>
-        </div>
+        </ModalShell>
       )}
 
       {/* Reset Password Result Modal */}
       {newTempPasswordModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-xs">
+        <ModalShell
+          aria-label="Nueva clave temporal"
+          onClose={() => setNewTempPasswordModal(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-xs"
+        >
           <div
             className={`w-full max-w-md rounded-2xl border p-6 shadow-2xl transition-all ${
               isDark ? "border-slate-800 bg-[#0E1322] text-white" : "border-slate-200 bg-white text-slate-900"
@@ -907,7 +924,7 @@ export const TeamManager: React.FC = () => {
               </Button>
             </div>
           </div>
-        </div>
+        </ModalShell>
       )}
 
       {/* Reset Password Confirmation Dialog */}

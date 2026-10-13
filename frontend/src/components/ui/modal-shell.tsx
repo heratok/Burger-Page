@@ -141,10 +141,10 @@ export function ModalShell({
       e.preventDefault()
       close()
     }
-    document.addEventListener("keydown", handleEscape)
+    window.addEventListener("keydown", handleEscape)
 
     return () => {
-      document.removeEventListener("keydown", handleEscape)
+      window.removeEventListener("keydown", handleEscape)
       const index = openShells.indexOf(shell)
       if (index >= 0) openShells.splice(index, 1)
       for (const el of inerted) el.removeAttribute("inert")

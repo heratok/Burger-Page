@@ -53,3 +53,21 @@ describe("CreateUserModal - error mapping", () => {
     expect(screen.getByRole('button', { name: 'Cerrar' })).toBeDefined()
   })
 })
+
+describe("CreateUserModal - keyboard accessibility", () => {
+  afterEach(() => cleanup())
+
+  it("closes on Escape and exposes a named modal dialog", () => {
+    const onClose = vi.fn()
+    render(
+      <RestaurantProvider>
+        <CreateUserModal isOpen onClose={onClose} />
+      </RestaurantProvider>
+    )
+    const dialog = screen.getByRole("dialog", { name: "Crear Usuario" })
+    expect(dialog.getAttribute("aria-modal")).toBe("true")
+    expect(dialog.contains(document.activeElement)).toBe(true)
+    fireEvent.keyDown(document.activeElement as Element, { key: "Escape" })
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+})

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react"
 import type { AdditionItem } from "@/types/restaurant"
 import { X } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ModalShell } from "@/components/ui/modal-shell"
 import { toast } from "sonner"
 
 export interface AdditionModalProps {
@@ -61,14 +62,18 @@ export const AdditionModal: React.FC<AdditionModalProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+    <ModalShell
+      onClose={onClose}
+      aria-labelledby="addition-modal-title"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs"
+    >
       <div
         className={`w-full max-w-sm rounded-2xl border p-5 shadow-2xl transition-all ${
           isDark ? "border-slate-800 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-900"
         }`}
       >
         <div className="flex items-center justify-between border-b pb-3 border-slate-100 dark:border-slate-800">
-          <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+          <h3 id="addition-modal-title" className="font-bold text-sm text-slate-900 dark:text-white">
             {editingAddition ? "Editar Adicional" : "Nuevo Adicional / Extra"}
           </h3>
           <button
@@ -124,6 +129,6 @@ export const AdditionModal: React.FC<AdditionModalProps> = ({
           </div>
         </form>
       </div>
-    </div>
+    </ModalShell>
   )
 }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react"
 import { useRestaurant } from "@/context/RestaurantContext"
+import { ModalShell } from "@/components/ui/modal-shell"
 import { apiClient } from "@/core/api/apiClient"
 import type { RoleDTO, Permission, RoleCreateInput } from "@burger-page/contracts"
 import { PERMISSIONS, DEFAULT_ROLE_TEMPLATES } from "@burger-page/contracts"
@@ -482,7 +483,11 @@ export const RolesManager: React.FC = () => {
 
       {/* Create / Edit Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-xs">
+        <ModalShell
+          aria-labelledby="role-modal-title"
+          onClose={() => setIsModalOpen(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-xs"
+        >
           <div
             className={`w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl border p-6 shadow-2xl transition-all ${
               isDark ? "border-slate-800 bg-[#0E1322] text-white" : "border-slate-200 bg-white text-slate-900"
@@ -490,7 +495,7 @@ export const RolesManager: React.FC = () => {
           >
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b pb-4 border-slate-100 dark:border-slate-800 shrink-0">
-              <h3 className="text-base font-black flex items-center gap-2 text-slate-900 dark:text-white">
+              <h3 id="role-modal-title" className="text-base font-black flex items-center gap-2 text-slate-900 dark:text-white">
                 <ShieldCheck className="size-5 text-indigo-600 dark:text-indigo-400" />
                 <span>{editingRole ? "Editar Rol" : "Crear Nuevo Rol"}</span>
               </h3>
@@ -705,7 +710,7 @@ export const RolesManager: React.FC = () => {
               </div>
             </form>
           </div>
-        </div>
+        </ModalShell>
       )}
 
       {/* Delete Confirmation Modal */}

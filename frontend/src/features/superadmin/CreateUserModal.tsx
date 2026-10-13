@@ -3,6 +3,7 @@ import { useUi, useTenant } from "@/context/RestaurantContext"
 import { UserPlus, X, Shield, Store } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Select } from "@/components/ui/select"
+import { ModalShell } from "@/components/ui/modal-shell"
 import { apiClient } from "@/core/api/apiClient"
 import { MIN_PASSWORD_LENGTH } from "@burger-page/contracts"
 import { toast } from "sonner"
@@ -86,7 +87,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
   ]
 
   return (
-    <div role="dialog" aria-modal="true" aria-labelledby="create-user-title" className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-md">
+    <ModalShell onClose={onClose} aria-labelledby="create-user-title" className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-md">
       <div
         className={`w-full max-w-md rounded-2xl border p-6 shadow-2xl transition-all ${
           isDark ? "border-slate-800 bg-[#0E1322] text-slate-100" : "border-slate-200 bg-white text-slate-900"
@@ -221,6 +222,6 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
           </div>
         </form>
       </div>
-    </div>
+    </ModalShell>
   )
 }

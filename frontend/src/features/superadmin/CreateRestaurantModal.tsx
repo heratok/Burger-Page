@@ -17,6 +17,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Select } from "@/components/ui/select"
+import { ModalShell } from "@/components/ui/modal-shell"
 import { THEME_COLOR_PRESETS } from "@/constants/themePresets"
 import { apiClient } from "@/core/api/apiClient"
 import { toast } from "sonner"
@@ -254,17 +255,9 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
   // Credentials View
   if (createdCredentials) {
     return (
-      <div
+      <ModalShell
         className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-md"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="create-restaurant-title"
-        onKeyDown={(e) => {
-          if (e.key === "Escape") {
-            e.preventDefault()
-            e.stopPropagation()
-          }
-        }}
+        aria-labelledby="create-restaurant-credentials-title"
       >
         <div
           className={`w-full max-w-md rounded-2xl border p-6 shadow-2xl transition-all ${
@@ -277,7 +270,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
               <KeyRound className="size-6" />
             </div>
             <div>
-              <h3 className="text-base font-bold">Credenciales del Administrador</h3>
+              <h3 id="create-restaurant-credentials-title" className="text-base font-bold">Credenciales del Administrador</h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 Restaurante creado con éxito
               </p>
@@ -348,12 +341,16 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
             </Button>
           </div>
         </div>
-      </div>
+      </ModalShell>
     )
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-md">
+    <ModalShell
+      onClose={onClose}
+      aria-labelledby="create-restaurant-title"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-md"
+    >
       <div
         className={`w-full max-w-xl rounded-2xl border p-6 shadow-2xl transition-all max-h-[90vh] overflow-y-auto ${
           isDark ? "border-slate-800 bg-[#0E1322] text-slate-100" : "border-slate-200 bg-white text-slate-900"
@@ -757,6 +754,6 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
           </div>
         </form>
       </div>
-    </div>
+    </ModalShell>
   )
 }
