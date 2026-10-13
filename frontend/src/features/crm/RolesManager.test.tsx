@@ -305,4 +305,41 @@ describe("RolesManager Component (TDD)", () => {
     const ordersCheckbox = screen.getByLabelText(/Ver pedidos/i) as HTMLInputElement
     expect(ordersCheckbox.checked).toBe(true)
   })
+
+  it("explains each role in plain language instead of raw permission codes", async () => {
+    render(<RolesManager />)
+
+    await waitFor(() => expect(screen.getByText("Cajero")).toBeDefined())
+
+    expect(screen.getAllByText("Puede:").length).toBe(2)
+    expect(screen.getAllByText("ver y gestionar").length).toBeGreaterThanOrEqual(2)
+    expect(screen.getByText("Clientes")).toBeDefined()
+    expect(screen.getByText("Inventario")).toBeDefined()
+
+    // No raw codes, no meaningless ratio, no truncation
+    expect(screen.queryByText("orders.view")).toBeNull()
+    expect(screen.queryByText(/Permisos asignados/i)).toBeNull()
+    expect(screen.queryByText(/\d+ de \d+/)).toBeNull()
+    expect(screen.queryByText(/más$/)).toBeNull()
+  })
+
+  it("flags sensitive permissions with an accessible label", async () => {
+    render(<RolesManager />)
+
+    await waitFor(() => expect(screen.getByText("Cajero")).toBeDefined())
+
+    // Cajero has finance.view; Cocinero has none
+    expect(screen.getAllByLabelText("Permiso sensible").length).toBe(1)
+  })
+
+  it("shows a clear hint for a role without permissions", async () => {
+    vi.spyOn(apiClient, "listRoles").mockResolvedValue([
+      { ...mockRoles[0], id: "role-empty", name: "Pasante", permissions: [] },
+    ])
+    render(<RolesManager />)
+
+    await waitFor(() => expect(screen.getByText("Pasante")).toBeDefined())
+    expect(screen.getByText("Sin permisos asignados")).toBeDefined()
+    expect(screen.queryByText("Puede:")).toBeNull()
+  })
 })
