@@ -98,6 +98,37 @@ async function offBrandGradients(page: Page): Promise<string[]> {
   });
 }
 
+/**
+ * Delays every font file so the swap from the fallback to Onest happens well after first paint
+ * (a cold first visit on a slow network). Layout shift from the swap must stay under budget.
+ */
+for (const vp of VIEWPORTS) {
+  test.describe(`font swap after first paint ${vp.name}`, () => {
+    test.beforeEach(async ({ page }) => {
+      await page.setViewportSize({ width: vp.width, height: vp.height });
+      await page.route(/fonts\.gstatic\.com/, async (route) => {
+        await new Promise((r) => setTimeout(r, 2500));
+        await route.continue();
+      });
+      await installClsObserver(page);
+    });
+
+    for (const [label, path, ready] of [
+      ['landing', '/', (p: Page) => expect(p.locator('main#main-content')).toBeAttached({ timeout: 15000 })],
+      ['login', '/admin', (p: Page) => expect(p.getByPlaceholder(/Tu nombre de usuario/i)).toBeVisible({ timeout: 15000 })],
+    ] as const) {
+      test(`${label}: Onest swaps in and CLS stays < 0.1`, async ({ page }) => {
+        await page.goto(path);
+        await ready(page);
+        // The brand font must really load (display=optional would skip it on a slow first visit).
+        await page.waitForFunction(() => document.fonts.check('16px Onest') && document.fonts.size > 0, null, { timeout: 15000 });
+        await page.waitForTimeout(800);
+        expect(await readCls(page), `${label} CLS with delayed font swap`).toBeLessThan(0.1);
+      });
+    }
+  });
+}
+
 for (const vp of VIEWPORTS) {
   for (const theme of THEMES) {
     const tag = `${vp.name}-${theme}`;

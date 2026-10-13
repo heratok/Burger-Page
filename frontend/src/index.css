@@ -1,5 +1,54 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+/*
+ * Metric-adjusted fallback for Onest (font-display: swap without layout shift).
+ * Method: advance widths of a Spanish letter-frequency-weighted sample (letters + space)
+ * measured from the Onest 400 TTF (unitsPerEm 1000, hhea ascent 970 / descent -305 / lineGap 0)
+ * against Arial (unitsPerEm 2048, standard Arial advances): avg 0.4776 em vs 0.4564 em
+ * => size-adjust 104.63%. Vertical overrides are Onest metrics divided by size-adjust:
+ * ascent 97%/1.0463 = 92.70%, descent 30.5%/1.0463 = 29.15%, lineGap 0%.
+ * Liberation Sans is metric-compatible with Arial (Linux). Bold uses the same ratios (approximation).
+ */
+@font-face {
+  font-family: "Onest Fallback";
+  font-weight: 400 500;
+  src: local("Arial"), local("ArialMT"), local("Liberation Sans"), local("Helvetica");
+  size-adjust: 104.63%;
+  ascent-override: 92.7%;
+  descent-override: 29.15%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: "Onest Fallback";
+  font-weight: 600 700;
+  src: local("Arial Bold"), local("Arial-BoldMT"), local("Liberation Sans Bold"), local("Helvetica Bold");
+  size-adjust: 104.63%;
+  ascent-override: 92.7%;
+  descent-override: 29.15%;
+  line-gap-override: 0%;
+}
+/*
+ * Same method for Linux desktops without Arial/Liberation, where system-ui resolves to DejaVu Sans:
+ * regular size-adjust 92.03% (ascent 105.40%, descent 33.14%); bold 84.09% (ascent 115.35%, descent 36.27%).
+ */
+@font-face {
+  font-family: "Onest Fallback DejaVu";
+  font-weight: 400 500;
+  src: local("DejaVu Sans");
+  size-adjust: 92.03%;
+  ascent-override: 105.4%;
+  descent-override: 33.14%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: "Onest Fallback DejaVu";
+  font-weight: 600 700;
+  src: local("DejaVu Sans Bold");
+  size-adjust: 84.09%;
+  ascent-override: 115.35%;
+  descent-override: 36.27%;
+  line-gap-override: 0%;
+}
 /* ejected from shadcn@unknown */
 @theme inline {
   @keyframes accordion-down {
@@ -717,7 +766,7 @@
   --radius-lg: 16px;
   --radius: 0.625rem;
 
-  --font-sans: 'Onest', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-sans: 'Onest', 'Onest Fallback', 'Onest Fallback DejaVu', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-heading: var(--font-sans);
 
   --animate-slide-in-right: slide-in-right 200ms ease-out;
