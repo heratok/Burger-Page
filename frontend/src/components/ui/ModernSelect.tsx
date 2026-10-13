@@ -282,6 +282,7 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
         value={value}
         onChange={(e) => onChange(e.target.value)}
         tabIndex={-1}
+        aria-hidden="true"
         className="sr-only"
       >
         {value && !options.some((o) => o.value === value) && (

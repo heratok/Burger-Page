@@ -792,7 +792,7 @@ export const TeamManager: React.FC = () => {
                 <span>Credenciales de Acceso</span>
               </h3>
               <button
-                aria-label="Cerrar"
+                aria-label="Cerrar credenciales de acceso"
                 type="button"
                 onClick={() => setCredentialsReveal(null)}
                 className="rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -863,7 +863,7 @@ export const TeamManager: React.FC = () => {
                 <span>Nueva Clave Temporal</span>
               </h3>
               <button
-                aria-label="Cerrar"
+                aria-label="Cerrar nueva clave temporal"
                 type="button"
                 onClick={() => setNewTempPasswordModal(null)}
                 className="rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
