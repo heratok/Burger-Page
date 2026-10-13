@@ -460,7 +460,7 @@ export const TeamManager: React.FC = () => {
                             type="button"
                             onClick={() => setResetTargetUser(user)}
                             aria-label={`Restablecer clave ${user.username}`}
-                            className="rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-950/40 dark:hover:text-indigo-300 transition-colors"
+                            className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-950/40 dark:hover:text-indigo-300 transition-colors"
                             title="Restablecer contraseña"
                           >
                             <KeyRound className="size-4" />
@@ -469,7 +469,7 @@ export const TeamManager: React.FC = () => {
                             type="button"
                             onClick={() => openEditModal(user)}
                             aria-label={`Editar usuario ${user.username}`}
-                            className="rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors"
+                            className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors"
                             title="Editar usuario"
                           >
                             <Pencil className="size-4" />
@@ -479,7 +479,7 @@ export const TeamManager: React.FC = () => {
                               type="button"
                               onClick={() => setUserToDelete(user)}
                               aria-label={`Eliminar usuario ${user.username}`}
-                              className="rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400 transition-colors"
+                              className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400 transition-colors"
                               title="Eliminar usuario"
                             >
                               <Trash2 className="size-4" />
@@ -517,7 +517,7 @@ export const TeamManager: React.FC = () => {
                 aria-label="Cerrar"
                 type="button"
                 onClick={() => setIsCreateOpen(false)}
-                className="rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 <X className="size-4" />
               </button>
@@ -670,7 +670,7 @@ export const TeamManager: React.FC = () => {
                 aria-label="Cerrar"
                 type="button"
                 onClick={() => setEditingUser(null)}
-                className="rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 <X className="size-4" />
               </button>
@@ -808,7 +808,7 @@ export const TeamManager: React.FC = () => {
                 aria-label="Cerrar credenciales de acceso"
                 type="button"
                 onClick={() => setCredentialsReveal(null)}
-                className="rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 <X className="size-4" />
               </button>
@@ -883,7 +883,7 @@ export const TeamManager: React.FC = () => {
                 aria-label="Cerrar nueva clave temporal"
                 type="button"
                 onClick={() => setNewTempPasswordModal(null)}
-                className="rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 <X className="size-4" />
               </button>

@@ -80,7 +80,7 @@ export const AdditionModal: React.FC<AdditionModalProps> = ({
             aria-label="Cerrar"
             type="button"
             onClick={onClose}
-            className="rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+            className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
           >
             <X className="size-4" />
           </button>
@@ -122,7 +122,7 @@ export const AdditionModal: React.FC<AdditionModalProps> = ({
             </Button>
             <button
               type="submit"
-              className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-indigo-700 cursor-pointer"
+              className="pointer-coarse:min-h-11 inline-flex items-center justify-center rounded-xl bg-indigo-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-indigo-700 cursor-pointer"
             >
               Guardar
             </button>

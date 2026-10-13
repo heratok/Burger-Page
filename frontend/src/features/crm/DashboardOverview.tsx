@@ -480,7 +480,7 @@ export const DashboardOverview: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => updateOrderStatus(ord.id, "cooking")}
-                          className="rounded-lg bg-orange-500/10 px-2.5 py-1 text-xs font-semibold text-orange-700 hover:bg-orange-500/20 dark:bg-orange-500/20 dark:text-orange-300"
+                          className="pointer-coarse:min-h-11 rounded-lg bg-orange-500/10 px-2.5 py-1 text-xs font-semibold text-orange-700 hover:bg-orange-500/20 dark:bg-orange-500/20 dark:text-orange-300"
                         >
                           Pasar a Cocina
                         </button>
@@ -489,7 +489,7 @@ export const DashboardOverview: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => updateOrderStatus(ord.id, "delivering")}
-                          className="rounded-lg bg-blue-500/10 px-2.5 py-1 text-xs font-semibold text-blue-600 hover:bg-blue-500/20 dark:bg-blue-500/20 dark:text-blue-300"
+                          className="pointer-coarse:min-h-11 rounded-lg bg-blue-500/10 px-2.5 py-1 text-xs font-semibold text-blue-600 hover:bg-blue-500/20 dark:bg-blue-500/20 dark:text-blue-300"
                         >
                           Enviar en Reparto
                         </button>
@@ -498,7 +498,7 @@ export const DashboardOverview: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => updateOrderStatus(ord.id, "delivered")}
-                          className="rounded-lg bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-300"
+                          className="pointer-coarse:min-h-11 rounded-lg bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-300"
                         >
                           Completar Entrega
                         </button>

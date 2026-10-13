@@ -271,7 +271,7 @@ export const ReportsManager: React.FC = () => {
                 key={preset.id}
                 type="button"
                 onClick={() => handleSelectPreset(preset.id)}
-                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
+                className={`pointer-coarse:min-h-11 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
                   datePreset === preset.id
                     ? "bg-indigo-600 text-white shadow-xs"
                     : "text-slate-600 hover:bg-slate-200/60 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white"

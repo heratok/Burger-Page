@@ -100,7 +100,7 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
                   aria-label={`Editar plato ${product.name}`}
                   type="button"
                   onClick={() => onEditProduct(product)}
-                  className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-indigo-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-indigo-300 cursor-pointer"
+                  className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-indigo-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-indigo-300 cursor-pointer"
                   title="Editar plato"
                 >
                   <Edit2 className="size-4" />
@@ -109,7 +109,7 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
                   aria-label={`Eliminar plato ${product.name}`}
                   type="button"
                   onClick={() => onDeleteProduct(product)}
-                  className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-rose-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-rose-400 cursor-pointer"
+                  className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-rose-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-rose-400 cursor-pointer"
                   title="Eliminar plato"
                 >
                   <Trash2 className="size-4" />

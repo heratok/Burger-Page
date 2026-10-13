@@ -54,7 +54,7 @@ export default function Navbar({ cantidad, total, onOpenCart, onGoToMenu }: Navb
         <button
           type="button"
           onClick={onGoToMenu}
-          className="flex items-center gap-3 text-left cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 rounded-lg p-1 -m-1"
+          className="flex items-center gap-3 text-left cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 rounded-lg p-1 -m-1 pointer-coarse:min-h-11"
           aria-label="Ir al inicio del menú"
         >
           {storeConfig.logoUrl ? (
@@ -107,7 +107,7 @@ export default function Navbar({ cantidad, total, onOpenCart, onGoToMenu }: Navb
               borderColor: "var(--color-border-strong)",
               color: "var(--color-text-secondary)",
             }}
-            className="relative inline-flex size-10 items-center justify-center rounded-full border transition duration-150 ease-out focus-ring cursor-pointer hover:opacity-80"
+            className="relative inline-flex size-10 pointer-coarse:size-11 items-center justify-center rounded-full border transition duration-150 ease-out focus-ring cursor-pointer hover:opacity-80"
           >
             <ShoppingCart className="size-5" aria-hidden="true" />
             {cantidad > 0 && (
@@ -135,7 +135,7 @@ export default function Navbar({ cantidad, total, onOpenCart, onGoToMenu }: Navb
                 borderColor: "var(--color-border-strong)",
                 color: "var(--color-text-secondary)",
               }}
-              className="inline-flex size-10 items-center justify-center rounded-full border transition duration-150 ease-out hover:text-emerald-500 focus-ring"
+              className="inline-flex size-10 pointer-coarse:size-11 items-center justify-center rounded-full border transition duration-150 ease-out hover:text-emerald-500 focus-ring"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"

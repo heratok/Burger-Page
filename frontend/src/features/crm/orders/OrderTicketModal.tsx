@@ -181,7 +181,7 @@ export const OrderTicketModal: React.FC<OrderTicketModalProps> = ({
             type="button"
             onClick={onClose}
             aria-label="Cerrar vista previa"
-            className="min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200 cursor-pointer transition-colors"
+            className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200 cursor-pointer transition-colors"
           >
             <X className="size-5" />
           </button>
@@ -202,7 +202,7 @@ export const OrderTicketModal: React.FC<OrderTicketModalProps> = ({
                 role="tab"
                 aria-selected={mode === "full"}
                 onClick={() => setMode("full")}
-                className={`flex items-center gap-2.5 rounded-lg p-2 md:p-2.5 text-left transition-all cursor-pointer min-h-[44px] ${
+                className={`pointer-coarse:min-h-11 pointer-coarse:min-w-11 flex items-center gap-2.5 rounded-lg p-2 md:p-2.5 text-left transition-all cursor-pointer min-h-[44px] ${
                   mode === "full"
                     ? "bg-white text-indigo-600 shadow-xs dark:bg-slate-900 dark:text-indigo-400 ring-1 ring-black/5 dark:ring-white/10"
                     : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-slate-800"
@@ -230,7 +230,7 @@ export const OrderTicketModal: React.FC<OrderTicketModalProps> = ({
                 role="tab"
                 aria-selected={mode === "kitchen"}
                 onClick={() => setMode("kitchen")}
-                className={`flex items-center gap-2.5 rounded-lg p-2 md:p-2.5 text-left transition-all cursor-pointer min-h-[44px] ${
+                className={`pointer-coarse:min-h-11 pointer-coarse:min-w-11 flex items-center gap-2.5 rounded-lg p-2 md:p-2.5 text-left transition-all cursor-pointer min-h-[44px] ${
                   mode === "kitchen"
                     ? "bg-white text-orange-700 shadow-xs dark:bg-slate-900 dark:text-orange-400 ring-1 ring-black/5 dark:ring-white/10"
                     : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-slate-800"
@@ -312,7 +312,7 @@ export const OrderTicketModal: React.FC<OrderTicketModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors min-h-[38px]"
+                className="pointer-coarse:min-h-11 w-full rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors min-h-[38px]"
               >
                 Cerrar
               </button>

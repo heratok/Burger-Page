@@ -1072,3 +1072,36 @@ html {
   --warning-text: hsl(31, 92%, 28%);
   --error-text: hsl(360, 100%, 33%);
 }
+
+/*
+ * Touch targets (WCAG 2.5.8 AA, goal 44px on touch). On coarse pointers every compact control keeps
+ * its visual size but gets an invisible hit area of at least 44px (centered, per axis, only when the
+ * control is smaller). Zero specificity inside @layer base: any `after:*`/position utility wins.
+ * Desktop (fine pointer) layouts are untouched.
+ */
+@layer base {
+  @media (pointer: coarse) {
+    :where(button, [role="button"], [role="tab"], [role="switch"], [role="menuitem"], [role="option"]) {
+      position: relative;
+    }
+    :where(button, [role="button"], [role="tab"], [role="switch"], [role="menuitem"], [role="option"])::after {
+      content: "";
+      position: absolute;
+      inset-block: min(0px, calc((100% - 44px) / 2));
+      inset-inline: min(0px, calc((100% - 44px) / 2));
+    }
+    :where(
+        input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"], [type="hidden"]),
+        select,
+        textarea
+      ) {
+      min-height: 44px;
+    }
+  }
+}
+
+/* Sonner's close button is 18-20px by default: below the 24px AA minimum. */
+[data-sonner-toaster] [data-sonner-toast] [data-close-button][data-close-button] {
+  width: 32px;
+  height: 32px;
+}

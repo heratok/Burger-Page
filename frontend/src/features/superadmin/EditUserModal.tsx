@@ -137,7 +137,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
-            className="rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200 cursor-pointer"
+            className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200 cursor-pointer"
             aria-label="Cerrar modal"
           >
             <X className="size-5" />
@@ -234,7 +234,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
               type="button"
               disabled={isOwnAccount}
               onClick={() => setIsActive(!isActive)}
-              className={`rounded-full px-3 py-1 text-xs font-bold transition-colors cursor-pointer ${
+              className={`pointer-coarse:min-h-11 rounded-full px-3 py-1 text-xs font-bold transition-colors cursor-pointer ${
                 isActive
                   ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/25"
                   : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 hover:bg-slate-200"

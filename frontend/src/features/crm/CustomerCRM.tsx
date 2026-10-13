@@ -403,7 +403,7 @@ export const CustomerCRM: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => openWhatsAppMarketing(cust)}
-                        className="flex items-center gap-1 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs font-bold text-emerald-700 hover:bg-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-300"
+                        className="pointer-coarse:min-h-11 flex items-center gap-1 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs font-bold text-emerald-700 hover:bg-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-300"
                         title="Contactar por WhatsApp"
                       >
                         <MessageCircle className="size-3.5" />
@@ -413,7 +413,7 @@ export const CustomerCRM: React.FC = () => {
                         aria-label={`Ficha del cliente ${cust.nombre}`}
                         type="button"
                         onClick={() => openCustomerModal(cust)}
-                        className="rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                        className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
                         title="Ficha del cliente"
                       >
                         <FileText className="size-4" />
@@ -424,7 +424,7 @@ export const CustomerCRM: React.FC = () => {
                             type="button"
                             onClick={() => openCustomerModal(cust, true)}
                             aria-label={`Editar ${cust.nombre}`}
-                            className="rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                            className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
                             title="Editar cliente"
                           >
                             <Pencil className="size-4" />
@@ -433,7 +433,7 @@ export const CustomerCRM: React.FC = () => {
                             type="button"
                             onClick={() => setCustomerToDelete(cust)}
                             aria-label={`Eliminar ${cust.nombre}`}
-                            className="rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
+                            className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
                             title="Eliminar cliente"
                           >
                             <Trash2 className="size-4" />
@@ -494,7 +494,7 @@ export const CustomerCRM: React.FC = () => {
                 type="button"
                 onClick={closeCustomerModal}
                 aria-label="Cerrar modal"
-                className="rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 <X className="size-5" />
               </button>
@@ -661,7 +661,7 @@ export const CustomerCRM: React.FC = () => {
                 type="button"
                 onClick={closeCreateModal}
                 aria-label="Cerrar modal"
-                className="rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 <X className="size-5" />
               </button>

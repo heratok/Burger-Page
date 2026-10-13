@@ -277,7 +277,7 @@ export const CustomizerTablesSection: React.FC<CustomizerTablesSectionProps> = (
           <button
             type="button"
             onClick={() => void reload()}
-            className="rounded-lg border border-rose-300 px-2 py-1 font-bold cursor-pointer"
+            className="pointer-coarse:min-h-11 rounded-lg border border-rose-300 px-2 py-1 font-bold cursor-pointer"
           >
             Reintentar
           </button>

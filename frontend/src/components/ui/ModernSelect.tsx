@@ -237,8 +237,8 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
   }
 
   const sizeClasses = {
-    sm: "text-sm py-1.5 px-2.5 min-h-[34px]",
-    md: "text-sm py-2.5 px-3 min-h-[40px]",
+    sm: "text-sm py-1.5 px-2.5 min-h-[34px] pointer-coarse:min-h-11",
+    md: "text-sm py-2.5 px-3 min-h-[40px] pointer-coarse:min-h-11",
     lg: "text-sm py-3 px-3.5 min-h-[46px]",
   }[size]
 
@@ -469,7 +469,7 @@ export const ModernSelect = React.forwardRef<HTMLSelectElement, ModernSelectProp
                       onClick={() => handleSelectOption(opt)}
                       onMouseEnter={() => setFocusedIndex(index)}
                       className={cn(
-                        "w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-sm text-left cursor-pointer transition-colors select-none",
+                        "pointer-coarse:min-h-11 w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-sm text-left cursor-pointer transition-colors select-none",
                         isSelected
                           ? "bg-indigo-50/80 dark:bg-slate-800/90 text-indigo-900 dark:text-white font-medium"
                           : isFocused

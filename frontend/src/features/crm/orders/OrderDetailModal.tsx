@@ -132,7 +132,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                     setIsTicketModalOpen(true)
                   }
                 }}
-                className="flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-2 sm:px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer transition-colors min-h-[36px]"
+                className="pointer-coarse:min-h-11 flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-2 sm:px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer transition-colors min-h-[36px]"
                 title="Imprimir comanda / ticket"
                 aria-label="Imprimir comanda / ticket"
               >
@@ -148,7 +148,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                   onEditOrder(order)
                   onClose()
                 }}
-                className="flex items-center gap-1 rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/50 px-2 sm:px-2.5 py-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 cursor-pointer transition-colors min-h-[36px]"
+                className="pointer-coarse:min-h-11 flex items-center gap-1 rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/50 px-2 sm:px-2.5 py-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 cursor-pointer transition-colors min-h-[36px]"
                 title="Editar venta"
               >
                 <Pencil className="size-3.5" />
@@ -160,7 +160,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
               type="button"
               onClick={onClose}
               aria-label="Cerrar detalles"
-              className="rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200 cursor-pointer transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center"
+              className="pointer-coarse:min-h-11 rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200 cursor-pointer transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center"
             >
               <X className="size-5" />
             </button>
@@ -296,7 +296,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                     aria-label="Ver comprobante ampliado"
                     type="button"
                     onClick={() => setIsReceiptModalOpen(true)}
-                    className="relative size-16 shrink-0 cursor-pointer overflow-hidden rounded-lg border border-indigo-200 dark:border-indigo-800 shadow-xs hover:opacity-90 transition-opacity group p-0 text-left"
+                    className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 relative size-16 shrink-0 cursor-pointer overflow-hidden rounded-lg border border-indigo-200 dark:border-indigo-800 shadow-xs hover:opacity-90 transition-opacity group p-0 text-left"
                     title="Clic para ver comprobante ampliado"
                   >
                     <img
@@ -374,7 +374,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                     onUpdateStatus(order.id, "pending")
                     onClose()
                   }}
-                  className="rounded-lg border px-2.5 py-1 text-xs font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 cursor-pointer"
+                  className="pointer-coarse:min-h-11 rounded-lg border px-2.5 py-1 text-xs font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 cursor-pointer"
                 >
                   🟡 Pendiente
                 </button>
@@ -384,7 +384,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                     onUpdateStatus(order.id, "cooking")
                     onClose()
                   }}
-                  className="rounded-lg border px-2.5 py-1 text-xs font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 cursor-pointer"
+                  className="pointer-coarse:min-h-11 rounded-lg border px-2.5 py-1 text-xs font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 cursor-pointer"
                 >
                   🟠 En Cocina
                 </button>
@@ -394,7 +394,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                     onUpdateStatus(order.id, "delivering")
                     onClose()
                   }}
-                  className="rounded-lg border px-2.5 py-1 text-xs font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 cursor-pointer"
+                  className="pointer-coarse:min-h-11 rounded-lg border px-2.5 py-1 text-xs font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 cursor-pointer"
                 >
                   🔵 En Reparto
                 </button>
@@ -404,7 +404,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                     onUpdateStatus(order.id, "delivered")
                     onClose()
                   }}
-                  className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-700 hover:bg-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-300 cursor-pointer"
+                  className="pointer-coarse:min-h-11 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-700 hover:bg-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-300 cursor-pointer"
                 >
                   🟢 Entregado
                 </button>
@@ -414,7 +414,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                     onUpdateStatus(order.id, "cancelled")
                     onClose()
                   }}
-                  className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-2.5 py-1 text-xs font-bold text-rose-600 hover:bg-rose-500/20 dark:bg-rose-500/20 dark:text-rose-300 cursor-pointer"
+                  className="pointer-coarse:min-h-11 rounded-lg border border-rose-500/30 bg-rose-500/10 px-2.5 py-1 text-xs font-bold text-rose-600 hover:bg-rose-500/20 dark:bg-rose-500/20 dark:text-rose-300 cursor-pointer"
                 >
                   🔴 Cancelar
                 </button>
@@ -427,7 +427,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                   onDeleteOrder(order)
                   onClose()
                 }}
-                className="flex items-center gap-1 rounded-lg border border-rose-500/40 bg-rose-500/10 px-2.5 py-1 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 ml-auto cursor-pointer"
+                className="pointer-coarse:min-h-11 flex items-center gap-1 rounded-lg border border-rose-500/40 bg-rose-500/10 px-2.5 py-1 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 ml-auto cursor-pointer"
                 title="Eliminar orden definitivamente"
               >
                 <Trash2 className="size-3" />
@@ -466,7 +466,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                   type="button"
                   onClick={() => setIsReceiptModalOpen(false)}
                   aria-label="Cerrar comprobante"
-                  className="rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer"
+                  className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer"
                 >
                   <X className="size-5" />
                 </button>

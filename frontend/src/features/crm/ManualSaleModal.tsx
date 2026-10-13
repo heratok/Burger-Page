@@ -973,7 +973,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                 type="button"
                 onClick={handleClose}
                 aria-label="Cerrar modal"
-                className={`rounded-xl p-2 transition-colors cursor-pointer ${
+                className={`pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-xl p-2 transition-colors cursor-pointer ${
                   isDark
                     ? "text-slate-400 hover:bg-slate-800 hover:text-white"
                     : "text-slate-500 hover:bg-slate-200 hover:text-slate-900"
@@ -989,7 +989,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
             <button
               type="button"
               onClick={() => setMobileTab("catalog")}
-              className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              className={`pointer-coarse:min-h-11 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 mobileTab === "catalog"
                   ? "bg-orange-700 text-white shadow-md shadow-orange-500/25 ring-2 ring-orange-500/50"
                   : "bg-white dark:bg-slate-800/90 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700/60"
@@ -1002,7 +1002,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
             <button
               type="button"
               onClick={() => setMobileTab("cart")}
-              className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer relative ${
+              className={`pointer-coarse:min-h-11 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer relative ${
                 mobileTab === "cart"
                   ? "bg-orange-700 text-white shadow-md shadow-orange-500/25 ring-2 ring-orange-500/50"
                   : "bg-white dark:bg-slate-800/90 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700/60"
@@ -1095,7 +1095,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                         key={cat}
                         type="button"
                         onClick={() => handleCategoryItemClick(() => setSelectedCategory(cat))}
-                        className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-1 text-xs font-semibold capitalize transition-all cursor-pointer ${getCategoryPillClass(isSelected)}`}
+                        className={`pointer-coarse:min-h-11 shrink-0 whitespace-nowrap rounded-lg px-3 py-1 text-xs font-semibold capitalize transition-all cursor-pointer ${getCategoryPillClass(isSelected)}`}
                       >
                         {cat === "all" ? "Todos Los Productos" : cat}
                       </button>
@@ -1168,7 +1168,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                                 <button
                                   type="button"
                                   onClick={() => handleOpenCustomize(product)}
-                                  className="inline-flex items-center gap-1 rounded-lg border border-orange-500/30 bg-orange-500/10 hover:bg-orange-500/20 text-orange-700 dark:text-orange-400 font-bold px-2 py-1 text-xs transition-all cursor-pointer shadow-2xs active:scale-95"
+                                  className="pointer-coarse:min-h-11 inline-flex items-center gap-1 rounded-lg border border-orange-500/30 bg-orange-500/10 hover:bg-orange-500/20 text-orange-700 dark:text-orange-400 font-bold px-2 py-1 text-xs transition-all cursor-pointer shadow-2xs active:scale-95"
                                 >
                                   <PlusCircle className="size-3.5 text-orange-700 dark:text-orange-400" />
                                   <span>+ Extras</span>
@@ -1258,7 +1258,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                     type="button"
                     aria-pressed={serviceType === "mostrador"}
                     onClick={() => setServiceType("mostrador")}
-                    className={`flex items-center justify-center gap-1 sm:gap-1.5 rounded-lg py-1.5 text-xs font-bold transition-all cursor-pointer ${
+                    className={`pointer-coarse:min-h-11 flex items-center justify-center gap-1 sm:gap-1.5 rounded-lg py-1.5 text-xs font-bold transition-all cursor-pointer ${
                       serviceType === "mostrador"
                         ? "bg-orange-700 text-white shadow-xs"
                         : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
@@ -1272,7 +1272,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                     type="button"
                     aria-pressed={serviceType === "mesa"}
                     onClick={() => setServiceType("mesa")}
-                    className={`flex items-center justify-center gap-1 sm:gap-1.5 rounded-lg py-1.5 text-xs font-bold transition-all cursor-pointer ${
+                    className={`pointer-coarse:min-h-11 flex items-center justify-center gap-1 sm:gap-1.5 rounded-lg py-1.5 text-xs font-bold transition-all cursor-pointer ${
                       serviceType === "mesa"
                         ? "bg-orange-700 text-white shadow-xs"
                         : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
@@ -1286,7 +1286,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                     type="button"
                     aria-pressed={serviceType === "domicilio"}
                     onClick={() => setServiceType("domicilio")}
-                    className={`flex items-center justify-center gap-1 sm:gap-1.5 rounded-lg py-1.5 text-xs font-bold transition-all cursor-pointer ${
+                    className={`pointer-coarse:min-h-11 flex items-center justify-center gap-1 sm:gap-1.5 rounded-lg py-1.5 text-xs font-bold transition-all cursor-pointer ${
                       serviceType === "domicilio"
                         ? "bg-orange-700 text-white shadow-xs"
                         : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
@@ -1327,7 +1327,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                       <button
                         type="button"
                         onClick={() => setMobileTab("catalog")}
-                        className="md:hidden mt-2.5 rounded-lg bg-orange-700 px-3 py-1.5 text-xs font-bold text-white shadow-xs"
+                        className="pointer-coarse:min-h-11 md:hidden mt-2.5 rounded-lg bg-orange-700 px-3 py-1.5 text-xs font-bold text-white shadow-xs"
                       >
                         Ir al Catálogo
                       </button>
@@ -1389,7 +1389,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                             aria-label="Disminuir cantidad"
                             type="button"
                             onClick={() => handleUpdateItemQty(index, -1)}
-                            className={`size-6 flex items-center justify-center rounded-lg border text-xs cursor-pointer ${
+                            className={`pointer-coarse:min-h-11 pointer-coarse:min-w-11 size-6 flex items-center justify-center rounded-lg border text-xs cursor-pointer ${
                               isDark
                                 ? "border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700"
                                 : "border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200"
@@ -1402,7 +1402,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                             aria-label="Aumentar cantidad"
                             type="button"
                             onClick={() => handleUpdateItemQty(index, 1)}
-                            className={`size-6 flex items-center justify-center rounded-lg border text-xs cursor-pointer ${
+                            className={`pointer-coarse:min-h-11 pointer-coarse:min-w-11 size-6 flex items-center justify-center rounded-lg border text-xs cursor-pointer ${
                               isDark
                                 ? "border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700"
                                 : "border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200"
@@ -1415,7 +1415,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                             type="button"
                             onClick={() => handleRemoveItem(index)}
                             title="Eliminar producto"
-                            className="ml-1 size-6 flex items-center justify-center rounded-lg text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 cursor-pointer"
+                            className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 ml-1 size-6 flex items-center justify-center rounded-lg text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 cursor-pointer"
                           >
                             <Trash2 className="size-3.5" />
                           </button>
@@ -1483,7 +1483,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                           type="button"
                           aria-pressed={paymentMethod === "Efectivo"}
                           onClick={() => setPaymentMethod("Efectivo")}
-                          className={`rounded-lg px-2.5 py-1 text-xs font-bold transition-all cursor-pointer ${getPaymentMethodBtnClass("Efectivo")}`}
+                          className={`pointer-coarse:min-h-11 rounded-lg px-2.5 py-1 text-xs font-bold transition-all cursor-pointer ${getPaymentMethodBtnClass("Efectivo")}`}
                         >
                           💵 Efectivo
                         </button>
@@ -1491,7 +1491,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                           type="button"
                           aria-pressed={paymentMethod === "Transferencia"}
                           onClick={() => setPaymentMethod("Transferencia")}
-                          className={`rounded-lg px-2.5 py-1 text-xs font-bold transition-all cursor-pointer ${getPaymentMethodBtnClass("Transferencia")}`}
+                          className={`pointer-coarse:min-h-11 rounded-lg px-2.5 py-1 text-xs font-bold transition-all cursor-pointer ${getPaymentMethodBtnClass("Transferencia")}`}
                         >
                           💳 Transferencia
                         </button>
@@ -1617,7 +1617,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                 }`}
               >
                 {!orderToEdit ? (
-                  <label className="flex items-center gap-2 cursor-pointer select-none text-sm text-slate-700 dark:text-slate-300 min-h-[44px] sm:min-h-0">
+                  <label className="flex items-center gap-2 cursor-pointer select-none text-sm text-slate-700 dark:text-slate-300 min-h-[44px] sm:pointer-fine:min-h-0">
                     <input
                       type="checkbox"
                       checked={printTicketOnSave}
@@ -1644,7 +1644,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                   <button
                     type="submit"
                     disabled={selectedItems.length === 0 || isUploadingReceipt}
-                    className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-5 py-2 text-xs font-bold text-white shadow-md shadow-orange-500/20 hover:from-orange-600 hover:to-amber-600 disabled:opacity-50 cursor-pointer min-h-[40px] sm:min-h-[36px]"
+                    className="pointer-coarse:min-h-11 flex-1 sm:flex-none inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-5 py-2 text-xs font-bold text-white shadow-md shadow-orange-500/20 hover:from-orange-600 hover:to-amber-600 disabled:opacity-50 cursor-pointer min-h-[40px] sm:min-h-[36px]"
                   >
                     <Check className="size-4" />
                     <span>{getSubmitButtonLabel()}</span>
@@ -1699,7 +1699,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                     setCustomizingProduct(null)
                     setEditingCartItemIndex(null)
                   }}
-                  className="size-8 flex items-center justify-center rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"
+                  className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 size-8 flex items-center justify-center rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"
                 >
                   <X className="size-4" />
                 </button>
@@ -1759,7 +1759,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                                 }
                                 disabled={qty === 0}
                                 aria-label={`Quitar ${addition.name}`}
-                                className={`size-8 flex items-center justify-center rounded-lg border text-xs transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed ${
+                                className={`pointer-coarse:min-h-11 pointer-coarse:min-w-11 size-8 flex items-center justify-center rounded-lg border text-xs transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed ${
                                   isDark
                                     ? "border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700"
                                     : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
@@ -1781,7 +1781,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
                                   }))
                                 }
                                 aria-label={`Agregar ${addition.name}`}
-                                className="size-8 flex items-center justify-center rounded-lg bg-orange-700 text-white hover:bg-orange-800 active:scale-95 transition-all shadow-xs cursor-pointer"
+                                className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 size-8 flex items-center justify-center rounded-lg bg-orange-700 text-white hover:bg-orange-800 active:scale-95 transition-all shadow-xs cursor-pointer"
                               >
                                 <Plus className="size-3.5" />
                               </button>

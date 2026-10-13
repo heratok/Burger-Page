@@ -144,7 +144,7 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
         <button
           type="button"
           onClick={toggleAll}
-          className="shrink-0 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors cursor-pointer px-2 py-1 rounded-lg hover:bg-indigo-50 dark:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-500"
+          className="pointer-coarse:min-h-11 shrink-0 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors cursor-pointer px-2 py-1 rounded-lg hover:bg-indigo-50 dark:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-500"
         >
           {allOpen ? "Colapsar todo" : "Expandir todo"}
         </button>
@@ -319,7 +319,7 @@ export const CustomizerBusinessSection: React.FC<CustomizerBusinessSectionProps>
                         key={preset}
                         type="button"
                         onClick={() => setDraft((prev) => ({ ...prev, estimatedDeliveryTime: preset }))}
-                        className={`px-2 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer border ${
+                        className={`pointer-coarse:min-h-11 px-2 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer border ${
                           isSelected
                             ? "bg-indigo-500/15 border-indigo-500/40 text-indigo-700 dark:text-indigo-300 font-semibold"
                             : "bg-slate-100 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200/80 dark:hover:bg-slate-700"

@@ -127,7 +127,7 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({
             aria-label="Cerrar"
             type="button"
             onClick={onClose}
-            className={`rounded-lg p-1 transition-colors ${
+            className={`pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1 transition-colors ${
               isDark ? "text-slate-400 hover:bg-slate-800 hover:text-white" : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
             }`}
           >

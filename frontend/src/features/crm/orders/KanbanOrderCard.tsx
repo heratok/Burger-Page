@@ -137,7 +137,7 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
         <button
           type="button"
           onClick={() => onViewDetails(order)}
-          className="min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer transition-colors"
+          className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer transition-colors"
           title="Ver detalles completos del pedido"
           aria-label="Ver detalles completos del pedido"
         >
@@ -148,7 +148,7 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
           <button
             type="button"
             onClick={() => (onPrintOrder ?? onPrintTicket)?.(order)}
-            className="min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer transition-colors"
+            className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer transition-colors"
             title="Imprimir ticket / comanda"
             aria-label="Imprimir ticket / comanda"
           >
@@ -161,7 +161,7 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
             aria-label={`Editar venta #${order.orderNumber}`}
             type="button"
             onClick={() => onEditOrder(order)}
-            className="min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg border border-indigo-200 dark:border-indigo-800 p-2 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700 dark:text-indigo-400 dark:hover:bg-indigo-950/50 cursor-pointer transition-colors"
+            className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg border border-indigo-200 dark:border-indigo-800 p-2 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700 dark:text-indigo-400 dark:hover:bg-indigo-950/50 cursor-pointer transition-colors"
             title="Editar venta"
           >
             <Pencil className="size-4" />
@@ -172,7 +172,7 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
           <button
             type="button"
             onClick={() => onUpdateStatus(order.id, "cooking")}
-            className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-orange-700 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-orange-800 cursor-pointer"
+            className="pointer-coarse:min-h-11 flex flex-1 items-center justify-center gap-1 rounded-lg bg-orange-700 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-orange-800 cursor-pointer"
           >
             <ChefHat className="size-3.5" />
             <span>A Cocina</span>
@@ -182,7 +182,7 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
           <button
             type="button"
             onClick={() => onUpdateStatus(order.id, "delivering")}
-            className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-blue-600 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-blue-700 cursor-pointer"
+            className="pointer-coarse:min-h-11 flex flex-1 items-center justify-center gap-1 rounded-lg bg-blue-600 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-blue-700 cursor-pointer"
           >
             <Bike className="size-3.5" />
             <span>Despachar</span>
@@ -192,7 +192,7 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
           <button
             type="button"
             onClick={() => onUpdateStatus(order.id, "delivered")}
-            className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-emerald-700 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-emerald-800 cursor-pointer"
+            className="pointer-coarse:min-h-11 flex flex-1 items-center justify-center gap-1 rounded-lg bg-emerald-700 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-emerald-800 cursor-pointer"
           >
             <CheckCircle2 className="size-3.5" />
             <span>Entregado</span>
@@ -203,7 +203,7 @@ export const KanbanOrderCard: React.FC<KanbanOrderCardProps> = ({
             aria-label={`Chat de WhatsApp con el cliente del pedido #${order.orderNumber}`}
             type="button"
             onClick={() => onWhatsApp(order)}
-            className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-1.5 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400 cursor-pointer"
+            className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-1.5 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400 cursor-pointer"
             title="Chat WhatsApp con cliente"
           >
             <MessageCircle className="size-3.5" />

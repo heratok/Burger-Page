@@ -406,7 +406,7 @@ export const RolesManager: React.FC = () => {
                         type="button"
                         onClick={() => openEditModal(role)}
                         aria-label={`Editar rol ${role.name}`}
-                        className="rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors"
+                        className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors"
                         title="Editar rol"
                       >
                         <Pencil className="size-4" />
@@ -419,7 +419,7 @@ export const RolesManager: React.FC = () => {
                             setRoleToDelete(role)
                           }}
                           aria-label={`Eliminar rol ${role.name}`}
-                          className="rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400 transition-colors"
+                          className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400 transition-colors"
                           title="Eliminar rol"
                         >
                           <Trash2 className="size-4" />
@@ -503,7 +503,7 @@ export const RolesManager: React.FC = () => {
                 aria-label="Cerrar"
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
                 <X className="size-5" />
               </button>
@@ -571,7 +571,7 @@ export const RolesManager: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => handleApplyPreset(preset.permissions)}
-                        className={`flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all ${
+                        className={`pointer-coarse:min-h-11 flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all ${
                           isDark
                             ? "border-slate-700 bg-slate-800/80 text-slate-200 hover:border-indigo-500/50 hover:bg-slate-700"
                             : "border-slate-200 bg-slate-100 text-slate-700 hover:border-indigo-300 hover:bg-slate-200"
@@ -584,7 +584,7 @@ export const RolesManager: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setSelectedPermissions(new Set())}
-                    className={`rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 ${
+                    className={`pointer-coarse:min-h-11 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 ${
                       isDark ? "border-slate-800" : "border-slate-200"
                     }`}
                   >

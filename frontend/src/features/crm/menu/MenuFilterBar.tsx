@@ -67,7 +67,7 @@ export const MenuFilterBar: React.FC<MenuFilterBarProps> = ({
           <button
             type="button"
             onClick={() => handleItemClick(() => onSelectCategory("ALL"))}
-            className={`shrink-0 whitespace-nowrap rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
+            className={`pointer-coarse:min-h-11 shrink-0 whitespace-nowrap rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
               selectedCategory === "ALL"
                 ? "bg-indigo-600 text-white shadow-xs"
                 : isDark
@@ -82,7 +82,7 @@ export const MenuFilterBar: React.FC<MenuFilterBarProps> = ({
               key={cat}
               type="button"
               onClick={() => handleItemClick(() => onSelectCategory(cat))}
-              className={`shrink-0 whitespace-nowrap rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
+              className={`pointer-coarse:min-h-11 shrink-0 whitespace-nowrap rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
                 selectedCategory === cat
                   ? "bg-indigo-600 text-white shadow-xs"
                   : isDark
@@ -138,7 +138,7 @@ export const MenuFilterBar: React.FC<MenuFilterBarProps> = ({
             type="button"
             aria-pressed={viewMode === "grid"}
             onClick={() => onViewModeChange("grid")}
-            className={`rounded-lg p-1.5 text-xs ${
+            className={`pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1.5 text-xs ${
               viewMode === "grid"
                 ? "bg-white shadow-xs text-slate-900 dark:bg-slate-700 dark:text-white"
                 : "text-slate-500 dark:text-slate-400"
@@ -152,7 +152,7 @@ export const MenuFilterBar: React.FC<MenuFilterBarProps> = ({
             type="button"
             aria-pressed={viewMode === "table"}
             onClick={() => onViewModeChange("table")}
-            className={`rounded-lg p-1.5 text-xs ${
+            className={`pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1.5 text-xs ${
               viewMode === "table"
                 ? "bg-white shadow-xs text-slate-900 dark:bg-slate-700 dark:text-white"
                 : "text-slate-500 dark:text-slate-400"

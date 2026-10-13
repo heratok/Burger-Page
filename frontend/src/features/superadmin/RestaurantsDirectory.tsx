@@ -181,7 +181,7 @@ export const RestaurantsDirectory: React.FC = () => {
                     setActiveTab("active")
                     setCurrentPage(1)
                   }}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+                  className={`pointer-coarse:min-h-11 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
                     activeTab === "active"
                       ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs"
                       : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
@@ -196,7 +196,7 @@ export const RestaurantsDirectory: React.FC = () => {
                     setCurrentPage(1)
                     void invalidateRestaurantLists()
                   }}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+                  className={`pointer-coarse:min-h-11 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
                     activeTab === "deleted"
                       ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs"
                       : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
@@ -306,7 +306,7 @@ export const RestaurantsDirectory: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => handleOpenRestore(dr)}
-                            className="rounded-lg bg-emerald-700 hover:bg-emerald-800 px-3 py-1.5 text-xs font-bold text-white shadow-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                            className="pointer-coarse:min-h-11 rounded-lg bg-emerald-700 hover:bg-emerald-800 px-3 py-1.5 text-xs font-bold text-white shadow-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer"
                             title={`Restaurar restaurante ${dr.name}`}
                             aria-label={`Restaurar restaurante ${dr.name}`}
                           >
@@ -384,7 +384,7 @@ export const RestaurantsDirectory: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => updateRestaurant(r.id, { isActive: !r.isActive })}
-                              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold transition-all cursor-pointer ${
+                              className={`pointer-coarse:min-h-11 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold transition-all cursor-pointer ${
                                 r.isActive
                                   ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/25"
                                   : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 hover:bg-slate-200"
@@ -428,7 +428,7 @@ export const RestaurantsDirectory: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => handleViewStore(r)}
-                              className="rounded-lg border border-slate-200 dark:border-slate-700 px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center gap-1"
+                              className="pointer-coarse:min-h-11 rounded-lg border border-slate-200 dark:border-slate-700 px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center gap-1"
                               title="Ver Tienda Pública de este local"
                             >
                               <Eye className="size-3.5 text-slate-500 dark:text-slate-400" />
@@ -438,7 +438,7 @@ export const RestaurantsDirectory: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => setRestaurantToEdit(r)}
-                              className="rounded-lg border border-slate-200 dark:border-slate-700 px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center gap-1"
+                              className="pointer-coarse:min-h-11 rounded-lg border border-slate-200 dark:border-slate-700 px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center gap-1"
                               title="Editar datos y administradores del restaurante"
                               aria-label={`Editar restaurante ${r.config.name}`}
                             >
@@ -449,7 +449,7 @@ export const RestaurantsDirectory: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => handleManage(r)}
-                              className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-indigo-700 transition-colors flex items-center gap-1"
+                              className="pointer-coarse:min-h-11 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-indigo-700 transition-colors flex items-center gap-1"
                               title="Administrar pedidos, menú y diseño de este local"
                             >
                               <Sliders className="size-3.5" />
@@ -459,7 +459,7 @@ export const RestaurantsDirectory: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => setRestaurantToDelete(r)}
-                              className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-rose-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-rose-400 transition-colors cursor-pointer"
+                              className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-rose-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-rose-400 transition-colors cursor-pointer"
                               title="Eliminar restaurante"
                               aria-label={`Eliminar restaurante ${r.config.name}`}
                             >
@@ -584,7 +584,7 @@ export const RestaurantsDirectory: React.FC = () => {
                 type="button"
                 onClick={() => setRestaurantToRestore(null)}
                 disabled={isRestoring}
-                className="rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
                 aria-label="Cerrar modal"
               >
                 <X className="size-5" />

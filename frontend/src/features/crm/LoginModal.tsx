@@ -141,7 +141,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="w-full rounded-xl px-4 py-2 text-xs font-medium text-slate-500 dark:text-slate-400 transition-colors hover:text-slate-200"
+            className="pointer-coarse:min-h-11 w-full rounded-xl px-4 py-2 text-xs font-medium text-slate-500 dark:text-slate-400 transition-colors hover:text-slate-200"
           >
             Cancelar
           </button>

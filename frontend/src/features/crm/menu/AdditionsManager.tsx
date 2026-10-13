@@ -53,7 +53,7 @@ export const AdditionsManager: React.FC<AdditionsManagerProps> = ({
                 aria-label={`Editar adicional ${add.name}`}
                 type="button"
                 onClick={() => onEditAddition(add)}
-                className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-700 cursor-pointer"
+                className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1.5 text-slate-500 hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-700 cursor-pointer"
                 title="Editar adicional"
               >
                 <Edit2 className="size-3.5" />
@@ -62,7 +62,7 @@ export const AdditionsManager: React.FC<AdditionsManagerProps> = ({
                 aria-label={`Eliminar adicional ${add.name}`}
                 type="button"
                 onClick={() => onDeleteAddition(add)}
-                className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-rose-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-rose-400 cursor-pointer"
+                className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-rose-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-rose-400 cursor-pointer"
                 title="Eliminar adicional"
               >
                 <Trash2 className="size-3.5" />

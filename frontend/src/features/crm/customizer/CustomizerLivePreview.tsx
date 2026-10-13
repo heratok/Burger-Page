@@ -53,7 +53,7 @@ export const CustomizerLivePreview: React.FC<CustomizerLivePreviewProps> = ({
               type="button"
               aria-pressed={previewDevice === "desktop"}
               onClick={() => setPreviewDevice("desktop")}
-              className={`rounded-md p-1.5 text-xs cursor-pointer ${
+              className={`pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-md p-1.5 text-xs cursor-pointer ${
                 previewDevice === "desktop"
                   ? "bg-white shadow-xs text-indigo-700 dark:bg-slate-700 dark:text-white"
                   : "text-slate-500 dark:text-slate-400"
@@ -67,7 +67,7 @@ export const CustomizerLivePreview: React.FC<CustomizerLivePreviewProps> = ({
               type="button"
               aria-pressed={previewDevice === "mobile"}
               onClick={() => setPreviewDevice("mobile")}
-              className={`rounded-md p-1.5 text-xs cursor-pointer ${
+              className={`pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-md p-1.5 text-xs cursor-pointer ${
                 previewDevice === "mobile"
                   ? "bg-white shadow-xs text-indigo-700 dark:bg-slate-700 dark:text-white"
                   : "text-slate-500 dark:text-slate-400"
@@ -292,7 +292,7 @@ export const CustomizerLivePreview: React.FC<CustomizerLivePreviewProps> = ({
                 backgroundColor: brand.fill,
                 color: primaryForeground,
               }}
-              className="rounded-xl px-3 py-1.5 text-xs font-bold shadow-xs"
+              className="pointer-coarse:min-h-11 rounded-xl px-3 py-1.5 text-xs font-bold shadow-xs"
             >
               Ver Mi Pedido (2)
             </button>

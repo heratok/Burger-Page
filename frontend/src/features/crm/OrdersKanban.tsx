@@ -300,7 +300,7 @@ export const OrdersKanban: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleViewModeChange("feed")}
-                className={`flex items-center gap-1.5 rounded-lg px-2 sm:px-2.5 py-1.5 text-xs font-bold transition-all cursor-pointer ${getViewModeBtnClass("feed")}`}
+                className={`pointer-coarse:min-h-11 flex items-center gap-1.5 rounded-lg px-2 sm:px-2.5 py-1.5 text-xs font-bold transition-all cursor-pointer ${getViewModeBtnClass("feed")}`}
               >
                 <LayoutGrid className="size-3.5 shrink-0" />
                 <span>Comandas</span>
@@ -310,7 +310,7 @@ export const OrdersKanban: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleViewModeChange("kanban")}
-                className={`flex items-center gap-1.5 rounded-lg px-2 sm:px-2.5 py-1.5 text-xs font-bold transition-all cursor-pointer ${getViewModeBtnClass("kanban")}`}
+                className={`pointer-coarse:min-h-11 flex items-center gap-1.5 rounded-lg px-2 sm:px-2.5 py-1.5 text-xs font-bold transition-all cursor-pointer ${getViewModeBtnClass("kanban")}`}
               >
                 <Columns3 className="size-3.5 shrink-0" />
                 <span>Kanban</span>
@@ -359,7 +359,7 @@ export const OrdersKanban: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setFeedTab("active")}
-                className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all cursor-pointer ${getFeedTabClass("active")}`}
+                className={`pointer-coarse:min-h-11 flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all cursor-pointer ${getFeedTabClass("active")}`}
               >
                 <UtensilsCrossed className="size-3.5" />
                 <span>Comandas Activas</span>
@@ -371,7 +371,7 @@ export const OrdersKanban: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setFeedTab("history")}
-                className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all cursor-pointer ${getFeedTabClass("history")}`}
+                className={`pointer-coarse:min-h-11 flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all cursor-pointer ${getFeedTabClass("history")}`}
               >
                 <Archive className="size-3.5" />
                 <span>Historial</span>
@@ -428,7 +428,7 @@ export const OrdersKanban: React.FC = () => {
                           setActiveStatusFilter(chip.id as "ALL" | "pending" | "cooking" | "delivering")
                           setActivePage(1)
                         }}
-                        className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${getFilterChipClass(isSelected)}`}
+                        className={`pointer-coarse:min-h-11 inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${getFilterChipClass(isSelected)}`}
                       >
                         {chip.icon}
                         <span>{chip.label}</span>

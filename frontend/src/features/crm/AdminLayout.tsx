@@ -360,7 +360,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
               type="button"
               aria-label="Cerrar menú"
               onClick={() => setIsMobileSidebarOpen(false)}
-              className="rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 lg:hidden cursor-pointer"
+              className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 lg:hidden cursor-pointer"
             >
               <X className="size-5" />
             </button>
@@ -492,7 +492,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 title="Cambiar Contraseña"
                 aria-label="Cambiar Contraseña"
                 onClick={() => setIsChangePasswordOpen(true)}
-                className={`flex items-center justify-center rounded-xl text-slate-500 dark:text-slate-400 hover:bg-indigo-500/10 hover:text-indigo-500 dark:hover:text-indigo-400 active:scale-95 transition-all cursor-pointer ${
+                className={`pointer-coarse:min-h-11 flex items-center justify-center rounded-xl text-slate-500 dark:text-slate-400 hover:bg-indigo-500/10 hover:text-indigo-500 dark:hover:text-indigo-400 active:scale-95 transition-all cursor-pointer ${
                   isSidebarCollapsed
                     ? "lg:size-10 lg:mx-auto w-full gap-1.5 py-1.5 text-xs font-semibold"
                     : "w-full gap-1.5 py-1.5 text-xs font-semibold"
@@ -513,7 +513,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                   logout()
                   navigateTo("/")
                 }}
-                className={`flex items-center justify-center rounded-xl text-slate-500 dark:text-slate-400 hover:bg-rose-500/10 hover:text-rose-500 active:scale-95 transition-all cursor-pointer ${
+                className={`pointer-coarse:min-h-11 flex items-center justify-center rounded-xl text-slate-500 dark:text-slate-400 hover:bg-rose-500/10 hover:text-rose-500 active:scale-95 transition-all cursor-pointer ${
                   isSidebarCollapsed
                     ? "lg:size-10 lg:mx-auto w-full gap-1.5 py-1.5 text-xs font-semibold"
                     : "w-full gap-1.5 py-1.5 text-xs font-semibold"
@@ -549,7 +549,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 onClick={() => setIsMobileSidebarOpen(true)}
                 aria-expanded={isMobileSidebarOpen}
                 aria-controls="admin-sidebar"
-                className="rounded-xl border p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 lg:hidden cursor-pointer"
+                className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-xl border p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 lg:hidden cursor-pointer"
                 aria-label="Abrir menú"
               >
                 <MenuIcon className="size-5" />
@@ -634,7 +634,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 type="button"
                 onClick={toggleAdminTheme}
                 title={`Cambiar a modo ${isDark ? "claro" : "oscuro"}`}
-                className={`inline-flex size-9 items-center justify-center rounded-xl border transition-all ${
+                className={`pointer-coarse:min-h-11 pointer-coarse:min-w-11 inline-flex size-9 items-center justify-center rounded-xl border transition-all ${
                   isDark
                     ? "border-slate-800 bg-slate-900 text-amber-400 hover:bg-slate-800"
                     : "border-slate-200 bg-slate-50 text-indigo-600 hover:bg-slate-100"

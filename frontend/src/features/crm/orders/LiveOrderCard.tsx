@@ -149,7 +149,7 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
           <button
             type="button"
             onClick={() => onWhatsApp(order)}
-            className="shrink-0 flex items-center gap-1 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400 cursor-pointer"
+            className="pointer-coarse:min-h-11 shrink-0 flex items-center gap-1 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400 cursor-pointer"
             title="Chat WhatsApp con cliente"
           >
             <MessageCircle className="size-3.5" />
@@ -234,7 +234,7 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
         <button
           type="button"
           onClick={() => onViewDetails(order)}
-          className="min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer"
+          className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer"
           title="Ver detalles completos de la orden"
           aria-label="Ver detalles completos de la orden"
         >
@@ -245,7 +245,7 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
           <button
             type="button"
             onClick={() => (onPrintOrder ?? onPrintTicket)?.(order)}
-            className="min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer transition-colors"
+            className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer transition-colors"
             title="Imprimir ticket / comanda"
             aria-label="Imprimir ticket / comanda"
           >
@@ -258,7 +258,7 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
             aria-label={`Editar venta #${order.orderNumber}`}
             type="button"
             onClick={() => onEditOrder(order)}
-            className="min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl border border-indigo-200 dark:border-indigo-800 p-2 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700 dark:text-indigo-400 dark:hover:bg-indigo-950/50 cursor-pointer transition-colors"
+            className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl border border-indigo-200 dark:border-indigo-800 p-2 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700 dark:text-indigo-400 dark:hover:bg-indigo-950/50 cursor-pointer transition-colors"
             title="Editar venta"
           >
             <Pencil className="size-4" />
@@ -272,7 +272,7 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
               <button
                 type="button"
                 onClick={() => onUpdateStatus(order.id, "delivered")}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-700 px-3 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-800 transition-colors cursor-pointer"
+                className="pointer-coarse:min-h-11 flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-700 px-3 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-800 transition-colors cursor-pointer"
               >
                 <Check className="size-4" />
                 <span>Completar (1 Clic)</span>
@@ -283,7 +283,7 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
                 <button
                   type="button"
                   onClick={() => onUpdateStatus(order.id, "cooking")}
-                  className="flex items-center gap-1 rounded-xl border border-orange-500/30 bg-orange-500/10 px-2.5 py-2 text-xs font-bold text-orange-700 hover:bg-orange-500/20 dark:text-orange-400 cursor-pointer"
+                  className="pointer-coarse:min-h-11 flex items-center gap-1 rounded-xl border border-orange-500/30 bg-orange-500/10 px-2.5 py-2 text-xs font-bold text-orange-700 hover:bg-orange-500/20 dark:text-orange-400 cursor-pointer"
                   title="Mover a cocina"
                 >
                   <ChefHat className="size-4" />
@@ -295,7 +295,7 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
                 <button
                   type="button"
                   onClick={() => onUpdateStatus(order.id, "delivering")}
-                  className="flex items-center gap-1 rounded-xl border border-blue-500/30 bg-blue-500/10 px-2.5 py-2 text-xs font-bold text-blue-600 hover:bg-blue-500/20 dark:text-blue-400 cursor-pointer"
+                  className="pointer-coarse:min-h-11 flex items-center gap-1 rounded-xl border border-blue-500/30 bg-blue-500/10 px-2.5 py-2 text-xs font-bold text-blue-600 hover:bg-blue-500/20 dark:text-blue-400 cursor-pointer"
                   title="Despachar con repartidor"
                 >
                   <Bike className="size-4" />
@@ -307,7 +307,7 @@ export const LiveOrderCard: React.FC<LiveOrderCardProps> = ({
             <button
               type="button"
               onClick={() => onUpdateStatus(order.id, "pending")}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer"
+              className="pointer-coarse:min-h-11 flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer"
             >
               <RotateCcw className="size-3.5" />
               <span>Reabrir Orden</span>

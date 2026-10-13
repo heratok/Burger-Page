@@ -354,7 +354,7 @@ export default function Home() {
                         backgroundColor: "var(--color-bg-elevated)",
                         borderColor: "var(--color-border-subtle)",
                       }}
-                      className="absolute left-0 z-30 flex size-6.5 -translate-x-1 sm:-translate-x-2 items-center justify-center rounded-full bg-bg-elevated shadow-md border border-border-subtle text-text-primary hover:bg-bg-elevated-2 transition-all cursor-pointer"
+                      className="absolute left-0 z-30 flex size-6.5 pointer-coarse:size-11 -translate-x-1 sm:-translate-x-2 items-center justify-center rounded-full bg-bg-elevated shadow-md border border-border-subtle text-text-primary hover:bg-bg-elevated-2 transition-all cursor-pointer"
                       aria-label="Desplazar categorías hacia la izquierda"
                     >
                       <ChevronLeft className="size-3.5" />
@@ -386,7 +386,7 @@ export default function Home() {
                             }
                           : undefined
                       }
-                      className={`shrink-0 whitespace-nowrap rounded-full px-4 py-1.5 text-xs font-bold transition-all ${
+                      className={`shrink-0 whitespace-nowrap rounded-full px-4 py-1.5 pointer-coarse:min-h-11 text-xs font-bold transition-all ${
                         selectedCategory === "ALL"
                           ? "shadow-sm"
                           : "border border-border-subtle bg-bg-elevated text-text-primary hover:bg-bg-elevated-2 hover:border-border-strong"
@@ -411,7 +411,7 @@ export default function Home() {
                               }
                             : undefined
                         }
-                        className={`shrink-0 whitespace-nowrap rounded-full px-4 py-1.5 text-xs font-bold transition-all ${
+                        className={`shrink-0 whitespace-nowrap rounded-full px-4 py-1.5 pointer-coarse:min-h-11 text-xs font-bold transition-all ${
                           selectedCategory === cat
                             ? "shadow-sm"
                             : "border border-border-subtle bg-bg-elevated text-text-primary hover:bg-bg-elevated-2 hover:border-border-strong"
@@ -430,7 +430,7 @@ export default function Home() {
                         backgroundColor: "var(--color-bg-elevated)",
                         borderColor: "var(--color-border-subtle)",
                       }}
-                      className="absolute right-0 z-30 flex size-6.5 translate-x-1 sm:translate-x-2 items-center justify-center rounded-full bg-bg-elevated shadow-md border border-border-subtle text-text-primary hover:bg-bg-elevated-2 transition-all cursor-pointer"
+                      className="absolute right-0 z-30 flex size-6.5 pointer-coarse:size-11 translate-x-1 sm:translate-x-2 items-center justify-center rounded-full bg-bg-elevated shadow-md border border-border-subtle text-text-primary hover:bg-bg-elevated-2 transition-all cursor-pointer"
                       aria-label="Desplazar categorías hacia la derecha"
                     >
                       <ChevronRight className="size-3.5" />
@@ -458,7 +458,7 @@ export default function Home() {
                         onClick={() => toggleCategoryCollapse(category)}
                         aria-expanded={!isCollapsed}
                         aria-controls={sectionContentId}
-                        className="group/header flex w-full cursor-pointer items-center justify-between border-b border-border-subtle pb-2 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 rounded-lg"
+                        className="group/header flex w-full cursor-pointer items-center justify-between pointer-coarse:min-h-11 border-b border-border-subtle pb-2 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 rounded-lg"
                       >
                         <div className="flex items-center gap-2">
                           <h2

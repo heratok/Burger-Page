@@ -103,7 +103,7 @@ export const CustomizerLayoutSection: React.FC<CustomizerLayoutSectionProps> = (
               key={r.id}
               type="button"
               onClick={() => setDraft((prev) => ({ ...prev, cardRadius: r.id as CardRadius }))}
-              className={`rounded-xl border py-2 text-xs transition-all cursor-pointer ${
+              className={`pointer-coarse:min-h-11 rounded-xl border py-2 text-xs transition-all cursor-pointer ${
                 draft.cardRadius === r.id
                   ? "border-indigo-600 bg-indigo-50/10 font-bold text-indigo-600 dark:text-indigo-400"
                   : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"

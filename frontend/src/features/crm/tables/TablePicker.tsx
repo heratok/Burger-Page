@@ -108,7 +108,7 @@ export function TablePicker({
             ref={addButtonRef}
             type="button"
             onClick={openCreate}
-            className="rounded-lg px-1.5 py-0.5 text-xs font-bold text-orange-700 hover:bg-orange-500/10 dark:text-orange-400 cursor-pointer"
+            className="pointer-coarse:min-h-11 rounded-lg px-1.5 py-0.5 text-xs font-bold text-orange-700 hover:bg-orange-500/10 dark:text-orange-400 cursor-pointer"
           >
             + Nueva mesa
           </button>
@@ -152,7 +152,7 @@ export function TablePicker({
                       type="button"
                       aria-pressed={selected}
                       onClick={() => onSelect(table.id)}
-                      className={`flex min-h-10 flex-col items-center justify-center rounded-lg border px-1.5 py-1 text-center text-xs font-bold transition-all cursor-pointer ${tableButtonClass(
+                      className={`pointer-coarse:min-h-11 flex min-h-10 flex-col items-center justify-center rounded-lg border px-1.5 py-1 text-center text-xs font-bold transition-all cursor-pointer ${tableButtonClass(
                         selected
                       )}`}
                     >
@@ -210,14 +210,14 @@ export function TablePicker({
               type="button"
               onClick={() => void handleCreate()}
               disabled={isSaving || !preview}
-              className="shrink-0 rounded-lg bg-orange-700 px-2.5 py-1.5 text-xs font-bold text-white disabled:opacity-50 cursor-pointer"
+              className="pointer-coarse:min-h-11 shrink-0 rounded-lg bg-orange-700 px-2.5 py-1.5 text-xs font-bold text-white disabled:opacity-50 cursor-pointer"
             >
               Crear
             </button>
             <button
               type="button"
               onClick={closeCreate}
-              className="shrink-0 rounded-lg px-2 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800 cursor-pointer"
+              className="pointer-coarse:min-h-11 shrink-0 rounded-lg px-2 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800 cursor-pointer"
             >
               Cancelar
             </button>

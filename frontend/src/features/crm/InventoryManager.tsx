@@ -84,7 +84,7 @@ export const InventoryManager: React.FC = () => {
           <button
             type="button"
             onClick={() => setActiveTab("inventory")}
-            className={`flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-bold transition-all ${activeTab === "inventory" ? "bg-indigo-600 text-white shadow-xs" : isDark ? "text-slate-400 hover:text-white" : "text-slate-600 hover:text-slate-900"}`}
+            className={`pointer-coarse:min-h-11 flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-bold transition-all ${activeTab === "inventory" ? "bg-indigo-600 text-white shadow-xs" : isDark ? "text-slate-400 hover:text-white" : "text-slate-600 hover:text-slate-900"}`}
           >
             <Boxes className="size-3.5" />
             <span>Control de Stock</span>
@@ -93,7 +93,7 @@ export const InventoryManager: React.FC = () => {
           <button
             type="button"
             onClick={() => setActiveTab("suppliers")}
-            className={`flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-bold transition-all ${activeTab === "suppliers" ? "bg-indigo-600 text-white shadow-xs" : isDark ? "text-slate-400 hover:text-white" : "text-slate-600 hover:text-slate-900"}`}
+            className={`pointer-coarse:min-h-11 flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-bold transition-all ${activeTab === "suppliers" ? "bg-indigo-600 text-white shadow-xs" : isDark ? "text-slate-400 hover:text-white" : "text-slate-600 hover:text-slate-900"}`}
           >
             <Truck className="size-3.5" />
             <span>Proveedores ({suppliers.length})</span>

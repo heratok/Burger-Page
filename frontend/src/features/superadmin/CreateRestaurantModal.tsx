@@ -299,7 +299,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
                   type="button"
                   onClick={() => handleCopy(createdCredentials.username, "user")}
                   aria-label={copiedUser ? "Usuario copiado" : "Copiar usuario administrador"}
-                  className="rounded-lg border px-2 py-1 text-xs font-semibold flex items-center gap-1 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                  className="pointer-coarse:min-h-11 rounded-lg border px-2 py-1 text-xs font-semibold flex items-center gap-1 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                 >
                   {copiedUser ? <Check className="size-3 text-emerald-700 dark:text-emerald-400" /> : <Copy className="size-3 text-slate-500 dark:text-slate-400" />}
                   <span>{copiedUser ? "Copiado" : "Copiar"}</span>
@@ -321,7 +321,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
                     type="button"
                     onClick={() => handleCopy(createdCredentials.password!, "pass")}
                     aria-label={copiedPass ? "Clave copiada" : "Copiar clave provisional"}
-                    className="rounded-lg border px-2 py-1 text-xs font-semibold flex items-center gap-1 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                    className="pointer-coarse:min-h-11 rounded-lg border px-2 py-1 text-xs font-semibold flex items-center gap-1 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                   >
                     {copiedPass ? <Check className="size-3 text-emerald-700 dark:text-emerald-400" /> : <Copy className="size-3 text-slate-500 dark:text-slate-400" />}
                     <span>{copiedPass ? "Copiado" : "Copiar"}</span>
@@ -373,7 +373,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
             aria-label="Cerrar"
             type="button"
             onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+            className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
           >
             <X className="size-5" />
           </button>
@@ -713,7 +713,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
                   type="button"
                   aria-pressed={primaryColor === color.primary}
                   onClick={() => setPrimaryColor(color.primary)}
-                  className="flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs transition-all border-slate-200 dark:border-slate-700 hover:border-slate-400"
+                  className="pointer-coarse:min-h-11 flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs transition-all border-slate-200 dark:border-slate-700 hover:border-slate-400"
                 >
                   <span
                     className="size-3.5 rounded-full shadow-xs"

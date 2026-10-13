@@ -104,7 +104,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
         <button
           type="button"
           onClick={onToggleOnlyLowStock}
-          className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition-all ${
+          className={`pointer-coarse:min-h-11 flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition-all ${
             onlyLowStock
               ? "border-amber-500 bg-amber-500/20 text-amber-700 dark:text-amber-400 font-bold"
               : isDark
@@ -229,7 +229,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
                           <button
                             type="button"
                             onClick={() => onAdjustStock(item.id, -1)}
-                            className={`rounded-lg border px-2 py-1 text-xs font-bold transition-colors ${
+                            className={`pointer-coarse:min-h-11 rounded-lg border px-2 py-1 text-xs font-bold transition-colors ${
                               isDark
                                 ? "border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700"
                                 : "border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200"
@@ -241,7 +241,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
                           <button
                             type="button"
                             onClick={() => onAdjustStock(item.id, 1)}
-                            className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-2 py-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20"
+                            className="pointer-coarse:min-h-11 rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-2 py-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20"
                             title="Sumar 1"
                           >
                             +1
@@ -249,7 +249,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
                           <button
                             type="button"
                             onClick={() => onAdjustStock(item.id, 5)}
-                            className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-2 py-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20"
+                            className="pointer-coarse:min-h-11 rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-2 py-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20"
                             title="Sumar 5"
                           >
                             +5
@@ -294,7 +294,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
                             aria-label={`Editar insumo ${item.name}`}
                             type="button"
                             onClick={() => onEditItem(item)}
-                            className="rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white"
+                            className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white"
                             title="Editar insumo"
                           >
                             <Edit2 className="size-3.5" />
@@ -303,7 +303,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
                             aria-label={`Eliminar insumo ${item.name}`}
                             type="button"
                             onClick={() => onDeleteItem(item)}
-                            className="rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-rose-500/10 hover:text-rose-500 cursor-pointer"
+                            className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-rose-500/10 hover:text-rose-500 cursor-pointer"
                             title="Eliminar insumo"
                           >
                             <Trash2 className="size-3.5" />

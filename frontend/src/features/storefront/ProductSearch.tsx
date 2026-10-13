@@ -57,7 +57,7 @@ export default function ProductSearch({ onChangeText, total = 0 }: ProductSearch
               size="icon-sm"
               onClick={handleClear}
               aria-label="Limpiar búsqueda"
-              className="size-10 rounded-full text-text-muted hover:bg-bg-elevated-2 hover:text-text-primary"
+              className="size-10 pointer-coarse:size-11 rounded-full text-text-muted hover:bg-bg-elevated-2 hover:text-text-primary"
             >
               <X />
             </Button>

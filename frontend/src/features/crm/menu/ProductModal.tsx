@@ -195,7 +195,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
             type="button"
             onClick={onClose}
             aria-label="Cerrar modal"
-            className="rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 cursor-pointer shrink-0 transition-colors"
+            className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 cursor-pointer shrink-0 transition-colors"
           >
             <X className="size-5" />
           </button>
@@ -325,7 +325,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                       <button
                         type="button"
                         onClick={() => setPreviewFitMode("cover")}
-                        className={`px-2.5 py-1 text-center rounded-md transition-all cursor-pointer whitespace-nowrap ${
+                        className={`pointer-coarse:min-h-11 px-2.5 py-1 text-center rounded-md transition-all cursor-pointer whitespace-nowrap ${
                           previewFitMode === "cover"
                             ? "bg-white text-indigo-600 shadow-xs dark:bg-slate-800 dark:text-white"
                             : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
@@ -338,7 +338,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                       <button
                         type="button"
                         onClick={() => setPreviewFitMode("contain")}
-                        className={`px-2.5 py-1 text-center rounded-md transition-all cursor-pointer whitespace-nowrap ${
+                        className={`pointer-coarse:min-h-11 px-2.5 py-1 text-center rounded-md transition-all cursor-pointer whitespace-nowrap ${
                           previewFitMode === "contain"
                             ? "bg-white text-indigo-600 shadow-xs dark:bg-slate-800 dark:text-white"
                             : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
@@ -439,7 +439,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                     type="button"
                     disabled={isImageBusy}
                     onClick={() => setIsConfirmingRemovePhoto(true)}
-                    className="text-xs text-rose-600 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300 font-semibold px-2 py-1 cursor-pointer disabled:opacity-40 transition-colors"
+                    className="pointer-coarse:min-h-11 text-xs text-rose-600 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300 font-semibold px-2 py-1 cursor-pointer disabled:opacity-40 transition-colors"
                   >
                     Quitar Foto
                   </button>

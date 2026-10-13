@@ -95,7 +95,7 @@ export const SuppliersList: React.FC<SuppliersListProps> = ({
                         aria-label={`Editar proveedor ${sup.name}`}
                         type="button"
                         onClick={() => onEditSupplier(sup)}
-                        className={`rounded-lg p-1 transition-colors ${
+                        className={`pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1 transition-colors ${
                           isDark
                             ? "text-slate-400 hover:bg-slate-800 hover:text-white"
                             : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-700"
@@ -108,7 +108,7 @@ export const SuppliersList: React.FC<SuppliersListProps> = ({
                         aria-label={`Eliminar proveedor ${sup.name}`}
                         type="button"
                         onClick={() => onDeleteSupplier(sup)}
-                        className="rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-rose-500/10 hover:text-rose-500 cursor-pointer"
+                        className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-rose-500/10 hover:text-rose-500 cursor-pointer"
                         title="Eliminar proveedor"
                       >
                         <Trash2 className="size-3.5" />

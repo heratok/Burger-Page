@@ -135,7 +135,7 @@ export const WeeklyScheduleEditor: React.FC<WeeklyScheduleEditorProps> = ({ sche
                 onChange(applyRangeToDays(schedule, DAY_DISPLAY_ORDER, bulkOpen, bulkClose))
                 showFeedback("¡Aplicado a toda la semana!")
               }}
-              className="rounded-lg border border-indigo-200 dark:border-indigo-800/60 bg-indigo-50/80 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 px-2.5 py-1 text-xs font-semibold text-indigo-700 dark:text-indigo-300 transition-colors cursor-pointer shadow-2xs focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
+              className="pointer-coarse:min-h-11 rounded-lg border border-indigo-200 dark:border-indigo-800/60 bg-indigo-50/80 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 px-2.5 py-1 text-xs font-semibold text-indigo-700 dark:text-indigo-300 transition-colors cursor-pointer shadow-2xs focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
               aria-label="Toda la semana"
             >
               Toda la semana
@@ -146,7 +146,7 @@ export const WeeklyScheduleEditor: React.FC<WeeklyScheduleEditorProps> = ({ sche
                 onChange(applyRangeToDays(schedule, WEEKDAY_NUMBERS, bulkOpen, bulkClose))
                 showFeedback("¡Aplicado a Lun a Vie!")
               }}
-              className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:text-slate-200 transition-colors cursor-pointer shadow-2xs focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
+              className="pointer-coarse:min-h-11 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:text-slate-200 transition-colors cursor-pointer shadow-2xs focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
               aria-label="Lun a Vie"
             >
               Lun a Vie
@@ -157,7 +157,7 @@ export const WeeklyScheduleEditor: React.FC<WeeklyScheduleEditorProps> = ({ sche
                 onChange(applyRangeToDays(schedule, WEEKEND_NUMBERS, bulkOpen, bulkClose))
                 showFeedback("¡Aplicado a Fin de semana!")
               }}
-              className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:text-slate-200 transition-colors cursor-pointer shadow-2xs focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
+              className="pointer-coarse:min-h-11 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:text-slate-200 transition-colors cursor-pointer shadow-2xs focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
               aria-label="Fin de semana"
             >
               Fin de semana
@@ -168,7 +168,7 @@ export const WeeklyScheduleEditor: React.FC<WeeklyScheduleEditorProps> = ({ sche
                 onChange(setAll24Hours())
                 showFeedback("¡Todos 24 horas!")
               }}
-              className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:text-slate-200 transition-colors cursor-pointer shadow-2xs focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
+              className="pointer-coarse:min-h-11 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:text-slate-200 transition-colors cursor-pointer shadow-2xs focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
               aria-label="Todos 24h"
             >
               Todos 24h
@@ -222,7 +222,7 @@ export const WeeklyScheduleEditor: React.FC<WeeklyScheduleEditorProps> = ({ sche
                           type="button"
                           onClick={() => onChange(setDayCustomHours(schedule, day))}
                           aria-label={`Definir horario para ${name}`}
-                          className="rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 px-2 py-0.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400 transition-colors cursor-pointer"
+                          className="pointer-coarse:min-h-11 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 px-2 py-0.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400 transition-colors cursor-pointer"
                         >
                           Definir horario
                         </button>
@@ -232,7 +232,7 @@ export const WeeklyScheduleEditor: React.FC<WeeklyScheduleEditorProps> = ({ sche
                           onClick={() => onChange(setDay24Hours(schedule, day))}
                           aria-label={`Poner ${name} en 24 horas`}
                           title="Cambiar a horario 24 horas"
-                          className="rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 px-2 py-0.5 text-xs font-semibold text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
+                          className="pointer-coarse:min-h-11 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 px-2 py-0.5 text-xs font-semibold text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
                         >
                           24h
                         </button>

@@ -158,7 +158,7 @@ export const StorefrontCustomizer: React.FC = () => {
                   aria-controls="customizer-tabpanel"
                   tabIndex={isActive ? 0 : -1}
                   onClick={() => setActiveSection(tab.id)}
-                  className={`flex min-h-10 items-center justify-center gap-1.5 rounded-lg px-1.5 py-2 text-center whitespace-nowrap transition-all cursor-pointer ${
+                  className={`pointer-coarse:min-h-11 flex min-h-10 items-center justify-center gap-1.5 rounded-lg px-1.5 py-2 text-center whitespace-nowrap transition-all cursor-pointer ${
                     isActive
                       ? "bg-white text-indigo-700 shadow-xs dark:bg-slate-700 dark:text-white font-bold"
                       : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"

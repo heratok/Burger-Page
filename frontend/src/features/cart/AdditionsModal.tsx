@@ -168,7 +168,7 @@ export default function AdditionsModal({
             backgroundColor: "var(--color-bg-elevated)",
             borderColor: "var(--color-border-subtle)",
           }}
-          className="absolute top-3 right-3 z-30 inline-flex size-9 sm:size-10 items-center justify-center rounded-full border border-border-subtle bg-bg-elevated hover:bg-bg-elevated-2 text-text-muted hover:text-text-primary shadow-md transition-all active:scale-95 cursor-pointer backdrop-blur-md"
+          className="absolute top-3 right-3 z-30 inline-flex size-9 sm:size-10 pointer-coarse:size-11 items-center justify-center rounded-full border border-border-subtle bg-bg-elevated hover:bg-bg-elevated-2 text-text-muted hover:text-text-primary shadow-md transition-all active:scale-95 cursor-pointer backdrop-blur-md"
         >
           <X className="size-4 sm:size-5" />
         </button>
@@ -329,7 +329,7 @@ export default function AdditionsModal({
                   onClick={disminuirCantidad}
                   aria-label="Disminuir cantidad"
                   disabled={cantidad === 1}
-                  className="size-10 sm:size-11 rounded-full border border-border-subtle bg-bg-elevated-2 text-text-primary hover:opacity-80 disabled:opacity-30"
+                  className="size-11 rounded-full border border-border-subtle bg-bg-elevated-2 text-text-primary hover:opacity-80 disabled:opacity-30"
                 >
                   <Minus />
                 </Button>
@@ -349,7 +349,7 @@ export default function AdditionsModal({
                     backgroundColor: brand.fill,
                     color: primaryForeground,
                   }}
-                  className="size-10 sm:size-11 rounded-full shadow-xs hover:opacity-90 transition-opacity disabled:opacity-30"
+                  className="size-11 rounded-full shadow-xs hover:opacity-90 transition-opacity disabled:opacity-30"
                 >
                   <Plus />
                 </Button>

@@ -77,7 +77,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
               aria-label="Cerrar gestión de categorías"
               type="button"
               onClick={handleCloseModal}
-              className="rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+              className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
             >
               <X className="size-5" />
             </button>
@@ -144,14 +144,14 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
                       <button
                         type="button"
                         onClick={() => handleSaveEdit(cat)}
-                        className="rounded-lg bg-indigo-600 px-2 py-1 text-xs font-bold text-white hover:bg-indigo-700 cursor-pointer"
+                        className="pointer-coarse:min-h-11 rounded-lg bg-indigo-600 px-2 py-1 text-xs font-bold text-white hover:bg-indigo-700 cursor-pointer"
                       >
                         Guardar
                       </button>
                       <button
                         type="button"
                         onClick={() => setEditingCategoryName(null)}
-                        className="rounded-lg bg-slate-200 dark:bg-slate-700 px-2 py-1 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-300 cursor-pointer"
+                        className="pointer-coarse:min-h-11 rounded-lg bg-slate-200 dark:bg-slate-700 px-2 py-1 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-300 cursor-pointer"
                       >
                         Cancelar
                       </button>
@@ -175,7 +175,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
                             setEditingCategoryName(cat)
                             setEditCategoryInputValue(cat)
                           }}
-                          className="rounded-lg p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white cursor-pointer"
+                          className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white cursor-pointer"
                           title="Renombrar categoría"
                         >
                           <Edit2 className="size-3.5" />
@@ -184,7 +184,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
                           aria-label={`Eliminar categoría ${cat}`}
                           type="button"
                           onClick={() => setCategoryToDelete(cat)}
-                          className="rounded-lg p-1 text-slate-500 hover:bg-slate-100 hover:text-rose-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-rose-400 cursor-pointer"
+                          className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg p-1 text-slate-500 hover:bg-slate-100 hover:text-rose-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-rose-400 cursor-pointer"
                           title="Eliminar categoría"
                         >
                           <Trash2 className="size-3.5" />
