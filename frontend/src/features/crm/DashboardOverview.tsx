@@ -144,8 +144,8 @@ export const DashboardOverview: React.FC = () => {
       <div
         className={`relative overflow-hidden rounded-2xl border p-6 shadow-sm transition-all ${
           isDark
-            ? "border-slate-800 bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900"
-            : "border-slate-200/80 bg-gradient-to-r from-indigo-50/70 via-violet-50/40 to-white"
+            ? "border-slate-800 bg-gradient-to-r from-slate-900 via-orange-950/30 to-slate-900"
+            : "border-slate-200/80 bg-gradient-to-r from-orange-50/70 via-amber-50/40 to-white"
         }`}
       >
         <div className="relative z-10 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">

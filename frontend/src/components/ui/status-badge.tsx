@@ -92,9 +92,9 @@ export const LoyaltyBadge: React.FC<LoyaltyBadgeProps> = ({ tier, className }) =
   > = {
     vip: {
       label: "Cliente VIP",
-      bg: "bg-gradient-to-r from-purple-500/20 to-pink-500/20",
-      text: "text-purple-700 dark:text-purple-300 font-bold",
-      border: "border-purple-500/40 shadow-xs",
+      bg: "bg-rose-500/15 dark:bg-rose-500/20",
+      text: "text-rose-700 dark:text-rose-300 font-bold",
+      border: "border-rose-500/40 shadow-xs",
       icon: <Crown className="size-3.5 text-amber-700 dark:text-amber-400" />,
     },
     gold: {

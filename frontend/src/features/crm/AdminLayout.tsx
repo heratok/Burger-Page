@@ -273,7 +273,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
             {isSuperGlobalMode ? (
               <div className={`flex items-center gap-2.5 min-w-0 ${isSidebarCollapsed ? "lg:justify-center" : ""}`}>
                 <div
-                  className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-tr from-amber-500 to-indigo-600 text-white font-bold text-xs shrink-0 shadow-md ring-1 ring-amber-500/20"
+                  className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-tr from-amber-500 to-orange-600 text-white font-bold text-xs shrink-0 shadow-md ring-1 ring-amber-500/20"
                 >
                   <Crown className="size-4.5" />
                 </div>
@@ -296,7 +296,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                   />
                 ) : (
                   <div
-                    className="flex size-9 items-center justify-center rounded-lg bg-gradient-to-tr from-amber-500 to-indigo-600 text-white font-bold text-xs shrink-0"
+                    className="flex size-9 items-center justify-center rounded-lg bg-gradient-to-tr from-amber-500 to-orange-600 text-white font-bold text-xs shrink-0"
                   >
                     <Crown className="size-4.5" />
                   </div>

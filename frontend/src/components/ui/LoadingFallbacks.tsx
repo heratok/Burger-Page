@@ -10,7 +10,7 @@ export const AdminLoadingFallback: React.FC = () => {
   return (
     <div className="min-h-screen w-full bg-[#0B0F19] text-slate-100 flex flex-col items-center justify-center p-6">
       <div className="flex flex-col items-center gap-4 text-center max-w-xs animate-in fade-in duration-200">
-        <div className="flex size-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 text-white shadow-xl shadow-indigo-600/30">
+        <div className="flex size-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-orange-600 to-amber-500 text-white shadow-xl shadow-orange-600/30">
           <ShieldCheck className="size-7 animate-pulse" />
         </div>
         <div className="space-y-1">

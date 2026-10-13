@@ -858,7 +858,7 @@ export const TeamManager: React.FC = () => {
             }`}
           >
             <div className="flex items-center justify-between border-b pb-3 mb-4 border-slate-100 dark:border-slate-800">
-              <h3 className="text-base font-bold flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
+              <h3 className="text-base font-bold flex items-center gap-2 text-orange-700 dark:text-orange-400">
                 <KeyRound className="size-5" />
                 <span>Nueva Clave Temporal</span>
               </h3>

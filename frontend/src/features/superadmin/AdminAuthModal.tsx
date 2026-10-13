@@ -77,17 +77,17 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
   }
 
   return (
-    <div className="min-h-screen w-full relative flex items-center justify-center p-4 sm:p-6 lg:p-12 overflow-x-hidden bg-gradient-to-br from-[#0A0E1A] via-[#0F172A] to-[#131127] text-slate-100 font-sans">
+    <div className="min-h-screen w-full relative flex items-center justify-center p-4 sm:p-6 lg:p-12 overflow-x-hidden bg-gradient-to-br from-[#0A0E1A] via-[#0F172A] to-[#0A0E1A] text-slate-100 font-sans">
       {/* ======================================================== */}
       {/* VIBRANT LUMINOUS AURORA LIGHTS                           */}
       {/* ======================================================== */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        {/* Top left vibrant cyan/indigo aura */}
-        <div className="absolute -top-40 -left-40 h-[600px] w-[600px] rounded-full bg-gradient-to-br from-indigo-500/25 via-cyan-500/20 to-transparent blur-[140px]" />
+        {/* Top left warm orange aura */}
+        <div className="absolute -top-40 -left-40 h-[600px] w-[600px] rounded-full bg-gradient-to-br from-orange-500/25 via-amber-500/20 to-transparent blur-[140px]" />
         {/* Center warm amber/orange aura */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[500px] w-[700px] rounded-full bg-gradient-to-r from-orange-500/15 via-rose-500/15 to-indigo-600/15 blur-[160px]" />
-        {/* Bottom right purple aura */}
-        <div className="absolute -bottom-40 -right-40 h-[650px] w-[650px] rounded-full bg-gradient-to-tl from-purple-600/25 via-violet-500/20 to-transparent blur-[140px]" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[500px] w-[700px] rounded-full bg-gradient-to-r from-orange-500/15 via-rose-500/15 to-amber-600/15 blur-[160px]" />
+        {/* Bottom right amber aura */}
+        <div className="absolute -bottom-40 -right-40 h-[650px] w-[650px] rounded-full bg-gradient-to-tl from-amber-600/25 via-orange-500/20 to-transparent blur-[140px]" />
 
         {/* Ambient Subtle Tech Grid */}
         <div
@@ -168,7 +168,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
           <div className="w-full max-w-md rounded-3xl border border-white/15 bg-slate-900/85 p-6 sm:p-8 shadow-2xl shadow-indigo-950/80 backdrop-blur-2xl transition-all">
             {/* Header */}
             <div className="flex flex-col items-center text-center">
-              <div className="mb-4 flex size-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-orange-500 via-indigo-600 to-violet-600 p-0.5 shadow-lg shadow-indigo-600/30">
+              <div className="mb-4 flex size-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-orange-500 via-orange-600 to-amber-600 p-0.5 shadow-lg shadow-orange-600/30">
                 <div className="flex size-full items-center justify-center rounded-[14px] bg-slate-900 text-white">
                   <Flame className="size-7 text-orange-400" />
                 </div>
