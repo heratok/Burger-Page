@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react"
+import { render, screen, fireEvent, waitFor, cleanup, within } from "@testing-library/react"
 import { TeamManager } from "./TeamManager"
 import { apiClient } from "@/core/api/apiClient"
 import type { ApiUserRecord } from "@/core/api/apiClient"
@@ -226,26 +226,81 @@ describe("TeamManager Component (TDD)", () => {
     })
   })
 
-  it("shows each role's description in the role select and shows the selected role's description", async () => {
+  it("uses the modern select for the create-member role with name and description as separate lines", async () => {
+    render(<TeamManager />)
+
+    await waitFor(() => expect(screen.getByText("carlos_caja")).toBeDefined())
+    fireEvent.click(screen.getByRole("button", { name: /Nuevo Miembro/i }))
+
+    // Native select is only the hidden form twin; the visible control is the modern trigger
+    const trigger = screen.getByTestId("create-role-select-trigger")
+    expect(trigger.textContent).toContain("Cajero")
+    expect(document.querySelector("select#create-role-select")).not.toBeNull()
+
+    fireEvent.click(trigger)
+    const menu = screen.getByTestId("create-role-select-menu")
+    expect(menu.textContent).toContain("Caja y cobros")
+    expect(menu.textContent).toContain("Cocina y despacho")
+    // description is no longer glued to the name
+    expect(menu.textContent).not.toContain("Cajero — Caja y cobros")
+
+    fireEvent.click(within(screen.getByRole("listbox")).getByRole("option", { name: /Cocinero/ }))
+    expect(screen.getByTestId("create-role-select-trigger").textContent).toContain("Cocinero")
+    // hidden select stays in sync for forms
+    expect((document.querySelector("select#create-role-select") as HTMLSelectElement).value).toBe(
+      "role-cook"
+    )
+  })
+
+  it("falls back to the permission areas when a role has no description", async () => {
+    vi.spyOn(apiClient, "listRoles").mockResolvedValue([
+      { ...mockRoles[0], description: undefined },
+    ])
+    render(<TeamManager />)
+
+    await waitFor(() => expect(screen.getByText("carlos_caja")).toBeDefined())
+    fireEvent.click(screen.getByRole("button", { name: /Nuevo Miembro/i }))
+    fireEvent.click(screen.getByTestId("create-role-select-trigger"))
+
+    expect(screen.getByTestId("create-role-select-menu").textContent).toContain("Pedidos")
+    expect(screen.getByTestId("create-role-select-menu").textContent).not.toContain("permisos")
+  })
+
+  it("filters the team by role using the modern select", async () => {
     render(<TeamManager />)
 
     await waitFor(() => expect(screen.getByText("carlos_caja")).toBeDefined())
 
-    const newMemberBtn = screen.getByRole("button", { name: /Nuevo Miembro/i })
-    fireEvent.click(newMemberBtn)
+    fireEvent.click(screen.getByTestId("team-role-filter-trigger"))
+    const menu = screen.getByTestId("team-role-filter-menu")
+    expect(menu.textContent).toContain("Todos los roles")
+    expect(menu.textContent).toContain("Administrador General")
 
-    const roleSelect = screen.getByLabelText(/Rol Asignado/i)
-    // Options should contain role name and description
-    expect(roleSelect.textContent).toContain("Cajero — Caja y cobros")
-    expect(roleSelect.textContent).toContain("Cocinero — Cocina y despacho")
-
-    // The selected role description is shown in business language below the select
-    expect(screen.getByText("Caja y cobros")).toBeDefined()
-
-    // Changing selection updates the description
-    fireEvent.change(roleSelect, { target: { value: "role-cook" } })
-    expect(screen.getByText("Cocina y despacho")).toBeDefined()
+    fireEvent.click(within(screen.getByRole("listbox")).getByRole("option", { name: /Administrador General/ }))
+    expect(screen.getByText("admin_burger")).toBeDefined()
+    expect(screen.queryByText("carlos_caja")).toBeNull()
   })
+
+  it("uses the modern select in the edit modal", async () => {
+    render(<TeamManager />)
+
+    await waitFor(() => expect(screen.getByText("carlos_caja")).toBeDefined())
+    fireEvent.click(screen.getByLabelText("Editar usuario carlos_caja"))
+
+    const trigger = screen.getByTestId("edit-role-select-trigger")
+    expect(trigger.textContent).toContain("Cajero")
+    fireEvent.click(trigger)
+    fireEvent.click(within(screen.getByRole("listbox")).getByRole("option", { name: /Cocinero/ }))
+    fireEvent.click(screen.getByRole("button", { name: /Guardar Cambios/i }))
+
+    await waitFor(() => {
+      expect(apiClient.updateUser).toHaveBeenCalledWith(
+        "user-2",
+        expect.objectContaining({ roleId: "role-cook" })
+      )
+    })
+  })
+
 
   it("shows a hint with navigation button to Roles screen when zero roles exist", async () => {
     vi.spyOn(apiClient, "listRoles").mockResolvedValue([])

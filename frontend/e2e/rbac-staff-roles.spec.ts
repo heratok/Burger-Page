@@ -286,7 +286,9 @@ test.describe('RBAC: customer CRUD, custom roles, staff team and permission gati
     const edited = await editRes.json();
     expect(edited.permissions.sort()).toEqual(['customers.view', 'orders.manage', 'orders.view']);
     const customCard = page.locator('div.rounded-2xl').filter({ has: page.getByRole('heading', { name: ROLE_CUSTOM }) }).last();
-    await expect(customCard).toContainText('3 de 12');
+    await expect(customCard).toContainText('Pedidos: ver y gestionar');
+    await expect(customCard).toContainText('Clientes: ver');
+    await expect(customCard).not.toContainText('3 de 12');
     await expect(customCard).toContainText('Atencion de clientes y pedidos');
 
     // A role without users can be deleted
@@ -310,11 +312,12 @@ test.describe('RBAC: customer CRUD, custom roles, staff team and permission gati
     await gotoTab(page, NAV_LABELS.team);
     await expect(page.getByRole('heading', { name: /Gestión de Equipo/i })).toBeVisible();
 
-    // Option labels carry the role description (or the permission count), so
-    // pick the option by the role name it contains instead of its full label.
+    // Role pickers are modern selects: open the trigger and click the option
+    // by the role name (the description sits on a separate sublabel line).
     async function selectRole(selector: string, roleName: string) {
-      const value = await page.locator(`${selector} option`, { hasText: roleName }).first().getAttribute('value');
-      await page.locator(selector).selectOption(value!);
+      const id = selector.replace('#', '');
+      await page.getByTestId(`${id}-trigger`).click();
+      await page.getByTestId(`${id}-menu`).getByRole('option', { name: roleName }).first().click();
     }
 
     async function createStaff(username: string, roleName: string) {
