@@ -8,7 +8,7 @@ import { buildPreviewHtml, buildRestaurantApiUrl, extractStorefrontSlug, isLinkP
 export const previewMatcher = '/((?!api(?:/|$)|assets(?:/|$))[^/.]+)/?'
 
 const FETCH_TIMEOUT_MS = 2500
-const CACHE_CONTROL = 'public, max-age=300, s-maxage=300'
+const CACHE_CONTROL = 'public, max-age=300'
 
 export interface StorefrontPreviewOptions {
   /** Backend base URL (e.g. the `VITE_API_URL` env var). */
@@ -43,7 +43,7 @@ export async function handleStorefrontPreview(
     if (!html) return undefined
     return new Response(html, {
       status: 200,
-      headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': CACHE_CONTROL },
+      headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': CACHE_CONTROL, vary: 'User-Agent' },
     })
   } catch {
     return undefined
