@@ -19,6 +19,6 @@
     "forceConsistentCasingInFileNames": true,
     "paths": { "@/*": ["./src/*"] }
   },
-  "include": ["src"],
+  "include": ["src", "middleware.ts"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
