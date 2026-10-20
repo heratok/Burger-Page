@@ -6,7 +6,7 @@ declare const process: { env: Record<string, string | undefined> }
 
 // Keep in sync with `previewMatcher` in src/core/seo/storefrontPreview.ts (tested).
 export const config = {
-  matcher: ['/((?!api(?:/|$)|assets(?:/|$))[^/.]+)/?'],
+  matcher: ['/((?!api(?:/|$)|assets(?:/|$))[^/.]+)'],
 }
 
 export default async function middleware(request: Request): Promise<Response> {

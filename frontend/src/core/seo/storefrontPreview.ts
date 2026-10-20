@@ -5,7 +5,7 @@ import { buildPreviewHtml, buildRestaurantApiUrl, extractStorefrontSlug, isLinkP
  * `frontend/middleware.ts` must repeat this literal (Vercel reads `config` statically);
  * a test keeps both in sync.
  */
-export const previewMatcher = '/((?!api(?:/|$)|assets(?:/|$))[^/.]+)/?'
+export const previewMatcher = '/((?!api(?:/|$)|assets(?:/|$))[^/.]+)'
 
 const FETCH_TIMEOUT_MS = 2500
 const CACHE_CONTROL = 'public, max-age=300'

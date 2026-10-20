@@ -1,4 +1,5 @@
 import middlewareSource from '../../../middleware.ts?raw'
+import { pathToRegexp } from 'path-to-regexp'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { handleStorefrontPreview, previewMatcher } from './storefrontPreview'
 
@@ -81,9 +82,13 @@ describe('handleStorefrontPreview', () => {
 })
 
 describe('previewMatcher', () => {
-  const re = new RegExp(`^${previewMatcher}$`)
+  // Vercel compiles `config.matcher` with path-to-regexp v6 syntax, not as a plain RegExp.
+  const re = pathToRegexp(previewMatcher)
   it.each(['/burger-craft', '/x', '/Burger-Craft'])('matches %s', (p) => {
     expect(re.test(p)).toBe(true)
+  })
+  it('matches a trailing slash', () => {
+    expect(re.test('/burger-craft/')).toBe(true)
   })
   it.each(['/', '/assets/index.js', '/assets/', '/api', '/api/restaurant/x', '/logo.jpg', '/favicon.ico', '/a/b'])(
     'skips %s',

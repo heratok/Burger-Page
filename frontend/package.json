@@ -52,6 +52,7 @@
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
     "jsdom": "^29.1.1",
+    "path-to-regexp": "6.3.0",
     "pg": "^8.23.0",
     "playwright": "^1.62.1",
     "tailwindcss": "^4.3.3",
