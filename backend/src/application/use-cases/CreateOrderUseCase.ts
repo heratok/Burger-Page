@@ -138,11 +138,11 @@ export class CreateOrderUseCase {
     customerId: string | undefined,
     restaurant: Restaurant
   ): Promise<string | undefined> {
-    if (!customerId) return undefined;
-
-    if (!this.customerRepo) {
-      return customerId.startsWith('cust-') ? undefined : customerId;
-    }
+    // Only a customer that exists in THIS restaurant is linked. An unknown id
+    // (or one that cannot be checked) is dropped instead of being stored as
+    // is: the order keeps its contact snapshot and the phone lookup below may
+    // still link the right profile.
+    if (!customerId || !this.customerRepo) return undefined;
 
     const customer = await this.customerRepo.findById(customerId, restaurant.id);
     if (customer) {
@@ -154,7 +154,7 @@ export class CreateOrderUseCase {
       return customer.id;
     }
 
-    return customerId.startsWith('cust-') ? undefined : customerId;
+    return undefined;
   }
 
   private async findOrCreateCustomer(

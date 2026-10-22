@@ -260,6 +260,21 @@ describe('CreateOrderUseCase', () => {
     expect(order.finalTotal).toBe(20);
   });
 
+  it('does not link a customerId that is not a customer of this restaurant', async () => {
+    const mockProduct = { id: 'p1', name: 'Burger', price: 20, isAvailable: true, additions: [], category: 'Food', description: 'Desc', restaurantId: 'burger-craft' };
+    vi.mocked(mockProductRepo.findById).mockResolvedValue(mockProduct as any);
+    vi.mocked(mockCustomerRepo.findById).mockResolvedValue(null);
+
+    const order = await useCase.execute({
+      restaurantId: 'burger-craft',
+      customerId: 'cust_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b', // another tenant's id shape
+      items: [{ productId: 'p1', quantity: 1, additions: [] }],
+    });
+
+    expect(order.customerId).toBeUndefined();
+    expect(mockCustomerRepo.findById).toHaveBeenCalledWith('cust_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b', 'burger-craft');
+  });
+
   it('drops a receipt URL sent by an anonymous storefront order', async () => {
     const mockProduct = { id: 'p1', name: 'Burger', price: 20, isAvailable: true, additions: [], category: 'Food', description: 'Desc', restaurantId: 'burger-craft' };
     vi.mocked(mockProductRepo.findById).mockResolvedValue(mockProduct as any);

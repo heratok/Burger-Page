@@ -62,7 +62,8 @@ describe('Order API', () => {
     expect(body).toHaveProperty('id');
     expect(body.restaurantId).toBe('burger-craft');
     expect(body.status).toBe('pending');
-    expect(body.customerId).toBe('customer-123');
+    // 'customer-123' is not a customer of this restaurant: it is never linked as is.
+    expect(body.customerId).toBeUndefined();
     expect(body.subtotal).toBe(20);
     expect(body.finalTotal).toBe(20);
     expect(body.changeAmount).toBe(5);
