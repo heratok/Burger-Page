@@ -221,6 +221,24 @@ export const orderCustomerInputSchema = z.object({
 });
 export type OrderCustomerInput = z.infer<typeof orderCustomerInputSchema>;
 
+/**
+ * A payment receipt reference is rendered by the admin panel as <img src> and
+ * <a href>. Only the shapes the app itself produces are accepted: an
+ * http(s) URL, a relative storage object path, or an inline raster image
+ * (data:image/...;base64). Anything else (javascript:, data:text/html,
+ * vbscript:, ...) is rejected so it can never execute in a staff session.
+ */
+export function isSafeReceiptUrl(value: string): boolean {
+  const v = value.trim();
+  if (!v) return false;
+  if (/^https?:\/\//i.test(v)) return true;
+  if (/^data:image\/(png|jpe?g|webp|gif|avif);base64,/i.test(v)) return true;
+  // Relative path: no scheme before the first '/', '?' or '#', and not protocol-relative.
+  return !v.startsWith('//') && !/^[^/?#]*:/.test(v);
+}
+
+const UNSAFE_RECEIPT_URL_MESSAGE = 'Receipt URL must be an http(s) URL, a storage path or an inline image';
+
 export const createOrderSchema = z.object({
   restaurantId: z.string().min(1, 'Restaurant ID is required'),
   customerId: z.string().optional(),
@@ -231,7 +249,8 @@ export const createOrderSchema = z.object({
   paymentAmount: z.number().nonnegative().optional(),
   changeAmount: z.number().nonnegative().optional(),
   comment: z.string().optional(),
-  receiptUrl: z.string().optional(),
+  // Staff manual sales only: ignored for anonymous storefront orders.
+  receiptUrl: z.string().refine(isSafeReceiptUrl, UNSAFE_RECEIPT_URL_MESSAGE).optional(),
   // Staff "Mesa / Salón" sales only: the restaurant table the sale was taken on.
   // The public storefront never sends it (the API rejects it for guests).
   tableId: z.string().min(1).max(64).optional(),
@@ -249,7 +268,7 @@ export const updateOrderStatusSchema = z.object({
 export type UpdateOrderStatusInput = z.infer<typeof updateOrderStatusSchema>;
 
 export const updateOrderReceiptSchema = z.object({
-  receiptUrl: z.string().min(1, 'Receipt URL is required'),
+  receiptUrl: z.string().min(1, 'Receipt URL is required').refine(isSafeReceiptUrl, UNSAFE_RECEIPT_URL_MESSAGE),
 });
 export type UpdateOrderReceiptInput = z.infer<typeof updateOrderReceiptSchema>;
 

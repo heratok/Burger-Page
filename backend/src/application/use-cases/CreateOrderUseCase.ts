@@ -57,7 +57,9 @@ export class CreateOrderUseCase {
       items: validatedItems,
       deliveryFee,
       payment,
-      dto,
+      // A receipt is attached by staff (manual sale); anonymous storefront input
+      // never reaches the admin panel as an <img src>/<a href>.
+      dto: authenticated ? dto : { ...dto, receiptUrl: undefined },
     });
     if (table) {
       order.tableId = table.id;

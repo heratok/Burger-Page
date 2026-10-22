@@ -119,6 +119,29 @@ describe("OrderDetailModal", () => {
     expect(onDeleteOrder).toHaveBeenCalledWith(mockOrder)
   })
 
+  it("never renders a stored receipt with a script-capable scheme", () => {
+    const order: Order = {
+      ...mockOrder,
+      id: "ord-transfer-xss",
+      metodo: "Transferencia",
+      receiptUrl: "javascript:alert(document.domain)",
+    }
+
+    const { container } = render(
+      <OrderDetailModal
+        order={order}
+        isOpen={true}
+        onClose={vi.fn()}
+        onUpdateStatus={vi.fn()}
+        onDeleteOrder={vi.fn()}
+        onWhatsApp={vi.fn()}
+      />
+    )
+
+    expect(screen.getByText("! Sin soporte adjunto")).toBeDefined()
+    expect(container.querySelector('[href^="javascript:"], [src^="javascript:"]')).toBeNull()
+  })
+
   it("renders transfer receipt and opens lightbox when receiptUrl is present", () => {
     const transferOrderWithReceipt: Order = {
       ...mockOrder,
