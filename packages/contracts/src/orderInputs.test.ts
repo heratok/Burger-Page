@@ -38,3 +38,24 @@ describe('receipt URL in order contracts', () => {
     expect(updateOrderReceiptSchema.safeParse({ receiptUrl: 'data:image/png;base64,iVBORw0KGgo=' }).success).toBe(true);
   });
 });
+
+describe('order free-text bounds', () => {
+  const order = { restaurantId: 'rest_1', items: [{ productId: 'prod_1', quantity: 1 }] };
+
+  it('accepts what the storefront form allows', () => {
+    const ok = createOrderSchema.safeParse({
+      ...order,
+      customer: { name: 'a'.repeat(60), phone: '3'.repeat(15), address: 'd'.repeat(100), barrio: 'b'.repeat(60) },
+      comment: 'c'.repeat(300),
+    });
+    expect(ok.success).toBe(true);
+  });
+
+  it('rejects oversized values', () => {
+    expect(createOrderSchema.safeParse({ ...order, comment: 'c'.repeat(1001) }).success).toBe(false);
+    expect(createOrderSchema.safeParse({ ...order, customer: { name: 'a'.repeat(121) } }).success).toBe(false);
+    expect(
+      createOrderSchema.safeParse({ ...order, items: [{ productId: 'prod_1', quantity: 1, observation: 'o'.repeat(501) }] }).success
+    ).toBe(false);
+  });
+});
