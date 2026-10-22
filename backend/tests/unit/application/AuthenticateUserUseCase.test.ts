@@ -2,7 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AuthenticateUserUseCase } from '../../../src/application/use-cases/AuthenticateUserUseCase.js';
 import { UserRepository } from '../../../src/domain/ports/out/UserRepository.js';
 import { PasswordHasher } from '../../../src/domain/ports/out/PasswordHasher.js';
-import { UnauthorizedError } from '../../../src/domain/errors/DomainErrors.js';
+import { TooManyRequestsError, UnauthorizedError } from '../../../src/domain/errors/DomainErrors.js';
+import { LoginThrottle } from '../../../src/application/services/LoginThrottle.js';
 import type { User } from '../../../src/domain/models/User.js';
 
 // Regression pin for the login path (JD-CRIT-03 seam 2): the use case must
@@ -82,12 +83,61 @@ describe('AuthenticateUserUseCase (login bootstrap contract)', () => {
     expect(userRepo.findByRestaurantId).toHaveBeenCalledWith('tienda-pruebas');
   });
 
-  it('rejects an inactive account without reaching the password check', async () => {
+  it('rejects an inactive account without checking its real password', async () => {
     vi.mocked(userRepo.findByUsername).mockResolvedValue({ ...storedUser, isActive: false });
+    vi.mocked(hasher.hash).mockResolvedValue('dummy_hash');
     const useCase = new AuthenticateUserUseCase(userRepo, hasher);
 
     await expect(useCase.execute('admin_pruebas', 'securePass123')).rejects.toThrow(UnauthorizedError);
-    expect(hasher.verify).not.toHaveBeenCalled();
+    expect(hasher.verify).not.toHaveBeenCalledWith('securePass123', 'hashed_password');
+  });
+
+  it('spends a password verification on an unknown user too (no timing oracle)', async () => {
+    vi.mocked(userRepo.findByUsername).mockResolvedValue(null);
+    vi.mocked(hasher.hash).mockResolvedValue('dummy_hash');
+    const useCase = new AuthenticateUserUseCase(userRepo, hasher);
+
+    await expect(useCase.execute('ghost', 'whatever')).rejects.toThrow(UnauthorizedError);
+    expect(hasher.verify).toHaveBeenCalledWith('whatever', 'dummy_hash');
+  });
+
+  describe('per-account lockout', () => {
+    const throttle = () => new LoginThrottle({ maxFailures: 3, windowMs: 60_000, lockMs: 60_000 });
+
+    it('locks the account after repeated failures, even for the right password', async () => {
+      vi.mocked(hasher.verify).mockImplementation(async (pw) => pw === 'right');
+      const useCase = new AuthenticateUserUseCase(userRepo, hasher, undefined, undefined, undefined, throttle());
+
+      for (let i = 0; i < 3; i++) {
+        await expect(useCase.execute('admin_pruebas', 'wrong')).rejects.toThrow(UnauthorizedError);
+      }
+      const locked = useCase.execute('admin_pruebas', 'right');
+      await expect(locked).rejects.toBeInstanceOf(TooManyRequestsError);
+      await expect(locked).rejects.toMatchObject({ retryAfterSeconds: 60 });
+    });
+
+    it('shares the lock across the login aliases of one account', async () => {
+      vi.mocked(userRepo.findByUsername).mockImplementation(async (u) => (u === 'admin_pruebas' ? storedUser : null));
+      vi.mocked(hasher.verify).mockResolvedValue(false);
+      const useCase = new AuthenticateUserUseCase(userRepo, hasher, undefined, undefined, undefined, throttle());
+
+      // No single login string reaches 3 failures, but the account does.
+      await expect(useCase.execute('pruebas', 'x')).rejects.toThrow(UnauthorizedError);
+      await expect(useCase.execute('admin_pruebas', 'x')).rejects.toThrow(UnauthorizedError);
+      await expect(useCase.execute('pruebas', 'x')).rejects.toThrow(UnauthorizedError);
+      await expect(useCase.execute('admin_pruebas', 'x')).rejects.toBeInstanceOf(TooManyRequestsError);
+    });
+
+    it('a successful login clears the failure count', async () => {
+      vi.mocked(hasher.verify).mockImplementation(async (pw) => pw === 'right');
+      const useCase = new AuthenticateUserUseCase(userRepo, hasher, undefined, undefined, undefined, throttle());
+
+      for (let round = 0; round < 3; round++) {
+        await expect(useCase.execute('admin_pruebas', 'wrong')).rejects.toThrow(UnauthorizedError);
+        await expect(useCase.execute('admin_pruebas', 'wrong')).rejects.toThrow(UnauthorizedError);
+        await expect(useCase.execute('admin_pruebas', 'right')).resolves.toMatchObject({ success: true });
+      }
+    });
   });
 
   it('rejects a wrong password', async () => {

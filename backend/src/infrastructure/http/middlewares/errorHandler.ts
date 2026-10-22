@@ -1,6 +1,6 @@
 import { FastifyError, FastifyReply, FastifyRequest } from 'fastify';
 import { ZodError } from 'zod';
-import { ConflictError, DomainError, EntityNotFoundError, ValidationError, InvalidOrderStateError, UnauthorizedError, ForbiddenError } from '../../../domain/errors/DomainErrors.js';
+import { ConflictError, DomainError, EntityNotFoundError, ValidationError, InvalidOrderStateError, UnauthorizedError, ForbiddenError, TooManyRequestsError } from '../../../domain/errors/DomainErrors.js';
 
 export function errorHandler(error: FastifyError | Error, request: FastifyRequest, reply: FastifyReply) {
   // M5: internal messages are only exposed on an explicit opt-in
@@ -48,6 +48,14 @@ export function errorHandler(error: FastifyError | Error, request: FastifyReques
         type: 'https://example.com/probs/forbidden',
         title: 'Forbidden',
         status: 403,
+        detail: error.message
+      });
+    }
+    if (error instanceof TooManyRequestsError) {
+      return reply.status(429).header('Retry-After', String(error.retryAfterSeconds)).send({
+        type: 'https://example.com/probs/rate-limited',
+        title: 'Too Many Requests',
+        status: 429,
         detail: error.message
       });
     }

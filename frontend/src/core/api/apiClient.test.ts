@@ -683,6 +683,19 @@ describe('ApiClient', () => {
         expect(listener).not.toHaveBeenCalled()
       })
 
+      it('reports a locked login (429) as a failed login, not a network error', async () => {
+        ;(globalThis.fetch as any).mockResolvedValueOnce({
+          ok: false,
+          status: 429,
+          statusText: 'Too Many Requests',
+          json: async () => ({ title: 'Too Many Requests', detail: 'Demasiados intentos' }),
+        })
+
+        const res = await client.login('baduser', 'badpass')
+        expect(res.success).toBe(false)
+        expect(res.error).toMatch(/Demasiados intentos/)
+      })
+
       it('ignores 401 when the request was sent with a stale/superseded token', async () => {
         const listener = vi.fn()
         ;(client as any).onSessionExpired(listener)
