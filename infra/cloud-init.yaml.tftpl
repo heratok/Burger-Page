@@ -61,6 +61,8 @@ write_files:
       JWT_SECRET=
       STORAGE_DRIVER=supabase
       DATABASE_URL=
+      # CA raíz de Supabase (PEM, se aceptan \n literales) para verificar el certificado TLS de la base.
+      DATABASE_SSL_CA=
       SUPABASE_URL=
       SUPABASE_KEY=
       CORS_ORIGIN=${cors_origin}

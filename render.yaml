@@ -36,3 +36,7 @@ services:
       # postgresql://app_user.<ref>:<password>@aws-0-us-west-2.pooler.supabase.com:5432/postgres
       - key: DATABASE_URL
         sync: false
+      # Supabase root CA (PEM) so the database TLS certificate is verified.
+      # Without it the connection is encrypted but open to interception.
+      - key: DATABASE_SSL_CA
+        sync: false
