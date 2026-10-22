@@ -43,7 +43,13 @@ import {
   TENANT_WRITES_KEY,
 } from "@/core/query/options"
 
-export type LoadRestaurantOutcome = "ok" | "not-found" | "error"
+/**
+ * "foreign": the slug is another tenant's storefront while the session is bound
+ * to a restaurant. The bound session can never show it (A1/A2), and rendering
+ * its own tenant under that URL would mix both stores, so the caller shows a
+ * dedicated screen instead.
+ */
+export type LoadRestaurantOutcome = "ok" | "not-found" | "error" | "foreign"
 
 export interface TenantContextType {
   restaurants: RestaurantRecord[]
@@ -353,8 +359,10 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
 
   const loadRestaurant = useCallback(
     async (idOrSlug: string): Promise<LoadRestaurantOutcome> => {
+      const ownId = (session.role === "restaurant" || session.role === "staff") ? session.restaurantId : undefined
       const known = resolveRestaurant(queryClient, role, idOrSlug)
       if (known) {
+        if (ownId && known.id !== ownId) return "foreign"
         switchRestaurant(known.id)
         return "ok"
       }
@@ -362,10 +370,9 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
         const fetched = await fetchTenant(idOrSlug)
         if (!fetched || !fetched.id) return "not-found"
         // Same guard as switchRestaurant: a restaurant admin never live-switches.
-        if ((session.role === "restaurant" || session.role === "staff") && session.restaurantId !== fetched.id) {
+        if (ownId && ownId !== fetched.id) {
           forgetRestaurant(queryClient, role, fetched, idOrSlug)
-          toast.warning("Solo podés operar tu propio restaurante")
-          return "ok"
+          return "foreign"
         }
         setActiveRestaurantId(fetched.id)
         return "ok"

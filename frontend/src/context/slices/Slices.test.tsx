@@ -2426,6 +2426,7 @@ describe("AdminAuthModal - session comes only from the validated auth.login resu
       isResolving: false,
       attemptedSlug: null,
       loadError: false,
+      foreignTenant: false,
       retry: vi.fn(),
       navigateTo: vi.fn(),
     })
