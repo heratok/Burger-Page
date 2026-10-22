@@ -47,6 +47,11 @@ export class RestoreRestaurantUseCase {
     if (await this.restaurantRepo.findBySlug(slug)) {
       throw this.slugTaken(slug, requestedSlug === undefined);
     }
+    // A slug equal to another tenant's id would make one identifier point at two restaurants.
+    const shadowed = await this.restaurantRepo.findById(slug);
+    if (shadowed && shadowed.id !== id) {
+      throw this.slugTaken(slug, requestedSlug === undefined);
+    }
 
     // Users first (idempotent, all-or-nothing): while the tenant is still
     // deleted they cannot sign in, and a failed restore can simply be retried.

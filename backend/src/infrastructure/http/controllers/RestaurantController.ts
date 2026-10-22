@@ -177,8 +177,11 @@ export class RestaurantController {
     const forbidden = await assertOwnsRestaurant(req, params.slug, this.getRestaurantUseCase, 'update your own restaurant categories');
     if (forbidden) return reply.status(403).send(forbidden);
 
-    // restaurant_admin is strictly bound to their assigned restaurant
-    const identifier = params.slug || auth?.restaurantId || 'burger-craft';
+    // A tenant session always writes its own restaurant by canonical id: the
+    // guard accepted the URL identifier, but an id/slug lookup must never be
+    // able to land the write on another tenant.
+    const identifier =
+      auth?.role === 'super_admin' ? params.slug || auth?.restaurantId || 'burger-craft' : auth!.restaurantId!;
 
     const { categories, renames } = parsed.data;
     const updated = await this.updateCategoriesUseCase.execute(identifier, categories, renames);
@@ -203,7 +206,9 @@ export class RestaurantController {
     if (!parsed.success) {
       throw new ValidationError(parsed.error.message);
     }
-    const updated = await this.updateRestaurantUseCase.execute(params.id, parsed.data, auth?.role, auditActorOf(req));
+    // Same rule as updateCategories: a tenant session writes its own canonical id.
+    const targetId = auth?.role === 'super_admin' ? params.id : auth!.restaurantId!;
+    const updated = await this.updateRestaurantUseCase.execute(targetId, parsed.data, auth?.role, auditActorOf(req));
     this.menuCache?.invalidate(updated.id);
     this.restaurantIdCache?.invalidate(updated.id, `id:${params.id}`, `slug:${params.id}`);
     return reply.status(200).send(updated);

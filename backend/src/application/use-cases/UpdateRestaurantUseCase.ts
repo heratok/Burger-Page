@@ -85,6 +85,12 @@ export class UpdateRestaurantUseCase {
         if (await this.restaurantRepo.slugExists(cleanSlug)) {
           throw new ConflictError(`Restaurant with slug "${cleanSlug}" already exists`);
         }
+        // Lookups accept an id OR a slug: a slug equal to another tenant's id
+        // would make one identifier point at two restaurants.
+        const shadowed = await this.restaurantRepo.findById(cleanSlug);
+        if (shadowed && shadowed.id !== restaurant.id) {
+          throw new ConflictError(`Slug "${cleanSlug}" matches the id of another restaurant`);
+        }
         slug = cleanSlug;
       }
     }
