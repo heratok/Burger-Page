@@ -6,6 +6,7 @@ import scalar from '@scalar/fastify-api-reference';
 import { errorHandler } from './middlewares/errorHandler.js';
 import { getAllowedOrigins } from './middleware/cors.js';
 import { configureAuthMiddlewares } from './middleware/auth.middleware.js';
+import { rateLimitClientKey } from './clientIp.js';
 
 // Repositories
 import { InMemoryRestaurantRepository } from '../persistence/InMemoryRestaurantRepository.js';
@@ -488,9 +489,10 @@ export function buildApp(
     /**
      * Fastify trustProxy setting. `true` trusts the forwarded client IP from
      * X-Forwarded-For (safe only when the app is reachable exclusively through
-     * the reverse proxy). A numeric hop count is accepted by the option type
-     * but the vendored fastify build fails CLOSED on it (trusts no hops), so
-     * deployments must use `true`. Defaults to TRUST_PROXY or false.
+     * the reverse proxy). A numeric hop count leaves req.ip at the socket peer
+     * (the vendored fastify build fails CLOSED on it) but the rate limiter
+     * reads the forwarded chain from the right, skipping that many proxies
+     * (rateLimitClientKey). Defaults to TRUST_PROXY or false.
      */
     trustProxy?: boolean | number;
     rateLimit?: {
@@ -692,7 +694,10 @@ export function buildApp(
       await api.register(rateLimit, {
         max: rateMax,
         timeWindow: rateWindow,
-        // Key by IP by default; keep the standard 429 response shape.
+        // Key by the real client address (see rateLimitClientKey for how each
+        // TRUST_PROXY mode reads X-Forwarded-For); every limiter below inherits it.
+        keyGenerator: (req) => rateLimitClientKey(req, trustProxy),
+        // Keep the standard 429 response shape.
         errorResponseBuilder: (_req, context) => ({
           statusCode: 429,
           error: 'Too Many Requests',

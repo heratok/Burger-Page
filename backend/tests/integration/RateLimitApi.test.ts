@@ -130,4 +130,48 @@ describe('Rate Limiting Suite', () => {
       await testApp.close();
     }
   });
+  it('with a hop count, keys on the entry left of the trusted proxies, not on a spoofed prefix', async () => {
+    // One trusted proxy that appends: the chain is "<spoofed>, <real client>" + socket peer.
+    const testApp = buildApp(undefined, { trustProxy: 1, rateLimit: { max: 5 } });
+    await testApp.ready();
+    try {
+      const statuses: number[] = [];
+      for (let i = 0; i < 6; i++) {
+        const res = await testApp.inject({
+          method: 'POST',
+          url: '/api/users/login',
+          headers: { 'x-forwarded-for': `10.0.0.${i}, 9.9.9.9` },
+          payload: { username: `probe-hop-${i}`, password: 'wrong-password' },
+        });
+        statuses.push(res.statusCode);
+      }
+      // Rotating the client-supplied prefix does not open fresh buckets.
+      expect(statuses.slice(0, 5)).not.toContain(429);
+      expect(statuses[5]).toBe(429);
+    } finally {
+      await testApp.close();
+    }
+  });
+
+  it('with a hop count, distinct real clients behind the proxy get distinct buckets', async () => {
+    const testApp = buildApp(undefined, { trustProxy: 1, rateLimit: { max: 5 } });
+    await testApp.ready();
+    try {
+      for (const client of ['1.2.3.4', '5.6.7.8']) {
+        const statuses: number[] = [];
+        for (let i = 0; i < 5; i++) {
+          const res = await testApp.inject({
+            method: 'POST',
+            url: '/api/users/login',
+            headers: { 'x-forwarded-for': client },
+            payload: { username: `probe-hop-${client}-${i}`, password: 'wrong-password' },
+          });
+          statuses.push(res.statusCode);
+        }
+        expect(statuses).not.toContain(429);
+      }
+    } finally {
+      await testApp.close();
+    }
+  });
 });

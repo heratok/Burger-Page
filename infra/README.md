@@ -127,6 +127,7 @@ completar lo que está vacío.
 | `SUPABASE_URL` | `https://<project-ref>.supabase.co` | API REST de Supabase, solo para storage de archivos (`storage.routes.ts`) — es una URL HTTPS normal, no tiene el problema de IPv4/IPv6 del punto anterior |
 | `SUPABASE_KEY` | La misma key que usás en Render para storage | Firma URLs de archivos subidos |
 | `CORS_ORIGIN` | `https://heratok.app,https://www.heratok.app` | Ya viene precompletado en `.env.example` vía Terraform |
+| `TRUST_PROXY` | `1` | Ya viene precompletado. Caddy es el único proxy delante del backend: sin esto todos los clientes comparten la IP de Caddy y el rate limit (10 logins/min, 30 pedidos/min) se vuelve global para toda la plataforma. En una VM creada antes de este cambio hay que agregarlo a mano al `.env`. |
 | `GHCR_USERNAME` | `heratok` | Ya viene precompletado — no es secreto |
 | `GHCR_PAT` | Vacío si el paquete GHCR es público; si no, un PAT de solo lectura (`read:packages`) | Ver sección "Autenticación de la VM contra GHCR" arriba |
 
