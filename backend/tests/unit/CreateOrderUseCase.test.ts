@@ -260,6 +260,50 @@ describe('CreateOrderUseCase', () => {
     expect(order.finalTotal).toBe(20);
   });
 
+  it('does not link a customerId that is not a customer of this restaurant', async () => {
+    const mockProduct = { id: 'p1', name: 'Burger', price: 20, isAvailable: true, additions: [], category: 'Food', description: 'Desc', restaurantId: 'burger-craft' };
+    vi.mocked(mockProductRepo.findById).mockResolvedValue(mockProduct as any);
+    vi.mocked(mockCustomerRepo.findById).mockResolvedValue(null);
+
+    const order = await useCase.execute({
+      restaurantId: 'burger-craft',
+      customerId: 'cust_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b', // another tenant's id shape
+      items: [{ productId: 'p1', quantity: 1, additions: [] }],
+    });
+
+    expect(order.customerId).toBeUndefined();
+    expect(mockCustomerRepo.findById).toHaveBeenCalledWith('cust_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b', 'burger-craft');
+  });
+
+  it('drops a receipt URL sent by an anonymous storefront order', async () => {
+    const mockProduct = { id: 'p1', name: 'Burger', price: 20, isAvailable: true, additions: [], category: 'Food', description: 'Desc', restaurantId: 'burger-craft' };
+    vi.mocked(mockProductRepo.findById).mockResolvedValue(mockProduct as any);
+
+    const order = await useCase.execute({
+      restaurantId: 'burger-craft',
+      items: [{ productId: 'p1', quantity: 1, additions: [] }],
+      receiptUrl: 'https://evil.example/tracker.png',
+    });
+
+    expect(order.receiptUrl).toBeUndefined();
+  });
+
+  it('keeps the receipt URL of an authenticated staff sale', async () => {
+    const mockProduct = { id: 'p1', name: 'Burger', price: 20, isAvailable: true, additions: [], category: 'Food', description: 'Desc', restaurantId: 'burger-craft' };
+    vi.mocked(mockProductRepo.findById).mockResolvedValue(mockProduct as any);
+
+    const order = await useCase.execute(
+      {
+        restaurantId: 'burger-craft',
+        items: [{ productId: 'p1', quantity: 1, additions: [] }],
+        receiptUrl: 'https://cdn.example/receipt.webp',
+      },
+      { authenticated: true }
+    );
+
+    expect(order.receiptUrl).toBe('https://cdn.example/receipt.webp');
+  });
+
   it('ignores an anonymous client delivery fee different from the configured fee (SUS-12)', async () => {
     const mockProduct = { id: 'p1', name: 'Burger', price: 20, isAvailable: true, additions: [], category: 'Food', description: 'Desc', restaurantId: 'burger-craft' };
     vi.mocked(mockProductRepo.findById).mockResolvedValue(mockProduct as any);

@@ -124,9 +124,11 @@ completar lo que está vacío.
 | `JWT_SECRET` | **El mismo valor que ya tenés configurado en Render.** No generes uno nuevo — si no coincide, los tokens emitidos por un backend no sirven en el otro. | `backend/src/infrastructure/security/JwtService.ts` |
 | `STORAGE_DRIVER` | `supabase` | Igual que `render.yaml` de producción |
 | `DATABASE_URL` | La cadena del **pooler de Supabase (Supavisor)**: `postgresql://app_user.<ref>:<password>@<region>.pooler.supabase.com:5432/postgres` — **nunca** `db.<ref>.supabase.co` | La VM solo tiene IPv4; la conexión directa de Supabase (`db.*.supabase.co`) resuelve a IPv6-only en la mayoría de regiones. El pooler sí soporta IPv4. Mismo patrón que ya usa Render — copiá el mismo valor. |
+| `DATABASE_SSL_CA` | El certificado raíz de Supabase en PEM (Dashboard → Database settings → SSL Configuration → *Download certificate*). Podés pegarlo en una sola línea reemplazando los saltos de línea por `\n`. | Sin esto la conexión a Postgres va cifrada pero **sin verificar el certificado**: alguien en el camino podría hacerse pasar por la base. No agregues `sslmode=...` a `DATABASE_URL`: tiene prioridad y anula esta verificación. |
 | `SUPABASE_URL` | `https://<project-ref>.supabase.co` | API REST de Supabase, solo para storage de archivos (`storage.routes.ts`) — es una URL HTTPS normal, no tiene el problema de IPv4/IPv6 del punto anterior |
 | `SUPABASE_KEY` | La misma key que usás en Render para storage | Firma URLs de archivos subidos |
 | `CORS_ORIGIN` | `https://heratok.app,https://www.heratok.app` | Ya viene precompletado en `.env.example` vía Terraform |
+| `TRUST_PROXY` | `1` | Ya viene precompletado. Caddy es el único proxy delante del backend: sin esto todos los clientes comparten la IP de Caddy y el rate limit (10 logins/min, 30 pedidos/min) se vuelve global para toda la plataforma. En una VM creada antes de este cambio hay que agregarlo a mano al `.env`. |
 | `GHCR_USERNAME` | `heratok` | Ya viene precompletado — no es secreto |
 | `GHCR_PAT` | Vacío si el paquete GHCR es público; si no, un PAT de solo lectura (`read:packages`) | Ver sección "Autenticación de la VM contra GHCR" arriba |
 

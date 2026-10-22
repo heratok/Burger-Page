@@ -25,8 +25,18 @@ services:
         sync: false
       - key: CORS_ORIGIN
         sync: false
+      # Required for per-client rate limiting: without it every request is keyed on
+      # Render's proxy address and the login/order limits become platform-wide.
+      # Set it in the dashboard to the number of proxies Render puts in front of
+      # the app (see backend/src/infrastructure/http/clientIp.ts).
+      - key: TRUST_PROXY
+        sync: false
       # DATABASE_URL is managed in the Render dashboard (app_user RLS role against the
       # Supabase pooler). Never commit the value. Reference format for the dashboard:
       # postgresql://app_user.<ref>:<password>@aws-0-us-west-2.pooler.supabase.com:5432/postgres
       - key: DATABASE_URL
+        sync: false
+      # Supabase root CA (PEM) so the database TLS certificate is verified.
+      # Without it the connection is encrypted but open to interception.
+      - key: DATABASE_SSL_CA
         sync: false

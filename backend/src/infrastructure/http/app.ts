@@ -6,6 +6,7 @@ import scalar from '@scalar/fastify-api-reference';
 import { errorHandler } from './middlewares/errorHandler.js';
 import { getAllowedOrigins } from './middleware/cors.js';
 import { configureAuthMiddlewares } from './middleware/auth.middleware.js';
+import { rateLimitClientKey } from './clientIp.js';
 
 // Repositories
 import { InMemoryRestaurantRepository } from '../persistence/InMemoryRestaurantRepository.js';
@@ -480,6 +481,11 @@ function resolveTrustProxy(explicit?: boolean | number): boolean | number {
   return false;
 }
 
+/** /docs is on outside production; in production only with API_DOCS_ENABLED=true. */
+export function resolveDocsEnabled(env: Record<string, string | undefined> = process.env): boolean {
+  return env.API_DOCS_ENABLED === 'true' || env.NODE_ENV !== 'production';
+}
+
 export function buildApp(
   dependencies?: Partial<AppDependencies>,
   options?: {
@@ -488,11 +494,14 @@ export function buildApp(
     /**
      * Fastify trustProxy setting. `true` trusts the forwarded client IP from
      * X-Forwarded-For (safe only when the app is reachable exclusively through
-     * the reverse proxy). A numeric hop count is accepted by the option type
-     * but the vendored fastify build fails CLOSED on it (trusts no hops), so
-     * deployments must use `true`. Defaults to TRUST_PROXY or false.
+     * the reverse proxy). A numeric hop count leaves req.ip at the socket peer
+     * (the vendored fastify build fails CLOSED on it) but the rate limiter
+     * reads the forwarded chain from the right, skipping that many proxies
+     * (rateLimitClientKey). Defaults to TRUST_PROXY or false.
      */
     trustProxy?: boolean | number;
+    /** Serve the OpenAPI spec and the /docs reference. Defaults to resolveDocsEnabled(). */
+    docs?: boolean;
     rateLimit?: {
       /** Global max requests per IP per timeWindow (default 300/min). */
       max?: number;
@@ -585,8 +594,12 @@ export function buildApp(
 
   app.setErrorHandler(errorHandler);
 
+  // The API reference maps every route of the platform: public outside
+  // production, opt-in (API_DOCS_ENABLED=true) in production.
+  const docsEnabled = options?.docs ?? resolveDocsEnabled();
+
   // 1. OpenAPI Specification with @fastify/swagger
-  app.register(swagger, {
+  if (docsEnabled) app.register(swagger, {
     openapi: {
       info: {
         title: 'Burger Craft API',
@@ -660,7 +673,7 @@ export function buildApp(
   });
 
   // 2. Interactive Documentation with Scalar
-  app.register(scalar, {
+  if (docsEnabled) app.register(scalar, {
     routePrefix: '/docs',
     configuration: {
       theme: 'kepler',
@@ -692,7 +705,10 @@ export function buildApp(
       await api.register(rateLimit, {
         max: rateMax,
         timeWindow: rateWindow,
-        // Key by IP by default; keep the standard 429 response shape.
+        // Key by the real client address (see rateLimitClientKey for how each
+        // TRUST_PROXY mode reads X-Forwarded-For); every limiter below inherits it.
+        keyGenerator: (req) => rateLimitClientKey(req, trustProxy),
+        // Keep the standard 429 response shape.
         errorResponseBuilder: (_req, context) => ({
           statusCode: 429,
           error: 'Too Many Requests',

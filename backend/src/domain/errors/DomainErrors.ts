@@ -12,3 +12,9 @@ export class InvalidOrderStateError extends DomainError {}
 export class UnauthorizedError extends DomainError {}
 /** The caller is authenticated but not allowed to perform this action (HTTP 403). */
 export class ForbiddenError extends DomainError {}
+/** Too many attempts; retry after `retryAfterSeconds` (HTTP 429). */
+export class TooManyRequestsError extends DomainError {
+  constructor(message: string, readonly retryAfterSeconds: number) {
+    super(message);
+  }
+}

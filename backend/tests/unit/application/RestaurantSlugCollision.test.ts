@@ -46,6 +46,23 @@ describe('slug collisions with a paused (non-public) tenant', () => {
   });
 });
 
+describe('slugs that would shadow another restaurant id', () => {
+  it('create rejects a slug equal to an existing restaurant id', async () => {
+    const repo = new InMemoryRestaurantRepository();
+    await repo.save({ ...(await repo.findById('tenant-a'))!, id: 'rest-legacy', slug: 'legacy' });
+    const useCase = new CreateRestaurantUseCase(repo);
+    await expect(useCase.execute({ name: 'Copia', slug: 'rest-legacy' })).rejects.toThrow(ConflictError);
+  });
+
+  it('update rejects a slug equal to another restaurant id', async () => {
+    const repo = new InMemoryRestaurantRepository();
+    await repo.save({ ...(await repo.findById('tenant-a'))!, id: 'rest-legacy', slug: 'legacy' });
+    const useCase = new UpdateRestaurantUseCase(repo);
+    await expect(useCase.execute('tenant-b', { slug: 'rest-legacy' }, 'super_admin')).rejects.toThrow(ConflictError);
+    expect((await repo.findById('tenant-b'))?.slug).toBe('tenant-b');
+  });
+});
+
 describe('restaurant name and category hygiene', () => {
   it('create rejects a whitespace-only name', async () => {
     const useCase = new CreateRestaurantUseCase(new InMemoryRestaurantRepository());

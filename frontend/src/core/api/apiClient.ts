@@ -902,6 +902,15 @@ export class ApiClient {
       if (err?.status === 401) {
         return { success: false, token: undefined, user: undefined, error: 'Credenciales incorrectas' }
       }
+      // Too many failed attempts (per account or per IP): not a network failure.
+      if (err?.status === 429) {
+        return {
+          success: false,
+          token: undefined,
+          user: undefined,
+          error: 'Demasiados intentos fallidos. Esperá unos minutos antes de volver a intentar.',
+        }
+      }
       throw err
     })
     if (result.token) {

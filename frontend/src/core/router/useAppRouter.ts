@@ -213,6 +213,8 @@ export function useAppRouter() {
   const [attemptedSlug, setAttemptedSlug] = useState<string | null>(null)
   const [isNotFound, setIsNotFound] = useState(false)
   const [loadError, setLoadError] = useState(false)
+  // The URL is another restaurant's storefront and the session is bound to its own.
+  const [foreignTenant, setForeignTenant] = useState(false)
   // A 404 is an authoritative answer: provider/state churn that re-runs the
   // effect must not re-request a slug already known to be missing. Explicit
   // user actions (retry, navigation, popstate) pass `force` to look again.
@@ -234,6 +236,7 @@ export function useAppRouter() {
         if (!force && notFoundSlugRef.current === slug) {
           setAttemptedSlug(slug)
           setLoadError(false)
+          setForeignTenant(false)
           setIsNotFound(true)
           setActiveView("not-found")
           return
@@ -248,12 +251,14 @@ export function useAppRouter() {
           if (outcome === "ok") {
             setIsNotFound(false)
             setLoadError(false)
+            setForeignTenant(false)
             setAttemptedSlug(null)
             setActiveView("store")
           } else {
             setAttemptedSlug(slug)
             setIsNotFound(true)
             setLoadError(outcome === "error")
+            setForeignTenant(outcome === "foreign")
             setActiveView("not-found")
           }
         })
@@ -261,12 +266,14 @@ export function useAppRouter() {
       }
       setAttemptedSlug(resolution.attemptedSlug ?? null)
       setLoadError(false)
+      setForeignTenant(false)
       setIsNotFound(true)
       setActiveView("not-found")
     } else {
       notFoundSlugRef.current = null
       setIsNotFound(false)
       setLoadError(false)
+      setForeignTenant(false)
       setAttemptedSlug(null)
       if (resolution.restaurantId) {
         switchRestaurant(resolution.restaurantId)
@@ -310,6 +317,7 @@ export function useAppRouter() {
     isResolving,
     attemptedSlug,
     loadError,
+    foreignTenant,
     retry: () => syncLocation(true),
     navigateTo,
   }

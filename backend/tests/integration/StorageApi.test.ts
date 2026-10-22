@@ -53,7 +53,21 @@ describe('Storage API (Presigned Upload URLs)', () => {
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.payload);
     expect(body.mode).toBeDefined();
-    expect(body.path).toContain('burger-craft/products/my-product-photo.webp');
+    // The client name is kept as a readable prefix, but every upload gets its own key.
+    expect(body.path).toMatch(/^burger-craft\/products\/my-product-photo-[0-9a-f-]{36}\.webp$/);
+  });
+
+  it('never reuses an object key, so an upload cannot overwrite an existing image', async () => {
+    const request = () =>
+      app.inject({
+        method: 'POST',
+        url: '/api/storage/upload-url',
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: { folder: 'branding', filename: 'logo' },
+      });
+    const first = JSON.parse((await request()).payload).path;
+    const second = JSON.parse((await request()).payload).path;
+    expect(first).not.toBe(second);
   });
 
   it('sanitizes traversal/malicious filenames into a safe single-segment key (JD-CONF-02)', () => {
