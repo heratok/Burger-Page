@@ -684,7 +684,7 @@ describe('ApiClient', () => {
       })
 
       it('reports a locked login (429) as a failed login, not a network error', async () => {
-        ;(globalThis.fetch as any).mockResolvedValueOnce({
+        (globalThis.fetch as any).mockResolvedValueOnce({
           ok: false,
           status: 429,
           statusText: 'Too Many Requests',
