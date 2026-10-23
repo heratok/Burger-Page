@@ -60,6 +60,11 @@ export class CreateRestaurantUseCase {
     if (await this.restaurantRepo.slugExists(cleanSlug)) {
       throw new ConflictError(`Restaurant with slug "${cleanSlug}" already exists`);
     }
+    // Lookups accept an id OR a slug: a slug equal to another tenant's id
+    // would make one identifier point at two restaurants.
+    if (await this.restaurantRepo.findById(cleanSlug)) {
+      throw new ConflictError(`Slug "${cleanSlug}" matches the id of another restaurant`);
+    }
 
     if (input.adminPassword !== undefined && input.adminPassword.length < MIN_PASSWORD_LENGTH) {
       throw new ValidationError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);

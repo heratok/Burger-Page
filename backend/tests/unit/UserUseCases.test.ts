@@ -242,12 +242,14 @@ describe('User Use Cases', () => {
           const useCase = new AuthenticateUserUseCase(mockUserRepo, mockHasher);
           vi.mocked(mockUserRepo.findByUsername).mockResolvedValue({ ...storedUser, isActive: false });
           vi.mocked(mockHasher.verify).mockResolvedValue(true);
+          vi.mocked(mockHasher.hash).mockResolvedValue('dummy_hash');
 
           await expect(
             useCase.execute('admin_pruebas', 'securePass123')
           ).rejects.toThrow(UnauthorizedError);
-          // Deactivated users must not reach the password check path.
-          expect(mockHasher.verify).not.toHaveBeenCalled();
+          // Deactivated users never get their real password checked (only the
+          // timing-equalizing dummy hash is verified).
+          expect(mockHasher.verify).not.toHaveBeenCalledWith('securePass123', storedUser.passwordHash);
         });
 
     it('should throw UnauthorizedError for non-existent username', async () => {

@@ -36,4 +36,13 @@ describe("RestaurantNotFound", () => {
     expect(onRetry).toHaveBeenCalledTimes(1)
     expect(screen.queryByText("Secret Tenant")).toBeNull()
   })
+  it("explains a foreign storefront and links back to the own panel", () => {
+    const onGoToAdmin = vi.fn()
+    render(<RestaurantNotFound attemptedSlug="other-place" foreignTenant onGoToAdmin={onGoToAdmin} />)
+    expect(screen.getByText("Esta tienda es de otro restaurante")).toBeDefined()
+    expect(screen.getByText("/other-place")).toBeDefined()
+    expect(screen.queryByText("Restaurante no encontrado")).toBeNull()
+    fireEvent.click(screen.getByRole("button", { name: "Ir a mi panel" }))
+    expect(onGoToAdmin).toHaveBeenCalledTimes(1)
+  })
 })

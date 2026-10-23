@@ -25,17 +25,52 @@ export const PG_STATEMENT_TIMEOUT_MS = 15000;
 
 let pool: pg.Pool | null = null;
 
+/**
+ * TLS options for the pool.
+ *
+ * - localhost / sslmode=disable: no TLS (local dev, CI service containers).
+ * - DATABASE_SSL_CA set (PEM; literal "\n" sequences are accepted so it fits
+ *   a one-line env var): the server certificate is verified against that CA.
+ *   Supabase signs its database certificates with its own root CA, downloadable
+ *   from the dashboard (Database settings > SSL Configuration).
+ * - DATABASE_SSL_VERIFY=true without a CA: verified against the system CAs.
+ * - Otherwise: encrypted but NOT verified (anyone on the path can impersonate
+ *   the database). Kept as the default so existing deployments keep working;
+ *   a warning is logged in production until a CA is configured.
+ *
+ * An sslmode=... parameter inside DATABASE_URL overrides these options (pg
+ * gives the connection string precedence), so leave it out when using them.
+ */
+export function resolvePgSsl(
+  connectionString: string,
+  env: Record<string, string | undefined> = process.env
+): pg.PoolConfig['ssl'] {
+  const isLocalhost = connectionString.includes('localhost') || connectionString.includes('127.0.0.1');
+  const sslDisabled = connectionString.includes('sslmode=disable');
+  if (sslDisabled || isLocalhost) return undefined;
+
+  const ca = env.DATABASE_SSL_CA?.trim();
+  if (ca) return { ca: ca.replace(/\\n/g, '\n'), rejectUnauthorized: true };
+  if (env.DATABASE_SSL_VERIFY === 'true') return { rejectUnauthorized: true };
+
+  if (env.NODE_ENV === 'production') {
+    console.warn(
+      '[PgClient] SECURITY: the database TLS certificate is NOT verified. ' +
+        'Set DATABASE_SSL_CA (Supabase root CA) to protect the connection against interception.'
+    );
+  }
+  return { rejectUnauthorized: false };
+}
+
 export function getPgPool(): pg.Pool {
   if (!pool) {
     const connectionString = process.env.DATABASE_URL;
     if (!connectionString) {
       throw new Error('PgClient requires DATABASE_URL to be defined.');
     }
-    const isLocalhost = connectionString.includes('localhost') || connectionString.includes('127.0.0.1');
-    const sslDisabled = connectionString.includes('sslmode=disable');
     pool = new Pool({
       connectionString,
-      ssl: sslDisabled || isLocalhost ? undefined : { rejectUnauthorized: false },
+      ssl: resolvePgSsl(connectionString),
       max: PG_POOL_MAX,
       connectionTimeoutMillis: PG_CONNECTION_TIMEOUT_MS,
       idleTimeoutMillis: PG_IDLE_TIMEOUT_MS,

@@ -320,7 +320,7 @@ describe("TenantContext server calls (TanStack Query)", () => {
       expect(spy).toHaveBeenCalledTimes(2)
     })
 
-    it("a restaurant admin cannot live-switch to another tenant (warns, no activation)", async () => {
+    it("a restaurant admin cannot live-switch to another tenant (reports it as foreign, no activation)", async () => {
       seedSession({ role: "restaurant", restaurantId: "rest-own" })
       vi.spyOn(apiClient, "fetchRestaurant").mockImplementation(async () => ({
         id: "rest-other",
@@ -329,10 +329,11 @@ describe("TenantContext server calls (TanStack Query)", () => {
       }) as any)
       const { wrapper } = setup()
       const { result } = renderHook(() => useTenant(), { wrapper })
+      let outcome = ""
       await act(async () => {
-        await result.current.loadRestaurant("other")
+        outcome = await result.current.loadRestaurant("other")
       })
-      expect(toast.warning).toHaveBeenCalled()
+      expect(outcome).toBe("foreign")
       expect(result.current.restaurants.some((r) => r.id === "rest-other")).toBe(false)
       expect(result.current.effectiveRestaurantId).toBe("rest-own")
     })

@@ -65,6 +65,7 @@ describe("AdminLayout - Super Admin Navigation & Global Modules (TDD)", () => {
       isResolving: false,
       attemptedSlug: null,
       loadError: false,
+      foreignTenant: false,
       retry: vi.fn(),
       navigateTo: navigateToMock,
     })

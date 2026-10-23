@@ -47,6 +47,17 @@ describe("useAppRouter - unknown slug resolution", () => {
     expect(setActiveView).toHaveBeenCalledWith("not-found")
   })
 
+  it("never renders the store for another restaurant's slug in a bound session", async () => {
+    loadRestaurant.mockResolvedValue("foreign")
+    const { result } = renderHook(() => useAppRouter())
+    await waitFor(() => expect(result.current.foreignTenant).toBe(true))
+    expect(result.current.isNotFound).toBe(true)
+    expect(result.current.loadError).toBe(false)
+    expect(result.current.attemptedSlug).toBe("some-place")
+    expect(setActiveView).toHaveBeenCalledWith("not-found")
+    expect(setActiveView).not.toHaveBeenCalledWith("store")
+  })
+
   it("shows a retryable error state on transient failure and retry reloads", async () => {
     loadRestaurant.mockResolvedValueOnce("error").mockResolvedValueOnce("ok")
     const { result } = renderHook(() => useAppRouter())

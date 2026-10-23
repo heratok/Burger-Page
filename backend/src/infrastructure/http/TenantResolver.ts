@@ -10,8 +10,11 @@ import { EntityNotFoundError } from '../../domain/errors/DomainErrors.js';
  *
  * 1. authContext.restaurantId wins for bound sessions.
  * 2. A super_admin without a bound tenant may target a tenant explicitly via
- *    query.restaurantId, body.restaurantId or the x-restaurant-id header.
- * 3. Reads only: still empty falls back to the first active restaurant.
+ *    query.restaurantId, query.slug, body.restaurantId or the x-restaurant-id
+ *    header.
+ * 3. Nothing explicit means no tenant (''), reads included: the caller
+ *    rejects the request instead of serving whichever restaurant happens to
+ *    be first, which would show one tenant's data under another's screen.
  * 4. A provided tenant is canonicalized through id/slug lookups (bare or
  *    `rest-`-prefixed) when a restaurant repo is available.
  * 5. M7: a mutation whose tenant cannot be resolved throws instead of falling
@@ -29,17 +32,12 @@ export async function resolveTenantForRequest(
     const headers = (req.headers || {}) as any;
     restaurantId =
       query?.restaurantId ||
+      query?.slug ||
       body?.restaurantId ||
       headers?.['x-restaurant-id'];
-
-    // Mutations must never default to an arbitrary tenant (JD-INFO-02): a
+    // Never default to an arbitrary tenant (JD-INFO-02), reads included: a
     // super admin without an explicit tenant gets undefined and the caller
-    // rejects the request. Reads may keep the first-active fallback.
-    if (!restaurantId && !options.mutation && deps.restaurantRepo) {
-      const all = await deps.restaurantRepo.findAll();
-      const active = all.find((r) => r.isActive);
-      if (active) restaurantId = active.id;
-    }
+    // rejects the request.
   }
 
   if (restaurantId && deps.restaurantRepo) {
@@ -54,7 +52,7 @@ export async function resolveTenantForRequest(
 
     // M7: a mutation must never fall through to a tenant the repository
     // cannot resolve — that is exactly how orphan rows are written. Reads
-    // keep the raw-id passthrough (and the first-active fallback) above.
+    // keep the raw-id passthrough above.
     if (options.mutation) {
       throw new EntityNotFoundError(`Restaurant '${restaurantId}' not found.`);
     }

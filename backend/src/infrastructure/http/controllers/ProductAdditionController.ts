@@ -12,7 +12,7 @@ import { CreateProductAdditionDTO, UpdateProductAdditionDTO } from '../../../app
 import { ListOptions } from '../../../domain/ports/out/ListOptions.js';
 import { MenuCache } from '../../cache/MenuCache.js';
 import { RestaurantIdCache } from '../../cache/RestaurantIdCache.js';
-import { resolvePublicRestaurantId } from '../PublicRestaurantResolver.js';
+import { resolveCatalogReadTarget, resolvePublicRestaurantId } from '../PublicRestaurantResolver.js';
 import type { CachedMenu } from './ProductController.js';
 
 /**
@@ -63,15 +63,19 @@ export class ProductAdditionController {
     const authTenant = req.authContext?.restaurantId;
     const query = (req.query || {}) as { restaurantId?: string; slug?: string; productId?: string };
 
-    let restaurantId: string;
-    if (authTenant) {
-      if (query.restaurantId && query.restaurantId !== authTenant && req.authContext?.role !== 'super_admin') {
-        throw new UnauthorizedError('Access denied for requested restaurant context.');
-      }
-      restaurantId = authTenant;
-    } else {
-      restaurantId = await this.resolveRestaurantId(query);
-    }
+    // A tenant session asking for ANOTHER restaurant gets that store's public
+    // additions, never its own catalog under the other store.
+    const restaurantId = authTenant
+      ? (
+          await resolveCatalogReadTarget(
+            this.restaurantRepo,
+            this.restaurantIdCache,
+            authTenant,
+            query,
+            'Restaurant ID or slug is required to view product additions.'
+          )
+        ).restaurantId
+      : await this.resolveRestaurantId(query);
 
     const options = parsePagination(req.query);
     // Only anonymous storefront reads are cached; any token always goes to the repository.

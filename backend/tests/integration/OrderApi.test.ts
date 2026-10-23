@@ -62,7 +62,8 @@ describe('Order API', () => {
     expect(body).toHaveProperty('id');
     expect(body.restaurantId).toBe('burger-craft');
     expect(body.status).toBe('pending');
-    expect(body.customerId).toBe('customer-123');
+    // 'customer-123' is not a customer of this restaurant: it is never linked as is.
+    expect(body.customerId).toBeUndefined();
     expect(body.subtotal).toBe(20);
     expect(body.finalTotal).toBe(20);
     expect(body.changeAmount).toBe(5);
@@ -428,10 +429,11 @@ describe('Order API', () => {
     expect(updateRes.statusCode).toBeLessThan(500);
   });
 
-  it('POST /api/orders should accept receiptUrl when paying via Transferencia', async () => {
+  it('POST /api/orders should accept receiptUrl on a staff sale paid via Transferencia', async () => {
     const response = await app.inject({
       method: 'POST',
       url: '/api/orders',
+      headers: { Authorization: `Bearer ${authToken}` },
       payload: {
         restaurantId: 'burger-craft',
         customerId: 'customer-123',
@@ -445,6 +447,38 @@ describe('Order API', () => {
     const body = response.json();
     expect(body.paymentMethod).toBe('Transferencia');
     expect(body.receiptUrl).toBe('https://example.com/receipt-123.webp');
+  });
+
+  it('POST /api/orders drops a receiptUrl sent by an anonymous storefront order', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/orders',
+      payload: {
+        restaurantId: 'burger-craft',
+        items: [{ productId, quantity: 1, additions: [] }],
+        paymentMethod: 'Transferencia',
+        receiptUrl: 'https://evil.example/tracker.png',
+      },
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.json().receiptUrl).toBeUndefined();
+  });
+
+  it('POST /api/orders rejects a script receiptUrl', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/orders',
+      headers: { Authorization: `Bearer ${authToken}` },
+      payload: {
+        restaurantId: 'burger-craft',
+        items: [{ productId, quantity: 1, additions: [] }],
+        paymentMethod: 'Transferencia',
+        receiptUrl: 'javascript:alert(1)',
+      },
+    });
+
+    expect(response.statusCode).toBe(400);
   });
 
   it('PATCH /api/orders/:id/receipt should attach transfer receipt to existing order', async () => {

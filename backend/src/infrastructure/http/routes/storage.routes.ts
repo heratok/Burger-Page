@@ -55,10 +55,13 @@ export async function storageRoutes(fastify: FastifyInstance) {
       : (authRestId || body.restaurantId || 'default');
     const folder = body.folder || 'products';
     const cleanRestId = targetRestaurantId.replace(/[^a-z0-9-_]/gi, '-');
-    // Never splice the raw client filename into the object key: sanitize it
-    // (or fall back to a random UUID) so the key stays a single, tenant-
-    // scoped segment even with upsert:true.
-    const uniqueId = body.filename ? sanitizeStorageObjectName(body.filename) : crypto.randomUUID();
+    // Never splice the raw client filename into the object key: sanitize it so
+    // the key stays a single, tenant-scoped segment, and always append a
+    // server-generated id so an upload can never overwrite an existing object
+    // (each upload gets a fresh key, which also busts CDN caches).
+    const uniqueId = body.filename
+      ? `${sanitizeStorageObjectName(body.filename).slice(0, 40)}-${crypto.randomUUID()}`
+      : crypto.randomUUID();
     const objectPath = `${cleanRestId}/${folder}/${uniqueId}.webp`;
 
     const supabaseUrl = process.env.SUPABASE_URL || process.env.PUBLIC_SUPABASE_URL;
@@ -82,7 +85,7 @@ export async function storageRoutes(fastify: FastifyInstance) {
       const supabase = getSupabaseClient();
       const { data, error } = await supabase.storage
         .from(bucket)
-        .createSignedUploadUrl(objectPath, { upsert: true });
+        .createSignedUploadUrl(objectPath, { upsert: false });
 
       if (error || !data) {
         req.log.warn({ err: error }, 'Could not create signed upload URL from Supabase, falling back');

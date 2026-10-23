@@ -61,11 +61,15 @@ write_files:
       JWT_SECRET=
       STORAGE_DRIVER=supabase
       DATABASE_URL=
+      # CA raíz de Supabase (PEM, se aceptan \n literales) para verificar el certificado TLS de la base.
+      DATABASE_SSL_CA=
       SUPABASE_URL=
       SUPABASE_KEY=
       CORS_ORIGIN=${cors_origin}
       RATE_LIMIT_MAX=300
       RATE_LIMIT_WINDOW=1 minute
+      # Caddy es el único proxy delante del backend: 1 salto de confianza para el rate limit por IP.
+      TRUST_PROXY=1
       GHCR_USERNAME=${ghcr_username}
       GHCR_PAT=
 

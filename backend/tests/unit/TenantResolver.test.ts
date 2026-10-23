@@ -123,15 +123,24 @@ describe('resolveTenantForRequest (shared tenant resolver, review finding D1)', 
     expect(result).toBe('rest-a');
   });
 
-  it('super_admin read with no tenant falls back to the first active restaurant', async () => {
+  it('super_admin read with no tenant resolves to no tenant instead of the first active restaurant', async () => {
     const repo = new FakeRestaurantRepository([
       restaurant('rest-0', { isActive: false }),
       restaurant('rest-a'),
       restaurant('rest-b'),
     ]);
     const result = await resolveTenantForRequest(req({ authContext: superAdmin() }), { restaurantRepo: repo });
-    expect(result).toBe('rest-a');
-    expect(repo.calls[0]).toBe('findAll');
+    expect(result).toBe('');
+    expect(repo.calls).not.toContain('findAll');
+  });
+
+  it('super_admin read targeting a tenant by ?slug= gets that tenant', async () => {
+    const repo = new FakeRestaurantRepository([restaurant('rest-a'), restaurant('rest-b', { slug: 'b-place' })]);
+    const result = await resolveTenantForRequest(
+      req({ authContext: superAdmin(), query: { slug: 'b-place' } }),
+      { restaurantRepo: repo }
+    );
+    expect(result).toBe('rest-b');
   });
 
   it('mutation with unresolvable tenant throws EntityNotFoundError (M7 guard)', async () => {

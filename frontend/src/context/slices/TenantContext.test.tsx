@@ -453,6 +453,20 @@ describe("TenantContext - effective tenant derivation and mutation identity (A1/
       expect(result.current.effectiveRestaurantId).toBe("rest-own")
     })
 
+    it("loadRestaurant of another tenant's slug reports it as foreign and keeps the own tenant", async () => {
+      vi.spyOn(apiClient, "fetchRestaurant").mockResolvedValue(other as any)
+      const { result } = mountOwn()
+
+      let outcome = ""
+      await act(async () => {
+        outcome = await result.current.loadRestaurant("other")
+      })
+
+      expect(outcome).toBe("foreign")
+      expect(result.current.activeRestaurant.id).not.toBe("rest-other")
+      expect(result.current.effectiveRestaurantId).toBe("rest-own")
+    })
+
     it("loadRestaurant of the own slug does not warn", async () => {
       const warn = vi.spyOn(toast, "warning").mockImplementation((() => "") as any)
       vi.spyOn(apiClient, "fetchRestaurant").mockResolvedValue(own as any)

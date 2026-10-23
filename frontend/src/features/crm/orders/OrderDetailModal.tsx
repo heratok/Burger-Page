@@ -10,6 +10,7 @@ import { calculateLineItemTotal } from "@/features/cart/cartEngine"
 import { getOrderTableLabel } from "@/features/crm/tables/orderTable"
 import { OrderTicketModal } from "./OrderTicketModal"
 import { ModalShell } from "@/components/ui/modal-shell"
+import { isSafeReceiptUrl } from "@burger-page/contracts"
 
 export interface OrderDetailModalProps {
   order: Order | null
@@ -43,6 +44,8 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false)
   const [isTicketModalOpen, setIsTicketModalOpen] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
+  // A stored receipt is rendered as an image source and a link target: never one with a script-capable scheme.
+  const receiptUrl = order?.receiptUrl && isSafeReceiptUrl(order.receiptUrl) ? order.receiptUrl : undefined
 
   const handleUploadReceipt = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -279,7 +282,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                   <FileText className="size-3.5 text-indigo-600 dark:text-indigo-400" />
                   Soporte de Transferencia
                 </span>
-                {order.receiptUrl ? (
+                {receiptUrl ? (
                   <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-700 dark:text-emerald-400">
                     ✓ Comprobante cargado
                   </span>
@@ -290,7 +293,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                 )}
               </div>
 
-              {order.receiptUrl ? (
+              {receiptUrl ? (
                 <div className="mt-2.5 flex items-center gap-3">
                   <button
                     aria-label="Ver comprobante ampliado"
@@ -300,7 +303,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                     title="Clic para ver comprobante ampliado"
                   >
                     <img
-                      src={order.receiptUrl}
+                      src={receiptUrl}
                       alt="Soporte de pago"
                       className="size-full object-cover"
                     />
@@ -439,7 +442,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
       </div>
 
       {/* Lightbox Modal for Receipt Image */}
-      {isReceiptModalOpen && order.receiptUrl && (
+      {isReceiptModalOpen && receiptUrl && (
         <ModalShell
           onClose={() => setIsReceiptModalOpen(false)}
           aria-label="Comprobante de transferencia"
@@ -453,7 +456,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
               </div>
               <div className="flex items-center gap-2">
                 <a
-                  href={order.receiptUrl}
+                  href={receiptUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
@@ -474,7 +477,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
             </div>
             <div className="flex-1 overflow-auto py-4 flex items-center justify-center">
               <img
-                src={order.receiptUrl}
+                src={receiptUrl}
                 alt={`Comprobante Orden #${order.orderNumber}`}
                 className="max-h-[70vh] w-auto max-w-full rounded-lg object-contain border border-slate-800"
               />

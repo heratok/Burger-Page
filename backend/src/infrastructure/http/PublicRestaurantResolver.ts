@@ -48,3 +48,24 @@ export async function resolvePublicRestaurantId(
   cache?.set(cacheKey, rest.id, version);
   return rest.id;
 }
+
+/**
+ * Which restaurant a menu read (products/additions) targets for a session bound
+ * to `authTenant`. No restaurant in the query, or the session's own, reads the
+ * tenant's full catalog. A query naming ANOTHER restaurant (a staff member
+ * browsing someone else's storefront) is answered as that restaurant's public
+ * storefront: the session's own catalog is never served under another store.
+ */
+export async function resolveCatalogReadTarget(
+  restaurantRepo: RestaurantRepository | undefined,
+  cache: RestaurantIdCache | undefined,
+  authTenant: string,
+  query: { restaurantId?: string; slug?: string },
+  missingMessage: string
+): Promise<{ restaurantId: string; ownCatalog: boolean }> {
+  if ((!query.restaurantId && !query.slug) || query.restaurantId === authTenant) {
+    return { restaurantId: authTenant, ownCatalog: true };
+  }
+  const requested = await resolvePublicRestaurantId(restaurantRepo, cache, query, missingMessage);
+  return { restaurantId: requested, ownCatalog: requested === authTenant };
+}

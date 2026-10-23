@@ -168,7 +168,7 @@ export function MainRouter() {
   const { session } = useAuth()
   const { activeRestaurant } = useTenant()
   const { storeConfig } = useCatalog()
-  const { activeView, isNotFound, isResolving, attemptedSlug, loadError, retry, navigateTo } = useAppRouter()
+  const { activeView, isNotFound, isResolving, attemptedSlug, loadError, foreignTenant, retry, navigateTo } = useAppRouter()
 
   const titleRestaurantName = selectTitleRestaurantName({
     activeView,
@@ -187,7 +187,13 @@ export function MainRouter() {
     return (
       <ErrorBoundary>
         <Suspense fallback={<StoreBootLoader />}>
-          <RestaurantNotFound attemptedSlug={attemptedSlug} loadError={loadError} onRetry={retry} />
+          <RestaurantNotFound
+            attemptedSlug={attemptedSlug}
+            loadError={loadError}
+            foreignTenant={foreignTenant}
+            onRetry={retry}
+            onGoToAdmin={() => navigateTo("/admin")}
+          />
         </Suspense>
       </ErrorBoundary>
     )

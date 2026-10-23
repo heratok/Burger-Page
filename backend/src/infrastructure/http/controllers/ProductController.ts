@@ -13,7 +13,7 @@ import { StorageUrlResolver, defaultStorageUrlResolver } from '../../storage/Sto
 import { ListOptions } from '../../../domain/ports/out/ListOptions.js';
 import { MenuCache } from '../../cache/MenuCache.js';
 import { RestaurantIdCache } from '../../cache/RestaurantIdCache.js';
-import { resolvePublicRestaurantId } from '../PublicRestaurantResolver.js';
+import { resolveCatalogReadTarget, resolvePublicRestaurantId } from '../PublicRestaurantResolver.js';
 
 /** Cached public menu response: formatted body plus the X-Total-Count header, when paginated. */
 export interface CachedMenu {
@@ -74,8 +74,18 @@ export class ProductController {
   async list(req: FastifyRequest, reply: FastifyReply) {
     const authTenant = req.authContext?.restaurantId;
     const options = parsePagination(req.query);
+    const query = (req.query || {}) as { restaurantId?: string; slug?: string };
+    const target = authTenant
+      ? await resolveCatalogReadTarget(
+          this.restaurantRepo,
+          this.restaurantIdCache,
+          authTenant,
+          query,
+          'Restaurant ID or slug is required to view menu products.'
+        )
+      : undefined;
 
-    if (authTenant) {
+    if (authTenant && target?.ownCatalog) {
       // 1. Catálogo administrativo: devuelve todos los productos del tenant autenticado
       if (options) {
         const { items, total } = await this.listProducts.execute(authTenant, false, options);
@@ -86,9 +96,9 @@ export class ProductController {
       return reply.status(200).send(products.map((p) => this.formatProduct(p)));
     }
 
-    // 2. Super admin o catálogo público storefront
-    const query = (req.query || {}) as { restaurantId?: string; slug?: string };
-    let restaurantId = await resolveTenantForRequest(req, { restaurantRepo: this.restaurantRepo });
+    // 2. Super admin o catálogo público storefront (también el de OTRO
+    //    restaurante pedido por una sesión de tenant: target.ownCatalog false)
+    let restaurantId = target ? target.restaurantId : await resolveTenantForRequest(req, { restaurantRepo: this.restaurantRepo });
     if (!restaurantId) {
       restaurantId = await this.resolveRestaurantId(query);
     }

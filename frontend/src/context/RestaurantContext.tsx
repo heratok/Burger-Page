@@ -14,7 +14,7 @@ import type {
   AdminSession,
 } from "@/types/restaurant"
 import { UiProvider, useUi } from "./slices/UiContext"
-import { TenantProvider, useTenant } from "./slices/TenantContext"
+import { TenantProvider, useTenant, type LoadRestaurantOutcome } from "./slices/TenantContext"
 import { useGlobalStats, type GlobalPlatformStats } from "./slices/directoryCaches"
 import { AuthProvider, useAuth } from "./slices/AuthContext"
 import { CatalogProvider, useCatalog } from "./slices/CatalogContext"
@@ -79,7 +79,7 @@ export interface RestaurantContextType {
   activeRestaurantSlug: string
   isSyncing: boolean
   switchRestaurant: (idOrSlug: string) => void
-  loadRestaurant: (idOrSlug: string) => Promise<"ok" | "not-found" | "error">
+  loadRestaurant: (idOrSlug: string) => Promise<LoadRestaurantOutcome>
 
   // Super Admin Directory Actions
   createRestaurant: (data: {
