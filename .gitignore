@@ -13,6 +13,8 @@ dist-ssr
 coverage/
 *.local
 .worktrees/
+package-lock.json
+.pnpm-store/
 
 # Environment files (no secrets to GitHub)
 .env
