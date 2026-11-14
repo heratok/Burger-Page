@@ -4,10 +4,10 @@ Local-only k6 and Playwright scripts to measure backend and frontend performance
 
 ## Backend
 
-1. Start local Postgres: `npm run db:test:start`, then create a throwaway database with `bash database/scripts/local-pg.sh create-db burger_load`.
+1. Start local Postgres: `pnpm run db:test:start`, then create a throwaway database with `bash database/scripts/local-pg.sh create-db burger_load`.
 2. Build and start the backend against it (`DATABASE_URL=postgres://app_user:app_user_test_only@localhost:5432/burger_load`, `STORAGE_DRIVER=postgres`).
 3. Seed 24 restaurants (40 products and about 140 additions each): `node load-tests/seed.mjs` (refuses non-local databases).
-4. Create an admin for the single-tenant scripts: `npm --prefix backend run create:admin -- loadtest_admin 'LoadTest#2026' restaurant_admin rest-burger-craft`.
+4. Create an admin for the single-tenant scripts: `pnpm --filter burger-page-backend run create:admin -- loadtest_admin 'LoadTest#2026' restaurant_admin rest-burger-craft`.
 
 | Script | Purpose |
 |---|---|

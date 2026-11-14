@@ -13,8 +13,8 @@ test.describe('Rate Limiting Load & Stress Testing (JD-CONFIRMED-001)', () => {
   test.beforeAll(async ({ request }) => {
     // Launch dedicated backend with strict rate limits enabled on port 3099
     serverProcess = spawn(
-      process.platform === 'win32' ? 'cmd.exe' : 'npx',
-      process.platform === 'win32' ? ['/c', 'npx tsx src/index.ts'] : ['tsx', 'src/index.ts'],
+      process.platform === 'win32' ? 'cmd.exe' : 'pnpm',
+      process.platform === 'win32' ? ['/c', 'pnpm exec tsx src/index.ts'] : ['exec', 'tsx', 'src/index.ts'],
       {
         cwd: backendDir,
         env: {
