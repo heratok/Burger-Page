@@ -14,8 +14,14 @@ import {
   Sun,
   Moon,
   UtensilsCrossed,
+  ArrowRight,
+  CheckCircle2,
+  XCircle,
+  Volume2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+
+type ShowcaseTab = "delivery" | "qr" | "kanban"
 
 export default function LandingPage() {
   const { navigateTo } = useAppRouter()
@@ -49,6 +55,7 @@ export default function LandingPage() {
   }
 
   const isDark = theme === "dark"
+  const [activeTab, setActiveTab] = useState<ShowcaseTab>("delivery")
 
   return (
     <div
@@ -130,13 +137,13 @@ export default function LandingPage() {
           <nav className="hidden md:flex items-center gap-7 text-xs font-semibold text-slate-600 dark:text-slate-300">
             <a
               href="#features"
-              className="hover:text-orange-600 dark:hover:text-orange-400 transition-colors"
+              className="px-2 py-1 hover:text-orange-600 dark:hover:text-orange-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 rounded-lg"
             >
               Beneficios
             </a>
             <a
               href="#how-it-works"
-              className="hover:text-orange-600 dark:hover:text-orange-400 transition-colors"
+              className="px-2 py-1 hover:text-orange-600 dark:hover:text-orange-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 rounded-lg"
             >
               Cómo Funciona
             </a>
@@ -148,7 +155,7 @@ export default function LandingPage() {
               type="button"
               onClick={toggleTheme}
               aria-label={isDark ? "Cambiar a tema claro" : "Cambiar a tema oscuro"}
-              className="inline-flex size-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 hover:border-orange-500 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-orange-400 dark:hover:text-orange-400 shadow-xs transition-colors cursor-pointer"
+              className="inline-flex size-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 hover:border-orange-500 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-orange-400 dark:hover:text-orange-400 shadow-xs transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
             >
               {isDark ? <Sun className="size-5" /> : <Moon className="size-5" />}
             </button>
@@ -157,7 +164,7 @@ export default function LandingPage() {
               type="button"
               variant="outline"
               onClick={() => navigateTo("/admin")}
-              className="inline-flex items-center gap-1.5 rounded-xl border-slate-200 bg-white px-3 sm:px-3.5 text-xs font-bold text-slate-700 hover:border-orange-500 hover:bg-orange-50/50 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-orange-400 dark:hover:bg-slate-800 dark:hover:text-orange-400 shadow-xs cursor-pointer"
+              className="inline-flex h-11 items-center gap-1.5 rounded-xl border-slate-200 bg-white px-3 sm:px-3.5 text-xs font-bold text-slate-700 hover:border-orange-500 hover:bg-orange-50/50 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-orange-400 dark:hover:bg-slate-800 dark:hover:text-orange-400 shadow-xs cursor-pointer"
             >
               <ShieldCheck className="size-4 text-orange-500 shrink-0" />
               <span className="hidden sm:inline">Acceso Administrador</span>
@@ -197,13 +204,19 @@ export default function LandingPage() {
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
               <Button
                 type="button"
-                variant="outline"
                 onClick={() => navigateTo("/admin")}
-                className="flex items-center gap-2 rounded-2xl border-slate-300 bg-white px-5 py-3.5 text-sm font-bold text-slate-800 hover:bg-slate-50 hover:border-orange-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800/80 dark:hover:border-orange-500 shadow-xs cursor-pointer"
+                className="flex h-auto items-center gap-2 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-orange-500/25 hover:from-orange-600 hover:to-amber-600 cursor-pointer"
               >
-                <ShieldCheck className="size-4 text-orange-500" />
+                <ShieldCheck className="size-4" />
                 <span>Entrar al Panel Admin</span>
               </Button>
+              <a
+                href="#how-it-works"
+                className="inline-flex items-center gap-2 rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-6 py-3.5 text-sm font-bold text-slate-700 dark:text-slate-200 hover:border-orange-500 hover:text-orange-600 dark:hover:border-orange-400 dark:hover:text-orange-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
+              >
+                <span>Ver cómo funciona</span>
+                <ArrowRight className="size-4" />
+              </a>
             </div>
 
             {/* Social Proof / Metrics Row (Intentional brand colors, no random indigo) */}
@@ -234,13 +247,10 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* Interactive Preview Simulation (Ilustrativo) */}
-            <div
-              aria-hidden="true"
-              className="mt-16 relative max-w-4xl mx-auto rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 p-4 sm:p-6 shadow-2xl text-left overflow-hidden"
-            >
+            {/* Interactive 3-Tab Product Showcase */}
+            <div className="mt-16 relative max-w-4xl mx-auto rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 p-4 sm:p-6 shadow-2xl text-left overflow-hidden">
               {/* Top Browser Bar */}
-              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 mb-5">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3 mb-4">
                 <div className="flex items-center gap-2">
                   <div className="size-3 rounded-full bg-rose-400" />
                   <div className="size-3 rounded-full bg-amber-400" />
@@ -255,74 +265,332 @@ export default function LandingPage() {
                 </div>
               </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
-              {/* Mockup Storefront side */}
-              <div className="md:col-span-7 space-y-3">
-                <div className="rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40 p-3.5 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/70 transition-colors shadow-xs">
-                  <div className="flex items-center gap-3">
-                    <div className="size-11 rounded-2xl bg-orange-500 flex items-center justify-center text-white shadow-sm">
-                      <UtensilsCrossed className="size-5" />
+              {/* Scenario Tabs */}
+              <div
+                role="tablist"
+                aria-label="Escenarios del producto FoodOS"
+                className="flex flex-wrap gap-2 mb-5"
+              >
+                <button
+                  type="button"
+                  role="tab"
+                  id="tab-delivery"
+                  aria-selected={activeTab === "delivery"}
+                  aria-controls="panel-delivery"
+                  onClick={() => setActiveTab("delivery")}
+                  className={`inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 ${
+                    activeTab === "delivery"
+                      ? "bg-orange-500 text-white shadow-sm shadow-orange-500/25"
+                      : "bg-slate-100 text-slate-700 hover:bg-orange-50 hover:text-orange-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                  }`}
+                >
+                  <MessageSquare className="size-3.5" />
+                  <span>Pedido Delivery</span>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  id="tab-qr"
+                  aria-selected={activeTab === "qr"}
+                  aria-controls="panel-qr"
+                  onClick={() => setActiveTab("qr")}
+                  className={`inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 ${
+                    activeTab === "qr"
+                      ? "bg-orange-500 text-white shadow-sm shadow-orange-500/25"
+                      : "bg-slate-100 text-slate-700 hover:bg-orange-50 hover:text-orange-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                  }`}
+                >
+                  <QrCode className="size-3.5" />
+                  <span>Mesa &amp; Código QR</span>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  id="tab-kanban"
+                  aria-selected={activeTab === "kanban"}
+                  aria-controls="panel-kanban"
+                  onClick={() => setActiveTab("kanban")}
+                  className={`inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 ${
+                    activeTab === "kanban"
+                      ? "bg-orange-500 text-white shadow-sm shadow-orange-500/25"
+                      : "bg-slate-100 text-slate-700 hover:bg-orange-50 hover:text-orange-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                  }`}
+                >
+                  <Zap className="size-3.5" />
+                  <span>Cocina &amp; Kanban</span>
+                </button>
+              </div>
+
+              {/* Tab 1: Pedido Delivery */}
+              {activeTab === "delivery" && (
+                <div
+                  role="tabpanel"
+                  id="panel-delivery"
+                  aria-labelledby="tab-delivery"
+                  className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center"
+                >
+                  {/* Mockup Storefront side */}
+                  <div className="md:col-span-7 space-y-3">
+                    <div className="rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40 p-3.5 flex items-center justify-between gap-3 shadow-xs">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="size-11 shrink-0 rounded-2xl bg-orange-500 flex items-center justify-center text-white shadow-sm">
+                          <UtensilsCrossed className="size-5" />
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+                            Craft Monster Burger
+                          </h3>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            Doble carne 150g, cheddar fundido, tocineta
+                          </p>
+                          <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 mt-0.5">
+                            + Adición: Tocineta Extra (+$3.500)
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className="text-sm font-extrabold text-orange-600 dark:text-orange-400">
+                          $28.000
+                        </span>
+                        <div className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                          +$3.500
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-bold text-sm text-slate-900 dark:text-white">Craft Monster Burger</h3>
-                      <p className="text-sm text-slate-500 dark:text-slate-400">
-                        Doble carne 150g, cheddar fundido, tocineta
+
+                    <div className="rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40 p-3.5 flex items-center justify-between gap-3 shadow-xs">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="size-11 shrink-0 rounded-2xl bg-amber-500 flex items-center justify-center text-white shadow-sm">
+                          <Flame className="size-5" />
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+                            Papas Rústicas Cheddar
+                          </h3>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            Papas crocantes con salsa artesanal
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-sm font-extrabold text-orange-600 dark:text-orange-400 shrink-0">
+                        $12.500
+                      </span>
+                    </div>
+
+                    <div className="rounded-2xl bg-orange-50 dark:bg-orange-950/30 border border-orange-200/80 dark:border-orange-900/40 p-3 flex items-center justify-between text-xs text-orange-950 dark:text-orange-200 font-medium">
+                      <div className="flex items-center gap-2">
+                        <ShoppingBag className="size-4 text-orange-600 dark:text-orange-400" />
+                        <span>Carrito de Compra: 2 productos + 1 adición</span>
+                      </div>
+                      <span className="font-extrabold text-orange-600 dark:text-orange-400">
+                        $44.000
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Mockup WhatsApp message preview */}
+                  <div className="md:col-span-5 rounded-2xl border border-emerald-200 dark:border-[#222E35] bg-[#E8F8F0] dark:bg-[#111B21] p-4 relative shadow-sm">
+                    <div className="flex items-center gap-2 text-emerald-800 dark:text-[#25D366] text-xs font-bold mb-2.5">
+                      <MessageSquare className="size-4 text-emerald-600 dark:text-[#25D366]" />
+                      <span>Mensaje formateado en WhatsApp:</span>
+                    </div>
+                    <div className="rounded-xl bg-white dark:bg-[#202C33] border border-emerald-100 dark:border-[#2A3942] p-3 text-xs text-slate-800 dark:text-[#E9EDEF] font-mono space-y-1.5 leading-relaxed shadow-xs">
+                      <p className="font-bold text-emerald-700 dark:text-[#25D366]">
+                        👋 ¡Hola Craft Burger! Nuevo Pedido:
+                      </p>
+                      <p>• 1x Craft Monster Burger ($28.000)</p>
+                      <p className="text-emerald-700 dark:text-[#25D366] pl-2">
+                        + Tocineta Extra ($3.500)
+                      </p>
+                      <p>• 1x Papas Rústicas ($12.500)</p>
+                      <div className="border-t border-slate-100 dark:border-slate-700/60 pt-1 text-slate-900 dark:text-white font-bold">
+                        Total a Pagar: $44.000
+                      </div>
+                      <p className="text-emerald-700 dark:text-[#25D366]">
+                        📍 Cra 15 # 85-30 • Pago: Efectivo
                       </p>
                     </div>
                   </div>
-                  <span className="text-sm font-extrabold text-orange-600 dark:text-orange-400">$28.000</span>
                 </div>
+              )}
 
-                <div className="rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40 p-3.5 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/70 transition-colors shadow-xs">
-                  <div className="flex items-center gap-3">
-                    <div className="size-11 rounded-2xl bg-amber-500 flex items-center justify-center text-white shadow-sm">
-                      <Flame className="size-5" />
+              {/* Tab 2: Mesa & Código QR */}
+              {activeTab === "qr" && (
+                <div
+                  role="tabpanel"
+                  id="panel-qr"
+                  aria-labelledby="tab-qr"
+                  className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center"
+                >
+                  <div className="md:col-span-7 space-y-3">
+                    <div className="flex items-center justify-between rounded-2xl border border-amber-200/80 dark:border-amber-900/40 bg-amber-50/80 dark:bg-amber-950/30 px-3.5 py-2.5 text-xs">
+                      <div className="flex items-center gap-2 font-bold text-amber-900 dark:text-amber-200">
+                        <QrCode className="size-4 text-amber-600 dark:text-amber-400" />
+                        <span>Mesa 4 · Terraza</span>
+                      </div>
+                      <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                        QR Escaneado
+                      </span>
                     </div>
-                    <div>
-                      <h3 className="font-bold text-sm text-slate-900 dark:text-white">Papas Rústicas Cheddar</h3>
-                      <p className="text-sm text-slate-500 dark:text-slate-400">
-                        Papas crocantes con salsa artesanal
+
+                    <div className="rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40 p-3.5 flex items-center justify-between gap-3 shadow-xs">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="size-11 shrink-0 rounded-2xl bg-orange-500 flex items-center justify-center text-white shadow-sm">
+                          <UtensilsCrossed className="size-5" />
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+                            2x Smash Burger Doble
+                          </h3>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            Pan brioche, doble queso cheddar, salsa especial
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-sm font-extrabold text-orange-600 dark:text-orange-400 shrink-0">
+                        $48.000
+                      </span>
+                    </div>
+
+                    <div className="rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40 p-3.5 flex items-center justify-between gap-3 shadow-xs">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="size-11 shrink-0 rounded-2xl bg-amber-500 flex items-center justify-center text-white shadow-sm">
+                          <Sparkles className="size-5" />
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+                            2x Limonada Natural
+                          </h3>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            Limón recién exprimido con hierbabuena
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-sm font-extrabold text-orange-600 dark:text-orange-400 shrink-0">
+                        $14.000
+                      </span>
+                    </div>
+
+                    <div className="rounded-2xl bg-orange-50 dark:bg-orange-950/30 border border-orange-200/80 dark:border-orange-900/40 p-3 flex items-center justify-between text-xs text-orange-950 dark:text-orange-200 font-medium">
+                      <div className="flex items-center gap-2">
+                        <ShoppingBag className="size-4 text-orange-600 dark:text-orange-400" />
+                        <span>Cuenta abierta en mesa</span>
+                      </div>
+                      <span className="font-extrabold text-orange-600 dark:text-orange-400">
+                        $62.000
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Instant Kitchen/Table Ticket */}
+                  <div className="md:col-span-5 rounded-2xl border border-amber-200 dark:border-amber-900/50 bg-amber-50/70 dark:bg-slate-800/70 p-4 shadow-sm">
+                    <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 text-xs font-bold mb-2.5">
+                      <QrCode className="size-4 text-amber-600 dark:text-amber-400" />
+                      <span>Comanda instantánea de salón:</span>
+                    </div>
+                    <div className="rounded-xl bg-white dark:bg-slate-900 border border-amber-100 dark:border-slate-700 p-3.5 text-xs text-slate-800 dark:text-slate-200 font-mono space-y-2 leading-relaxed shadow-xs">
+                      <p className="font-bold text-orange-600 dark:text-orange-400">
+                        🪑 Pedido en Salón — Mesa 4 · Terraza
+                      </p>
+                      <p>• 2x Smash Burger Doble ($48.000)</p>
+                      <p>• 2x Limonada Natural ($14.000)</p>
+                      <div className="border-t border-slate-100 dark:border-slate-800 pt-1.5 text-slate-900 dark:text-white font-bold">
+                        Total Mesa: $62.000
+                      </div>
+                      <p className="text-emerald-700 dark:text-emerald-400 font-semibold">
+                        Sin espera en caja • Directo a cocina
                       </p>
                     </div>
                   </div>
-                  <span className="text-sm font-extrabold text-orange-600 dark:text-orange-400">$12.500</span>
                 </div>
+              )}
 
-                <div className="rounded-2xl bg-orange-50 dark:bg-orange-950/30 border border-orange-200/80 dark:border-orange-900/40 p-3 flex items-center justify-between text-xs text-orange-950 dark:text-orange-200 font-medium">
-                  <div className="flex items-center gap-2">
-                    <ShoppingBag className="size-4 text-orange-600 dark:text-orange-400" />
-                    <span>Carrito de Compra: 2 productos listos</span>
-                  </div>
-                  <span className="font-extrabold text-orange-600 dark:text-orange-400">$40.500</span>
-                </div>
-              </div>
+              {/* Tab 3: Cocina & Kanban */}
+              {activeTab === "kanban" && (
+                <div
+                  role="tabpanel"
+                  id="panel-kanban"
+                  aria-labelledby="tab-kanban"
+                  className="space-y-4"
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Column 1 */}
+                    <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40 p-3.5 space-y-2.5">
+                      <div className="flex items-center justify-between text-xs font-bold text-amber-700 dark:text-amber-400">
+                        <span>Pendiente</span>
+                        <span className="rounded-full bg-amber-500/15 px-2 py-0.5">1</span>
+                      </div>
+                      <div className="rounded-xl border border-amber-200/80 dark:border-amber-900/40 bg-white dark:bg-slate-900 p-3 shadow-xs">
+                        <div className="font-bold text-xs text-slate-900 dark:text-white">
+                          #104 · Mesa 4
+                        </div>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                          2x Smash Burger Doble, 2x Limonada Natural
+                        </p>
+                        <div className="mt-2 text-xs font-extrabold text-orange-600 dark:text-orange-400">
+                          $62.000
+                        </div>
+                      </div>
+                    </div>
 
-              {/* Mockup WhatsApp message preview */}
-              <div className="md:col-span-5 rounded-2xl border border-emerald-200 dark:border-[#222E35] bg-[#E8F8F0] dark:bg-[#111B21] p-4 relative shadow-sm">
-                <div className="flex items-center gap-2 text-emerald-800 dark:text-[#25D366] text-xs font-bold mb-2.5">
-                  <MessageSquare className="size-4 text-emerald-600 dark:text-[#25D366]" />
-                  <span>Mensaje formateado en WhatsApp:</span>
-                </div>
-                <div className="rounded-xl bg-white dark:bg-[#202C33] border border-emerald-100 dark:border-[#2A3942] p-3 text-xs text-slate-800 dark:text-[#E9EDEF] font-mono space-y-1.5 leading-relaxed shadow-xs">
-                  <p className="font-bold text-emerald-700 dark:text-[#25D366]">👋 ¡Hola Craft Burger! Nuevo Pedido:</p>
-                  <p>• 1x Craft Monster Burger ($28.000)</p>
-                  <p className="text-emerald-700 dark:text-[#25D366] text-sm pl-2">+ Tocineta Extra ($3.500)</p>
-                  <p>• 1x Papas Rústicas ($12.500)</p>
-                  <div className="border-t border-slate-100 dark:border-slate-700/60 pt-1 text-slate-900 dark:text-white font-bold">
-                    Total a Pagar: $44.000
+                    {/* Column 2 */}
+                    <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40 p-3.5 space-y-2.5">
+                      <div className="flex items-center justify-between text-xs font-bold text-orange-700 dark:text-orange-400">
+                        <span>En Cocina</span>
+                        <span className="rounded-full bg-orange-500/15 px-2 py-0.5">1</span>
+                      </div>
+                      <div className="rounded-xl border border-orange-200/80 dark:border-orange-900/40 bg-white dark:bg-slate-900 p-3 shadow-xs">
+                        <div className="font-bold text-xs text-slate-900 dark:text-white">
+                          #103 · Delivery WhatsApp
+                        </div>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                          1x Craft Monster + Tocineta, 1x Papas Rústicas
+                        </p>
+                        <div className="mt-2 text-xs font-extrabold text-orange-600 dark:text-orange-400">
+                          $44.000
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Column 3 */}
+                    <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40 p-3.5 space-y-2.5">
+                      <div className="flex items-center justify-between text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                        <span>Listo / En Camino</span>
+                        <span className="rounded-full bg-emerald-500/15 px-2 py-0.5">1</span>
+                      </div>
+                      <div className="rounded-xl border border-emerald-200/80 dark:border-emerald-900/40 bg-white dark:bg-slate-900 p-3 shadow-xs">
+                        <div className="font-bold text-xs text-slate-900 dark:text-white">
+                          #102 · Retiro en Local
+                        </div>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                          1x Combo Burger Clásica + Bebida
+                        </p>
+                        <div className="mt-2 text-xs font-extrabold text-emerald-600 dark:text-emerald-400">
+                          $31.000 · Pagado
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-emerald-700 dark:text-[#25D366] text-sm">📍 Cra 15 # 85-30 • Pago: Efectivo</p>
+
+                  <div className="rounded-2xl border border-emerald-200/80 dark:border-emerald-900/40 bg-emerald-50/70 dark:bg-emerald-950/30 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs text-emerald-900 dark:text-emerald-200">
+                    <div className="flex items-center gap-2 font-semibold">
+                      <Volume2 className="size-4 text-emerald-600 dark:text-emerald-400" />
+                      <span>Alertas sonoras activas · Sincronización en tiempo real vía SSE</span>
+                    </div>
+                    <span className="font-bold text-emerald-700 dark:text-emerald-400">
+                      Latencia &lt; 1s
+                    </span>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
-          </div>
         </div>
       </section>
 
       {/* ======================================================== */}
       {/* FEATURES / VALUE PILLARS                                 */}
       {/* ======================================================== */}
-      <section id="features" className="py-20 border-t border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-[#0B0F19] transition-colors">
+      <section id="features" className="scroll-mt-20 py-20 border-t border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-[#0B0F19] transition-colors">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16">
             <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 dark:text-white">
@@ -406,13 +674,69 @@ export default function LandingPage() {
               </p>
             </div>
           </div>
+
+          {/* Comparativa de Rentabilidad */}
+          <div className="mt-14 rounded-3xl border border-slate-200/80 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-900/50 p-6 sm:p-8">
+            <div className="text-center max-w-2xl mx-auto mb-8">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-500/10 px-3 py-1 text-xs font-bold text-orange-700 dark:text-orange-300 border border-brand-orange-subtle mb-3">
+                Comparativa de Rentabilidad
+              </span>
+              <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white">
+                Dejá de regalar tu margen en cada pedido
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Traditional Delivery Apps */}
+              <div className="rounded-2xl border border-rose-200/80 dark:border-rose-900/40 bg-white dark:bg-slate-900/80 p-6">
+                <h4 className="text-base font-bold text-slate-900 dark:text-white mb-4">
+                  Apps de Delivery Tradicionales
+                </h4>
+                <ul className="space-y-3 text-sm text-slate-600 dark:text-slate-300">
+                  <li className="flex items-start gap-2.5">
+                    <XCircle className="size-4 text-rose-500 shrink-0 mt-0.5" />
+                    <span>25% a 35% de comisión por orden</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <XCircle className="size-4 text-rose-500 shrink-0 mt-0.5" />
+                    <span>Clientes cautivos de la app</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <XCircle className="size-4 text-rose-500 shrink-0 mt-0.5" />
+                    <span>Cobros retenidos por semanas</span>
+                  </li>
+                </ul>
+              </div>
+
+              {/* FoodOS Direct */}
+              <div className="rounded-2xl border border-emerald-300/80 dark:border-emerald-800/60 bg-emerald-50/50 dark:bg-emerald-950/20 p-6 shadow-xs">
+                <h4 className="text-base font-bold text-slate-900 dark:text-white mb-4">
+                  Tu Canal Directo con FoodOS
+                </h4>
+                <ul className="space-y-3 text-sm text-slate-700 dark:text-slate-200 font-medium">
+                  <li className="flex items-start gap-2.5">
+                    <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                    <span>0% comisiones por venta</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                    <span>100% base de datos y CRM propio</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                    <span>Pago directo a tu cuenta o efectivo al instante</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
       {/* ======================================================== */}
       {/* HOW IT WORKS                                             */}
       {/* ======================================================== */}
-      <section id="how-it-works" className="py-20 border-t border-slate-200/80 dark:border-slate-800/80 bg-[#FAFAFA] dark:bg-[#0D121F] transition-colors">
+      <section id="how-it-works" className="scroll-mt-20 py-20 border-t border-slate-200/80 dark:border-slate-800/80 bg-[#FAFAFA] dark:bg-[#0D121F] transition-colors">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-14">
             <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 dark:text-white">
@@ -460,7 +784,7 @@ export default function LandingPage() {
       {/* ======================================================== */}
       {/* FINAL CTA                                                */}
       {/* ======================================================== */}
-      <section className="py-20 border-t border-slate-200/80 dark:border-slate-800/80 bg-[#FAFAFA] dark:bg-[#0D121F] text-center transition-colors">
+      <section className="py-20 border-t border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-[#0B0F19] text-center transition-colors">
         <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
           <div className="rounded-3xl border border-orange-200/80 dark:border-orange-900/40 bg-gradient-to-br from-orange-50 via-white to-amber-50 dark:from-slate-900 dark:via-[#131926] dark:to-slate-900 p-8 sm:p-12 relative overflow-hidden shadow-xl">
             <div className="inline-flex items-center gap-2 rounded-full border border-brand-orange-subtle bg-orange-500/10 px-3.5 py-1 text-xs font-bold text-orange-800 dark:text-orange-300 mb-4">
@@ -478,7 +802,7 @@ export default function LandingPage() {
               <Button
                 type="button"
                 onClick={() => navigateTo("/admin")}
-                className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-3.5 text-sm font-bold text-white shadow-xl shadow-orange-500/30 hover:from-orange-600 hover:to-amber-600 cursor-pointer"
+                className="flex h-auto items-center gap-2 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-3.5 text-sm font-bold text-white shadow-xl shadow-orange-500/30 hover:from-orange-600 hover:to-amber-600 cursor-pointer"
               >
                 <ShieldCheck className="size-4" />
                 <span>Ingresar al Panel de Gestión</span>
@@ -490,7 +814,7 @@ export default function LandingPage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0B0F19] py-8 text-slate-500 dark:text-slate-400 text-xs transition-colors">
+      <footer className="border-t border-slate-200 dark:border-slate-800 bg-[#FAFAFA] dark:bg-[#0D121F] py-8 text-slate-500 dark:text-slate-400 text-xs transition-colors">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <Flame className="size-4 text-orange-500" />
@@ -498,19 +822,25 @@ export default function LandingPage() {
             <span>— Plataforma Multi-Restaurante de Pedidos Directos</span>
           </div>
 
-          <div className="flex items-center gap-6 font-semibold">
+          <div className="flex items-center gap-4 sm:gap-6 font-semibold">
             <button
               type="button"
               onClick={() => navigateTo("/admin")}
-              className="hover:text-orange-600 dark:hover:text-orange-400 transition-colors cursor-pointer"
+              className="px-2 py-1 hover:text-orange-600 dark:hover:text-orange-400 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 rounded-lg"
             >
               Acceso Admin
             </button>
             <a
               href="#features"
-              className="hover:text-orange-600 dark:hover:text-orange-400 transition-colors"
+              className="px-2 py-1 hover:text-orange-600 dark:hover:text-orange-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 rounded-lg"
             >
               Beneficios
+            </a>
+            <a
+              href="#how-it-works"
+              className="px-2 py-1 hover:text-orange-600 dark:hover:text-orange-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 rounded-lg"
+            >
+              Cómo Funciona
             </a>
           </div>
         </div>
