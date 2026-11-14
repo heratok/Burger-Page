@@ -282,7 +282,7 @@ export const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({
           <Button
             type="submit"
             disabled={!isValid || isSubmitting}
-            className="w-full rounded-xl bg-indigo-600 py-2.5 text-xs font-bold text-white shadow-md shadow-indigo-600/25 hover:bg-indigo-700 disabled:opacity-50 cursor-pointer"
+            className="w-full h-auto rounded-xl bg-indigo-600 py-2.5 text-xs font-bold text-white shadow-md shadow-indigo-600/25 hover:bg-indigo-700 disabled:opacity-50 cursor-pointer"
           >
             {isSubmitting ? (
               <span className="flex items-center gap-1.5">

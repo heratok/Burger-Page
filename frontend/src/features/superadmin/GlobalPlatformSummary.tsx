@@ -23,7 +23,10 @@ export const GlobalPlatformSummary: React.FC<GlobalPlatformSummaryProps> = ({ on
       value: orPlaceholder(formatCurrency(globalStats.totalRevenue)),
       sub: "Ventas acumuladas de todos los restaurantes",
       icon: <DollarSign className="size-5 text-emerald-700 dark:text-emerald-400" />,
-      badge: "+24.8% este mes",
+      badge:
+        globalStats.totalOrders > 0
+          ? `Ticket prom. $${Math.round(globalStats.totalRevenue / globalStats.totalOrders).toLocaleString()}`
+          : "Sin órdenes registradas",
       badgeColor: "text-emerald-700 dark:text-emerald-400 bg-emerald-500/10",
     },
     {
@@ -57,7 +60,7 @@ export const GlobalPlatformSummary: React.FC<GlobalPlatformSummaryProps> = ({ on
       {/* Top Banner */}
       <div
         className={`flex flex-col gap-4 rounded-2xl border p-5 shadow-xs sm:flex-row sm:items-center sm:justify-between ${
-          isDark ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-white"
+          isDark ? "border-slate-800 bg-[#0E1322]" : "border-slate-200 bg-white"
         }`}
       >
         <div>
