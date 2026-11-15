@@ -95,4 +95,82 @@ describe("Home - opening status", () => {
       (screen.getByPlaceholderText("Buscar en el menú...") as HTMLInputElement).value
     ).toBe("a")
   })
+
+  it("shows the configured physical address and an accessible 'Cómo llegar' Google Maps link", async () => {
+    const rawAddress = "  Calle 85 # 14-32, Bogotá  "
+    seedBlankActiveTenant("rest-burger-craft", "burger-craft", { address: rawAddress })
+    render(
+      <RestaurantProvider>
+        <Home />
+      </RestaurantProvider>
+    )
+    await screen.findByPlaceholderText("Buscar en el menú...")
+
+    expect(screen.getByText("Calle 85 # 14-32, Bogotá")).toBeDefined()
+    const link = screen.getByRole("link", { name: "Cómo llegar" }) as HTMLAnchorElement
+    expect(link.getAttribute("href")).toBe(
+      `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent("Calle 85 # 14-32, Bogotá")}`
+    )
+    expect(link.getAttribute("target")).toBe("_blank")
+    expect(link.getAttribute("rel")).toBe("noopener noreferrer")
+  })
+
+  it("renders nothing for address or 'Cómo llegar' when address is empty or whitespace-only", async () => {
+    seedBlankActiveTenant("rest-burger-craft", "burger-craft", { address: "   " })
+    render(
+      <RestaurantProvider>
+        <Home />
+      </RestaurantProvider>
+    )
+    await screen.findByPlaceholderText("Buscar en el menú...")
+
+    expect(screen.queryByRole("link", { name: "Cómo llegar" })).toBeNull()
+  })
+
+  it("shows estimated delivery time near availability when showBanner is false", async () => {
+    seedBlankActiveTenant("rest-burger-craft", "burger-craft", {
+      showBanner: false,
+      estimatedDeliveryTime: "  35 - 50 min  ",
+    })
+    render(
+      <RestaurantProvider>
+        <Home />
+      </RestaurantProvider>
+    )
+    await screen.findByPlaceholderText("Buscar en el menú...")
+
+    expect(screen.getAllByText(/Tiempo estimado de entrega:\s*35 - 50 min/)).toHaveLength(1)
+  })
+
+  it("shows estimated delivery time once near availability without duplicating it in the hero banner when showBanner is true", async () => {
+    seedBlankActiveTenant("rest-burger-craft", "burger-craft", {
+      showBanner: true,
+      bannerUrl: "https://example.com/banner.jpg",
+      estimatedDeliveryTime: "40 - 55 min",
+    })
+    render(
+      <RestaurantProvider>
+        <Home />
+      </RestaurantProvider>
+    )
+    await screen.findByPlaceholderText("Buscar en el menú...")
+
+    expect(screen.getAllByText(/40 - 55 min/)).toHaveLength(1)
+    expect(screen.getByText(/Tiempo estimado de entrega:\s*40 - 55 min/)).toBeDefined()
+  })
+
+  it("renders nothing for estimated delivery time when it is empty or whitespace-only", async () => {
+    seedBlankActiveTenant("rest-burger-craft", "burger-craft", {
+      showBanner: false,
+      estimatedDeliveryTime: "   ",
+    })
+    render(
+      <RestaurantProvider>
+        <Home />
+      </RestaurantProvider>
+    )
+    await screen.findByPlaceholderText("Buscar en el menú...")
+
+    expect(screen.queryByText(/Tiempo estimado de entrega/i)).toBeNull()
+  })
 })

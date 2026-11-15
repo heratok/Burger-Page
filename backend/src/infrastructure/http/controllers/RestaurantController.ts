@@ -45,6 +45,8 @@ function redactPublic(restaurant: any): any {
       tagline: config.tagline,
       logoUrl: config.logoUrl,
       whatsappNumber: config.whatsappNumber,
+      // The public landing renders the restaurant address for delivery pickup.
+      address: config.address,
       deliveryFee: config.deliveryFee,
       minOrderAmount: config.minOrderAmount,
       currency: config.currency,
