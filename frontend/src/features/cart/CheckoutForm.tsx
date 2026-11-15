@@ -415,7 +415,7 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
             <div className="rounded-xl border border-border-subtle bg-bg-elevated-2 p-3.5 text-sm text-text-secondary">
               <p>Recoges tu pedido directamente en el local.</p>
               {storeConfig.address?.trim() && (
-                <p className="mt-1 text-xs text-text-muted">
+                <p className="mt-1 text-sm text-text-muted">
                   Punto de retiro: {storeConfig.address.trim()}
                 </p>
               )}
