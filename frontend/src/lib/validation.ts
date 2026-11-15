@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { MIN_PASSWORD_LENGTH } from "@burger-page/contracts"
+import { MIN_PASSWORD_LENGTH, orderTypeEnum } from "@burger-page/contracts"
 import { cleanPhoneNumber } from "./utils"
 
 /**
@@ -16,54 +16,80 @@ export const LIMITS = {
   busqueda: { max: 50 },
 } as const
 
-export const formSchema = z.object({
-  nombre: z
-    .string()
-    .trim()
-    .min(LIMITS.nombre.min, {
-      message: `Ingresa tu nombre (mín. ${LIMITS.nombre.min} caracteres).`,
-    })
-    .max(LIMITS.nombre.max, {
-      message: `El nombre es muy largo (máx. ${LIMITS.nombre.max} caracteres).`,
-    }),
-  telefono: z
-    .string()
-    .trim()
-    .transform((v) => cleanPhoneNumber(v))
-    .refine((v) => v.length >= LIMITS.telefono.min, {
-      message: `Ingresa un celular válido (mín. ${LIMITS.telefono.min} dígitos).`,
-    })
-    .refine((v) => v.length <= LIMITS.telefono.max, {
-      message: `El celular es muy largo (máx. ${LIMITS.telefono.max} dígitos).`,
-    }),
-  dir: z
-    .string()
-    .trim()
-    .min(1, { message: "La dirección es obligatoria." })
-    .max(LIMITS.dir.max, {
-      message: `La dirección es muy larga (máx. ${LIMITS.dir.max} caracteres).`,
-    }),
-  barrio: z
-    .string()
-    .trim()
-    .min(1, { message: "Indícanos tu barrio." })
-    .max(LIMITS.barrio.max, {
-      message: `El barrio es muy largo (máx. ${LIMITS.barrio.max} caracteres).`,
-    }),
-  metodo: z.enum(["Efectivo", "Transferencia"]),
-  pagoCon: z
-    .string()
-    .regex(new RegExp(`^\\d{0,${LIMITS.pagoCon.max}}$`), {
-      message: `Máximo ${LIMITS.pagoCon.max} dígitos.`,
-    })
-    .optional(),
-  mensaje: z
-    .string()
-    .max(LIMITS.mensaje.max, {
-      message: `El comentario es muy largo (máx. ${LIMITS.mensaje.max} caracteres).`,
-    })
-    .optional(),
-})
+export const formSchema = z
+  .object({
+    orderType: z.enum(orderTypeEnum.options).default("domicilio"),
+    nombre: z
+      .string()
+      .trim()
+      .min(LIMITS.nombre.min, {
+        message: `Ingresa tu nombre (mín. ${LIMITS.nombre.min} caracteres).`,
+      })
+      .max(LIMITS.nombre.max, {
+        message: `El nombre es muy largo (máx. ${LIMITS.nombre.max} caracteres).`,
+      }),
+    telefono: z
+      .string()
+      .trim()
+      .transform((v) => cleanPhoneNumber(v))
+      .refine((v) => v.length >= LIMITS.telefono.min, {
+        message: `Ingresa un celular válido (mín. ${LIMITS.telefono.min} dígitos).`,
+      })
+      .refine((v) => v.length <= LIMITS.telefono.max, {
+        message: `El celular es muy largo (máx. ${LIMITS.telefono.max} dígitos).`,
+      }),
+    dir: z.string().trim().optional().default(""),
+    barrio: z.string().trim().optional().default(""),
+    metodo: z.enum(["Efectivo", "Transferencia"]),
+    pagoCon: z
+      .string()
+      .regex(new RegExp(`^\\d{0,${LIMITS.pagoCon.max}}$`), {
+        message: `Máximo ${LIMITS.pagoCon.max} dígitos.`,
+      })
+      .optional(),
+    mensaje: z
+      .string()
+      .max(LIMITS.mensaje.max, {
+        message: `El comentario es muy largo (máx. ${LIMITS.mensaje.max} caracteres).`,
+      })
+      .optional(),
+  })
+  .superRefine((values, ctx) => {
+    if (values.orderType !== "domicilio") return
+
+    if (values.dir.length < 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["dir"],
+        message: "La dirección es obligatoria.",
+      })
+    } else if (values.dir.length > LIMITS.dir.max) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["dir"],
+        message: `La dirección es muy larga (máx. ${LIMITS.dir.max} caracteres).`,
+      })
+    }
+
+    if (values.barrio.length < 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["barrio"],
+        message: "Indícanos tu barrio.",
+      })
+    } else if (values.barrio.length > LIMITS.barrio.max) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["barrio"],
+        message: `El barrio es muy largo (máx. ${LIMITS.barrio.max} caracteres).`,
+      })
+    }
+  })
+  .transform((values) =>
+    values.orderType === "recoger"
+      ? { ...values, dir: "", barrio: "" }
+      : values
+  )
 
 export type FormValues = z.infer<typeof formSchema>
 

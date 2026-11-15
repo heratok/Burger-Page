@@ -130,6 +130,83 @@ describe("formSchema — campos opcionales", () => {
   })
 })
 
+describe("formSchema — orderType (domicilio vs recoger)", () => {
+  it("usa 'domicilio' como orderType por defecto cuando se omite", () => {
+    const r = formSchema.safeParse(baseValues)
+    expect(r.success).toBe(true)
+    if (r.success) {
+      expect(r.data.orderType).toBe("domicilio")
+    }
+  })
+
+  it("exige dir y barrio no vacíos y respeta máximos cuando orderType es 'domicilio'", () => {
+    const emptyDir = formSchema.safeParse({
+      ...baseValues,
+      orderType: "domicilio",
+      dir: "   ",
+    })
+    expect(emptyDir.success).toBe(false)
+    expect(emptyDir.error?.issues[0].message).toBe("La dirección es obligatoria.")
+
+    const emptyBarrio = formSchema.safeParse({
+      ...baseValues,
+      orderType: "domicilio",
+      barrio: "",
+    })
+    expect(emptyBarrio.success).toBe(false)
+    expect(emptyBarrio.error?.issues[0].message).toBe("Indícanos tu barrio.")
+
+    const longDir = formSchema.safeParse({
+      ...baseValues,
+      orderType: "domicilio",
+      dir: "x".repeat(LIMITS.dir.max + 1),
+    })
+    expect(longDir.success).toBe(false)
+    expect(longDir.error?.issues[0].message).toContain(`máx. ${LIMITS.dir.max}`)
+
+    const longBarrio = formSchema.safeParse({
+      ...baseValues,
+      orderType: "domicilio",
+      barrio: "x".repeat(LIMITS.barrio.max + 1),
+    })
+    expect(longBarrio.success).toBe(false)
+    expect(longBarrio.error?.issues[0].message).toContain(`máx. ${LIMITS.barrio.max}`)
+  })
+
+  it("acepta orderType 'recoger' con dir y barrio vacíos u omitidos y los normaliza a ''", () => {
+    const omitted = formSchema.safeParse({
+      nombre: baseValues.nombre,
+      telefono: baseValues.telefono,
+      metodo: baseValues.metodo,
+      orderType: "recoger",
+    })
+    expect(omitted.success).toBe(true)
+    if (omitted.success) {
+      expect(omitted.data.orderType).toBe("recoger")
+      expect(omitted.data.dir).toBe("")
+      expect(omitted.data.barrio).toBe("")
+    }
+
+    const withStaleAddress = formSchema.safeParse({
+      ...baseValues,
+      orderType: "recoger",
+      dir: "Calle 99 #10-20",
+      barrio: "Norte",
+    })
+    expect(withStaleAddress.success).toBe(true)
+    if (withStaleAddress.success) {
+      expect(withStaleAddress.data.orderType).toBe("recoger")
+      expect(withStaleAddress.data.dir).toBe("")
+      expect(withStaleAddress.data.barrio).toBe("")
+    }
+  })
+
+  it("rechaza un orderType inválido", () => {
+    const r = formSchema.safeParse({ ...baseValues, orderType: "mesa" })
+    expect(r.success).toBe(false)
+  })
+})
+
 describe("Admin Validation Schemas (TDD)", () => {
   describe("adminAuthSchema", () => {
     it("valida credenciales válidas", () => {
