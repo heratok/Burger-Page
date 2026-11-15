@@ -5,6 +5,7 @@ import { toast } from "sonner"
 import {
   ArrowLeft,
   Banknote,
+  Bike,
   ChevronDown,
   CircleAlert,
   CreditCard,
@@ -12,9 +13,12 @@ import {
   MapPin,
   Phone,
   Send,
+  Store,
   User,
   Wallet,
 } from "lucide-react"
+import type { OrderType } from "@burger-page/contracts"
+import type { z } from "zod"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
@@ -53,6 +57,11 @@ const METODOS = [
   { value: "Transferencia", Icon: CreditCard },
 ] as const
 
+const DELIVERY_TYPES: ReadonlyArray<{ value: OrderType; label: string; Icon: typeof Bike }> = [
+  { value: "domicilio", label: "Domicilio", Icon: Bike },
+  { value: "recoger", label: "Recoger en el local", Icon: Store },
+]
+
 export interface CheckoutFormProps {
   onClose: () => void
   onBackToCart: () => void
@@ -68,10 +77,12 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
     handleSubmit,
     watch,
     setValue,
+    clearErrors,
     formState: { errors, isSubmitting },
-  } = useForm<FormValues>({
+  } = useForm<z.input<typeof formSchema>, unknown, FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      orderType: "domicilio",
       nombre: "",
       telefono: "",
       dir: "",
@@ -82,14 +93,16 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
     },
   })
 
+  const orderType = (watch("orderType") ?? "domicilio") as OrderType
+  const isPickup = orderType === "recoger"
   const metodo = watch("metodo")
   const pagoCon = watch("pagoCon")
 
   // The displayed charge must equal the recorded charge: the delivery fee
-  // applies to orders with items (mirroring calculateCartSummary), so the
-  // change and the summary total are computed over the fee-inclusive amount.
+  // applies only to delivery orders with items (mirroring calculateCartSummary),
+  // so the change and the summary total are computed over the fee-inclusive amount.
   const subtotal = cartItems.reduce((acc, item) => acc + item.total, 0)
-  const deliveryFee = cartItems.length > 0 ? (storeConfig.deliveryFee ?? 0) : 0
+  const deliveryFee = !isPickup && cartItems.length > 0 ? (storeConfig.deliveryFee ?? 0) : 0
   const total = subtotal + deliveryFee
 
   const minOrderAmount = Number(storeConfig.minOrderAmount || 0)
@@ -149,24 +162,31 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
       }
     }
 
+    const pickup = values.orderType === "recoger"
+    const effectiveDeliveryFee = pickup ? 0 : deliveryFee
+    const effectiveTotal = subtotal + effectiveDeliveryFee
+    const effectiveCambio = calculateChange(effectiveTotal, values.pagoCon)
+    const customer = {
+      nombre: values.nombre,
+      telefono: values.telefono,
+      direccion: pickup ? "" : values.dir,
+      barrio: pickup ? "" : values.barrio,
+    }
+
     // 1. Register order in CRM context. The outcome toast is owned by
     // addOrder: it confirms only after the server accepts the order, and
     // shows an error (removing the optimistic card) when the server
     // rejects it, so a failed sale is never reported as successful.
     const placedOrder = addOrder({
-      customer: {
-        nombre: values.nombre,
-        telefono: values.telefono,
-        direccion: values.dir,
-        barrio: values.barrio,
-      },
+      orderType: values.orderType,
+      customer,
       items: cartItems.map(cartItemToOrderItem),
       total: subtotal,
-      deliveryFee: storeConfig.deliveryFee,
-      finalTotal: total,
+      deliveryFee: effectiveDeliveryFee,
+      finalTotal: effectiveTotal,
       metodo: values.metodo,
       pagoCon: values.pagoCon,
-      cambio: cambio || undefined,
+      cambio: effectiveCambio || undefined,
       comentario: values.mensaje,
       status: "pending",
     })
@@ -189,18 +209,14 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
     // 2. Build WhatsApp message and open direct chat with restaurant
     const message = buildOrderMessage({
       orderId: orderIdToUse,
-      customer: {
-        nombre: values.nombre,
-        telefono: values.telefono,
-        direccion: values.dir,
-        barrio: values.barrio,
-      },
+      orderType: values.orderType,
+      customer,
       items: cartItems,
       metodo: values.metodo,
       pagoCon: values.pagoCon,
       comentario: values.mensaje,
       restaurantName: storeConfig.name,
-      deliveryFee: storeConfig.deliveryFee,
+      deliveryFee: effectiveDeliveryFee,
     })
 
     const whatsAppUrl = buildWhatsAppUrl(targetPhone, message)
@@ -230,7 +246,13 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
         </p>
       </header>
 
-      <FormSummary cartItems={cartItems} subtotal={subtotal} deliveryFee={deliveryFee} total={total} />
+      <FormSummary
+        cartItems={cartItems}
+        subtotal={subtotal}
+        deliveryFee={deliveryFee}
+        total={total}
+        orderType={orderType}
+      />
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
         <FieldGroup>
@@ -289,61 +311,116 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
             )}
           </Field>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field>
-              <FieldLabel htmlFor="dir">
-                Dirección <span className="text-destructive" aria-hidden="true">*</span>
-              </FieldLabel>
-              <InputGroup>
-                <InputGroupAddon align="inline-start" className="pl-3 [&>svg]:size-4">
-                  <Home className="text-text-muted" />
-                </InputGroupAddon>
-                <InputGroupInput
-                  id="dir"
-                  type="text"
-                  placeholder="Calle 123 #45-67"
-                  autoComplete="street-address"
-                  maxLength={LIMITS.dir.max}
-                  aria-invalid={!!errors.dir}
-                aria-describedby={errors.dir ? "dir-error" : undefined}
-                  {...register("dir")}
-                />
-              </InputGroup>
-              {errors.dir && (
-                <FieldError id="dir-error" className="flex items-start gap-1.5">
-                  <CircleAlert className="mt-0.5 size-3.5 shrink-0" data-icon="inline-start" aria-hidden="true" />
-                  {errors.dir.message}
-                </FieldError>
-              )}
-            </Field>
+          <FieldSet>
+            <FieldLegend className="text-text-primary font-semibold">
+              Tipo de entrega <span className="text-destructive" aria-hidden="true">*</span>
+            </FieldLegend>
+            <RadioGroup
+              value={orderType}
+              onValueChange={(value) => {
+                const nextType = value as OrderType
+                setValue("orderType", nextType)
+                if (nextType === "recoger") {
+                  clearErrors(["dir", "barrio"])
+                }
+              }}
+              className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3"
+            >
+              {DELIVERY_TYPES.map(({ value, label, Icon }) => {
+                const active = orderType === value
+                return (
+                  <Label
+                    key={value}
+                    data-slot="field-label"
+                    className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 sm:p-3.5 transition duration-150 ease-out focus-within:ring-2 focus-within:ring-accent ${
+                      active
+                        ? "border-accent bg-accent-soft text-text-primary font-bold"
+                        : "border-border-subtle bg-bg-elevated text-text-primary hover:border-border-strong"
+                    }`}
+                  >
+                    <RadioGroupItem value={value} id={`orderType-${value}`} className="sr-only" />
+                    <span
+                      aria-hidden="true"
+                      style={active ? { backgroundColor: brand.fill, color: primaryForeground } : undefined}
+                      className={`inline-flex size-9 shrink-0 items-center justify-center rounded-full ${
+                        active ? "shadow-xs" : "bg-bg-elevated-2 text-text-muted"
+                      }`}
+                    >
+                      <Icon className="size-4" />
+                    </span>
+                    <span className="text-sm font-semibold text-text-primary min-w-0 break-words">{label}</span>
+                  </Label>
+                )
+              })}
+            </RadioGroup>
+          </FieldSet>
 
-            <Field>
-              <FieldLabel htmlFor="barrio">
-                Barrio <span className="text-destructive" aria-hidden="true">*</span>
-              </FieldLabel>
-              <InputGroup>
-                <InputGroupAddon align="inline-start" className="pl-3 [&>svg]:size-4">
-                  <MapPin className="text-text-muted" />
-                </InputGroupAddon>
-              <InputGroupInput
-                id="barrio"
-                type="text"
-                placeholder="Tu barrio"
-                autoComplete="address-level3"
-                maxLength={LIMITS.barrio.max}
-                aria-invalid={!!errors.barrio}
-                aria-describedby={errors.barrio ? "barrio-error" : undefined}
-                {...register("barrio")}
-              />
-              </InputGroup>
-              {errors.barrio && (
-                <FieldError id="barrio-error" className="flex items-start gap-1.5">
-                  <CircleAlert className="mt-0.5 size-3.5 shrink-0" data-icon="inline-start" aria-hidden="true" />
-                  {errors.barrio.message}
-                </FieldError>
+          {!isPickup ? (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field>
+                <FieldLabel htmlFor="dir">
+                  Dirección <span className="text-destructive" aria-hidden="true">*</span>
+                </FieldLabel>
+                <InputGroup>
+                  <InputGroupAddon align="inline-start" className="pl-3 [&>svg]:size-4">
+                    <Home className="text-text-muted" />
+                  </InputGroupAddon>
+                  <InputGroupInput
+                    id="dir"
+                    type="text"
+                    placeholder="Calle 123 #45-67"
+                    autoComplete="street-address"
+                    maxLength={LIMITS.dir.max}
+                    aria-invalid={!!errors.dir}
+                    aria-describedby={errors.dir ? "dir-error" : undefined}
+                    {...register("dir")}
+                  />
+                </InputGroup>
+                {errors.dir && (
+                  <FieldError id="dir-error" className="flex items-start gap-1.5">
+                    <CircleAlert className="mt-0.5 size-3.5 shrink-0" data-icon="inline-start" aria-hidden="true" />
+                    {errors.dir.message}
+                  </FieldError>
+                )}
+              </Field>
+
+              <Field>
+                <FieldLabel htmlFor="barrio">
+                  Barrio <span className="text-destructive" aria-hidden="true">*</span>
+                </FieldLabel>
+                <InputGroup>
+                  <InputGroupAddon align="inline-start" className="pl-3 [&>svg]:size-4">
+                    <MapPin className="text-text-muted" />
+                  </InputGroupAddon>
+                  <InputGroupInput
+                    id="barrio"
+                    type="text"
+                    placeholder="Tu barrio"
+                    autoComplete="address-level3"
+                    maxLength={LIMITS.barrio.max}
+                    aria-invalid={!!errors.barrio}
+                    aria-describedby={errors.barrio ? "barrio-error" : undefined}
+                    {...register("barrio")}
+                  />
+                </InputGroup>
+                {errors.barrio && (
+                  <FieldError id="barrio-error" className="flex items-start gap-1.5">
+                    <CircleAlert className="mt-0.5 size-3.5 shrink-0" data-icon="inline-start" aria-hidden="true" />
+                    {errors.barrio.message}
+                  </FieldError>
+                )}
+              </Field>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-border-subtle bg-bg-elevated-2 p-3.5 text-sm text-text-secondary">
+              <p>Recoges tu pedido directamente en el local.</p>
+              {storeConfig.address?.trim() && (
+                <p className="mt-1 text-xs text-text-muted">
+                  Punto de retiro: {storeConfig.address.trim()}
+                </p>
               )}
-            </Field>
-          </div>
+            </div>
+          )}
 
           <FieldSet>
             <FieldLegend className="text-text-primary font-semibold">
@@ -414,6 +491,12 @@ export default function CheckoutForm({ onClose, onBackToCart, cartItems }: Check
                 </FieldDescription>
               )}
             </Field>
+          )}
+
+          {metodo === "Transferencia" && (
+            <div className="rounded-xl border border-border-subtle bg-bg-elevated-2 p-3.5 text-sm text-text-secondary">
+              Te confirmaremos los datos de pago por WhatsApp después de revisar tu pedido.
+            </div>
           )}
 
           <Field>
@@ -491,9 +574,10 @@ interface FormSummaryProps {
   subtotal: number
   deliveryFee: number
   total: number
+  orderType: OrderType
 }
 
-function FormSummary({ cartItems, subtotal, deliveryFee, total }: FormSummaryProps) {
+function FormSummary({ cartItems, subtotal, deliveryFee, total, orderType }: FormSummaryProps) {
   const { storeConfig } = useCatalog()
   const brand = getBrandTokens(storeConfig.primaryColor, storeConfig.bgTheme)
   const [open, setOpen] = useState(true)
@@ -562,16 +646,28 @@ function FormSummary({ cartItems, subtotal, deliveryFee, total }: FormSummaryPro
               {formatCurrency(subtotal)}
             </span>
           </li>
-          {deliveryFee > 0 && (
+          {orderType === "recoger" ? (
             <li className="flex items-center justify-between text-sm">
-              <span style={{ color: "var(--color-text-muted)" }}>Domicilio / Envío</span>
+              <span style={{ color: "var(--color-text-muted)" }}>Retiro en local</span>
               <span
                 style={{ color: "var(--color-text-primary)" }}
                 className="ml-3 shrink-0 font-bold"
               >
-                {formatCurrency(deliveryFee)}
+                Gratis
               </span>
             </li>
+          ) : (
+            deliveryFee > 0 && (
+              <li className="flex items-center justify-between text-sm">
+                <span style={{ color: "var(--color-text-muted)" }}>Domicilio / Envío</span>
+                <span
+                  style={{ color: "var(--color-text-primary)" }}
+                  className="ml-3 shrink-0 font-bold"
+                >
+                  {formatCurrency(deliveryFee)}
+                </span>
+              </li>
+            )
           )}
           <li className="flex items-center justify-between pt-1 text-sm font-black">
             <span style={{ color: "var(--color-text-primary)" }}>Total</span>
