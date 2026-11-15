@@ -3,7 +3,10 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const dbDir = resolve(__dirname, '../../../database');
-const read = (rel: string) => readFileSync(resolve(dbDir, rel), 'utf8');
+// Normalize line endings so the SQL oracles match on a CRLF checkout (Windows
+// with core.autocrlf=true) exactly as they do on the LF checkout CI uses.
+const normalizeEol = (text: string) => text.replace(/\r\n/g, '\n');
+const read = (rel: string) => normalizeEol(readFileSync(resolve(dbDir, rel), 'utf8'));
 
 function extractFunction(sql: string, name: string): string {
   const start = sql.indexOf(`CREATE OR REPLACE FUNCTION public.${name}(`);

@@ -3,7 +3,12 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const dbDir = resolve(__dirname, '../../../database');
-const read = (rel: string) => readFileSync(resolve(dbDir, rel), 'utf8');
+// Normalize line endings: the oracles below anchor on `;\n` and `\n$$;`, so a
+// CRLF checkout (Windows with core.autocrlf=true) would match nothing while the
+// same files pass on the LF checkout CI uses. Normalizing keeps the parity
+// result identical on every platform.
+const normalizeEol = (text: string) => text.replace(/\r\n/g, '\n');
+const read = (rel: string) => normalizeEol(readFileSync(resolve(dbDir, rel), 'utf8'));
 
 function extractFunction(sql: string, name: string): string {
   const start = sql.indexOf(`CREATE OR REPLACE FUNCTION public.${name}(`);
@@ -571,9 +576,9 @@ describe('schema file structure', () => {
 
 describe('migration drift check wiring', () => {
   const root = resolve(dbDir, '..');
-  const script = readFileSync(resolve(dbDir, 'scripts/check-migration-drift.sh'), 'utf8');
+  const script = normalizeEol(readFileSync(resolve(dbDir, 'scripts/check-migration-drift.sh'), 'utf8'));
   const fingerprint = read('scripts/schema-fingerprint.sql');
-  const ci = readFileSync(resolve(root, '.github/workflows/ci.yml'), 'utf8');
+  const ci = normalizeEol(readFileSync(resolve(root, '.github/workflows/ci.yml'), 'utf8'));
 
   it('CI runs the drift script on a postgres service with full git history', () => {
     expect(ci).toContain('migration-drift:');
@@ -583,7 +588,7 @@ describe('migration drift check wiring', () => {
 
   it('the script uses node-pg-migrate directly (no doppler) with the same ignore pattern as db:migrate', () => {
     expect(script).not.toMatch(/^\s*doppler\b/m);
-    const pkg = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'));
+    const pkg = JSON.parse(normalizeEol(readFileSync(resolve(root, 'package.json'), 'utf8')));
     expect(pkg.scripts['db:migrate']).toContain('--ignore-pattern ".*\\.down\\.sql|.*\\.md"');
     expect(script).toContain("IGNORE_UP='.*\\.down\\.sql|.*\\.md'");
   });
