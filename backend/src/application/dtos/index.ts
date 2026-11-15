@@ -55,6 +55,11 @@ export interface CreateOrderDTO {
   customerId?: string;
   customer?: CreateOrderCustomerDTO;
   items: OrderItemDTO[];
+  /**
+   * delivery-pickup-orders T1: 'domicilio' (default when omitted, keeps the
+   * historical delivery behaviour) or 'recoger' (pickup, no delivery fee).
+   */
+  orderType?: 'domicilio' | 'recoger';
   deliveryFee?: number;
   paymentMethod?: 'Efectivo' | 'Transferencia';
   paymentAmount?: number;

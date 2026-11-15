@@ -138,6 +138,64 @@ describe('UpdateOrderUseCase (Unit Tests)', () => {
     expect((result as any).changeAmount).toBeUndefined();
   });
 
+  // delivery-pickup-orders T1 (S1-S3, F2): creation waives the delivery fee for
+  // orderType 'recoger', so an edit must not reintroduce it. Delivery fee edits
+  // keep the pre-existing behavior.
+  describe('pickup orders stay fee-free on edits', () => {
+    const createPickupOrder = (): Order =>
+      new Order(
+        'ord-pick',
+        'rest-burger-craft',
+        undefined,
+        [
+          {
+            id: 'item-1',
+            productId: 'prod-burger',
+            productName: 'Burger Deluxe',
+            unitPrice: 20000,
+            quantity: 1,
+            additions: [],
+          },
+        ],
+        'pending',
+        new Date(),
+        0,
+        102,
+        'Transferencia',
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        'recoger'
+      );
+
+    it('does not persist a positive deliveryFee for orderType recoger', async () => {
+      const existing = createPickupOrder();
+      vi.mocked(mockOrderRepo.findById).mockResolvedValue(existing);
+
+      const result = await useCase.execute('ord-pick', { deliveryFee: 5000 }, 'rest-burger-craft');
+
+      expect(result.orderType).toBe('recoger');
+      expect(result.deliveryFee).toBe(0);
+      expect(result.finalTotal).toBe(result.subtotal);
+      expect(mockOrderRepo.update).toHaveBeenCalledWith(
+        expect.objectContaining({ orderType: 'recoger', deliveryFee: 0 }),
+        'rest-burger-craft'
+      );
+    });
+
+    it('still honors a staff deliveryFee edit on a domicilio order', async () => {
+      const existing = createBaseOrder();
+      vi.mocked(mockOrderRepo.findById).mockResolvedValue(existing);
+
+      const result = await useCase.execute('ord-123', { deliveryFee: 5000 }, 'rest-burger-craft');
+
+      expect(result.orderType).toBe('domicilio');
+      expect(result.deliveryFee).toBe(5000);
+    });
+  });
+
   it('links the order to an existing customer found by phone WITHOUT overwriting that profile', async () => {
     const existing = createBaseOrder();
     vi.mocked(mockOrderRepo.findById).mockResolvedValue(existing);

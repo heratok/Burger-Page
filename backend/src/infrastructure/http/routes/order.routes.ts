@@ -271,6 +271,9 @@ export async function orderRoutes(fastify: FastifyInstance, opts: { controller: 
           changeAmount: { type: 'number' },
           comment: { type: 'string' },
           receiptUrl: { type: 'string' },
+          // delivery-pickup-orders T1: fulfillment type. Omitted = domicilio
+          // (historical behaviour); 'recoger' waives the delivery fee.
+          orderType: { type: 'string', enum: ['domicilio', 'recoger'], example: 'domicilio' },
           items: {
             type: 'array',
             items: {

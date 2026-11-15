@@ -59,3 +59,29 @@ describe('order free-text bounds', () => {
     ).toBe(false);
   });
 });
+
+// delivery-pickup-orders T1: orderType is a first-class field of the order
+// contract, not a client-side marker. Legacy callers keep delivery by default.
+describe('order type (domicilio | recoger)', () => {
+  const order = { restaurantId: 'rest_1', items: [{ productId: 'prod_1', quantity: 1 }] };
+  const parsedType = (input: Record<string, unknown>): unknown => {
+    const parsed = createOrderSchema.safeParse(input);
+    return parsed.success ? (parsed.data as { orderType?: string }).orderType : 'parse-failed';
+  };
+
+  it('keeps orderType optional so a legacy caller without it stays valid (delivery is resolved server-side)', () => {
+    expect(createOrderSchema.safeParse(order).success).toBe(true);
+    expect(parsedType(order)).toBeUndefined();
+  });
+
+  it.each(['domicilio', 'recoger'])('accepts orderType %s unchanged', (orderType) => {
+    expect(parsedType({ ...order, orderType })).toBe(orderType);
+  });
+
+  it.each(['pickup', 'DELIVERY', 'Recoger', 'recoger ', 'domicilio2', '', 1, null])(
+    'rejects the unknown orderType %s instead of silently defaulting',
+    (orderType) => {
+      expect(createOrderSchema.safeParse({ ...order, orderType }).success).toBe(false);
+    }
+  );
+});

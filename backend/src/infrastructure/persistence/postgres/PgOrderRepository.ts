@@ -67,7 +67,10 @@ function mapOrderRow(row: any, items: OrderItem[]): Order {
     row.change_amount !== null ? Number(row.change_amount) : undefined,
     row.comment || undefined,
     row.receipt_url || undefined,
-    row.client_order_id || undefined
+    row.client_order_id || undefined,
+    // delivery-pickup-orders T1: legacy rows were backfilled to 'domicilio' by
+    // migration 0000000000019; the COALESCE keeps an unknown/NULL value safe.
+    row.order_type === 'recoger' ? 'recoger' : 'domicilio'
   );
   // The label is a snapshot: it outlives the table (table_id becomes NULL on delete).
   if (row.table_id) order.tableId = row.table_id;
@@ -317,6 +320,16 @@ export class PgOrderRepository implements OrderRepository {
         await client.query(
           `UPDATE public.orders SET table_id = $1, table_label = $2 WHERE id = $3 AND restaurant_id = $4`,
           [order.tableId, order.tableLabel ?? null, order.id, order.restaurantId]
+        );
+      }
+      // delivery-pickup-orders T1: the create_order_atomic signature is frozen
+      // (no order-type parameter), so the fulfilment type is written in the
+      // SAME transaction right after creation. The column default 'domicilio'
+      // already covers delivery orders, so only pickup needs the write.
+      if (!isReplay && order.orderType === 'recoger') {
+        await client.query(
+          `UPDATE public.orders SET order_type = $1 WHERE id = $2 AND restaurant_id = $3`,
+          ['recoger', order.id, order.restaurantId]
         );
       }
       if (order.receiptUrl) {

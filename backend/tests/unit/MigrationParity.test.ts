@@ -781,3 +781,50 @@ describe('migration 0000000000018 (structured restaurant tables) parity with the
     expect(down).toContain('DROP COLUMN IF EXISTS');
   });
 });
+
+// delivery-pickup-orders T1: orders.order_type is a first-class column, so the
+// pickup waiver is persisted server-side and legacy rows keep 'domicilio'.
+describe('migration 0000000000019 (orders.order_type) parity with the baseline schema', () => {
+  const baseline = read('01_schema.sql');
+  const up = read('migrations/0000000000019_order_type.up.sql');
+  const down = read('migrations/0000000000019_order_type.down.sql');
+  const flat = (s: string) => s.replace(/\s+/g, ' ');
+  // Comment lines are dropped before matching SQL: the migration header talks
+  // about the untouched RPC parameter, which is not a declaration.
+  const sqlOnly = (s: string) =>
+    s
+      .split('\n')
+      .filter((line) => !line.trimStart().startsWith('--'))
+      .join('\n');
+  const ordersStart = baseline.indexOf('CREATE TABLE IF NOT EXISTS public.orders (');
+  const ordersBody = baseline.slice(ordersStart, baseline.indexOf('\n);', ordersStart));
+
+  it('declares the column with the delivery default and the enum check in baseline and migration', () => {
+    expect(flat(ordersBody)).toContain("order_type TEXT NOT NULL DEFAULT 'domicilio'");
+    expect(flat(ordersBody)).toContain("CONSTRAINT chk_orders_order_type CHECK (order_type IN ('domicilio', 'recoger'))");
+    expect(flat(up)).toContain("ADD COLUMN IF NOT EXISTS order_type TEXT NOT NULL DEFAULT 'domicilio'");
+    expect(flat(up)).toContain("ADD CONSTRAINT chk_orders_order_type CHECK (order_type IN ('domicilio', 'recoger'))");
+    // Legacy rows and the untouched insert paths must keep resolving to delivery.
+    expect(flat(up)).toContain("DEFAULT 'domicilio'");
+  });
+
+  it('never changes the create_order_atomic signature (no order-type parameter)', () => {
+    for (const sql of [baseline, up]) {
+      expect(sqlOnly(sql)).not.toMatch(/p_order_type/i);
+    }
+    // The migration adds the column outside the RPC: the function is untouched.
+    expect(sqlOnly(up)).not.toMatch(/create_order_atomic|FUNCTION|TRIGGER/i);
+    expect(sqlOnly(baseline)).toMatch(
+      /CREATE OR REPLACE FUNCTION public\.create_order_atomic\(\s*p_order_id TEXT,\s*p_restaurant_id TEXT,\s*p_customer_id TEXT,\s*p_payment_method TEXT,\s*p_payment_amount NUMERIC,\s*p_change_amount NUMERIC,\s*p_comment TEXT,\s*p_items JSONB,\s*p_delivery_fee NUMERIC DEFAULT NULL,\s*p_client_order_id TEXT DEFAULT NULL\s*\)/
+    );
+  });
+
+  it('is reversible and never opens a transaction', () => {
+    expect(down).toContain('DROP CONSTRAINT IF EXISTS chk_orders_order_type');
+    expect(down).toContain('DROP COLUMN IF EXISTS order_type');
+    for (const sql of [up, down]) {
+      expect(sql).toContain("SET LOCAL lock_timeout = '15s';");
+      expect(sql).not.toMatch(/^\s*(BEGIN|COMMIT);/im);
+    }
+  });
+});

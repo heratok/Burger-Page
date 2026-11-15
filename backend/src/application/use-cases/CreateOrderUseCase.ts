@@ -1,5 +1,5 @@
 import { ID_PREFIX, newId } from '../../domain/shared/newId.js';
-import { Order, OrderItem, OrderItemAddition, PaymentMethod } from '../../domain/models/Order.js';
+import { Order, OrderItem, OrderItemAddition, OrderType, PaymentMethod } from '../../domain/models/Order.js';
 import { ProductAddition } from '../../domain/models/ProductAddition.js';
 import { Customer } from '../../domain/models/Customer.js';
 import { Restaurant } from '../../domain/models/Restaurant.js';
@@ -41,7 +41,8 @@ export class CreateOrderUseCase {
 
     this.validateMinOrderAmount(calculatedSubtotal, restaurant);
 
-    const deliveryFee = this.resolveDeliveryFee(dto.deliveryFee, restaurant, authenticated);
+    const orderType = this.resolveOrderType(dto.orderType);
+    const deliveryFee = this.resolveDeliveryFee(dto.deliveryFee, restaurant, authenticated, orderType);
     const finalTotal = calculatedSubtotal + deliveryFee;
 
     const payment = this.resolvePaymentDetails(
@@ -56,6 +57,7 @@ export class CreateOrderUseCase {
       customerId: validatedCustomerId,
       items: validatedItems,
       deliveryFee,
+      orderType,
       payment,
       // A receipt is attached by staff (manual sale); anonymous storefront input
       // never reaches the admin panel as an <img src>/<a href>.
@@ -398,17 +400,37 @@ export class CreateOrderUseCase {
   }
 
   /**
+   * delivery-pickup-orders (S1-S3): resolves the fulfilment type. Delivery is
+   * the historical behaviour, so anything that is not the explicit pickup
+   * value — including every legacy caller that omits the field — is domicilio.
+   */
+  private resolveOrderType(dtoOrderType: OrderType | undefined): OrderType {
+    return dtoOrderType === 'recoger' ? 'recoger' : 'domicilio';
+  }
+
+  /**
    * Resolves the delivery fee charged for the order.
    *
-   * Only an authenticated staff session (counter/table POS) may drive the fee:
-   * a valid client-provided fee (finite number >= 0) is honored so those sales
-   * can waive the restaurant delivery fee exactly as the POS displays it. An
+   * A pickup order ('recoger') never pays a delivery fee: the customer takes
+   * the order at the restaurant, so the fee is 0 and finalTotal === subtotal no
+   * matter what the client sent (a client-supplied fee could only inflate it).
+   *
+   * For delivery orders the pre-existing rule is unchanged: only an
+   * authenticated staff session (counter/table POS) may drive the fee — a valid
+   * client-provided fee (finite number >= 0) is honored so those sales can
+   * waive the restaurant delivery fee exactly as the POS displays it. An
    * anonymous storefront order never influences the fee: the client-supplied
    * value is ignored and the restaurant's configured fee applies, guarded
    * against missing/negative defaults (SUS-12). Invalid fees always fall back
    * to the restaurant fee.
    */
-  private resolveDeliveryFee(dtoFee: number | undefined, restaurant: Restaurant, authenticated: boolean): number {
+  private resolveDeliveryFee(
+    dtoFee: number | undefined,
+    restaurant: Restaurant,
+    authenticated: boolean,
+    orderType: OrderType
+  ): number {
+    if (orderType === 'recoger') return 0;
     if (authenticated && typeof dtoFee === 'number' && Number.isFinite(dtoFee) && dtoFee >= 0) {
       return dtoFee;
     }
@@ -453,10 +475,11 @@ export class CreateOrderUseCase {
     customerId?: string;
     items: OrderItem[];
     deliveryFee: number;
+    orderType: OrderType;
     payment: { paymentMethod: PaymentMethod; paymentAmount?: number; changeAmount?: number };
     dto: CreateOrderDTO & { clientOrderId?: string };
   }): Order {
-    const { restaurantId, customerId, items, deliveryFee, payment, dto } = params;
+    const { restaurantId, customerId, items, deliveryFee, orderType, payment, dto } = params;
     const order = new Order(
       newId(ID_PREFIX.order),
       restaurantId,
@@ -471,7 +494,8 @@ export class CreateOrderUseCase {
       payment.changeAmount,
       dto.comment,
       dto.receiptUrl,
-      dto.clientOrderId
+      dto.clientOrderId,
+      orderType
     );
 
     if (dto.customer) {

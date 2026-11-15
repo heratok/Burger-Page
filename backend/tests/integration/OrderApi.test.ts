@@ -235,6 +235,99 @@ describe('Order API', () => {
     expect(response.statusCode).toBe(400);
   });
 
+  // delivery-pickup-orders T1 (S1-S3): the order API accepts and persists
+  // orderType; pickup never charges a delivery fee, delivery keeps its rules.
+  describe('order type: domicilio (default) vs recoger', () => {
+    it('creates a pickup order with deliveryFee 0 and finalTotal === subtotal', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/orders',
+        payload: {
+          restaurantId: 'burger-craft',
+          items: [{ productId, quantity: 2, additions: [] }],
+          orderType: 'recoger',
+          paymentMethod: 'Efectivo',
+          paymentAmount: 20, // == subtotal == finalTotal
+        },
+      });
+
+      expect(response.statusCode).toBe(201);
+      const body = response.json();
+      expect(body.orderType).toBe('recoger');
+      expect(body.deliveryFee).toBe(0);
+      expect(body.finalTotal).toBe(body.subtotal);
+      expect(body.paymentAmount).toBe(20);
+      expect(body.changeAmount).toBe(0);
+    });
+
+    it('keeps domicilio as the default for legacy callers that omit orderType', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/orders',
+        payload: {
+          restaurantId: 'burger-craft',
+          items: [{ productId, quantity: 1, additions: [] }],
+        },
+      });
+
+      expect(response.statusCode).toBe(201);
+      expect(response.json().orderType).toBe('domicilio');
+    });
+
+    it('rejects an unknown orderType instead of silently defaulting (string markers are not a contract)', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/orders',
+        payload: {
+          restaurantId: 'burger-craft',
+          items: [{ productId, quantity: 1, additions: [] }],
+          orderType: 'pickup',
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+    });
+
+    // F1 + F2: the driver's detail read and edit write-back must keep orderType,
+    // and a pickup order must stay fee-free after an edit.
+    it('keeps a pickup order typed and fee-free after a detail read and an edit', async () => {
+      const createRes = await app.inject({
+        method: 'POST',
+        url: '/api/orders',
+        payload: {
+          restaurantId: 'burger-craft',
+          items: [{ productId, quantity: 2, additions: [] }],
+          orderType: 'recoger',
+          paymentMethod: 'Transferencia',
+        },
+      });
+      expect(createRes.statusCode).toBe(201);
+      const created = createRes.json();
+      expect(created.orderType).toBe('recoger');
+      expect(created.deliveryFee).toBe(0);
+
+      const detailRes = await app.inject({
+        method: 'GET',
+        url: `/api/orders/${created.id}`,
+        headers: { authorization: `Bearer ${authToken}` },
+      });
+      expect(detailRes.statusCode).toBe(200);
+      expect(detailRes.json().orderType).toBe('recoger');
+
+      const editRes = await app.inject({
+        method: 'PUT',
+        url: `/api/orders/${created.id}`,
+        headers: { authorization: `Bearer ${authToken}` },
+        payload: { deliveryFee: 5000, comment: 'recoger en el local' },
+      });
+      expect(editRes.statusCode).toBe(200);
+      const edited = editRes.json();
+      expect(edited.orderType).toBe('recoger');
+      expect(edited.deliveryFee).toBe(0);
+      expect(edited.finalTotal).toBe(edited.subtotal);
+    });
+  });
+
   it('GET /api/orders should require auth and reject with 401 without token', async () => {
     const response = await app.inject({
       method: 'GET',
