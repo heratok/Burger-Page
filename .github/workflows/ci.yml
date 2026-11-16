@@ -8,7 +8,11 @@ on:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  # Only superseded pull-request runs are safe to cancel: a PR's newer run diffs
+  # the whole branch against its base, so it re-covers everything. On a push the
+  # selector diffs only the newest commits, so cancelling an older main run would
+  # drop that push's verification for good.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   changes:
@@ -37,10 +41,11 @@ jobs:
           e2e=false
           migration_drift=false
 
-          # A new branch (all-zero before SHA) has no meaningful push base.
-          # Run everything whenever the base is missing rather than risk a
-          # partial diff silently selecting too little verification.
-          if [[ -z "$BASE_SHA" || "$BASE_SHA" =~ ^0+$ ]] || ! git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
+          # A new branch (all-zero before SHA) has no meaningful push base, and a
+          # commit we cannot resolve makes the diff meaningless. Run everything
+          # whenever the comparison cannot be made rather than risk a partial
+          # diff silently selecting too little verification.
+          if [[ -z "$BASE_SHA" || "$BASE_SHA" =~ ^0+$ ]]             || ! git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null             || ! git cat-file -e "$HEAD_SHA^{commit}" 2>/dev/null; then
             BASE_SHA=""
           fi
 
@@ -49,6 +54,18 @@ jobs:
             e2e=true
             migration_drift=true
           else
+            # Capture the diff in a file first: `set -e` does not observe a
+            # failure inside a process substitution, and an empty file list
+            # would select nothing while the gate still reported success.
+            diff_file="$(mktemp)"
+            if ! git diff --name-only -z "$BASE_SHA" "$HEAD_SHA" >"$diff_file"; then
+              echo "::warning::could not diff $BASE_SHA..$HEAD_SHA; running every job"
+              : >"$diff_file"
+              validate=true
+              e2e=true
+              migration_drift=true
+            fi
+
             while IFS= read -r -d '' path; do
               case "$path" in
                 pnpm-lock.yaml|package.json|pnpm-workspace.yaml|database/01_schema.sql|tsconfig.json|tsconfig.*.json|*/tsconfig.json|*/tsconfig.*.json|.github/workflows/ci.yml)
@@ -56,7 +73,7 @@ jobs:
                   e2e=true
                   migration_drift=true
                   ;;
-                frontend/**|backend/**|packages/contracts/**)
+                frontend/**|backend/**|packages/**)
                   validate=true
                   e2e=true
                   ;;
@@ -68,7 +85,8 @@ jobs:
                   migration_drift=true
                   ;;
               esac
-            done < <(git diff --name-only -z "$BASE_SHA" "$HEAD_SHA")
+            done <"$diff_file"
+            rm -f "$diff_file"
           fi
 
           {
@@ -341,6 +359,9 @@ jobs:
           VALIDATE_RESULT: ${{ needs.validate.result }}
           E2E_RESULT: ${{ needs.e2e.result }}
           MIGRATION_DRIFT_RESULT: ${{ needs['migration-drift'].result }}
+          SELECTED_VALIDATE: ${{ needs.changes.outputs.validate }}
+          SELECTED_E2E: ${{ needs.changes.outputs.e2e }}
+          SELECTED_MIGRATION_DRIFT: ${{ needs.changes.outputs['migration-drift'] }}
         shell: bash
         run: |
           set -euo pipefail
@@ -351,12 +372,26 @@ jobs:
           fi
 
           failed=false
-          for result in "$VALIDATE_RESULT" "$E2E_RESULT" "$MIGRATION_DRIFT_RESULT"; do
+          # A `skipped` job is acceptable only when the selector decided it was
+          # not needed. Cross-checking the pair keeps a broken job condition or a
+          # renamed output from turning a required job into a silent skip that
+          # this gate would otherwise bless.
+          check() {
+            local result="$1" selected="$2" name="$3"
+            if [[ "$result" == skipped && "$selected" != false ]]; then
+              echo "$name was skipped although the selector requested it" >&2
+              failed=true
+              return
+            fi
             if [[ "$result" != success && "$result" != skipped ]]; then
               echo "Required CI job finished with result: $result" >&2
               failed=true
             fi
-          done
+          }
+
+          check "$VALIDATE_RESULT" "$SELECTED_VALIDATE" validate
+          check "$E2E_RESULT" "$SELECTED_E2E" e2e
+          check "$MIGRATION_DRIFT_RESULT" "$SELECTED_MIGRATION_DRIFT" migration-drift
 
           if [[ "$failed" == true ]]; then
             exit 1
