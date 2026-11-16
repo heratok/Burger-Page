@@ -6,9 +6,81 @@ on:
   pull_request:
     branches: [main, master, develop]
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  changes:
+    name: Select CI jobs
+    runs-on: ubuntu-latest
+    outputs:
+      validate: ${{ steps.select.outputs.validate }}
+      e2e: ${{ steps.select.outputs.e2e }}
+      migration-drift: ${{ steps.select.outputs['migration-drift'] }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Select jobs from changed paths
+        id: select
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          validate=false
+          e2e=false
+          migration_drift=false
+
+          # A new branch (all-zero before SHA) has no meaningful push base.
+          # Run everything whenever the base is missing rather than risk a
+          # partial diff silently selecting too little verification.
+          if [[ -z "$BASE_SHA" || "$BASE_SHA" =~ ^0+$ ]] || ! git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
+            BASE_SHA=""
+          fi
+
+          if [[ -z "$BASE_SHA" ]]; then
+            validate=true
+            e2e=true
+            migration_drift=true
+          else
+            while IFS= read -r -d '' path; do
+              case "$path" in
+                pnpm-lock.yaml|package.json|pnpm-workspace.yaml|database/01_schema.sql|tsconfig.json|tsconfig.*.json|*/tsconfig.json|*/tsconfig.*.json|.github/workflows/ci.yml)
+                  validate=true
+                  e2e=true
+                  migration_drift=true
+                  ;;
+                frontend/**|backend/**|packages/contracts/**)
+                  validate=true
+                  e2e=true
+                  ;;
+                database/02_seed.sql)
+                  validate=true
+                  e2e=true
+                  ;;
+                database/migrations/**|database/scripts/check-migration-drift.sh|database/scripts/schema-fingerprint.sql)
+                  migration_drift=true
+                  ;;
+              esac
+            done < <(git diff --name-only -z "$BASE_SHA" "$HEAD_SHA")
+          fi
+
+          {
+            echo "validate=$validate"
+            echo "e2e=$e2e"
+            echo "migration-drift=$migration_drift"
+          } | tee -a "$GITHUB_OUTPUT"
+
   validate:
     name: Lint, Typecheck & Test Monorepo
+    needs: changes
+    if: needs.changes.outputs.validate == 'true'
     runs-on: ubuntu-latest
 
     services:
@@ -79,6 +151,8 @@ jobs:
 
   e2e:
     name: Playwright E2E (Postgres) ${{ matrix.shard }}/3
+    needs: changes
+    if: needs.changes.outputs.e2e == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     # The suite runs with workers: 1 because specs share one database. Sharding
@@ -177,6 +251,8 @@ jobs:
 
   migration-drift:
     name: Migration drift check (migrations vs 01_schema.sql)
+    needs: changes
+    if: needs.changes.outputs['migration-drift'] == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -252,3 +328,36 @@ jobs:
           fi
           echo "Comparing against $BASE"
           bash database/scripts/check-migration-drift.sh "$BASE"
+
+  gate:
+    name: CI gate
+    if: always()
+    needs: [changes, validate, e2e, migration-drift]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require selected jobs to pass
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          VALIDATE_RESULT: ${{ needs.validate.result }}
+          E2E_RESULT: ${{ needs.e2e.result }}
+          MIGRATION_DRIFT_RESULT: ${{ needs['migration-drift'].result }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "$CHANGES_RESULT" != success ]]; then
+            echo "Job selection failed: $CHANGES_RESULT" >&2
+            exit 1
+          fi
+
+          failed=false
+          for result in "$VALIDATE_RESULT" "$E2E_RESULT" "$MIGRATION_DRIFT_RESULT"; do
+            if [[ "$result" != success && "$result" != skipped ]]; then
+              echo "Required CI job finished with result: $result" >&2
+              failed=true
+            fi
+          done
+
+          if [[ "$failed" == true ]]; then
+            exit 1
+          fi
