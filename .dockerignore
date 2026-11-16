@@ -1,5 +1,8 @@
-node_modules
-dist
+# Nested workspace installs must be excluded too: a bare `node_modules` only
+# matches the context root, so `COPY backend ./backend` would ship host pnpm
+# links (absolute Windows paths) over the Linux links inside the image.
+**/node_modules
+**/dist
 .git
 .github
 .playwright-cli
