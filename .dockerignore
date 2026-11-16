@@ -9,9 +9,13 @@
 playwright-report
 test-results
 *.log
-.env
-.env.local
-.env.*
-!.env.example
+# Secret files must be excluded at every level, not only at the context root:
+# a nested `backend/.env` would otherwise be copied by `COPY backend ./backend`
+# into the builder stage and its layer. A leading `**/` also matches the root,
+# so these forms replace the old root-only lines; the example-file negation is
+# restated at every level, otherwise nothing would be allowed back in.
+**/.env
+**/.env.*
+!**/.env.example
 .DS_Store
 Thumbs.db
