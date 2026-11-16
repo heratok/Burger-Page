@@ -1,9 +1,14 @@
 # ==========================================
 # STAGE 1: Builder
 # ==========================================
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 WORKDIR /app
+
+# Keep pnpm non-interactive: dropping dev dependencies from node_modules asks for
+# confirmation when stdin is not a TTY, and without CI=true pnpm aborts with
+# ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY.
+ENV CI=true
 
 RUN apk add --no-cache python3 make g++
 RUN corepack enable && corepack prepare pnpm@10.33.2 --activate
@@ -21,15 +26,19 @@ RUN pnpm install --frozen-lockfile
 COPY packages/contracts ./packages/contracts
 COPY backend ./backend
 
-# Build contracts first, then backend, then prune devDependencies for runner
+# Build contracts first, then backend, then reduce node_modules to runtime deps.
 RUN pnpm --filter @burger-page/contracts run build
 RUN pnpm --filter burger-page-backend run build
-RUN pnpm prune --prod
+# `pnpm prune --prod` is not workspace-aware: it drops the workspace
+# packages' own dependencies, and the container then dies at boot with
+# `Cannot find package 'fastify'`. Reinstall with --prod for just the two
+# packages the runner needs, which keeps their runtime tree intact.
+RUN pnpm install --frozen-lockfile --prod --filter burger-page-backend --filter @burger-page/contracts
 
 # ==========================================
 # STAGE 2: Production Runner
 # ==========================================
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 
 WORKDIR /app
 ENV NODE_ENV=production

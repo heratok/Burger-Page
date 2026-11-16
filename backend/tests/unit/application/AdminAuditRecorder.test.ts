@@ -40,7 +40,34 @@ describe('AdminAuditRecorder', () => {
     });
     const [item] = (await repo.list({ limit: 10 })).items;
     expect(item.details).toEqual({ changedFields: ['adminPassword'] });
-    expect(JSON.stringify(item)).not.toMatch(/hunter2|abc/);
+    // The id is a server-generated hex UUID, so it legitimately contains any hex
+    // substring, "abc" included. Sanitizing is about every other field.
+    const { id: _id, ...persisted } = item;
+    expect(JSON.stringify(persisted)).not.toMatch(/hunter2|abc/);
+  });
+
+  it('stays green when the generated id happens to contain the sanitized substring', async () => {
+    // Regression: ids are hex UUIDs, so about one in a thousand contains "abc" —
+    // the same substring as the temporary password below. Scanning the whole
+    // entry, server-generated id included, made this suite fail at random.
+    const spy = vi.spyOn(globalThis.crypto, 'getRandomValues').mockImplementation(((buffer: Uint8Array) => {
+      for (let i = 0; i < buffer.length; i += 1) buffer[i] = i % 2 === 0 ? 0xab : 0xc0;
+      return buffer;
+    }) as typeof globalThis.crypto.getRandomValues);
+    try {
+      const repo = new InMemoryAuditLogRepository();
+      await new AdminAuditRecorder(repo).record(superAdmin, {
+        ...event,
+        details: { adminPassword: 'hunter2', temporaryPassword: 'abc' },
+      });
+      const [item] = (await repo.list({ limit: 10 })).items;
+      expect(item.id).toContain('abc');
+      expect(item.details).toEqual({});
+      const { id: _id, ...persisted } = item;
+      expect(JSON.stringify(persisted)).not.toMatch(/hunter2|abc/);
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it('skips when there is no actor or the actor is not a super admin', async () => {
