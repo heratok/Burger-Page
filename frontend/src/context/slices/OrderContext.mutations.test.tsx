@@ -15,7 +15,9 @@ import { TenantProvider } from "./TenantContext"
 import { UiProvider } from "./UiContext"
 import { OrderProvider, useOrders } from "./OrderContext"
 import { ORDER_WRITES_KEY, type OrderBoard } from "./orderBoard"
+import { buildCreateOrderInput } from "./OrderContext"
 import { apiClient } from "@/core/api/apiClient"
+import type { Order, RestaurantRecord } from "@/types/restaurant"
 
 const TENANT = "rest-burger-craft"
 const BOARD_KEY = keys.orders(TENANT, "guest")
@@ -108,5 +110,72 @@ describe("OrderContext edits are optimistic mutations on the query cache", () =>
     restored.forEach((order, i) => expect(order).toBe(before.orders[i]))
     expect(toast.success).toHaveBeenCalledWith("Orden eliminada")
     expect(toast.error).toHaveBeenCalledWith("No se pudo eliminar la orden del servidor")
+  })
+
+  it("buildCreateOrderInput forwards orderType when set and omits it when undefined", () => {
+    const restaurant = {
+      id: TENANT,
+      slug: "burger-craft",
+      config: {} as any,
+      isActive: true,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      products: [{ id: "prod-1", name: "Burger", price: 20000, category: "Burgers", src: "", description: "", inStock: true }],
+      additions: [],
+      customers: [],
+    } as RestaurantRecord
+
+    const baseOrder: Order = {
+      id: "ord-temp-1",
+      orderNumber: 500,
+      customer: { nombre: "Ana", telefono: "3001234567", direccion: "", barrio: "" },
+      items: [{ id: "prod-1", name: "Burger", price: 20000, cantidad: 1, total: 20000 }],
+      total: 20000,
+      deliveryFee: 0,
+      finalTotal: 20000,
+      metodo: "Efectivo",
+      status: "pending",
+      createdAt: "2026-11-15T00:00:00.000Z",
+      updatedAt: "2026-11-15T00:00:00.000Z",
+    }
+
+    const withPickup = buildCreateOrderInput(restaurant, { ...baseOrder, orderType: "recoger" })
+    expect(withPickup.orderType).toBe("recoger")
+
+    const withoutOrderType = buildCreateOrderInput(restaurant, baseOrder)
+    expect("orderType" in withoutOrderType).toBe(false)
+  })
+
+  it("addOrder forwards orderType 'recoger' to apiClient.createOrder and preserves it on the local and adopted order", async () => {
+    const { result, client } = await ready()
+    const createSpy = vi.spyOn(apiClient, "createOrder").mockResolvedValue({
+      id: "srv-pickup-1",
+      orderNumber: 9001,
+      orderType: "recoger",
+      status: "pending",
+    } as any)
+
+    let placed: ReturnType<typeof result.current.addOrder> | undefined
+    act(() => {
+      placed = result.current.addOrder({
+        orderType: "recoger",
+        customer: { nombre: "Luis", telefono: "3005556677", direccion: "", barrio: "" },
+        items: [{ id: "prod-1", name: "Burger", price: 20000, cantidad: 1, total: 20000 }],
+        total: 20000,
+        deliveryFee: 0,
+        finalTotal: 20000,
+        metodo: "Transferencia",
+        status: "pending",
+      })
+    })
+
+    expect(createSpy).toHaveBeenCalledWith(expect.objectContaining({ orderType: "recoger" }))
+    expect(placed?.orderType).toBe("recoger")
+
+    await act(async () => {
+      await placed?.serverPromise
+    })
+
+    const adopted = cachedBoard(client).orders.find((o) => o.id === "srv-pickup-1")
+    expect(adopted?.orderType).toBe("recoger")
   })
 })

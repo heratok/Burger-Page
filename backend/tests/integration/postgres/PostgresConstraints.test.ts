@@ -34,7 +34,7 @@ describe('PostgreSQL Real Instance Integration Suite (Docker)', () => {
         [RESTAURANT_A, RESTAURANT_B]
       );
     } catch (err: any) {
-      console.warn(`\n⚠️ [PostgreSQL Test] Skipping tests: Cannot connect to ${DATABASE_URL} (${err.message}). Run via 'npm run test:integration:postgres' or start Docker.`);
+      console.warn(`\n⚠️ [PostgreSQL Test] Skipping tests: Cannot connect to ${DATABASE_URL} (${err.message}). Run via 'pnpm run test:integration:postgres' or start Docker.`);
       isDbConnected = false;
     }
   });

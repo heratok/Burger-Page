@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
-import { Utensils, Flame, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react"
+import { Utensils, Flame, ChevronDown, ChevronLeft, ChevronRight, MapPin, ExternalLink, Clock } from "lucide-react"
 import ProductCard from "./ProductCard"
 import type { MenuItem } from "@/types/restaurant"
 import Navbar from "./Navbar"
@@ -235,6 +235,8 @@ export default function Home() {
   const primaryForeground = brand.onFill
   const themeStyles = getStoreThemeStyles(storeConfig.bgTheme, storeConfig.primaryColor)
   const fontClass = getFontFamilyClass(storeConfig.fontFamily)
+  const trimmedAddress = storeConfig.address?.trim() ?? ""
+  const trimmedDeliveryTime = storeConfig.estimatedDeliveryTime?.trim() ?? ""
 
   return (
     <div
@@ -272,7 +274,7 @@ export default function Home() {
                 {storeConfig.name}
               </h1>
               <p className="mt-1 text-sm text-slate-200 max-w-xl line-clamp-2">
-                {storeConfig.tagline} &middot; {storeConfig.estimatedDeliveryTime}
+                {storeConfig.tagline}
               </p>
             </div>
           </div>
@@ -324,8 +326,41 @@ export default function Home() {
               </div>
             )}
 
-            <div className="flex justify-center">
+            <div className="flex flex-col items-center gap-2.5">
               <StoreStatus config={storeConfig} status={openStatus} />
+              {trimmedDeliveryTime && (
+                <div
+                  style={{ color: "var(--color-text-secondary)" }}
+                  className="flex items-center justify-center gap-1.5 text-sm"
+                >
+                  <Clock className="size-4 shrink-0" aria-hidden="true" />
+                  <span>Tiempo estimado de entrega: {trimmedDeliveryTime}</span>
+                </div>
+              )}
+              {trimmedAddress && (
+                <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-sm">
+                  <span
+                    style={{ color: "var(--color-text-secondary)" }}
+                    className="inline-flex items-center gap-1.5"
+                  >
+                    <MapPin className="size-4 shrink-0" aria-hidden="true" />
+                    <span>{trimmedAddress}</span>
+                  </span>
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(trimmedAddress)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      borderColor: "var(--color-border-subtle)",
+                      color: "var(--color-text-primary)",
+                    }}
+                    className="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold transition-opacity hover:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+                  >
+                    Cómo llegar
+                    <ExternalLink className="size-3.5 shrink-0" aria-hidden="true" />
+                  </a>
+                </div>
+              )}
             </div>
 
             {/* Search Input */}

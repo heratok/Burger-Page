@@ -569,6 +569,38 @@ describe('Restaurant API & Multi-Tenant Security (Integration)', () => {
       expect(body.config.bannerUrl).toBeUndefined();
     });
 
+    it('anonymous storefront projection carries the configured address to the public landing', async () => {
+      const addressSlug = 's2-address-tenant';
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/restaurants',
+        headers: { authorization: `Bearer ${tokenSuperAdmin}` },
+        payload: {
+          name: 'S2 Address Tenant',
+          slug: addressSlug,
+          config: {
+            name: 'S2 Address Storefront',
+            address: 'Carrera 43A # 1-50, Medellin',
+            bannerUrl: 'https://example.com/internal-address-banner.webp',
+          },
+        },
+      });
+      expect(created.statusCode).toBe(201);
+
+      const anon = await app.inject({ method: 'GET', url: `/api/restaurants/${addressSlug}` });
+      expect(anon.statusCode).toBe(200);
+      const body = anon.json();
+
+      // The storefront renders the restaurant address, so it must survive the projection.
+      expect(body.config.address).toBe('Carrera 43A # 1-50, Medellin');
+
+      // Redaction is unchanged: operator records and non-storefront config stay out.
+      expect(body).not.toHaveProperty('isActive');
+      expect(body).not.toHaveProperty('createdAt');
+      expect(body).not.toHaveProperty('adminPassword');
+      expect(body.config.bannerUrl).toBeUndefined();
+    });
+
     it('authed super_admin GET /api/restaurants/:idOrSlug receives the full record (isActive present)', async () => {
       const res = await app.inject({
         method: 'GET',

@@ -116,6 +116,7 @@ export function mapBackendOrderToDomain(bo: any, existing?: Order, matchedCustom
     // "no table" (detached), never "keep the previous local value".
     ...(bo.tableId ? { tableId: bo.tableId as string } : {}),
     ...(bo.tableLabel ? { tableLabel: bo.tableLabel as string } : {}),
+    ...((bo.orderType || existing?.orderType) ? { orderType: (bo.orderType || existing?.orderType) as Order["orderType"] } : {}),
     status: (bo.status as OrderStatus) || existing?.status || 'pending',
     createdAt: bo.createdAt || existing?.createdAt || new Date().toISOString(),
     updatedAt: bo.updatedAt || existing?.updatedAt || new Date().toISOString(),

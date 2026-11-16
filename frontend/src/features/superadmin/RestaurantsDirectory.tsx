@@ -222,12 +222,25 @@ export const RestaurantsDirectory: React.FC = () => {
                       ? "Buscar por nombre, slug o tipo..."
                       : "Buscar restaurante eliminado..."
                   }
-                  className={`w-full rounded-xl border pl-9 pr-4 py-2 text-base sm:text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                  className={`w-full rounded-xl border pl-9 pr-9 py-2 text-base sm:text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                     isDark
                       ? "border-slate-700 bg-slate-800 text-white placeholder-slate-400"
                       : "border-slate-200 bg-slate-50 text-slate-900 placeholder-slate-400"
                   }`}
                 />
+                {searchTerm.trim().length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchTerm("")
+                      setCurrentPage(1)
+                    }}
+                    aria-label="Limpiar búsqueda"
+                    className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1 text-slate-500 hover:bg-slate-200/70 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700/70 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                )}
               </div>
             </div>
 
@@ -244,7 +257,7 @@ export const RestaurantsDirectory: React.FC = () => {
 
           {/* Table */}
           {activeTab === "deleted" ? (
-            <div role="region" aria-label="Tabla de restaurantes" tabIndex={0} className="overflow-x-auto">
+            <div role="region" aria-label="Tabla de restaurantes eliminados" tabIndex={0} className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   <tr>
@@ -254,7 +267,7 @@ export const RestaurantsDirectory: React.FC = () => {
                     <th className="px-4 py-3.5 text-right">Acciones</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:border-slate-800">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
                   {isLoadingDeleted ? (
                     <tr>
                       <td colSpan={4} className="p-8 text-center text-sm text-slate-500 dark:text-slate-400">
@@ -321,7 +334,7 @@ export const RestaurantsDirectory: React.FC = () => {
               </table>
             </div>
           ) : (
-            <div role="region" aria-label="Tabla de restaurantes eliminados" tabIndex={0} className="overflow-x-auto">
+            <div role="region" aria-label="Tabla de restaurantes" tabIndex={0} className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   <tr>
@@ -333,8 +346,17 @@ export const RestaurantsDirectory: React.FC = () => {
                     <th className="px-4 py-3.5 text-right">Acciones</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:border-slate-800">
-                  {paginatedRestaurants.map((r) => {
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
+                  {filteredRestaurants.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-5 py-10 text-center text-xs text-slate-500 dark:text-slate-400">
+                        {searchTerm
+                          ? "No se encontraron restaurantes con ese criterio."
+                          : "No hay restaurantes registrados en este momento."}
+                      </td>
+                    </tr>
+                  ) : (
+                    paginatedRestaurants.map((r) => {
                     const restaurantOrders = ordersOf(orderBoards, r.id)
                     const catalogSize = catalogSizes.get(r.id) ?? { products: 0, additions: 0 }
                     const totalSales = restaurantOrders
@@ -469,7 +491,8 @@ export const RestaurantsDirectory: React.FC = () => {
                         </td>
                       </tr>
                     )
-                  })}
+                  })
+                  )}
                 </tbody>
               </table>
             </div>

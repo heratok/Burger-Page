@@ -194,6 +194,16 @@ export const orderStatusEnum = z.enum([
 ]);
 export type OrderStatusType = z.infer<typeof orderStatusEnum>;
 
+/**
+ * delivery-pickup-orders (S1-S3): how the customer receives the order.
+ *   domicilio — delivered to the address (historical behaviour; the default).
+ *   recoger   — picked up at the restaurant, so no delivery fee applies.
+ * The value is persisted as a first-class order field; it is never inferred
+ * from free-text or from a client-side marker.
+ */
+export const orderTypeEnum = z.enum(['domicilio', 'recoger']);
+export type OrderType = z.infer<typeof orderTypeEnum>;
+
 export const orderItemAdditionInputSchema = z.object({
   additionId: z.string().min(1, 'Addition ID is required'),
   quantity: z.number().int().positive().optional().default(1),
@@ -259,6 +269,10 @@ export const createOrderSchema = z.object({
   customerId: z.string().optional(),
   customer: orderCustomerInputSchema.optional(),
   items: z.array(orderItemInputSchema).min(1, 'Order must have at least one item').max(100, 'Order cannot exceed 100 items'),
+  // Optional so legacy callers (and the existing POS/storefront) keep the
+  // historical delivery behaviour: the backend resolves the missing value to
+  // 'domicilio'. 'recoger' waives the delivery fee server-side.
+  orderType: orderTypeEnum.optional(),
   deliveryFee: z.number().nonnegative().optional(),
   paymentMethod: z.enum(['Efectivo', 'Transferencia']).optional(),
   paymentAmount: z.number().nonnegative().optional(),

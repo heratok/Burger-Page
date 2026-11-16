@@ -1,0 +1,8 @@
+packages:
+  - 'frontend'
+  - 'backend'
+  - 'packages/*'
+
+onlyBuiltDependencies:
+  - better-sqlite3
+  - esbuild

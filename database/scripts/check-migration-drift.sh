@@ -26,7 +26,7 @@
 #          BASE_REF     same as the first argument (default origin/main)
 #          STRICT_DOWN  1 = fail when the state after the downs != BASE_REF
 #          KEEP_DBS     1 = do not drop the two scratch databases
-# Needs:   bash, git, node + `npm ci` (node-pg-migrate), psql, a PostgreSQL 15+
+# Needs:   bash, git, node + `pnpm install --frozen-lockfile` (node-pg-migrate), psql, a PostgreSQL 15+
 #          server whose superuser PG_BASE_URL can CREATE/DROP DATABASE.
 #          It does NOT use doppler and never touches a database it did not
 #          create (drift_migrated / drift_fresh).
@@ -47,7 +47,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 FP_SQL="$ROOT/database/scripts/schema-fingerprint.sql"
 MIGRATOR="$ROOT/node_modules/node-pg-migrate/bin/node-pg-migrate.js"
-# Same ignore patterns as `npm run db:migrate` (only *.up.sql are loaded).
+# Same ignore patterns as `pnpm run db:migrate` (only *.up.sql are loaded).
 IGNORE_UP='.*\.down\.sql|.*\.md'
 
 DB_MIGRATED="drift_migrated"

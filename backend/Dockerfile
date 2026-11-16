@@ -5,21 +5,26 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+RUN apk add --no-cache python3 make g++
+RUN corepack enable && corepack prepare pnpm@10.33.2 --activate
+
 # Copy root workspace and package manifests
-COPY package*.json ./
-COPY packages/contracts/package*.json ./packages/contracts/
-COPY backend/package*.json ./backend/
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/contracts/package.json ./packages/contracts/
+COPY backend/package.json ./backend/
+COPY frontend/package.json ./frontend/
 
 # Install all dependencies (including devDependencies needed for building)
-RUN npm ci
+RUN pnpm install --frozen-lockfile
 
 # Copy source files
 COPY packages/contracts ./packages/contracts
 COPY backend ./backend
 
-# Build contracts first, then backend
-RUN npm --prefix packages/contracts run build
-RUN npm --prefix backend run build
+# Build contracts first, then backend, then prune devDependencies for runner
+RUN pnpm --filter @burger-page/contracts run build
+RUN pnpm --filter burger-page-backend run build
+RUN pnpm prune --prod
 
 # ==========================================
 # STAGE 2: Production Runner
@@ -31,13 +36,13 @@ ENV NODE_ENV=production
 ENV PORT=3001
 ENV HOST=0.0.0.0
 
-# Copy package manifests for production install
-COPY package*.json ./
-COPY packages/contracts/package*.json ./packages/contracts/
-COPY backend/package*.json ./backend/
-
-# Install only production dependencies
-RUN npm ci --omit=dev
+# Copy package manifests and pruned production dependencies
+COPY package.json ./
+COPY packages/contracts/package.json ./packages/contracts/
+COPY backend/package.json ./backend/
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/packages/contracts/node_modules ./packages/contracts/node_modules
+COPY --from=builder /app/backend/node_modules ./backend/node_modules
 
 # Copy compiled artifacts from builder stage
 COPY --from=builder /app/packages/contracts/dist ./packages/contracts/dist

@@ -25,7 +25,7 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: 'npm --prefix ../backend run dev',
+      command: 'pnpm --dir ../backend run dev',
       // An explicit E2E_DATABASE_URL must be the database the backend uses too.
       env: process.env.E2E_DATABASE_URL ? { DATABASE_URL: process.env.E2E_DATABASE_URL } : undefined,
       url: 'http://localhost:3001/health',
@@ -33,7 +33,7 @@ export default defineConfig({
       timeout: process.env.CI ? 90000 : 30000,
     },
     {
-      command: 'npm run dev',
+      command: 'pnpm run dev',
       url: 'http://localhost:5173',
       reuseExistingServer: true,
       timeout: process.env.CI ? 90000 : 30000,

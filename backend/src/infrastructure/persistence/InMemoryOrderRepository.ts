@@ -27,7 +27,11 @@ function cloneOrder(order: Order): Order {
     order.changeAmount,
     order.comment,
     order.receiptUrl,
-    order.clientOrderId
+    order.clientOrderId,
+    // delivery-pickup-orders T1 (S1-S3): orderType is persisted state. Dropping
+    // it here would turn a 'recoger' order into a 'domicilio' on every read,
+    // status/receipt write-back and edit, re-pricing pickup as a delivery.
+    order.orderType
   );
   if (order.customer) {
     copy.customer = order.customer;

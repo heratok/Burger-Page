@@ -1,6 +1,6 @@
 #!/bin/sh
 echo "Running typecheck and lint before push..."
-npm run typecheck && npm run lint
+pnpm run typecheck && pnpm run lint
 if [ $? -ne 0 ]; then
   echo ""
   echo "Push aborted: fix type or lint errors before pushing."

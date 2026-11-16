@@ -27,6 +27,7 @@ export class SqliteOrderRepository implements OrderRepository {
         comment TEXT,
         receipt_url TEXT,
         client_order_id TEXT,
+        order_type TEXT NOT NULL DEFAULT 'domicilio',
         items TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
@@ -45,6 +46,13 @@ export class SqliteOrderRepository implements OrderRepository {
     }
     try {
       this.db.exec(`ALTER TABLE orders ADD COLUMN client_order_id TEXT;`);
+    } catch {
+      // Column already exists
+    }
+    // delivery-pickup-orders T1: 'domicilio' | 'recoger'. Existing tables get
+    // the column with the delivery default, so old rows stay delivery orders.
+    try {
+      this.db.exec(`ALTER TABLE orders ADD COLUMN order_type TEXT NOT NULL DEFAULT 'domicilio';`);
     } catch {
       // Column already exists
     }
@@ -113,9 +121,9 @@ export class SqliteOrderRepository implements OrderRepository {
       INSERT INTO orders (
         id, restaurant_id, order_number, customer_id, status, total, delivery_fee, final_total,
         payment_method, payment_amount, change_amount, comment, receipt_url, client_order_id, items, created_at, updated_at,
-        table_id, table_label
+        table_id, table_label, order_type
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         status = excluded.status,
         total = excluded.total,
@@ -149,7 +157,8 @@ export class SqliteOrderRepository implements OrderRepository {
       order.createdAt.toISOString(),
       now,
       order.tableId ?? null,
-      order.tableLabel ?? null
+      order.tableLabel ?? null,
+      order.orderType === 'recoger' ? 'recoger' : 'domicilio'
     );
   }
 
@@ -255,7 +264,9 @@ export class SqliteOrderRepository implements OrderRepository {
       row.change_amount !== null ? Number(row.change_amount) : undefined,
       row.comment || undefined,
       row.receipt_url || undefined,
-      row.client_order_id || undefined
+      row.client_order_id || undefined,
+      // delivery-pickup-orders T1: legacy rows keep the column default.
+      row.order_type === 'recoger' ? 'recoger' : 'domicilio'
     );
     if (row.table_id) order.tableId = row.table_id;
     if (row.table_label) order.tableLabel = row.table_label;

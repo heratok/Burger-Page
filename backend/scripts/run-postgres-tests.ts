@@ -3,8 +3,8 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 // Resolve repo-relative paths from the script location, not process.cwd():
-// this script is invoked both from the repo root (npm run
-// test:integration:postgres) and from backend/ (npm --prefix backend run
+// this script is invoked both from the repo root (pnpm run
+// test:integration:postgres) and from backend/ (pnpm --filter burger-page-backend run
 // test:integration:postgres), and cwd-relative resolution broke the vitest
 // spawn (ENOENT, silent exit 1) when run from backend/.
 const scriptDir = dirname(fileURLToPath(import.meta.url));
@@ -60,7 +60,7 @@ async function main() {
     // it ends and can deadlock against concurrent FK-pre-check INSERTs — a
     // flaky failure that moved between suites depending on timing. Running
     // the files serially makes the reapply never overlap in-flight DML.
-    testStatus = run('npx', ['vitest', 'run', '--fileParallelism=false', 'tests/integration/postgres/'], {
+    testStatus = run('pnpm', ['exec', 'vitest', 'run', '--fileParallelism=false', 'tests/integration/postgres/'], {
       cwd: backendDir,
     });
   } finally {

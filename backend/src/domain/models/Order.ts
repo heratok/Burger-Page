@@ -2,6 +2,12 @@ import { InvalidOrderStateError } from '../errors/DomainErrors.js';
 
 export type OrderStatus = 'pending' | 'cooking' | 'delivering' | 'delivered' | 'cancelled';
 export type PaymentMethod = 'Efectivo' | 'Transferencia';
+/**
+ * delivery-pickup-orders (S1-S3): how the order is fulfilled. 'domicilio' is
+ * the historical behaviour and the default for every existing caller;
+ * 'recoger' means the customer picks the order up, so no delivery fee applies.
+ */
+export type OrderType = 'domicilio' | 'recoger';
 
 export interface OrderItemAddition {
   id?: string;
@@ -39,7 +45,10 @@ export class Order {
     // SUS-19: optional client-generated idempotency correlation id. Set by the
     // use case from the dto; repos persist it and replay (return) an existing
     // order for the same (restaurantId, clientOrderId) instead of duplicating.
-    public readonly clientOrderId?: string
+    public readonly clientOrderId?: string,
+    // delivery-pickup-orders T1: first-class fulfilment type. Defaults to
+    // 'domicilio' so every legacy construction path keeps the delivery rules.
+    public readonly orderType: OrderType = 'domicilio'
   ) {}
 
   /**
@@ -114,6 +123,7 @@ export class Order {
       status: this.status,
       createdAt: this.createdAt instanceof Date ? this.createdAt.toISOString() : this.createdAt,
       deliveryFee: this.deliveryFee,
+      orderType: this.orderType,
       orderNumber: this.orderNumber,
       subtotal: this.subtotal,
       finalTotal: this.finalTotal,

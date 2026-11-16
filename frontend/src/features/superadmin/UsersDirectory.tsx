@@ -12,6 +12,7 @@ import {
   Trash2,
   Power,
   Pencil,
+  X,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { DisabledReason } from "@/components/ui/tooltip"
@@ -180,7 +181,7 @@ export const UsersDirectory: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#0E1322] p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
             <Shield className="size-3.5" />
@@ -256,12 +257,25 @@ export const UsersDirectory: React.FC = () => {
               setCurrentPage(1)
             }}
             placeholder="Buscar por nombre de usuario..."
-            className={`w-full rounded-xl border pl-9 pr-4 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+            className={`w-full rounded-xl border pl-9 pr-9 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
               isDark
                 ? "border-slate-700 bg-slate-800/80 text-slate-100 placeholder-slate-400"
                 : "border-slate-200 bg-slate-50 text-slate-900 placeholder-slate-400"
             }`}
           />
+          {searchTerm.trim().length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchTerm("")
+                setCurrentPage(1)
+              }}
+              aria-label="Limpiar búsqueda"
+              className="pointer-coarse:min-h-11 pointer-coarse:min-w-11 absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1 text-slate-500 hover:bg-slate-200/70 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700/70 dark:hover:text-slate-200 transition-colors cursor-pointer"
+            >
+              <X className="size-3.5" />
+            </button>
+          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">

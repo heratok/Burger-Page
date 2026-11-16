@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { useUi, useTenant, useOrderBoardsByTenant, ordersOf } from "@/context/RestaurantContext"
+import { useUi, useTenant, useOrderBoardsByTenant, useGlobalStats, ordersOf } from "@/context/RestaurantContext"
 import {
   TrendingUp,
   DollarSign,
@@ -17,6 +17,7 @@ export const GlobalAnalytics: React.FC = () => {
   const { adminTheme } = useUi()
   const { restaurants, switchRestaurant } = useTenant()
   const orderBoards = useOrderBoardsByTenant()
+  const globalStats = useGlobalStats()
   const { navigateTo } = useAppRouter()
   const [period, setPeriod] = useState<string>("ALL")
 
@@ -24,17 +25,32 @@ export const GlobalAnalytics: React.FC = () => {
 
   // Aggregate metrics across all restaurants
   const stats = useMemo(() => {
-    let totalRevenue = 0
-    let totalOrders = 0
+    const now = new Date()
+    let periodStart: Date | null = null
+    if (period === "THIS_MONTH") {
+      periodStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    } else if (period === "THIS_WEEK") {
+      periodStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+    }
+
+    let fallbackRevenue = 0
+    let fallbackOrders = 0
 
     // Restaurant breakdown
     const breakdown = restaurants.map((r) => {
-      const restaurantOrders = ordersOf(orderBoards, r.id)
-      const revenue = restaurantOrders.reduce((sum, o) => sum + (o.total || 0), 0)
+      const restaurantOrders = ordersOf(orderBoards, r.id).filter((o) => {
+        if (o.status === "cancelled") return false
+        if (periodStart && o.createdAt) {
+          const ts = new Date(o.createdAt).getTime()
+          if (!Number.isNaN(ts) && ts < periodStart.getTime()) return false
+        }
+        return true
+      })
+      const revenue = restaurantOrders.reduce((sum, o) => sum + (o.finalTotal ?? o.total ?? 0), 0)
       const ordersCount = restaurantOrders.length
 
-      totalRevenue += revenue
-      totalOrders += ordersCount
+      fallbackRevenue += revenue
+      fallbackOrders += ordersCount
 
       return {
         id: r.id,
@@ -50,18 +66,29 @@ export const GlobalAnalytics: React.FC = () => {
     // Sort by revenue descending
     breakdown.sort((a, b) => b.revenue - a.revenue)
 
+    const hasPlatformStats =
+      period === "ALL" &&
+      !globalStats.isLoading &&
+      !globalStats.isError &&
+      (globalStats.totalRestaurants > 0 || globalStats.totalOrders > 0 || globalStats.totalRevenue > 0)
+
+    const totalRevenue = hasPlatformStats ? globalStats.totalRevenue : fallbackRevenue
+    const totalOrders = hasPlatformStats ? globalStats.totalOrders : fallbackOrders
+    const activeRestaurants = hasPlatformStats
+      ? globalStats.activeRestaurants
+      : restaurants.filter((r) => r.isActive).length
+    const totalRestaurants = hasPlatformStats ? globalStats.totalRestaurants : restaurants.length
     const avgTicket = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0
-    const activeCount = restaurants.filter((r) => r.isActive).length
 
     return {
       totalRevenue,
       totalOrders,
       avgTicket,
-      activeCount,
-      totalTenants: restaurants.length,
+      activeRestaurants,
+      totalRestaurants,
       breakdown,
     }
-  }, [restaurants, orderBoards])
+  }, [restaurants, orderBoards, period, globalStats])
 
   const handleManage = (restaurantId: string) => {
     switchRestaurant(restaurantId)
@@ -71,7 +98,7 @@ export const GlobalAnalytics: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#0E1322] p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
             <BarChart3 className="size-3.5" />
@@ -115,7 +142,12 @@ export const GlobalAnalytics: React.FC = () => {
           </div>
           <div className="mt-2 flex items-center gap-1.5 text-sm text-emerald-700 dark:text-emerald-400 font-semibold">
             <TrendingUp className="size-3.5" />
-            <span>100% de locales en línea</span>
+            <span>
+              {stats.totalRestaurants > 0
+                ? Math.round((stats.activeRestaurants / stats.totalRestaurants) * 100)
+                : 0}
+              % de locales en línea
+            </span>
           </div>
         </div>
 
@@ -144,7 +176,8 @@ export const GlobalAnalytics: React.FC = () => {
             </div>
           </div>
           <div className="mt-3 text-2xl sm:text-3xl font-black text-amber-800 dark:text-amber-400">
-            {stats.activeCount} <span className="text-sm font-normal text-slate-500 dark:text-slate-400">/ {stats.totalTenants}</span>
+            {stats.activeRestaurants}{" "}
+            <span className="text-sm font-normal text-slate-500 dark:text-slate-400">/ {stats.totalRestaurants}</span>
           </div>
           <div className="mt-2 text-sm text-slate-500 dark:text-slate-400">
             Franquicias operando activamente
@@ -245,7 +278,7 @@ export const GlobalAnalytics: React.FC = () => {
                         <div className="h-2 w-24 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                           <div
                             className="h-full bg-orange-500 rounded-full transition-all duration-300"
-                            style={{ width: `${Math.max(percentage, 5)}%` }}
+                            style={{ width: `${percentage > 0 ? Math.max(percentage, 5) : 0}%` }}
                           />
                         </div>
                         <span className="font-bold text-sm text-slate-600 dark:text-slate-300">{percentage}%</span>

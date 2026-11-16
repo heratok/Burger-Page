@@ -30,23 +30,28 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22.x
-          cache: 'npm'
+          cache: 'pnpm'
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Lint codebase
-        run: npm run lint
+        run: pnpm run lint
 
       - name: Typecheck all workspaces
-        run: npm run typecheck
+        run: pnpm run typecheck
 
       - name: Run automated test suite
-        run: npm test
+        run: pnpm test
 
       # The service container starts before checkout, so bind-mounting
       # ./database/*.sql into docker-entrypoint-initdb.d is racy (a missing
@@ -61,7 +66,7 @@ jobs:
           docker exec "${{ job.services.postgres.id }}" psql -U postgres -d burger_page_test -v ON_ERROR_STOP=1 -f /tmp/02_seed.sql
 
       - name: Run PostgreSQL integration tests
-        run: npm run test:integration:postgres
+        run: pnpm run test:integration:postgres
         env:
           # SKIP_COMPOSE avoids the script's docker compose lifecycle: the
           # service container above is already running and reachable.
@@ -70,7 +75,7 @@ jobs:
           APP_USER_DATABASE_URL: postgres://app_user:app_user_test_only@localhost:5432/burger_page_test
 
       - name: Build production artifacts
-        run: npm run build
+        run: pnpm run build
 
   e2e:
     name: Playwright E2E (Postgres) ${{ matrix.shard }}/3
@@ -103,14 +108,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22.x
-          cache: 'npm'
+          cache: 'pnpm'
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       # The e2e suite needs the Postgres schema + seed: same copy+apply
       # approach as the validate job (docker-entrypoint-initdb.d bind-mount
@@ -126,11 +136,11 @@ jobs:
       # @burger-page/contracts ships compiled JS only via its dist/ folder,
       # which is gitignored: compile it before booting the dev servers.
       - name: Build shared contracts
-        run: npm --prefix packages/contracts run build
+        run: pnpm --filter @burger-page/contracts run build
 
       - name: Resolve Playwright version
         id: playwright-version
-        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+        run: echo "version=$(node -p "require('./frontend/node_modules/@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
 
       - name: Cache Playwright browsers
         id: playwright-cache
@@ -141,14 +151,14 @@ jobs:
 
       - name: Install Playwright Chromium
         if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: npx playwright install --with-deps chromium
+        run: pnpm --filter burger-page-frontend exec playwright install --with-deps chromium
 
       - name: Install Playwright system dependencies
         if: steps.playwright-cache.outputs.cache-hit == 'true'
-        run: npx playwright install-deps chromium
+        run: pnpm --filter burger-page-frontend exec playwright install-deps chromium
 
       - name: Run Playwright E2E suite against live Postgres (shard ${{ matrix.shard }}/3)
-        run: npm --prefix frontend run test:e2e -- --shard=${{ matrix.shard }}/3
+        run: pnpm --filter burger-page-frontend run test:e2e -- --shard=${{ matrix.shard }}/3
         env:
           STORAGE_DRIVER: postgres
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/burger_page_test
@@ -193,14 +203,19 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22.x
-          cache: 'npm'
+          cache: 'pnpm'
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Ensure psql client is available
         run: |

@@ -68,4 +68,36 @@ describe("LandingPage - private platform directory", () => {
     expect(localStorage.getItem("foodos_landing_theme")).toBe("dark")
     expect(screen.getByLabelText("Cambiar a tema claro")).toBeTruthy()
   })
+
+  it("switches interactive showcase tabs and keeps consistent $44.000 totals in Delivery", () => {
+    renderLanding()
+
+    const deliveryTab = screen.getByRole("tab", { name: /Pedido Delivery/i })
+    const qrTab = screen.getByRole("tab", { name: /Mesa & Código QR/i })
+    const kanbanTab = screen.getByRole("tab", { name: /Cocina & Kanban/i })
+
+    expect(deliveryTab.getAttribute("aria-selected")).toBe("true")
+    expect(screen.getByText(/Tocineta Extra \(\+\$3\.500\)/)).toBeTruthy()
+    expect(screen.getByText("$44.000")).toBeTruthy()
+    expect(screen.getByText(/Total a Pagar: \$44\.000/)).toBeTruthy()
+
+    fireEvent.click(qrTab)
+    expect(qrTab.getAttribute("aria-selected")).toBe("true")
+    expect(deliveryTab.getAttribute("aria-selected")).toBe("false")
+    expect(screen.getByText("Mesa 4 · Terraza")).toBeTruthy()
+    expect(screen.getByText(/Pedido en Salón — Mesa 4 · Terraza/)).toBeTruthy()
+    expect(screen.getByText("$62.000")).toBeTruthy()
+
+    fireEvent.click(kanbanTab)
+    expect(kanbanTab.getAttribute("aria-selected")).toBe("true")
+    expect(screen.getByText("#104 · Mesa 4")).toBeTruthy()
+    expect(screen.getByText("#103 · Delivery WhatsApp")).toBeTruthy()
+  })
+
+  it("renders the profitability comparison block", () => {
+    renderLanding()
+    expect(screen.getByText("Apps de Delivery Tradicionales")).toBeTruthy()
+    expect(screen.getByText("Tu Canal Directo con FoodOS")).toBeTruthy()
+    expect(screen.getByText("0% comisiones por venta")).toBeTruthy()
+  })
 })

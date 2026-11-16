@@ -3,7 +3,7 @@
  * before merging feature/security-hardening to main.
  *
  * Usage (from repo root):
- *   npx tsx --env-file=backend/.env backend/scripts/verify-postgres-constraints.ts
+ *   pnpm exec tsx --env-file=backend/.env backend/scripts/verify-postgres-constraints.ts
  *
  * Covers:
  *   1. Composite UNIQUE upsert — products (id, restaurant_id)

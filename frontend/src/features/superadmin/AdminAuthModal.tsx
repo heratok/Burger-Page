@@ -239,6 +239,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
+                    aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                     title={showPassword ? "Ocultar contraseña" : "Ver contraseña"}
                   >
                     {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
@@ -256,7 +257,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="w-full gap-2 rounded-xl bg-orange-500 hover:bg-orange-600 py-3 text-xs font-bold text-white shadow-lg shadow-orange-500/25 transition-all cursor-pointer"
+                className="w-full h-auto gap-2 rounded-xl bg-orange-500 hover:bg-orange-600 py-3 text-xs font-bold text-white shadow-lg shadow-orange-500/25 transition-all cursor-pointer"
               >
                 <span>{isLoading ? "Verificando..." : "Acceder al Panel"}</span>
                 <ArrowRight className="size-4" />

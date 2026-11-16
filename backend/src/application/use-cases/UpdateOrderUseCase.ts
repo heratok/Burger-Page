@@ -179,7 +179,11 @@ export class UpdateOrderUseCase {
 
   private applyOrderMetadata(order: Order, dto: UpdateOrderDTO): void {
     if (dto.deliveryFee !== undefined) {
-      order.deliveryFee = dto.deliveryFee;
+      // delivery-pickup-orders T1 (S1-S3): the creation path waives the delivery
+      // fee for orderType 'recoger', so an edit must not reintroduce it
+      // (including implicitly through the cash payment-total check). Delivery
+      // orders keep the pre-existing staff fee edit behavior.
+      order.deliveryFee = order.orderType === 'recoger' ? 0 : dto.deliveryFee;
     }
     if (dto.paymentMethod !== undefined) {
       (order as any).paymentMethod = dto.paymentMethod;

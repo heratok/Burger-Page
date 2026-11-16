@@ -64,6 +64,80 @@ describe("WhatsApp module in features/cart", () => {
     expect(message).toContain("+ 2× Extra Bacon")
   })
 
+  it("formats pickup orders with RECOGER EN EL LOCAL, omits address/barrio/domicilio, and computes total & change from subtotal", () => {
+    const mockItems: CartItem[] = [
+      {
+        id: "item-1",
+        name: "Mega Burger",
+        price: 28000,
+        cantidad: 2,
+        total: 62000,
+        src: "",
+        adiciones: [],
+      },
+    ]
+
+    const message = buildOrderMessage({
+      orderId: 654321,
+      orderType: "recoger",
+      customer: {
+        nombre: "Ana Gómez",
+        telefono: "3009876543",
+        direccion: "Calle Falsa 123",
+        barrio: "Laureles",
+      },
+      items: mockItems,
+      metodo: "Efectivo",
+      pagoCon: "70000",
+      restaurantName: "Burger Craft",
+      deliveryFee: 5000,
+    })
+
+    expect(message).toContain("RECOGER EN EL LOCAL")
+    expect(message).not.toContain("Dirección:")
+    expect(message).not.toContain("Barrio:")
+    expect(message).not.toContain("Domicilio:")
+    expect(message).toContain(`*TOTAL: ${formatCOP(62000)}*`)
+    expect(message).toContain(`Cambio: ${formatCOP(8000)}`)
+  })
+
+  it("keeps delivery format for orderType 'domicilio' with Dirección, Barrio, Subtotal, Domicilio, and TOTAL", () => {
+    const mockItems: CartItem[] = [
+      {
+        id: "item-1",
+        name: "Mega Burger",
+        price: 28000,
+        cantidad: 1,
+        total: 28000,
+        src: "",
+        adiciones: [],
+      },
+    ]
+
+    const message = buildOrderMessage({
+      orderId: 777888,
+      orderType: "domicilio",
+      customer: {
+        nombre: "Carlos Ruiz",
+        telefono: "3001112233",
+        direccion: "Cra 45 #12-34",
+        barrio: "Poblado",
+      },
+      items: mockItems,
+      metodo: "Transferencia",
+      restaurantName: "Burger Craft",
+      deliveryFee: 4000,
+    })
+
+    expect(message).toContain("*ENTREGA*")
+    expect(message).toContain("Dirección: Cra 45 #12-34")
+    expect(message).toContain("Barrio: Poblado")
+    expect(message).toContain(`Subtotal: ${formatCOP(28000)}`)
+    expect(message).toContain(`Domicilio: ${formatCOP(4000)}`)
+    expect(message).toContain(`*TOTAL: ${formatCOP(32000)}*`)
+    expect(message).not.toContain("RECOGER EN EL LOCAL")
+  })
+
   it("creates a valid WhatsApp wa.me url", () => {
     const url = buildWhatsAppUrl("573001234567", "Hola test")
     expect(url).toBe("https://wa.me/573001234567?text=Hola%20test")

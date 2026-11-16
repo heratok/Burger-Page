@@ -4,7 +4,7 @@ services:
     runtime: node
     plan: free
     region: oregon
-    buildCommand: npm install --include=dev && npm --prefix packages/contracts run build && npm --prefix backend run build
+    buildCommand: corepack enable && pnpm install --prod=false --frozen-lockfile && pnpm --filter @burger-page/contracts run build && pnpm --filter burger-page-backend run build
     startCommand: node backend/dist/index.js
     healthCheckPath: /health
     autoDeploy: true

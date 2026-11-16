@@ -38,7 +38,7 @@ Solo el esquema (baseline), y luego migraciones:
 
 ```bash
 psql -U postgres -d burger_page -f database/01_schema.sql
-npm run db:migrate
+pnpm run db:migrate
 ```
 
 > ⚠️ **Contraseña de `app_user`**: `01_schema.sql` crea el rol con
@@ -62,10 +62,10 @@ y replica exactamente lo que hace `docker-entrypoint-initdb.d` (aplica `01_schem
 + `02_seed.sql`):
 
 ```bash
-npm run db:test:setup      # install + init + start + create burger_page_test y burger_page_dev
-npm run db:test:start      # arrancar el cluster
-npm run db:test:stop       # pararlo
-npm run db:test:status     # estado + versión
+pnpm run db:test:setup      # install + init + start + create burger_page_test y burger_page_dev
+pnpm run db:test:start      # arrancar el cluster
+pnpm run db:test:stop       # pararlo
+pnpm run db:test:status     # estado + versión
 ```
 
 Conexiones resultantes (puerto 5432, password `postgres` para el superuser):
@@ -76,7 +76,7 @@ Conexiones resultantes (puerto 5432, password `postgres` para el superuser):
 Correr los tests de integración contra esta instancia:
 ```bash
 SKIP_COMPOSE=1 DATABASE_URL=postgres://postgres:postgres@localhost:5432/burger_page_test \
-  npm run test:integration:postgres
+  pnpm run test:integration:postgres
 ```
 
 Para backend de desarrollo: `backend/.env` (gitignored) con
@@ -85,14 +85,14 @@ Para backend de desarrollo: `backend/.env` (gitignored) con
 > Notas: la versión instalada es PostgreSQL 15.19 (Debian bookworm); el contenedor CI
 > usa `postgres:16-alpine`. El schema exige PG 15+, sin impacto funcional. A diferencia
 > del docker-compose (tmpfs efímero), este cluster **persiste** los datos en `$HOME/pgtest`;
-> para datos limpios, `npm run db:test:stop` y borrar `$HOME/pgtest/data`.
+> para datos limpios, `pnpm run db:test:stop` y borrar `$HOME/pgtest/data`.
 
 ### 3. Migraciones incrementales
 ```bash
-npm run db:migrate:create -- nombre          # crear una migración SQL
-npm run db:migrate                           # aplicar pendientes (DATABASE_URL)
-npm run db:migrate:down                      # revertir la última (migrate-down.sh, requiere psql)
-npm run db:baseline                          # marcar las migraciones como aplicadas (up --fake)
+pnpm run db:migrate:create -- nombre          # crear una migración SQL
+pnpm run db:migrate                           # aplicar pendientes (DATABASE_URL)
+pnpm run db:migrate:down                      # revertir la última (migrate-down.sh, requiere psql)
+pnpm run db:baseline                          # marcar las migraciones como aplicadas (up --fake)
 ```
 Detalles: [`database/migrations/README.md`](file:///C:/Users/ASUS/Desktop/Burger-Page/database/migrations/README.md).
 

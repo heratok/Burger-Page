@@ -3,7 +3,12 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const dbDir = resolve(__dirname, '../../../database');
-const read = (rel: string) => readFileSync(resolve(dbDir, rel), 'utf8');
+// Normalize line endings: the oracles below anchor on `;\n` and `\n$$;`, so a
+// CRLF checkout (Windows with core.autocrlf=true) would match nothing while the
+// same files pass on the LF checkout CI uses. Normalizing keeps the parity
+// result identical on every platform.
+const normalizeEol = (text: string) => text.replace(/\r\n/g, '\n');
+const read = (rel: string) => normalizeEol(readFileSync(resolve(dbDir, rel), 'utf8'));
 
 function extractFunction(sql: string, name: string): string {
   const start = sql.indexOf(`CREATE OR REPLACE FUNCTION public.${name}(`);
@@ -571,9 +576,9 @@ describe('schema file structure', () => {
 
 describe('migration drift check wiring', () => {
   const root = resolve(dbDir, '..');
-  const script = readFileSync(resolve(dbDir, 'scripts/check-migration-drift.sh'), 'utf8');
+  const script = normalizeEol(readFileSync(resolve(dbDir, 'scripts/check-migration-drift.sh'), 'utf8'));
   const fingerprint = read('scripts/schema-fingerprint.sql');
-  const ci = readFileSync(resolve(root, '.github/workflows/ci.yml'), 'utf8');
+  const ci = normalizeEol(readFileSync(resolve(root, '.github/workflows/ci.yml'), 'utf8'));
 
   it('CI runs the drift script on a postgres service with full git history', () => {
     expect(ci).toContain('migration-drift:');
@@ -583,7 +588,7 @@ describe('migration drift check wiring', () => {
 
   it('the script uses node-pg-migrate directly (no doppler) with the same ignore pattern as db:migrate', () => {
     expect(script).not.toMatch(/^\s*doppler\b/m);
-    const pkg = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'));
+    const pkg = JSON.parse(normalizeEol(readFileSync(resolve(root, 'package.json'), 'utf8')));
     expect(pkg.scripts['db:migrate']).toContain('--ignore-pattern ".*\\.down\\.sql|.*\\.md"');
     expect(script).toContain("IGNORE_UP='.*\\.down\\.sql|.*\\.md'");
   });
@@ -779,5 +784,52 @@ describe('migration 0000000000018 (structured restaurant tables) parity with the
     expect(down).toContain('uq_restaurant_tables_name');
     expect(flat(down)).toContain('CHECK (char_length(btrim(name)) BETWEEN 1 AND 40)');
     expect(down).toContain('DROP COLUMN IF EXISTS');
+  });
+});
+
+// delivery-pickup-orders T1: orders.order_type is a first-class column, so the
+// pickup waiver is persisted server-side and legacy rows keep 'domicilio'.
+describe('migration 0000000000019 (orders.order_type) parity with the baseline schema', () => {
+  const baseline = read('01_schema.sql');
+  const up = read('migrations/0000000000019_order_type.up.sql');
+  const down = read('migrations/0000000000019_order_type.down.sql');
+  const flat = (s: string) => s.replace(/\s+/g, ' ');
+  // Comment lines are dropped before matching SQL: the migration header talks
+  // about the untouched RPC parameter, which is not a declaration.
+  const sqlOnly = (s: string) =>
+    s
+      .split('\n')
+      .filter((line) => !line.trimStart().startsWith('--'))
+      .join('\n');
+  const ordersStart = baseline.indexOf('CREATE TABLE IF NOT EXISTS public.orders (');
+  const ordersBody = baseline.slice(ordersStart, baseline.indexOf('\n);', ordersStart));
+
+  it('declares the column with the delivery default and the enum check in baseline and migration', () => {
+    expect(flat(ordersBody)).toContain("order_type TEXT NOT NULL DEFAULT 'domicilio'");
+    expect(flat(ordersBody)).toContain("CONSTRAINT chk_orders_order_type CHECK (order_type IN ('domicilio', 'recoger'))");
+    expect(flat(up)).toContain("ADD COLUMN IF NOT EXISTS order_type TEXT NOT NULL DEFAULT 'domicilio'");
+    expect(flat(up)).toContain("ADD CONSTRAINT chk_orders_order_type CHECK (order_type IN ('domicilio', 'recoger'))");
+    // Legacy rows and the untouched insert paths must keep resolving to delivery.
+    expect(flat(up)).toContain("DEFAULT 'domicilio'");
+  });
+
+  it('never changes the create_order_atomic signature (no order-type parameter)', () => {
+    for (const sql of [baseline, up]) {
+      expect(sqlOnly(sql)).not.toMatch(/p_order_type/i);
+    }
+    // The migration adds the column outside the RPC: the function is untouched.
+    expect(sqlOnly(up)).not.toMatch(/create_order_atomic|FUNCTION|TRIGGER/i);
+    expect(sqlOnly(baseline)).toMatch(
+      /CREATE OR REPLACE FUNCTION public\.create_order_atomic\(\s*p_order_id TEXT,\s*p_restaurant_id TEXT,\s*p_customer_id TEXT,\s*p_payment_method TEXT,\s*p_payment_amount NUMERIC,\s*p_change_amount NUMERIC,\s*p_comment TEXT,\s*p_items JSONB,\s*p_delivery_fee NUMERIC DEFAULT NULL,\s*p_client_order_id TEXT DEFAULT NULL\s*\)/
+    );
+  });
+
+  it('is reversible and never opens a transaction', () => {
+    expect(down).toContain('DROP CONSTRAINT IF EXISTS chk_orders_order_type');
+    expect(down).toContain('DROP COLUMN IF EXISTS order_type');
+    for (const sql of [up, down]) {
+      expect(sql).toContain("SET LOCAL lock_timeout = '15s';");
+      expect(sql).not.toMatch(/^\s*(BEGIN|COMMIT);/im);
+    }
   });
 });

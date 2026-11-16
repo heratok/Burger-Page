@@ -670,4 +670,190 @@ describe("CheckoutForm - Direct Sale Flow", () => {
     })
     expect(createOrderSpy).not.toHaveBeenCalled()
   })
+
+  it("shows expectation-setting copy only when Transferencia is selected and hides it for Efectivo", () => {
+    const transferCopy = "Te confirmaremos los datos de pago por WhatsApp después de revisar tu pedido."
+    render(
+      <RestaurantProvider>
+        <CheckoutForm
+          cartItems={mockCartItems}
+          onClose={() => {}}
+          onBackToCart={() => {}}
+        />
+      </RestaurantProvider>
+    )
+
+    // Default is Efectivo: shows ¿Con cuánto pagas? and hides Transferencia copy
+    expect(screen.getByLabelText(/¿Con cuánto pagas\?/i)).toBeDefined()
+    expect(screen.queryByText(transferCopy)).toBeNull()
+
+    // Switch to Transferencia: shows expectation-setting copy and hides Efectivo change input
+    fireEvent.click(screen.getByRole("radio", { name: "Transferencia" }))
+    expect(screen.getByText(transferCopy)).toBeDefined()
+    expect(screen.queryByLabelText(/¿Con cuánto pagas\?/i)).toBeNull()
+
+    // Switch back to Efectivo: hides Transferencia copy and restores Efectivo input
+    fireEvent.click(screen.getByRole("radio", { name: "Efectivo" }))
+    expect(screen.queryByText(transferCopy)).toBeNull()
+    expect(screen.getByLabelText(/¿Con cuánto pagas\?/i)).toBeDefined()
+  })
+
+  describe("orderType selection (Domicilio vs Recoger en el local)", () => {
+    it("renders Domicilio and Recoger en el local radios with Domicilio selected by default and #dir/#barrio visible", () => {
+      render(
+        <RestaurantProvider>
+          <CheckoutForm cartItems={mockCartItems} onClose={() => {}} onBackToCart={() => {}} />
+        </RestaurantProvider>
+      )
+
+      const domicilioRadio = screen.getByRole("radio", { name: /Domicilio/i })
+      const recogerRadio = screen.getByRole("radio", { name: /Recoger en el local/i })
+      expect(domicilioRadio.getAttribute("aria-checked")).toBe("true")
+      expect(recogerRadio.getAttribute("aria-checked")).toBe("false")
+      expect(document.getElementById("dir")).not.toBeNull()
+      expect(document.getElementById("barrio")).not.toBeNull()
+    })
+
+    it("selecting Recoger en el local hides #dir/#barrio, clears address/barrio errors, zeroes delivery fee, and recalculates change against subtotal", async () => {
+      const cartItems: CartItem[] = [
+        {
+          id: "prod_test_clasica",
+          name: "Clásica Ahumada",
+          price: 30000,
+          cantidad: 1,
+          total: 30000,
+          src: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800&auto=format&fit=crop&q=80",
+          adiciones: [],
+        },
+      ]
+
+      render(
+        <RestaurantProvider>
+          <CheckoutForm cartItems={cartItems} onClose={() => {}} onBackToCart={() => {}} />
+        </RestaurantProvider>
+      )
+
+      // Trigger validation errors for dir/barrio first under Domicilio
+      fireEvent.change(screen.getByLabelText(/Nombre/i), { target: { value: "Carlos Pérez" } })
+      fireEvent.change(screen.getByLabelText(/Celular/i), { target: { value: "3001234567" } })
+      fireEvent.change(screen.getByLabelText(/¿Con cuánto pagas\?/i), { target: { value: "40000" } })
+      expect(screen.getByText(/Tu cambio:/i).textContent).toContain("$5.000")
+
+      fireEvent.click(screen.getByRole("button", { name: /Enviar pedido por WhatsApp/i }))
+      await waitFor(() => {
+        expect(screen.getByText("La dirección es obligatoria.")).toBeDefined()
+        expect(screen.getByText("Indícanos tu barrio.")).toBeDefined()
+      })
+
+      // Switch to Recoger en el local
+      fireEvent.click(screen.getByRole("radio", { name: /Recoger en el local/i }))
+
+      expect(document.getElementById("dir")).toBeNull()
+      expect(document.getElementById("barrio")).toBeNull()
+      expect(screen.queryByText("La dirección es obligatoria.")).toBeNull()
+      expect(screen.queryByText("Indícanos tu barrio.")).toBeNull()
+      expect(screen.queryByText("Domicilio / Envío")).toBeNull()
+      expect(screen.getByText("Retiro en local")).toBeDefined()
+
+      const totalRow = screen.getByText("Total").closest("li")
+      expect(totalRow).not.toBeNull()
+      expect(within(totalRow as HTMLElement).getByText("$30.000")).toBeDefined()
+
+      // Change is now 40.000 - 30.000 = 10.000
+      expect(screen.getByText(/Tu cambio:/i).textContent).toContain("$10.000")
+    })
+
+    it("submitting Recoger en el local without address/barrio registers pickup order with zero fee and opens pickup WhatsApp message", async () => {
+      const fakeTab = makeFakeTab()
+      vi.spyOn(window, "open").mockImplementation(() => fakeTab as unknown as Window)
+      const onCloseMock = vi.fn()
+      const { apiClient } = await import("@/core/api/apiClient")
+      const createOrderSpy = vi.spyOn(apiClient, "createOrder").mockResolvedValue({
+        id: "srv-pickup-checkout-1",
+        orderNumber: 5151,
+        orderType: "recoger",
+        status: "pending",
+      } as any)
+
+      render(
+        <RestaurantProvider>
+          <OrdersProbe />
+          <CheckoutForm cartItems={mockCartItems} onClose={onCloseMock} onBackToCart={() => {}} />
+        </RestaurantProvider>
+      )
+
+      fireEvent.click(screen.getByRole("radio", { name: /Recoger en el local/i }))
+      fireEvent.change(screen.getByLabelText(/Nombre/i), { target: { value: "Laura Díaz" } })
+      fireEvent.change(screen.getByLabelText(/Celular/i), { target: { value: "3009998877" } })
+
+      fireEvent.click(screen.getByRole("button", { name: /Enviar pedido por WhatsApp/i }))
+
+      await waitFor(() => expect(createOrderSpy).toHaveBeenCalledTimes(1))
+      expect(createOrderSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orderType: "recoger",
+          deliveryFee: 0,
+          customer: {
+            name: "Laura Díaz",
+            phone: "3009998877",
+            address: "",
+            barrio: "",
+          },
+        })
+      )
+
+      await waitFor(() => {
+        const orders = JSON.parse(screen.getByTestId("orders-probe").textContent ?? "[]")
+        expect(orders[0].orderType).toBe("recoger")
+        expect(orders[0].deliveryFee).toBe(0)
+        expect(orders[0].finalTotal).toBe(56000)
+        expect(orders[0].customer.direccion).toBe("")
+        expect(orders[0].customer.barrio).toBe("")
+      })
+
+      await waitFor(() => expect(onCloseMock).toHaveBeenCalledTimes(1))
+      const decodedMessage = decodeURIComponent(fakeTab.location.href)
+      expect(decodedMessage).toContain("RECOGER EN EL LOCAL")
+      expect(decodedMessage).not.toContain("Dirección:")
+      expect(decodedMessage).not.toContain("Barrio:")
+      expect(decodedMessage).not.toContain("Domicilio:")
+    })
+
+    it("submitting Domicilio validates #dir/#barrio, includes orderType 'domicilio', deliveryFee, and delivery WhatsApp format", async () => {
+      const fakeTab = makeFakeTab()
+      vi.spyOn(window, "open").mockImplementation(() => fakeTab as unknown as Window)
+      const onCloseMock = vi.fn()
+      const { apiClient } = await import("@/core/api/apiClient")
+      const createOrderSpy = vi.spyOn(apiClient, "createOrder").mockResolvedValue({
+        id: "srv-delivery-checkout-1",
+        orderNumber: 6262,
+        orderType: "domicilio",
+        status: "pending",
+      } as any)
+
+      render(
+        <RestaurantProvider>
+          <CheckoutForm cartItems={mockCartItems} onClose={onCloseMock} onBackToCart={() => {}} />
+        </RestaurantProvider>
+      )
+
+      fillForm()
+      fireEvent.click(screen.getByRole("button", { name: /Enviar pedido por WhatsApp/i }))
+
+      await waitFor(() => expect(createOrderSpy).toHaveBeenCalledTimes(1))
+      expect(createOrderSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orderType: "domicilio",
+          deliveryFee: 5000,
+        })
+      )
+
+      await waitFor(() => expect(onCloseMock).toHaveBeenCalledTimes(1))
+      const decodedMessage = decodeURIComponent(fakeTab.location.href)
+      expect(decodedMessage).toContain("Dirección: Calle 45 # 12-34")
+      expect(decodedMessage).toContain("Barrio: El Poblado")
+      expect(decodedMessage).toContain("Domicilio:")
+      expect(decodedMessage).not.toContain("RECOGER EN EL LOCAL")
+    })
+  })
 })

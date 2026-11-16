@@ -455,6 +455,14 @@ CREATE TABLE IF NOT EXISTS public.orders (
     -- snapshot del nombre y sobrevive a renombrar o borrar la mesa.
     table_id        TEXT,
     table_label     TEXT,
+    -- delivery-pickup-orders T1: tipo de cumplimiento del pedido. 'domicilio'
+    -- es el comportamiento histórico y el DEFAULT (todo llamador antiguo sigue
+    -- siendo domicilio); 'recoger' exime la tarifa de envío, así que
+    -- delivery_fee = 0 y final_total = subtotal. La firma de
+    -- create_order_atomic no cambia: el tipo lo escribe la aplicación.
+    order_type      TEXT NOT NULL DEFAULT 'domicilio'
+                      CONSTRAINT chk_orders_order_type
+                      CHECK (order_type IN ('domicilio', 'recoger')),
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     -- WU-1b (M2/M3): el customer referenciado debe pertenecer al mismo
@@ -499,6 +507,7 @@ COMMENT ON COLUMN public.orders.contact_address IS 'Snapshot de la dirección de
 COMMENT ON COLUMN public.orders.contact_barrio IS 'Snapshot del barrio de entrega dado en ESTE pedido.';
 COMMENT ON COLUMN public.orders.table_id IS 'Mesa donde se tomó la venta de salón (NULL si no aplica o si la mesa se borró).';
 COMMENT ON COLUMN public.orders.table_label IS 'Snapshot del nombre de la mesa al vender: el historial lo conserva aunque la mesa se renombre o se borre.';
+COMMENT ON COLUMN public.orders.order_type IS 'Tipo de pedido: domicilio (entrega, DEFAULT histórico) o recoger (retiro en el local, sin tarifa de envío). Nunca se deduce de texto libre.';
 
 -- 2.7.1 ORDER STATUS HISTORY --------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.order_status_history (

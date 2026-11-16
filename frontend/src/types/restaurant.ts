@@ -1,4 +1,4 @@
-import type { WeeklySchedule, Permission } from "@burger-page/contracts"
+import type { WeeklySchedule, Permission, OrderType } from "@burger-page/contracts"
 
 export type CardStyle = "elevated" | "bordered" | "glass" | "minimal"
 export type CardRadius = "sm" | "md" | "lg" | "full"
@@ -88,6 +88,7 @@ export interface Order {
   total: number
   deliveryFee: number
   finalTotal: number
+  orderType?: OrderType
   metodo: "Efectivo" | "Transferencia"
   pagoCon?: string
   cambio?: number

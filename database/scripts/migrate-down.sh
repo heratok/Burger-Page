@@ -9,7 +9,7 @@
 # the row, both in ONE transaction.
 #
 # Usage:  DATABASE_URL=postgres://... database/scripts/migrate-down.sh
-#         npm run db:migrate:down      (wraps it with doppler)
+#         pnpm run db:migrate:down      (wraps it with doppler)
 # Needs:  bash, psql on PATH.
 # ============================================================================
 set -euo pipefail

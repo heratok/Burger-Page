@@ -72,7 +72,7 @@ describe('RLS tenant isolation (write policies, app_user role)', () => {
       );
     } catch (err: any) {
       console.warn(
-        `\n⚠️ [RLS Test] Skipping: cannot connect to ${DATABASE_URL} (${err.message}). Run via 'npm run test:integration:postgres' or start Docker.`
+        `\n⚠️ [RLS Test] Skipping: cannot connect to ${DATABASE_URL} (${err.message}). Run via 'pnpm run test:integration:postgres' or start Docker.`
       );
       isDbConnected = false;
     }

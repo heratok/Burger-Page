@@ -356,6 +356,96 @@ describe('CreateOrderUseCase', () => {
     )).rejects.toThrow(ValidationError);
   });
 
+  // delivery-pickup-orders T1 (S1-S3): orderType is persisted as a first-class
+  // field and pickup waives the server-side delivery fee, while delivery
+  // (domicilio) keeps the fee rules untouched.
+  describe('order type: domicilio (default) vs recoger', () => {
+    beforeEach(() => {
+      const mockProduct = { id: 'p1', name: 'Burger', price: 20, isAvailable: true, additions: [], category: 'Food', description: 'Desc', restaurantId: 'burger-craft' };
+      vi.mocked(mockProductRepo.findById).mockResolvedValue(mockProduct as any);
+    });
+
+    it('persists orderType domicilio for a legacy caller that omits it and keeps charging the restaurant fee', async () => {
+      const order = await useCase.execute({
+        restaurantId: 'burger-craft',
+        items: [{ productId: 'p1', quantity: 1, additions: [] }],
+      });
+
+      expect(order.orderType).toBe('domicilio');
+      expect(order.deliveryFee).toBe(5); // unchanged delivery enforcement
+      expect(order.finalTotal).toBe(25);
+    });
+
+    it('persists orderType domicilio when the storefront sends it explicitly', async () => {
+      const order = await useCase.execute({
+        restaurantId: 'burger-craft',
+        items: [{ productId: 'p1', quantity: 1, additions: [] }],
+        orderType: 'domicilio',
+      });
+
+      expect(order.orderType).toBe('domicilio');
+      expect(order.deliveryFee).toBe(5);
+      expect(order.finalTotal).toBe(25);
+    });
+
+    it('registers an anonymous pickup order with deliveryFee 0 and finalTotal === subtotal', async () => {
+      const order = await useCase.execute({
+        restaurantId: 'burger-craft',
+        items: [{ productId: 'p1', quantity: 1, additions: [] }],
+        orderType: 'recoger',
+        paymentMethod: 'Efectivo',
+        paymentAmount: 20, // == subtotal == finalTotal on pickup
+      });
+
+      expect(order.orderType).toBe('recoger');
+      expect(order.deliveryFee).toBe(0);
+      expect(order.subtotal).toBe(20);
+      expect(order.finalTotal).toBe(order.subtotal);
+      expect(order.changeAmount).toBe(0);
+    });
+
+    it('never lets a client deliveryFee re-inflate a pickup order', async () => {
+      const order = await useCase.execute({
+        restaurantId: 'burger-craft',
+        items: [{ productId: 'p1', quantity: 1, additions: [] }],
+        orderType: 'recoger',
+        deliveryFee: 5, // client cannot charge itself a delivery fee on pickup
+      });
+
+      expect(order.orderType).toBe('recoger');
+      expect(order.deliveryFee).toBe(0);
+      expect(order.finalTotal).toBe(20);
+    });
+
+    it('waives the fee for an authenticated pickup as well', async () => {
+      const order = await useCase.execute(
+        {
+          restaurantId: 'burger-craft',
+          items: [{ productId: 'p1', quantity: 1, additions: [] }],
+          orderType: 'recoger',
+          deliveryFee: 7, // staff POS fee sent along; pickup still charges none
+        },
+        { authenticated: true }
+      );
+
+      expect(order.orderType).toBe('recoger');
+      expect(order.deliveryFee).toBe(0);
+      expect(order.finalTotal).toBe(20);
+    });
+
+    it('rejects a pickup cash payment below the pickup total (fee not silently re-added)', async () => {
+      await expect(
+        useCase.execute({
+          restaurantId: 'burger-craft',
+          items: [{ productId: 'p1', quantity: 1, additions: [] }],
+          orderType: 'recoger',
+          paymentMethod: 'Efectivo',
+          paymentAmount: 19,
+        })
+      ).rejects.toThrow(ValidationError);
+    });
+  });
+
   it('should apply minOrderAmount including additions in subtotal calculation', async () => {
     const mockProduct = { id: 'p1', name: 'Small Burger', price: 10, isAvailable: true, additions: [], category: 'Food', description: 'Desc', restaurantId: 'burger-craft' };
     const mockAddition = new ProductAddition('add-patty', 'burger-craft', 'Extra Patty', 6, true);

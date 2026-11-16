@@ -173,6 +173,7 @@ export function handleOrderCreatedEvent<T extends OrderBoard>(current: T, event:
     receiptUrl: p.receiptUrl,
     ...(p.tableId ? { tableId: p.tableId as string } : {}),
     ...(p.tableLabel ? { tableLabel: p.tableLabel as string } : {}),
+    ...(p.orderType ? { orderType: p.orderType as Order["orderType"] } : {}),
     status: (event.status as OrderStatus) || p.status || "pending",
     createdAt: event.timestamp || new Date().toISOString(),
     updatedAt: event.timestamp || new Date().toISOString(),
@@ -423,6 +424,7 @@ export function adoptCreatedOrderToActive<T extends OrderBoard>(
             ...o,
             id: createdOrder.id,
             orderNumber: createdOrder.orderNumber ?? o.orderNumber,
+            ...(createdOrder?.orderType ? { orderType: createdOrder.orderType as Order["orderType"] } : {}),
             pendingSync: false,
           }
         : o
@@ -440,6 +442,7 @@ export function adoptQueuedOrder<T extends OrderBoard>(current: T, queued: Order
     ...queued,
     id: createdOrder.id,
     orderNumber: createdOrder.orderNumber ?? queued.orderNumber,
+    ...(createdOrder?.orderType ? { orderType: createdOrder.orderType as Order["orderType"] } : {}),
     pendingSync: false,
   }
   return {
@@ -502,6 +505,7 @@ export function buildCreateOrderInput(
     receiptUrl: newOrder.receiptUrl,
     comment: newOrder.comentario,
     ...(newOrder.tableId ? { tableId: newOrder.tableId } : {}),
+    ...(newOrder.orderType ? { orderType: newOrder.orderType } : {}),
     // SUS-19: the offline retry re-sends the same correlation id (it rebuilds
     // the input from the same optimistic order object), so the backend replays
     // instead of duplicating.

@@ -1,3 +1,4 @@
+import type { OrderType } from "@burger-page/contracts"
 import { formatCurrency, cleanPhoneNumber, formatWhatsAppPhone } from "@/lib/utils"
 import type { CartItem } from "./cartEngine"
 
@@ -12,6 +13,7 @@ export interface OrderCustomer {
 
 export interface OrderPayload {
   orderId: number
+  orderType?: OrderType
   customer: OrderCustomer
   items: CartItem[]
   metodo: MetodoPago
@@ -71,6 +73,7 @@ function formatItem(item: CartItem, index: number): string {
 export function buildOrderMessage(payload: OrderPayload): string {
   const {
     orderId,
+    orderType,
     customer,
     items,
     metodo,
@@ -80,8 +83,10 @@ export function buildOrderMessage(payload: OrderPayload): string {
     deliveryFee = 0,
   } = payload
 
+  const isPickup = orderType === "recoger"
+  const effectiveDeliveryFee = isPickup ? 0 : deliveryFee
   const subtotal = items.reduce((acc, item) => acc + item.total, 0)
-  const total = subtotal + (items.length > 0 ? deliveryFee : 0)
+  const total = subtotal + (items.length > 0 ? effectiveDeliveryFee : 0)
   const sections: string[] = []
 
   sections.push(`*NUEVO PEDIDO — ${restaurantName.toUpperCase()}*`)
@@ -92,8 +97,12 @@ export function buildOrderMessage(payload: OrderPayload): string {
   sections.push(`Celular: ${customer.telefono.trim()}`)
 
   sections.push("*ENTREGA*")
-  sections.push(`Dirección: ${customer.direccion.trim()}`)
-  sections.push(`Barrio: ${customer.barrio.trim()}`)
+  if (isPickup) {
+    sections.push("Modalidad: RECOGER EN EL LOCAL")
+  } else {
+    sections.push(`Dirección: ${customer.direccion.trim()}`)
+    sections.push(`Barrio: ${customer.barrio.trim()}`)
+  }
 
   if (items.length > 0) {
     sections.push("*PEDIDO*")
@@ -117,9 +126,9 @@ export function buildOrderMessage(payload: OrderPayload): string {
   sections.push("*PAGO*")
   sections.push(pagoLines.join("\n"))
 
-  if (deliveryFee > 0) {
+  if (effectiveDeliveryFee > 0) {
     sections.push(
-      `Subtotal: ${formatCOP(subtotal)}\nDomicilio: ${formatCOP(deliveryFee)}\n*TOTAL: ${formatCOP(total)}*`
+      `Subtotal: ${formatCOP(subtotal)}\nDomicilio: ${formatCOP(effectiveDeliveryFee)}\n*TOTAL: ${formatCOP(total)}*`
     )
   } else {
     sections.push(`*TOTAL: ${formatCOP(total)}*`)

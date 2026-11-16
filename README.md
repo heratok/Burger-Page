@@ -47,12 +47,12 @@ Burger-Page/
 From the root directory, install all dependencies across all workspaces:
 
 ```bash
-npm install
+pnpm install
 ```
 
 ### Development
-- **Run Frontend:** `npm run dev` (running at `http://localhost:5173`)
-- **Run Backend:** `npm run dev:backend` (running at `http://localhost:3001`)
+- **Run Frontend:** `pnpm run dev` (running at `http://localhost:5173`)
+- **Run Backend:** `pnpm run dev:backend` (running at `http://localhost:3001`)
 - **Interactive API Docs (Scalar):** `http://localhost:3001/docs`
 
 ---
@@ -61,16 +61,16 @@ npm install
 
 | Command | Description |
 |---|---|
-| `npm run dev` | Starts frontend development server |
-| `npm run dev:backend` | Starts backend Fastify server with tsx watch |
-| `npm test` | Runs all 122 tests across contracts, frontend, and backend |
-| `npm run test:contracts` | Runs shared contracts unit tests |
-| `npm run test:frontend` | Runs frontend unit and component tests |
-| `npm run test:backend` | Runs backend unit, integration, and SQLite tests |
-| `npm run test:integration:postgres` | Runs PostgreSQL integration suite against real Docker container |
-| `npm run test:e2e` | Runs Playwright full-stack End-to-End tests |
-| `npm run build` | Compiles contracts, frontend, and backend for production |
-| `npm run lint` | Runs ESLint validation on frontend code |
+| `pnpm run dev` | Starts frontend development server |
+| `pnpm run dev:backend` | Starts backend Fastify server with tsx watch |
+| `pnpm test` | Runs all 122 tests across contracts, frontend, and backend |
+| `pnpm run test:contracts` | Runs shared contracts unit tests |
+| `pnpm run test:frontend` | Runs frontend unit and component tests |
+| `pnpm run test:backend` | Runs backend unit, integration, and SQLite tests |
+| `pnpm run test:integration:postgres` | Runs PostgreSQL integration suite against real Docker container |
+| `pnpm run test:e2e` | Runs Playwright full-stack End-to-End tests |
+| `pnpm run build` | Compiles contracts, frontend, and backend for production |
+| `pnpm run lint` | Runs ESLint validation on frontend code |
 
 ---
 
@@ -80,7 +80,7 @@ To verify database constraints, composite `ON CONFLICT` isolation, RPCs, and mig
 
 ```bash
 # Automated 1-step test (starts container, runs tests, tears down):
-npm run test:integration:postgres
+pnpm run test:integration:postgres
 ```
 
 Or run manually with Docker Compose:
@@ -89,7 +89,7 @@ Or run manually with Docker Compose:
 docker compose up -d --wait postgres-test
 
 # 2. Run the integration suite
-npm --prefix backend run test tests/integration/postgres
+pnpm --filter burger-page-backend run test tests/integration/postgres
 
 # 3. Clean up container and test volume
 docker compose down -v
@@ -102,7 +102,7 @@ docker compose down -v
 ### 1. Frontend on Vercel
 - Pre-configured with `frontend/vercel.json`.
 - Set **Root Directory:** `frontend`
-- Build command: `npm --prefix ../packages/contracts run build && npm run build`
+- Build command: `pnpm --filter @burger-page/contracts run build && pnpm run build`
 
 ### 2. Backend on Render
 - Pre-configured with root `render.yaml` blueprint.

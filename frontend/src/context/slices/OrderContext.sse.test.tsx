@@ -112,4 +112,43 @@ describe("OrderContext SSE events write into the query cache", () => {
     expect(client.getQueryData(keys.orders("rest-other", "guest"))).toBe(other)
     expect(client.getQueryData(keys.orders(TENANT, "super"))).toBe(other)
   })
+
+  it("carries orderType 'recoger' on ORDER_CREATED SSE and preserves it on ORDER_UPDATED", async () => {
+    vi.spyOn(apiClient, "fetchOrders").mockResolvedValue([] as any)
+    const { client, hook } = setup()
+    await waitFor(() => expect(onEvent).toBeDefined())
+
+    act(() =>
+      onEvent!({
+        ...created("P1", 10),
+        payload: {
+          orderType: "recoger",
+          customer: { nombre: "Pickup", telefono: "3001112233", direccion: "", barrio: "" },
+          items: [],
+          subtotal: 20000,
+          deliveryFee: 0,
+          finalTotal: 20000,
+        },
+      } as any)
+    )
+
+    expect(hook.result.current.orders.find((o) => o.id === "P1")?.orderType).toBe("recoger")
+
+    act(() =>
+      onEvent!({
+        eventType: "ORDER_UPDATED",
+        orderId: "P1",
+        orderNumber: 10,
+        status: "cooking",
+        timestamp: new Date().toISOString(),
+        payload: {
+          status: "cooking",
+        },
+      } as any)
+    )
+
+    const board = client.getQueryData<OrderBoard>(keys.orders(TENANT, "guest"))
+    expect(board?.orders.find((o) => o.id === "P1")?.orderType).toBe("recoger")
+    expect(board?.orders.find((o) => o.id === "P1")?.status).toBe("cooking")
+  })
 })
