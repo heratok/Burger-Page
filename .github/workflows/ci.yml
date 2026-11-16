@@ -7,11 +7,13 @@ on:
     branches: [main, master, develop]
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  # Only superseded pull-request runs are safe to cancel: a PR's newer run diffs
-  # the whole branch against its base, so it re-covers everything. On a push the
-  # selector diffs only the newest commits, so cancelling an older main run would
-  # drop that push's verification for good.
+  # A pull request gets one group per PR, so a superseded run is cancelled and the
+  # newer one re-covers the whole branch against its base. Pushes get a group per
+  # run: GitHub keeps at most one in-progress plus one pending run per group, and a
+  # third arrival cancels the pending one regardless of `cancel-in-progress`. With a
+  # per-branch group and a selector that diffs only the newest commits, that would
+  # drop a push's verification for good, so pushes never share a group.
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -58,7 +60,10 @@ jobs:
             # failure inside a process substitution, and an empty file list
             # would select nothing while the gate still reported success.
             diff_file="$(mktemp)"
-            if ! git diff --name-only -z "$BASE_SHA" "$HEAD_SHA" >"$diff_file"; then
+            # --no-renames lists both sides of a rename: otherwise a file moved
+            # out of a selected root (frontend/x.ts -> docs/x.ts) would show only
+            # its new path and select nothing.
+            if ! git diff --name-only --no-renames -z "$BASE_SHA" "$HEAD_SHA" >"$diff_file"; then
               echo "::warning::could not diff $BASE_SHA..$HEAD_SHA; running every job"
               : >"$diff_file"
               validate=true

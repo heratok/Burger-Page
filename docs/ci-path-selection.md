@@ -16,7 +16,7 @@ Two fail-safe rules matter as much as the table: if the comparison base or head 
 | `database/migrations/**` | Skip | Skip | Run | Drift applies, reverses, and reapplies migrations. The other jobs load the baseline, not migrations. |
 | Drift scripts/fingerprint | Skip | Skip | Run | They implement the drift oracle itself. |
 | Other `database/**` | Skip | Skip | Skip | Database documentation and local-only helpers are not inputs to current CI jobs. |
-| `pnpm-lock.yaml`, root `package.json`, `pnpm-workspace.yaml`, `tsconfig*.json` (root and one level) | Run | Run | Run | Dependency/workspace/compiler changes can invalidate every job. Every tsconfig in the repo sits one level deep today, so the arms are exact rather than a recursive glob. |
+| `pnpm-lock.yaml`, root `package.json`, `pnpm-workspace.yaml`, `tsconfig*.json` (root and one level) | Run | Run | Run | Dependency/workspace/compiler changes can invalidate every job. All four tsconfigs sit one level deep today; note that in a bash `case` pattern `*` also matches `/`, so these arms match at any depth. |
 | `.github/workflows/ci.yml` | Run | Run | Run | Changes to the selector or job definitions must exercise the full workflow. |
 | Other `.github/workflows/**` | Skip | Skip | Skip | They are not inputs to this workflow's application checks; review their own trigger and parse them separately. |
 | `load-tests/**`, `openspec/**`, `odd/**`, markdown outside a selected root | Skip | Skip | Skip | Not inputs to current CI jobs. A markdown file **inside** `frontend/`, `backend/` or `packages/` still selects those jobs, because the path prefixes win; the selector reads paths, not extensions. |
@@ -25,7 +25,9 @@ Two fail-safe rules matter as much as the table: if the comparison base or head 
 
 Workflow-level `paths`/`paths-ignore` would avoid even starting CI, but a filtered workflow produces no stable check. With no required checks today, that is a silent green and leaves no guardrail to require later. A small, first-party shell selector keeps the dependency surface unchanged, job-level conditions avoid provisioning expensive service jobs, and the aggregate gate provides one stable status. No third-party changed-files action is needed for three booleans and a short path table.
 
-Superseded runs share a branch/PR concurrency group and are cancelled. On a branch with three quick pushes during a 16–18 minute E2E run, only the newest run completes instead of as many as nine shard-runs, typically saving roughly two full three-shard executions (32–36 minutes of per-shard runner time, plus validate/drift time).
+Pull-request runs share one group per PR and are cancelled when superseded; the newer run diffs the whole branch against its base, so nothing is lost. Push runs get a group per run (`github.run_id`) and are never cancelled or displaced.
+
+That second half is not cosmetic. GitHub keeps at most one in-progress plus one pending run per group, and a third arrival cancels the *pending* one even with `cancel-in-progress: false`. Since a push run diffs only its newest commits, a per-branch group would let a third push displace the still-pending second one and that push's changes would never be verified. The trade is that a burst of pushes to `main` now runs serially instead of silently dropping the middle one.
 
 ## Reviewer checks and regression risks
 
@@ -37,5 +39,8 @@ Superseded runs share a branch/PR concurrency group and are cancelled. On a bran
 - The Azure deployment workflow remains independent and keeps its main-push path trigger, including `.dockerignore` because it changes the Docker build context.
 
 ## Known limitation
+
+Renames are handled by disabling rename detection in the diff (`--no-renames`), so both the old and the new path are listed and a file moved out of a selected root still selects its old root.
+
 
 `migration-drift` resolves its own base from the live `origin/<base_ref>` and falls back to `origin/main`, which differs from the selector's event-time `base.sha`. On a push with unresolvable history (a force-push or a rewritten `main`) that fallback can treat the head as its own base and report "No new migrations" — a vacuous pass. The behaviour predates this selection work and is deliberately out of scope here; the fix is to reuse the selector's resolved base or to exit non-zero instead of falling back.
