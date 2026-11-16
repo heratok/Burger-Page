@@ -19,8 +19,9 @@ COPY packages/contracts/package.json ./packages/contracts/
 COPY backend/package.json ./backend/
 COPY frontend/package.json ./frontend/
 
-# Install all dependencies (including devDependencies needed for building)
-RUN pnpm install --frozen-lockfile
+# Install only the two projects the image ships. The frontend manifest stays
+# copied so `--frozen-lockfile` can still validate every workspace importer.
+RUN pnpm install --frozen-lockfile --filter burger-page-backend --filter @burger-page/contracts
 
 # Copy source files
 COPY packages/contracts ./packages/contracts
