@@ -497,6 +497,103 @@ describe('Restaurant API & Multi-Tenant Security (Integration)', () => {
       expect(res.statusCode).toBe(403);
       expect(res.json().detail).toMatch(/Missing permission: menu\.manage/);
     });
+
+    it('PUT /api/restaurant/categories with super_admin lacking slug and session restaurantId returns 400 and leaves default restaurant categories unchanged', async () => {
+      const beforeRes = await app.inject({
+        method: 'GET',
+        url: '/api/restaurant/burger-craft',
+      });
+      expect(beforeRes.statusCode).toBe(200);
+      const categoriesBefore = beforeRes.json().categories;
+
+      const res = await app.inject({
+        method: 'PUT',
+        url: '/api/restaurant/categories',
+        headers: { authorization: `Bearer ${tokenSuperAdmin}` },
+        payload: { categories: ['Hijacked Category'] },
+      });
+
+      expect(res.statusCode).toBe(400);
+      expect(res.json().detail).toMatch(/slug|restaurantId/i);
+
+      const afterRes = await app.inject({
+        method: 'GET',
+        url: '/api/restaurant/burger-craft',
+      });
+      expect(afterRes.statusCode).toBe(200);
+      expect(afterRes.json().categories).toEqual(categoriesBefore);
+    });
+
+    it('PUT /api/restaurant/:slug/categories with super_admin targeting a named slug updates that tenant without touching burger-craft', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/restaurants',
+        headers: { authorization: `Bearer ${tokenSuperAdmin}` },
+        payload: { name: 'SuperAdmin Target', slug: 'superadmin-cat-target', categories: ['Inicial'] },
+      });
+      expect(created.statusCode).toBe(201);
+
+      const craftBefore = (await app.inject({ method: 'GET', url: '/api/restaurant/burger-craft' })).json().categories;
+
+      const res = await app.inject({
+        method: 'PUT',
+        url: '/api/restaurant/superadmin-cat-target/categories',
+        headers: { authorization: `Bearer ${tokenSuperAdmin}` },
+        payload: { categories: ['Especiales', 'Bebidas'] },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json().categories).toEqual(['Especiales', 'Bebidas']);
+
+      const targetAfter = await app.inject({ method: 'GET', url: '/api/restaurant/superadmin-cat-target' });
+      expect(targetAfter.statusCode).toBe(200);
+      expect(targetAfter.json().categories).toEqual(['Especiales', 'Bebidas']);
+
+      const craftAfter = await app.inject({ method: 'GET', url: '/api/restaurant/burger-craft' });
+      expect(craftAfter.json().categories).toEqual(craftBefore);
+    });
+
+    it('PUT /api/restaurant/categories with super_admin bound to session restaurantId updates that tenant', async () => {
+      const boundSuperAdmin = jwtService.generateToken({
+        id: 'usr-superadmin-bound',
+        username: 'superadmin_bound',
+        role: 'super_admin',
+        restaurantId: 'superadmin-cat-target',
+      });
+
+      const res = await app.inject({
+        method: 'PUT',
+        url: '/api/restaurant/categories',
+        headers: { authorization: `Bearer ${boundSuperAdmin}` },
+        payload: { categories: ['Bound Cat'] },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json().categories).toEqual(['Bound Cat']);
+
+      const targetAfter = await app.inject({ method: 'GET', url: '/api/restaurant/superadmin-cat-target' });
+      expect(targetAfter.json().categories).toEqual(['Bound Cat']);
+    });
+
+    it('PUT /api/restaurant/categories with restaurant_admin writes its own tenant even when payload names another', async () => {
+      const targetBefore = (await app.inject({ method: 'GET', url: '/api/restaurant/superadmin-cat-target' })).json().categories;
+
+      const res = await app.inject({
+        method: 'PUT',
+        url: '/api/restaurant/categories',
+        headers: { authorization: `Bearer ${tokenRestaurantAdmin}` },
+        payload: { categories: ['Admin Burgers'], restaurantId: 'superadmin-cat-target' },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json().categories).toEqual(['Admin Burgers']);
+
+      const craftAfter = await app.inject({ method: 'GET', url: '/api/restaurant/burger-craft' });
+      expect(craftAfter.json().categories).toEqual(['Admin Burgers']);
+
+      const targetAfter = await app.inject({ method: 'GET', url: '/api/restaurant/superadmin-cat-target' });
+      expect(targetAfter.json().categories).toEqual(targetBefore);
+    });
   });
 
   describe('GET /api/restaurants is closed to anonymous callers', () => {

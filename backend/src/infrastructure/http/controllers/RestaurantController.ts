@@ -183,7 +183,12 @@ export class RestaurantController {
     // guard accepted the URL identifier, but an id/slug lookup must never be
     // able to land the write on another tenant.
     const identifier =
-      auth?.role === 'super_admin' ? params.slug || auth?.restaurantId || 'burger-craft' : auth!.restaurantId!;
+      auth?.role === 'super_admin'
+        ? params.slug?.trim() || auth?.restaurantId?.trim()
+        : auth!.restaurantId!;
+    if (!identifier) {
+      throw new ValidationError('Restaurant slug or restaurantId is required to update categories.');
+    }
 
     const { categories, renames } = parsed.data;
     const updated = await this.updateCategoriesUseCase.execute(identifier, categories, renames);
