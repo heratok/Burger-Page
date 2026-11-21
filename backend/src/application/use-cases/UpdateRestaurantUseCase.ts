@@ -36,6 +36,26 @@ function resolveSchedule(current: Restaurant, input: UpdateRestaurantInput): Wee
   return echoed ? current.schedule : legacy;
 }
 
+/**
+ * Resolves the restaurant's WhatsApp number for an update, matching creation
+ * precedence: an explicit top-level `whatsappNumber` wins, otherwise an
+ * explicit `config.whatsappNumber` is used, otherwise the stored values stay
+ * untouched. Trims input and normalizes empty/whitespace values to
+ * `undefined` at the top level and `''` inside `config`.
+ */
+function resolveWhatsappNumber(
+  current: Restaurant,
+  input: UpdateRestaurantInput
+): { whatsappNumber: string | undefined; configWhatsappNumber?: string } {
+  const raw =
+    input.whatsappNumber !== undefined ? input.whatsappNumber : input.config?.whatsappNumber;
+  if (raw === undefined) {
+    return { whatsappNumber: current.whatsappNumber };
+  }
+  const normalized = raw.trim() || undefined;
+  return { whatsappNumber: normalized, configWhatsappNumber: normalized ?? '' };
+}
+
 export class UpdateRestaurantUseCase {
   constructor(
     private restaurantRepo: RestaurantRepository,
@@ -103,13 +123,14 @@ export class UpdateRestaurantUseCase {
     // A plaintext secret left on a stored record by older code is dropped on
     // the next write.
     const { adminPassword: _legacyPlaintext, ...stored } = restaurant;
+    const { whatsappNumber, configWhatsappNumber } = resolveWhatsappNumber(restaurant, input);
     const updated: Restaurant = {
       ...stored,
       id: restaurant.id,
       slug,
       name: input.name?.trim() ?? restaurant.name,
       tagline: input.tagline ?? restaurant.tagline,
-      whatsappNumber: input.whatsappNumber ?? restaurant.whatsappNumber,
+      whatsappNumber,
       primaryColor: input.primaryColor ?? restaurant.primaryColor,
       theme: input.theme ?? restaurant.theme,
       isActive: input.isActive ?? restaurant.isActive,
@@ -124,7 +145,7 @@ export class UpdateRestaurantUseCase {
         ...input.config,
         ...(input.name !== undefined ? { name: input.name.trim() } : {}),
         ...(input.tagline !== undefined ? { tagline: input.tagline } : {}),
-        ...(input.whatsappNumber !== undefined ? { whatsappNumber: input.whatsappNumber } : {}),
+        ...(configWhatsappNumber !== undefined ? { whatsappNumber: configWhatsappNumber } : {}),
         ...(input.primaryColor !== undefined ? { primaryColor: input.primaryColor } : {}),
         // Top-level currency fields are the super admin form's shortcut for
         // config.currency / config.currencySymbol (restaurant_settings).

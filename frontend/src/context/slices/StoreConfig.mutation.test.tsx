@@ -149,4 +149,28 @@ describe("store config writes are tracked tenant mutations", () => {
     await waitFor(() => expect(toast.error).toHaveBeenCalled())
     expect(client.getQueryData<RestaurantRecord>(keys.restaurant("super", "rest-a"))).toEqual(before)
   })
+
+  it("resetStoreConfig preserves whatsappNumber in cache and omits it from updateRestaurant, while explicit clearing still sends ''", async () => {
+    const updateSpy = vi.spyOn(apiClient, "updateRestaurant").mockResolvedValue({} as any)
+    const { client, result } = setup()
+    await waitFor(() => expect(result.current.tenant.restaurants).toHaveLength(1))
+
+    act(() => result.current.catalog.updateStoreConfig({ primaryColor: "#444444", whatsappNumber: "573001234567" }))
+    expect(result.current.catalog.storeConfig.whatsappNumber).toBe("573001234567")
+
+    act(() => result.current.catalog.resetStoreConfig())
+
+    expect(result.current.catalog.storeConfig.primaryColor).toBe(DEFAULT_STORE_CONFIG.primaryColor)
+    expect(result.current.catalog.storeConfig.whatsappNumber).toBe("573001234567")
+    expect(client.getQueryData<RestaurantRecord>(keys.restaurant("super", "rest-a"))?.config.whatsappNumber).toBe(
+      "573001234567"
+    )
+    const resetPayload = updateSpy.mock.lastCall?.[1] as { config: Record<string, unknown> }
+    expect(resetPayload.config).not.toHaveProperty("whatsappNumber")
+
+    act(() => result.current.catalog.updateStoreConfig({ whatsappNumber: "" }))
+
+    expect(result.current.catalog.storeConfig.whatsappNumber).toBe("")
+    expect(updateSpy).toHaveBeenLastCalledWith("rest-a", { config: { whatsappNumber: "" } })
+  })
 })

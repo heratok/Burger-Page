@@ -1592,21 +1592,30 @@ describe("CatalogContext Slice - Storefront Configuration Persistence & Rollback
     const { result } = renderHook(() => useCatalog(), { wrapper })
 
     act(() => {
-      result.current.updateStoreConfig({ tagline: "Modificado temporal" })
+      result.current.updateStoreConfig({
+        tagline: "Modificado temporal",
+        whatsappNumber: "573001234567",
+      })
     })
     expect(result.current.storeConfig.tagline).toBe("Modificado temporal")
+    expect(result.current.storeConfig.whatsappNumber).toBe("573001234567")
 
     act(() => {
       result.current.resetStoreConfig()
     })
 
     expect(result.current.storeConfig.tagline).toBe(DEFAULT_STORE_CONFIG.tagline)
+    expect(result.current.storeConfig.whatsappNumber).toBe("573001234567")
+    const { whatsappNumber: _excludedWhatsapp, ...expectedResetConfig } =
+      splitConfigForApi(DEFAULT_STORE_CONFIG).config
     expect(updateRestaurantSpy).toHaveBeenLastCalledWith(
       expect.any(String),
       expect.objectContaining({
-        config: splitConfigForApi(DEFAULT_STORE_CONFIG).config,
+        config: expectedResetConfig,
       })
     )
+    const sentPayload = updateRestaurantSpy.mock.lastCall?.[1] as { config: Record<string, unknown> }
+    expect(sentPayload.config).not.toHaveProperty("whatsappNumber")
   })
 
   it("rolls back storeConfig when apiClient.updateRestaurant fails on resetStoreConfig", async () => {
@@ -1640,6 +1649,62 @@ describe("CatalogContext Slice - Storefront Configuration Persistence & Rollback
 
     await waitFor(() => {
       expect(result.current.storeConfig.tagline).toBe("Modificado antes de reset fallido")
+    })
+  })
+
+  it("resetStoreConfig keeps whatsappNumber in local state and omits whatsappNumber from the API payload", async () => {
+    const { TenantProvider } = await import("./TenantContext")
+    const { CatalogProvider, useCatalog } = await import("./CatalogContext")
+    const { apiClient } = await import("@/core/api/apiClient")
+
+    const updateRestaurantSpy = vi.spyOn(apiClient, "updateRestaurant").mockResolvedValue({} as any)
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TestQueryProvider>
+        <TenantProvider>
+          <CatalogProvider>{children}</CatalogProvider>
+        </TenantProvider>
+      </TestQueryProvider>
+    )
+    const { result } = renderHook(() => useCatalog(), { wrapper })
+
+    act(() => {
+      result.current.updateStoreConfig({ tagline: "Custom", whatsappNumber: "573119998877" })
+    })
+    act(() => {
+      result.current.resetStoreConfig()
+    })
+
+    expect(result.current.storeConfig.tagline).toBe(DEFAULT_STORE_CONFIG.tagline)
+    expect(result.current.storeConfig.whatsappNumber).toBe("573119998877")
+    const sentPayload = updateRestaurantSpy.mock.lastCall?.[1] as { config: Record<string, unknown> }
+    expect(sentPayload.config).not.toHaveProperty("whatsappNumber")
+  })
+
+  it("updateStoreConfig with an empty whatsappNumber still sends whatsappNumber: '' to clear it on purpose", async () => {
+    const { TenantProvider } = await import("./TenantContext")
+    const { CatalogProvider, useCatalog } = await import("./CatalogContext")
+    const { apiClient } = await import("@/core/api/apiClient")
+
+    const updateRestaurantSpy = vi.spyOn(apiClient, "updateRestaurant").mockResolvedValue({} as any)
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TestQueryProvider>
+        <TenantProvider>
+          <CatalogProvider>{children}</CatalogProvider>
+        </TenantProvider>
+      </TestQueryProvider>
+    )
+    const { result } = renderHook(() => useCatalog(), { wrapper })
+
+    act(() => {
+      result.current.updateStoreConfig({ whatsappNumber: "573119998877" })
+    })
+    act(() => {
+      result.current.updateStoreConfig({ whatsappNumber: "" })
+    })
+
+    expect(result.current.storeConfig.whatsappNumber).toBe("")
+    expect(updateRestaurantSpy).toHaveBeenLastCalledWith(expect.any(String), {
+      config: { whatsappNumber: "" },
     })
   })
 })
