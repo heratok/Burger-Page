@@ -509,3 +509,114 @@ describe('UpdateRestaurantUseCase admin password reset', () => {
     expect(restRepo.saveCalls[0]).not.toHaveProperty('adminPassword');
   });
 });
+
+describe('UpdateRestaurantUseCase whatsappNumber resolution', () => {
+  it('clears both top-level whatsappNumber and config.whatsappNumber when config.whatsappNumber is empty', async () => {
+    const repo = new FakeRestaurantRepository([
+      restaurant({
+        whatsappNumber: '573001234567',
+        config: { whatsappNumber: '573001234567' } as Restaurant['config'],
+      }),
+    ]);
+    const useCase = new UpdateRestaurantUseCase(repo);
+
+    const updated = await useCase.execute('rest-1', { config: { whatsappNumber: '' } }, 'restaurant_admin');
+
+    expect(updated.whatsappNumber).toBeUndefined();
+    expect(updated.config?.whatsappNumber).toBe('');
+    expect(repo.saveCalls[0].whatsappNumber).toBeUndefined();
+    expect(repo.saveCalls[0].config?.whatsappNumber).toBe('');
+  });
+
+  it('sets both top-level whatsappNumber and config.whatsappNumber when config.whatsappNumber is provided', async () => {
+    const repo = new FakeRestaurantRepository([
+      restaurant({
+        whatsappNumber: undefined,
+        config: { whatsappNumber: '' } as Restaurant['config'],
+      }),
+    ]);
+    const useCase = new UpdateRestaurantUseCase(repo);
+
+    const updated = await useCase.execute(
+      'rest-1',
+      { config: { whatsappNumber: '573157778899' } },
+      'restaurant_admin'
+    );
+
+    expect(updated.whatsappNumber).toBe('573157778899');
+    expect(updated.config?.whatsappNumber).toBe('573157778899');
+    expect(repo.saveCalls[0].whatsappNumber).toBe('573157778899');
+    expect(repo.saveCalls[0].config?.whatsappNumber).toBe('573157778899');
+  });
+
+  it('keeps the stored whatsappNumber when an update omits both top-level and config.whatsappNumber', async () => {
+    const repo = new FakeRestaurantRepository([
+      restaurant({
+        whatsappNumber: '573001234567',
+        config: { whatsappNumber: '573001234567' } as Restaurant['config'],
+      }),
+    ]);
+    const useCase = new UpdateRestaurantUseCase(repo);
+
+    const updated = await useCase.execute('rest-1', { config: { tagline: 'Solo eslogan' } }, 'restaurant_admin');
+
+    expect(updated.whatsappNumber).toBe('573001234567');
+    expect(updated.config?.whatsappNumber).toBe('573001234567');
+  });
+
+  it('clears whatsappNumber when given whitespace-only input via config or top-level', async () => {
+    const repoFromConfig = new FakeRestaurantRepository([
+      restaurant({
+        whatsappNumber: '573001234567',
+        config: { whatsappNumber: '573001234567' } as Restaurant['config'],
+      }),
+    ]);
+    const fromConfig = await new UpdateRestaurantUseCase(repoFromConfig).execute(
+      'rest-1',
+      { config: { whatsappNumber: '   ' } },
+      'restaurant_admin'
+    );
+    expect(fromConfig.whatsappNumber).toBeUndefined();
+    expect(fromConfig.config?.whatsappNumber).toBe('');
+
+    const repoFromTopLevel = new FakeRestaurantRepository([
+      restaurant({
+        whatsappNumber: '573001234567',
+        config: { whatsappNumber: '573001234567' } as Restaurant['config'],
+      }),
+    ]);
+    const fromTopLevel = await new UpdateRestaurantUseCase(repoFromTopLevel).execute(
+      'rest-1',
+      { whatsappNumber: '   ' },
+      'restaurant_admin'
+    );
+    expect(fromTopLevel.whatsappNumber).toBeUndefined();
+    expect(fromTopLevel.config?.whatsappNumber).toBe('');
+  });
+
+  it('gives explicit top-level whatsappNumber precedence over config.whatsappNumber', async () => {
+    const repo = new FakeRestaurantRepository([
+      restaurant({
+        whatsappNumber: '573001234567',
+        config: { whatsappNumber: '573001234567' } as Restaurant['config'],
+      }),
+    ]);
+    const useCase = new UpdateRestaurantUseCase(repo);
+
+    const clearedByTopLevel = await useCase.execute(
+      'rest-1',
+      { whatsappNumber: '', config: { whatsappNumber: '573157778899' } },
+      'restaurant_admin'
+    );
+    expect(clearedByTopLevel.whatsappNumber).toBeUndefined();
+    expect(clearedByTopLevel.config?.whatsappNumber).toBe('');
+
+    const setByTopLevel = await useCase.execute(
+      'rest-1',
+      { whatsappNumber: ' 573111112222 ', config: { whatsappNumber: '573157778899' } },
+      'restaurant_admin'
+    );
+    expect(setByTopLevel.whatsappNumber).toBe('573111112222');
+    expect(setByTopLevel.config?.whatsappNumber).toBe('573111112222');
+  });
+});

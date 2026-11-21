@@ -423,5 +423,68 @@ describe("CreateRestaurantModal (TDD)", () => {
       expect(screen.getByText(/4 platos \+ 5 adicionales/i)).toBeDefined()
     })
   })
+
+  it("leaves WhatsApp input empty by default (using placeholder only) and submits no placeholder when untouched", async () => {
+    vi.spyOn(apiClient, "listRestaurantTemplates").mockResolvedValue(mockTemplates)
+    const createSpy = vi.spyOn(apiClient, "createRestaurant").mockResolvedValue({
+      id: "rest-no-wa",
+      slug: "la-pizzeria",
+      name: "La Pizzería",
+    } as any)
+
+    render(
+      <RestaurantProvider>
+        <CreateRestaurantModal isOpen={true} onClose={vi.fn()} />
+      </RestaurantProvider>
+    )
+
+    const whatsappInput = screen.getByLabelText(/WhatsApp de Pedidos/i) as HTMLInputElement
+    expect(whatsappInput.value).toBe("")
+    expect(whatsappInput.placeholder).toBe("573001234567")
+
+    fireEvent.change(screen.getByLabelText(/Nombre del Restaurante/i), {
+      target: { value: "La Pizzería" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: /Crear Restaurante/i }))
+
+    await waitFor(() => {
+      expect(createSpy).toHaveBeenCalledTimes(1)
+    })
+
+    const submitted = createSpy.mock.calls[0][0]
+    expect(submitted.whatsappNumber).toBe("")
+    expect(submitted.whatsappNumber).not.toBe("573001234567")
+  })
+
+  it("submits an explicitly typed WhatsApp number verbatim", async () => {
+    vi.spyOn(apiClient, "listRestaurantTemplates").mockResolvedValue(mockTemplates)
+    const createSpy = vi.spyOn(apiClient, "createRestaurant").mockResolvedValue({
+      id: "rest-with-wa",
+      slug: "burger-real",
+      name: "Burger Real",
+    } as any)
+
+    render(
+      <RestaurantProvider>
+        <CreateRestaurantModal isOpen={true} onClose={vi.fn()} />
+      </RestaurantProvider>
+    )
+
+    fireEvent.change(screen.getByLabelText(/Nombre del Restaurante/i), {
+      target: { value: "Burger Real" },
+    })
+    fireEvent.change(screen.getByLabelText(/WhatsApp de Pedidos/i), {
+      target: { value: "573157778899" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: /Crear Restaurante/i }))
+
+    await waitFor(() => {
+      expect(createSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          whatsappNumber: "573157778899",
+        })
+      )
+    })
+  })
 })
 
