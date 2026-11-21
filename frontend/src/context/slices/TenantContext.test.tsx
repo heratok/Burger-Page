@@ -805,3 +805,35 @@ describe("TenantContext - initial activeRestaurantId on public storefront routes
     expect(result.current.activeRestaurantId).toBe("rest-default")
   })
 })
+
+describe("TenantContext.updateRestaurant - clearing optional whatsappNumber", () => {
+  beforeEach(() => {
+    localStorage.clear()
+    sessionStorage.clear()
+    vi.restoreAllMocks()
+    seedBlankActiveTenant("rest-wa", "wa-slug", { whatsappNumber: "573119998877" })
+    vi.spyOn(apiClient, "hasToken").mockReturnValue(true)
+    vi.spyOn(apiClient, "listRestaurants").mockResolvedValue([] as any)
+  })
+
+  it("sends empty whatsappNumber instead of falling back to the previous number when cleared", async () => {
+    const updateSpy = vi.spyOn(apiClient, "updateRestaurant").mockResolvedValue({} as any)
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <TenantProvider>{children}</TenantProvider>
+    )
+    const { result } = renderHook(() => useTenant(), { wrapper })
+
+    await act(async () => {
+      await result.current.updateRestaurant("rest-wa", {
+        config: { ...DEFAULT_STORE_CONFIG, whatsappNumber: "" },
+      })
+    })
+
+    expect(updateSpy).toHaveBeenCalledWith(
+      "rest-wa",
+      expect.objectContaining({
+        whatsappNumber: "",
+      })
+    )
+  })
+})

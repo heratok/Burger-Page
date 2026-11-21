@@ -46,7 +46,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
   const [name, setName] = useState("")
   const [slug, setSlug] = useState("")
   const [tagline, setTagline] = useState("")
-  const [whatsapp, setWhatsapp] = useState("573001234567")
+  const [whatsapp, setWhatsapp] = useState("")
   const [primaryColor, setPrimaryColor] = useState("#FF7A21")
   const [templateType, setTemplateType] = useState<"burger" | "pizza" | "tacos" | "blank">("burger")
   const [adminUsername, setAdminUsername] = useState("")
@@ -132,7 +132,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
     setName("")
     setSlug("")
     setTagline("")
-    setWhatsapp("573001234567")
+    setWhatsapp("")
     setPrimaryColor("#FF7A21")
     setTemplateType("burger")
     setAdminUsername("")
@@ -200,7 +200,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
         name: trimmedName,
         slug: trimmedSlug,
         tagline: tagline.trim() || "La mejor comida artesanal",
-        whatsappNumber: whatsapp.trim() || "573001234567",
+        whatsappNumber: whatsapp.trim(),
         primaryColor,
         templateType,
         timezone,
