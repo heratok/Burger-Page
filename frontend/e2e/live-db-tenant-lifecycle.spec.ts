@@ -49,6 +49,11 @@ test.describe('Live DB Multi-Tenant Lifecycle, Mobile Storefront & CRM Persisten
     await slugInput.fill(testRestSlug);
 
     await restModal.getByPlaceholder(/Rollos artesanales/i).fill('Hamburguesas y fusión artesanal');
+
+    // A tenant with no WhatsApp number cannot take storefront orders: checkout
+    // refuses before creating anything, so this lifecycle must provision one the
+    // way a real operator does. The old placeholder default is gone on purpose.
+    await restModal.getByLabel(/WhatsApp de Pedidos/i).fill('573105550101');
     
     // Select Template (Burger)
     const burgerTemplateBtn = restModal.getByRole('button', { name: /Hamburguesería/i });
