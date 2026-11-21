@@ -22,7 +22,11 @@ for (const envPath of envCandidates) {
 }
 
 import { buildApp } from './infrastructure/http/app.js';
-import { resolveStorageDriver, dataRunsOnPostgres } from './infrastructure/persistence/driverSelection.js';
+import {
+  dataRunsOnPostgres,
+  getStorageDriverStartupError,
+  resolveStorageDriver,
+} from './infrastructure/persistence/driverSelection.js';
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
 const HOST = process.env.HOST || '0.0.0.0';
@@ -30,6 +34,18 @@ const HOST = process.env.HOST || '0.0.0.0';
 // Security fail-fast: production must never boot with the public fallback JWT secret.
 if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
   console.error('❌ [SECURITY] JWT_SECRET is required in production. Set it in the deployment environment before starting.');
+  process.exit(1);
+}
+
+const selectedDriver = resolveStorageDriver();
+const storageDriverStartupError = getStorageDriverStartupError(
+  selectedDriver,
+  process.env.NODE_ENV,
+  process.env.STORAGE_DRIVER,
+);
+
+if (storageDriverStartupError) {
+  console.error(storageDriverStartupError);
   process.exit(1);
 }
 
@@ -109,8 +125,6 @@ const start = async () => {
 
     // Single source of truth for driver selection (D3): probe the pool only
     // when data flows through Postgres (postgres or supabase, both S5 pooler).
-    const selectedDriver = resolveStorageDriver();
-
     if (dataRunsOnPostgres(selectedDriver)) {
       try {
         const { verifyPgConnection } = await import('./infrastructure/persistence/postgres/PgClient.js');
