@@ -63,7 +63,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     <ModalShell
       onClose={onClose}
       aria-labelledby="login-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-md"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
     >
       <div className="w-full max-w-sm rounded-2xl border border-slate-800 bg-[#0E1322] p-6 shadow-2xl">
         {/* Header */}

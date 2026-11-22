@@ -265,7 +265,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           aria-hidden="true"
           tabIndex={-1}
           data-modal-keep
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs lg:hidden border-none p-0 cursor-default"
+          className="fixed inset-0 z-50 bg-black/60 lg:hidden border-none p-0 cursor-default"
           onClick={() => setIsMobileSidebarOpen(false)}
         />
       )}

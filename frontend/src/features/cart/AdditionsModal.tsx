@@ -386,7 +386,7 @@ export default function AdditionsModal({
       {isImageExpanded && product.src && typeof document !== "undefined" && createPortal(
         <ModalShell
           aria-label={`Foto ampliada de ${product.name}`}
-          className="fixed inset-0 z-60 flex items-center justify-center bg-black/90 p-4 backdrop-blur-md animate-in fade-in-0 duration-150"
+          className="fixed inset-0 z-60 flex items-center justify-center bg-black/90 p-4 animate-in fade-in-0 duration-150"
           onClick={(e) => {
             e.stopPropagation()
             setIsImageExpanded(false)
