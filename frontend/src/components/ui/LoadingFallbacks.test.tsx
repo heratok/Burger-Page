@@ -1,6 +1,9 @@
 import { describe, it, expect, afterEach } from "vitest"
 import { render, screen, cleanup } from "@testing-library/react"
 import { StoreBootLoader, StorefrontLoadingFallback } from "./LoadingFallbacks"
+import ProductCard from "@/features/storefront/ProductCard"
+import { RestaurantProvider } from "@/context/RestaurantContext"
+import type { MenuItem } from "@/types/restaurant"
 
 const skeleton = '[data-slot="skeleton"]'
 
@@ -88,5 +91,106 @@ describe("StorefrontLoadingFallback - catalog skeleton fidelity", () => {
     ]) {
       expect(container.querySelector(`[data-slot="${slot}"]`)).not.toBeNull()
     }
+  })
+
+  // S6 residual — the shrunken skeleton delta (-42px mobile / -68px desktop) was
+  // measured live but nothing protected it: the previous shape was a 6-card grid
+  // of `aspect-video` tiles that collapsed the mobile page by 1541px in one
+  // frame. jsdom has no layout, so the contract is pinned structurally against
+  // the real ProductCard itself: same grid, same thumbnail box, same padding,
+  // two text lines and the price/action row.
+  it("reserves the real ProductCard geometry, so the catalog cannot collapse when data lands", () => {
+    const product: MenuItem = {
+      id: "p1",
+      name: "Hamburguesa Clásica",
+      price: 25000,
+      category: "Hamburguesas",
+      src: "/images/classic.jpg",
+      description: "Carne 150g, cheddar y salsa de la casa",
+      inStock: true,
+    }
+
+    const tokens = (element: Element) => new Set(element.className.split(/\s+/).filter(Boolean))
+    /** Every candidate the reference element really carries. */
+    const shared = (reference: Element, candidates: string[]) =>
+      candidates.filter((token) => tokens(reference).has(token))
+
+    // 1. Reference: the settled card of the real storefront.
+    const real = render(
+      <RestaurantProvider>
+        <ProductCard product={product} onSelectProduct={() => {}} />
+      </RestaurantProvider>
+    )
+    const realCard = real.container.querySelector<HTMLElement>('[role="button"]')!
+    const realThumb = realCard.querySelector<HTMLElement>(".aspect-square")!
+    const realBody = realCard.children[1] as HTMLElement
+    const realPriceRow = realBody.lastElementChild as HTMLElement
+
+    expect(shared(realCard, ["flex-row", "items-stretch", "p-3", "sm:p-4"])).toEqual([
+      "flex-row",
+      "items-stretch",
+      "p-3",
+      "sm:p-4",
+    ])
+    expect(shared(realThumb, ["size-24", "min-[400px]:size-28", "sm:size-32", "aspect-square", "self-center"])).toEqual([
+      "size-24",
+      "min-[400px]:size-28",
+      "sm:size-32",
+      "aspect-square",
+      "self-center",
+    ])
+    expect(shared(realBody, ["flex-1", "pl-3", "sm:pl-4", "justify-between"])).toEqual([
+      "flex-1",
+      "pl-3",
+      "sm:pl-4",
+      "justify-between",
+    ])
+    expect(shared(realPriceRow, ["mt-3", "pt-1", "items-center", "justify-between"])).toEqual([
+      "mt-3",
+      "pt-1",
+      "items-center",
+      "justify-between",
+    ])
+    real.unmount()
+
+    // 2. The placeholder must carry those same boxes.
+    const placeholder = render(<StorefrontLoadingFallback />)
+    const grid = placeholder.container.querySelector('[data-slot="storefront-skeleton-grid"]')!
+    const card = grid.querySelector<HTMLElement>('[data-slot="storefront-skeleton-card"]')!
+    const thumb = card.querySelector<HTMLElement>('[data-slot="storefront-skeleton-thumb"]')!
+    const body = card.querySelector<HTMLElement>('[data-slot="storefront-skeleton-card-body"]')!
+    const priceRow = body.lastElementChild as HTMLElement
+
+    for (const token of ["flex-row", "items-stretch", "p-3", "sm:p-4"]) {
+      expect(tokens(card).has(token), `card lost ${token}`).toBe(true)
+    }
+    for (const token of ["size-24", "min-[400px]:size-28", "sm:size-32", "aspect-square", "self-center"]) {
+      expect(tokens(thumb).has(token), `thumbnail lost ${token}`).toBe(true)
+    }
+    for (const token of ["flex-1", "pl-3", "sm:pl-4", "justify-between"]) {
+      expect(tokens(body).has(token), `card body lost ${token}`).toBe(true)
+    }
+    for (const token of ["mt-3", "pt-1", "items-center", "justify-between"]) {
+      expect(tokens(priceRow).has(token), `price/action row lost ${token}`).toBe(true)
+    }
+
+    // Two text lines under the title block, then the price/action row.
+    const textBlock = body.firstElementChild as HTMLElement
+    expect(textBlock.querySelectorAll(skeleton).length).toBeGreaterThanOrEqual(2)
+    expect(priceRow.querySelector('[data-slot="storefront-skeleton-price"]')).not.toBeNull()
+    expect(priceRow.querySelector('[data-slot="storefront-skeleton-action"]')).not.toBeNull()
+
+    // 3. The old shape stays gone, and the responsive rule still holds.
+    expect(placeholder.container.querySelector(".aspect-video")).toBeNull()
+    expect(grid.className).toContain("grid-cols-1")
+    expect(grid.className).toContain("md:grid-cols-2")
+    const cards = grid.querySelectorAll('[data-slot="storefront-skeleton-card"]')
+    expect(cards).toHaveLength(4)
+    expect(tokens(cards[0]).has("hidden")).toBe(false)
+    expect(tokens(cards[1]).has("hidden")).toBe(false)
+    expect(tokens(cards[2]).has("hidden")).toBe(true)
+    expect(tokens(cards[2]).has("md:flex")).toBe(true)
+    expect(tokens(cards[3]).has("hidden")).toBe(true)
+    expect(tokens(cards[3]).has("md:flex")).toBe(true)
   })
 })

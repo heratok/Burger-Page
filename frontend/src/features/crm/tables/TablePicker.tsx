@@ -135,12 +135,20 @@ export function TablePicker({
             <Skeleton className={`h-3 w-16 rounded ${isDark ? "bg-slate-800" : "bg-slate-200"}`} />
             <div data-slot="pill-grid" className="grid grid-cols-3 gap-1.5 sm:grid-cols-4">
               {Array.from({ length: 8 }).map((_, i) => (
-                <Skeleton
+                <div
                   key={i}
-                  // Real pills are min-h-10 rounded-lg buttons: the slots keep
-                  // that box so the field does not resize when tables land.
-                  className={`h-10 rounded-lg ${isDark ? "bg-slate-800" : "bg-slate-200"}`}
-                />
+                  data-slot="pill-slot"
+                  // A real pill is a `min-h-10` button padded `px-1.5 py-1` that
+                  // grows when the table name wraps onto two lines: the slot
+                  // carries that same box and reserves both text lines, so the
+                  // field does not resize when the tables land. S15.
+                  className={`pointer-coarse:min-h-11 flex min-h-10 flex-col items-center justify-center rounded-lg border px-1.5 py-1 ${
+                    isDark ? "border-slate-700 bg-slate-900" : "border-slate-300 bg-white"
+                  }`}
+                >
+                  <Skeleton className={`h-4 w-3/4 rounded-sm ${isDark ? "bg-slate-800" : "bg-slate-200"}`} />
+                  <Skeleton className={`h-4 w-1/2 rounded-sm ${isDark ? "bg-slate-800" : "bg-slate-200"}`} />
+                </div>
               ))}
             </div>
           </div>

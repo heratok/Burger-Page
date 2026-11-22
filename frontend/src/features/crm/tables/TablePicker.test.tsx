@@ -193,7 +193,7 @@ describe("TablePicker", () => {
   // pill slots at the same spacing as the real buttons, inside the same
   // max-h-44 scroller, so the form does not grow by a fake 230-260px table.
   it("reserves the compact pill grid instead of a full data table", () => {
-    render(
+    const { unmount } = render(
       <TablePicker
         isDark={false}
         tables={[]}
@@ -217,18 +217,66 @@ describe("TablePicker", () => {
     expect(grid!.className).toContain("grid-cols-3")
     expect(grid!.className).toContain("sm:grid-cols-4")
 
-    // Real pills are min-h-10 rounded-lg buttons: the slots keep that height so
-    // the field does not resize when the tables land.
     const slots = Array.from(grid!.children) as HTMLElement[]
     expect(slots.length).toBeGreaterThanOrEqual(6)
     expect(slots.length).toBeLessThanOrEqual(12)
-    for (const slot of slots) {
-      expect(slot.className).toContain("h-10")
-      expect(slot.className).toContain("rounded-lg")
-    }
 
     // A data table (search bar + thead) is never the right shape for this slot.
     expect(placeholder.querySelector("table")).toBeNull()
+
+    unmount()
+  })
+
+  // S15 residual — `h-10` slots (40px) reserved less than the real pill, whose
+  // two-line name grows it past 40px, so the field still jumped ~14px when the
+  // tables landed. The slots must carry the real pill's own box: the same floor,
+  // the same padding and two reserved text lines.
+  it("reserves the real pill's height behaviour so the field does not resize when tables land", () => {
+    const { unmount } = render(
+      <TablePicker
+        isDark={false}
+        tables={[]}
+        isLoading
+        loadError={null}
+        selectedTableId={null}
+        occupiedTableIds={new Set()}
+        onSelect={() => {}}
+        onCreateTable={async () => null}
+        onOpenManager={() => {}}
+      />
+    )
+
+    const grid = screen
+      .getByTestId("table-pill-skeleton")
+      .querySelector<HTMLElement>('[data-slot="pill-grid"]')!
+    const slots = Array.from(grid.children) as HTMLElement[]
+    expect(slots.length).toBeGreaterThan(0)
+
+    for (const slot of slots) {
+      const classes = new Set(slot.className.split(/\s+/).filter(Boolean))
+      // No fixed 40px box: the real pill is a min-height button, not a fixed tile.
+      expect(classes.has("h-10")).toBe(false)
+      expect(classes.has("min-h-10")).toBe(true)
+      // The same box the real pill uses (padding, border, radius).
+      expect(classes.has("px-1.5")).toBe(true)
+      expect(classes.has("py-1")).toBe(true)
+      expect(classes.has("rounded-lg")).toBe(true)
+      expect(classes.has("border")).toBe(true)
+      // Two text lines are reserved, so a wrapped table name cannot grow it.
+      expect(slot.querySelectorAll('[data-slot="skeleton"]').length).toBeGreaterThanOrEqual(2)
+    }
+
+    unmount()
+
+    // The reference: the settled pill really is the box the slots reserve, and a
+    // change to either side has to be made on both.
+    setup({ tables: [t("a", "Mesa 1"), t("b", "Mesa 2", 1)] })
+    const pill = screen.getByRole("button", { name: /Mesa 1/ })
+    const pillClasses = new Set(pill.className.split(/\s+/).filter(Boolean))
+    for (const token of ["min-h-10", "px-1.5", "py-1", "rounded-lg"]) {
+      expect(pillClasses.has(token), `real pill lost ${token}`).toBe(true)
+    }
+    expect(pillClasses.has("h-10")).toBe(false)
   })
 })
 

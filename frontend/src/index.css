@@ -1032,6 +1032,18 @@ textarea::placeholder {
 }
 
 /*
+ * Admin light theme (AdminLayout.tsx:250). The muted token was written once, for
+ * the dark surfaces (#8B8F95): on the light admin surfaces it reads 2.97:1 on a
+ * slate-100 image frame and 3.11:1 on the #F8FAFC page, so the LazyImage
+ * fallback glyph lost its contrast there. Scoped override only: the base token
+ * and every storefront theme keep their own values. #64748B measures 4.34:1 on
+ * slate-100 and 4.55:1 on the page.
+ */
+.admin-light {
+  --color-text-muted: #64748B;
+}
+
+/*
  * Keyboard focus baseline (WCAG 2.4.7 / 2.4.11). --focus-ring keeps >=3:1 against light and dark surfaces and is deliberately independent of the merchant brand colour (which may be pale).
  * The 2px offset leaves a surface-coloured gap so the ring also separates from accent-filled controls.
  * Components that paint their own ring/border keep working: utilities sit in a higher layer.
