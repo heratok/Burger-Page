@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react"
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { useRestaurant } from "@/context/RestaurantContext"
 import { ModalShell } from "@/components/ui/modal-shell"
 import { apiClient } from "@/core/api/apiClient"
@@ -11,11 +11,13 @@ import {
   Pencil,
   Trash2,
   X,
+  AlertCircle,
   AlertTriangle,
   Sparkles,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
+import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner"
 import { PERMISSION_GROUPS, type PermissionMeta } from "./roles/permissionCatalog"
 import { summarizePermissions } from "./roles/permissionSummary"
@@ -37,13 +39,34 @@ const PRESET_TEMPLATES = [
 ]
 
 export const RolesManager: React.FC = () => {
-  const { adminTheme } = useRestaurant()
+  const { adminTheme, effectiveRestaurantId } = useRestaurant()
   const isDark = adminTheme === "dark"
 
-  const [roles, setRoles] = useState<RoleDTO[]>([])
+  const [loadedData, setLoadedData] = useState<{
+    restaurantId: string | undefined
+    roles: RoleDTO[]
+  } | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [loadErrorState, setLoadErrorState] = useState<{
+    restaurantId: string | undefined
+    message: string
+  } | null>(null)
+  const requestSeqRef = useRef(0)
+  const latestRestaurantIdRef = useRef(effectiveRestaurantId)
+  latestRestaurantIdRef.current = effectiveRestaurantId
   const [searchTerm, setSearchTerm] = useState("")
   const [isCreatingRecommended, setIsCreatingRecommended] = useState(false)
+
+  const isCurrentTenantLoaded =
+    loadedData !== null && loadedData.restaurantId === effectiveRestaurantId
+  const roles = useMemo(
+    () => (isCurrentTenantLoaded ? loadedData.roles : []),
+    [isCurrentTenantLoaded, loadedData]
+  )
+  const hasLoadedRoles = isCurrentTenantLoaded
+  const loadError =
+    loadErrorState?.restaurantId === effectiveRestaurantId ? loadErrorState.message : null
+  const showLoading = isLoading || (!isCurrentTenantLoaded && !loadError)
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -58,20 +81,43 @@ export const RolesManager: React.FC = () => {
   const [conflictError, setConflictError] = useState<string | null>(null)
 
   const fetchRoles = useCallback(async () => {
+    const reqId = ++requestSeqRef.current
+    const requestRestaurantId = effectiveRestaurantId
     setIsLoading(true)
+    setLoadErrorState((prev) =>
+      prev?.restaurantId === requestRestaurantId ? null : prev
+    )
     try {
-      const data = await apiClient.listRoles()
-      setRoles(data)
+      const data = await apiClient.listRoles(requestRestaurantId)
+      if (
+        requestSeqRef.current !== reqId ||
+        latestRestaurantIdRef.current !== requestRestaurantId
+      ) {
+        return
+      }
+      setLoadedData({ restaurantId: requestRestaurantId, roles: data })
+      setLoadErrorState(null)
     } catch (err: any) {
-      toast.error(err.message || "Error al cargar la lista de roles")
+      if (
+        requestSeqRef.current !== reqId ||
+        latestRestaurantIdRef.current !== requestRestaurantId
+      ) {
+        return
+      }
+      const msg = err.message || "Error al cargar la lista de roles"
+      setLoadErrorState({ restaurantId: requestRestaurantId, message: msg })
+      toast.error(msg)
     } finally {
-      setIsLoading(false)
+      if (requestSeqRef.current === reqId) {
+        setIsLoading(false)
+      }
     }
-  }, [])
+  }, [effectiveRestaurantId])
 
   useEffect(() => {
+    latestRestaurantIdRef.current = effectiveRestaurantId
     void fetchRoles()
-  }, [fetchRoles])
+  }, [effectiveRestaurantId, fetchRoles])
 
   const filteredRoles = useMemo(() => {
     const term = searchTerm.toLowerCase().trim()
@@ -275,6 +321,7 @@ export const RolesManager: React.FC = () => {
           <Button
             type="button"
             onClick={openCreateModal}
+            disabled={!hasLoadedRoles}
             className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-md hover:bg-indigo-700"
           >
             <Plus className="size-4" />
@@ -322,16 +369,146 @@ export const RolesManager: React.FC = () => {
       </div>
 
       {/* Roles Grid */}
-      {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {showLoading && (
+        <div
+          role="status"
+          aria-live="polite"
+          className={`flex items-center gap-2 text-xs font-medium ${
+            isDark ? "text-slate-400" : "text-slate-600"
+          }`}
+        >
+          <span
+            aria-hidden="true"
+            className="size-2 rounded-full bg-indigo-500 animate-pulse"
+          />
+          <span>Cargando roles...</span>
+        </div>
+      )}
+
+      {loadError && roles.length > 0 && !showLoading && (
+        <div
+          role="alert"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-200"
+        >
+          <span>No pudimos actualizar los roles: {loadError}</span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => void fetchRoles()}
+          >
+            Reintentar
+          </Button>
+        </div>
+      )}
+
+      {showLoading && roles.length === 0 ? (
+        <div
+          data-testid="roles-grid-skeleton"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+        >
           {[1, 2, 3].map((n) => (
             <div
               key={n}
-              className={`h-48 rounded-2xl border p-5 animate-pulse ${
-                isDark ? "border-slate-800 bg-slate-900/50" : "border-slate-200 bg-slate-50"
+              className={`flex flex-col justify-between rounded-2xl border p-5 shadow-xs ${
+                isDark ? "border-slate-800 bg-[#0E1322]" : "border-slate-200 bg-white"
               }`}
-            />
+            >
+              <div>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 space-y-2">
+                    {/* Title bar */}
+                    <div className="flex items-center gap-2">
+                      <Skeleton
+                        className={`h-5 w-32 rounded ${isDark ? "bg-slate-800" : "bg-slate-200"}`}
+                      />
+                      <Skeleton
+                        className={`h-5 w-14 rounded-md ${
+                          isDark ? "bg-slate-800/70" : "bg-slate-200/70"
+                        }`}
+                      />
+                    </div>
+                    {/* Two description lines */}
+                    <div className="space-y-1.5 pt-0.5">
+                      <Skeleton
+                        className={`h-3.5 w-full rounded ${
+                          isDark ? "bg-slate-800/80" : "bg-slate-200/80"
+                        }`}
+                      />
+                      <Skeleton
+                        className={`h-3.5 w-4/5 rounded ${
+                          isDark ? "bg-slate-800/60" : "bg-slate-200/60"
+                        }`}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Skeleton
+                      className={`size-7 rounded-lg ${isDark ? "bg-slate-800" : "bg-slate-200"}`}
+                    />
+                    <Skeleton
+                      className={`size-7 rounded-lg ${isDark ? "bg-slate-800" : "bg-slate-200"}`}
+                    />
+                  </div>
+                </div>
+
+                {/* Permission summary lines */}
+                <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800/80 space-y-2">
+                  <Skeleton
+                    className={`h-3.5 w-14 rounded ${isDark ? "bg-slate-800" : "bg-slate-200"}`}
+                  />
+                  <div className="space-y-1.5">
+                    <Skeleton
+                      className={`h-3.5 w-11/12 rounded ${
+                        isDark ? "bg-slate-800/70" : "bg-slate-200/70"
+                      }`}
+                    />
+                    <Skeleton
+                      className={`h-3.5 w-4/5 rounded ${
+                        isDark ? "bg-slate-800/60" : "bg-slate-200/60"
+                      }`}
+                    />
+                    <Skeleton
+                      className={`h-3.5 w-3/4 rounded ${
+                        isDark ? "bg-slate-800/50" : "bg-slate-200/50"
+                      }`}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Date footer */}
+              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <Skeleton
+                  className={`h-3 w-32 rounded ${
+                    isDark ? "bg-slate-800/70" : "bg-slate-200/70"
+                  }`}
+                />
+              </div>
+            </div>
           ))}
+        </div>
+      ) : loadError && roles.length === 0 ? (
+        <div
+          role="alert"
+          className={`rounded-2xl border p-12 text-center shadow-xs ${
+            isDark ? "border-rose-900/50 bg-[#0E1322]" : "border-rose-200 bg-white"
+          }`}
+        >
+          <AlertCircle className="size-12 mx-auto mb-3 text-rose-600 dark:text-rose-400" />
+          <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+            No pudimos cargar los roles
+          </h3>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+            {loadError}
+          </p>
+          <Button
+            type="button"
+            onClick={() => void fetchRoles()}
+            className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white shadow-sm hover:bg-indigo-700"
+          >
+            <span>Reintentar</span>
+          </Button>
         </div>
       ) : filteredRoles.length === 0 ? (
         <div
