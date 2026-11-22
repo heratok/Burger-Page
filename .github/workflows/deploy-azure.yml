@@ -11,6 +11,7 @@ on:
     paths:
       - 'backend/**'
       - 'packages/contracts/**'
+      - '.dockerignore'
       - '.github/workflows/deploy-azure.yml'
   workflow_dispatch: {}
 

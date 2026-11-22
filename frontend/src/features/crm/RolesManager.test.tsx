@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react"
+import { render, screen, fireEvent, waitFor, cleanup, act } from "@testing-library/react"
 import { RolesManager } from "./RolesManager"
 import { apiClient } from "@/core/api/apiClient"
 import type { RoleDTO } from "@burger-page/contracts"
@@ -27,15 +27,19 @@ const mockRoles: RoleDTO[] = [
   },
 ]
 
+let mockEffectiveRestaurantId = "rest-1"
+
 vi.mock("@/context/RestaurantContext", () => ({
   useRestaurant: () => ({
     adminTheme: "light",
+    effectiveRestaurantId: mockEffectiveRestaurantId,
   }),
 }))
 
 describe("RolesManager Component (TDD)", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockEffectiveRestaurantId = "rest-1"
     vi.spyOn(apiClient, "listRoles").mockResolvedValue([...mockRoles])
     vi.spyOn(apiClient, "createRole").mockResolvedValue({
       id: "role-3",
@@ -341,5 +345,176 @@ describe("RolesManager Component (TDD)", () => {
     await waitFor(() => expect(screen.getByText("Pasante")).toBeDefined())
     expect(screen.getByText("Sin permisos asignados")).toBeDefined()
     expect(screen.queryByText("Puede:")).toBeNull()
+  })
+
+  it("renders structured role card skeletons and visible live status while initial request is in flight", async () => {
+    let resolveRoles!: (value: RoleDTO[]) => void
+    vi.spyOn(apiClient, "listRoles").mockImplementation(
+      () => new Promise<RoleDTO[]>((res) => { resolveRoles = res })
+    )
+
+    render(<RolesManager />)
+
+    const status = screen.getByRole("status")
+    expect(status.getAttribute("aria-live")).toBe("polite")
+    expect(status.textContent).toMatch(/Cargando roles/i)
+
+    const skeletonGrid = screen.getByTestId("roles-grid-skeleton")
+    expect(skeletonGrid.children.length).toBe(3)
+    const firstCard = skeletonGrid.children[0] as HTMLElement
+    // Mirrors card anatomy: title bar, two description lines, permission summary lines, date footer
+    expect(firstCard.querySelectorAll('[data-slot="skeleton"]').length).toBeGreaterThanOrEqual(7)
+
+    resolveRoles([...mockRoles])
+
+    await waitFor(() => expect(screen.getByText("Cajero")).toBeDefined())
+    expect(screen.queryByTestId("roles-grid-skeleton")).toBeNull()
+    expect(screen.queryByRole("status")).toBeNull()
+  })
+
+  it("keeps existing role cards visible while a refetch is in flight", async () => {
+    let resolveRefetch!: (value: RoleDTO[]) => void
+    vi.spyOn(apiClient, "listRoles")
+      .mockResolvedValueOnce([...mockRoles])
+      .mockImplementationOnce(
+        () => new Promise<RoleDTO[]>((res) => { resolveRefetch = res })
+      )
+
+    render(<RolesManager />)
+
+    await waitFor(() => expect(screen.getByText("Cajero")).toBeDefined())
+
+    fireEvent.click(screen.getByLabelText("Editar rol Cajero"))
+    fireEvent.click(screen.getByRole("button", { name: /Guardar Rol/i }))
+
+    await waitFor(() => {
+      expect(screen.getByRole("status").textContent).toMatch(/Cargando roles/i)
+    })
+
+    expect(screen.getByText("Cajero")).toBeDefined()
+    expect(screen.getByText("Cocinero")).toBeDefined()
+    expect(screen.queryByTestId("roles-grid-skeleton")).toBeNull()
+
+    resolveRefetch([...mockRoles])
+
+    await waitFor(() => {
+      expect(screen.queryByRole("status")).toBeNull()
+    })
+    expect(screen.getByText("Cajero")).toBeDefined()
+  })
+
+  it("shows an error state with Reintentar, hides false empty-state copy, and keeps Nuevo Rol disabled when initial load fails", async () => {
+    vi.spyOn(apiClient, "listRoles").mockRejectedValue(new Error("Fallo de red"))
+
+    render(<RolesManager />)
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toBeDefined()
+    })
+
+    expect(screen.getByRole("button", { name: /Reintentar/i })).toBeDefined()
+    expect(screen.queryByText(/No hay roles configurados/i)).toBeNull()
+    expect(screen.queryByRole("button", { name: /Crear roles recomendados/i })).toBeNull()
+    expect((screen.getByRole("button", { name: /Nuevo Rol/i }) as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it("re-issues listRoles when clicking Reintentar and enables Nuevo Rol once it succeeds", async () => {
+    vi.spyOn(apiClient, "listRoles")
+      .mockRejectedValueOnce(new Error("Fallo temporal"))
+      .mockResolvedValueOnce([...mockRoles])
+
+    render(<RolesManager />)
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Reintentar/i })).toBeDefined()
+    })
+    expect((screen.getByRole("button", { name: /Nuevo Rol/i }) as HTMLButtonElement).disabled).toBe(true)
+
+    fireEvent.click(screen.getByRole("button", { name: /Reintentar/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText("Cajero")).toBeDefined()
+    })
+
+    expect(apiClient.listRoles).toHaveBeenCalledTimes(2)
+    expect(screen.queryByRole("alert")).toBeNull()
+    expect((screen.getByRole("button", { name: /Nuevo Rol/i }) as HTMLButtonElement).disabled).toBe(false)
+  })
+
+  it("hides previous tenant roles, disables Nuevo Rol, and shows skeletons immediately when effectiveRestaurantId changes", async () => {
+    let resolveRest2Roles!: (value: RoleDTO[]) => void
+    vi.spyOn(apiClient, "listRoles")
+      .mockResolvedValueOnce([...mockRoles])
+      .mockImplementationOnce(
+        () => new Promise<RoleDTO[]>((res) => { resolveRest2Roles = res })
+      )
+
+    const { rerender } = render(<RolesManager />)
+    await waitFor(() => expect(screen.getByText("Cajero")).toBeDefined())
+
+    mockEffectiveRestaurantId = "rest-2"
+    rerender(<RolesManager />)
+
+    expect(screen.queryByText("Cajero")).toBeNull()
+    expect(screen.queryByText("Cocinero")).toBeNull()
+    expect(screen.getByTestId("roles-grid-skeleton")).toBeDefined()
+    expect((screen.getByRole("button", { name: /Nuevo Rol/i }) as HTMLButtonElement).disabled).toBe(true)
+
+    resolveRest2Roles([
+      {
+        id: "role-r2",
+        restaurantId: "rest-2",
+        name: "Hostess",
+        description: "Recepción de mesas",
+        permissions: ["tables.manage"],
+        isSystem: false,
+        createdAt: "2026-02-01T00:00:00Z",
+        updatedAt: "2026-02-01T00:00:00Z",
+      },
+    ])
+
+    await waitFor(() => expect(screen.getByText("Hostess")).toBeDefined())
+    expect(screen.queryByText("Cajero")).toBeNull()
+    expect((screen.getByRole("button", { name: /Nuevo Rol/i }) as HTMLButtonElement).disabled).toBe(false)
+  })
+
+  it("ignores a late response from the previous tenant so it never overwrites the new tenant's roles", async () => {
+    let resolveRest1Roles!: (value: RoleDTO[]) => void
+    let resolveRest2Roles!: (value: RoleDTO[]) => void
+
+    vi.spyOn(apiClient, "listRoles")
+      .mockImplementationOnce(
+        () => new Promise<RoleDTO[]>((res) => { resolveRest1Roles = res })
+      )
+      .mockImplementationOnce(
+        () => new Promise<RoleDTO[]>((res) => { resolveRest2Roles = res })
+      )
+
+    const { rerender } = render(<RolesManager />)
+
+    mockEffectiveRestaurantId = "rest-2"
+    rerender(<RolesManager />)
+
+    resolveRest2Roles([
+      {
+        id: "role-r2",
+        restaurantId: "rest-2",
+        name: "Hostess",
+        description: "Recepción de mesas",
+        permissions: ["tables.manage"],
+        isSystem: false,
+        createdAt: "2026-02-01T00:00:00Z",
+        updatedAt: "2026-02-01T00:00:00Z",
+      },
+    ])
+
+    await waitFor(() => expect(screen.getByText("Hostess")).toBeDefined())
+
+    await act(async () => {
+      resolveRest1Roles([...mockRoles])
+    })
+
+    expect(screen.getByText("Hostess")).toBeDefined()
+    expect(screen.queryByText("Cajero")).toBeNull()
   })
 })
