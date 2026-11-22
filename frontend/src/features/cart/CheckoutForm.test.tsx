@@ -331,6 +331,34 @@ describe("CheckoutForm - Direct Sale Flow", () => {
     expect(onCloseMock).not.toHaveBeenCalled()
   })
 
+  it("blocks checkout with an error and creates no order when the tenant has an empty configured WhatsApp number", async () => {
+    seedBlankActiveTenant("rest-no-wa", "no-wa")
+    const windowOpenSpy = vi.spyOn(window, "open").mockImplementation(() => null)
+    const onCloseMock = vi.fn()
+    const { apiClient } = await import("@/core/api/apiClient")
+    const createOrderSpy = vi.spyOn(apiClient, "createOrder")
+
+    render(
+      <RestaurantProvider>
+        <CheckoutForm cartItems={mockCartItems} onClose={onCloseMock} onBackToCart={() => {}} />
+        <OrdersProbe />
+      </RestaurantProvider>
+    )
+    fillForm()
+    fireEvent.click(screen.getByRole("button", { name: /Enviar pedido por WhatsApp/i }))
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(
+        "Este restaurante aún no tiene WhatsApp configurado. Intenta más tarde."
+      )
+    })
+    expect(createOrderSpy).not.toHaveBeenCalled()
+    expect(screen.getByTestId("orders-probe").textContent).toBe("[]")
+    expect(windowOpenSpy).not.toHaveBeenCalled()
+    expect(locationAssignMock).not.toHaveBeenCalled()
+    expect(onCloseMock).not.toHaveBeenCalled()
+  })
+
   const fillForm = () => {
     fireEvent.change(screen.getByLabelText(/Nombre/i), { target: { value: "Carlos Pérez" } })
     fireEvent.change(screen.getByLabelText(/Celular/i), { target: { value: "3001234567" } })

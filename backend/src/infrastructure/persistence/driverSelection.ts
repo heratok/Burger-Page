@@ -29,6 +29,23 @@ export function resolveStorageDriver(explicit?: StorageDriver): StorageDriver {
 }
 
 /**
+ * Returns an actionable startup error when production would silently fall
+ * back to in-memory storage. An explicit STORAGE_DRIVER=memory remains a
+ * valid operator opt-in.
+ */
+export function getStorageDriverStartupError(
+  driver: StorageDriver,
+  nodeEnv: string | undefined,
+  configuredDriver: string | undefined,
+): string | undefined {
+  if (nodeEnv !== 'production' || driver !== 'memory' || configuredDriver === 'memory') {
+    return undefined;
+  }
+
+  return '❌ [STORAGE] Production storage is not configured. Set STORAGE_DRIVER, DATABASE_URL or SUPABASE_URL before starting.';
+}
+
+/**
  * True when the resolved driver runs every data query through the Postgres
  * pooler. Since S5 both 'postgres' and 'supabase' share that pool (they
  * differ only in where files are stored).

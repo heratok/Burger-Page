@@ -117,22 +117,24 @@ export class CreateRestaurantUseCase {
     // secret when the caller does not provide one. It is returned once in the
     // create response and only its hash (on the admin user) is persisted.
     const adminPassword = input.adminPassword || randomBytes(12).toString('base64url');
+    const whatsappNumber =
+      input.whatsappNumber?.trim() || input.config?.whatsappNumber?.trim() || undefined;
     const newRestaurant: Restaurant = {
       id: restaurantId,
       slug: cleanSlug,
       name,
       tagline: input.tagline || 'Cocina artesanal',
-      whatsappNumber: input.whatsappNumber || '573001234567',
+      whatsappNumber,
       primaryColor: input.primaryColor || '#FF7A21',
       theme: input.theme || template?.theme || 'dark-charcoal',
       config: {
         ...(input.config || {
           name,
           tagline: input.tagline || 'Cocina artesanal',
-          whatsappNumber: input.whatsappNumber || '573001234567',
           primaryColor: input.primaryColor || '#FF7A21',
           bgTheme: input.theme || 'dark-charcoal',
         }),
+        whatsappNumber: whatsappNumber ?? '',
         currency,
         currencySymbol,
       },

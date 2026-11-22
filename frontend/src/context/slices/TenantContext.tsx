@@ -492,7 +492,7 @@ const TenantProviderInner: React.FC<TenantProviderProps> = ({
             name: updates.config?.name || target?.config?.name,
             slug: updates.slug || target?.slug,
             tagline: updates.config?.tagline || target?.config?.tagline,
-            whatsappNumber: updates.config?.whatsappNumber || target?.config?.whatsappNumber,
+            whatsappNumber: updates.config?.whatsappNumber ?? target?.config?.whatsappNumber,
             primaryColor: updates.config?.primaryColor || target?.config?.primaryColor,
             theme: updates.config?.bgTheme || target?.config?.bgTheme,
             isActive: updates.isActive,

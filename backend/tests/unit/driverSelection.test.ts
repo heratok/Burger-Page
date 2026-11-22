@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   dataRunsOnPostgres,
+  getStorageDriverStartupError,
   resolveStorageDriver,
   type StorageDriver,
 } from '../../src/infrastructure/persistence/driverSelection.js';
@@ -85,5 +86,81 @@ describe('dataRunsOnPostgres truth table', () => {
 
   it.each(cases)('%s -> %s', (driver, expected) => {
     expect(dataRunsOnPostgres(driver)).toBe(expected);
+  });
+});
+
+describe('getStorageDriverStartupError', () => {
+  it('rejects the implicit memory fallback in production', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('STORAGE_DRIVER', undefined);
+    vi.stubEnv('SUPABASE_URL', undefined);
+    vi.stubEnv('DATABASE_URL', undefined);
+
+    const driver = resolveStorageDriver();
+
+    expect(driver).toBe('memory');
+    expect(getStorageDriverStartupError(driver, process.env.NODE_ENV, process.env.STORAGE_DRIVER)).toContain(
+      'STORAGE_DRIVER, DATABASE_URL or SUPABASE_URL',
+    );
+  });
+
+  it('allows SUPABASE_URL inference in production', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('STORAGE_DRIVER', undefined);
+    vi.stubEnv('SUPABASE_URL', 'https://abc.supabase.co');
+    vi.stubEnv('DATABASE_URL', undefined);
+
+    const driver = resolveStorageDriver();
+
+    expect(driver).toBe('supabase');
+    expect(getStorageDriverStartupError(driver, process.env.NODE_ENV, process.env.STORAGE_DRIVER)).toBeUndefined();
+  });
+
+  it('allows DATABASE_URL inference in production', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('STORAGE_DRIVER', undefined);
+    vi.stubEnv('SUPABASE_URL', undefined);
+    vi.stubEnv('DATABASE_URL', 'postgres://user:pass@host:5432/db');
+
+    const driver = resolveStorageDriver();
+
+    expect(driver).toBe('postgres');
+    expect(getStorageDriverStartupError(driver, process.env.NODE_ENV, process.env.STORAGE_DRIVER)).toBeUndefined();
+  });
+
+  it('allows explicit STORAGE_DRIVER=memory in production', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('STORAGE_DRIVER', 'memory');
+    vi.stubEnv('SUPABASE_URL', undefined);
+    vi.stubEnv('DATABASE_URL', undefined);
+
+    const driver = resolveStorageDriver();
+
+    expect(driver).toBe('memory');
+    expect(getStorageDriverStartupError(driver, process.env.NODE_ENV, process.env.STORAGE_DRIVER)).toBeUndefined();
+  });
+
+  it('allows STORAGE_DRIVER=sqlite in production', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('STORAGE_DRIVER', 'sqlite');
+    vi.stubEnv('SUPABASE_URL', undefined);
+    vi.stubEnv('DATABASE_URL', undefined);
+
+    const driver = resolveStorageDriver();
+
+    expect(driver).toBe('sqlite');
+    expect(getStorageDriverStartupError(driver, process.env.NODE_ENV, process.env.STORAGE_DRIVER)).toBeUndefined();
+  });
+
+  it('allows the implicit memory fallback outside production', () => {
+    vi.stubEnv('NODE_ENV', 'development');
+    vi.stubEnv('STORAGE_DRIVER', undefined);
+    vi.stubEnv('SUPABASE_URL', undefined);
+    vi.stubEnv('DATABASE_URL', undefined);
+
+    const driver = resolveStorageDriver();
+
+    expect(driver).toBe('memory');
+    expect(getStorageDriverStartupError(driver, process.env.NODE_ENV, process.env.STORAGE_DRIVER)).toBeUndefined();
   });
 });

@@ -293,17 +293,20 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const resetStoreConfig = useCallback(() => {
     const restaurantId = activeRestaurant?.id
+    const { whatsappNumber: _whatsappNumber, ...defaultDesignConfig } =
+      splitConfigForApi(DEFAULT_STORE_CONFIG).config
     runConfigWrite({
       apply: (config) => ({
         ...DEFAULT_STORE_CONFIG,
-        // Resetting the design never touches the opening hours or the pause.
+        // Resetting the design never touches the opening hours, the pause, or the WhatsApp number.
         schedule: config.schedule,
         timezone: config.timezone,
         ordersPaused: config.ordersPaused,
+        whatsappNumber: config.whatsappNumber,
       }),
       call: () =>
         restaurantId
-          ? apiClient.updateRestaurant(restaurantId, { config: splitConfigForApi(DEFAULT_STORE_CONFIG).config })
+          ? apiClient.updateRestaurant(restaurantId, { config: defaultDesignConfig })
           : Promise.resolve(undefined),
       toast: { info: "Diseño restablecido a los valores por defecto", error: "Error al restablecer la configuración en el servidor" },
       warnMessage: "Could not persist reset store config to backend API:",
