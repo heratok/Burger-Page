@@ -132,7 +132,9 @@ export function TablePicker({
           className="max-h-44 space-y-2 overflow-y-auto pr-0.5"
         >
           <div className="space-y-1">
-            <Skeleton className={`h-3 w-16 rounded ${isDark ? "bg-slate-800" : "bg-slate-200"}`} />
+            {/* Matches the real zone heading's 16px line box (text-xs), so the
+                scroller does not nudge when the zones land. S15. */}
+            <Skeleton className={`h-4 w-16 rounded ${isDark ? "bg-slate-800" : "bg-slate-200"}`} />
             <div data-slot="pill-grid" className="grid grid-cols-3 gap-1.5 sm:grid-cols-4">
               {Array.from({ length: 8 }).map((_, i) => (
                 <div

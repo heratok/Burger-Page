@@ -224,6 +224,12 @@ describe("TablePicker", () => {
     // A data table (search bar + thead) is never the right shape for this slot.
     expect(placeholder.querySelector("table")).toBeNull()
 
+    // The zone heading placeholder reserves the real heading's 16px line box
+    // (text-xs), so the scroller does not nudge when the zones land.
+    const zoneLabel = placeholder.querySelector<HTMLElement>(".space-y-1 > div:first-child")
+    expect(zoneLabel!.className).toContain("h-4")
+    expect(zoneLabel!.className).not.toContain("h-3")
+
     unmount()
   })
 
