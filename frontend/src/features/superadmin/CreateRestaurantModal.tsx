@@ -256,7 +256,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
   if (createdCredentials) {
     return (
       <ModalShell
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-md"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
         aria-labelledby="create-restaurant-credentials-title"
       >
         <div
@@ -349,7 +349,7 @@ export const CreateRestaurantModal: React.FC<CreateRestaurantModalProps> = ({ is
     <ModalShell
       onClose={onClose}
       aria-labelledby="create-restaurant-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-md"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
     >
       <div
         className={`w-full max-w-xl rounded-2xl border p-6 shadow-2xl transition-all max-h-[90vh] overflow-y-auto ${

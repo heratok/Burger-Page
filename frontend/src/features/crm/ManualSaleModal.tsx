@@ -927,7 +927,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
   if (!isOpen) return null
 
   return (
-    <ModalShell onClose={handleClose} aria-labelledby="manual-sale-title" className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-0 sm:p-4 backdrop-blur-md">
+    <ModalShell onClose={handleClose} aria-labelledby="manual-sale-title" className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-0 sm:p-4">
       <div
         className={`flex flex-col w-full h-full sm:h-[92vh] sm:max-h-[920px] max-w-6xl rounded-none sm:rounded-2xl border-0 sm:border shadow-2xl overflow-hidden transition-all ${
           isDark ? "border-slate-800 bg-[#0E1322] text-slate-100" : "border-slate-200 bg-white text-slate-900"
@@ -1665,7 +1665,7 @@ export const ManualSaleModal: React.FC<ManualSaleModalProps> = ({ isOpen, onClos
               setCustomizingProduct(null)
               setEditingCartItemIndex(null)
             }}
-            className="fixed inset-0 z-60 flex items-end sm:items-center justify-center bg-black/75 p-0 sm:p-4 backdrop-blur-xs transition-all"
+            className="fixed inset-0 z-60 flex items-end sm:items-center justify-center bg-black/75 p-0 sm:p-4 transition-all"
           >
             <div
               className={`w-full max-w-lg rounded-t-2xl sm:rounded-2xl border p-4 sm:p-5 shadow-2xl flex flex-col max-h-[85vh] animate-in fade-in zoom-in-95 duration-150 ${

@@ -93,7 +93,7 @@ export const OrderTicketModal: React.FC<OrderTicketModalProps> = ({
     <ModalShell
       onClose={onClose}
       aria-labelledby="ticket-modal-title"
-      className="fixed inset-0 z-60 flex items-center justify-center bg-black/75 p-3 sm:p-5 backdrop-blur-xs overflow-y-auto"
+      className="fixed inset-0 z-60 flex items-center justify-center bg-black/75 p-3 sm:p-5 overflow-y-auto"
     >
       {/* Thermal Print CSS rules */}
       <style
