@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react"
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { useRestaurant } from "@/context/RestaurantContext"
 import { ModalShell } from "@/components/ui/modal-shell"
 import { apiClient } from "@/core/api/apiClient"
@@ -23,6 +23,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
+import { TableSkeleton } from "@/components/ui/Skeletons"
 import { toast } from "sonner"
 import { ModernSelect, type ModernSelectOption } from "@/components/ui/ModernSelect"
 import { describeRoleAreas } from "./roles/permissionSummary"
@@ -40,11 +41,36 @@ export const TeamManager: React.FC = () => {
   const { adminTheme, effectiveRestaurantId, session, setAdminTab } = useRestaurant()
   const isDark = adminTheme === "dark"
 
-  const [users, setUsers] = useState<ApiUserRecord[]>([])
-  const [roles, setRoles] = useState<RoleDTO[]>([])
+  const [loadedData, setLoadedData] = useState<{
+    restaurantId: string | undefined
+    users: ApiUserRecord[]
+    roles: RoleDTO[]
+  } | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [loadErrorState, setLoadErrorState] = useState<{
+    restaurantId: string | undefined
+    message: string
+  } | null>(null)
+  const requestSeqRef = useRef(0)
+  const latestRestaurantIdRef = useRef(effectiveRestaurantId)
+  latestRestaurantIdRef.current = effectiveRestaurantId
   const [searchTerm, setSearchTerm] = useState("")
   const [roleFilter, setRoleFilter] = useState("all")
+
+  const isCurrentTenantLoaded =
+    loadedData !== null && loadedData.restaurantId === effectiveRestaurantId
+  const users = useMemo(
+    () => (isCurrentTenantLoaded ? loadedData.users : []),
+    [isCurrentTenantLoaded, loadedData]
+  )
+  const roles = useMemo(
+    () => (isCurrentTenantLoaded ? loadedData.roles : []),
+    [isCurrentTenantLoaded, loadedData]
+  )
+  const hasLoadedRoles = isCurrentTenantLoaded
+  const loadError =
+    loadErrorState?.restaurantId === effectiveRestaurantId ? loadErrorState.message : null
+  const showLoading = isLoading || (!isCurrentTenantLoaded && !loadError)
 
   // Create Modal
   const [isCreateOpen, setIsCreateOpen] = useState(false)
@@ -80,24 +106,50 @@ export const TeamManager: React.FC = () => {
   const [userToDelete, setUserToDelete] = useState<ApiUserRecord | null>(null)
 
   const fetchData = useCallback(async () => {
+    const reqId = ++requestSeqRef.current
+    const requestRestaurantId = effectiveRestaurantId
     setIsLoading(true)
+    setLoadErrorState((prev) =>
+      prev?.restaurantId === requestRestaurantId ? null : prev
+    )
     try {
       const [usersData, rolesData] = await Promise.all([
-        apiClient.listUsers(effectiveRestaurantId),
-        apiClient.listRoles(effectiveRestaurantId),
+        apiClient.listUsers(requestRestaurantId),
+        apiClient.listRoles(requestRestaurantId),
       ])
-      setUsers(usersData)
-      setRoles(rolesData)
+      if (
+        requestSeqRef.current !== reqId ||
+        latestRestaurantIdRef.current !== requestRestaurantId
+      ) {
+        return
+      }
+      setLoadedData({
+        restaurantId: requestRestaurantId,
+        users: usersData,
+        roles: rolesData,
+      })
+      setLoadErrorState(null)
     } catch (err: any) {
-      toast.error(err.message || "Error al cargar el equipo de trabajo")
+      if (
+        requestSeqRef.current !== reqId ||
+        latestRestaurantIdRef.current !== requestRestaurantId
+      ) {
+        return
+      }
+      const msg = err.message || "Error al cargar el equipo de trabajo"
+      setLoadErrorState({ restaurantId: requestRestaurantId, message: msg })
+      toast.error(msg)
     } finally {
-      setIsLoading(false)
+      if (requestSeqRef.current === reqId) {
+        setIsLoading(false)
+      }
     }
   }, [effectiveRestaurantId])
 
   useEffect(() => {
+    latestRestaurantIdRef.current = effectiveRestaurantId
     void fetchData()
-  }, [fetchData])
+  }, [effectiveRestaurantId, fetchData])
 
   const rolesMap = useMemo(() => {
     const map = new Map<string, RoleDTO>()
@@ -268,6 +320,7 @@ export const TeamManager: React.FC = () => {
         <Button
           type="button"
           onClick={openCreateModal}
+          disabled={!hasLoadedRoles}
           className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-md hover:bg-indigo-700"
         >
           <Plus className="size-4" />
@@ -312,12 +365,63 @@ export const TeamManager: React.FC = () => {
       </div>
 
       {/* Users Table */}
-      {isLoading ? (
+      {showLoading && (
         <div
-          className={`h-64 rounded-2xl border animate-pulse ${
-            isDark ? "border-slate-800 bg-slate-900/50" : "border-slate-200 bg-slate-50"
+          role="status"
+          aria-live="polite"
+          className={`flex items-center gap-2 text-xs font-medium ${
+            isDark ? "text-slate-400" : "text-slate-600"
           }`}
-        />
+        >
+          <span
+            aria-hidden="true"
+            className="size-2 rounded-full bg-indigo-500 animate-pulse"
+          />
+          <span>Cargando equipo...</span>
+        </div>
+      )}
+
+      {loadError && users.length > 0 && !showLoading && (
+        <div
+          role="alert"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-200"
+        >
+          <span>No pudimos actualizar el equipo: {loadError}</span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => void fetchData()}
+          >
+            Reintentar
+          </Button>
+        </div>
+      )}
+
+      {showLoading && users.length === 0 ? (
+        <TableSkeleton isDark={isDark} rows={5} columns={6} />
+      ) : loadError && users.length === 0 ? (
+        <div
+          role="alert"
+          className={`rounded-2xl border p-12 text-center shadow-xs ${
+            isDark ? "border-rose-900/50 bg-[#0E1322]" : "border-rose-200 bg-white"
+          }`}
+        >
+          <AlertCircle className="size-12 mx-auto mb-3 text-rose-600 dark:text-rose-400" />
+          <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+            No pudimos cargar el equipo
+          </h3>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+            {loadError}
+          </p>
+          <Button
+            type="button"
+            onClick={() => void fetchData()}
+            className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white shadow-sm hover:bg-indigo-700"
+          >
+            <span>Reintentar</span>
+          </Button>
+        </div>
       ) : filteredUsers.length === 0 ? (
         <div
           className={`rounded-2xl border p-12 text-center shadow-xs ${
@@ -337,6 +441,7 @@ export const TeamManager: React.FC = () => {
             <Button
               type="button"
               onClick={openCreateModal}
+              disabled={!hasLoadedRoles}
               className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white shadow-sm hover:bg-indigo-700"
             >
               <Plus className="size-4" />

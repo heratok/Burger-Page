@@ -1,8 +1,12 @@
 import { describe, it, expect, beforeEach, vi } from "vitest"
-import { seedBlankActiveTenant } from "@/test/fixtures"
+import { seedBlankActiveTenant, TEST_STORAGE_ENVELOPE } from "@/test/fixtures"
 import { renderHook, act, waitFor, render, screen, fireEvent } from "@testing-library/react"
 import React from "react"
 import { TestQueryProvider } from "@/test/queryClientWrapper"
+import { RestaurantProvider } from "@/context/RestaurantContext"
+import { InMemoryStorageAdapter } from "@/core/storage/StorageAdapter"
+import { TenantRepository, STORAGE_KEYS } from "@/core/storage/TenantRepository"
+import { useAppRouter } from "@/core/router/useAppRouter"
 import { UiProvider, useUi } from "./UiContext"
 import { AuthProvider, useAuth } from "./AuthContext"
 import { DEFAULT_STORE_CONFIG } from "@/constants/themePresets"
@@ -42,6 +46,93 @@ describe("UiContext Slice", () => {
       result.current.setSoundEnabled(false)
     })
     expect(result.current.soundEnabled).toBe(false)
+  })
+
+  it.each([
+    { path: "/admin/equipo", expectedView: "admin", expectedTab: "equipo" },
+    { path: "/admin/roles", expectedView: "admin", expectedTab: "roles" },
+    { path: "/admin/roles/", expectedView: "admin", expectedTab: "roles" },
+    { path: "/admin/orders", expectedView: "admin", expectedTab: "orders" },
+    { path: "/admin", expectedView: "admin", expectedTab: "dashboard" },
+    { path: "/adminx", expectedView: "store", expectedTab: "dashboard" },
+    { path: "/administracion", expectedView: "store", expectedTab: "dashboard" },
+    { path: "/", expectedView: "landing", expectedTab: "dashboard" },
+    { path: "/unknown-path", expectedView: "store", expectedTab: "dashboard" },
+  ])(
+    "initializes activeView ($expectedView) and adminTab ($expectedTab) on the first render for $path",
+    ({ path, expectedView, expectedTab }) => {
+      const previousPath = window.location.pathname
+      window.history.pushState({}, "", path)
+      const firstRenderSnapshots: Array<{ activeView: string; adminTab: string }> = []
+
+      const Probe = () => {
+        const { activeView, adminTab } = useUi()
+        firstRenderSnapshots.push({ activeView, adminTab })
+        return null
+      }
+
+      try {
+        render(
+          <UiProvider>
+            <Probe />
+          </UiProvider>
+        )
+        expect(firstRenderSnapshots[0]).toEqual({
+          activeView: expectedView,
+          adminTab: expectedTab,
+        })
+      } finally {
+        window.history.pushState({}, "", previousPath)
+      }
+    }
+  )
+
+  it("corrects a cold /admin/equipo load post-paint to an allowed tab when session lacks users.manage", async () => {
+    const previousPath = window.location.pathname
+    window.history.pushState({}, "", "/admin/equipo")
+    sessionStorage.setItem(
+      "burger_page_session_v2",
+      JSON.stringify({
+        role: "staff",
+        restaurantId: "rest-burger-craft",
+        permissions: ["orders.view"],
+      })
+    )
+
+    const adapter = new InMemoryStorageAdapter()
+    adapter.setItem(STORAGE_KEYS.ENVELOPE, JSON.stringify(TEST_STORAGE_ENVELOPE))
+    adapter.setItem(STORAGE_KEYS.ACTIVE_REST, "rest-burger-craft")
+    const repo = new TenantRepository(adapter)
+
+    const renderSnapshots: Array<{ activeView: string; adminTab: string }> = []
+
+    const RouterProbe = () => {
+      const { activeView, adminTab } = useAppRouter()
+      renderSnapshots.push({ activeView, adminTab })
+      return null
+    }
+
+    try {
+      render(
+        <RestaurantProvider repository={repo}>
+          <RouterProbe />
+        </RestaurantProvider>
+      )
+
+      // First render derives view/tab synchronously from the URL (UiContext is permission-unaware)
+      expect(renderSnapshots[0]).toEqual({ activeView: "admin", adminTab: "equipo" })
+
+      // Post-paint syncLocation corrects to the first permitted tab for ["orders.view"]
+      await waitFor(() => {
+        expect(renderSnapshots[renderSnapshots.length - 1]).toEqual({
+          activeView: "admin",
+          adminTab: "orders",
+        })
+      })
+    } finally {
+      sessionStorage.clear()
+      window.history.pushState({}, "", previousPath)
+    }
   })
 })
 

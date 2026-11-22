@@ -21,6 +21,12 @@ export class RoleController {
   ) {}
 
   private async tenantFor(req: FastifyRequest, action: string, mutation: boolean): Promise<string> {
+    if (!mutation && req.authContext?.restaurantId) {
+      // Safe fast path on reads: /roles sits behind requireAuth, which already
+      // re-read the bound user and verified the restaurant is active in storage
+      // (authContext.restaurantId is the canonical restaurants.id).
+      return req.authContext.restaurantId;
+    }
     const restaurantId = await resolveTenantForRequest(
       req,
       { restaurantRepo: this.restaurantRepo },

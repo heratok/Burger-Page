@@ -161,18 +161,18 @@ export async function withTenantContext<T>(
   try {
     await client.query('BEGIN');
     // Every call explicitly represents its context GUCs ('' = no context),
-    // including absent ones. PostgreSQL keeps a sticky '' placeholder for a
-    // custom GUC once it has been SET in the session — SET LOCAL + COMMIT
-    // leaves current_setting() returning '' on pooled reuse, and neither
-    // set_config(name, NULL, ...) nor RESET restores NULL (probe-verified on
-    // PG16). The schema policies therefore normalize '' to NULL via
-    // NULLIF(current_setting(...), ''), and this explicit '' makes the
-    // no-context state deterministic on fresh and reused pooled connections
+    // including absent ones, in a single batched statement. PostgreSQL keeps a
+    // sticky '' placeholder for a custom GUC once it has been SET in the
+    // session — SET LOCAL + COMMIT leaves current_setting() returning '' on
+    // pooled reuse, and neither set_config(name, NULL, ...) nor RESET restores
+    // NULL (probe-verified on PG16). The schema policies therefore normalize ''
+    // to NULL via NULLIF(current_setting(...), ''), and this explicit '' makes
+    // the no-context state deterministic on fresh and reused pooled connections
     // alike.
-    await client.query("SELECT set_config('app.restaurant_id', $1, true)", [context.restaurantId ?? '']);
-    await client.query("SELECT set_config('app.restaurant_slug', $1, true)", [context.restaurantSlug ?? '']);
-    await client.query("SELECT set_config('app.actor_role', $1, true)", [context.actorRole ?? '']);
-    await client.query("SELECT set_config('app.actor', $1, true)", [context.actor ?? '']);
+    await client.query(
+      "SELECT set_config('app.restaurant_id', $1, true), set_config('app.restaurant_slug', $2, true), set_config('app.actor_role', $3, true), set_config('app.actor', $4, true)",
+      [context.restaurantId ?? '', context.restaurantSlug ?? '', context.actorRole ?? '', context.actor ?? '']
+    );
     const result = await fn(client);
     await client.query('COMMIT');
     return result;

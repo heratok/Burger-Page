@@ -18,23 +18,69 @@ const STORAGE_KEYS = {
   SOUND: "burger_page_sound_enabled_v2",
 }
 
+const INITIAL_ADMIN_TABS: ReadonlySet<AdminTab> = new Set<AdminTab>([
+  "dashboard",
+  "orders",
+  "tables",
+  "menu",
+  "inventory",
+  "customers",
+  "reports",
+  "customizer",
+  "settings",
+  "restaurants",
+  "users",
+  "metrics",
+  "audit",
+  "equipo",
+  "roles",
+])
+
+function getInitialActiveView(): AppView {
+  try {
+    if (typeof window !== "undefined") {
+      const clean = window.location.pathname.replace(/^\/+|\/+$/g, "").toLowerCase()
+      if (!clean) return "landing"
+      if (clean === "admin" || clean.startsWith("admin/")) return "admin"
+      return "store"
+    }
+  } catch {
+    // Fallback for SSR/tests
+  }
+  return "landing"
+}
+
+function getInitialAdminTab(): AdminTab {
+  try {
+    if (typeof window !== "undefined") {
+      const clean = window.location.pathname.replace(/^\/+|\/+$/g, "").toLowerCase()
+      if (clean.startsWith("admin/")) {
+        const subRoute = clean.slice("admin/".length)
+        if (subRoute === "team") return "equipo"
+        if (
+          subRoute === "tenants" ||
+          subRoute === "tenants/new" ||
+          subRoute === "restaurants/new"
+        ) {
+          return "restaurants"
+        }
+        if (subRoute === "audit-log" || subRoute === "auditlog") return "audit"
+        if (INITIAL_ADMIN_TABS.has(subRoute as AdminTab)) {
+          return subRoute as AdminTab
+        }
+      }
+    }
+  } catch {
+    // Fallback for SSR/tests
+  }
+  return "dashboard"
+}
+
 const UiContext = createContext<UiContextType | undefined>(undefined)
 
 export const UiProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [activeView, setActiveView] = useState<AppView>(() => {
-    try {
-      if (typeof window !== "undefined") {
-        const clean = window.location.pathname.replace(/^\/+|\/+$/g, "").toLowerCase()
-        if (!clean) return "landing"
-        if (clean === "admin") return "admin"
-        return "store"
-      }
-    } catch {
-      // Fallback for SSR/tests
-    }
-    return "landing"
-  })
-  const [adminTab, setAdminTab] = useState<AdminTab>("dashboard")
+  const [activeView, setActiveView] = useState<AppView>(getInitialActiveView)
+  const [adminTab, setAdminTab] = useState<AdminTab>(getInitialAdminTab)
   const [adminTheme, setAdminTheme] = useState<AdminTheme>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.ADMIN_THEME)

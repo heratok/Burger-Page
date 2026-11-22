@@ -2,9 +2,9 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [main, master, develop]
+    branches: [main, master, develop, test]
   pull_request:
-    branches: [main, master, develop]
+    branches: [main, master, develop, test]
 
 concurrency:
   # A pull request gets one group per PR, so a superseded run is cancelled and the

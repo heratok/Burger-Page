@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { render, screen, fireEvent, waitFor, cleanup, within } from "@testing-library/react"
+import { render, screen, fireEvent, waitFor, cleanup, within, act } from "@testing-library/react"
 import { TeamManager } from "./TeamManager"
 import { apiClient } from "@/core/api/apiClient"
 import type { ApiUserRecord } from "@/core/api/apiClient"
@@ -51,12 +51,13 @@ const mockUsers: ApiUserRecord[] = [
 ]
 
 const mockSetAdminTab = vi.fn()
+let mockEffectiveRestaurantId = "rest-1"
 
 vi.mock("@/context/RestaurantContext", () => ({
   useRestaurant: () => ({
     adminTheme: "light",
-    activeRestaurant: { id: "rest-1", name: "Burger Craft" },
-    effectiveRestaurantId: "rest-1",
+    activeRestaurant: { id: mockEffectiveRestaurantId, name: "Burger Craft" },
+    effectiveRestaurantId: mockEffectiveRestaurantId,
     session: { role: "restaurant", username: "admin_burger" },
     setAdminTab: mockSetAdminTab,
   }),
@@ -65,6 +66,7 @@ vi.mock("@/context/RestaurantContext", () => ({
 describe("TeamManager Component (TDD)", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockEffectiveRestaurantId = "rest-1"
     vi.spyOn(apiClient, "listUsers").mockResolvedValue([...mockUsers])
     vi.spyOn(apiClient, "listRoles").mockResolvedValue([...mockRoles])
     vi.spyOn(apiClient, "createUser").mockResolvedValue({
@@ -322,5 +324,224 @@ describe("TeamManager Component (TDD)", () => {
 
     fireEvent.click(goToRolesBtn)
     expect(mockSetAdminTab).toHaveBeenCalledWith("roles")
+  })
+
+  it("renders a 6-column TableSkeleton, visible live status, and disables Nuevo Miembro while initial requests are in flight", async () => {
+    let resolveUsers!: (value: ApiUserRecord[]) => void
+    let resolveRoles!: (value: RoleDTO[]) => void
+    vi.spyOn(apiClient, "listUsers").mockImplementation(
+      () => new Promise<ApiUserRecord[]>((res) => { resolveUsers = res })
+    )
+    vi.spyOn(apiClient, "listRoles").mockImplementation(
+      () => new Promise<RoleDTO[]>((res) => { resolveRoles = res })
+    )
+
+    render(<TeamManager />)
+
+    const skeleton = screen.getByTestId("table-skeleton")
+    expect(skeleton).toBeDefined()
+    expect(within(skeleton).getAllByRole("columnheader").length).toBe(6)
+
+    const status = screen.getByRole("status")
+    expect(status.getAttribute("aria-live")).toBe("polite")
+    expect(status.textContent).toMatch(/Cargando equipo/i)
+
+    const newMemberBtn = screen.getByRole("button", { name: /Nuevo Miembro/i }) as HTMLButtonElement
+    expect(newMemberBtn.disabled).toBe(true)
+
+    fireEvent.click(newMemberBtn)
+    expect(screen.queryByText("Registrar Nuevo Miembro")).toBeNull()
+    expect(screen.queryByText(/No hay roles creados todavía/i)).toBeNull()
+
+    resolveUsers([...mockUsers])
+    resolveRoles([...mockRoles])
+
+    await waitFor(() => {
+      expect(screen.getByText("carlos_caja")).toBeDefined()
+      expect((screen.getByRole("button", { name: /Nuevo Miembro/i }) as HTMLButtonElement).disabled).toBe(false)
+    })
+    expect(screen.queryByTestId("table-skeleton")).toBeNull()
+    expect(screen.queryByRole("status")).toBeNull()
+  })
+
+  it("keeps existing team rows visible while a refetch is in flight", async () => {
+    let resolveRefetchUsers!: (value: ApiUserRecord[]) => void
+    let resolveRefetchRoles!: (value: RoleDTO[]) => void
+    vi.spyOn(apiClient, "listUsers")
+      .mockResolvedValueOnce([...mockUsers])
+      .mockImplementationOnce(
+        () => new Promise<ApiUserRecord[]>((res) => { resolveRefetchUsers = res })
+      )
+    vi.spyOn(apiClient, "listRoles")
+      .mockResolvedValueOnce([...mockRoles])
+      .mockImplementationOnce(
+        () => new Promise<RoleDTO[]>((res) => { resolveRefetchRoles = res })
+      )
+
+    render(<TeamManager />)
+
+    await waitFor(() => expect(screen.getByText("carlos_caja")).toBeDefined())
+
+    // Trigger a mutation that invokes fetchData()
+    fireEvent.click(screen.getByLabelText("Editar usuario carlos_caja"))
+    fireEvent.click(screen.getByRole("button", { name: /Guardar Cambios/i }))
+
+    await waitFor(() => {
+      expect(screen.getByRole("status").textContent).toMatch(/Cargando equipo/i)
+    })
+
+    // Existing rows stay rendered and are not replaced by TableSkeleton
+    expect(screen.getByText("admin_burger")).toBeDefined()
+    expect(screen.getByText("carlos_caja")).toBeDefined()
+    expect(screen.queryByTestId("table-skeleton")).toBeNull()
+
+    resolveRefetchUsers([...mockUsers])
+    resolveRefetchRoles([...mockRoles])
+
+    await waitFor(() => {
+      expect(screen.queryByRole("status")).toBeNull()
+    })
+    expect(screen.getByText("carlos_caja")).toBeDefined()
+  })
+
+  it("shows an error state with Reintentar, hides false empty-state copy, and keeps Nuevo Miembro disabled when initial load fails", async () => {
+    vi.spyOn(apiClient, "listUsers").mockRejectedValue(new Error("Fallo de red"))
+    vi.spyOn(apiClient, "listRoles").mockRejectedValue(new Error("Fallo de red"))
+
+    render(<TeamManager />)
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toBeDefined()
+    })
+
+    expect(screen.getByRole("button", { name: /Reintentar/i })).toBeDefined()
+    expect(screen.queryByText(/No hay miembros registrados/i)).toBeNull()
+    expect(screen.queryByText(/No hay roles creados todavía/i)).toBeNull()
+    expect((screen.getByRole("button", { name: /Nuevo Miembro/i }) as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it("re-issues fetchData when clicking Reintentar and enables Nuevo Miembro once it succeeds", async () => {
+    vi.spyOn(apiClient, "listUsers")
+      .mockRejectedValueOnce(new Error("Fallo temporal"))
+      .mockResolvedValueOnce([...mockUsers])
+    vi.spyOn(apiClient, "listRoles")
+      .mockRejectedValueOnce(new Error("Fallo temporal"))
+      .mockResolvedValueOnce([...mockRoles])
+
+    render(<TeamManager />)
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Reintentar/i })).toBeDefined()
+    })
+    expect((screen.getByRole("button", { name: /Nuevo Miembro/i }) as HTMLButtonElement).disabled).toBe(true)
+
+    fireEvent.click(screen.getByRole("button", { name: /Reintentar/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText("carlos_caja")).toBeDefined()
+    })
+
+    expect(apiClient.listUsers).toHaveBeenCalledTimes(2)
+    expect(apiClient.listRoles).toHaveBeenCalledTimes(2)
+    expect(screen.queryByRole("alert")).toBeNull()
+    expect((screen.getByRole("button", { name: /Nuevo Miembro/i }) as HTMLButtonElement).disabled).toBe(false)
+  })
+
+  it("hides previous tenant rows, disables Nuevo Miembro, and shows TableSkeleton immediately when effectiveRestaurantId changes", async () => {
+    let resolveRest2Users!: (value: ApiUserRecord[]) => void
+    let resolveRest2Roles!: (value: RoleDTO[]) => void
+    vi.spyOn(apiClient, "listUsers")
+      .mockResolvedValueOnce([...mockUsers])
+      .mockImplementationOnce(
+        () => new Promise<ApiUserRecord[]>((res) => { resolveRest2Users = res })
+      )
+    vi.spyOn(apiClient, "listRoles")
+      .mockResolvedValueOnce([...mockRoles])
+      .mockImplementationOnce(
+        () => new Promise<RoleDTO[]>((res) => { resolveRest2Roles = res })
+      )
+
+    const { rerender } = render(<TeamManager />)
+    await waitFor(() => expect(screen.getByText("carlos_caja")).toBeDefined())
+
+    mockEffectiveRestaurantId = "rest-2"
+    rerender(<TeamManager />)
+
+    expect(screen.queryByText("carlos_caja")).toBeNull()
+    expect(screen.queryByText("admin_burger")).toBeNull()
+    expect(screen.getByTestId("table-skeleton")).toBeDefined()
+    expect((screen.getByRole("button", { name: /Nuevo Miembro/i }) as HTMLButtonElement).disabled).toBe(true)
+
+    resolveRest2Users([
+      {
+        id: "user-r2",
+        username: "maria_mesera",
+        role: "restaurant_staff",
+        restaurantId: "rest-2",
+        roleId: "role-cashier",
+        isActive: true,
+        mustChangePassword: false,
+        createdAt: "2026-02-01T00:00:00Z",
+      },
+    ])
+    resolveRest2Roles([...mockRoles])
+
+    await waitFor(() => expect(screen.getByText("maria_mesera")).toBeDefined())
+    expect(screen.queryByText("carlos_caja")).toBeNull()
+    expect((screen.getByRole("button", { name: /Nuevo Miembro/i }) as HTMLButtonElement).disabled).toBe(false)
+  })
+
+  it("ignores a late response from the previous tenant so it never overwrites the new tenant's rows", async () => {
+    let resolveRest1Users!: (value: ApiUserRecord[]) => void
+    let resolveRest1Roles!: (value: RoleDTO[]) => void
+    let resolveRest2Users!: (value: ApiUserRecord[]) => void
+    let resolveRest2Roles!: (value: RoleDTO[]) => void
+
+    vi.spyOn(apiClient, "listUsers")
+      .mockImplementationOnce(
+        () => new Promise<ApiUserRecord[]>((res) => { resolveRest1Users = res })
+      )
+      .mockImplementationOnce(
+        () => new Promise<ApiUserRecord[]>((res) => { resolveRest2Users = res })
+      )
+    vi.spyOn(apiClient, "listRoles")
+      .mockImplementationOnce(
+        () => new Promise<RoleDTO[]>((res) => { resolveRest1Roles = res })
+      )
+      .mockImplementationOnce(
+        () => new Promise<RoleDTO[]>((res) => { resolveRest2Roles = res })
+      )
+
+    const { rerender } = render(<TeamManager />)
+
+    // Switch tenant while rest-1 is still in flight
+    mockEffectiveRestaurantId = "rest-2"
+    rerender(<TeamManager />)
+
+    // rest-2 settles first
+    resolveRest2Users([
+      {
+        id: "user-r2",
+        username: "maria_mesera",
+        role: "restaurant_staff",
+        restaurantId: "rest-2",
+        roleId: "role-cashier",
+        isActive: true,
+        mustChangePassword: false,
+        createdAt: "2026-02-01T00:00:00Z",
+      },
+    ])
+    resolveRest2Roles([...mockRoles])
+
+    await waitFor(() => expect(screen.getByText("maria_mesera")).toBeDefined())
+
+    // Now rest-1 resolves late
+    await act(async () => {
+      resolveRest1Users([...mockUsers])
+      resolveRest1Roles([...mockRoles])
+    })
+
+    expect(screen.getByText("maria_mesera")).toBeDefined()
+    expect(screen.queryByText("carlos_caja")).toBeNull()
   })
 })
