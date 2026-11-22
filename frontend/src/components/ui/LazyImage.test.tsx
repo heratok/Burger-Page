@@ -78,3 +78,60 @@ describe('LazyImage Component with Skeleton Loading', () => {
     expect(container.querySelector('[data-slot="skeleton"]')).toBeNull();
   });
 });
+
+describe('LazyImage fallback theming (S13)', () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  const tokens = () =>
+    screen.getByTestId('lazy-image-fallback').className.split(/\s+/).filter(Boolean);
+
+  // S13 — the fallback must never paint its own opaque fill. index.css defines
+  // --color-bg-elevated-2 (#2A2F35) and --color-text-muted (#8B8F95) exactly
+  // once; the four storefront themes override those variables on their own root
+  // and `.dark` is the only theme-scoped block (index.css:1030). Admin *light*
+  // mode is reachable (AdminLayout.tsx:642 toggles it) but defines no token set,
+  // so a token fill is a #2A2F35 dark tile on a #F8FAFC page. Painting no fill
+  // at all is the only shape that is right in every reachable theme: the tile
+  // inherits the frame its caller already themed for the current mode.
+  it('leaves the surface to the caller frame instead of painting an opaque tile', () => {
+    render(<LazyImage src="" alt="Missing" />);
+
+    // No background utility of any kind: not the token, not a slate pair, not white.
+    expect(tokens().filter((t) => /^bg-/.test(t))).toEqual([]);
+    expect(tokens()).not.toContain('bg-bg-elevated-2');
+  });
+
+  it('paints the glyph with the theme muted token, so it inverts with the theme', () => {
+    render(<LazyImage src="" alt="Missing" />);
+
+    // The token is overridden by every storefront theme (customizerStyles.ts)
+    // and is the light-on-dark value in admin dark mode.
+    expect(tokens()).toContain('text-text-muted');
+    expect(tokens().filter((t) => /^(text|bg)-slate-/.test(t) || t.startsWith('dark:'))).toEqual([]);
+  });
+
+  it('lets a caller frame keep its own themed background', () => {
+    // ProductTable/ProductGrid pass the mode-correct frame (slate-100 / dark:slate-800);
+    // cn() must not strip it or the tile would be the unthemed default.
+    render(
+      <LazyImage
+        src=""
+        alt="Missing"
+        containerClassName="size-10 rounded-lg bg-slate-100 dark:bg-slate-800"
+      />
+    );
+
+    expect(tokens()).toContain('bg-slate-100');
+    expect(tokens()).toContain('dark:bg-slate-800');
+  });
+
+  it('keeps the themed fallback for an image that fails to load', () => {
+    render(<LazyImage src="https://invalid-broken-url.com/nonexistent.jpg" alt="Broken" />);
+    fireEvent.error(screen.getByRole('img', { name: 'Broken' }));
+
+    expect(tokens().filter((t) => /^bg-/.test(t))).toEqual([]);
+    expect(tokens()).toContain('text-text-muted');
+  });
+});

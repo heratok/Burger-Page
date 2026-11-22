@@ -12,13 +12,15 @@ import {
   Trash2,
   Power,
   Pencil,
+  RotateCcw,
+  AlertTriangle,
   X,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { DisabledReason } from "@/components/ui/tooltip"
 import { Select } from "@/components/ui/select"
 import { Pagination } from "@/components/ui/pagination"
-import { TableSkeleton } from "@/components/ui/Skeletons"
+import { TableSkeleton, KpiValueSkeleton } from "@/components/ui/Skeletons"
 import { CreateUserModal } from "./CreateUserModal"
 import { EditUserModal } from "./EditUserModal"
 import { ResetPasswordModal } from "./ResetPasswordModal"
@@ -60,6 +62,7 @@ export const UsersDirectory: React.FC = () => {
   const usersQuery = useUsersQuery()
   const users = useMemo(() => usersQuery.data ?? [], [usersQuery.data])
   const isLoading = usersQuery.isLoading
+  const isError = usersQuery.isError
   const reloadUsers = useInvalidateUsers()
   const { mutateAsync: setUserActive } = useSetUserActiveMutation()
   const { mutateAsync: deleteUser } = useDeleteUserMutation()
@@ -79,11 +82,12 @@ export const UsersDirectory: React.FC = () => {
 
   const isDark = adminTheme === "dark"
 
-  // One toast per failed read (errorUpdatedAt changes on every failure).
+  // One toast per failed read (errorUpdatedAt changes on every failure). The
+  // message is ours: a raw server string is not an operator-facing message.
   const { error: loadError, errorUpdatedAt } = usersQuery
   useEffect(() => {
     if (!loadError) return
-    toast.error(mapUserActionError(loadError, "No se pudo cargar la lista de usuarios"))
+    toast.error("No se pudo cargar la lista de usuarios. Reintentá desde el directorio.")
   }, [loadError, errorUpdatedAt])
 
   const restaurantMap = useMemo(() => {
@@ -213,7 +217,9 @@ export const UsersDirectory: React.FC = () => {
               <Users className="size-4" />
             </div>
           </div>
-          <div className="mt-2 text-2xl font-black text-slate-900 dark:text-white">{users.length}</div>
+          <div className="mt-2 text-2xl font-black text-slate-900 dark:text-white">
+            {isLoading ? <KpiValueSkeleton isDark={isDark} className="w-16" /> : users.length}
+          </div>
           <span className="text-xs text-slate-500 dark:text-slate-400">Credenciales registradas</span>
         </div>
 
@@ -225,7 +231,11 @@ export const UsersDirectory: React.FC = () => {
             </div>
           </div>
           <div className="mt-2 text-2xl font-black text-amber-800 dark:text-amber-400">
-            {users.filter((u) => u.role === "super_admin" || u.role === "super").length}
+            {isLoading ? (
+              <KpiValueSkeleton isDark={isDark} className="w-12" />
+            ) : (
+              users.filter((u) => u.role === "super_admin" || u.role === "super").length
+            )}
           </div>
           <span className="text-sm text-slate-500 dark:text-slate-400">Acceso total a la plataforma</span>
         </div>
@@ -238,7 +248,11 @@ export const UsersDirectory: React.FC = () => {
             </div>
           </div>
           <div className="mt-2 text-2xl font-black text-emerald-700 dark:text-emerald-400">
-            {users.filter((u) => u.role === "restaurant_admin" || u.role === "restaurant").length}
+            {isLoading ? (
+              <KpiValueSkeleton isDark={isDark} className="w-12" />
+            ) : (
+              users.filter((u) => u.role === "restaurant_admin" || u.role === "restaurant").length
+            )}
           </div>
           <span className="text-sm text-slate-500 dark:text-slate-400">Encargados de locales</span>
         </div>
@@ -322,6 +336,35 @@ export const UsersDirectory: React.FC = () => {
       {/* Users Table */}
       {isLoading ? (
         <TableSkeleton isDark={isDark} rows={5} columns={6} />
+      ) : isError ? (
+        // A failed read is a failure, not an empty directory: branch on the
+        // error before the empty state so "0 registros" never stands in for it.
+        <div
+          role="alert"
+          className={`flex flex-col gap-3 rounded-2xl border p-5 shadow-xs sm:flex-row sm:items-center sm:justify-between ${
+            isDark ? "border-rose-500/30 bg-rose-500/10" : "border-rose-200 bg-rose-50"
+          }`}
+        >
+          <div className="flex items-start gap-2.5">
+            <AlertTriangle className="mt-0.5 size-4.5 shrink-0 text-rose-600 dark:text-rose-400" />
+            <div>
+              <p className="text-sm font-bold text-rose-700 dark:text-rose-400">
+                No se pudo cargar la lista de usuarios.
+              </p>
+              <p className="text-sm text-rose-600/80 dark:text-rose-400/80">
+                El directorio no está disponible en este momento. Reintentá la consulta.
+              </p>
+            </div>
+          </div>
+          <Button
+            type="button"
+            onClick={() => void usersQuery.refetch()}
+            className="gap-1.5 rounded-xl bg-rose-600 font-bold text-white shadow-xs hover:bg-rose-700 cursor-pointer self-start sm:self-auto"
+          >
+            <RotateCcw className="size-3.5" />
+            <span>Reintentar</span>
+          </Button>
+        </div>
       ) : (
         <div className={`overflow-hidden rounded-2xl border shadow-xs ${isDark ? "border-slate-800 bg-[#0E1322]" : "border-slate-200 bg-white"}`}>
           <div role="region" aria-label="Tabla de usuarios" tabIndex={0} className="overflow-x-auto">

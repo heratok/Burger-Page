@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { useUi, useTenant, useOrderBoardsByTenant, useGlobalStats, ordersOf } from "@/context/RestaurantContext"
 import {
   TrendingUp,
@@ -7,9 +8,12 @@ import {
   Store,
   BarChart3,
   Sliders,
+  AlertTriangle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Select } from "@/components/ui/select"
+import { MetricCardsSkeleton } from "@/components/ui/Skeletons"
+import { keyPrefixes } from "@/core/query/keys"
 import { useAppRouter } from "@/core/router/useAppRouter"
 import { formatCurrency } from "@/lib/utils"
 
@@ -18,10 +22,23 @@ export const GlobalAnalytics: React.FC = () => {
   const { restaurants, switchRestaurant } = useTenant()
   const orderBoards = useOrderBoardsByTenant()
   const globalStats = useGlobalStats()
+  const queryClient = useQueryClient()
   const { navigateTo } = useAppRouter()
   const [period, setPeriod] = useState<string>("ALL")
 
   const isDark = adminTheme === "dark"
+
+  // Only the ALL period reads the platform totals; the other periods are
+  // computed locally, so their numbers are real (not placeholders) at once.
+  const usesPlatformStats = period === "ALL"
+  const isPlatformStatsLoading = usesPlatformStats && globalStats.isLoading
+  const isPlatformStatsError = usesPlatformStats && globalStats.isError
+
+  // A failed read is retried from here: invalidating the platform-stats key
+  // refetches the mounted totals query.
+  const retryPlatformStats = () => {
+    void queryClient.invalidateQueries({ queryKey: keyPrefixes.platformStats() })
+  }
 
   // Aggregate metrics across all restaurants
   const stats = useMemo(() => {
@@ -67,7 +84,7 @@ export const GlobalAnalytics: React.FC = () => {
     breakdown.sort((a, b) => b.revenue - a.revenue)
 
     const hasPlatformStats =
-      period === "ALL" &&
+      usesPlatformStats &&
       !globalStats.isLoading &&
       !globalStats.isError &&
       (globalStats.totalRestaurants > 0 || globalStats.totalOrders > 0 || globalStats.totalRevenue > 0)
@@ -88,7 +105,7 @@ export const GlobalAnalytics: React.FC = () => {
       totalRestaurants,
       breakdown,
     }
-  }, [restaurants, orderBoards, period, globalStats])
+  }, [restaurants, orderBoards, period, globalStats, usesPlatformStats])
 
   const handleManage = (restaurantId: string) => {
     switchRestaurant(restaurantId)
@@ -127,7 +144,38 @@ export const GlobalAnalytics: React.FC = () => {
         </div>
       </div>
 
-      {/* KPI Cards Grid */}
+      {/* KPI Cards Grid: a skeleton while the platform totals are in flight, an
+          inline error with retry when they fail. Placeholders never render as data. */}
+      {isPlatformStatsLoading ? (
+        <MetricCardsSkeleton count={4} isDark={isDark} />
+      ) : isPlatformStatsError ? (
+        <div
+          role="alert"
+          className={`flex flex-col gap-3 rounded-2xl border p-5 shadow-xs sm:flex-row sm:items-center sm:justify-between ${
+            isDark ? "border-rose-500/30 bg-rose-500/10" : "border-rose-200 bg-rose-50"
+          }`}
+        >
+          <div className="flex items-start gap-2.5">
+            <AlertTriangle className="mt-0.5 size-4.5 shrink-0 text-rose-600 dark:text-rose-400" />
+            <div>
+              <p className="text-sm font-bold text-rose-700 dark:text-rose-400">
+                No se pudieron cargar las métricas de la plataforma.
+              </p>
+              <p className="text-sm text-rose-600/80 dark:text-rose-400/80">
+                Los totales consolidados no están disponibles en este momento. Reintentá la consulta.
+              </p>
+            </div>
+          </div>
+          <Button
+            type="button"
+            onClick={retryPlatformStats}
+            className="gap-1.5 rounded-xl bg-rose-600 font-bold text-white shadow-xs hover:bg-rose-700 cursor-pointer self-start sm:self-auto"
+          >
+            <Sliders className="size-3.5" />
+            <span>Reintentar</span>
+          </Button>
+        </div>
+      ) : (
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* Total Revenue */}
         <div className={`rounded-2xl border p-5 shadow-xs ${isDark ? "border-slate-800 bg-[#0E1322]" : "border-slate-200 bg-white"}`}>
@@ -200,6 +248,7 @@ export const GlobalAnalytics: React.FC = () => {
           </div>
         </div>
       </div>
+      )}
 
       {/* Restaurant Performance Ranking Table */}
       <div className={`overflow-hidden rounded-2xl border shadow-xs ${isDark ? "border-slate-800 bg-[#0E1322]" : "border-slate-200 bg-white"}`}>

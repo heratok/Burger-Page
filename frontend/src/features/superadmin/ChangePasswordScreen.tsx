@@ -96,10 +96,12 @@ export const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({
   }
 
   const content = (
+    // This screen also renders straight from App.tsx, outside AdminLayout, so it
+    // installs its own theme root: `dark:` variants must not depend on a route.
     <div
       className={`w-full max-w-md rounded-3xl border p-6 sm:p-8 shadow-2xl transition-all ${
         isDark
-          ? "border-slate-800 bg-[#0E1322] text-slate-100"
+          ? "dark border-slate-800 bg-[#0E1322] text-slate-100"
           : "border-slate-200 bg-white text-slate-900"
       }`}
     >
@@ -116,7 +118,10 @@ export const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({
             {activeForced ? <ShieldAlert className="size-6" /> : <Lock className="size-6" />}
           </div>
           <div>
-            <h2 id="change-password-title" className="text-lg font-black tracking-tight text-slate-900 dark:text-white">
+            <h2
+              id="change-password-title"
+              className={`text-lg font-black tracking-tight ${isDark ? "text-white" : "text-slate-900"}`}
+            >
               {activeForced ? "Cambio de contraseña obligatorio" : "Cambiar contraseña"}
             </h2>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
@@ -323,7 +328,11 @@ export const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({
 
   if (activeForced) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-4 bg-slate-50 dark:bg-[#070A11]">
+      <div
+        className={`flex min-h-screen items-center justify-center p-4 ${
+          isDark ? "bg-[#070A11]" : "bg-slate-50"
+        }`}
+      >
         {content}
       </div>
     )
