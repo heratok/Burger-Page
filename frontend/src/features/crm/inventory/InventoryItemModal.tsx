@@ -111,7 +111,7 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({
     <ModalShell
       onClose={onClose}
       aria-labelledby="inventory-item-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-xs"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
     >
       <div
         className={`w-full max-w-lg rounded-2xl border p-6 shadow-2xl ${

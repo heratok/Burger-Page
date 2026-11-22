@@ -104,7 +104,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
     <ModalShell
       onClose={onClose}
       aria-label={`Detalles de la Orden #${order.orderNumber}`}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-2 sm:p-4 backdrop-blur-xs overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-2 sm:p-4 overflow-y-auto"
     >
       <div
         className={`w-full max-w-lg md:max-w-xl lg:max-w-2xl rounded-2xl border p-4 sm:p-6 shadow-2xl transition-all my-auto max-h-[96vh] overflow-y-auto ${
@@ -446,7 +446,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
         <ModalShell
           onClose={() => setIsReceiptModalOpen(false)}
           aria-label="Comprobante de transferencia"
-          className="fixed inset-0 z-60 flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-60 flex items-center justify-center bg-black/85 p-4"
         >
           <div className="relative max-h-[90vh] max-w-2xl w-full rounded-2xl overflow-hidden bg-slate-900 border border-slate-700 p-4 shadow-2xl flex flex-col">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800 text-white">

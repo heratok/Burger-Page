@@ -180,7 +180,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
     <ModalShell
       onClose={onClose}
       aria-labelledby="product-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-3 sm:p-4 backdrop-blur-xs"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-3 sm:p-4"
     >
       <div
         className={`w-full max-w-lg max-h-[92vh] sm:max-h-[90vh] overflow-y-auto rounded-2xl border p-4 sm:p-6 shadow-2xl transition-all ${

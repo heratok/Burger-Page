@@ -486,7 +486,7 @@ export const RolesManager: React.FC = () => {
         <ModalShell
           aria-labelledby="role-modal-title"
           onClose={() => setIsModalOpen(false)}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-xs"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
         >
           <div
             className={`w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl border p-6 shadow-2xl transition-all ${
