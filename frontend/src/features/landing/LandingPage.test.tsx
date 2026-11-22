@@ -94,6 +94,26 @@ describe("LandingPage - private platform directory", () => {
     expect(screen.getByText("#103 · Delivery WhatsApp")).toBeTruthy()
   })
 
+  it("keeps the header sticky: no ancestor creates a sticky-breaking overflow", () => {
+    const { container } = renderLanding()
+
+    const header = container.querySelector("header")
+    expect(header).not.toBeNull()
+    expect(header!.className).toContain("sticky")
+    expect(header!.className).toContain("top-0")
+
+    // `overflow-x: hidden` on any ancestor turns it into a scroll container and
+    // unpins the sticky header; `overflow-x: clip` does not.
+    let node: HTMLElement | null = header!.parentElement
+    while (node && node !== container) {
+      expect(node.className).not.toMatch(/overflow-x-(hidden|auto|scroll)/)
+      node = node.parentElement
+    }
+
+    const root = container.firstElementChild as HTMLElement
+    expect(root.className).toContain("overflow-x-clip")
+  })
+
   it("renders the profitability comparison block", () => {
     renderLanding()
     expect(screen.getByText("Apps de Delivery Tradicionales")).toBeTruthy()

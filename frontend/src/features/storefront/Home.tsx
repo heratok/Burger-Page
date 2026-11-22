@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import { toast } from "sonner"
 import { Utensils, Flame, ChevronDown, ChevronLeft, ChevronRight, MapPin, ExternalLink, Clock } from "lucide-react"
 import ProductCard from "./ProductCard"
@@ -55,6 +55,43 @@ export default function Home() {
 
   const pillContainerRef = useRef<HTMLDivElement>(null)
   const pillRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
+
+  // Real height of the store header (announcement bar included). The pinned
+  // category bar uses it instead of a hardcoded offset, so it can never overlap
+  // the navbar when the announcement wraps to two lines on a narrow screen.
+  const shellRef = useRef<HTMLDivElement>(null)
+  const [navHeight, setNavHeight] = useState<number | null>(null)
+
+  // Layout effect, not a passive one (S5): the first paint must already carry the
+  // measured height. With `useEffect` frame 1 pinned the bar at the 64px CSS
+  // fallback and a 109px navbar overlapped it by ~45px for one frame. Safe
+  // without an SSR guard because this app is a client-only Vite SPA
+  // (main.tsx: createRoot); there is no server render to warn about.
+  useLayoutEffect(() => {
+    const header = shellRef.current?.querySelector("header")
+    if (!header) return
+
+    const measure = (height: number) => {
+      // jsdom and the first paint report 0: keep the CSS fallback until a real
+      // height exists, so the bar is never pinned at the very top.
+      if (height > 0) setNavHeight((prev) => (prev === height ? prev : height))
+    }
+
+    measure(header.getBoundingClientRect().height)
+    if (typeof ResizeObserver === "undefined") return
+
+    const observer = new ResizeObserver((entries) => {
+      // Border-box height: the navbar has a 1px bottom border, and the pinned
+      // bar must sit below it (a content-box measurement would leave a 1px
+      // strip where both backdrop blurs overlap).
+      const borderBox = entries[0]?.borderBoxSize?.[0]?.blockSize
+      measure(
+        typeof borderBox === "number" ? borderBox : header.getBoundingClientRect().height,
+      )
+    })
+    observer.observe(header)
+    return () => observer.disconnect()
+  }, [])
 
   const {
     canScrollLeft,
@@ -237,10 +274,15 @@ export default function Home() {
   const fontClass = getFontFamilyClass(storeConfig.fontFamily)
   const trimmedAddress = storeConfig.address?.trim() ?? ""
   const trimmedDeliveryTime = storeConfig.estimatedDeliveryTime?.trim() ?? ""
+  const shellStyle = {
+    ...themeStyles,
+    ...(navHeight ? { "--store-nav-h": `${navHeight}px` } : {}),
+  } as CSSProperties
 
   return (
     <div
-      style={themeStyles}
+      ref={shellRef}
+      style={shellStyle}
       className={`min-h-screen transition-colors duration-200 ${fontClass}`}
     >
       <Navbar
@@ -368,15 +410,13 @@ export default function Home() {
               <ProductSearch onChangeText={(text) => setSearchText(text)} total={filteredProducts.length} />
             </div>
 
-            {/* Category Pills Bar (Horizontal slider, sticky under header) */}
+            {/* Category Pills Bar (Horizontal slider, sticky under the measured header) */}
             {categories.length > 0 && (
               <div
-                className={`sticky ${
-                  storeConfig.showAnnouncement && storeConfig.announcementText
-                    ? "top-[92px]"
-                    : "top-16"
-                } z-20 -mx-4 px-4 py-2 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 border-b border-border-subtle backdrop-blur-md transition-colors`}
+                data-slot="storefront-category-bar"
+                className="sticky z-20 -mx-4 px-4 py-2 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 border-b border-border-subtle backdrop-blur-md transition-colors"
                 style={{
+                  top: "var(--store-nav-h, 64px)",
                   backgroundColor: "color-mix(in srgb, var(--color-bg-base) 92%, transparent)",
                 }}
               >

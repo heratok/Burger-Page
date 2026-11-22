@@ -6,7 +6,7 @@ import { useCatalog } from "@/context/RestaurantContext"
 import { useStoreOpenStatus } from "@/hooks/useStoreOpenStatus"
 import { closedMessage } from "@/lib/storeSchedule"
 import { formatCurrency } from "@/lib/utils"
-import { resolveImageUrl } from "@/core/storage/supabaseStorage"
+import { LazyImage } from "@/components/ui/LazyImage"
 import { getBrandTokens } from "@/features/crm/utils/customizerStyles"
 
 export interface ShoppingCartProps {
@@ -88,12 +88,11 @@ function ShoppingCart({
             }}
             className="relative flex gap-3 rounded-2xl border p-3 sm:gap-4 sm:p-4 shadow-xs overflow-hidden"
           >
-            <img
-              src={resolveImageUrl(cartItem.src)}
+            <LazyImage
+              src={cartItem.src}
               alt={cartItem.name}
-              loading="lazy"
-              style={{ backgroundColor: "var(--color-bg-elevated-2)" }}
-              className="size-16 shrink-0 rounded-xl object-cover sm:size-20"
+              containerClassName="size-16 shrink-0 rounded-xl sm:size-20"
+              className="size-full object-cover"
             />
             <div className="min-w-0 flex-1">
               <div className="flex items-start justify-between gap-2">
@@ -173,7 +172,10 @@ function ShoppingCart({
           backgroundColor: "var(--color-bg-surface)",
           borderColor: "var(--color-border-subtle)",
         }}
-        className="fixed right-0 bottom-0 left-0 z-30 border-t backdrop-blur-md"
+        // No backdrop-blur: the bar is opaque (--color-bg-surface), so a
+        // full-viewport-width backdrop filter would composite every frame for
+        // zero visual effect. S12.
+        className="fixed right-0 bottom-0 left-0 z-30 border-t"
       >
         <div className="mx-auto flex max-w-(--container) flex-col gap-3 px-4 py-3 md:px-6 lg:px-8">
           {closedReason && (
