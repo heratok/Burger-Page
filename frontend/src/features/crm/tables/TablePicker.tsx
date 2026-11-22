@@ -2,6 +2,7 @@ import React, { useId, useRef, useState } from "react"
 import type { RestaurantTable } from "@/types/restaurant"
 import type { NewTableInput } from "./useRestaurantTables"
 import { MAX_TABLE_NUMBER, MAX_TABLE_ZONE_LENGTH, MIN_TABLE_NUMBER, normalizeTableZone } from "@burger-page/contracts"
+import { Skeleton } from "@/components/ui/skeleton"
 import { defaultZone, groupTablesByZone, nextFreeNumber, previewTableName, zoneSuggestions } from "./tableZones"
 
 export interface TablePickerProps {
@@ -121,7 +122,30 @@ export function TablePicker({
         </p>
       )}
 
-      {isLoading && <p className="text-sm text-slate-500 dark:text-slate-400">Cargando mesas...</p>}
+      {/* Reserved space, not a single grey line: the picker keeps the shape of its own
+          content — a compact pill grid inside the same scroller — instead of a
+          full data table that would grow the form by ~230px. S15. */}
+      {isLoading && (
+        <div
+          data-testid="table-pill-skeleton"
+          aria-hidden="true"
+          className="max-h-44 space-y-2 overflow-y-auto pr-0.5"
+        >
+          <div className="space-y-1">
+            <Skeleton className={`h-3 w-16 rounded ${isDark ? "bg-slate-800" : "bg-slate-200"}`} />
+            <div data-slot="pill-grid" className="grid grid-cols-3 gap-1.5 sm:grid-cols-4">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <Skeleton
+                  key={i}
+                  // Real pills are min-h-10 rounded-lg buttons: the slots keep
+                  // that box so the field does not resize when tables land.
+                  className={`h-10 rounded-lg ${isDark ? "bg-slate-800" : "bg-slate-200"}`}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
       {!isLoading && loadError && <p className="text-sm text-rose-600 dark:text-rose-400">{loadError}</p>}
 
       {!isLoading && !loadError && activeTables.length === 0 && (

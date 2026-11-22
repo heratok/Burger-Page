@@ -154,10 +154,81 @@ describe("TablePicker", () => {
         onOpenManager={() => {}}
       />
     )
-    expect(screen.getByText(/Cargando mesas/i)).toBeDefined()
+    // The picker reserves the shape of its own content — a compact grid of
+    // table pills inside the scrolling slot — not a full data-table card.
+    expect(screen.getByTestId("table-pill-skeleton")).toBeDefined()
+    expect(screen.queryByTestId("table-skeleton")).toBeNull()
+    expect(screen.queryByText(/Cargando mesas/i)).toBeNull()
     unmount()
     setup({ tables: [], loadError: "boom" })
     expect(screen.getByText(/boom/)).toBeDefined()
+  })
+
+  it("keeps the empty state distinct from the loading state", () => {
+    const { unmount } = render(
+      <TablePicker
+        isDark={false}
+        tables={[]}
+        isLoading
+        loadError={null}
+        selectedTableId={null}
+        occupiedTableIds={new Set()}
+        onSelect={() => {}}
+        onCreateTable={async () => null}
+        onOpenManager={() => {}}
+      />
+    )
+
+    expect(screen.getByTestId("table-pill-skeleton")).toBeDefined()
+    expect(screen.queryByText(/No hay mesas activas/i)).toBeNull()
+    unmount()
+
+    // Once the read settles without tables, the empty state is the only resort.
+    setup({ tables: [] })
+    expect(screen.getByText(/No hay mesas activas/i)).toBeDefined()
+    expect(screen.queryByTestId("table-pill-skeleton")).toBeNull()
+  })
+
+  // S15 — the placeholder must be the loader for *this* field: a short grid of
+  // pill slots at the same spacing as the real buttons, inside the same
+  // max-h-44 scroller, so the form does not grow by a fake 230-260px table.
+  it("reserves the compact pill grid instead of a full data table", () => {
+    render(
+      <TablePicker
+        isDark={false}
+        tables={[]}
+        isLoading
+        loadError={null}
+        selectedTableId={null}
+        occupiedTableIds={new Set()}
+        onSelect={() => {}}
+        onCreateTable={async () => null}
+        onOpenManager={() => {}}
+      />
+    )
+
+    const placeholder = screen.getByTestId("table-pill-skeleton")
+    // Same scroll box as the settled list.
+    expect(placeholder.className).toContain("max-h-44")
+    expect(placeholder.className).toContain("overflow-y-auto")
+
+    const grid = placeholder.querySelector<HTMLElement>('[data-slot="pill-grid"]')
+    expect(grid).not.toBeNull()
+    expect(grid!.className).toContain("grid-cols-3")
+    expect(grid!.className).toContain("sm:grid-cols-4")
+
+    // Real pills are min-h-10 rounded-lg buttons: the slots keep that height so
+    // the field does not resize when the tables land.
+    const slots = Array.from(grid!.children) as HTMLElement[]
+    expect(slots.length).toBeGreaterThanOrEqual(6)
+    expect(slots.length).toBeLessThanOrEqual(12)
+    for (const slot of slots) {
+      expect(slot.className).toContain("h-10")
+      expect(slot.className).toContain("rounded-lg")
+    }
+
+    // A data table (search bar + thead) is never the right shape for this slot.
+    expect(placeholder.querySelector("table")).toBeNull()
   })
 })
 

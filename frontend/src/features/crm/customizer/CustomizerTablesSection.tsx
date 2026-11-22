@@ -9,6 +9,7 @@ import {
   normalizeTableZone,
 } from "@burger-page/contracts"
 import { Switch } from "@/components/ui/switch"
+import { TableSkeleton } from "@/components/ui/Skeletons"
 import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
 import { useRestaurantTables, type TableChanges } from "@/features/crm/tables/useRestaurantTables"
 import {
@@ -269,7 +270,8 @@ export const CustomizerTablesSection: React.FC<CustomizerTablesSectionProps> = (
         )}
       </form>
 
-      {isLoading && <p className="text-slate-500 dark:text-slate-400">Cargando mesas...</p>}
+      {/* Reserved space, not a single grey line: the list keeps its shape while it loads. */}
+      {isLoading && <TableSkeleton isDark={isDark} rows={4} columns={4} />}
 
       {!isLoading && loadError && (
         <div className="flex items-center justify-between gap-2 rounded-xl border border-rose-300/50 bg-rose-50 p-3 text-rose-700 dark:border-rose-500/30 dark:bg-rose-950/30 dark:text-rose-300">
