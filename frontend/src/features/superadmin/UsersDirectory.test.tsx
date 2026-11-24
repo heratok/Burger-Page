@@ -409,3 +409,56 @@ describe("UsersDirectory - Super Admin User Management (TDD)", () => {
   })
 })
 
+describe("UsersDirectory - Loading and error states (S10 / L4-L5)", () => {
+  beforeEach(() => {
+    localStorage.clear()
+    sessionStorage.clear()
+    vi.clearAllMocks()
+  })
+  afterEach(cleanup)
+
+  it("shows skeleton placeholders in the KPI cards instead of zeroes while users load", async () => {
+    vi.spyOn(apiClient, "listUsers").mockReturnValue(new Promise(() => {}))
+
+    render(
+      <RestaurantProvider>
+        <UsersDirectory />
+      </RestaurantProvider>
+    )
+
+    expect(await screen.findAllByTestId("kpi-value-skeleton")).toHaveLength(3)
+    // A placeholder count is not data: no KPI may read 0 while loading.
+    expect(screen.queryByText("0")).toBeNull()
+  })
+
+  it("renders an inline error with a working retry instead of the empty directory when the users read fails", async () => {
+    const listSpy = vi
+      .spyOn(apiClient, "listUsers")
+      .mockRejectedValueOnce(new Error("boom-users"))
+      .mockResolvedValue([{ id: "usr-1", username: "recovered_user", role: "restaurant_admin", isActive: true }] as any)
+
+    render(
+      <RestaurantProvider>
+        <UsersDirectory />
+      </RestaurantProvider>
+    )
+
+    const alert = await screen.findByRole("alert")
+    expect(alert.textContent).toMatch(/No se pudo cargar la lista de usuarios/i)
+    // The raw server string never reaches the operator.
+    expect(alert.textContent).not.toContain("boom-users")
+    expect(screen.queryByText(/^boom-users$/)).toBeNull()
+    // A failed read is not an empty directory.
+    expect(screen.queryByText(/No se encontraron usuarios coincidentes/i)).toBeNull()
+    expect(screen.queryByText(/registros/i)).toBeNull()
+
+    expect(listSpy).toHaveBeenCalledTimes(1)
+    fireEvent.click(within(alert).getByRole("button", { name: /Reintentar/i }))
+
+    await waitFor(() => expect(listSpy).toHaveBeenCalledTimes(2))
+    // The retry recovers into the real directory.
+    expect(await screen.findByText("recovered_user")).toBeDefined()
+    expect(screen.queryByRole("alert")).toBeNull()
+  })
+})
+

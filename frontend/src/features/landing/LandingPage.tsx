@@ -59,7 +59,7 @@ export default function LandingPage() {
 
   return (
     <div
-      className={`min-h-screen font-sans antialiased overflow-x-hidden selection:bg-orange-500 selection:text-white transition-colors duration-200 ${
+      className={`min-h-screen font-sans antialiased overflow-x-clip selection:bg-orange-500 selection:text-white transition-colors duration-200 ${
         isDark ? "dark bg-[#0B0F19] text-slate-100" : "bg-[#FAFAFA] text-slate-800"
       }`}
     >

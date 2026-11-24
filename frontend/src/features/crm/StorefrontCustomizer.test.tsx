@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { render, screen, fireEvent, cleanup } from "@testing-library/react"
+import { render, screen, fireEvent, cleanup, waitFor, act } from "@testing-library/react"
+import type { QueryClient } from "@tanstack/react-query"
 import { RestaurantProvider } from "@/context/RestaurantContext"
+import { createTestQueryClient } from "@/test/testQueryClient"
+import { apiClient } from "@/core/api/apiClient"
 import { StorefrontCustomizer } from "./StorefrontCustomizer"
 import {
   CustomizerPresetsSection,
@@ -550,6 +553,102 @@ describe("StorefrontCustomizer & Subcomponents (TDD Modularization)", () => {
           expect(event.defaultPrevented).toBe(false)
         }
       })
+    })
+  })
+
+  describe("StorefrontCustomizer tenant loading", () => {
+    /** A promise settled by hand, so in-flight states stay observable. */
+    function deferred<T>() {
+      let resolve!: (value: T) => void
+      const promise = new Promise<T>((res) => {
+        resolve = res
+      })
+      return { promise, resolve }
+    }
+
+    const bindRestaurantSession = () => {
+      sessionStorage.setItem(
+        "burger_page_session_v2",
+        JSON.stringify({ role: "restaurant", restaurantId: "rest-a", authenticatedAt: new Date().toISOString() })
+      )
+    }
+
+    const renderCustomizer = (client: QueryClient) =>
+      render(
+        <RestaurantProvider queryClient={client}>
+          <StorefrontCustomizer />
+        </RestaurantProvider>
+      )
+
+    const tenantRecord = (name: string) => ({ id: "rest-a", slug: "a", name, isActive: true })
+
+    beforeEach(() => {
+      bindRestaurantSession()
+      vi.spyOn(apiClient, "hasToken").mockReturnValue(true)
+      vi.spyOn(apiClient, "fetchProducts").mockResolvedValue([])
+      vi.spyOn(apiClient, "fetchAdditions").mockResolvedValue([])
+      vi.spyOn(apiClient, "fetchOrders").mockResolvedValue([])
+      vi.spyOn(apiClient, "fetchInventory").mockResolvedValue([])
+      vi.spyOn(apiClient, "fetchSuppliers").mockResolvedValue([])
+      vi.spyOn(apiClient, "fetchCustomers").mockResolvedValue([])
+    })
+
+    it("is not editable while the tenant record resolves, then edits the real config", async () => {
+      const directory = deferred<any[]>()
+      vi.spyOn(apiClient, "listRestaurants").mockImplementation(() => directory.promise)
+      const client = createTestQueryClient()
+
+      renderCustomizer(client)
+
+      // Header stays; the editor does not: nothing can be typed over placeholder values.
+      expect(screen.getByText("Personalizador Visual de Tienda")).toBeDefined()
+      expect(await screen.findByTestId("customizer-skeleton")).toBeDefined()
+      expect(screen.queryByRole("tablist", { name: /Secciones del personalizador/i })).toBeNull()
+      expect(screen.queryByPlaceholderText("Ej. Burger Craft")).toBeNull()
+      expect((screen.getByRole("button", { name: /Guardar & Publicar/i }) as HTMLButtonElement).disabled).toBe(true)
+      expect((screen.getByRole("button", { name: /Restablecer/i }) as HTMLButtonElement).disabled).toBe(true)
+
+      await act(async () => {
+        directory.resolve([tenantRecord("Parrilla Real")] as any)
+      })
+
+      expect(await screen.findByRole("tablist", { name: /Secciones del personalizador/i })).toBeDefined()
+      expect(screen.queryByTestId("customizer-skeleton")).toBeNull()
+      expect((screen.getByRole("button", { name: /Guardar & Publicar/i }) as HTMLButtonElement).disabled).toBe(false)
+
+      // The draft seeds from the tenant's real config, not from the placeholder.
+      fireEvent.click(screen.getByRole("tab", { name: /Marca/i }))
+      expect((screen.getByPlaceholderText("Ej. Burger Craft") as HTMLInputElement).value).toBe("Parrilla Real")
+    })
+
+    it("re-seeds the draft only once, so a stale default is never published and the user's edit is kept", async () => {
+      const directory = deferred<any[]>()
+      const listRestaurants = vi.spyOn(apiClient, "listRestaurants").mockImplementation(() => directory.promise)
+      const client = createTestQueryClient()
+
+      renderCustomizer(client)
+      await screen.findByTestId("customizer-skeleton")
+
+      await act(async () => {
+        directory.resolve([tenantRecord("Parrilla Real")] as any)
+      })
+      fireEvent.click(await screen.findByRole("tab", { name: /Marca/i }))
+
+      const nameInput = () => screen.getByPlaceholderText("Ej. Burger Craft") as HTMLInputElement
+      expect(nameInput().value).toBe("Parrilla Real")
+
+      // The user edits the draft.
+      fireEvent.change(nameInput(), { target: { value: "Mi Marca" } })
+      expect(nameInput().value).toBe("Mi Marca")
+
+      // A later tenant refresh changes the record: the draft must not fight the user.
+      listRestaurants.mockResolvedValue([tenantRecord("Renombrada del Servidor")] as any)
+      await act(async () => {
+        await client.invalidateQueries()
+      })
+
+      expect(listRestaurants).toHaveBeenCalledTimes(2)
+      await waitFor(() => expect(nameInput().value).toBe("Mi Marca"))
     })
   })
 })

@@ -217,6 +217,23 @@ describe("OrderTicketModal", () => {
     printSpy.mockRestore()
   })
 
+  it("does not add a second blurred scrim when it stacks over the order detail modal", () => {
+    render(
+      <OrderTicketModal
+        isOpen={true}
+        order={mockOrder}
+        onClose={vi.fn()}
+      />
+    )
+
+    // The order-detail modal (z-50) and the admin header are already blurred:
+    // this second-level scrim keeps its tint and drops the backdrop filter.
+    const scrim = screen.getByRole("dialog")
+    expect(scrim.className).not.toMatch(/backdrop-blur/)
+    expect(scrim.className).toContain("bg-black/75")
+    expect(scrim.className).toContain("z-60")
+  })
+
   it("calls onClose when clicking close button or pressing Escape key", () => {
     const onClose = vi.fn()
 

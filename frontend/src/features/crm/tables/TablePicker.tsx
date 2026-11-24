@@ -2,6 +2,7 @@ import React, { useId, useRef, useState } from "react"
 import type { RestaurantTable } from "@/types/restaurant"
 import type { NewTableInput } from "./useRestaurantTables"
 import { MAX_TABLE_NUMBER, MAX_TABLE_ZONE_LENGTH, MIN_TABLE_NUMBER, normalizeTableZone } from "@burger-page/contracts"
+import { Skeleton } from "@/components/ui/skeleton"
 import { defaultZone, groupTablesByZone, nextFreeNumber, previewTableName, zoneSuggestions } from "./tableZones"
 
 export interface TablePickerProps {
@@ -121,7 +122,40 @@ export function TablePicker({
         </p>
       )}
 
-      {isLoading && <p className="text-sm text-slate-500 dark:text-slate-400">Cargando mesas...</p>}
+      {/* Reserved space, not a single grey line: the picker keeps the shape of its own
+          content — a compact pill grid inside the same scroller — instead of a
+          full data table that would grow the form by ~230px. S15. */}
+      {isLoading && (
+        <div
+          data-testid="table-pill-skeleton"
+          aria-hidden="true"
+          className="max-h-44 space-y-2 overflow-y-auto pr-0.5"
+        >
+          <div className="space-y-1">
+            {/* Matches the real zone heading's 16px line box (text-xs), so the
+                scroller does not nudge when the zones land. S15. */}
+            <Skeleton className={`h-4 w-16 rounded ${isDark ? "bg-slate-800" : "bg-slate-200"}`} />
+            <div data-slot="pill-grid" className="grid grid-cols-3 gap-1.5 sm:grid-cols-4">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div
+                  key={i}
+                  data-slot="pill-slot"
+                  // A real pill is a `min-h-10` button padded `px-1.5 py-1` that
+                  // grows when the table name wraps onto two lines: the slot
+                  // carries that same box and reserves both text lines, so the
+                  // field does not resize when the tables land. S15.
+                  className={`pointer-coarse:min-h-11 flex min-h-10 flex-col items-center justify-center rounded-lg border px-1.5 py-1 ${
+                    isDark ? "border-slate-700 bg-slate-900" : "border-slate-300 bg-white"
+                  }`}
+                >
+                  <Skeleton className={`h-4 w-3/4 rounded-sm ${isDark ? "bg-slate-800" : "bg-slate-200"}`} />
+                  <Skeleton className={`h-4 w-1/2 rounded-sm ${isDark ? "bg-slate-800" : "bg-slate-200"}`} />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
       {!isLoading && loadError && <p className="text-sm text-rose-600 dark:text-rose-400">{loadError}</p>}
 
       {!isLoading && !loadError && activeTables.length === 0 && (

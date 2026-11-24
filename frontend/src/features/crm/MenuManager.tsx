@@ -5,6 +5,7 @@ import type { MenuItem, AdditionItem } from "@/types/restaurant"
 import { Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { MenuGridSkeleton, TableSkeleton } from "@/components/ui/Skeletons"
+import { Skeleton } from "@/components/ui/skeleton"
 import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal"
 import { Pagination } from "@/components/ui/pagination"
 import { formatCurrency } from "@/lib/utils"
@@ -69,6 +70,19 @@ export const MenuManager: React.FC = () => {
 
   const isDark = adminTheme === "dark"
 
+  // While the catalogue cannot be read yet (tenant resolving or first fetch) the
+  // lists are unknown, not empty: no "(0)" counts and no blank grid, the same
+  // skeleton the parent screens use instead.
+  const isProductsPending = isLoadingCatalog && products.length === 0
+  const isAdditionsPending = isLoadingCatalog && additions.length === 0
+
+  const countPlaceholder = (
+    <Skeleton
+      aria-hidden="true"
+      className="inline-block h-3 w-5 translate-y-px rounded bg-slate-300 align-middle dark:bg-slate-600"
+    />
+  )
+
   const handleSaveProduct = (payload: Omit<MenuItem, "id">) => {
     if (editingProduct) updateProduct(editingProduct.id, payload)
     else addProduct(payload)
@@ -96,10 +110,10 @@ export const MenuManager: React.FC = () => {
         <div className="flex items-center gap-2">
           <div className="flex rounded-xl bg-slate-100 p-1 dark:bg-slate-800 border dark:border-slate-700">
             <button type="button" onClick={() => setActiveSubTab("dishes")} className={`pointer-coarse:min-h-11 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${activeSubTab === "dishes" ? "bg-white text-indigo-700 shadow-xs dark:bg-slate-700 dark:text-white" : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"}`}>
-              Platos & Productos ({products.length})
+              Platos & Productos {isProductsPending ? countPlaceholder : `(${products.length})`}
             </button>
             <button type="button" onClick={() => setActiveSubTab("additions")} className={`pointer-coarse:min-h-11 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${activeSubTab === "additions" ? "bg-white text-indigo-700 shadow-xs dark:bg-slate-700 dark:text-white" : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"}`}>
-              Adicionales & Extras ({additions.length})
+              Adicionales & Extras {isAdditionsPending ? countPlaceholder : `(${additions.length})`}
             </button>
           </div>
         </div>
@@ -112,9 +126,9 @@ export const MenuManager: React.FC = () => {
 
       {activeSubTab === "dishes" && (
         <>
-          <MenuFilterBar categories={categories} selectedCategory={selectedCategory} totalProductsCount={products.length} searchTerm={searchTerm} viewMode={viewMode} isDark={isDark} onSelectCategory={(cat) => { setSelectedCategory(cat); setCurrentPage(1) }} onSearchChange={(term) => { setSearchTerm(term); setCurrentPage(1) }} onViewModeChange={setViewMode} onOpenCategoryModal={() => setIsCategoryModalOpen(true)} />
+          {!isProductsPending && <MenuFilterBar categories={categories} selectedCategory={selectedCategory} totalProductsCount={products.length} searchTerm={searchTerm} viewMode={viewMode} isDark={isDark} onSelectCategory={(cat) => { setSelectedCategory(cat); setCurrentPage(1) }} onSearchChange={(term) => { setSearchTerm(term); setCurrentPage(1) }} onViewModeChange={setViewMode} onOpenCategoryModal={() => setIsCategoryModalOpen(true)} />}
 
-          {isLoadingCatalog && products.length === 0 ? (
+          {isProductsPending ? (
             viewMode === "grid" ? (
               <MenuGridSkeleton count={8} isDark={isDark} />
             ) : (

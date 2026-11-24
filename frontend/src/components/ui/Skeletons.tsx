@@ -206,3 +206,16 @@ export const MetricCardsSkeleton: React.FC<SkeletonProps & { count?: number }> =
     </div>
   )
 }
+
+/**
+ * Inline skeleton for a single KPI card value: same box as the number it
+ * replaces, so the card does not jump when the data lands.
+ */
+export const KpiValueSkeleton: React.FC<SkeletonProps> = ({ isDark = false, className = "" }) => {
+  return (
+    <Skeleton
+      data-testid="kpi-value-skeleton"
+      className={`mt-2 h-7 w-16 rounded ${isDark ? "bg-slate-800" : "bg-slate-200"} ${className}`}
+    />
+  )
+}

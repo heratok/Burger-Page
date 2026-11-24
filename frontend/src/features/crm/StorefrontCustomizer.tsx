@@ -2,6 +2,7 @@ import React from "react"
 import { useUi, useTenant, useCatalog } from "@/context/RestaurantContext"
 import { Palette, RotateCcw, Save, Sparkles, ImageIcon, Sliders } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 import { useCustomizerDraft } from "./hooks/useCustomizerDraft"
 import {
   CustomizerPresetsSection,
@@ -23,7 +24,7 @@ const CUSTOMIZER_TABS = [
 export const StorefrontCustomizer: React.FC = () => {
   const { setActiveView, adminTheme } = useUi()
   const { activeRestaurant } = useTenant()
-  const { storeConfig, updateStoreConfig, resetStoreConfig, products } = useCatalog()
+  const { storeConfig, updateStoreConfig, resetStoreConfig, products, isTenantPending } = useCatalog()
 
   const {
     draft,
@@ -37,6 +38,16 @@ export const StorefrontCustomizer: React.FC = () => {
   } = useCustomizerDraft(storeConfig, updateStoreConfig, resetStoreConfig)
 
   const isDark = adminTheme === "dark"
+
+  // The draft is seeded once, from whatever the store config was at mount. While
+  // the tenant data was still resolving that seed was a placeholder, so re-seed
+  // it when the real config lands: the first save must never publish it.
+  const hasSeededDraft = React.useRef(false)
+  React.useEffect(() => {
+    if (isTenantPending || hasSeededDraft.current) return
+    hasSeededDraft.current = true
+    setDraft(storeConfig)
+  }, [isTenantPending, storeConfig, setDraft])
 
   const handleViewRealStore = () => {
     handleSave()
@@ -114,13 +125,14 @@ export const StorefrontCustomizer: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={handleReset} className="text-xs font-semibold cursor-pointer">
+          <Button type="button" variant="outline" size="sm" disabled={isTenantPending} onClick={handleReset} className="text-xs font-semibold cursor-pointer">
             <RotateCcw className="size-3.5 mr-1.5" />
             Restablecer
           </Button>
           <Button
             type="button"
             size="sm"
+            disabled={isTenantPending}
             onClick={handleSave}
             className="bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs shadow-md shadow-emerald-600/20 cursor-pointer"
           >
@@ -131,6 +143,29 @@ export const StorefrontCustomizer: React.FC = () => {
       </div>
 
       {/* Editor Grid: Left Controls (5 cols), Right Live Simulator (7 cols) */}
+      {isTenantPending ? (
+        // The tenant record is still resolving: the draft would be replaced
+        // underneath the user, so the editor is not editable yet.
+        <div
+          data-testid="customizer-skeleton"
+          aria-busy="true"
+          aria-label="Cargando personalizador de tienda"
+          className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start"
+        >
+          <div className="space-y-4 lg:col-span-5">
+            <Skeleton className={`h-11 w-full rounded-xl ${isDark ? "bg-slate-800" : "bg-slate-200"}`} />
+            {Array.from({ length: 4 }).map((_, index) => (
+              <div key={index} className="space-y-2">
+                <Skeleton className={`h-3 w-40 rounded ${isDark ? "bg-slate-800" : "bg-slate-200"}`} />
+                <Skeleton className={`h-10 w-full rounded-xl ${isDark ? "bg-slate-800" : "bg-slate-200"}`} />
+              </div>
+            ))}
+          </div>
+          <div className="space-y-3 lg:col-span-7">
+            <Skeleton className={`h-72 w-full rounded-2xl ${isDark ? "bg-slate-800" : "bg-slate-200"}`} />
+          </div>
+        </div>
+      ) : (
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
         {/* LEFT COLUMN: Controls & Settings */}
         <div className="space-y-5 lg:col-span-5">
@@ -194,6 +229,7 @@ export const StorefrontCustomizer: React.FC = () => {
           />
         </div>
       </div>
+      )}
     </div>
   )
 }

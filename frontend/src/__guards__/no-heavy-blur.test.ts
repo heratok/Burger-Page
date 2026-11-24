@@ -93,12 +93,6 @@ export const BLUR_ALLOWLIST: readonly BlurAllowlistEntry[] = [
   {
     file: 'features/cart/AdditionsModal.tsx',
     classes:
-      'absolute top-3 right-3 z-30 inline-flex size-9 sm:size-10 pointer-coarse:size-11 items-center justify-center rounded-full border border-border-subtle bg-bg-elevated hover:bg-bg-elevated-2 text-text-muted hover:text-text-primary shadow-md transition-all active:scale-95 cursor-pointer backdrop-blur-md',
-    reason: 'Floating close icon button inside the product modal.',
-  },
-  {
-    file: 'features/cart/AdditionsModal.tsx',
-    classes:
       'absolute bottom-2.5 right-2.5 z-10 inline-flex items-center gap-1.5 rounded-full bg-black/60 hover:bg-black/80 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-md transition-all cursor-pointer active:scale-95 shadow-xs',
     reason: 'Floating expand pill button over the product hero image inside the product modal.',
   },
@@ -107,11 +101,6 @@ export const BLUR_ALLOWLIST: readonly BlurAllowlistEntry[] = [
     classes:
       'absolute top-4 right-4 z-70 inline-flex size-11 items-center justify-center rounded-full bg-white/20 hover:bg-white/30 text-white backdrop-blur-md transition-all active:scale-95 cursor-pointer',
     reason: 'Close icon button on the photo lightbox.',
-  },
-  {
-    file: 'features/cart/ShoppingCart.tsx',
-    classes: 'fixed right-0 bottom-0 left-0 z-30 border-t backdrop-blur-md',
-    reason: 'Fixed bottom checkout summary bar (right-0 bottom-0 left-0, non-full-viewport) over cart items.',
   },
   {
     file: 'features/crm/AdminLayout.tsx',
@@ -190,7 +179,7 @@ export const BLUR_ALLOWLIST: readonly BlurAllowlistEntry[] = [
   {
     file: 'features/storefront/Home.tsx',
     classes:
-      'sticky ${ storeConfig.showAnnouncement && storeConfig.announcementText ? "top-[92px]" : "top-16" } z-20 -mx-4 px-4 py-2 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 border-b border-border-subtle backdrop-blur-md transition-colors',
+      'sticky z-20 -mx-4 px-4 py-2 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 border-b border-border-subtle backdrop-blur-md transition-colors',
     reason: 'Sticky horizontal category pills bar under the storefront header.',
   },
   {
@@ -207,18 +196,6 @@ export const BLUR_ALLOWLIST: readonly BlurAllowlistEntry[] = [
     file: 'features/storefront/ProductCard.tsx',
     classes: 'absolute inset-0 z-10 flex items-center justify-center bg-black/65 backdrop-blur-2xs',
     reason: 'Out-of-stock "Agotado" badge overlay on the card thumbnail.',
-  },
-  {
-    file: 'features/superadmin/AdminAuthModal.tsx',
-    classes:
-      'inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3.5 py-1.5 text-xs font-semibold text-indigo-300 backdrop-blur-md shadow-sm',
-    reason: 'Brand pill badge in the superadmin login view.',
-  },
-  {
-    file: 'features/superadmin/AdminAuthModal.tsx',
-    classes: 'rounded-2xl border border-white/10 bg-slate-900/60 p-3.5 backdrop-blur-md',
-    reason: 'Four feature highlight cards in the superadmin login view.',
-    count: 4,
   },
   {
     file: 'features/superadmin/AdminAuthModal.tsx',

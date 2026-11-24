@@ -53,8 +53,20 @@ export const LazyImage: React.FC<LazyImageProps> = ({
     return (
       <div
         data-testid="lazy-image-fallback"
+        // No fill of our own (S13). index.css defines --color-bg-elevated-2 and
+        // --color-text-muted once for the dark scale; storefront themes override
+        // them per theme, and `.dark` is the only theme-scoped block. Admin light
+        // mode is reachable but has no token set, so an opaque token fill becomes
+        // a #2A2F35 dark tile on a light page. Leaving the surface transparent
+        // keeps the tile correct everywhere: every caller already paints a frame
+        // themed for the mode (slate-100/dark:slate-800 in the CRM, bg-elevated-2
+        // on storefront cards). The glyph keeps the theme muted token, which
+        // measures 4.1-6.7:1 on the four storefront themes and 4.5-5.5:1 in
+        // admin dark; admin light's #8B8F95 on a light frame is the one sub-3:1
+        // case left (3.25:1 on white, 2.97:1 on slate-100), and it needs an
+        // admin-light token set in index.css, not a local colour.
         className={cn(
-          "flex size-full items-center justify-center bg-slate-100 text-slate-600 dark:bg-slate-800/80 dark:text-slate-400",
+          "flex size-full items-center justify-center text-text-muted",
           containerClassName,
           fallbackClassName
         )}

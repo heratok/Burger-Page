@@ -66,13 +66,23 @@ describe("UsersDirectory server state (users query)", () => {
     await waitFor(() => expect(screen.queryByText("cached_user")).toBeNull())
   })
 
-  it("shows the error toast and the empty table when the list cannot be read", async () => {
+  it("shows the error toast and an inline retryable error (never the empty directory) when the list cannot be read", async () => {
     const toastError = vi.spyOn(toast, "error")
-    vi.spyOn(apiClient, "listUsers").mockRejectedValue(new Error("boom"))
+    const listSpy = vi.spyOn(apiClient, "listUsers").mockRejectedValue(new Error("boom-users"))
 
     renderDirectory()
 
-    expect(await screen.findByText(/No se encontraron usuarios/i)).toBeDefined()
+    const alert = await screen.findByRole("alert")
+    // One toast per failed read, and it is ours, not the server's raw string.
     expect(toastError).toHaveBeenCalledTimes(1)
+    // The failure is a state with a way out of it.
+    expect(alert.textContent).toMatch(/No se pudo cargar la lista de usuarios/i)
+    expect(alert.textContent).not.toContain("boom-users")
+    expect(screen.getByRole("button", { name: /Reintentar/i })).toBeDefined()
+    fireEvent.click(screen.getByRole("button", { name: /Reintentar/i }))
+    await waitFor(() => expect(listSpy).toHaveBeenCalledTimes(2))
+    // A failed read is not an empty directory.
+    expect(screen.queryByText(/No se encontraron usuarios coincidentes/i)).toBeNull()
+    expect(screen.queryByText(/^boom-users$/)).toBeNull()
   })
 })

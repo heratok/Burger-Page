@@ -2,13 +2,14 @@ import React, { useState, useEffect } from "react"
 import { useUi, useCatalog } from "@/context/RestaurantContext"
 import { Settings, Save, RotateCcw, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 import { CustomizerBusinessSection } from "./customizer/CustomizerBusinessSection"
 import type { StorefrontConfig } from "@/types/restaurant"
 import { toast } from "sonner"
 
 export const StoreSettingsManager: React.FC = () => {
   const { adminTheme } = useUi()
-  const { storeConfig, updateStoreConfig } = useCatalog()
+  const { storeConfig, updateStoreConfig, isTenantPending } = useCatalog()
   const isDark = adminTheme === "dark"
 
   const [draft, setDraft] = useState<StorefrontConfig>(storeConfig)
@@ -81,7 +82,7 @@ export const StoreSettingsManager: React.FC = () => {
           <Button
             type="button"
             size="sm"
-            disabled={isSaving}
+            disabled={isSaving || isTenantPending}
             onClick={handleSave}
             className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-md shadow-indigo-600/20 cursor-pointer"
           >
@@ -96,7 +97,27 @@ export const StoreSettingsManager: React.FC = () => {
       </div>
 
       {/* Main Settings Panel */}
-      <CustomizerBusinessSection draft={draft} setDraft={setDraft} isDark={isDark} />
+      {isTenantPending ? (
+        // The tenant record is still resolving: its config would be replaced
+        // underneath the user, so the fields are not editable yet.
+        <div
+          data-testid="store-settings-skeleton"
+          aria-busy="true"
+          aria-label="Cargando ajustes del negocio"
+          className={`space-y-4 rounded-2xl border p-5 shadow-xs ${
+            isDark ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-white"
+          }`}
+        >
+          {Array.from({ length: 6 }).map((_, index) => (
+            <div key={index} className="space-y-2">
+              <Skeleton className={`h-3 w-40 rounded ${isDark ? "bg-slate-800" : "bg-slate-200"}`} />
+              <Skeleton className={`h-10 w-full rounded-xl ${isDark ? "bg-slate-800" : "bg-slate-200"}`} />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <CustomizerBusinessSection draft={draft} setDraft={setDraft} isDark={isDark} />
+      )}
     </div>
   )
 }

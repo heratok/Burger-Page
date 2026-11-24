@@ -35,6 +35,12 @@ export interface CatalogContextType {
   updateAddition: (id: string, updates: Partial<AdditionItem>) => void
   deleteAddition: (id: string) => void
   isLoadingCatalog: boolean
+  /**
+   * The tenant record behind the catalog (store config, categories) is still
+   * resolving: its values are placeholders that are about to be replaced, so a
+   * form seeded from them must not be editable yet.
+   */
+  isTenantPending: boolean
 }
 
 const CatalogContext = createContext<CatalogContextType | undefined>(undefined)
@@ -83,7 +89,7 @@ const EMPTY_PRODUCTS: MenuItem[] = []
 const EMPTY_ADDITIONS: AdditionItem[] = []
 
 export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { activeRestaurant } = useTenant()
+  const { activeRestaurant, isSyncing } = useTenant()
   const { session } = useAuth()
 
   // A1/A2: fetch targets key on the session-aware effective tenant. For a
@@ -119,9 +125,21 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
     enabled,
   })
 
+  // A tenant record must be resolved before the catalog can be read: the store
+  // config and categories live in it, and products/additions are fetched per
+  // tenant. While the tenant is still resolving the queries above are disabled
+  // and `isLoading` is false, so an unsettled catalog would read as a loaded,
+  // empty one (zero counts over a blank grid, or an editable form seeded with
+  // placeholder values). `isSyncing` is the tenant-resolution read; it is never
+  // true for anonymous storefront traffic, which resolves its tenant from the
+  // route and falls back to its own pending state.
+  const hasTenantRecord = activeRestaurant.id !== "rest-default"
+  const isTenantPending = !hasTenantRecord && isSyncing
+
   // Initial read only (isLoading = no data yet and fetching); background
   // refetches after writes must not flash the loading state.
-  const isLoadingCatalog = enabled && (productsQuery.isLoading || additionsQuery.isLoading)
+  const isLoadingCatalog =
+    isTenantPending || (enabled && (productsQuery.isLoading || additionsQuery.isLoading))
 
   // The query cache is the only source of truth for products and additions: a
   // failed read keeps the last cached lists, and the tenant record never holds
@@ -628,6 +646,7 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
       updateAddition,
       deleteAddition,
       isLoadingCatalog,
+      isTenantPending,
     }),
     [
       activeRestaurant.config,
@@ -647,6 +666,7 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
       updateAddition,
       deleteAddition,
       isLoadingCatalog,
+      isTenantPending,
     ]
   )
 

@@ -116,7 +116,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
         {/* ======================================================== */}
         <div className="lg:col-span-6 space-y-6 text-left hidden sm:block">
           {/* Brand pill */}
-          <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3.5 py-1.5 text-xs font-semibold text-indigo-300 backdrop-blur-md shadow-sm">
+          <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3.5 py-1.5 text-xs font-semibold text-indigo-300 shadow-sm">
             <Sparkles className="size-3.5 text-amber-400 animate-pulse" />
             <span>FoodOS • Suite Operativa</span>
           </div>
@@ -134,7 +134,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
 
           {/* Feature Highlights Grid */}
           <div className="grid grid-cols-2 gap-3 pt-2 max-w-md">
-            <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-3.5 backdrop-blur-md">
+            <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-3.5">
               <div className="flex items-center gap-2 text-orange-400 mb-1">
                 <ShoppingBag className="size-4" />
                 <span className="text-sm font-bold text-white">Pedidos en Vivo</span>
@@ -142,7 +142,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
               <p className="text-sm text-slate-400">Flujo Kanban de cocina y recepción WhatsApp.</p>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-3.5 backdrop-blur-md">
+            <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-3.5">
               <div className="flex items-center gap-2 text-indigo-400 mb-1">
                 <Boxes className="size-4" />
                 <span className="text-sm font-bold text-white">Stock & Insumos</span>
@@ -150,7 +150,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
               <p className="text-sm text-slate-400">Control de materias primas y proveedores.</p>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-3.5 backdrop-blur-md">
+            <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-3.5">
               <div className="flex items-center gap-2 text-emerald-400 mb-1">
                 <Users className="size-4" />
                 <span className="text-sm font-bold text-white">Clientes</span>
@@ -158,7 +158,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
               <p className="text-sm text-slate-400">Base de clientes y fidelización directa.</p>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-3.5 backdrop-blur-md">
+            <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-3.5">
               <div className="flex items-center gap-2 text-amber-400 mb-1">
                 <ShieldCheck className="size-4" />
                 <span className="text-sm font-bold text-white">Cifrado Seguro</span>

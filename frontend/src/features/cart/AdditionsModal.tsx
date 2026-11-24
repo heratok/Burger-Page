@@ -170,7 +170,7 @@ export default function AdditionsModal({
             backgroundColor: "var(--color-bg-elevated)",
             borderColor: "var(--color-border-subtle)",
           }}
-          className="absolute top-3 right-3 z-30 inline-flex size-9 sm:size-10 pointer-coarse:size-11 items-center justify-center rounded-full border border-border-subtle bg-bg-elevated hover:bg-bg-elevated-2 text-text-muted hover:text-text-primary shadow-md transition-all active:scale-95 cursor-pointer backdrop-blur-md"
+          className="absolute top-3 right-3 z-30 inline-flex size-9 sm:size-10 pointer-coarse:size-11 items-center justify-center rounded-full border border-border-subtle bg-bg-elevated hover:bg-bg-elevated-2 text-text-muted hover:text-text-primary shadow-md transition-all active:scale-95 cursor-pointer"
         >
           <X className="size-4 sm:size-5" />
         </button>

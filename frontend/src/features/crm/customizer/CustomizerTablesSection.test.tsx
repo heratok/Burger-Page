@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, waitFor, fireEvent, within } from "@testing-library/react"
+import { render, screen, waitFor, fireEvent, within, act } from "@testing-library/react"
+import { QueryClientProvider } from "@tanstack/react-query"
 import { apiClient } from "@/core/api/apiClient"
+import { createTestQueryClient } from "@/test/testQueryClient"
 import { CustomizerTablesSection } from "./CustomizerTablesSection"
 import { TestQueryProvider } from "@/test/queryClientWrapper"
 
@@ -10,6 +12,22 @@ const t = (id: string, name: string, sortOrder = 0, isActive = true) => {
 }
 
 const renderSection = () => render(<CustomizerTablesSection restaurantId="rest-1" />, { wrapper: TestQueryProvider })
+
+/** A promise settled by hand, so in-flight states stay observable. */
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((res) => {
+    resolve = res
+  })
+  return { promise, resolve }
+}
+
+const renderSectionWith = (client: ReturnType<typeof createTestQueryClient>) =>
+  render(
+    <QueryClientProvider client={client}>
+      <CustomizerTablesSection restaurantId="rest-1" />
+    </QueryClientProvider>
+  )
 
 describe("CustomizerTablesSection", () => {
   beforeEach(() => {
@@ -268,5 +286,48 @@ describe("CustomizerTablesSection", () => {
     fireEvent.click(await screen.findByRole("button", { name: /Reintentar/i }))
 
     expect(await screen.findByText("Mesa 1")).toBeDefined()
+  })
+
+  it("reserves the list with the table skeleton while loading, never a plain line", async () => {
+    const held = deferred<any[]>()
+    vi.spyOn(apiClient, "fetchTables").mockImplementation(() => held.promise)
+    renderSection()
+
+    expect(screen.getByTestId("table-skeleton")).toBeDefined()
+    expect(screen.queryByText(/Cargando mesas/i)).toBeNull()
+    // Loading is neither the empty state nor the error state.
+    expect(screen.queryByText(/Todavía no tenés mesas/i)).toBeNull()
+    expect(screen.queryByText(/No se pudieron cargar las mesas/i)).toBeNull()
+
+    await act(async () => {
+      held.resolve([t("a", "Salón 1")])
+    })
+
+    expect(await screen.findByText("Salón 1")).toBeDefined()
+    expect(screen.queryByTestId("table-skeleton")).toBeNull()
+  })
+
+  it("does not flash the skeleton again when the list is refetched with rows on screen", async () => {
+    vi.spyOn(apiClient, "fetchTables").mockResolvedValue([t("a", "Mesa 1")])
+    const client = createTestQueryClient()
+    renderSectionWith(client)
+
+    expect(await screen.findByText("Mesa 1")).toBeDefined()
+    expect(screen.queryByTestId("table-skeleton")).toBeNull()
+
+    const refetch = deferred<any[]>()
+    vi.mocked(apiClient.fetchTables).mockImplementation(() => refetch.promise)
+    await act(async () => {
+      void client.invalidateQueries()
+    })
+
+    expect(screen.getByText("Mesa 1")).toBeDefined()
+    expect(screen.queryByTestId("table-skeleton")).toBeNull()
+
+    await act(async () => {
+      refetch.resolve([t("a", "Mesa 1")])
+    })
+    expect(screen.getByText("Mesa 1")).toBeDefined()
+    expect(screen.queryByTestId("table-skeleton")).toBeNull()
   })
 })
