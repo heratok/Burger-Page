@@ -5,7 +5,7 @@ import { useGSAP } from "@gsap/react"
 let registered = false
 
 export function ensureLandingGsapRegistered(): void {
-  if (registered) return
+  if (registered || !supportsGsapMatchMedia()) return
   gsap.registerPlugin(ScrollTrigger, useGSAP)
   registered = true
 }
