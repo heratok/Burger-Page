@@ -159,6 +159,7 @@ const INITIAL_KANBAN_TICKETS: readonly KanbanTicket[] = [
 const KANBAN_COLUMNS: readonly {
   status: KanbanStatus
   label: string
+  topAccentClass: string
   headerClass: string
   badgeClass: string
   cardBorderClass: string
@@ -168,32 +169,32 @@ const KANBAN_COLUMNS: readonly {
   {
     status: "pending",
     label: "Pendiente",
-    headerClass: "text-amber-800 dark:text-amber-300",
-    badgeClass: "bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-300",
-    cardBorderClass: "border-amber-200 dark:border-amber-900/50",
+    topAccentClass: "from-amber-500/80 via-amber-400/50 to-transparent",
+    headerClass: "text-amber-200",
+    badgeClass: "bg-amber-950 border border-amber-700/70 text-amber-200",
+    cardBorderClass: "border-amber-800/60",
     actionLabel: "A Cocina →",
-    actionClass:
-      "bg-orange-700 hover:bg-orange-800 text-white dark:bg-orange-700 dark:hover:bg-orange-600",
+    actionClass: "bg-orange-700 hover:bg-orange-800 text-white",
   },
   {
     status: "cooking",
     label: "En Cocina",
-    headerClass: "text-orange-800 dark:text-orange-300",
-    badgeClass: "bg-orange-100 text-orange-900 dark:bg-orange-950/60 dark:text-orange-300",
-    cardBorderClass: "border-orange-200 dark:border-orange-900/50",
+    topAccentClass: "from-orange-500/80 via-orange-400/50 to-transparent",
+    headerClass: "text-orange-200",
+    badgeClass: "bg-orange-950 border border-orange-700/70 text-orange-200",
+    cardBorderClass: "border-orange-800/60",
     actionLabel: "Marcar Listo →",
-    actionClass:
-      "bg-emerald-700 hover:bg-emerald-800 text-white dark:bg-emerald-700 dark:hover:bg-emerald-600",
+    actionClass: "bg-emerald-700 hover:bg-emerald-800 text-white",
   },
   {
     status: "ready",
     label: "Listo",
-    headerClass: "text-emerald-800 dark:text-emerald-300",
-    badgeClass: "bg-emerald-100 text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-300",
-    cardBorderClass: "border-emerald-200 dark:border-emerald-900/50",
+    topAccentClass: "from-emerald-500/80 via-emerald-400/50 to-transparent",
+    headerClass: "text-emerald-200",
+    badgeClass: "bg-emerald-950 border border-emerald-700/70 text-emerald-200",
+    cardBorderClass: "border-emerald-800/60",
     actionLabel: "Entregado ✓",
-    actionClass:
-      "bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-white dark:text-slate-900",
+    actionClass: "bg-slate-100 hover:bg-white text-slate-950",
   },
 ]
 
@@ -385,580 +386,612 @@ export function InteractiveShowcase() {
   }
 
   return (
-    <div
-      ref={containerRef}
-      className="mt-16 relative max-w-4xl mx-auto rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-2xl text-left overflow-hidden"
-    >
-      {/* GSAP cursor-tracking ember radial highlight (desktop fine-pointer only, zero blur filter) */}
+    <div data-gsap-showcase-unfold className="mt-16 max-w-5xl mx-auto">
       <div
-        ref={spotlightRef}
-        aria-hidden="true"
-        className="pointer-events-none absolute -top-36 -left-36 size-72 rounded-full opacity-0 will-change-transform"
-        style={{
-          background:
-            "radial-gradient(circle, rgba(234, 88, 12, 0.14) 0%, rgba(245, 158, 11, 0.06) 44%, transparent 72%)",
-        }}
-      />
+        ref={containerRef}
+        className="relative rounded-3xl border border-slate-800/90 bg-slate-950 p-4 sm:p-6 shadow-[0_32px_90px_-24px_rgba(15,23,42,0.55)] text-left text-slate-100 overflow-hidden"
+      >
+        {/* Luminous ember top hairline accent */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-orange-500/80 to-transparent"
+        />
 
-      <div className="relative z-10">
-        {/* Top Browser Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/80 dark:border-slate-800 pb-3 mb-4">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="size-3 rounded-full bg-rose-400 shrink-0" aria-hidden="true" />
-            <div className="size-3 rounded-full bg-amber-400 shrink-0" aria-hidden="true" />
-            <div className="size-3 rounded-full bg-emerald-400 shrink-0" aria-hidden="true" />
-            <span className="ml-2 text-xs font-mono font-medium text-slate-600 dark:text-slate-400 min-w-0 break-all">
-              https://foodos.app/craft-burger
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5 text-xs text-emerald-800 dark:text-emerald-300 font-bold bg-emerald-50 dark:bg-emerald-950/50 px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800/60">
-            <span
-              className="size-2 rounded-full bg-emerald-600 dark:bg-emerald-400 animate-pulse motion-reduce:animate-none"
-              aria-hidden="true"
-            />
-            <span>Tienda Operando en Vivo</span>
-          </div>
-        </div>
+        {/* Subtle ambient obsidian crown wash (zero blur filter) */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 top-0 h-44"
+          style={{
+            background:
+              "radial-gradient(ellipse 68% 100% at 50% 0%, rgba(234, 88, 12, 0.14) 0%, rgba(245, 158, 11, 0.04) 48%, transparent 100%)",
+          }}
+        />
 
-        <LayoutGroup id={scopeId}>
-          {/* Scenario Tabs with shared-element Motion spring indicator */}
-          <div
-            role="tablist"
-            aria-label="Escenarios del producto FoodOS"
-            className="flex flex-wrap gap-2 mb-5"
-          >
-            {TABS.map((tab) => {
-              const isActive = activeTab === tab.id
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  role="tab"
-                  id={tab.tabId}
-                  aria-selected={isActive}
-                  aria-controls={tab.panelId}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`relative pointer-coarse:min-h-11 inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-700 focus-visible:ring-offset-2 dark:focus-visible:ring-orange-400 dark:focus-visible:ring-offset-slate-900 ${
-                    isActive
-                      ? "text-white"
-                      : "bg-slate-100 text-slate-700 hover:bg-orange-50 hover:text-orange-800 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-                  }`}
-                >
-                  {isActive && (
-                    <motion.span
-                      layoutId={`${scopeId}-tab-pill`}
-                      transition={TAB_SPRING}
-                      aria-hidden="true"
-                      className="absolute inset-0 rounded-xl bg-orange-700 shadow-sm"
-                    />
-                  )}
-                  <span className="relative z-10 inline-flex items-center gap-2">
-                    {renderTabIcon(tab.id)}
-                    <span>{tab.label}</span>
-                  </span>
-                </button>
-              )
-            })}
+        {/* GSAP cursor-tracking ember radial highlight (desktop fine-pointer only, zero blur filter) */}
+        <div
+          ref={spotlightRef}
+          aria-hidden="true"
+          className="pointer-events-none absolute -top-40 -left-40 size-80 rounded-full opacity-0 will-change-transform"
+          style={{
+            background:
+              "radial-gradient(circle, rgba(249, 115, 22, 0.18) 0%, rgba(245, 158, 11, 0.07) 44%, transparent 72%)",
+          }}
+        />
+
+        <div className="relative z-10">
+          {/* Top Obsidian Command Browser Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800/90 pb-3.5 mb-5">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="flex items-center gap-1.5 shrink-0" aria-hidden="true">
+                <span className="size-3 rounded-full bg-rose-400/90" />
+                <span className="size-3 rounded-full bg-amber-400/90" />
+                <span className="size-3 rounded-full bg-emerald-400/90" />
+              </div>
+              <span className="ml-2 inline-flex items-center rounded-lg border border-slate-800 bg-slate-900 px-2.5 py-1 text-xs font-mono font-medium text-slate-200 min-w-0 break-all">
+                https://foodos.app/craft-burger
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2 text-xs font-bold bg-emerald-950/90 text-emerald-200 px-3 py-1.5 rounded-full border border-emerald-800/70">
+              <span
+                className="size-2 rounded-full bg-emerald-400 animate-pulse motion-reduce:animate-none"
+                aria-hidden="true"
+              />
+              <span>Tienda Operando en Vivo</span>
+            </div>
           </div>
 
-          {/* Animated Tab Stage */}
-          <div className="relative">
-            <AnimatePresence mode="popLayout" initial={false}>
-              {/* Tab 1: Pedido Delivery */}
-              {activeTab === "delivery" && (
-                <motion.div
-                  key="delivery"
-                  role="tabpanel"
-                  id="panel-delivery"
-                  aria-labelledby="tab-delivery"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.2, ease: "easeOut" }}
-                  className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start"
-                >
-                  {/* Mockup Storefront Builder */}
-                  <div className="md:col-span-7 space-y-3">
-                    <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-800/50 p-3.5 shadow-xs space-y-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="size-11 shrink-0 rounded-2xl bg-orange-700 flex items-center justify-center text-white shadow-sm">
-                            <UtensilsCrossed className="size-5" aria-hidden="true" />
-                          </div>
-                          <div className="min-w-0">
-                            <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                              Craft Monster Burger
-                            </h3>
-                            <p className="text-sm text-slate-600 dark:text-slate-400">
-                              Doble carne 150g, cheddar fundido, tocineta
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <span className="text-sm font-extrabold text-orange-700 dark:text-orange-400">
-                            {formatCop(DELIVERY_BASE_BURGER_PRICE)}
-                          </span>
-                          {extrasTotal > 0 && (
-                            <div className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
-                              +{formatCop(extrasTotal)}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Interactive Add-on Toggle Chips */}
-                      <div className="border-t border-slate-200/80 dark:border-slate-700/70 pt-2.5">
-                        <span className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2">
-                          Probá sumar o quitar adiciones en vivo:
-                        </span>
-                        <div className="flex flex-wrap gap-2">
-                          {DELIVERY_EXTRAS.map((extra) => {
-                            const isSelected = selectedExtraIds.includes(extra.id)
-                            return (
-                              <motion.button
-                                key={extra.id}
-                                type="button"
-                                aria-pressed={isSelected}
-                                whileTap={{ scale: 0.96 }}
-                                onClick={() => toggleExtra(extra.id)}
-                                className={`pointer-coarse:min-h-11 inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-xs font-bold transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-700 focus-visible:ring-offset-2 dark:focus-visible:ring-orange-400 dark:focus-visible:ring-offset-slate-900 ${
-                                  isSelected
-                                    ? "border-emerald-700 bg-emerald-50 text-emerald-800 dark:border-emerald-500/60 dark:bg-emerald-950/60 dark:text-emerald-300"
-                                    : "border-slate-300 bg-white text-slate-700 hover:border-orange-400 hover:text-orange-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-orange-500/60"
-                                }`}
-                              >
-                                {isSelected ? (
-                                  <Check className="size-3.5 shrink-0" aria-hidden="true" />
-                                ) : (
-                                  <Plus className="size-3.5 shrink-0" aria-hidden="true" />
-                                )}
-                                <span>
-                                  {extra.name} (+{formatCop(extra.price)})
-                                </span>
-                              </motion.button>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-800/50 p-3.5 flex items-center justify-between gap-3 shadow-xs">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="size-11 shrink-0 rounded-2xl bg-amber-700 flex items-center justify-center text-white shadow-sm">
-                          <Flame className="size-5" aria-hidden="true" />
-                        </div>
-                        <div className="min-w-0">
-                          <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                            Papas Rústicas Cheddar
-                          </h3>
-                          <p className="text-sm text-slate-600 dark:text-slate-400">
-                            Papas crocantes con salsa artesanal
-                          </p>
-                        </div>
-                      </div>
-                      <span className="text-sm font-extrabold text-orange-700 dark:text-orange-400 shrink-0">
-                        {formatCop(DELIVERY_SIDES_PRICE)}
-                      </span>
-                    </div>
-
-                    <div className="rounded-2xl bg-orange-50 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-900/50 p-3 flex items-center justify-between gap-3 text-xs text-orange-950 dark:text-orange-200 font-semibold">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <ShoppingBag
-                          className="size-4 text-orange-700 dark:text-orange-400 shrink-0"
-                          aria-hidden="true"
-                        />
-                        <span>
-                          Carrito de Compra: 2 productos
-                          {activeExtras.length > 0
-                            ? ` + ${activeExtras.length} ${activeExtras.length === 1 ? "adición" : "adiciones"}`
-                            : ""}
-                        </span>
-                      </div>
-                      <span className="text-sm font-extrabold text-orange-800 dark:text-orange-300 shrink-0">
-                        {formatCop(deliveryTotal)}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Mockup WhatsApp Message Preview */}
-                  <div className="md:col-span-5 rounded-2xl border border-emerald-200 dark:border-[#222E35] bg-[#E8F8F0] dark:bg-[#111B21] p-4 relative shadow-sm space-y-3">
-                    <div className="flex items-center gap-2 text-emerald-900 dark:text-[#25D366] text-xs font-bold">
-                      <MessageSquare
-                        className="size-4 text-emerald-700 dark:text-[#25D366] shrink-0"
-                        aria-hidden="true"
-                      />
-                      <span>Mensaje formateado en WhatsApp:</span>
-                    </div>
-
-                    <div className="rounded-xl bg-white dark:bg-[#202C33] border border-emerald-200/80 dark:border-[#2A3942] p-3 text-xs text-slate-800 dark:text-[#E9EDEF] font-mono space-y-1.5 leading-relaxed shadow-xs">
-                      <div className="font-bold text-emerald-800 dark:text-[#25D366]">
-                        👋 ¡Hola Craft Burger! Nuevo Pedido:
-                      </div>
-                      <div>• 1x Craft Monster Burger ({formatCop(DELIVERY_BASE_BURGER_PRICE)})</div>
-                      {activeExtras.map((extra) => (
-                        <div
-                          key={extra.id}
-                          className="text-emerald-800 dark:text-[#25D366] pl-2"
-                        >
-                          + {extra.name} ({formatCop(extra.price)})
-                        </div>
-                      ))}
-                      <div>• 1x Papas Rústicas ({formatCop(DELIVERY_SIDES_PRICE)})</div>
-                      <div className="border-t border-slate-200 dark:border-slate-700/60 pt-1.5 text-slate-900 dark:text-white font-bold">
-                        Total a Pagar: {formatCop(deliveryTotal)}
-                      </div>
-                      <div className="text-emerald-800 dark:text-[#25D366]">
-                        📍 Cra 15 # 85-30 • Pago: Efectivo
-                      </div>
-                    </div>
-
-                    <motion.button
+          <LayoutGroup id={scopeId}>
+            {/* Scenario Tabs Dock with shared-element Motion spring indicator */}
+            <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+              <div
+                role="tablist"
+                aria-label="Escenarios del producto FoodOS"
+                className="inline-flex flex-wrap gap-1.5 rounded-2xl border border-slate-800 bg-slate-900/90 p-1.5"
+              >
+                {TABS.map((tab) => {
+                  const isActive = activeTab === tab.id
+                  return (
+                    <button
+                      key={tab.id}
                       type="button"
-                      whileHover={{ scale: 1.015 }}
-                      whileTap={{ scale: 0.97 }}
-                      transition={TAB_SPRING}
-                      onClick={handleSimulateWhatsApp}
-                      className="w-full min-h-11 inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2.5 text-xs font-bold shadow-sm transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-800 focus-visible:ring-offset-2 dark:focus-visible:ring-emerald-400 dark:focus-visible:ring-offset-[#111B21]"
+                      role="tab"
+                      id={tab.tabId}
+                      aria-selected={isActive}
+                      aria-controls={tab.panelId}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`relative pointer-coarse:min-h-11 inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
+                        isActive
+                          ? "text-white"
+                          : "bg-slate-900 text-slate-200 hover:bg-slate-800 hover:text-white"
+                      }`}
                     >
-                      <Send className="size-3.5 shrink-0" aria-hidden="true" />
-                      <span>Simular Envío por WhatsApp</span>
-                    </motion.button>
-
-                    <AnimatePresence>
-                      {whatsAppSent && (
-                        <motion.div
-                          key="whatsapp-toast"
-                          role="status"
-                          aria-live="polite"
-                          initial={{ opacity: 0, y: 8, scale: 0.96 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, y: -4, scale: 0.96 }}
-                          transition={CARD_SPRING}
-                          className="rounded-xl border border-emerald-300 dark:border-emerald-700/60 bg-white dark:bg-emerald-950/80 px-3 py-2 flex items-center gap-2 text-xs font-bold text-emerald-800 dark:text-emerald-200 shadow-xs"
-                        >
-                          <CheckCircle2
-                            className="size-4 text-emerald-700 dark:text-emerald-400 shrink-0"
-                            aria-hidden="true"
-                          />
-                          <span>Ticket enviado al instante · 0% comisión</span>
-                        </motion.div>
+                      {isActive && (
+                        <motion.span
+                          layoutId={`${scopeId}-tab-pill`}
+                          transition={TAB_SPRING}
+                          aria-hidden="true"
+                          className="absolute inset-0 rounded-xl bg-gradient-to-r from-orange-700 to-amber-700 border border-orange-500/40 shadow-[0_0_24px_-4px_rgba(234,88,12,0.55)]"
+                        />
                       )}
-                    </AnimatePresence>
-                  </div>
-                </motion.div>
-              )}
-
-              {/* Tab 2: Mesa & Código QR */}
-              {activeTab === "qr" && (
-                <motion.div
-                  key="qr"
-                  role="tabpanel"
-                  id="panel-qr"
-                  aria-labelledby="tab-qr"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.2, ease: "easeOut" }}
-                  className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start"
-                >
-                  <div className="md:col-span-7 space-y-3">
-                    {/* Table Selector Bar with Motion layoutId pill */}
-                    <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-amber-200 dark:border-amber-900/50 bg-amber-50/90 dark:bg-amber-950/30 p-2.5">
-                      <div
-                        role="group"
-                        aria-label="Seleccionar mesa del salón"
-                        className="flex flex-wrap items-center gap-1.5"
-                      >
-                        {QR_TABLES.map((table) => {
-                          const isSelected = table.id === activeTable.id
-                          return (
-                            <button
-                              key={table.id}
-                              type="button"
-                              aria-pressed={isSelected}
-                              onClick={() => setSelectedTableId(table.id)}
-                              className={`relative pointer-coarse:min-h-11 inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-700 focus-visible:ring-offset-2 dark:focus-visible:ring-orange-400 dark:focus-visible:ring-offset-slate-900 ${
-                                isSelected
-                                  ? "text-white"
-                                  : "text-amber-900 hover:bg-amber-100 dark:text-amber-200 dark:hover:bg-amber-900/40"
-                              }`}
-                            >
-                              {isSelected && (
-                                <motion.span
-                                  layoutId={`${scopeId}-qr-table-pill`}
-                                  transition={TAB_SPRING}
-                                  aria-hidden="true"
-                                  className="absolute inset-0 rounded-xl bg-amber-700 shadow-xs"
-                                />
-                              )}
-                              <span className="relative z-10 inline-flex items-center gap-1.5">
-                                <QrCode className="size-3.5 shrink-0" aria-hidden="true" />
-                                <span>{table.name}</span>
-                              </span>
-                            </button>
-                          )
-                        })}
-                      </div>
-
-                      <span className="rounded-full bg-emerald-100 dark:bg-emerald-950/60 px-2.5 py-0.5 text-xs font-bold text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60">
-                        QR Escaneado
+                      <span className="relative z-10 inline-flex items-center gap-2">
+                        {renderTabIcon(tab.id)}
+                        <span>{tab.label}</span>
                       </span>
-                    </div>
+                    </button>
+                  )
+                })}
+              </div>
 
-                    {/* Table Items */}
-                    <div className="space-y-3">
-                      {activeTable.items.map((item) => (
-                        <motion.div
-                          key={item.id}
-                          layout
-                          initial={{ opacity: 0, y: 6 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={CARD_SPRING}
-                          className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-800/50 p-3.5 flex items-center justify-between gap-3 shadow-xs"
-                        >
+              <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-slate-800 bg-slate-900 px-3 py-1 text-xs font-semibold text-orange-200">
+                <Sparkles className="size-3.5 text-orange-200 shrink-0" aria-hidden="true" />
+                <span>Simulador interactivo en vivo</span>
+              </span>
+            </div>
+
+            {/* Animated Tab Stage */}
+            <div className="relative">
+              <AnimatePresence mode="popLayout" initial={false}>
+                {/* Tab 1: Pedido Delivery */}
+                {activeTab === "delivery" && (
+                  <motion.div
+                    key="delivery"
+                    role="tabpanel"
+                    id="panel-delivery"
+                    aria-labelledby="tab-delivery"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.2, ease: "easeOut" }}
+                    className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start"
+                  >
+                    {/* Mockup Obsidian Storefront Builder */}
+                    <div className="md:col-span-7 space-y-3.5">
+                      <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-4 space-y-3.5">
+                        <div className="flex items-start justify-between gap-3">
                           <div className="flex items-center gap-3 min-w-0">
-                            <div
-                              className={`size-11 shrink-0 rounded-2xl flex items-center justify-center text-white shadow-sm ${
-                                item.icon === "burger" ? "bg-orange-700" : "bg-amber-700"
-                              }`}
-                            >
-                              {item.icon === "burger" ? (
-                                <UtensilsCrossed className="size-5" aria-hidden="true" />
-                              ) : (
-                                <Sparkles className="size-5" aria-hidden="true" />
-                              )}
+                            <div className="size-11 shrink-0 rounded-2xl bg-gradient-to-br from-orange-700 to-amber-700 border border-orange-500/40 flex items-center justify-center text-white shadow-sm">
+                              <UtensilsCrossed className="size-5" aria-hidden="true" />
                             </div>
                             <div className="min-w-0">
-                              <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                                {item.name}
+                              <h3 className="font-bold text-sm text-white">
+                                Craft Monster Burger
                               </h3>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">
-                                {item.description}
+                              <p className="text-sm text-slate-200">
+                                Doble carne 150g, cheddar fundido, tocineta
                               </p>
                             </div>
                           </div>
-                          <span className="text-sm font-extrabold text-orange-700 dark:text-orange-400 shrink-0">
-                            {formatCop(item.price)}
-                          </span>
-                        </motion.div>
-                      ))}
-
-                      <AnimatePresence>
-                        {extraDrinkCount > 0 && (
-                          <motion.div
-                            key="extra-drink-row"
-                            initial={{ opacity: 0, y: 6 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -6 }}
-                            transition={CARD_SPRING}
-                            className="rounded-2xl border border-emerald-200 dark:border-emerald-800/60 bg-emerald-50/70 dark:bg-emerald-950/30 p-3.5 flex items-center justify-between gap-3 shadow-xs"
-                          >
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className="size-11 shrink-0 rounded-2xl bg-emerald-700 flex items-center justify-center text-white shadow-sm">
-                                <Sparkles className="size-5" aria-hidden="true" />
-                              </div>
-                              <div className="min-w-0">
-                                <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                                  {extraDrinkCount}x Bebida Extra de la Casa
-                                </h3>
-                                <p className="text-sm text-slate-600 dark:text-slate-400">
-                                  Agregada en nueva ronda desde la mesa
-                                </p>
-                              </div>
-                            </div>
-                            <span className="text-sm font-extrabold text-emerald-800 dark:text-emerald-300 shrink-0">
-                              {formatCop(extraDrinkCount * QR_EXTRA_DRINK_PRICE)}
+                          <div className="text-right shrink-0">
+                            <span className="text-sm font-extrabold text-orange-200">
+                              {formatCop(DELIVERY_BASE_BURGER_PRICE)}
                             </span>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-
-                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-orange-50 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-900/50 p-3 text-xs text-orange-950 dark:text-orange-200 font-semibold">
-                      <div className="flex items-center gap-2">
-                        <ShoppingBag
-                          className="size-4 text-orange-700 dark:text-orange-400 shrink-0"
-                          aria-hidden="true"
-                        />
-                        <span>Cuenta abierta en mesa</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <motion.button
-                          type="button"
-                          whileTap={{ scale: 0.96 }}
-                          onClick={handleAddDrink}
-                          className="pointer-coarse:min-h-11 inline-flex items-center gap-1 rounded-xl border border-orange-300 dark:border-orange-700/70 bg-white dark:bg-slate-900 px-2.5 py-1.5 text-xs font-bold text-orange-800 dark:text-orange-300 hover:bg-orange-100 dark:hover:bg-orange-950/60 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-700 focus-visible:ring-offset-2 dark:focus-visible:ring-orange-400"
-                        >
-                          <span>+ Agregar Bebida (+$9.000)</span>
-                        </motion.button>
-                        <span className="text-sm font-extrabold text-orange-800 dark:text-orange-300">
-                          {formatCop(qrTotal)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Instant Kitchen / Table Ticket */}
-                  <div className="md:col-span-5 rounded-2xl border border-amber-200 dark:border-amber-900/50 bg-amber-50/80 dark:bg-slate-800/70 p-4 shadow-sm">
-                    <div className="flex items-center gap-2 text-amber-900 dark:text-amber-300 text-xs font-bold mb-2.5">
-                      <QrCode
-                        className="size-4 text-amber-700 dark:text-amber-400 shrink-0"
-                        aria-hidden="true"
-                      />
-                      <span>Comanda instantánea de salón:</span>
-                    </div>
-                    <div className="rounded-xl bg-white dark:bg-slate-900 border border-amber-200/70 dark:border-slate-700 p-3.5 text-xs text-slate-800 dark:text-slate-200 font-mono space-y-2 leading-relaxed shadow-xs">
-                      <div className="font-bold text-orange-800 dark:text-orange-400">
-                        🪑 Pedido en Salón — {activeTable.name}
-                      </div>
-                      {activeTable.items.map((item) => (
-                        <div key={item.id}>
-                          • {item.name} ({formatCop(item.price)})
-                        </div>
-                      ))}
-                      {extraDrinkCount > 0 && (
-                        <div className="text-emerald-800 dark:text-emerald-400">
-                          • {extraDrinkCount}x Bebida Extra ({formatCop(extraDrinkCount * QR_EXTRA_DRINK_PRICE)})
-                        </div>
-                      )}
-                      <div className="border-t border-slate-200 dark:border-slate-800 pt-1.5 text-slate-900 dark:text-white font-bold">
-                        Total Mesa: {formatCop(qrTotal)}
-                      </div>
-                      <div className="text-emerald-800 dark:text-emerald-400 font-semibold">
-                        Sin espera en caja • Directo a cocina
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-
-              {/* Tab 3: Cocina & Kanban (Interactive Showstopper) */}
-              {activeTab === "kanban" && (
-                <motion.div
-                  key="kanban"
-                  role="tabpanel"
-                  id="panel-kanban"
-                  aria-labelledby="tab-kanban"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.2, ease: "easeOut" }}
-                  className="space-y-4"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
-                      Hacé clic en el botón de cada comanda para avanzar el pedido por la cocina:
-                    </span>
-                    <div className="flex items-center gap-2">
-                      {deliveredCount > 0 && (
-                        <span className="rounded-full bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/60 px-2.5 py-1 text-xs font-bold text-emerald-800 dark:text-emerald-300">
-                          {deliveredCount} {deliveredCount === 1 ? "entregado" : "entregados"}
-                        </span>
-                      )}
-                      {hasKanbanChanges && (
-                        <motion.button
-                          type="button"
-                          initial={{ opacity: 0, scale: 0.92 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          whileTap={{ scale: 0.96 }}
-                          onClick={resetKanban}
-                          className="pointer-coarse:min-h-11 inline-flex items-center gap-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-700 focus-visible:ring-offset-2 dark:focus-visible:ring-orange-400"
-                        >
-                          <RotateCcw className="size-3.5 shrink-0" aria-hidden="true" />
-                          <span>Reiniciar tablero</span>
-                        </motion.button>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {KANBAN_COLUMNS.map((column) => {
-                      const columnTickets = tickets.filter((t) => t.status === column.status)
-                      return (
-                        <div
-                          key={column.status}
-                          className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-800/40 p-3.5 space-y-2.5 min-h-[190px] flex flex-col"
-                        >
-                          <div
-                            className={`flex items-center justify-between text-xs font-bold ${column.headerClass}`}
-                          >
-                            <span>{column.label}</span>
-                            <span className={`rounded-full px-2 py-0.5 ${column.badgeClass}`}>
-                              {columnTickets.length}
-                            </span>
-                          </div>
-
-                          <div className="space-y-2.5 flex-1">
-                            <AnimatePresence mode="popLayout">
-                              {columnTickets.map((ticket) => (
-                                <motion.div
-                                  key={ticket.id}
-                                  layout
-                                  layoutId={`${scopeId}-kanban-card-${ticket.id}`}
-                                  initial={{ opacity: 0, scale: 0.95 }}
-                                  animate={{ opacity: 1, scale: 1 }}
-                                  exit={{ opacity: 0, scale: 0.9 }}
-                                  transition={CARD_SPRING}
-                                  className={`rounded-xl border ${column.cardBorderClass} bg-white dark:bg-slate-900 p-3 shadow-xs space-y-2`}
-                                >
-                                  <div className="flex items-start justify-between gap-2">
-                                    <div className="font-bold text-xs text-slate-900 dark:text-white">
-                                      {ticket.title}
-                                    </div>
-                                    <span className="shrink-0 rounded-md bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
-                                      {ticket.channel}
-                                    </span>
-                                  </div>
-
-                                  <div className="text-xs text-slate-600 dark:text-slate-400">
-                                    {ticket.summary}
-                                  </div>
-
-                                  <div className="flex items-center justify-between gap-2 pt-1">
-                                    <span className="text-xs font-extrabold text-orange-700 dark:text-orange-400">
-                                      {ticket.price}
-                                    </span>
-                                    <motion.button
-                                      type="button"
-                                      whileTap={{ scale: 0.95 }}
-                                      onClick={() => advanceTicket(ticket.id)}
-                                      className={`pointer-coarse:min-h-11 inline-flex items-center rounded-lg px-2.5 py-1.5 text-xs font-bold transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-700 focus-visible:ring-offset-2 dark:focus-visible:ring-orange-400 dark:focus-visible:ring-offset-slate-900 ${column.actionClass}`}
-                                    >
-                                      {column.actionLabel}
-                                    </motion.button>
-                                  </div>
-                                </motion.div>
-                              ))}
-                            </AnimatePresence>
-
-                            {columnTickets.length === 0 && (
-                              <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-4 text-center text-xs font-medium text-slate-600 dark:text-slate-400">
-                                Sin pedidos en esta etapa
+                            {extrasTotal > 0 && (
+                              <div className="text-xs font-semibold text-emerald-200">
+                                +{formatCop(extrasTotal)}
                               </div>
                             )}
                           </div>
                         </div>
-                      )
-                    })}
-                  </div>
 
-                  <div className="rounded-2xl border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/80 dark:bg-emerald-950/30 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs text-emerald-900 dark:text-emerald-200">
-                    <div className="flex items-center gap-2 font-semibold">
-                      <Volume2
-                        className="size-4 text-emerald-700 dark:text-emerald-400 shrink-0"
-                        aria-hidden="true"
-                      />
-                      <span>Alertas sonoras activas · Sincronización en tiempo real vía SSE</span>
+                        {/* Interactive Add-on Toggle Chips */}
+                        <div className="border-t border-slate-800 pt-3">
+                          <span className="block text-xs font-semibold text-slate-200 mb-2.5">
+                            Probá sumar o quitar adiciones en vivo:
+                          </span>
+                          <div className="flex flex-wrap gap-2">
+                            {DELIVERY_EXTRAS.map((extra) => {
+                              const isSelected = selectedExtraIds.includes(extra.id)
+                              return (
+                                <motion.button
+                                  key={extra.id}
+                                  type="button"
+                                  aria-pressed={isSelected}
+                                  whileTap={{ scale: 0.96 }}
+                                  onClick={() => toggleExtra(extra.id)}
+                                  className={`pointer-coarse:min-h-11 inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
+                                    isSelected
+                                      ? "border-emerald-500/70 bg-emerald-950 text-emerald-200 shadow-[0_0_16px_-4px_rgba(16,185,129,0.45)]"
+                                      : "border-slate-700 bg-slate-950 text-slate-200 hover:border-orange-500/70 hover:text-orange-200"
+                                  }`}
+                                >
+                                  {isSelected ? (
+                                    <Check className="size-3.5 shrink-0" aria-hidden="true" />
+                                  ) : (
+                                    <Plus className="size-3.5 shrink-0" aria-hidden="true" />
+                                  )}
+                                  <span>
+                                    {extra.name} (+{formatCop(extra.price)})
+                                  </span>
+                                </motion.button>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-4 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="size-11 shrink-0 rounded-2xl bg-amber-700 border border-amber-500/40 flex items-center justify-center text-white shadow-sm">
+                            <Flame className="size-5" aria-hidden="true" />
+                          </div>
+                          <div className="min-w-0">
+                            <h3 className="font-bold text-sm text-white">
+                              Papas Rústicas Cheddar
+                            </h3>
+                            <p className="text-sm text-slate-200">
+                              Papas crocantes con salsa artesanal
+                            </p>
+                          </div>
+                        </div>
+                        <span className="text-sm font-extrabold text-orange-200 shrink-0">
+                          {formatCop(DELIVERY_SIDES_PRICE)}
+                        </span>
+                      </div>
+
+                      <div className="rounded-2xl bg-orange-950/75 border border-orange-800/70 p-3.5 flex items-center justify-between gap-3 text-xs text-orange-100 font-semibold">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <ShoppingBag
+                            className="size-4 text-orange-200 shrink-0"
+                            aria-hidden="true"
+                          />
+                          <span>
+                            Carrito de Compra: 2 productos
+                            {activeExtras.length > 0
+                              ? ` + ${activeExtras.length} ${activeExtras.length === 1 ? "adición" : "adiciones"}`
+                              : ""}
+                          </span>
+                        </div>
+                        <span className="text-sm font-extrabold text-white shrink-0">
+                          {formatCop(deliveryTotal)}
+                        </span>
+                      </div>
                     </div>
-                    <span className="font-bold text-emerald-800 dark:text-emerald-300">
-                      Latencia &lt; 1s
-                    </span>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </LayoutGroup>
+
+                    {/* Glowing Emerald WhatsApp Terminal */}
+                    <div className="md:col-span-5 rounded-2xl border border-emerald-800/70 bg-emerald-950/45 p-4 relative shadow-[0_0_40px_-16px_rgba(16,185,129,0.4)] space-y-3.5">
+                      <div className="flex items-center justify-between gap-2 text-emerald-200 text-xs font-bold">
+                        <span className="inline-flex items-center gap-2">
+                          <MessageSquare
+                            className="size-4 text-emerald-200 shrink-0"
+                            aria-hidden="true"
+                          />
+                          <span>Mensaje formateado en WhatsApp:</span>
+                        </span>
+                        <span className="rounded-full border border-emerald-700/70 bg-emerald-950 px-2 py-0.5 text-xs font-bold text-emerald-200">
+                          Directo
+                        </span>
+                      </div>
+
+                      <div className="rounded-xl bg-slate-950 border border-emerald-800/60 p-3.5 text-xs text-slate-100 font-mono space-y-1.5 leading-relaxed">
+                        <div className="font-bold text-emerald-200">
+                          👋 ¡Hola Craft Burger! Nuevo Pedido:
+                        </div>
+                        <div>• 1x Craft Monster Burger ({formatCop(DELIVERY_BASE_BURGER_PRICE)})</div>
+                        {activeExtras.map((extra) => (
+                          <div key={extra.id} className="text-emerald-200 pl-2">
+                            + {extra.name} ({formatCop(extra.price)})
+                          </div>
+                        ))}
+                        <div>• 1x Papas Rústicas ({formatCop(DELIVERY_SIDES_PRICE)})</div>
+                        <div className="border-t border-slate-800 pt-2 text-white font-bold">
+                          Total a Pagar: {formatCop(deliveryTotal)}
+                        </div>
+                        <div className="text-emerald-200">
+                          📍 Cra 15 # 85-30 • Pago: Efectivo
+                        </div>
+                      </div>
+
+                      <motion.button
+                        type="button"
+                        whileHover={{ scale: 1.015 }}
+                        whileTap={{ scale: 0.97 }}
+                        transition={TAB_SPRING}
+                        onClick={handleSimulateWhatsApp}
+                        className="w-full min-h-11 inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white border border-emerald-500/40 px-4 py-2.5 text-xs font-bold shadow-[0_0_24px_-6px_rgba(16,185,129,0.55)] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+                      >
+                        <Send className="size-3.5 shrink-0" aria-hidden="true" />
+                        <span>Simular Envío por WhatsApp</span>
+                      </motion.button>
+
+                      <AnimatePresence>
+                        {whatsAppSent && (
+                          <motion.div
+                            key="whatsapp-toast"
+                            role="status"
+                            aria-live="polite"
+                            initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: -4, scale: 0.96 }}
+                            transition={CARD_SPRING}
+                            className="rounded-xl border border-emerald-600/70 bg-emerald-950 px-3 py-2.5 flex items-center gap-2 text-xs font-bold text-emerald-200"
+                          >
+                            <CheckCircle2
+                              className="size-4 text-emerald-200 shrink-0"
+                              aria-hidden="true"
+                            />
+                            <span>Ticket enviado al instante · 0% comisión</span>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* Tab 2: Mesa & Código QR */}
+                {activeTab === "qr" && (
+                  <motion.div
+                    key="qr"
+                    role="tabpanel"
+                    id="panel-qr"
+                    aria-labelledby="tab-qr"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.2, ease: "easeOut" }}
+                    className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start"
+                  >
+                    <div className="md:col-span-7 space-y-3.5">
+                      {/* Table Selector Bar with Motion layoutId pill */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-800 bg-slate-900/90 p-2.5">
+                        <div
+                          role="group"
+                          aria-label="Seleccionar mesa del salón"
+                          className="flex flex-wrap items-center gap-1.5"
+                        >
+                          {QR_TABLES.map((table) => {
+                            const isSelected = table.id === activeTable.id
+                            return (
+                              <button
+                                key={table.id}
+                                type="button"
+                                aria-pressed={isSelected}
+                                onClick={() => setSelectedTableId(table.id)}
+                                className={`relative pointer-coarse:min-h-11 inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
+                                  isSelected
+                                    ? "text-white"
+                                    : "bg-slate-900 text-amber-200 hover:bg-slate-800 hover:text-white"
+                                }`}
+                              >
+                                {isSelected && (
+                                  <motion.span
+                                    layoutId={`${scopeId}-qr-table-pill`}
+                                    transition={TAB_SPRING}
+                                    aria-hidden="true"
+                                    className="absolute inset-0 rounded-xl bg-amber-700 border border-amber-500/40 shadow-xs"
+                                  />
+                                )}
+                                <span className="relative z-10 inline-flex items-center gap-1.5">
+                                  <QrCode className="size-3.5 shrink-0" aria-hidden="true" />
+                                  <span>{table.name}</span>
+                                </span>
+                              </button>
+                            )
+                          })}
+                        </div>
+
+                        <span className="rounded-full bg-emerald-950 px-2.5 py-1 text-xs font-bold text-emerald-200 border border-emerald-700/70">
+                          QR Escaneado
+                        </span>
+                      </div>
+
+                      {/* Table Items */}
+                      <div className="space-y-3">
+                        {activeTable.items.map((item) => (
+                          <motion.div
+                            key={item.id}
+                            layout
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={CARD_SPRING}
+                            className="rounded-2xl border border-slate-800 bg-slate-900/90 p-4 flex items-center justify-between gap-3"
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div
+                                className={`size-11 shrink-0 rounded-2xl flex items-center justify-center text-white shadow-sm ${
+                                  item.icon === "burger"
+                                    ? "bg-orange-700 border border-orange-500/40"
+                                    : "bg-amber-700 border border-amber-500/40"
+                                }`}
+                              >
+                                {item.icon === "burger" ? (
+                                  <UtensilsCrossed className="size-5" aria-hidden="true" />
+                                ) : (
+                                  <Sparkles className="size-5" aria-hidden="true" />
+                                )}
+                              </div>
+                              <div className="min-w-0">
+                                <h3 className="font-bold text-sm text-white">{item.name}</h3>
+                                <p className="text-sm text-slate-200">{item.description}</p>
+                              </div>
+                            </div>
+                            <span className="text-sm font-extrabold text-orange-200 shrink-0">
+                              {formatCop(item.price)}
+                            </span>
+                          </motion.div>
+                        ))}
+
+                        <AnimatePresence>
+                          {extraDrinkCount > 0 && (
+                            <motion.div
+                              key="extra-drink-row"
+                              initial={{ opacity: 0, y: 6 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -6 }}
+                              transition={CARD_SPRING}
+                              className="rounded-2xl border border-emerald-700/70 bg-emerald-950/60 p-4 flex items-center justify-between gap-3"
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="size-11 shrink-0 rounded-2xl bg-emerald-700 border border-emerald-500/40 flex items-center justify-center text-white shadow-sm">
+                                  <Sparkles className="size-5" aria-hidden="true" />
+                                </div>
+                                <div className="min-w-0">
+                                  <h3 className="font-bold text-sm text-white">
+                                    {extraDrinkCount}x Bebida Extra de la Casa
+                                  </h3>
+                                  <p className="text-sm text-emerald-200">
+                                    Agregada en nueva ronda desde la mesa
+                                  </p>
+                                </div>
+                              </div>
+                              <span className="text-sm font-extrabold text-emerald-200 shrink-0">
+                                {formatCop(extraDrinkCount * QR_EXTRA_DRINK_PRICE)}
+                              </span>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-orange-950/75 border border-orange-800/70 p-3.5 text-xs text-orange-100 font-semibold">
+                        <div className="flex items-center gap-2">
+                          <ShoppingBag
+                            className="size-4 text-orange-200 shrink-0"
+                            aria-hidden="true"
+                          />
+                          <span>Cuenta abierta en mesa</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <motion.button
+                            type="button"
+                            whileTap={{ scale: 0.96 }}
+                            onClick={handleAddDrink}
+                            className="pointer-coarse:min-h-11 inline-flex items-center gap-1 rounded-xl border border-orange-500/60 bg-slate-950 px-3 py-1.5 text-xs font-bold text-orange-200 hover:bg-orange-950 hover:text-white transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+                          >
+                            <span>+ Agregar Bebida (+$9.000)</span>
+                          </motion.button>
+                          <span className="text-sm font-extrabold text-white">
+                            {formatCop(qrTotal)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Instant Kitchen / Table Ticket */}
+                    <div className="md:col-span-5 rounded-2xl border border-amber-800/60 bg-slate-900/90 p-4 space-y-3">
+                      <div className="flex items-center gap-2 text-amber-200 text-xs font-bold">
+                        <QrCode
+                          className="size-4 text-amber-200 shrink-0"
+                          aria-hidden="true"
+                        />
+                        <span>Comanda instantánea de salón:</span>
+                      </div>
+                      <div className="rounded-xl bg-slate-950 border border-slate-800 p-3.5 text-xs text-slate-100 font-mono space-y-2 leading-relaxed">
+                        <div className="font-bold text-orange-200">
+                          🪑 Pedido en Salón — {activeTable.name}
+                        </div>
+                        {activeTable.items.map((item) => (
+                          <div key={item.id}>
+                            • {item.name} ({formatCop(item.price)})
+                          </div>
+                        ))}
+                        {extraDrinkCount > 0 && (
+                          <div className="text-emerald-200">
+                            • {extraDrinkCount}x Bebida Extra (
+                            {formatCop(extraDrinkCount * QR_EXTRA_DRINK_PRICE)})
+                          </div>
+                        )}
+                        <div className="border-t border-slate-800 pt-2 text-white font-bold">
+                          Total Mesa: {formatCop(qrTotal)}
+                        </div>
+                        <div className="text-emerald-200 font-semibold">
+                          Sin espera en caja • Directo a cocina
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* Tab 3: Cocina & Kanban (Interactive Obsidian KDS Showstopper) */}
+                {activeTab === "kanban" && (
+                  <motion.div
+                    key="kanban"
+                    role="tabpanel"
+                    id="panel-kanban"
+                    aria-labelledby="tab-kanban"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.2, ease: "easeOut" }}
+                    className="space-y-4"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="text-xs font-semibold text-slate-200">
+                        Hacé clic en el botón de cada comanda para avanzar el pedido por la cocina:
+                      </span>
+                      <div className="flex items-center gap-2">
+                        {deliveredCount > 0 && (
+                          <span className="rounded-full bg-emerald-950 border border-emerald-700/70 px-2.5 py-1 text-xs font-bold text-emerald-200">
+                            {deliveredCount} {deliveredCount === 1 ? "entregado" : "entregados"}
+                          </span>
+                        )}
+                        {hasKanbanChanges && (
+                          <motion.button
+                            type="button"
+                            initial={{ opacity: 0, scale: 0.92 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            whileTap={{ scale: 0.96 }}
+                            onClick={resetKanban}
+                            className="pointer-coarse:min-h-11 inline-flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs font-bold text-slate-100 hover:bg-slate-800 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+                          >
+                            <RotateCcw className="size-3.5 shrink-0" aria-hidden="true" />
+                            <span>Reiniciar tablero</span>
+                          </motion.button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {KANBAN_COLUMNS.map((column) => {
+                        const columnTickets = tickets.filter((t) => t.status === column.status)
+                        return (
+                          <div
+                            key={column.status}
+                            className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/85 p-3.5 space-y-2.5 min-h-[200px] flex flex-col"
+                          >
+                            <div
+                              aria-hidden="true"
+                              className={`pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r ${column.topAccentClass}`}
+                            />
+
+                            <div
+                              className={`flex items-center justify-between text-xs font-bold ${column.headerClass}`}
+                            >
+                              <span>{column.label}</span>
+                              <span className={`rounded-full px-2 py-0.5 ${column.badgeClass}`}>
+                                {columnTickets.length}
+                              </span>
+                            </div>
+
+                            <div className="space-y-2.5 flex-1">
+                              <AnimatePresence mode="popLayout">
+                                {columnTickets.map((ticket) => (
+                                  <motion.div
+                                    key={ticket.id}
+                                    layout
+                                    layoutId={`${scopeId}-kanban-card-${ticket.id}`}
+                                    initial={{ opacity: 0, scale: 0.95 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.9 }}
+                                    transition={CARD_SPRING}
+                                    className={`rounded-xl border ${column.cardBorderClass} bg-slate-950 p-3 space-y-2`}
+                                  >
+                                    <div className="flex items-start justify-between gap-2">
+                                      <div className="font-bold text-xs text-white">
+                                        {ticket.title}
+                                      </div>
+                                      <span className="shrink-0 rounded-md border border-slate-800 bg-slate-900 px-1.5 py-0.5 text-xs font-semibold text-slate-200">
+                                        {ticket.channel}
+                                      </span>
+                                    </div>
+
+                                    <div className="text-xs text-slate-200">
+                                      {ticket.summary}
+                                    </div>
+
+                                    <div className="flex items-center justify-between gap-2 pt-1">
+                                      <span className="text-xs font-extrabold text-orange-200">
+                                        {ticket.price}
+                                      </span>
+                                      <motion.button
+                                        type="button"
+                                        whileTap={{ scale: 0.95 }}
+                                        onClick={() => advanceTicket(ticket.id)}
+                                        className={`pointer-coarse:min-h-11 inline-flex items-center rounded-lg px-2.5 py-1.5 text-xs font-bold transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${column.actionClass}`}
+                                      >
+                                        {column.actionLabel}
+                                      </motion.button>
+                                    </div>
+                                  </motion.div>
+                                ))}
+                              </AnimatePresence>
+
+                              {columnTickets.length === 0 && (
+                                <div className="rounded-xl border border-dashed border-slate-800 bg-slate-950/60 p-4 text-center text-xs font-medium text-slate-200">
+                                  Sin pedidos en esta etapa
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    <div className="rounded-2xl border border-emerald-800/70 bg-emerald-950/55 px-4 py-3 flex flex-wrap items-center justify-between gap-2 text-xs text-emerald-200">
+                      <div className="flex items-center gap-2 font-semibold">
+                        <Volume2
+                          className="size-4 text-emerald-200 shrink-0"
+                          aria-hidden="true"
+                        />
+                        <span>Alertas sonoras activas · Sincronización en tiempo real vía SSE</span>
+                      </div>
+                      <span className="font-bold text-white">Latencia &lt; 1s</span>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </LayoutGroup>
+        </div>
       </div>
     </div>
   )
