@@ -27,7 +27,6 @@ const DARK_BRANCH_BEFORE = /(?:isDark|isDarkMode|dark)\s*(?:\?\s*|&&\s*)$/;
 
 // Explicit exceptions: files whose light greys sit on an always-dark surface.
 const ALLOWLIST: Record<string, string> = {
-  '/src/features/superadmin/AdminAuthModal.tsx': 'Superadmin login card is always dark (bg-slate-900), never themed light.',
   '/src/features/landing/LandingPage.tsx': 'Landing page is a fixed dark marketing surface independent of the admin theme.',
 };
 
