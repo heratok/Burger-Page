@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { AnimatePresence, MotionConfig, motion } from "motion/react"
 import {
   ArrowRight,
+  Check,
   Flame,
   Moon,
   ShieldCheck,
@@ -16,6 +17,11 @@ import {
   supportsGsapMatchMedia,
   useGSAP,
 } from "./gsapSetup"
+import {
+  HeroLiveStage,
+  KineticMarquee,
+  MagneticButton,
+} from "./MotionPrimitives"
 import { InteractiveShowcase } from "./InteractiveShowcase"
 import { FeaturesBento } from "./FeaturesBento"
 import { ProfitabilitySection } from "./ProfitabilitySection"
@@ -41,7 +47,7 @@ const METRIC_COUNTERS = [
     suffix: "%",
     finalText: "0%",
     label: "Comisiones por venta",
-    valueClass: "text-slate-900 dark:text-white",
+    valueClass: "text-slate-950 dark:text-white",
   },
   {
     id: "order-time",
@@ -70,6 +76,12 @@ const METRIC_COUNTERS = [
     label: "Tus datos y clientes",
     valueClass: "text-amber-700 dark:text-amber-400",
   },
+] as const
+
+const HERO_TRUST_POINTS = [
+  "Sin tarjeta",
+  "Setup en 5 min",
+  "Cancelás cuando quieras",
 ] as const
 
 export default function LandingPage() {
@@ -110,7 +122,7 @@ export default function LandingPage() {
 
   const isDark = theme === "dark"
 
-  // GSAP scroll choreography strictly separated from Motion interactive elements
+  // GSAP scroll & entrance choreography strictly separated from Motion interactive elements
   useGSAP(
     () => {
       if (!supportsGsapMatchMedia()) return
@@ -123,7 +135,7 @@ export default function LandingPage() {
       mm.add("(prefers-reduced-motion: no-preference)", () => {
         let cancelled = false
 
-        // 1. Scroll reading progress ribbon
+        // 1. Top 2px scroll reading progress ribbon
         gsap.fromTo(
           "[data-gsap-scroll-progress]",
           { scaleX: 0 },
@@ -139,15 +151,65 @@ export default function LandingPage() {
           }
         )
 
-        // 2. Hero choreographed entrance (GPU transform + opacity only)
-        gsap.from("[data-gsap-hero]", {
-          y: 18,
-          opacity: 0,
-          duration: 0.65,
-          stagger: 0.08,
-          ease: "power3.out",
-          clearProps: "transform,opacity",
+        // 2. Hero kinetic entrance timeline (masked editorial lines + stagger + ember underline + 3D stage)
+        const underlinePath = root.querySelector<SVGPathElement>(
+          "[data-gsap-hero-underline]"
+        )
+        const heroTl = gsap.timeline()
+
+        heroTl.from("[data-gsap-hero-line]", {
+          yPercent: 108,
+          duration: 0.8,
+          stagger: 0.12,
+          ease: "power4.out",
+          clearProps: "transform",
         })
+
+        heroTl.from(
+          "[data-gsap-hero]",
+          {
+            y: 16,
+            opacity: 0,
+            duration: 0.55,
+            stagger: 0.07,
+            ease: "power3.out",
+            clearProps: "transform,opacity",
+          },
+          "-=0.45"
+        )
+
+        if (underlinePath) {
+          const pathLength =
+            typeof underlinePath.getTotalLength === "function"
+              ? underlinePath.getTotalLength()
+              : 420
+          gsap.set(underlinePath, {
+            strokeDasharray: pathLength,
+            strokeDashoffset: pathLength,
+          })
+          heroTl.to(
+            underlinePath,
+            {
+              strokeDashoffset: 0,
+              duration: 0.7,
+              ease: "power2.out",
+            },
+            "-=0.35"
+          )
+        }
+
+        heroTl.from(
+          "[data-gsap-hero-stage]",
+          {
+            y: 26,
+            opacity: 0,
+            scale: 0.96,
+            duration: 0.85,
+            ease: "power3.out",
+            clearProps: "transform,opacity",
+          },
+          0.15
+        )
 
         // 3. Ambient ember depth parallax (opposite axes, zero blur filters)
         gsap.to("[data-gsap-ambient-a]", {
@@ -201,7 +263,36 @@ export default function LandingPage() {
           })
         }
 
-        // 5. ScrollTrigger.batch reveals for Bento cards and section headers
+        // 5. 3D perspective scroll-unfold on Obsidian Command Center showcase
+        const showcaseUnfold = root.querySelector<HTMLElement>(
+          "[data-gsap-showcase-unfold]"
+        )
+        if (showcaseUnfold) {
+          gsap.fromTo(
+            showcaseUnfold,
+            {
+              rotateX: 8,
+              scale: 0.95,
+              y: 26,
+              transformPerspective: 1400,
+              transformOrigin: "center top",
+            },
+            {
+              rotateX: 0,
+              scale: 1,
+              y: 0,
+              ease: "none",
+              scrollTrigger: {
+                trigger: showcaseUnfold,
+                start: "top 92%",
+                end: "top 38%",
+                scrub: 0.7,
+              },
+            }
+          )
+        }
+
+        // 6. ScrollTrigger.batch reveals for Bento cards and section headers
         const bentoItems = gsap.utils.toArray<HTMLElement>("[data-gsap-bento]", root)
         if (bentoItems.length > 0) {
           gsap.set(bentoItems, { opacity: 0, y: 24 })
@@ -233,44 +324,6 @@ export default function LandingPage() {
                 y: 0,
                 duration: 0.6,
                 stagger: 0.07,
-                ease: "power3.out",
-                overwrite: true,
-                clearProps: "transform,opacity",
-              }),
-          })
-        }
-
-        // 6. Workflow timeline progress rail scrub & step batch entrance
-        const timelineFill = root.querySelector<HTMLElement>("[data-gsap-timeline-fill]")
-        if (timelineFill) {
-          gsap.fromTo(
-            timelineFill,
-            { scaleX: 0 },
-            {
-              scaleX: 1,
-              ease: "none",
-              scrollTrigger: {
-                trigger: "#how-it-works",
-                start: "top 75%",
-                end: "center 45%",
-                scrub: 0.6,
-              },
-            }
-          )
-        }
-
-        const stepItems = gsap.utils.toArray<HTMLElement>("[data-gsap-step]", root)
-        if (stepItems.length > 0) {
-          gsap.set(stepItems, { opacity: 0, y: 22 })
-          ScrollTrigger.batch(stepItems, {
-            start: "top 88%",
-            once: true,
-            onEnter: (batch) =>
-              gsap.to(batch, {
-                opacity: 1,
-                y: 0,
-                duration: 0.6,
-                stagger: 0.1,
                 ease: "power3.out",
                 overwrite: true,
                 clearProps: "transform,opacity",
@@ -310,7 +363,7 @@ export default function LandingPage() {
       <div
         ref={pageRef}
         className={`min-h-screen font-sans antialiased overflow-x-clip selection:bg-orange-600 selection:text-white transition-colors duration-200 ${
-          isDark ? "dark bg-[#0B0F19] text-slate-100" : "bg-[#FAFAFA] text-slate-800"
+          isDark ? "dark bg-[#0B0F19] text-slate-100" : "bg-[#F7F5F2] text-slate-800"
         }`}
       >
         {/* Top fixed 2px GSAP scroll reading progress ribbon */}
@@ -323,11 +376,11 @@ export default function LandingPage() {
         {/* Background ambient warm lighting: static radial gradients + subtle GSAP transform parallax (zero blur filter) */}
         <div aria-hidden="true" className="pointer-events-none fixed inset-0 overflow-hidden">
           <div
-            className="absolute -top-32 left-1/2 -translate-x-1/2 h-[420px] w-[min(850px,100vw)]"
+            className="absolute -top-32 left-1/2 -translate-x-1/2 h-[440px] w-[min(920px,100vw)]"
             style={{
               backgroundImage: isDark
                 ? "radial-gradient(ellipse at center, rgba(249,115,22,0.14) 0%, rgba(245,158,11,0.06) 45%, transparent 72%)"
-                : "radial-gradient(ellipse at center, rgba(251,146,60,0.16) 0%, rgba(252,211,77,0.10) 45%, transparent 72%)",
+                : "radial-gradient(ellipse at center, rgba(251,146,60,0.15) 0%, rgba(252,211,77,0.09) 45%, transparent 72%)",
             }}
           />
           <div
@@ -336,7 +389,7 @@ export default function LandingPage() {
             style={{
               backgroundImage: isDark
                 ? "radial-gradient(ellipse at center, rgba(245,158,11,0.07) 0%, transparent 70%)"
-                : "radial-gradient(ellipse at center, rgba(251,191,36,0.14) 0%, transparent 70%)",
+                : "radial-gradient(ellipse at center, rgba(251,191,36,0.13) 0%, transparent 70%)",
             }}
           />
           <div
@@ -345,13 +398,13 @@ export default function LandingPage() {
             style={{
               backgroundImage: isDark
                 ? "radial-gradient(ellipse at center, rgba(234,88,12,0.07) 0%, transparent 70%)"
-                : "radial-gradient(ellipse at center, rgba(249,115,22,0.13) 0%, transparent 70%)",
+                : "radial-gradient(ellipse at center, rgba(249,115,22,0.12) 0%, transparent 70%)",
             }}
           />
-          {/* Subtle dot grid pattern */}
+          {/* Subtle architectural dot grid pattern */}
           <div
             className={`absolute inset-0 transition-opacity duration-300 ${
-              isDark ? "opacity-[0.04]" : "opacity-[0.03]"
+              isDark ? "opacity-[0.04]" : "opacity-[0.035]"
             }`}
             style={{
               backgroundImage: `radial-gradient(circle at 1px 1px, ${
@@ -376,11 +429,11 @@ export default function LandingPage() {
           <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
             {/* Logo Brand */}
             <div className="flex items-center gap-3">
-              <div className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-tr from-orange-700 to-amber-600 text-white shadow-md shadow-orange-700/25">
+              <div className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-tr from-orange-700 to-amber-700 text-white shadow-md shadow-orange-700/25">
                 <Flame className="size-5" aria-hidden="true" />
               </div>
               <div>
-                <span className="text-base font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5">
+                <span className="text-base font-black tracking-tight text-slate-950 dark:text-white flex items-center gap-1.5">
                   FoodOS
                   <span className="rounded-full bg-orange-500/10 dark:bg-orange-500/20 px-2 py-0.5 text-xs font-bold text-orange-700 dark:text-orange-400 border border-brand-orange-subtle">
                     SaaS
@@ -395,8 +448,14 @@ export default function LandingPage() {
             {/* Nav Links */}
             <nav
               aria-label="Navegación principal"
-              className="hidden md:flex items-center gap-7 text-xs font-semibold text-slate-600 dark:text-slate-300"
+              className="hidden md:flex items-center gap-7 text-xs font-semibold text-slate-700 dark:text-slate-300"
             >
+              <a
+                href="#showcase"
+                className="px-2 py-1 hover:text-orange-700 dark:hover:text-orange-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#0B0F19] rounded-lg"
+              >
+                Simulador
+              </a>
               <a
                 href="#features"
                 className="px-2 py-1 hover:text-orange-700 dark:hover:text-orange-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#0B0F19] rounded-lg"
@@ -470,90 +529,183 @@ export default function LandingPage() {
 
         <main id="main-content" tabIndex={-1}>
           {/* ======================================================== */}
-          {/* HERO SECTION                                             */}
+          {/* ASYMMETRIC 12-COLUMN EDITORIAL SPLIT HERO                */}
           {/* ======================================================== */}
-          <section className="relative pt-16 pb-20 md:pt-24 md:pb-28">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
-              {/* Announcement Badge (exact allowlisted backdrop-blur-md class string) */}
-              <div
-                data-gsap-hero
-                className="inline-flex items-center gap-2 rounded-full border border-brand-orange-subtle bg-orange-500/10 dark:bg-orange-500/15 px-4 py-1.5 text-xs font-bold text-orange-800 dark:text-orange-300 backdrop-blur-md mb-6 shadow-xs"
-              >
-                <Sparkles
-                  className="size-3.5 text-orange-700 dark:text-orange-400"
-                  aria-hidden="true"
-                />
-                <span>La plataforma para pedidos directos sin comisiones abusivas</span>
+          <section className="relative pt-12 pb-16 sm:pt-16 sm:pb-20 lg:pt-20 lg:pb-24">
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
+                {/* Left 7 Cols: Editorial Display Typography & Magnetic CTAs */}
+                <div className="lg:col-span-7 text-left">
+                  {/* Announcement Badge (exact allowlisted backdrop-blur-md class string) */}
+                  <div
+                    data-gsap-hero
+                    className="inline-flex items-center gap-2 rounded-full border border-brand-orange-subtle bg-orange-500/10 dark:bg-orange-500/15 px-4 py-1.5 text-xs font-bold text-orange-800 dark:text-orange-300 backdrop-blur-md mb-6 shadow-xs"
+                  >
+                    <Sparkles
+                      className="size-3.5 shrink-0 text-orange-700 dark:text-orange-400"
+                      aria-hidden="true"
+                    />
+                    <span>La plataforma para pedidos directos sin comisiones abusivas</span>
+                  </div>
+
+                  {/* Giant Editorial Display Headline with GSAP Masked Clip-Up & Ember SVG Underline */}
+                  <h1 className="text-4xl sm:text-5xl lg:text-[3.85rem] xl:text-[4.25rem] font-black tracking-[-0.04em] leading-[1.02] text-slate-950 dark:text-white">
+                    <span className="block overflow-hidden pb-1">
+                      <span data-gsap-hero-line className="block">
+                        Tu Menú Digital Interactivo.
+                      </span>
+                    </span>
+                    <span className="block overflow-hidden pb-2">
+                      <span
+                        data-gsap-hero-line
+                        className="relative inline-block text-orange-700 dark:text-orange-400"
+                      >
+                        Ventas Directas por WhatsApp.
+                        <svg
+                          aria-hidden="true"
+                          viewBox="0 0 420 16"
+                          fill="none"
+                          preserveAspectRatio="none"
+                          className="pointer-events-none absolute -bottom-1 left-0 h-3 w-full text-orange-700/80 dark:text-orange-400/90"
+                        >
+                          <path
+                            data-gsap-hero-underline
+                            d="M4 11.5C112 3.5 294 2.5 416 10.5"
+                            stroke="currentColor"
+                            strokeWidth="3.5"
+                            strokeLinecap="round"
+                          />
+                        </svg>
+                      </span>
+                    </span>
+                  </h1>
+
+                  <p
+                    data-gsap-hero
+                    className="mt-6 max-w-xl text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed font-normal"
+                  >
+                    Eliminá las comisiones abusivas de las apps de delivery. Permití que tus
+                    comensales armen su pedido con adiciones personalizadas y te lo envíen listo,
+                    estructurado y cobrado directo a tu WhatsApp en un clic.
+                  </p>
+
+                  {/* Magnetic CTA Cluster (outer div owns GSAP entrance; inner MagneticButton owns Motion pull/tap) */}
+                  <div
+                    data-gsap-hero
+                    className="mt-8 flex flex-wrap items-center gap-3.5"
+                  >
+                    <MagneticButton
+                      onClick={handleAdminAccess}
+                      className="group gap-2.5 rounded-2xl bg-slate-950 hover:bg-slate-800 dark:bg-orange-700 dark:hover:bg-orange-600 px-6 py-3.5 text-sm font-bold text-white shadow-xl shadow-slate-950/20 dark:shadow-orange-950/40 transition-colors cursor-pointer dark:focus-visible:ring-offset-[#0B0F19]"
+                    >
+                      <span className="flex size-6 items-center justify-center rounded-lg bg-orange-700 text-white dark:bg-slate-950 dark:text-orange-300 shadow-xs">
+                        <ShieldCheck className="size-3.5" aria-hidden="true" />
+                      </span>
+                      <span>Entrar al Panel Admin</span>
+                      <ArrowRight
+                        className="size-4 transition-transform group-hover:translate-x-0.5"
+                        aria-hidden="true"
+                      />
+                    </MagneticButton>
+
+                    <MagneticButton
+                      href="#how-it-works"
+                      className="gap-2 rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-6 py-3.5 text-sm font-bold text-slate-800 dark:text-slate-100 hover:border-orange-500 hover:text-orange-700 dark:hover:border-orange-400 dark:hover:text-orange-400 shadow-xs transition-colors dark:focus-visible:ring-offset-[#0B0F19]"
+                    >
+                      <span>Ver cómo funciona</span>
+                      <ArrowRight className="size-4" aria-hidden="true" />
+                    </MagneticButton>
+                  </div>
+
+                  {/* Compact micro trust line */}
+                  <div
+                    data-gsap-hero
+                    className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-semibold text-slate-600 dark:text-slate-400"
+                  >
+                    {HERO_TRUST_POINTS.map((point, index) => (
+                      <span key={point} className="inline-flex items-center gap-1.5">
+                        {index > 0 && (
+                          <span
+                            aria-hidden="true"
+                            className="mr-2 hidden sm:inline-block size-1 rounded-full bg-slate-400 dark:bg-slate-600"
+                          />
+                        )}
+                        <Check
+                          className="size-3.5 shrink-0 text-emerald-700 dark:text-emerald-400"
+                          aria-hidden="true"
+                        />
+                        <span>{point}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Right 5 Cols: Live 3D Interactive Obsidian Stage */}
+                <div className="lg:col-span-5">
+                  <div data-gsap-hero-stage>
+                    <HeroLiveStage />
+                  </div>
+                </div>
               </div>
 
-              {/* Main Hero Headline */}
-              <h1
-                data-gsap-hero
-                className="mx-auto max-w-4xl text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-slate-900 dark:text-white leading-tight"
-              >
-                Tu Menú Digital Interactivo.{" "}
-                <span className="text-orange-700 dark:text-orange-400">
-                  Ventas Directas por WhatsApp.
-                </span>
-              </h1>
-
-              <p
-                data-gsap-hero
-                className="mx-auto mt-5 max-w-2xl text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed font-normal"
-              >
-                Eliminá las comisiones abusivas de las apps de delivery. Permití que tus comensales
-                armen su pedido con adiciones personalizadas y te lo envíen listo, estructurado y
-                cobrado directo a tu WhatsApp en un clic.
-              </p>
-
-              {/* Hero CTAs (outer plain div owns GSAP entrance; inner motion.button owns hover/tap) */}
-              <div
-                data-gsap-hero
-                className="mt-8 flex flex-wrap items-center justify-center gap-3"
-              >
-                <motion.button
-                  type="button"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  transition={CTA_SPRING}
-                  onClick={handleAdminAccess}
-                  className="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-gradient-to-r from-orange-700 to-amber-700 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-orange-700/25 hover:from-orange-800 hover:to-amber-800 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#0B0F19]"
-                >
-                  <ShieldCheck className="size-4" aria-hidden="true" />
-                  <span>Entrar al Panel Admin</span>
-                </motion.button>
-                <a
-                  href="#how-it-works"
-                  className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-6 py-3.5 text-sm font-bold text-slate-700 dark:text-slate-200 hover:border-orange-500 hover:text-orange-700 dark:hover:border-orange-400 dark:hover:text-orange-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#0B0F19]"
-                >
-                  <span>Ver cómo funciona</span>
-                  <ArrowRight className="size-4" aria-hidden="true" />
-                </a>
-              </div>
-
-              {/* Social Proof / Metrics Row (exact allowlisted backdrop-blur-md class string) */}
+              {/* 4-Column Social Proof / Metrics Bar (exact allowlisted backdrop-blur-md class string) */}
               <div
                 data-gsap-hero
                 data-gsap-metrics
                 className="mt-14 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto border border-slate-200/80 dark:border-slate-800/80 rounded-3xl bg-white/90 dark:bg-slate-900/80 p-6 shadow-sm backdrop-blur-md"
               >
-                {METRIC_COUNTERS.map((metric) => (
-                  <div key={metric.id}>
+                {METRIC_COUNTERS.map((metric, index) => (
+                  <div
+                    key={metric.id}
+                    className={`text-center ${
+                      index > 0
+                        ? "md:border-l md:border-slate-200/80 dark:md:border-slate-800/80 md:pl-4"
+                        : ""
+                    }`}
+                  >
                     <div
                       data-gsap-counter={metric.id}
-                      className={`text-2xl sm:text-3xl font-black tabular-nums ${metric.valueClass}`}
+                      className={`text-3xl sm:text-4xl font-black tracking-tight tabular-nums ${metric.valueClass}`}
                     >
                       {metric.finalText}
                     </div>
-                    <div className="text-xs font-semibold text-slate-600 dark:text-slate-400 mt-0.5">
+                    <div className="text-xs font-semibold text-slate-600 dark:text-slate-400 mt-1">
                       {metric.label}
                     </div>
                   </div>
                 ))}
               </div>
+            </div>
+          </section>
 
-              {/* Interactive 3-Tab Product Showcase */}
-              <div data-gsap-hero>
+          {/* ======================================================== */}
+          {/* FULL-BLEED VELOCITY-REACTIVE ARCHITECTURAL MARQUEE       */}
+          {/* ======================================================== */}
+          <KineticMarquee />
+
+          {/* ======================================================== */}
+          {/* OBSIDIAN COMMAND CENTER LIVE SHOWCASE                    */}
+          {/* ======================================================== */}
+          <section
+            id="showcase"
+            className="scroll-mt-20 relative py-20 sm:py-24 bg-[#F7F5F2] dark:bg-[#0B0F19] transition-colors"
+          >
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+              <div data-gsap-reveal className="text-center max-w-3xl mx-auto">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-orange-300/80 dark:border-orange-500/30 bg-orange-50 dark:bg-orange-500/10 px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-orange-800 dark:text-orange-300 mb-4">
+                  <Sparkles className="size-3.5" aria-hidden="true" />
+                  <span>Simulador Interactivo en Vivo</span>
+                </span>
+                <h2 className="text-2xl sm:text-4xl font-black tracking-tight text-slate-950 dark:text-white">
+                  Probá el sistema en vivo — tocá los pedidos y el Kanban
+                </h2>
+                <p className="mt-3 text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
+                  Agregá extras, cambiá de mesa con QR y mové comandas por tu cocina para ver cómo
+                  fluye cada venta directa sin intermediarios.
+                </p>
+              </div>
+
+              <div className="[perspective:1400px]">
                 <InteractiveShowcase />
               </div>
             </div>
@@ -570,61 +722,100 @@ export default function LandingPage() {
           <ProfitabilitySection />
 
           {/* ======================================================== */}
-          {/* HOW IT WORKS — SCROLL-SCRUBBED WORKFLOW TIMELINE         */}
+          {/* HOW IT WORKS — STICKY EDITORIAL WORKFLOW TIMELINE        */}
           {/* ======================================================== */}
           <WorkflowTimeline />
 
           {/* ======================================================== */}
-          {/* FINAL CTA                                                */}
+          {/* CINEMATIC DARK OBSIDIAN FINAL CTA                        */}
           {/* ======================================================== */}
-          <section className="py-20 border-t border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-[#0B0F19] text-center transition-colors">
-            <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+          <section className="py-20 sm:py-24 border-t border-slate-200/80 dark:border-slate-800/80 bg-[#F7F5F2] dark:bg-[#0B0F19] transition-colors">
+            <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
               <div
                 data-gsap-reveal
-                className="rounded-3xl border border-orange-200/80 dark:border-orange-900/40 bg-gradient-to-br from-orange-50 via-white to-amber-50 dark:from-slate-900 dark:via-[#131926] dark:to-slate-900 p-8 sm:p-12 relative overflow-hidden shadow-xl"
+                className="relative overflow-hidden rounded-[2.25rem] border border-slate-800 bg-slate-950 px-6 py-12 sm:px-12 sm:py-16 text-center text-white shadow-[0_32px_90px_-24px_rgba(15,23,42,0.65)]"
               >
-                <div className="inline-flex items-center gap-2 rounded-full border border-brand-orange-subtle bg-orange-500/10 px-3.5 py-1 text-xs font-bold text-orange-800 dark:text-orange-300 mb-4">
-                  <Flame
-                    className="size-3.5 text-orange-700 dark:text-orange-400"
-                    aria-hidden="true"
-                  />
-                  <span>Empezá a vender hoy mismo</span>
-                </div>
+                {/* Glowing ember top architectural hairline */}
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-orange-500/90 to-transparent"
+                />
 
-                <h2 className="text-2xl sm:text-4xl font-black text-slate-900 dark:text-white">
-                  ¿Listo para potenciar las ventas de tu negocio?
-                </h2>
-                <p className="mt-3 text-sm sm:text-base text-slate-600 dark:text-slate-300 max-w-xl mx-auto font-normal">
-                  Gestioná tu catálogo, recibí pedidos en WhatsApp y tomá el control absoluto de
-                  tus clientes sin intermediarios.
-                </p>
-                <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-                  <motion.button
-                    type="button"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    transition={CTA_SPRING}
-                    onClick={handleAdminAccess}
-                    className="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-gradient-to-r from-orange-700 to-amber-700 px-6 py-3.5 text-sm font-bold text-white shadow-xl shadow-orange-700/25 hover:from-orange-800 hover:to-amber-800 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
-                  >
-                    <ShieldCheck className="size-4" aria-hidden="true" />
-                    <span>Ingresar al Panel de Gestión</span>
-                  </motion.button>
+                {/* Warm obsidian crown wash (zero blur filter) */}
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-x-0 top-0 h-56"
+                  style={{
+                    background:
+                      "radial-gradient(ellipse 65% 100% at 50% 0%, rgba(234,88,12,0.22) 0%, rgba(245,158,11,0.06) 52%, transparent 100%)",
+                  }}
+                />
+
+                {/* Subtle dot-matrix pattern */}
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 opacity-35"
+                  style={{
+                    backgroundImage:
+                      "radial-gradient(circle at 1px 1px, rgba(148,163,184,0.24) 1px, transparent 0)",
+                    backgroundSize: "24px 24px",
+                  }}
+                />
+
+                <div className="relative z-10">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-orange-500/35 bg-orange-950/70 px-3.5 py-1 text-xs font-bold text-orange-200 mb-5">
+                    <Flame className="size-3.5 text-orange-300" aria-hidden="true" />
+                    <span>Empezá a vender hoy mismo</span>
+                  </div>
+
+                  <h2 className="mx-auto max-w-3xl text-3xl sm:text-4xl lg:text-5xl font-black tracking-[-0.03em] leading-[1.08] text-white">
+                    ¿Listo para potenciar las ventas de tu negocio?
+                  </h2>
+                  <p className="mt-4 text-sm sm:text-base text-slate-300 max-w-xl mx-auto leading-relaxed font-normal">
+                    Gestioná tu catálogo, recibí pedidos en WhatsApp y tomá el control absoluto de
+                    tus clientes sin intermediarios.
+                  </p>
+
+                  <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+                    <MagneticButton
+                      onClick={handleAdminAccess}
+                      className="group gap-2.5 rounded-2xl bg-gradient-to-r from-orange-700 to-amber-700 hover:from-orange-600 hover:to-amber-600 px-7 py-3.5 text-sm font-bold text-white shadow-xl shadow-orange-950/50 transition-colors cursor-pointer focus-visible:ring-offset-slate-950"
+                    >
+                      <ShieldCheck className="size-4 shrink-0" aria-hidden="true" />
+                      <span>Ingresar al Panel de Gestión</span>
+                      <ArrowRight
+                        className="size-4 shrink-0 transition-transform group-hover:translate-x-0.5"
+                        aria-hidden="true"
+                      />
+                    </MagneticButton>
+                  </div>
+
+                  <div className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 text-xs font-semibold text-slate-300">
+                    <span>0% comisión por venta</span>
+                    <span aria-hidden="true" className="hidden sm:inline text-slate-600">
+                      ·
+                    </span>
+                    <span>Activación inmediata</span>
+                    <span aria-hidden="true" className="hidden sm:inline text-slate-600">
+                      ·
+                    </span>
+                    <span>Control total de tu marca</span>
+                  </div>
                 </div>
               </div>
             </div>
           </section>
         </main>
 
-        {/* Footer */}
-        <footer className="border-t border-slate-200 dark:border-slate-800 bg-[#FAFAFA] dark:bg-[#0D121F] py-8 text-slate-600 dark:text-slate-400 text-xs transition-colors">
+        {/* Crisp Minimal Footer */}
+        <footer className="border-t border-slate-200 dark:border-slate-800 bg-[#F7F5F2] dark:bg-[#0D121F] py-8 text-slate-600 dark:text-slate-400 text-xs transition-colors">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <Flame
                 className="size-4 text-orange-700 dark:text-orange-400 shrink-0"
                 aria-hidden="true"
               />
-              <span className="font-black text-slate-900 dark:text-white">FoodOS</span>
+              <span className="font-black text-slate-950 dark:text-white">FoodOS</span>
               <span>— Plataforma Multi-Restaurante de Pedidos Directos</span>
             </div>
 

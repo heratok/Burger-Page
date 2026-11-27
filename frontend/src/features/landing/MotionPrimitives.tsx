@@ -84,9 +84,9 @@ const INITIAL_HERO_ORDERS: HeroOrderItem[] = [
   {
     id: 107,
     code: "#107",
-    title: "Mesa 4 · QR Salón",
+    title: "Mesa 6 · QR Salón",
     channel: "QR Salón",
-    amount: 62000,
+    amount: 58500,
     eta: "Hace 2 min",
   },
   {
