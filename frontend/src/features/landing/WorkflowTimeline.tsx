@@ -1,5 +1,5 @@
 import { useId, useRef, useState } from "react"
-import { AnimatePresence, LayoutGroup, motion } from "motion/react"
+import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from "motion/react"
 import {
   ArrowRight,
   Check,
@@ -12,7 +12,6 @@ import {
   Sparkles,
   UtensilsCrossed,
 } from "lucide-react"
-import { prefersReducedMotion } from "@/lib/motion"
 import {
   ensureLandingGsapRegistered,
   gsap,
@@ -176,9 +175,9 @@ export function WorkflowTimeline() {
   const [activeModifiers, setActiveModifiers] = useState<string[]>(["tocineta", "cheddar"])
   const [activePipelineIndex, setActivePipelineIndex] = useState<number>(1)
 
-  const reducedMotion = prefersReducedMotion()
+  const reducedMotion = Boolean(useReducedMotion())
 
-  // GSAP ScrollTrigger owns vertical spine scrub + chapter scroll-step transitions
+  // GSAP ScrollTrigger owns vertical spine scrub + chapter scroll-step transitions on desktop (>= 1024px)
   useGSAP(
     () => {
       ensureLandingGsapRegistered()
@@ -188,7 +187,7 @@ export function WorkflowTimeline() {
       if (!chaptersContainer) return
 
       const mm = gsap.matchMedia()
-      mm.add("(prefers-reduced-motion: no-preference)", () => {
+      mm.add("(prefers-reduced-motion: no-preference) and (min-width: 1024px)", () => {
         const spineFill = chaptersContainer.querySelector<HTMLElement>(
           "[data-gsap-timeline-fill]"
         )
@@ -320,7 +319,7 @@ export function WorkflowTimeline() {
 
                       <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                         <div className="inline-flex items-center gap-2">
-                          <span className="sm:hidden inline-flex size-7 items-center justify-center rounded-lg bg-slate-900 text-xs font-black text-white">
+                          <span className="sm:hidden inline-flex size-7 items-center justify-center rounded-lg bg-slate-900 dark:bg-slate-800 dark:border dark:border-slate-700 text-xs font-black text-white">
                             {step.number}
                           </span>
                           <span
@@ -336,11 +335,7 @@ export function WorkflowTimeline() {
                         </span>
                       </div>
 
-                      <span
-                        role="heading"
-                        aria-level={3}
-                        className="block text-lg font-extrabold text-slate-900 dark:text-white"
-                      >
+                      <span className="block text-lg font-extrabold text-slate-900 dark:text-white">
                         {step.title}
                       </span>
 
@@ -398,17 +393,45 @@ export function WorkflowTimeline() {
                       </span>
                     </div>
 
-                    <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-800/70 bg-emerald-950/90 px-2.5 py-1 text-xs font-bold text-emerald-200">
-                      <span
-                        className="size-2 rounded-full bg-emerald-400 animate-pulse motion-reduce:animate-none"
-                        aria-hidden="true"
-                      />
-                      <span>FoodOS Live</span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div
+                        role="group"
+                        aria-label="Cambiar etapa del flujo"
+                        className="lg:hidden inline-flex items-center gap-1.5"
+                      >
+                        {WORKFLOW_STEPS.map((step) => {
+                          const isCurrentStage = activeStep === step.index
+                          return (
+                            <button
+                              key={step.number}
+                              type="button"
+                              aria-pressed={isCurrentStage}
+                              aria-label={`Ver paso ${step.number}: ${step.title}`}
+                              onClick={() => setActiveStep(step.index)}
+                              className={`min-h-11 min-w-11 inline-flex items-center justify-center rounded-xl border px-3 text-xs font-black transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
+                                isCurrentStage
+                                  ? "border-orange-500/70 bg-orange-700 text-white"
+                                  : "border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800 hover:text-white"
+                              }`}
+                            >
+                              {step.number}
+                            </button>
+                          )
+                        })}
+                      </div>
+
+                      <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-800/70 bg-emerald-950/90 px-2.5 py-1 text-xs font-bold text-emerald-200">
+                        <span
+                          className="size-2 rounded-full bg-emerald-400 animate-pulse motion-reduce:animate-none"
+                          aria-hidden="true"
+                        />
+                        <span>FoodOS Live</span>
+                      </div>
                     </div>
                   </div>
 
                   {/* Morphing Visual Stage */}
-                  <div className="min-h-[340px]">
+                  <div className="relative min-h-[340px]">
                     <AnimatePresence mode="popLayout" initial={false}>
                       {/* Step 0: Live Menu Editor Mockup */}
                       {activeStep === 0 && (

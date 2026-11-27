@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from "react"
+import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useId, useRef, useState } from "react"
 import { AnimatePresence, LayoutGroup, motion } from "motion/react"
 import {
   Check,
@@ -18,6 +18,7 @@ import {
 import {
   ensureLandingGsapRegistered,
   gsap,
+  ScrollTrigger,
   supportsGsapMatchMedia,
   useGSAP,
 } from "./gsapSetup"
@@ -238,6 +239,8 @@ export function InteractiveShowcase() {
   const scopeId = useId()
   const containerRef = useRef<HTMLDivElement>(null)
   const spotlightRef = useRef<HTMLDivElement>(null)
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([])
+  const isInitialTabMountRef = useRef(true)
 
   const [activeTab, setActiveTab] = useState<ShowcaseTab>("delivery")
 
@@ -264,6 +267,52 @@ export function InteractiveShowcase() {
       }
     }
   }, [])
+
+  // Refresh downstream ScrollTrigger positions when active showcase tab changes height
+  useEffect(() => {
+    if (isInitialTabMountRef.current) {
+      isInitialTabMountRef.current = false
+      return
+    }
+    if (!supportsGsapMatchMedia()) return
+
+    let timeoutId: number | null = null
+    const rafId = window.requestAnimationFrame(() => {
+      timeoutId = window.setTimeout(() => {
+        ensureLandingGsapRegistered()
+        ScrollTrigger.refresh()
+      }, 220)
+    })
+
+    return () => {
+      window.cancelAnimationFrame(rafId)
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId)
+      }
+    }
+  }, [activeTab])
+
+  const handleTabKeyDown = (
+    event: ReactKeyboardEvent<HTMLButtonElement>,
+    currentIndex: number
+  ) => {
+    let nextIndex: number | null = null
+    if (event.key === "ArrowRight") {
+      nextIndex = (currentIndex + 1) % TABS.length
+    } else if (event.key === "ArrowLeft") {
+      nextIndex = (currentIndex - 1 + TABS.length) % TABS.length
+    } else if (event.key === "Home") {
+      nextIndex = 0
+    } else if (event.key === "End") {
+      nextIndex = TABS.length - 1
+    }
+
+    if (nextIndex === null) return
+
+    event.preventDefault()
+    setActiveTab(TABS[nextIndex].id)
+    tabRefs.current[nextIndex]?.focus()
+  }
 
   // GSAP desktop cursor-tracking ember highlight (strictly separate DOM node from Motion)
   useGSAP(
@@ -449,17 +498,22 @@ export function InteractiveShowcase() {
                 aria-label="Escenarios del producto FoodOS"
                 className="inline-flex flex-wrap gap-1.5 rounded-2xl border border-slate-800 bg-slate-900/90 p-1.5"
               >
-                {TABS.map((tab) => {
+                {TABS.map((tab, tabIndex) => {
                   const isActive = activeTab === tab.id
                   return (
                     <button
                       key={tab.id}
+                      ref={(el) => {
+                        tabRefs.current[tabIndex] = el
+                      }}
                       type="button"
                       role="tab"
                       id={tab.tabId}
+                      tabIndex={isActive ? 0 : -1}
                       aria-selected={isActive}
                       aria-controls={tab.panelId}
                       onClick={() => setActiveTab(tab.id)}
+                      onKeyDown={(event) => handleTabKeyDown(event, tabIndex)}
                       className={`relative pointer-coarse:min-h-11 inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
                         isActive
                           ? "text-white"
@@ -922,7 +976,7 @@ export function InteractiveShowcase() {
                               </span>
                             </div>
 
-                            <div className="space-y-2.5 flex-1">
+                            <div className="relative space-y-2.5 flex-1">
                               <AnimatePresence mode="popLayout">
                                 {columnTickets.map((ticket) => (
                                   <motion.div
@@ -954,6 +1008,7 @@ export function InteractiveShowcase() {
                                       </span>
                                       <motion.button
                                         type="button"
+                                        aria-label={`${column.actionLabel} (#${ticket.id})`}
                                         whileTap={{ scale: 0.95 }}
                                         onClick={() => advanceTicket(ticket.id)}
                                         className={`pointer-coarse:min-h-11 inline-flex items-center rounded-lg px-2.5 py-1.5 text-xs font-bold transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${column.actionClass}`}

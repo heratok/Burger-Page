@@ -10,7 +10,6 @@ import {
   AnimatePresence,
   animate,
   motion,
-  useMotionTemplate,
   useMotionValue,
   useSpring,
   useTransform,
@@ -101,7 +100,7 @@ const INITIAL_HERO_ORDERS: HeroOrderItem[] = [
 
 const SIMULATED_ORDER_POOL: ReadonlyArray<Omit<HeroOrderItem, "id" | "code" | "eta">> = [
   {
-    title: "Doble Bacon Ahumada",
+    title: "Doble Tocineta Ahumada",
     channel: "WhatsApp",
     amount: 36500,
   },
@@ -225,6 +224,7 @@ export function TiltCard({
   className = "",
   maxTilt = 6,
 }: TiltCardProps) {
+  const cardSizeRef = useRef({ width: 320, height: 240 })
   const normX = useMotionValue(0)
   const normY = useMotionValue(0)
   const smoothX = useSpring(normX, { stiffness: 260, damping: 24 })
@@ -233,22 +233,21 @@ export function TiltCard({
   const rotateY = useTransform(smoothX, [-0.5, 0.5], [-maxTilt, maxTilt])
   const rotateX = useTransform(smoothY, [-0.5, 0.5], [maxTilt, -maxTilt])
 
-  const sheenX = useMotionValue(50)
-  const sheenY = useMotionValue(25)
+  const glowX = useTransform(smoothX, (value) => value * cardSizeRef.current.width)
+  const glowY = useTransform(smoothY, (value) => value * cardSizeRef.current.height)
   const rawSheenOpacity = useMotionValue(0)
   const sheenOpacity = useSpring(rawSheenOpacity, { stiffness: 220, damping: 26 })
-  const sheenBackground = useMotionTemplate`radial-gradient(280px circle at ${sheenX}% ${sheenY}%, rgba(249, 115, 22, 0.16), rgba(245, 158, 11, 0.06) 44%, transparent 74%)`
 
   const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (!isFinePointerDevice() || prefersReducedMotion()) return
     const rect = event.currentTarget.getBoundingClientRect()
     if (rect.width === 0 || rect.height === 0) return
+    cardSizeRef.current.width = rect.width
+    cardSizeRef.current.height = rect.height
     const px = clamp((event.clientX - rect.left) / rect.width, 0, 1)
     const py = clamp((event.clientY - rect.top) / rect.height, 0, 1)
     normX.set(px - 0.5)
     normY.set(py - 0.5)
-    sheenX.set(px * 100)
-    sheenY.set(py * 100)
     rawSheenOpacity.set(1)
   }
 
@@ -268,17 +267,24 @@ export function TiltCard({
         rotateY,
         transformPerspective: 1000,
       }}
-      className={`relative will-change-transform ${className}`.trim()}
+      className={`relative hover:will-change-transform ${className}`.trim()}
     >
       {children}
-      <motion.div
+      <div
         aria-hidden="true"
-        style={{
-          background: sheenBackground,
-          opacity: sheenOpacity,
-        }}
-        className="pointer-events-none absolute inset-0 z-10 rounded-[inherit]"
-      />
+        className="pointer-events-none absolute inset-0 z-10 overflow-hidden rounded-[inherit]"
+      >
+        <motion.div
+          style={{
+            x: glowX,
+            y: glowY,
+            opacity: sheenOpacity,
+            background:
+              "radial-gradient(circle, rgba(249, 115, 22, 0.16) 0%, rgba(245, 158, 11, 0.06) 44%, transparent 74%)",
+          }}
+          className="absolute top-1/2 left-1/2 -mt-36 -ml-36 size-72 rounded-full"
+        />
+      </div>
     </motion.div>
   )
 }
@@ -294,12 +300,13 @@ export function KineticMarquee() {
 
       const mm = gsap.matchMedia()
       mm.add("(prefers-reduced-motion: no-preference)", () => {
+        const container = containerRef.current
         const track = trackRef.current
-        if (!track) return
+        if (!container || !track) return
 
         const marqueeTween = gsap.to(track, {
           xPercent: -50,
-          duration: 28,
+          duration: 56,
           ease: "none",
           repeat: -1,
         })
@@ -307,8 +314,9 @@ export function KineticMarquee() {
         let returnTween: gsap.core.Tween | null = null
 
         const velocityTrigger = ScrollTrigger.create({
-          start: 0,
-          end: "max",
+          trigger: container,
+          start: "top bottom",
+          end: "bottom top",
           onUpdate(self) {
             const rawBoost = Math.abs(self.getVelocity()) / 420
             const clampedBoost = clamp(rawBoost, 0, 4.5)
@@ -337,6 +345,7 @@ export function KineticMarquee() {
 
         return () => {
           returnTween?.kill()
+          gsap.killTweensOf(marqueeTween)
           velocityTrigger.kill()
           marqueeTween.kill()
         }
@@ -370,7 +379,7 @@ export function KineticMarquee() {
       >
         <div className="flex shrink-0 items-center motion-reduce:flex-wrap motion-reduce:justify-center motion-reduce:gap-y-2">
           {MARQUEE_ITEMS.map((item) => (
-            <div key={item} className="inline-flex items-center">
+            <div key={`h1-a-${item}`} className="inline-flex items-center">
               <span className="px-4 sm:px-6 text-xs sm:text-sm font-extrabold uppercase tracking-[0.22em] text-slate-100 whitespace-nowrap">
                 {item}
               </span>
@@ -380,6 +389,16 @@ export function KineticMarquee() {
               />
             </div>
           ))}
+          <div aria-hidden="true" className="flex shrink-0 items-center motion-reduce:hidden">
+            {MARQUEE_ITEMS.map((item) => (
+              <div key={`h1-b-${item}`} className="inline-flex items-center">
+                <span className="px-4 sm:px-6 text-xs sm:text-sm font-extrabold uppercase tracking-[0.22em] text-slate-100 whitespace-nowrap">
+                  {item}
+                </span>
+                <span className="inline-block size-2 rotate-45 bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.85)]" />
+              </div>
+            ))}
+          </div>
         </div>
 
         <div
@@ -387,7 +406,15 @@ export function KineticMarquee() {
           className="flex shrink-0 items-center motion-reduce:hidden"
         >
           {MARQUEE_ITEMS.map((item) => (
-            <div key={`dup-${item}`} className="inline-flex items-center">
+            <div key={`h2-a-${item}`} className="inline-flex items-center">
+              <span className="px-4 sm:px-6 text-xs sm:text-sm font-extrabold uppercase tracking-[0.22em] text-slate-100 whitespace-nowrap">
+                {item}
+              </span>
+              <span className="inline-block size-2 rotate-45 bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.85)]" />
+            </div>
+          ))}
+          {MARQUEE_ITEMS.map((item) => (
+            <div key={`h2-b-${item}`} className="inline-flex items-center">
               <span className="px-4 sm:px-6 text-xs sm:text-sm font-extrabold uppercase tracking-[0.22em] text-slate-100 whitespace-nowrap">
                 {item}
               </span>
@@ -402,21 +429,22 @@ export function KineticMarquee() {
 
 export function HeroLiveStage() {
   const stageRef = useRef<HTMLDivElement>(null)
+  const revenueDisplayRef = useRef<HTMLSpanElement>(null)
   const [orders, setOrders] = useState<HeroOrderItem[]>(INITIAL_HERO_ORDERS)
   const [revenue, setRevenue] = useState<number>(INITIAL_HERO_REVENUE)
-  const [displayedRevenue, setDisplayedRevenue] = useState<number>(INITIAL_HERO_REVENUE)
   const [nextOrderNumber, setNextOrderNumber] = useState<number>(109)
   const [poolIndex, setPoolIndex] = useState<number>(0)
-  const previousRevenueRef = useRef<number>(INITIAL_HERO_REVENUE)
+  const displayedRevenueRef = useRef<number>(INITIAL_HERO_REVENUE)
 
   useEffect(() => {
-    const startValue = previousRevenueRef.current
-    previousRevenueRef.current = revenue
-
+    const startValue = displayedRevenueRef.current
     if (startValue === revenue) return
 
     if (prefersReducedMotion()) {
-      setDisplayedRevenue(revenue)
+      displayedRevenueRef.current = revenue
+      if (revenueDisplayRef.current) {
+        revenueDisplayRef.current.textContent = formatCurrency(revenue)
+      }
       return
     }
 
@@ -424,7 +452,16 @@ export function HeroLiveStage() {
       duration: 0.45,
       ease: "easeOut",
       onUpdate(latest) {
-        setDisplayedRevenue(Math.round(latest))
+        displayedRevenueRef.current = latest
+        if (revenueDisplayRef.current) {
+          revenueDisplayRef.current.textContent = formatCurrency(latest)
+        }
+      },
+      onComplete() {
+        displayedRevenueRef.current = revenue
+        if (revenueDisplayRef.current) {
+          revenueDisplayRef.current.textContent = formatCurrency(revenue)
+        }
       },
     })
 
@@ -547,10 +584,14 @@ export function HeroLiveStage() {
                 Ventas directas
               </span>
               <span
-                aria-live="polite"
+                ref={revenueDisplayRef}
+                aria-hidden="true"
                 className="font-mono text-lg sm:text-xl font-extrabold tabular-nums text-emerald-200"
               >
-                {formatCurrency(displayedRevenue)}
+                {formatCurrency(INITIAL_HERO_REVENUE)}
+              </span>
+              <span className="sr-only" aria-live="polite">
+                Ventas directas: {formatCurrency(revenue)}
               </span>
             </div>
           </div>
@@ -567,7 +608,7 @@ export function HeroLiveStage() {
               </span>
             </div>
 
-            <div className="space-y-2.5">
+            <div className="relative space-y-2.5">
               <AnimatePresence mode="popLayout" initial={false}>
                 {orders.map((order, index) => {
                   const isNewest = index === 0

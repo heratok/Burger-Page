@@ -192,10 +192,11 @@ export function ProfitabilitySection() {
                 value={monthlyOrders}
                 onChange={(e) => setMonthlyOrders(Number(e.target.value))}
                 aria-label="Pedidos mensuales estimados"
-                className="w-full h-2.5 cursor-pointer accent-orange-500 rounded-lg bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+                aria-valuetext={`${formatNumber(monthlyOrders)} pedidos al mes`}
+                className="w-full min-h-11 py-4 cursor-pointer accent-orange-500 rounded-lg bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
               />
 
-              <div className="mt-2 flex items-center justify-between font-mono text-xs font-semibold text-slate-200 tabular-nums">
+              <div className="mt-0.5 flex items-center justify-between font-mono text-xs font-semibold text-slate-200 tabular-nums">
                 <span>50 pedidos</span>
                 <span>750 pedidos</span>
                 <span>1.500 pedidos</span>
@@ -284,17 +285,18 @@ export function ProfitabilitySection() {
                       <span>Ahorro anual recuperado</span>
                     </div>
 
-                    <motion.div
-                      key={annualSavings}
-                      data-testid="profitability-annual-savings"
-                      aria-live="polite"
-                      initial={{ opacity: 0.72, scale: 0.96, y: 4 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      transition={VALUE_POP_SPRING}
-                      className="mt-3 font-mono text-3xl sm:text-4xl xl:text-[2.6rem] font-black leading-none tracking-tight tabular-nums text-white"
-                    >
-                      {formatCurrency(annualSavings)}
-                    </motion.div>
+                    <div aria-live="polite" aria-atomic="true">
+                      <motion.div
+                        key={annualSavings}
+                        data-testid="profitability-annual-savings"
+                        initial={{ opacity: 0.72, scale: 0.96, y: 4 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        transition={VALUE_POP_SPRING}
+                        className="mt-3 font-mono text-3xl sm:text-4xl xl:text-[2.6rem] font-black leading-none tracking-tight tabular-nums text-white"
+                      >
+                        {formatCurrency(annualSavings)}
+                      </motion.div>
+                    </div>
                   </div>
 
                   <div className="relative z-10 mt-4 border-t border-emerald-800/70 pt-3.5">
