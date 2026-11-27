@@ -555,27 +555,30 @@ export default function LandingPage() {
                         Tu Menú Digital Interactivo.
                       </span>
                     </span>
-                    <span className="block overflow-hidden pb-2">
+                    <span className="block overflow-hidden pb-3">
                       <span
                         data-gsap-hero-line
-                        className="relative inline-block text-orange-700 dark:text-orange-400"
+                        className="block text-orange-700 dark:text-orange-400"
                       >
-                        Ventas Directas por WhatsApp.
-                        <svg
-                          aria-hidden="true"
-                          viewBox="0 0 420 16"
-                          fill="none"
-                          preserveAspectRatio="none"
-                          className="pointer-events-none absolute -bottom-1 left-0 h-3 w-full text-orange-700/80 dark:text-orange-400/90"
-                        >
-                          <path
-                            data-gsap-hero-underline
-                            d="M4 11.5C112 3.5 294 2.5 416 10.5"
-                            stroke="currentColor"
-                            strokeWidth="3.5"
-                            strokeLinecap="round"
-                          />
-                        </svg>
+                        Ventas Directas por{" "}
+                        <span className="relative inline-block">
+                          WhatsApp.
+                          <svg
+                            aria-hidden="true"
+                            viewBox="0 0 280 16"
+                            fill="none"
+                            preserveAspectRatio="none"
+                            className="pointer-events-none absolute -bottom-2 left-0 h-3 w-full text-orange-700/85 dark:text-orange-400/90"
+                          >
+                            <path
+                              data-gsap-hero-underline
+                              d="M4 11.5C78 3.5 198 2.5 276 10.5"
+                              stroke="currentColor"
+                              strokeWidth="3.8"
+                              strokeLinecap="round"
+                            />
+                          </svg>
+                        </span>
                       </span>
                     </span>
                   </h1>
