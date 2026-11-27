@@ -120,4 +120,79 @@ describe("LandingPage - private platform directory", () => {
     expect(screen.getByText("Tu Canal Directo con FoodOS")).toBeTruthy()
     expect(screen.getByText("0% comisiones por venta")).toBeTruthy()
   })
+
+  it("updates delivery total and simulates WhatsApp dispatch interactively", () => {
+    renderLanding()
+
+    const cheddarBtn = screen.getByRole("button", { name: /Queso Cheddar/i })
+    fireEvent.click(cheddarBtn)
+
+    expect(screen.getByText("$48.000")).toBeTruthy()
+    expect(screen.getByText(/Total a Pagar: \$48\.000/)).toBeTruthy()
+
+    const sendBtn = screen.getByRole("button", { name: /Simular Envío por WhatsApp/i })
+    fireEvent.click(sendBtn)
+    expect(screen.getByText(/Ticket enviado al instante · 0% comisión/)).toBeTruthy()
+  })
+
+  it("switches QR tables and adds drinks to the live round", () => {
+    renderLanding()
+
+    fireEvent.click(screen.getByRole("tab", { name: /Mesa & Código QR/i }))
+    fireEvent.click(screen.getByRole("button", { name: /Mesa 7 · Patio/i }))
+
+    expect(screen.getByText("$48.500")).toBeTruthy()
+
+    fireEvent.click(screen.getByRole("button", { name: /\+ Agregar Bebida/i }))
+    expect(screen.getByText("$57.500")).toBeTruthy()
+  })
+
+  it("advances Kanban tickets across columns and resets the board", () => {
+    renderLanding()
+
+    fireEvent.click(screen.getByRole("tab", { name: /Cocina & Kanban/i }))
+    const advanceButtons = screen.getAllByRole("button", { name: /A Cocina →/i })
+    fireEvent.click(advanceButtons[0])
+
+    const resetBtn = screen.getByRole("button", { name: /Reiniciar tablero/i })
+    expect(resetBtn).toBeTruthy()
+
+    fireEvent.click(resetBtn)
+    expect(screen.queryByRole("button", { name: /Reiniciar tablero/i })).toBeNull()
+  })
+
+  it("updates live profitability savings when monthly order volume changes", () => {
+    renderLanding()
+
+    const slider = screen.getByLabelText("Pedidos mensuales estimados") as HTMLInputElement
+    expect(slider.value).toBe("400")
+
+    fireEvent.change(slider, { target: { value: "800" } })
+    expect(slider.value).toBe("800")
+    // 800 orders * $45.000 * 28% = $10.080.000/month -> $120.960.000/year
+    expect(screen.getByText("$120.960.000")).toBeTruthy()
+  })
+
+  it("renders cleanly under prefers-reduced-motion: reduce", () => {
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn((query: string) => ({
+        matches: query.includes(": reduce"),
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }))
+    )
+
+    renderLanding()
+    expect(screen.getAllByText("0%").length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText("< 30s")).toBeTruthy()
+    expect(screen.getByText("+45%")).toBeTruthy()
+    expect(screen.getAllByText("100%").length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText("Creá tu Menú")).toBeTruthy()
+  })
 })
