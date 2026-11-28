@@ -262,24 +262,19 @@ describe("S12 — no backdrop blur on opaque or static surfaces", () => {
     expect(tokens(photoButton)).toContain("backdrop-blur-md")
   })
 
-  it("removes blur from the auth brand pill and feature tiles while the login card keeps its own", () => {
-    render(
+  it("keeps AdminAuthModal free of backdrop blur across brand, pillars, and login card", () => {
+    const { container } = render(
       <RestaurantProvider>
         <AdminAuthModal isOpen />
       </RestaurantProvider>
     )
 
-    const brandPill = screen.getByText(/FoodOS/i).closest("div")
-    expect(tokens(brandPill).filter((c) => c.includes("backdrop-blur"))).toEqual([])
+    expect(screen.getAllByText(/FoodOS/i).length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByRole("heading", { name: /Iniciar Sesión/i })).toBeTruthy()
 
-    for (const label of ["Pedidos en Vivo", "Stock & Insumos", "Clientes", "Cifrado Seguro"]) {
-      const tile = screen.getByText(label).closest("div.rounded-2xl")
-      expect(tile, label).not.toBeNull()
-      expect(tokens(tile).filter((c) => c.includes("backdrop-blur")), label).toEqual([])
-      expect(tokens(tile), label).toContain("bg-slate-900/60")
-    }
-
-    // The login card floats over the aurora gradient: its blur is real depth.
-    expect(document.querySelector(".backdrop-blur-2xl")).not.toBeNull()
+    const blurredElements = Array.from(container.querySelectorAll("*")).filter((el) =>
+      Array.from(el.classList).some((c) => c.includes("backdrop-blur"))
+    )
+    expect(blurredElements).toEqual([])
   })
 })

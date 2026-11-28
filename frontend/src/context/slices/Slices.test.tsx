@@ -2614,7 +2614,7 @@ describe("AdminAuthModal - session comes only from the validated auth.login resu
       target: { value: "chef" },
     })
     fireEvent.change(
-      screen.getByPlaceholderText("Ingresá tu clave de administración..."),
+      screen.getByLabelText(/Contraseña de Acceso/i),
       { target: { value: "clave" } }
     )
     fireEvent.click(screen.getByRole("button", { name: /Acceder al Panel/i }))
