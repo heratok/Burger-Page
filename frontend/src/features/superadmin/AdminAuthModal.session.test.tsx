@@ -53,7 +53,7 @@ describe("AdminAuthModal - a new session never renders the previous session's ta
     )
 
     fireEvent.change(screen.getByPlaceholderText("Tu nombre de usuario"), { target: { value: "napoli" } })
-    fireEvent.change(screen.getByPlaceholderText("Ingresá tu clave de administración..."), {
+    fireEvent.change(screen.getByLabelText(/Contraseña de Acceso/i), {
       target: { value: "clave" },
     })
     fireEvent.click(screen.getByRole("button", { name: /Acceder al Panel/i }))

@@ -1,19 +1,21 @@
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
 import { useRestaurant } from "@/context/RestaurantContext"
 import { useAppRouter } from "@/core/router/useAppRouter"
 import {
   ShieldCheck,
   Lock,
   ArrowRight,
-  Sparkles,
+  ArrowLeft,
   Eye,
   EyeOff,
   Flame,
-  Boxes,
-  ShoppingBag,
-  Users,
   KeyRound,
   User,
+  AlertCircle,
+  Loader2,
+  Check,
+  Sun,
+  Moon,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
@@ -22,6 +24,23 @@ interface AdminAuthModalProps {
   isOpen: boolean
   onClose?: () => void
 }
+
+const THEME_STORAGE_KEY = "foodos_landing_theme"
+
+const SUITE_PILLARS = [
+  {
+    title: "Pedidos WhatsApp y Kanban en vivo",
+    description: "Recibí órdenes estructuradas y avanzá comandas sin errores.",
+  },
+  {
+    title: "Carta digital, mesas QR y stock",
+    description: "Actualizá precios, adiciones y disponibilidad en segundos.",
+  },
+  {
+    title: "Acceso cifrado y aislado por local",
+    description: "Roles granulares para caja, cocina y administración.",
+  },
+] as const
 
 export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose }) => {
   // M6: the session is written ONLY through AuthContext.login (wrapped by
@@ -32,17 +51,48 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
   const { login, refreshRestaurants } = useRestaurant()
   const { navigateTo } = useAppRouter()
 
+  const [theme, setTheme] = useState<"light" | "dark">(() => {
+    try {
+      const saved = localStorage.getItem(THEME_STORAGE_KEY)
+      if (saved === "light" || saved === "dark") return saved
+    } catch {
+      // Fallback for restricted storage environments
+    }
+    return "light"
+  })
+
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
+  const [capsLockOn, setCapsLockOn] = useState(false)
   const [errorMsg, setErrorMsg] = useState("")
   const [isLoading, setIsLoading] = useState(false)
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, theme)
+    } catch {
+      // Ignore storage errors
+    }
+  }, [theme])
+
   if (!isOpen) return null
+
+  const isDark = theme === "dark"
+
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === "dark" ? "light" : "dark"))
+  }
 
   const handleReturnHome = () => {
     if (onClose) onClose()
     navigateTo("/")
+  }
+
+  const handlePasswordKeyEvent = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (typeof e.getModifierState === "function") {
+      setCapsLockOn(e.getModifierState("CapsLock"))
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -77,135 +127,173 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
   }
 
   return (
-    <div className="min-h-screen w-full relative flex items-center justify-center p-4 sm:p-6 lg:p-12 overflow-x-hidden bg-gradient-to-br from-[#0A0E1A] via-[#0F172A] to-[#0A0E1A] text-slate-100 font-sans">
-      {/* ======================================================== */}
-      {/* VIBRANT LUMINOUS AURORA LIGHTS                           */}
-      {/* ======================================================== */}
+    <div
+      className={`min-h-screen w-full relative flex items-center justify-center p-4 sm:p-6 lg:p-10 overflow-x-clip font-sans antialiased transition-colors duration-200 selection:bg-slate-900 selection:text-white dark:selection:bg-orange-700 ${
+        isDark
+          ? "dark bg-[#0B0F19] text-slate-100"
+          : "bg-[#F5F4F0] text-slate-900"
+      }`}
+    >
+      {/* Calm architectural dot backdrop (zero blur filters) */}
       <div aria-hidden="true" className="pointer-events-none fixed inset-0 overflow-hidden">
-        {/* Static radial-gradient auras: zero blur cost, nothing animates. Side auras are desktop-only. */}
         <div
-          className="hidden md:block absolute -top-40 -left-40 h-[600px] w-[600px]"
-          style={{ backgroundImage: "radial-gradient(circle at center, rgba(249,115,22,0.20) 0%, rgba(245,158,11,0.08) 45%, transparent 70%)" }}
-        />
-        <div
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[420px] w-[min(700px,100vw)]"
-          style={{ backgroundImage: "radial-gradient(ellipse at center, rgba(249,115,22,0.12) 0%, rgba(244,63,94,0.06) 45%, transparent 70%)" }}
-        />
-        <div
-          className="hidden md:block absolute -bottom-40 -right-40 h-[650px] w-[650px]"
-          style={{ backgroundImage: "radial-gradient(circle at center, rgba(217,119,6,0.20) 0%, rgba(249,115,22,0.08) 45%, transparent 70%)" }}
-        />
-
-        {/* Ambient Subtle Tech Grid */}
-        <div
-          className="absolute inset-0 opacity-[0.04]"
+          className={`absolute inset-0 ${isDark ? "opacity-[0.045]" : "opacity-[0.035]"}`}
           style={{
-            backgroundImage: `radial-gradient(circle at 1px 1px, #CBD5E1 1px, transparent 0)`,
-            backgroundSize: "28px 28px",
+            backgroundImage: `radial-gradient(circle at 1px 1px, ${isDark ? "#CBD5E1" : "#0F172A"} 1px, transparent 0)`,
+            backgroundSize: "26px 26px",
           }}
         />
       </div>
 
-      {/* ======================================================== */}
-      {/* SPLIT HERO CONTAINER                                     */}
-      {/* ======================================================== */}
-      <div className="relative z-10 w-full max-w-5xl grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
-        
-        {/* ======================================================== */}
-        {/* LEFT COLUMN: PLATFORM VALUE PROPOSITION                  */}
-        {/* ======================================================== */}
-        <div className="lg:col-span-6 space-y-6 text-left hidden sm:block">
-          {/* Brand pill */}
-          <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3.5 py-1.5 text-xs font-semibold text-indigo-300 shadow-sm">
-            <Sparkles className="size-3.5 text-amber-400 animate-pulse" />
-            <span>FoodOS • Suite Operativa</span>
-          </div>
+      {/* Unified Architectural Split Card */}
+      <div className="relative z-10 w-full max-w-[920px] grid grid-cols-1 lg:grid-cols-12 overflow-hidden rounded-[2rem] border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-[#111625] shadow-[0_24px_70px_-24px_rgba(15,23,42,0.16)] dark:shadow-[0_32px_90px_-24px_rgba(0,0,0,0.8)] animate-in fade-in slide-in-from-bottom-2 duration-300 motion-reduce:animate-none">
+        {/* Left Brand Column: Calm Warm Charcoal Panel */}
+        <aside className="hidden lg:flex lg:col-span-5 relative flex-col justify-between overflow-hidden bg-slate-900 p-8 xl:p-10 text-white">
+          {/* Subtle top ember hairline */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-orange-500/70 to-transparent"
+          />
+          {/* Soft non-saturated warm corner wash */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -top-24 -left-24 h-72 w-72"
+            style={{
+              backgroundImage:
+                "radial-gradient(circle at center, rgba(234,88,12,0.14) 0%, transparent 70%)",
+            }}
+          />
 
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white leading-tight">
-            Gestión Centralizada para{" "}
-            <span className="text-amber-400">
-              Restaurantes
-            </span>
-          </h1>
-
-          <p className="text-sm sm:text-base text-slate-300 leading-relaxed max-w-md">
-            Portal administrativo seguro y privado. Accedé al control de pedidos en vivo, catálogo de productos, control de stock e insumos y clientes.
-          </p>
-
-          {/* Feature Highlights Grid */}
-          <div className="grid grid-cols-2 gap-3 pt-2 max-w-md">
-            <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-3.5">
-              <div className="flex items-center gap-2 text-orange-400 mb-1">
-                <ShoppingBag className="size-4" />
-                <span className="text-sm font-bold text-white">Pedidos en Vivo</span>
+          <div className="relative space-y-7">
+            {/* Brand identity */}
+            <div className="flex items-center gap-3">
+              <div className="flex size-10 items-center justify-center rounded-xl bg-orange-700 text-white shadow-sm">
+                <Flame className="size-5" aria-hidden="true" />
               </div>
-              <p className="text-sm text-slate-400">Flujo Kanban de cocina y recepción WhatsApp.</p>
+              <div>
+                <span className="block text-base font-extrabold tracking-tight text-white">
+                  FoodOS
+                </span>
+                <span className="block text-xs font-medium text-slate-200">
+                  Suite Operativa
+                </span>
+              </div>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-3.5">
-              <div className="flex items-center gap-2 text-indigo-400 mb-1">
-                <Boxes className="size-4" />
-                <span className="text-sm font-bold text-white">Stock & Insumos</span>
-              </div>
-              <p className="text-sm text-slate-400">Control de materias primas y proveedores.</p>
-            </div>
-
-            <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-3.5">
-              <div className="flex items-center gap-2 text-emerald-400 mb-1">
-                <Users className="size-4" />
-                <span className="text-sm font-bold text-white">Clientes</span>
-              </div>
-              <p className="text-sm text-slate-400">Base de clientes y fidelización directa.</p>
-            </div>
-
-            <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-3.5">
-              <div className="flex items-center gap-2 text-amber-400 mb-1">
-                <ShieldCheck className="size-4" />
-                <span className="text-sm font-bold text-white">Cifrado Seguro</span>
-              </div>
-              <p className="text-sm text-slate-400">Acceso autenticado y aislado por tenant.</p>
-            </div>
-          </div>
-        </div>
-
-        {/* ======================================================== */}
-        {/* RIGHT COLUMN: CLEAN ZERO-KNOWLEDGE LOGIN CARD             */}
-        {/* ======================================================== */}
-        <div className="lg:col-span-6 flex justify-center">
-          <div className="w-full max-w-md rounded-3xl border border-white/15 bg-slate-900/85 p-6 sm:p-8 shadow-2xl shadow-indigo-950/80 backdrop-blur-2xl transition-all">
-            {/* Header */}
-            <div className="flex flex-col items-center text-center">
-              <div className="mb-4 flex size-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-orange-500 via-orange-600 to-amber-600 p-0.5 shadow-lg shadow-orange-600/30">
-                <div className="flex size-full items-center justify-center rounded-[14px] bg-slate-900 text-white">
-                  <Flame className="size-7 text-orange-400" />
-                </div>
-              </div>
-
-              <div className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-0.5 text-xs font-bold text-indigo-300 mb-2">
-                <ShieldCheck className="size-3 text-indigo-400" />
-                <span>Portal Administrativo</span>
-              </div>
-
-              <h2 className="text-xl font-extrabold tracking-tight text-white">
-                Iniciar Sesión
-              </h2>
-              <p className="text-sm text-slate-400 mt-1 max-w-xs">
-                Ingresá tus credenciales para acceder al panel de administración
+            <div className="space-y-3">
+              <h1 className="text-[1.85rem] font-black tracking-[-0.03em] leading-[1.12] text-white">
+                Tu operación, en calma y{" "}
+                <span className="text-orange-200">bajo control.</span>
+              </h1>
+              <p className="text-sm leading-relaxed text-slate-200">
+                Un panel administrativo limpio para gestionar pedidos, catálogo, stock y clientes
+                sin intermediarios.
               </p>
             </div>
 
-            {/* Login Form */}
-            <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+            {/* Calm minimal pillars list */}
+            <ul className="space-y-4 pt-2">
+              {SUITE_PILLARS.map((item) => (
+                <li key={item.title} className="flex items-start gap-3">
+                  <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-slate-800 border border-slate-700 text-emerald-200">
+                    <Check className="size-3" aria-hidden="true" />
+                  </span>
+                  <div>
+                    <span className="block text-sm font-semibold text-white">
+                      {item.title}
+                    </span>
+                    <span className="block text-xs leading-relaxed text-slate-200 mt-0.5">
+                      {item.description}
+                    </span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="relative pt-8 mt-8 border-t border-slate-800 flex items-center justify-between text-xs font-medium text-slate-200">
+            <span>0% comisiones por venta</span>
+            <span className="inline-flex items-center gap-1.5 text-emerald-200">
+              <ShieldCheck className="size-3.5" aria-hidden="true" />
+              Multi-sucursal
+            </span>
+          </div>
+        </aside>
+
+        {/* Right Form Column: Clean, Low-Saturation Workspace */}
+        <div className="lg:col-span-7 flex flex-col justify-between p-6 sm:p-8 lg:p-10">
+          {/* Top Utility Bar */}
+          <div className="flex items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={handleReturnHome}
+              className="min-h-11 -ml-2 px-2.5 rounded-xl text-sm font-medium text-slate-600 hover:text-slate-950 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800/80 transition-colors inline-flex items-center gap-1.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600"
+            >
+              <ArrowLeft className="size-4" aria-hidden="true" />
+              <span>Volver a la Página Principal</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label={isDark ? "Cambiar a tema claro" : "Cambiar a tema oscuro"}
+              className="inline-flex size-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600"
+            >
+              {isDark ? (
+                <Sun className="size-4" aria-hidden="true" />
+              ) : (
+                <Moon className="size-4" aria-hidden="true" />
+              )}
+            </button>
+          </div>
+
+          {/* Form Body */}
+          <div className="my-auto py-6 sm:py-8 max-w-md w-full mx-auto">
+            {/* Compact Mobile Brand Identity */}
+            <div className="flex items-center gap-2.5 mb-6 lg:hidden">
+              <div className="flex size-9 items-center justify-center rounded-xl bg-orange-700 text-white">
+                <Flame className="size-5" aria-hidden="true" />
+              </div>
+              <span className="text-base font-extrabold tracking-tight text-slate-950 dark:text-white">
+                FoodOS
+              </span>
+              <span className="rounded-full border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 text-xs font-semibold text-slate-700 dark:text-slate-200">
+                Portal Admin
+              </span>
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="hidden lg:inline-flex items-center gap-1.5 rounded-full border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3 py-1 text-xs font-semibold text-slate-700 dark:text-slate-200 mb-2">
+                <ShieldCheck className="size-3.5 text-orange-700 dark:text-orange-400" aria-hidden="true" />
+                <span>Portal Administrativo</span>
+              </div>
+              <h2 className="text-2xl sm:text-[1.75rem] font-extrabold tracking-tight text-slate-950 dark:text-white">
+                Iniciar Sesión
+              </h2>
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                Ingresá tus credenciales para acceder al panel de gestión.
+              </p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="mt-7 space-y-5">
               <div>
-                <label htmlFor="admin-auth-modal-usuario" className="block text-sm font-bold mb-1.5 text-slate-300">
+                <label
+                  htmlFor="admin-auth-modal-usuario"
+                  className="block text-sm font-semibold mb-1.5 text-slate-800 dark:text-slate-200"
+                >
                   Usuario
                 </label>
                 <div className="relative">
-                  <User className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-                  <input id="admin-auth-modal-usuario"
+                  <User
+                    className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-500 dark:text-slate-400"
+                    aria-hidden="true"
+                  />
+                  <input
+                    id="admin-auth-modal-usuario"
                     type="text"
                     required
                     autoFocus
+                    autoComplete="username"
                     maxLength={50}
                     value={username}
                     onChange={(e) => {
@@ -213,76 +301,108 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose 
                       setErrorMsg("")
                     }}
                     placeholder="Tu nombre de usuario"
-                    className="w-full rounded-2xl border border-slate-700/80 bg-slate-800/90 py-3 pl-10 pr-4 text-base sm:text-sm text-white placeholder-slate-500 transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 font-medium"
+                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950/80 py-3 pl-10 pr-4 text-base sm:text-sm text-slate-950 dark:text-white placeholder:text-slate-500 dark:placeholder:text-slate-500 transition-colors hover:border-slate-400 dark:hover:border-slate-600 focus:border-slate-900 dark:focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10 dark:focus:ring-orange-400/20 font-medium"
                   />
                 </div>
               </div>
+
               <div>
-                <label htmlFor="admin-auth-modal-contrasena-de-acceso" className="block text-sm font-bold mb-1.5 text-slate-300">
+                <label
+                  htmlFor="admin-auth-modal-contrasena-de-acceso"
+                  className="block text-sm font-semibold mb-1.5 text-slate-800 dark:text-slate-200"
+                >
                   Contraseña de Acceso
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-                  <input id="admin-auth-modal-contrasena-de-acceso"
+                  <Lock
+                    className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-500 dark:text-slate-400"
+                    aria-hidden="true"
+                  />
+                  <input
+                    id="admin-auth-modal-contrasena-de-acceso"
                     type={showPassword ? "text" : "password"}
                     required
+                    autoComplete="current-password"
                     maxLength={100}
                     value={password}
+                    onKeyUp={handlePasswordKeyEvent}
+                    onKeyDown={handlePasswordKeyEvent}
                     onChange={(e) => {
                       setPassword(e.target.value)
                       setErrorMsg("")
                     }}
-                    placeholder="Ingresá tu clave de administración..."
-                    className="w-full rounded-2xl border border-slate-700/80 bg-slate-800/90 py-3 pl-10 pr-11 text-base sm:text-sm text-white placeholder-slate-500 transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 font-medium"
+                    placeholder="Ingresá tu contraseña"
+                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950/80 py-3 pl-10 pr-12 text-base sm:text-sm text-slate-950 dark:text-white placeholder:text-slate-500 dark:placeholder:text-slate-500 transition-colors hover:border-slate-400 dark:hover:border-slate-600 focus:border-slate-900 dark:focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10 dark:focus:ring-orange-400/20 font-medium"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 inline-flex size-10 pointer-coarse:size-11 items-center justify-center rounded-lg text-slate-600 hover:text-slate-950 dark:text-slate-400 dark:hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 cursor-pointer"
                     aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
-                    title={showPassword ? "Ocultar contraseña" : "Ver contraseña"}
                   >
-                    {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                    {showPassword ? (
+                      <EyeOff className="size-4" aria-hidden="true" />
+                    ) : (
+                      <Eye className="size-4" aria-hidden="true" />
+                    )}
                   </button>
                 </div>
 
+                {capsLockOn && (
+                  <div
+                    role="status"
+                    className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-amber-800 dark:text-amber-300"
+                  >
+                    <AlertCircle className="size-3.5 shrink-0" aria-hidden="true" />
+                    <span>Bloq Mayús está activado</span>
+                  </div>
+                )}
+
                 {errorMsg && (
-                  <div role="alert" aria-live="assertive" className="mt-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm font-medium text-rose-400 flex items-center gap-2 animate-in fade-in">
-                    <span>⚠️ {errorMsg}</span>
+                  <div
+                    role="alert"
+                    aria-live="assertive"
+                    className="mt-3 rounded-xl border border-rose-300 dark:border-rose-500/35 bg-rose-50 dark:bg-rose-950/60 px-3.5 py-2.5 text-sm font-medium text-rose-800 dark:text-rose-200 flex items-center gap-2 animate-in fade-in slide-in-from-top-1 duration-200 motion-reduce:animate-none"
+                  >
+                    <AlertCircle className="size-4 shrink-0 text-rose-700 dark:text-rose-300" aria-hidden="true" />
+                    <span>{errorMsg}</span>
                   </div>
                 )}
               </div>
 
-              {/* Submit CTA Button */}
+              {/* Calm, High-Contrast Submit Button */}
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="w-full h-auto gap-2 rounded-xl bg-orange-500 hover:bg-orange-600 py-3 text-xs font-bold text-white shadow-lg shadow-orange-500/25 transition-all cursor-pointer"
+                className="w-full min-h-12 h-auto gap-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-orange-700 dark:hover:bg-orange-600 active:scale-[0.99] py-3 text-sm font-bold text-white shadow-sm transition-all cursor-pointer disabled:opacity-70"
               >
-                <span>{isLoading ? "Verificando..." : "Acceder al Panel"}</span>
-                <ArrowRight className="size-4" />
+                {isLoading ? (
+                  <>
+                    <Loader2
+                      className="size-4 animate-spin motion-reduce:animate-none"
+                      aria-hidden="true"
+                    />
+                    <span>Verificando...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Acceder al Panel</span>
+                    <ArrowRight className="size-4" aria-hidden="true" />
+                  </>
+                )}
               </Button>
             </form>
+          </div>
 
-            {/* Privacy & Security Guarantee */}
-            <div className="mt-6 flex items-center justify-center gap-2 rounded-xl border border-white/5 bg-slate-950/40 py-2.5 px-3 text-sm text-slate-400 text-center">
-              <KeyRound className="size-3.5 text-indigo-400 shrink-0" />
-              <span>Acceso protegido con cifrado y resolución automática de rol</span>
-            </div>
-
-            {/* Footer Navigation Link */}
-            <div className="mt-5 text-center">
-              <button
-                type="button"
-                onClick={handleReturnHome}
-                className="text-xs text-slate-400 hover:text-white transition-colors inline-flex items-center gap-1.5 cursor-pointer"
-              >
-                <span>← Volver a la Página Principal</span>
-              </button>
-            </div>
+          {/* Calm Footer Security Assurance */}
+          <div className="pt-4 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-400 text-center">
+            <KeyRound
+              className="size-3.5 text-emerald-700 dark:text-emerald-400 shrink-0"
+              aria-hidden="true"
+            />
+            <span>Acceso protegido con cifrado y resolución automática de rol</span>
           </div>
         </div>
-
       </div>
     </div>
   )

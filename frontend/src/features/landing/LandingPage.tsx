@@ -1,30 +1,92 @@
-import { useState, useEffect } from "react"
+import { useEffect, useRef, useState } from "react"
+import { AnimatePresence, MotionConfig, motion } from "motion/react"
+import {
+  ArrowRight,
+  Check,
+  Flame,
+  Moon,
+  ShieldCheck,
+  Sparkles,
+  Sun,
+} from "lucide-react"
 import { useAppRouter } from "@/core/router/useAppRouter"
 import {
-  Sparkles,
-  MessageSquare,
-  TrendingUp,
-  Palette,
-  ShieldCheck,
-  Zap,
-  Users,
-  QrCode,
-  ShoppingBag,
-  Flame,
-  Sun,
-  Moon,
-  UtensilsCrossed,
-  ArrowRight,
-  CheckCircle2,
-  XCircle,
-  Volume2,
-} from "lucide-react"
-import { Button } from "@/components/ui/button"
+  ensureLandingGsapRegistered,
+  gsap,
+  ScrollTrigger,
+  supportsGsapMatchMedia,
+  useGSAP,
+} from "./gsapSetup"
+import {
+  HeroLiveStage,
+  KineticMarquee,
+  MagneticButton,
+} from "./MotionPrimitives"
+import { InteractiveShowcase } from "./InteractiveShowcase"
+import { FeaturesBento } from "./FeaturesBento"
+import { ProfitabilitySection } from "./ProfitabilitySection"
+import { WorkflowTimeline } from "./WorkflowTimeline"
 
-type ShowcaseTab = "delivery" | "qr" | "kanban"
+const CTA_SPRING = {
+  type: "spring" as const,
+  stiffness: 450,
+  damping: 28,
+}
+
+const THEME_ICON_SPRING = {
+  type: "spring" as const,
+  stiffness: 420,
+  damping: 26,
+}
+
+const METRIC_COUNTERS = [
+  {
+    id: "commission",
+    target: 0,
+    prefix: "",
+    suffix: "%",
+    finalText: "0%",
+    label: "Comisiones por venta",
+    valueClass: "text-slate-950 dark:text-white",
+  },
+  {
+    id: "order-time",
+    target: 30,
+    prefix: "< ",
+    suffix: "s",
+    finalText: "< 30s",
+    label: "Tiempo para pedir",
+    valueClass: "text-emerald-700 dark:text-emerald-400",
+  },
+  {
+    id: "ticket-uplift",
+    target: 45,
+    prefix: "+",
+    suffix: "%",
+    finalText: "+45%",
+    label: "Ticket con adiciones",
+    valueClass: "text-orange-700 dark:text-orange-400",
+  },
+  {
+    id: "ownership",
+    target: 100,
+    prefix: "",
+    suffix: "%",
+    finalText: "100%",
+    label: "Tus datos y clientes",
+    valueClass: "text-amber-700 dark:text-amber-400",
+  },
+] as const
+
+const HERO_TRUST_POINTS = [
+  "Sin tarjeta",
+  "Setup en 5 min",
+  "Cancelás cuando quieras",
+] as const
 
 export default function LandingPage() {
   const { navigateTo } = useAppRouter()
+  const pageRef = useRef<HTMLDivElement>(null)
 
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     try {
@@ -54,797 +116,736 @@ export default function LandingPage() {
     setTheme((prev) => (prev === "dark" ? "light" : "dark"))
   }
 
+  const handleAdminAccess = () => {
+    navigateTo("/admin")
+  }
+
   const isDark = theme === "dark"
-  const [activeTab, setActiveTab] = useState<ShowcaseTab>("delivery")
+
+  // GSAP scroll & entrance choreography strictly separated from Motion interactive elements
+  useGSAP(
+    () => {
+      if (!supportsGsapMatchMedia()) return
+      ensureLandingGsapRegistered()
+
+      const root = pageRef.current
+      if (!root) return
+
+      const mm = gsap.matchMedia()
+      mm.add("(prefers-reduced-motion: no-preference)", () => {
+        let cancelled = false
+
+        // 1. Top 2px scroll reading progress ribbon
+        gsap.fromTo(
+          "[data-gsap-scroll-progress]",
+          { scaleX: 0 },
+          {
+            scaleX: 1,
+            ease: "none",
+            scrollTrigger: {
+              trigger: root,
+              start: "top top",
+              end: "bottom bottom",
+              scrub: 0.15,
+            },
+          }
+        )
+
+        // 2. Hero kinetic entrance timeline (masked editorial lines + stagger + ember underline + 3D stage)
+        const underlinePath = root.querySelector<SVGPathElement>(
+          "[data-gsap-hero-underline]"
+        )
+        const heroTl = gsap.timeline()
+
+        heroTl.from("[data-gsap-hero-line]", {
+          yPercent: 108,
+          duration: 0.8,
+          stagger: 0.12,
+          ease: "power4.out",
+          clearProps: "transform",
+        })
+
+        heroTl.from(
+          "[data-gsap-hero]",
+          {
+            y: 16,
+            opacity: 0,
+            duration: 0.55,
+            stagger: 0.07,
+            ease: "power3.out",
+            clearProps: "transform,opacity",
+          },
+          "-=0.45"
+        )
+
+        if (underlinePath) {
+          const pathLength =
+            typeof underlinePath.getTotalLength === "function"
+              ? underlinePath.getTotalLength()
+              : 420
+          gsap.set(underlinePath, {
+            strokeDasharray: pathLength,
+            strokeDashoffset: pathLength,
+          })
+          heroTl.to(
+            underlinePath,
+            {
+              strokeDashoffset: 0,
+              duration: 0.7,
+              ease: "power2.out",
+            },
+            "-=0.35"
+          )
+        }
+
+        heroTl.from(
+          "[data-gsap-hero-stage]",
+          {
+            y: 26,
+            opacity: 0,
+            scale: 0.96,
+            duration: 0.85,
+            ease: "power3.out",
+            clearProps: "transform,opacity",
+          },
+          0.15
+        )
+
+        // 3. Ambient ember depth parallax (opposite axes, zero blur filters)
+        gsap.to("[data-gsap-ambient-a]", {
+          yPercent: -12,
+          ease: "none",
+          scrollTrigger: {
+            trigger: root,
+            start: "top top",
+            end: "bottom bottom",
+            scrub: 1.2,
+          },
+        })
+        gsap.to("[data-gsap-ambient-b]", {
+          yPercent: 14,
+          ease: "none",
+          scrollTrigger: {
+            trigger: root,
+            start: "top top",
+            end: "bottom bottom",
+            scrub: 1.2,
+          },
+        })
+
+        // 4. Kinetic metric counters (final values stay in JSX for SSR/reduced-motion/tests)
+        const metricsCard = root.querySelector<HTMLElement>("[data-gsap-metrics]")
+        if (metricsCard) {
+          METRIC_COUNTERS.forEach((metric) => {
+            if (metric.target <= 0) return
+            const node = metricsCard.querySelector<HTMLElement>(
+              `[data-gsap-counter="${metric.id}"]`
+            )
+            if (!node) return
+
+            const state = { value: 0 }
+            gsap.to(state, {
+              value: metric.target,
+              duration: 1.15,
+              ease: "power2.out",
+              scrollTrigger: {
+                trigger: metricsCard,
+                start: "top 92%",
+                once: true,
+              },
+              onUpdate: () => {
+                node.textContent = `${metric.prefix}${Math.round(state.value)}${metric.suffix}`
+              },
+              onComplete: () => {
+                node.textContent = metric.finalText
+              },
+            })
+          })
+        }
+
+        // 5. 3D perspective scroll-unfold on Obsidian Command Center showcase
+        const showcaseUnfold = root.querySelector<HTMLElement>(
+          "[data-gsap-showcase-unfold]"
+        )
+        if (showcaseUnfold) {
+          gsap.fromTo(
+            showcaseUnfold,
+            {
+              rotateX: 8,
+              scale: 0.95,
+              y: 26,
+              transformPerspective: 1400,
+              transformOrigin: "center top",
+            },
+            {
+              rotateX: 0,
+              scale: 1,
+              y: 0,
+              ease: "none",
+              scrollTrigger: {
+                trigger: showcaseUnfold,
+                start: "top 92%",
+                end: "top 38%",
+                scrub: 0.7,
+              },
+            }
+          )
+        }
+
+        // 6. ScrollTrigger.batch reveals for Bento cards and section headers
+        const bentoItems = gsap.utils.toArray<HTMLElement>("[data-gsap-bento]", root)
+        if (bentoItems.length > 0) {
+          gsap.set(bentoItems, { opacity: 0, y: 24 })
+          ScrollTrigger.batch(bentoItems, {
+            start: "top 88%",
+            once: true,
+            onEnter: (batch) =>
+              gsap.to(batch, {
+                opacity: 1,
+                y: 0,
+                duration: 0.6,
+                stagger: 0.07,
+                ease: "power3.out",
+                overwrite: true,
+                clearProps: "transform,opacity",
+              }),
+          })
+        }
+
+        const revealItems = gsap.utils.toArray<HTMLElement>("[data-gsap-reveal]", root)
+        if (revealItems.length > 0) {
+          gsap.set(revealItems, { opacity: 0, y: 24 })
+          ScrollTrigger.batch(revealItems, {
+            start: "top 88%",
+            once: true,
+            onEnter: (batch) =>
+              gsap.to(batch, {
+                opacity: 1,
+                y: 0,
+                duration: 0.6,
+                stagger: 0.07,
+                ease: "power3.out",
+                overwrite: true,
+                clearProps: "transform,opacity",
+              }),
+          })
+        }
+
+        // 7. Refresh trigger positions once web fonts settle
+        if (document.fonts?.ready) {
+          document.fonts.ready
+            .then(() => {
+              if (!cancelled) ScrollTrigger.refresh()
+            })
+            .catch(() => undefined)
+        }
+
+        return () => {
+          cancelled = true
+          if (metricsCard) {
+            METRIC_COUNTERS.forEach((metric) => {
+              const node = metricsCard.querySelector<HTMLElement>(
+                `[data-gsap-counter="${metric.id}"]`
+              )
+              if (node) node.textContent = metric.finalText
+            })
+          }
+        }
+      })
+
+      return () => mm.revert()
+    },
+    { scope: pageRef }
+  )
 
   return (
-    <div
-      className={`min-h-screen font-sans antialiased overflow-x-clip selection:bg-orange-500 selection:text-white transition-colors duration-200 ${
-        isDark ? "dark bg-[#0B0F19] text-slate-100" : "bg-[#FAFAFA] text-slate-800"
-      }`}
-    >
-      {/* Background ambient warm lighting: static radial gradients (no blur filter, no animation) */}
-      <div aria-hidden="true" className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div
-          className="absolute -top-32 left-1/2 -translate-x-1/2 h-[420px] w-[min(850px,100vw)]"
-          style={{
-            backgroundImage: isDark
-              ? "radial-gradient(ellipse at center, rgba(249,115,22,0.14) 0%, rgba(245,158,11,0.06) 45%, transparent 72%)"
-              : "radial-gradient(ellipse at center, rgba(251,146,60,0.16) 0%, rgba(252,211,77,0.10) 45%, transparent 72%)",
-          }}
-        />
-        <div
-          className="hidden md:block absolute top-[35%] right-[-10%] h-[450px] w-[550px]"
-          style={{
-            backgroundImage: isDark
-              ? "radial-gradient(ellipse at center, rgba(245,158,11,0.07) 0%, transparent 70%)"
-              : "radial-gradient(ellipse at center, rgba(251,191,36,0.14) 0%, transparent 70%)",
-          }}
-        />
-        <div
-          className="hidden md:block absolute bottom-10 left-[-10%] h-[450px] w-[550px]"
-          style={{
-            backgroundImage: isDark
-              ? "radial-gradient(ellipse at center, rgba(234,88,12,0.07) 0%, transparent 70%)"
-              : "radial-gradient(ellipse at center, rgba(249,115,22,0.13) 0%, transparent 70%)",
-          }}
-        />
-        {/* Subtle dot grid pattern */}
-        <div
-          className={`absolute inset-0 transition-opacity duration-300 ${
-            isDark ? "opacity-[0.04]" : "opacity-[0.03]"
-          }`}
-          style={{
-            backgroundImage: `radial-gradient(circle at 1px 1px, ${
-              isDark ? "#94A3B8" : "#0F172A"
-            } 1px, transparent 0)`,
-            backgroundSize: "24px 24px",
-          }}
-        />
-      </div>
-
-      {/* ======================================================== */}
-      {/* TOP PLATFORM NAVBAR                                      */}
-      {/* ======================================================== */}
-      <a
-        href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-24 focus:left-1/2 focus:-translate-x-1/2 focus:z-[100] whitespace-nowrap rounded-md focus:px-4 focus:py-2 bg-orange-700 px-4 py-2 text-sm font-semibold text-white focus:shadow-xl focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-orange-700"
+    <MotionConfig reducedMotion="user">
+      <div
+        ref={pageRef}
+        className={`min-h-screen font-sans antialiased overflow-x-clip selection:bg-orange-600 selection:text-white transition-colors duration-200 ${
+          isDark ? "dark bg-[#0B0F19] text-slate-100" : "bg-[#F7F5F2] text-slate-800"
+        }`}
       >
-        Saltar al contenido
-      </a>
+        {/* Top fixed 2px GSAP scroll reading progress ribbon */}
+        <div
+          aria-hidden="true"
+          data-gsap-scroll-progress
+          className="fixed top-0 left-0 right-0 z-50 h-0.5 origin-left scale-x-0 bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 pointer-events-none motion-reduce:hidden"
+        />
 
-      <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/85 backdrop-blur-md dark:border-slate-800/80 dark:bg-[#0B0F19]/85 transition-colors">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          {/* Logo Brand */}
-          <div className="flex items-center gap-3">
-            <div className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-tr from-orange-500 to-amber-500 text-white shadow-md shadow-orange-500/25">
-              <Flame className="size-5" />
-            </div>
-            <div>
-              <span className="text-base font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5">
-                FoodOS
-                <span className="rounded-full bg-orange-500/10 dark:bg-orange-500/20 px-2 py-0.5 text-xs font-bold text-orange-600 dark:text-orange-400 border border-brand-orange-subtle">
-                  SaaS
-                </span>
-              </span>
-              <span className="text-xs font-medium text-slate-500 dark:text-slate-400 hidden sm:block -mt-0.5">
-                Menús Digitales & Pedidos WhatsApp
-              </span>
-            </div>
-          </div>
-
-          {/* Nav Links */}
-          <nav className="hidden md:flex items-center gap-7 text-xs font-semibold text-slate-600 dark:text-slate-300">
-            <a
-              href="#features"
-              className="px-2 py-1 hover:text-orange-600 dark:hover:text-orange-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 rounded-lg"
-            >
-              Beneficios
-            </a>
-            <a
-              href="#how-it-works"
-              className="px-2 py-1 hover:text-orange-600 dark:hover:text-orange-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 rounded-lg"
-            >
-              Cómo Funciona
-            </a>
-          </nav>
-
-          {/* Action CTAs & Theme Toggle */}
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={toggleTheme}
-              aria-label={isDark ? "Cambiar a tema claro" : "Cambiar a tema oscuro"}
-              className="inline-flex size-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 hover:border-orange-500 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-orange-400 dark:hover:text-orange-400 shadow-xs transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
-            >
-              {isDark ? <Sun className="size-5" /> : <Moon className="size-5" />}
-            </button>
-
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => navigateTo("/admin")}
-              className="inline-flex h-11 items-center gap-1.5 rounded-xl border-slate-200 bg-white px-3 sm:px-3.5 text-xs font-bold text-slate-700 hover:border-orange-500 hover:bg-orange-50/50 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-orange-400 dark:hover:bg-slate-800 dark:hover:text-orange-400 shadow-xs cursor-pointer"
-            >
-              <ShieldCheck className="size-4 text-orange-500 shrink-0" />
-              <span className="hidden sm:inline">Acceso Administrador</span>
-              <span className="sm:hidden">Admin</span>
-            </Button>
-          </div>
+        {/* Background ambient warm lighting: static radial gradients + subtle GSAP transform parallax (zero blur filter) */}
+        <div aria-hidden="true" className="pointer-events-none fixed inset-0 overflow-hidden">
+          <div
+            className="absolute -top-32 left-1/2 -translate-x-1/2 h-[440px] w-[min(920px,100vw)]"
+            style={{
+              backgroundImage: isDark
+                ? "radial-gradient(ellipse at center, rgba(249,115,22,0.14) 0%, rgba(245,158,11,0.06) 45%, transparent 72%)"
+                : "radial-gradient(ellipse at center, rgba(251,146,60,0.15) 0%, rgba(252,211,77,0.09) 45%, transparent 72%)",
+            }}
+          />
+          <div
+            data-gsap-ambient-a
+            className="hidden md:block absolute top-[35%] right-[-10%] h-[450px] w-[550px] will-change-transform"
+            style={{
+              backgroundImage: isDark
+                ? "radial-gradient(ellipse at center, rgba(245,158,11,0.07) 0%, transparent 70%)"
+                : "radial-gradient(ellipse at center, rgba(251,191,36,0.13) 0%, transparent 70%)",
+            }}
+          />
+          <div
+            data-gsap-ambient-b
+            className="hidden md:block absolute bottom-10 left-[-10%] h-[450px] w-[550px] will-change-transform"
+            style={{
+              backgroundImage: isDark
+                ? "radial-gradient(ellipse at center, rgba(234,88,12,0.07) 0%, transparent 70%)"
+                : "radial-gradient(ellipse at center, rgba(249,115,22,0.12) 0%, transparent 70%)",
+            }}
+          />
+          {/* Subtle architectural dot grid pattern */}
+          <div
+            className={`absolute inset-0 transition-opacity duration-300 ${
+              isDark ? "opacity-[0.04]" : "opacity-[0.035]"
+            }`}
+            style={{
+              backgroundImage: `radial-gradient(circle at 1px 1px, ${
+                isDark ? "#94A3B8" : "#0F172A"
+              } 1px, transparent 0)`,
+              backgroundSize: "24px 24px",
+            }}
+          />
         </div>
-      </header>
 
-      <main id="main-content" tabIndex={-1}>
         {/* ======================================================== */}
-        {/* HERO SECTION                                             */}
+        {/* TOP PLATFORM NAVBAR                                      */}
         {/* ======================================================== */}
-        <section className="relative pt-16 pb-20 md:pt-24 md:pb-28">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
-            {/* Badge */}
-            <div className="inline-flex items-center gap-2 rounded-full border border-brand-orange-subtle bg-orange-500/10 dark:bg-orange-500/15 px-4 py-1.5 text-xs font-bold text-orange-800 dark:text-orange-300 backdrop-blur-md mb-6 shadow-xs">
-              <Sparkles className="size-3.5 text-orange-500" />
-              <span>La plataforma para pedidos directos sin comisiones abusivas</span>
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-24 focus:left-1/2 focus:-translate-x-1/2 focus:z-[100] whitespace-nowrap rounded-md focus:px-4 focus:py-2 bg-orange-700 px-4 py-2 text-sm font-semibold text-white focus:shadow-xl focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-orange-700"
+        >
+          Saltar al contenido
+        </a>
+
+        <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/85 backdrop-blur-md dark:border-slate-800/80 dark:bg-[#0B0F19]/85 transition-colors">
+          <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+            {/* Logo Brand */}
+            <div className="flex items-center gap-3">
+              <div className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-tr from-orange-700 to-amber-700 text-white shadow-md shadow-orange-700/25">
+                <Flame className="size-5" aria-hidden="true" />
+              </div>
+              <div>
+                <span className="text-base font-black tracking-tight text-slate-950 dark:text-white flex items-center gap-1.5">
+                  FoodOS
+                  <span className="rounded-full bg-orange-500/10 dark:bg-orange-500/20 px-2 py-0.5 text-xs font-bold text-orange-700 dark:text-orange-400 border border-brand-orange-subtle">
+                    SaaS
+                  </span>
+                </span>
+                <span className="text-xs font-medium text-slate-600 dark:text-slate-400 hidden sm:block -mt-0.5">
+                  Menús Digitales &amp; Pedidos WhatsApp
+                </span>
+              </div>
             </div>
 
-            {/* Main Hero Headline (Solid high-contrast text, avoiding AI gradient text tell) */}
-            <h1 className="mx-auto max-w-4xl text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-slate-900 dark:text-white leading-tight">
-              Tu Menú Digital Interactivo.{" "}
-              <span className="text-orange-600 dark:text-orange-500">
-                Ventas Directas por WhatsApp.
-              </span>
-            </h1>
-
-            <p className="mx-auto mt-5 max-w-2xl text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed font-normal">
-              Eliminá las comisiones abusivas de las apps de delivery. Permití que tus comensales armen
-              su pedido con adiciones personalizadas y te lo envíen listo, estructurado y cobrado directo a tu
-              WhatsApp en un clic.
-            </p>
-
-            {/* Hero CTAs */}
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-              <Button
-                type="button"
-                onClick={() => navigateTo("/admin")}
-                className="flex h-auto items-center gap-2 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-orange-500/25 hover:from-orange-600 hover:to-amber-600 cursor-pointer"
+            {/* Nav Links */}
+            <nav
+              aria-label="Navegación principal"
+              className="hidden md:flex items-center gap-7 text-xs font-semibold text-slate-700 dark:text-slate-300"
+            >
+              <a
+                href="#showcase"
+                className="px-2 py-1 hover:text-orange-700 dark:hover:text-orange-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#0B0F19] rounded-lg"
               >
-                <ShieldCheck className="size-4" />
-                <span>Entrar al Panel Admin</span>
-              </Button>
+                Simulador
+              </a>
+              <a
+                href="#features"
+                className="px-2 py-1 hover:text-orange-700 dark:hover:text-orange-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#0B0F19] rounded-lg"
+              >
+                Beneficios
+              </a>
               <a
                 href="#how-it-works"
-                className="inline-flex items-center gap-2 rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-6 py-3.5 text-sm font-bold text-slate-700 dark:text-slate-200 hover:border-orange-500 hover:text-orange-600 dark:hover:border-orange-400 dark:hover:text-orange-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
+                className="px-2 py-1 hover:text-orange-700 dark:hover:text-orange-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#0B0F19] rounded-lg"
               >
-                <span>Ver cómo funciona</span>
-                <ArrowRight className="size-4" />
+                Cómo Funciona
+              </a>
+            </nav>
+
+            {/* Action CTAs & Animated Theme Toggle */}
+            <div className="flex items-center gap-2 shrink-0">
+              <motion.button
+                type="button"
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.96 }}
+                transition={CTA_SPRING}
+                onClick={toggleTheme}
+                aria-label={isDark ? "Cambiar a tema claro" : "Cambiar a tema oscuro"}
+                className="relative inline-flex size-11 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white text-slate-700 hover:border-orange-500 hover:text-orange-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-orange-400 dark:hover:text-orange-400 shadow-xs transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#0B0F19]"
+              >
+                <AnimatePresence mode="popLayout" initial={false}>
+                  {isDark ? (
+                    <motion.span
+                      key="sun"
+                      initial={{ opacity: 0, rotate: -90, scale: 0.6 }}
+                      animate={{ opacity: 1, rotate: 0, scale: 1 }}
+                      exit={{ opacity: 0, rotate: 90, scale: 0.6 }}
+                      transition={THEME_ICON_SPRING}
+                      className="inline-flex items-center justify-center"
+                    >
+                      <Sun className="size-5" aria-hidden="true" />
+                    </motion.span>
+                  ) : (
+                    <motion.span
+                      key="moon"
+                      initial={{ opacity: 0, rotate: 90, scale: 0.6 }}
+                      animate={{ opacity: 1, rotate: 0, scale: 1 }}
+                      exit={{ opacity: 0, rotate: -90, scale: 0.6 }}
+                      transition={THEME_ICON_SPRING}
+                      className="inline-flex items-center justify-center"
+                    >
+                      <Moon className="size-5" aria-hidden="true" />
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </motion.button>
+
+              <motion.button
+                type="button"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                transition={CTA_SPRING}
+                onClick={handleAdminAccess}
+                className="inline-flex h-11 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 sm:px-3.5 text-xs font-bold text-slate-700 hover:border-orange-500 hover:bg-orange-50/50 hover:text-orange-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-orange-400 dark:hover:bg-slate-800 dark:hover:text-orange-400 shadow-xs transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#0B0F19]"
+              >
+                <ShieldCheck
+                  className="size-4 text-orange-700 dark:text-orange-400 shrink-0"
+                  aria-hidden="true"
+                />
+                <span className="hidden sm:inline">Acceso Administrador</span>
+                <span className="sm:hidden">Admin</span>
+              </motion.button>
+            </div>
+          </div>
+        </header>
+
+        <main id="main-content" tabIndex={-1}>
+          {/* ======================================================== */}
+          {/* ASYMMETRIC 12-COLUMN EDITORIAL SPLIT HERO                */}
+          {/* ======================================================== */}
+          <section className="relative pt-12 pb-16 sm:pt-16 sm:pb-20 lg:pt-20 lg:pb-24">
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
+                {/* Left 7 Cols: Editorial Display Typography & Magnetic CTAs */}
+                <div className="lg:col-span-7 text-left">
+                  {/* Announcement Badge (exact allowlisted backdrop-blur-md class string) */}
+                  <div
+                    data-gsap-hero
+                    className="inline-flex items-center gap-2 rounded-full border border-brand-orange-subtle bg-orange-500/10 dark:bg-orange-500/15 px-4 py-1.5 text-xs font-bold text-orange-800 dark:text-orange-300 backdrop-blur-md mb-6 shadow-xs"
+                  >
+                    <Sparkles
+                      className="size-3.5 shrink-0 text-orange-700 dark:text-orange-400"
+                      aria-hidden="true"
+                    />
+                    <span>La plataforma para pedidos directos sin comisiones abusivas</span>
+                  </div>
+
+                  {/* Giant Editorial Display Headline with GSAP Masked Clip-Up & Ember SVG Underline */}
+                  <h1 className="text-4xl sm:text-5xl lg:text-[3.85rem] xl:text-[4.25rem] font-black tracking-[-0.04em] leading-[1.02] text-slate-950 dark:text-white">
+                    <span className="block overflow-hidden pb-1">
+                      <span data-gsap-hero-line className="block">
+                        Tu Menú Digital Interactivo.
+                      </span>
+                    </span>
+                    <span className="block overflow-hidden pb-3">
+                      <span
+                        data-gsap-hero-line
+                        className="block text-orange-700 dark:text-orange-400"
+                      >
+                        Ventas Directas por{" "}
+                        <span className="relative inline-block">
+                          WhatsApp.
+                          <svg
+                            aria-hidden="true"
+                            viewBox="0 0 280 16"
+                            fill="none"
+                            preserveAspectRatio="none"
+                            className="pointer-events-none absolute -bottom-2 left-0 h-3 w-full text-orange-700/85 dark:text-orange-400/90"
+                          >
+                            <path
+                              data-gsap-hero-underline
+                              d="M4 11.5C78 3.5 198 2.5 276 10.5"
+                              stroke="currentColor"
+                              strokeWidth="3.8"
+                              strokeLinecap="round"
+                            />
+                          </svg>
+                        </span>
+                      </span>
+                    </span>
+                  </h1>
+
+                  <p
+                    data-gsap-hero
+                    className="mt-6 max-w-xl text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed font-normal"
+                  >
+                    Eliminá las comisiones abusivas de las apps de delivery. Permití que tus
+                    comensales armen su pedido con adiciones personalizadas y te lo envíen listo,
+                    estructurado y cobrado directo a tu WhatsApp en un clic.
+                  </p>
+
+                  {/* Magnetic CTA Cluster (outer div owns GSAP entrance; inner MagneticButton owns Motion pull/tap) */}
+                  <div
+                    data-gsap-hero
+                    className="mt-8 flex flex-wrap items-center gap-3.5"
+                  >
+                    <MagneticButton
+                      onClick={handleAdminAccess}
+                      className="group gap-2.5 rounded-2xl bg-slate-950 hover:bg-slate-800 dark:bg-orange-700 dark:hover:bg-orange-600 px-6 py-3.5 text-sm font-bold text-white shadow-xl shadow-slate-950/20 dark:shadow-orange-950/40 transition-colors cursor-pointer dark:focus-visible:ring-offset-[#0B0F19]"
+                    >
+                      <span className="flex size-6 items-center justify-center rounded-lg bg-orange-700 text-white dark:bg-slate-950 dark:text-orange-300 shadow-xs">
+                        <ShieldCheck className="size-3.5" aria-hidden="true" />
+                      </span>
+                      <span>Entrar al Panel Admin</span>
+                      <ArrowRight
+                        className="size-4 transition-transform group-hover:translate-x-0.5"
+                        aria-hidden="true"
+                      />
+                    </MagneticButton>
+
+                    <MagneticButton
+                      href="#how-it-works"
+                      className="gap-2 rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-6 py-3.5 text-sm font-bold text-slate-800 dark:text-slate-100 hover:border-orange-500 hover:text-orange-700 dark:hover:border-orange-400 dark:hover:text-orange-400 shadow-xs transition-colors dark:focus-visible:ring-offset-[#0B0F19]"
+                    >
+                      <span>Ver cómo funciona</span>
+                      <ArrowRight className="size-4" aria-hidden="true" />
+                    </MagneticButton>
+                  </div>
+
+                  {/* Compact micro trust line */}
+                  <div
+                    data-gsap-hero
+                    className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-semibold text-slate-600 dark:text-slate-400"
+                  >
+                    {HERO_TRUST_POINTS.map((point, index) => (
+                      <span key={point} className="inline-flex items-center gap-1.5">
+                        {index > 0 && (
+                          <span
+                            aria-hidden="true"
+                            className="mr-2 hidden sm:inline-block size-1 rounded-full bg-slate-400 dark:bg-slate-600"
+                          />
+                        )}
+                        <Check
+                          className="size-3.5 shrink-0 text-emerald-700 dark:text-emerald-400"
+                          aria-hidden="true"
+                        />
+                        <span>{point}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Right 5 Cols: Live 3D Interactive Obsidian Stage */}
+                <div className="lg:col-span-5">
+                  <div data-gsap-hero-stage>
+                    <HeroLiveStage />
+                  </div>
+                </div>
+              </div>
+
+              {/* 4-Column Social Proof / Metrics Bar (exact allowlisted backdrop-blur-md class string) */}
+              <div
+                data-gsap-hero
+                data-gsap-metrics
+                className="mt-14 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto border border-slate-200/80 dark:border-slate-800/80 rounded-3xl bg-white/90 dark:bg-slate-900/80 p-6 shadow-sm backdrop-blur-md"
+              >
+                {METRIC_COUNTERS.map((metric, index) => (
+                  <div
+                    key={metric.id}
+                    className={`text-center ${
+                      index > 0
+                        ? "md:border-l md:border-slate-200/80 dark:md:border-slate-800/80 md:pl-4"
+                        : ""
+                    }`}
+                  >
+                    <div
+                      data-gsap-counter={metric.id}
+                      className={`text-3xl sm:text-4xl font-black tracking-tight tabular-nums ${metric.valueClass}`}
+                    >
+                      {metric.finalText}
+                    </div>
+                    <div className="text-xs font-semibold text-slate-600 dark:text-slate-400 mt-1">
+                      {metric.label}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* ======================================================== */}
+          {/* FULL-BLEED VELOCITY-REACTIVE ARCHITECTURAL MARQUEE       */}
+          {/* ======================================================== */}
+          <KineticMarquee />
+
+          {/* ======================================================== */}
+          {/* OBSIDIAN COMMAND CENTER LIVE SHOWCASE                    */}
+          {/* ======================================================== */}
+          <section
+            id="showcase"
+            className="scroll-mt-20 relative py-20 sm:py-24 bg-[#F7F5F2] dark:bg-[#0B0F19] transition-colors"
+          >
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+              <div data-gsap-reveal className="text-center max-w-3xl mx-auto">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-orange-300/80 dark:border-orange-500/30 bg-orange-50 dark:bg-orange-500/10 px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-orange-800 dark:text-orange-300 mb-4">
+                  <Sparkles className="size-3.5" aria-hidden="true" />
+                  <span>Simulador Interactivo en Vivo</span>
+                </span>
+                <h2 className="text-2xl sm:text-4xl font-black tracking-tight text-slate-950 dark:text-white">
+                  Probá el sistema en vivo — tocá los pedidos y el Kanban
+                </h2>
+                <p className="mt-3 text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
+                  Agregá extras, cambiá de mesa con QR y mové comandas por tu cocina para ver cómo
+                  fluye cada venta directa sin intermediarios.
+                </p>
+              </div>
+
+              <div className="[perspective:1400px]">
+                <InteractiveShowcase />
+              </div>
+            </div>
+          </section>
+
+          {/* ======================================================== */}
+          {/* BENTO FEATURES GRID                                      */}
+          {/* ======================================================== */}
+          <FeaturesBento />
+
+          {/* ======================================================== */}
+          {/* PROFITABILITY COMPARISON & LIVE SAVINGS CALCULATOR       */}
+          {/* ======================================================== */}
+          <ProfitabilitySection />
+
+          {/* ======================================================== */}
+          {/* HOW IT WORKS — STICKY EDITORIAL WORKFLOW TIMELINE        */}
+          {/* ======================================================== */}
+          <WorkflowTimeline />
+
+          {/* ======================================================== */}
+          {/* CINEMATIC DARK OBSIDIAN FINAL CTA                        */}
+          {/* ======================================================== */}
+          <section className="py-20 sm:py-24 border-t border-slate-200/80 dark:border-slate-800/80 bg-[#F7F5F2] dark:bg-[#0B0F19] transition-colors">
+            <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+              <div
+                data-gsap-reveal
+                className="relative overflow-hidden rounded-[2.25rem] border border-slate-800 bg-slate-950 px-6 py-12 sm:px-12 sm:py-16 text-center text-white shadow-[0_32px_90px_-24px_rgba(15,23,42,0.65)]"
+              >
+                {/* Glowing ember top architectural hairline */}
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-orange-500/90 to-transparent"
+                />
+
+                {/* Warm obsidian crown wash (zero blur filter) */}
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-x-0 top-0 h-56"
+                  style={{
+                    background:
+                      "radial-gradient(ellipse 65% 100% at 50% 0%, rgba(234,88,12,0.22) 0%, rgba(245,158,11,0.06) 52%, transparent 100%)",
+                  }}
+                />
+
+                {/* Subtle dot-matrix pattern */}
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 opacity-35"
+                  style={{
+                    backgroundImage:
+                      "radial-gradient(circle at 1px 1px, rgba(148,163,184,0.24) 1px, transparent 0)",
+                    backgroundSize: "24px 24px",
+                  }}
+                />
+
+                <div className="relative z-10">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-orange-500/35 bg-orange-950/70 px-3.5 py-1 text-xs font-bold text-orange-200 mb-5">
+                    <Flame className="size-3.5 text-orange-300" aria-hidden="true" />
+                    <span>Empezá a vender hoy mismo</span>
+                  </div>
+
+                  <h2 className="mx-auto max-w-3xl text-3xl sm:text-4xl lg:text-5xl font-black tracking-[-0.03em] leading-[1.08] text-white">
+                    ¿Listo para potenciar las ventas de tu negocio?
+                  </h2>
+                  <p className="mt-4 text-sm sm:text-base text-slate-300 max-w-xl mx-auto leading-relaxed font-normal">
+                    Gestioná tu catálogo, recibí pedidos en WhatsApp y tomá el control absoluto de
+                    tus clientes sin intermediarios.
+                  </p>
+
+                  <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+                    <MagneticButton
+                      onClick={handleAdminAccess}
+                      className="group gap-2.5 rounded-2xl bg-gradient-to-r from-orange-700 to-amber-700 hover:from-orange-600 hover:to-amber-600 px-7 py-3.5 text-sm font-bold text-white shadow-xl shadow-orange-950/50 transition-colors cursor-pointer focus-visible:ring-offset-slate-950"
+                    >
+                      <ShieldCheck className="size-4 shrink-0" aria-hidden="true" />
+                      <span>Ingresar al Panel de Gestión</span>
+                      <ArrowRight
+                        className="size-4 shrink-0 transition-transform group-hover:translate-x-0.5"
+                        aria-hidden="true"
+                      />
+                    </MagneticButton>
+                  </div>
+
+                  <div className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 text-xs font-semibold text-slate-300">
+                    <span>0% comisión por venta</span>
+                    <span aria-hidden="true" className="hidden sm:inline text-slate-600">
+                      ·
+                    </span>
+                    <span>Activación inmediata</span>
+                    <span aria-hidden="true" className="hidden sm:inline text-slate-600">
+                      ·
+                    </span>
+                    <span>Control total de tu marca</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </main>
+
+        {/* Crisp Minimal Footer */}
+        <footer className="border-t border-slate-200 dark:border-slate-800 bg-[#F7F5F2] dark:bg-[#0D121F] py-8 text-slate-600 dark:text-slate-400 text-xs transition-colors">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <Flame
+                className="size-4 text-orange-700 dark:text-orange-400 shrink-0"
+                aria-hidden="true"
+              />
+              <span className="font-black text-slate-950 dark:text-white">FoodOS</span>
+              <span>— Plataforma Multi-Restaurante de Pedidos Directos</span>
+            </div>
+
+            <div className="flex items-center gap-4 sm:gap-6 font-semibold">
+              <button
+                type="button"
+                onClick={handleAdminAccess}
+                className="pointer-coarse:min-h-11 px-2 py-1 hover:text-orange-700 dark:hover:text-orange-400 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#0D121F] rounded-lg"
+              >
+                Acceso Admin
+              </button>
+              <a
+                href="#features"
+                className="px-2 py-1 hover:text-orange-700 dark:hover:text-orange-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#0D121F] rounded-lg"
+              >
+                Beneficios
+              </a>
+              <a
+                href="#how-it-works"
+                className="px-2 py-1 hover:text-orange-700 dark:hover:text-orange-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#0D121F] rounded-lg"
+              >
+                Cómo Funciona
               </a>
             </div>
-
-            {/* Social Proof / Metrics Row (Intentional brand colors, no random indigo) */}
-            <div className="mt-14 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto border border-slate-200/80 dark:border-slate-800/80 rounded-3xl bg-white/90 dark:bg-slate-900/80 p-6 shadow-sm backdrop-blur-md">
-              <div>
-                <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">0%</div>
-                <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5">
-                  Comisiones por venta
-                </div>
-              </div>
-              <div>
-                <div className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400">&lt; 30s</div>
-                <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5">
-                  Tiempo para pedir
-                </div>
-              </div>
-              <div>
-                <div className="text-2xl sm:text-3xl font-black text-orange-600 dark:text-orange-400">+45%</div>
-                <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5">
-                  Ticket con adiciones
-                </div>
-              </div>
-              <div>
-                <div className="text-2xl sm:text-3xl font-black text-amber-600 dark:text-amber-400">100%</div>
-                <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5">
-                  Tus datos y clientes
-                </div>
-              </div>
-            </div>
-
-            {/* Interactive 3-Tab Product Showcase */}
-            <div className="mt-16 relative max-w-4xl mx-auto rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 p-4 sm:p-6 shadow-2xl text-left overflow-hidden">
-              {/* Top Browser Bar */}
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3 mb-4">
-                <div className="flex items-center gap-2">
-                  <div className="size-3 rounded-full bg-rose-400" />
-                  <div className="size-3 rounded-full bg-amber-400" />
-                  <div className="size-3 rounded-full bg-emerald-400" />
-                  <span className="ml-2 text-xs font-mono font-medium text-slate-500 dark:text-slate-400 min-w-0 break-all">
-                    https://foodos.app/craft-burger
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-300 font-bold bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800/60">
-                  <span className="size-2 rounded-full bg-emerald-500 animate-pulse motion-reduce:animate-none" />
-                  <span>Tienda Operando en Vivo</span>
-                </div>
-              </div>
-
-              {/* Scenario Tabs */}
-              <div
-                role="tablist"
-                aria-label="Escenarios del producto FoodOS"
-                className="flex flex-wrap gap-2 mb-5"
-              >
-                <button
-                  type="button"
-                  role="tab"
-                  id="tab-delivery"
-                  aria-selected={activeTab === "delivery"}
-                  aria-controls="panel-delivery"
-                  onClick={() => setActiveTab("delivery")}
-                  className={`pointer-coarse:min-h-11 inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 ${
-                    activeTab === "delivery"
-                      ? "bg-orange-600 text-white shadow-sm shadow-orange-500/25"
-                      : "bg-slate-100 text-slate-700 hover:bg-orange-50 hover:text-orange-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-                  }`}
-                >
-                  <MessageSquare className="size-3.5" />
-                  <span>Pedido Delivery</span>
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  id="tab-qr"
-                  aria-selected={activeTab === "qr"}
-                  aria-controls="panel-qr"
-                  onClick={() => setActiveTab("qr")}
-                  className={`pointer-coarse:min-h-11 inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 ${
-                    activeTab === "qr"
-                      ? "bg-orange-600 text-white shadow-sm shadow-orange-500/25"
-                      : "bg-slate-100 text-slate-700 hover:bg-orange-50 hover:text-orange-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-                  }`}
-                >
-                  <QrCode className="size-3.5" />
-                  <span>Mesa &amp; Código QR</span>
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  id="tab-kanban"
-                  aria-selected={activeTab === "kanban"}
-                  aria-controls="panel-kanban"
-                  onClick={() => setActiveTab("kanban")}
-                  className={`pointer-coarse:min-h-11 inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 ${
-                    activeTab === "kanban"
-                      ? "bg-orange-600 text-white shadow-sm shadow-orange-500/25"
-                      : "bg-slate-100 text-slate-700 hover:bg-orange-50 hover:text-orange-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-                  }`}
-                >
-                  <Zap className="size-3.5" />
-                  <span>Cocina &amp; Kanban</span>
-                </button>
-              </div>
-
-              {/* Tab 1: Pedido Delivery */}
-              {activeTab === "delivery" && (
-                <div
-                  role="tabpanel"
-                  id="panel-delivery"
-                  aria-labelledby="tab-delivery"
-                  className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center"
-                >
-                  {/* Mockup Storefront side */}
-                  <div className="md:col-span-7 space-y-3">
-                    <div className="rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40 p-3.5 flex items-center justify-between gap-3 shadow-xs">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="size-11 shrink-0 rounded-2xl bg-orange-500 flex items-center justify-center text-white shadow-sm">
-                          <UtensilsCrossed className="size-5" />
-                        </div>
-                        <div className="min-w-0">
-                          <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                            Craft Monster Burger
-                          </h3>
-                          <p className="text-sm text-slate-500 dark:text-slate-400">
-                            Doble carne 150g, cheddar fundido, tocineta
-                          </p>
-                          <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400 mt-0.5">
-                            + Adición: Tocineta Extra (+$3.500)
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <span className="text-sm font-extrabold text-orange-600 dark:text-orange-400">
-                          $28.000
-                        </span>
-                        <div className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
-                          +$3.500
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40 p-3.5 flex items-center justify-between gap-3 shadow-xs">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="size-11 shrink-0 rounded-2xl bg-amber-500 flex items-center justify-center text-white shadow-sm">
-                          <Flame className="size-5" />
-                        </div>
-                        <div className="min-w-0">
-                          <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                            Papas Rústicas Cheddar
-                          </h3>
-                          <p className="text-sm text-slate-500 dark:text-slate-400">
-                            Papas crocantes con salsa artesanal
-                          </p>
-                        </div>
-                      </div>
-                      <span className="text-sm font-extrabold text-orange-600 dark:text-orange-400 shrink-0">
-                        $12.500
-                      </span>
-                    </div>
-
-                    <div className="rounded-2xl bg-orange-50 dark:bg-orange-950/30 border border-orange-200/80 dark:border-orange-900/40 p-3 flex items-center justify-between text-xs text-orange-950 dark:text-orange-200 font-medium">
-                      <div className="flex items-center gap-2">
-                        <ShoppingBag className="size-4 text-orange-600 dark:text-orange-400" />
-                        <span>Carrito de Compra: 2 productos + 1 adición</span>
-                      </div>
-                      <span className="font-extrabold text-orange-600 dark:text-orange-400">
-                        $44.000
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Mockup WhatsApp message preview */}
-                  <div className="md:col-span-5 rounded-2xl border border-emerald-200 dark:border-[#222E35] bg-[#E8F8F0] dark:bg-[#111B21] p-4 relative shadow-sm">
-                    <div className="flex items-center gap-2 text-emerald-800 dark:text-[#25D366] text-xs font-bold mb-2.5">
-                      <MessageSquare className="size-4 text-emerald-600 dark:text-[#25D366]" />
-                      <span>Mensaje formateado en WhatsApp:</span>
-                    </div>
-                    <div className="rounded-xl bg-white dark:bg-[#202C33] border border-emerald-100 dark:border-[#2A3942] p-3 text-xs text-slate-800 dark:text-[#E9EDEF] font-mono space-y-1.5 leading-relaxed shadow-xs">
-                      <p className="font-bold text-emerald-700 dark:text-[#25D366]">
-                        👋 ¡Hola Craft Burger! Nuevo Pedido:
-                      </p>
-                      <p>• 1x Craft Monster Burger ($28.000)</p>
-                      <p className="text-emerald-700 dark:text-[#25D366] pl-2">
-                        + Tocineta Extra ($3.500)
-                      </p>
-                      <p>• 1x Papas Rústicas ($12.500)</p>
-                      <div className="border-t border-slate-100 dark:border-slate-700/60 pt-1 text-slate-900 dark:text-white font-bold">
-                        Total a Pagar: $44.000
-                      </div>
-                      <p className="text-emerald-700 dark:text-[#25D366]">
-                        📍 Cra 15 # 85-30 • Pago: Efectivo
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Tab 2: Mesa & Código QR */}
-              {activeTab === "qr" && (
-                <div
-                  role="tabpanel"
-                  id="panel-qr"
-                  aria-labelledby="tab-qr"
-                  className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center"
-                >
-                  <div className="md:col-span-7 space-y-3">
-                    <div className="flex items-center justify-between rounded-2xl border border-amber-200/80 dark:border-amber-900/40 bg-amber-50/80 dark:bg-amber-950/30 px-3.5 py-2.5 text-xs">
-                      <div className="flex items-center gap-2 font-bold text-amber-900 dark:text-amber-200">
-                        <QrCode className="size-4 text-amber-600 dark:text-amber-400" />
-                        <span>Mesa 4 · Terraza</span>
-                      </div>
-                      <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-bold text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
-                        QR Escaneado
-                      </span>
-                    </div>
-
-                    <div className="rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40 p-3.5 flex items-center justify-between gap-3 shadow-xs">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="size-11 shrink-0 rounded-2xl bg-orange-500 flex items-center justify-center text-white shadow-sm">
-                          <UtensilsCrossed className="size-5" />
-                        </div>
-                        <div className="min-w-0">
-                          <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                            2x Smash Burger Doble
-                          </h3>
-                          <p className="text-sm text-slate-500 dark:text-slate-400">
-                            Pan brioche, doble queso cheddar, salsa especial
-                          </p>
-                        </div>
-                      </div>
-                      <span className="text-sm font-extrabold text-orange-600 dark:text-orange-400 shrink-0">
-                        $48.000
-                      </span>
-                    </div>
-
-                    <div className="rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40 p-3.5 flex items-center justify-between gap-3 shadow-xs">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="size-11 shrink-0 rounded-2xl bg-amber-500 flex items-center justify-center text-white shadow-sm">
-                          <Sparkles className="size-5" />
-                        </div>
-                        <div className="min-w-0">
-                          <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                            2x Limonada Natural
-                          </h3>
-                          <p className="text-sm text-slate-500 dark:text-slate-400">
-                            Limón recién exprimido con hierbabuena
-                          </p>
-                        </div>
-                      </div>
-                      <span className="text-sm font-extrabold text-orange-600 dark:text-orange-400 shrink-0">
-                        $14.000
-                      </span>
-                    </div>
-
-                    <div className="rounded-2xl bg-orange-50 dark:bg-orange-950/30 border border-orange-200/80 dark:border-orange-900/40 p-3 flex items-center justify-between text-xs text-orange-950 dark:text-orange-200 font-medium">
-                      <div className="flex items-center gap-2">
-                        <ShoppingBag className="size-4 text-orange-600 dark:text-orange-400" />
-                        <span>Cuenta abierta en mesa</span>
-                      </div>
-                      <span className="font-extrabold text-orange-600 dark:text-orange-400">
-                        $62.000
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Instant Kitchen/Table Ticket */}
-                  <div className="md:col-span-5 rounded-2xl border border-amber-200 dark:border-amber-900/50 bg-amber-50/70 dark:bg-slate-800/70 p-4 shadow-sm">
-                    <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 text-xs font-bold mb-2.5">
-                      <QrCode className="size-4 text-amber-600 dark:text-amber-400" />
-                      <span>Comanda instantánea de salón:</span>
-                    </div>
-                    <div className="rounded-xl bg-white dark:bg-slate-900 border border-amber-100 dark:border-slate-700 p-3.5 text-xs text-slate-800 dark:text-slate-200 font-mono space-y-2 leading-relaxed shadow-xs">
-                      <p className="font-bold text-orange-600 dark:text-orange-400">
-                        🪑 Pedido en Salón — Mesa 4 · Terraza
-                      </p>
-                      <p>• 2x Smash Burger Doble ($48.000)</p>
-                      <p>• 2x Limonada Natural ($14.000)</p>
-                      <div className="border-t border-slate-100 dark:border-slate-800 pt-1.5 text-slate-900 dark:text-white font-bold">
-                        Total Mesa: $62.000
-                      </div>
-                      <p className="text-emerald-700 dark:text-emerald-400 font-semibold">
-                        Sin espera en caja • Directo a cocina
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Tab 3: Cocina & Kanban */}
-              {activeTab === "kanban" && (
-                <div
-                  role="tabpanel"
-                  id="panel-kanban"
-                  aria-labelledby="tab-kanban"
-                  className="space-y-4"
-                >
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {/* Column 1 */}
-                    <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40 p-3.5 space-y-2.5">
-                      <div className="flex items-center justify-between text-xs font-bold text-amber-700 dark:text-amber-400">
-                        <span>Pendiente</span>
-                        <span className="rounded-full bg-amber-500/15 px-2 py-0.5">1</span>
-                      </div>
-                      <div className="rounded-xl border border-amber-200/80 dark:border-amber-900/40 bg-white dark:bg-slate-900 p-3 shadow-xs">
-                        <div className="font-bold text-xs text-slate-900 dark:text-white">
-                          #104 · Mesa 4
-                        </div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                          2x Smash Burger Doble, 2x Limonada Natural
-                        </div>
-                        <div className="mt-2 text-xs font-extrabold text-orange-600 dark:text-orange-400">
-                          $62.000
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Column 2 */}
-                    <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40 p-3.5 space-y-2.5">
-                      <div className="flex items-center justify-between text-xs font-bold text-orange-700 dark:text-orange-400">
-                        <span>En Cocina</span>
-                        <span className="rounded-full bg-orange-500/15 px-2 py-0.5">1</span>
-                      </div>
-                      <div className="rounded-xl border border-orange-200/80 dark:border-orange-900/40 bg-white dark:bg-slate-900 p-3 shadow-xs">
-                        <div className="font-bold text-xs text-slate-900 dark:text-white">
-                          #103 · Delivery WhatsApp
-                        </div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                          1x Craft Monster + Tocineta, 1x Papas Rústicas
-                        </div>
-                        <div className="mt-2 text-xs font-extrabold text-orange-600 dark:text-orange-400">
-                          $44.000
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Column 3 */}
-                    <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40 p-3.5 space-y-2.5">
-                      <div className="flex items-center justify-between text-xs font-bold text-emerald-700 dark:text-emerald-400">
-                        <span>Listo / En Camino</span>
-                        <span className="rounded-full bg-emerald-500/15 px-2 py-0.5">1</span>
-                      </div>
-                      <div className="rounded-xl border border-emerald-200/80 dark:border-emerald-900/40 bg-white dark:bg-slate-900 p-3 shadow-xs">
-                        <div className="font-bold text-xs text-slate-900 dark:text-white">
-                          #102 · Retiro en Local
-                        </div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                          1x Combo Burger Clásica + Bebida
-                        </div>
-                        <div className="mt-2 text-xs font-extrabold text-emerald-700 dark:text-emerald-400">
-                          $31.000 · Pagado
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="rounded-2xl border border-emerald-200/80 dark:border-emerald-900/40 bg-emerald-50/70 dark:bg-emerald-950/30 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs text-emerald-900 dark:text-emerald-200">
-                    <div className="flex items-center gap-2 font-semibold">
-                      <Volume2 className="size-4 text-emerald-600 dark:text-emerald-400" />
-                      <span>Alertas sonoras activas · Sincronización en tiempo real vía SSE</span>
-                    </div>
-                    <span className="font-bold text-emerald-700 dark:text-emerald-400">
-                      Latencia &lt; 1s
-                    </span>
-                  </div>
-                </div>
-              )}
-            </div>
-        </div>
-      </section>
-
-      {/* ======================================================== */}
-      {/* FEATURES / VALUE PILLARS                                 */}
-      {/* ======================================================== */}
-      <section id="features" className="scroll-mt-20 py-20 border-t border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-[#0B0F19] transition-colors">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 dark:text-white">
-              Todo lo que tu restaurante necesita para vender más
-            </h2>
-            <p className="mt-3 text-sm text-slate-600 dark:text-slate-300 font-normal">
-              Diseñado desde cero para agilizar la compra y maximizar tus ganancias netas sin intermediarios.
-            </p>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Feature 1 */}
-            <div className="rounded-3xl border border-slate-200/80 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/40 p-6 hover:border-orange-300 dark:hover:border-orange-500/40 hover:bg-white dark:hover:bg-slate-900/80 hover:shadow-md transition-all">
-              <div className="flex size-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 mb-4">
-                <MessageSquare className="size-6" />
-              </div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">Checkout Directo a WhatsApp</h3>
-              <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-                Tus clientes no tienen que registrarse ni descargar apps pesadas. El pedido se arma en segundos
-                y te llega estructurado con dirección, método de pago y desglose total.
-              </p>
-            </div>
-
-            {/* Feature 2 */}
-            <div className="rounded-3xl border border-slate-200/80 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/40 p-6 hover:border-orange-300 dark:hover:border-orange-500/40 hover:bg-white dark:hover:bg-slate-900/80 hover:shadow-md transition-all">
-              <div className="flex size-12 items-center justify-center rounded-2xl bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-brand-orange-subtle mb-4">
-                <TrendingUp className="size-6" />
-              </div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">Adiciones y Upselling Inteligente</h3>
-              <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-                Aumentá tu ganancia ofreciendo salsas, tocineta, quesos o combos antes de finalizar la
-                compra. El ticket promedio sube un 45% comprobado.
-              </p>
-            </div>
-
-            {/* Feature 3 */}
-            <div className="rounded-3xl border border-slate-200/80 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/40 p-6 hover:border-orange-300 dark:hover:border-orange-500/40 hover:bg-white dark:hover:bg-slate-900/80 hover:shadow-md transition-all">
-              <div className="flex size-12 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 mb-4">
-                <Palette className="size-6" />
-              </div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">Personalización Total de Marca</h3>
-              <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-                Tu tienda luce con tus colores, logotipo, banners y tipografías. Cada restaurante
-                tiene su propio slug aislado y una identidad visual única.
-              </p>
-            </div>
-
-            {/* Feature 4 */}
-            <div className="rounded-3xl border border-slate-200/80 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/40 p-6 hover:border-orange-300 dark:hover:border-orange-500/40 hover:bg-white dark:hover:bg-slate-900/80 hover:shadow-md transition-all">
-              <div className="flex size-12 items-center justify-center rounded-2xl bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-brand-orange-subtle mb-4">
-                <Zap className="size-6" />
-              </div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">Gestor de Pedidos Kanban</h3>
-              <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-                Controlá tus órdenes en tiempo real con alertas sonoras. Movelas fácilmente entre
-                Pendiente, Cocinando, En Camino y Entregado.
-              </p>
-            </div>
-
-            {/* Feature 5 */}
-            <div className="rounded-3xl border border-slate-200/80 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/40 p-6 hover:border-orange-300 dark:hover:border-orange-500/40 hover:bg-white dark:hover:bg-slate-900/80 hover:shadow-md transition-all">
-              <div className="flex size-12 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 mb-4">
-                <Users className="size-6" />
-              </div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">CRM y Base de Clientes</h3>
-              <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-                Guardá automáticamente el historial de compras de tus comensales, segmentá clientes VIP
-                y conocé quiénes son los más fieles a tu marca.
-              </p>
-            </div>
-
-            {/* Feature 6 */}
-            <div className="rounded-3xl border border-slate-200/80 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/40 p-6 hover:border-orange-300 dark:hover:border-orange-500/40 hover:bg-white dark:hover:bg-slate-900/80 hover:shadow-md transition-all">
-              <div className="flex size-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 mb-4">
-                <QrCode className="size-6" />
-              </div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">Menú QR para Mesas y Delivery</h3>
-              <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-                Imprimí el código QR para tus mesas o pegalo en tus empaques. Tus clientes escanean y
-                acceden al instante a una carta ultra rápida.
-              </p>
-            </div>
-          </div>
-
-          {/* Comparativa de Rentabilidad */}
-          <div className="mt-14 rounded-3xl border border-slate-200/80 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-900/50 p-6 sm:p-8">
-            <div className="text-center max-w-2xl mx-auto mb-8">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-500/10 px-3 py-1 text-xs font-bold text-orange-700 dark:text-orange-300 border border-brand-orange-subtle mb-3">
-                Comparativa de Rentabilidad
-              </span>
-              <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white">
-                Dejá de regalar tu margen en cada pedido
-              </h3>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Traditional Delivery Apps */}
-              <div className="rounded-2xl border border-rose-200/80 dark:border-rose-900/40 bg-white dark:bg-slate-900/80 p-6">
-                <h4 className="text-base font-bold text-slate-900 dark:text-white mb-4">
-                  Apps de Delivery Tradicionales
-                </h4>
-                <ul className="space-y-3 text-sm text-slate-600 dark:text-slate-300">
-                  <li className="flex items-start gap-2.5">
-                    <XCircle className="size-4 text-rose-500 shrink-0 mt-0.5" />
-                    <span>25% a 35% de comisión por orden</span>
-                  </li>
-                  <li className="flex items-start gap-2.5">
-                    <XCircle className="size-4 text-rose-500 shrink-0 mt-0.5" />
-                    <span>Clientes cautivos de la app</span>
-                  </li>
-                  <li className="flex items-start gap-2.5">
-                    <XCircle className="size-4 text-rose-500 shrink-0 mt-0.5" />
-                    <span>Cobros retenidos por semanas</span>
-                  </li>
-                </ul>
-              </div>
-
-              {/* FoodOS Direct */}
-              <div className="rounded-2xl border border-emerald-300/80 dark:border-emerald-800/60 bg-emerald-50/50 dark:bg-emerald-950/20 p-6 shadow-xs">
-                <h4 className="text-base font-bold text-slate-900 dark:text-white mb-4">
-                  Tu Canal Directo con FoodOS
-                </h4>
-                <ul className="space-y-3 text-sm text-slate-700 dark:text-slate-200 font-medium">
-                  <li className="flex items-start gap-2.5">
-                    <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
-                    <span>0% comisiones por venta</span>
-                  </li>
-                  <li className="flex items-start gap-2.5">
-                    <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
-                    <span>100% base de datos y CRM propio</span>
-                  </li>
-                  <li className="flex items-start gap-2.5">
-                    <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
-                    <span>Pago directo a tu cuenta o efectivo al instante</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ======================================================== */}
-      {/* HOW IT WORKS                                             */}
-      {/* ======================================================== */}
-      <section id="how-it-works" className="scroll-mt-20 py-20 border-t border-slate-200/80 dark:border-slate-800/80 bg-[#FAFAFA] dark:bg-[#0D121F] transition-colors">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-14">
-            <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 dark:text-white">
-              Empezá a vender en 3 simples pasos
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="relative rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-7 text-center shadow-xs">
-              <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-orange-500/10 text-orange-600 dark:text-orange-400 font-black text-xl border border-brand-orange-subtle mb-4">
-                1
-              </div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">Creá tu Menú</h3>
-              <p className="mt-2 text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-normal">
-                Cargá tus categorías, fotos de productos, precios, ingredientes y adiciones opcionales
-                desde tu panel administrativo sin código.
-              </p>
-            </div>
-
-            <div className="relative rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-7 text-center shadow-xs">
-              <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 font-black text-xl border border-amber-500/20 mb-4">
-                2
-              </div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">Compartí tu Link o QR</h3>
-              <p className="mt-2 text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-normal">
-                Colocá tu enlace personalizado en tu biografía de Instagram, estados de WhatsApp o imprimí
-                códigos QR en tus mesas y empaques.
-              </p>
-            </div>
-
-            <div className="relative rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-7 text-center shadow-xs">
-              <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-black text-xl border border-emerald-500/20 mb-4">
-                3
-              </div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">Recibí Pedidos Listos</h3>
-              <p className="mt-2 text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-normal">
-                El comensal pide en segundos y a vos te entra el mensaje estructurado con todo el detalle
-                para preparar y despachar.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ======================================================== */}
-      {/* FINAL CTA                                                */}
-      {/* ======================================================== */}
-      <section className="py-20 border-t border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-[#0B0F19] text-center transition-colors">
-        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-          <div className="rounded-3xl border border-orange-200/80 dark:border-orange-900/40 bg-gradient-to-br from-orange-50 via-white to-amber-50 dark:from-slate-900 dark:via-[#131926] dark:to-slate-900 p-8 sm:p-12 relative overflow-hidden shadow-xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-brand-orange-subtle bg-orange-500/10 px-3.5 py-1 text-xs font-bold text-orange-800 dark:text-orange-300 mb-4">
-              <Flame className="size-3.5 text-orange-500" />
-              <span>Empezá a vender hoy mismo</span>
-            </div>
-
-            <h2 className="text-2xl sm:text-4xl font-black text-slate-900 dark:text-white">
-              ¿Listo para potenciar las ventas de tu negocio?
-            </h2>
-            <p className="mt-3 text-sm text-slate-600 dark:text-slate-300 max-w-xl mx-auto font-normal">
-              Gestioná tu catálogo, recibí pedidos en WhatsApp y tomá el control absoluto de tus clientes sin intermediarios.
-            </p>
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-              <Button
-                type="button"
-                onClick={() => navigateTo("/admin")}
-                className="flex h-auto items-center gap-2 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-3.5 text-sm font-bold text-white shadow-xl shadow-orange-500/30 hover:from-orange-600 hover:to-amber-600 cursor-pointer"
-              >
-                <ShieldCheck className="size-4" />
-                <span>Ingresar al Panel de Gestión</span>
-              </Button>
-            </div>
-          </div>
-        </div>
-      </section>
-      </main>
-
-      {/* Footer */}
-      <footer className="border-t border-slate-200 dark:border-slate-800 bg-[#FAFAFA] dark:bg-[#0D121F] py-8 text-slate-500 dark:text-slate-400 text-xs transition-colors">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <Flame className="size-4 text-orange-500" />
-            <span className="font-black text-slate-900 dark:text-white">FoodOS</span>
-            <span>— Plataforma Multi-Restaurante de Pedidos Directos</span>
-          </div>
-
-          <div className="flex items-center gap-4 sm:gap-6 font-semibold">
-            <button
-              type="button"
-              onClick={() => navigateTo("/admin")}
-              className="pointer-coarse:min-h-11 px-2 py-1 hover:text-orange-600 dark:hover:text-orange-400 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 rounded-lg"
-            >
-              Acceso Admin
-            </button>
-            <a
-              href="#features"
-              className="px-2 py-1 hover:text-orange-600 dark:hover:text-orange-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 rounded-lg"
-            >
-              Beneficios
-            </a>
-            <a
-              href="#how-it-works"
-              className="px-2 py-1 hover:text-orange-600 dark:hover:text-orange-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 rounded-lg"
-            >
-              Cómo Funciona
-            </a>
-          </div>
-        </div>
-      </footer>
-    </div>
+        </footer>
+      </div>
+    </MotionConfig>
   )
 }

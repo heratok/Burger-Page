@@ -197,12 +197,6 @@ export const BLUR_ALLOWLIST: readonly BlurAllowlistEntry[] = [
     classes: 'absolute inset-0 z-10 flex items-center justify-center bg-black/65 backdrop-blur-2xs',
     reason: 'Out-of-stock "Agotado" badge overlay on the card thumbnail.',
   },
-  {
-    file: 'features/superadmin/AdminAuthModal.tsx',
-    classes:
-      'w-full max-w-md rounded-3xl border border-white/15 bg-slate-900/85 p-6 sm:p-8 shadow-2xl shadow-indigo-950/80 backdrop-blur-2xl transition-all',
-    reason: 'Centered max-w-md login card (non-full-viewport).',
-  },
 ];
 
 interface ExtractedUnit {
